@@ -19,8 +19,19 @@ wheels/
 # Misc
 *.ipynb
 
+# macOS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
 # Reports
 evals/reports/
 
 # Claude Code memory files - keep local only
 CLAUDE.md
+CLAUDE.local.md
+CLAUDE_ORIGINAL.md

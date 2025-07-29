@@ -1,0 +1,213 @@
+# Adaptive Deployment Configuration
+# ================================
+#
+# This configuration file controls the behavior of the intelligent deployment system.
+# All settings can be customized based on your infrastructure requirements.
+
+# Resource allocation limits for different deployment strategies
+resource_limits:
+  conservative:
+    cpu_limit: 0.4          # Maximum CPU utilization (40%)
+    memory_limit: 0.5       # Maximum memory utilization (50%)
+    concurrency: 2          # Maximum concurrent deployment processes
+    timeout_buffer: 1.5     # Timeout multiplier for safety
+    
+  balanced:
+    cpu_limit: 0.7          # Maximum CPU utilization (70%)
+    memory_limit: 0.8       # Maximum memory utilization (80%)
+    concurrency: 4          # Maximum concurrent deployment processes
+    timeout_buffer: 1.2     # Timeout multiplier
+    
+  aggressive:
+    cpu_limit: 0.9          # Maximum CPU utilization (90%)
+    memory_limit: 0.9       # Maximum memory utilization (90%)
+    concurrency: 8          # Maximum concurrent deployment processes
+    timeout_buffer: 1.0     # No timeout buffer (use exact estimates)
+
+# System health thresholds for decision making
+thresholds:
+  high_cpu: 80.0           # CPU percentage considered "high load"
+  high_memory: 85.0        # Memory percentage considered "high load"
+  high_disk: 90.0          # Disk usage percentage considered "high"
+  critical_cpu: 95.0       # CPU percentage that blocks deployment
+  critical_memory: 95.0    # Memory percentage that blocks deployment
+  critical_disk: 98.0      # Disk usage that blocks deployment
+  max_deployment_time: 60  # Maximum allowed deployment time (minutes)
+  network_timeout: 1000    # Network latency threshold (ms)
+  min_free_memory: 0.5     # Minimum free memory required (GB)
+  min_free_disk: 1.0       # Minimum free disk space required (GB)
+
+# Retry and failure handling policies
+retry_policies:
+  max_retries: 3           # Maximum number of retry attempts
+  backoff_factor: 2.0      # Exponential backoff multiplier
+  initial_delay: 30        # Initial retry delay (seconds)
+  max_delay: 300           # Maximum retry delay (seconds)
+  retry_on_failures:       # Failure types that trigger retries
+    - "connection_timeout"
+    - "temporary_resource_limit"
+    - "transient_network_error"
+  no_retry_failures:       # Failure types that should NOT be retried
+    - "authentication_error"
+    - "permission_denied"
+    - "invalid_configuration"
+
+# Environment-specific overrides
+environment_overrides:
+  production:
+    # Production deployments are more conservative by default
+    force_conservative_mode: false  # Set to true to always use conservative strategy
+    require_approval: false         # Set to true to require manual approval
+    business_hours_only: false      # Set to true to restrict deployments to business hours
+    max_concurrent_deployments: 2   # Limit concurrent deployments in production
+    
+  staging:
+    # Staging allows more aggressive deployments for testing
+    allow_aggressive_strategy: true
+    skip_approval: true
+    enable_experimental_features: true
+    
+  development:
+    # Development environment is most permissive
+    allow_all_strategies: true
+    skip_validation: false          # Still validate for learning purposes
+    enable_debug_mode: true
+
+# Machine Learning model configuration
+ml_config:
+  model_type: "random_forest"      # ML algorithm to use
+  retrain_frequency: 10            # Retrain after N deployments
+  min_training_samples: 20         # Minimum samples needed for training
+  feature_importance_threshold: 0.05  # Minimum feature importance to keep
+  cross_validation_folds: 5        # Number of CV folds for model validation
+  
+  # Feature weights for prediction (higher = more important)
+  feature_weights:
+    system_cpu: 1.0
+    system_memory: 1.0
+    system_disk: 0.8
+    network_latency: 0.6
+    deployment_size: 0.9
+    time_constraints: 0.7
+    historical_success_rate: 1.2
+    environment_type: 1.1
+    time_of_day: 0.4
+    day_of_week: 0.3
+
+# Monitoring and alerting configuration
+monitoring:
+  # Metrics collection settings
+  metrics_retention_days: 30       # How long to keep detailed metrics
+  sample_interval_seconds: 5       # How often to sample system metrics
+  
+  # Alert thresholds
+  alerts:
+    deployment_duration_threshold: 45    # Alert if deployment takes longer (minutes)
+    failure_rate_threshold: 0.20        # Alert if failure rate exceeds 20%
+    consecutive_failures: 3              # Alert after N consecutive failures
+    
+  # Notification channels (configure endpoints as needed)
+  notifications:
+    slack_webhook: ""                    # Slack webhook URL
+    email_recipients: []                 # List of email addresses
+    teams_webhook: ""                    # Microsoft Teams webhook URL
+
+# Performance optimization settings
+performance:
+  # Caching configuration
+  cache_strategy_predictions: true     # Cache ML predictions for similar contexts
+  cache_duration_minutes: 15          # How long to cache predictions
+  
+  # Resource optimization
+  enable_resource_prediction: true     # Predict and pre-allocate resources
+  resource_buffer_percent: 10         # Extra resource buffer (%)
+  
+  # Parallel processing
+  max_parallel_health_checks: 5       # Concurrent health check operations
+  max_parallel_validations: 3         # Concurrent validation operations
+
+# Security and compliance settings
+security:
+  # Audit logging
+  enable_audit_logging: true          # Log all deployment decisions
+  audit_log_retention_days: 90        # Keep audit logs for 90 days
+  log_sensitive_data: false           # Whether to log potentially sensitive info
+  
+  # Access control
+  require_authentication: false       # Require user authentication (implement as needed)
+  allowed_users: []                   # List of allowed users (if auth enabled)
+  
+  # Compliance
+  enable_compliance_checks: false     # Enable compliance validation
+  compliance_standards: []            # List of standards to check (e.g., SOX, HIPAA)
+
+# Integration settings
+integrations:
+  # CI/CD integration
+  github_actions:
+    enabled: false                    # Enable GitHub Actions integration
+    workflow_dispatch: true           # Use workflow dispatch for triggering
+    
+  jenkins:
+    enabled: false                    # Enable Jenkins integration
+    webhook_url: ""                   # Jenkins webhook URL
+    
+  # Container orchestration
+  kubernetes:
+    enabled: false                    # Enable Kubernetes integration
+    config_path: "~/.kube/config"     # Path to kubectl config
+    default_namespace: "default"      # Default namespace for deployments
+    
+  docker:
+    enabled: true                     # Enable Docker integration
+    registry_url: ""                  # Docker registry URL
+    registry_auth: false              # Whether registry requires authentication
+
+# Debugging and development settings
+debug:
+  enable_debug_mode: false           # Enable detailed debug logging
+  save_decision_trees: true          # Save ML decision trees for analysis
+  enable_profiling: false            # Enable performance profiling
+  mock_deployment_duration: false    # Use mock durations for testing
+  simulate_failures: false           # Randomly simulate failures for testing
+  
+# Custom hooks and extensions
+hooks:
+  # Pre-deployment hooks
+  pre_deployment_scripts: []          # Scripts to run before deployment
+  pre_deployment_validations: []      # Custom validation functions
+  
+  # Post-deployment hooks
+  post_deployment_scripts: []         # Scripts to run after deployment
+  post_deployment_notifications: []   # Custom notification functions
+  
+  # Failure hooks
+  on_failure_scripts: []              # Scripts to run on deployment failure
+  on_failure_notifications: []        # Custom failure notification functions
+
+# Experimental features (use with caution)
+experimental:
+  enable_predictive_scaling: false    # Predict and pre-scale resources
+  enable_canary_deployments: false    # Automatic canary deployment strategy
+  enable_blue_green: false            # Automatic blue-green deployments
+  enable_rollback_prediction: false   # Predict when rollbacks will be needed
+  enable_cost_optimization: false     # Optimize for deployment cost
+  
+# Custom environment detection rules
+environment_detection:
+  # Custom patterns for environment detection
+  hostname_patterns:
+    production: ["prod", "production", "prd"]
+    staging: ["staging", "stage", "stg"]
+    development: ["dev", "development", "local"]
+    
+  # Custom service detection rules
+  service_patterns:
+    production: ["nginx", "gunicorn", "supervisor"]
+    development: ["uvicorn", "flask", "django"]
+    
+  # Custom network detection rules
+  network_patterns:
+    production: ["api.pratiko.ai", "pratiko.com"]
+    staging: ["staging.pratiko.ai", "stage-api.internal"]
+    development: ["localhost", "127.0.0.1", "local.pratiko.ai"]

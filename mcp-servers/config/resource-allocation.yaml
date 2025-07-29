@@ -1,0 +1,465 @@
+# PratikoAI MCP Server Resource Allocation Configuration
+# Comprehensive resource planning for all environments with auto-scaling and cost optimization
+
+resource_allocation:
+  # Development Environment
+  development:
+    compute:
+      instance_type: "t3.medium"
+      cpu_cores: 2
+      memory_gb: 4
+      storage_gb: 50
+      storage_type: "gp3"
+      iops: 3000
+      
+    scaling:
+      min_replicas: 1
+      max_replicas: 3
+      target_cpu_utilization: 70
+      target_memory_utilization: 80
+      scale_up_cooldown: 300  # 5 minutes
+      scale_down_cooldown: 600  # 10 minutes
+      
+    resource_limits:
+      mcp_server:
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+          ephemeral_storage: "1Gi"
+        limits:
+          cpu: "2000m"
+          memory: "4Gi"
+          ephemeral_storage: "2Gi"
+          
+      postgres:
+        requests:
+          cpu: "250m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+          
+      redis:
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
+          
+    cost_optimization:
+      spot_instances: true
+      spot_instance_percentage: 50
+      reserved_instances: false
+      scheduled_scaling:
+        enabled: true
+        weekday_hours: "9-18"  # Scale up during business hours
+        weekend_scale_down: true
+      auto_shutdown:
+        enabled: true
+        shutdown_time: "20:00"
+        startup_time: "08:00"
+        timezone: "UTC"
+        
+    estimated_monthly_cost: 75  # USD
+
+  # Staging Environment
+  staging:
+    compute:
+      instance_type: "t3.large"
+      cpu_cores: 4
+      memory_gb: 8
+      storage_gb: 100
+      storage_type: "gp3"
+      iops: 4000
+      
+    scaling:
+      min_replicas: 2
+      max_replicas: 6
+      target_cpu_utilization: 65
+      target_memory_utilization: 75
+      scale_up_cooldown: 180  # 3 minutes
+      scale_down_cooldown: 300  # 5 minutes
+      
+      # Advanced scaling metrics
+      custom_metrics:
+        - name: "http_requests_per_second"
+          target_value: 1000
+          
+        - name: "database_connections"
+          target_value: 80  # 80% of max connections
+          
+        - name: "queue_depth"
+          target_value: 100
+          
+    resource_limits:
+      mcp_server:
+        requests:
+          cpu: "1000m"
+          memory: "2Gi"
+          ephemeral_storage: "2Gi"
+        limits:
+          cpu: "4000m"
+          memory: "8Gi"
+          ephemeral_storage: "4Gi"
+          
+      postgres:
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+        limits:
+          cpu: "2000m"
+          memory: "4Gi"
+          
+      redis:
+        requests:
+          cpu: "200m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+          
+    high_availability:
+      enabled: true
+      multi_az: true
+      backup_frequency: "daily"
+      backup_retention_days: 7
+      
+    cost_optimization:
+      spot_instances: true
+      spot_instance_percentage: 30
+      reserved_instances: false
+      scheduled_scaling:
+        enabled: true
+        scale_down_weekends: true
+        scale_down_nights: true
+        
+    estimated_monthly_cost: 250  # USD
+
+  # Production Environment
+  production:
+    compute:
+      instance_types:
+        application: "c5.2xlarge"  # Compute optimized
+        database: "r5.xlarge"     # Memory optimized
+        cache: "r5.large"         # Memory optimized
+        monitoring: "t3.large"    # General purpose
+        
+      application_nodes:
+        cpu_cores: 8
+        memory_gb: 16
+        storage_gb: 500
+        storage_type: "gp3"
+        iops: 10000
+        throughput: 250  # MB/s
+        
+      database_nodes:
+        cpu_cores: 4
+        memory_gb: 32
+        storage_gb: 1000
+        storage_type: "io2"  # High IOPS SSD
+        iops: 20000
+        
+      cache_nodes:
+        cpu_cores: 2
+        memory_gb: 16
+        storage_gb: 100
+        storage_type: "gp3"
+        
+    scaling:
+      min_replicas: 6
+      max_replicas: 50
+      target_cpu_utilization: 60
+      target_memory_utilization: 70
+      scale_up_cooldown: 120  # 2 minutes
+      scale_down_cooldown: 600  # 10 minutes
+      
+      # Predictive scaling
+      predictive_scaling:
+        enabled: true
+        forecast_horizon: 86400  # 24 hours
+        confidence_threshold: 70
+        
+      # Advanced scaling policies
+      scaling_policies:
+        - name: "cpu_scaling"
+          metric: "cpu_utilization"
+          target: 60
+          scale_up_adjustment: "50%"
+          scale_down_adjustment: "10%"
+          
+        - name: "memory_scaling"
+          metric: "memory_utilization"
+          target: 70
+          scale_up_adjustment: "25%"
+          scale_down_adjustment: "10%"
+          
+        - name: "request_rate_scaling"
+          metric: "requests_per_second"
+          target: 5000
+          scale_up_adjustment: "100%"
+          scale_down_adjustment: "20%"
+          
+        - name: "response_time_scaling"
+          metric: "response_time_p95"
+          target: 500  # milliseconds
+          scale_up_adjustment: "50%"
+          scale_down_adjustment: "0%"  # Don't scale down on response time
+          
+    resource_limits:
+      mcp_server:
+        requests:
+          cpu: "2000m"
+          memory: "4Gi"
+          ephemeral_storage: "4Gi"
+        limits:
+          cpu: "8000m"
+          memory: "16Gi"
+          ephemeral_storage: "8Gi"
+        jvm_settings:  # If using JVM-based services
+          heap_size: "12Gi"
+          gc_algorithm: "G1GC"
+          
+      postgres_primary:
+        requests:
+          cpu: "4000m"
+          memory: "16Gi"
+        limits:
+          cpu: "8000m"
+          memory: "32Gi"
+        database_settings:
+          shared_buffers: "8GB"
+          effective_cache_size: "24GB"
+          maintenance_work_mem: "2GB"
+          
+      postgres_replica:
+        requests:
+          cpu: "2000m"
+          memory: "8Gi"
+        limits:
+          cpu: "4000m"
+          memory: "16Gi"
+          
+      redis_master:
+        requests:
+          cpu: "1000m"
+          memory: "4Gi"
+        limits:
+          cpu: "2000m"
+          memory: "8Gi"
+        redis_settings:
+          max_memory: "6GB"
+          max_memory_policy: "allkeys-lru"
+          
+      redis_replica:
+        requests:
+          cpu: "500m"
+          memory: "2Gi"
+        limits:
+          cpu: "1000m"
+          memory: "4Gi"
+          
+    high_availability:
+      enabled: true
+      multi_az: true
+      multi_region: false  # Consider for disaster recovery
+      backup_frequency: "every_6_hours"
+      backup_retention_days: 30
+      point_in_time_recovery: true
+      
+    cost_optimization:
+      spot_instances: true
+      spot_instance_percentage: 20  # Conservative for production
+      reserved_instances: true
+      reserved_instance_percentage: 60
+      savings_plans: true
+      
+      # Cost monitoring
+      budget_alerts:
+        - threshold: 1000  # USD
+          alert_type: "warning"
+        - threshold: 1500  # USD
+          alert_type: "critical"
+          
+      right_sizing:
+        enabled: true
+        analysis_frequency: "weekly"
+        auto_apply: false  # Manual approval for production
+        
+    estimated_monthly_cost: 1200  # USD base cost, scales with usage
+
+# Cross-environment resource sharing
+shared_resources:
+  monitoring:
+    instance_type: "t3.xlarge"
+    cpu_cores: 4
+    memory_gb: 16
+    storage_gb: 200
+    shared_by: ["development", "staging"]
+    
+  backup_storage:
+    type: "s3"
+    storage_class: "standard_ia"  # Infrequent access
+    lifecycle_policy:
+      transition_to_glacier: 90  # days
+      delete_after: 2555  # 7 years
+      
+  container_registry:
+    type: "ecr"
+    storage_gb: 100
+    shared_by: ["development", "staging", "production"]
+
+# Resource monitoring and alerting
+monitoring:
+  metrics:
+    collection_interval: 30  # seconds
+    retention_period: 90  # days
+    
+  alerts:
+    cpu:
+      warning_threshold: 70
+      critical_threshold: 85
+      
+    memory:
+      warning_threshold: 75
+      critical_threshold: 90
+      
+    disk:
+      warning_threshold: 80
+      critical_threshold: 90
+      
+    network:
+      warning_threshold: "100Mbps"
+      critical_threshold: "500Mbps"
+      
+  auto_remediation:
+    enabled: true
+    actions:
+      - condition: "cpu > 85%"
+        action: "scale_up"
+        cooldown: 300
+        
+      - condition: "memory > 90%"
+        action: "restart_pod"
+        cooldown: 600
+        
+      - condition: "disk > 90%"
+        action: "cleanup_logs"
+        cooldown: 3600
+
+# Capacity planning
+capacity_planning:
+  growth_projections:
+    user_growth_rate: 20  # % per month
+    data_growth_rate: 15  # % per month
+    transaction_growth_rate: 25  # % per month
+    
+  resource_forecasting:
+    horizon_months: 12
+    buffer_percentage: 20  # Extra capacity buffer
+    
+  upgrade_triggers:
+    cpu_utilization: 75  # % over 7 days
+    memory_utilization: 80  # % over 7 days
+    storage_utilization: 85  # % over 30 days
+    
+  procurement_lead_times:
+    cloud_resources: 1  # days
+    on_premise_hardware: 90  # days
+    software_licenses: 30  # days
+
+# Performance optimization
+performance:
+  caching_strategy:
+    levels:
+      - name: "application_cache"
+        type: "redis"
+        ttl: 3600  # 1 hour
+        size_limit: "2GB"
+        
+      - name: "database_cache"
+        type: "postgres_shared_buffers"
+        size: "25%_of_memory"
+        
+      - name: "cdn_cache"
+        type: "cloudfront"
+        ttl: 86400  # 24 hours
+        
+  connection_pooling:
+    database:
+      min_connections: 5
+      max_connections: 100
+      idle_timeout: 300  # 5 minutes
+      
+    redis:
+      min_connections: 2
+      max_connections: 50
+      idle_timeout: 180  # 3 minutes
+      
+  query_optimization:
+    slow_query_threshold: 1000  # milliseconds
+    auto_index_creation: false
+    query_plan_caching: true
+
+# Disaster recovery resource allocation
+disaster_recovery:
+  rpo: 3600  # Recovery Point Objective: 1 hour
+  rto: 14400  # Recovery Time Objective: 4 hours
+  
+  backup_resources:
+    storage_type: "s3_glacier"
+    replication_regions: ["us-west-2", "us-east-1"]
+    backup_frequency:
+      database: "every_6_hours"
+      application_data: "daily"
+      configuration: "on_change"
+      
+  standby_environment:
+    enabled: true
+    type: "warm_standby"  # cold, warm, hot
+    resource_allocation: "50%_of_production"
+    activation_time: 2  # hours
+    
+  testing:
+    frequency: "monthly"
+    automation_level: "partial"
+    success_criteria:
+      rto_compliance: true
+      rpo_compliance: true
+      data_integrity: true
+
+# Cost breakdown and optimization recommendations
+cost_analysis:
+  current_monthly_costs:
+    development: 75
+    staging: 250
+    production: 1200
+    shared_resources: 150
+    total: 1675  # USD
+    
+  cost_breakdown:
+    compute: 60  # %
+    storage: 20  # %
+    network: 10  # %
+    monitoring: 5   # %
+    backup: 5   # %
+    
+  optimization_opportunities:
+    - name: "right_sizing"
+      potential_savings: 15  # %
+      effort: "low"
+      
+    - name: "reserved_instances"
+      potential_savings: 25  # %
+      effort: "medium"
+      
+    - name: "spot_instances"
+      potential_savings: 40  # %
+      effort: "high"
+      risk: "medium"
+      
+    - name: "auto_scaling_optimization"
+      potential_savings: 10  # %
+      effort: "medium"
+      
+  total_potential_savings: 30  # % with all optimizations

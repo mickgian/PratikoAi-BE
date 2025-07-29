@@ -39,6 +39,7 @@ from app.core.metrics import llm_inference_duration_seconds
 from app.core.prompts import SYSTEM_PROMPT
 from app.core.decorators.cache import cache_llm_response, cache_conversation
 from app.services.cache import cache_service
+from app.services.usage_tracker import usage_tracker
 from app.schemas import (
     GraphState,
     Message,
@@ -93,6 +94,29 @@ class LangGraphAgent:
                     provider=provider.provider_type.value,
                     message_count=len(messages)
                 )
+                
+                # Track cache hit usage
+                if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):
+                    try:
+                        await usage_tracker.track_llm_usage(
+                            user_id=self._current_user_id,
+                            session_id=self._current_session_id,
+                            provider=provider.provider_type.value,
+                            model=provider.model,
+                            llm_response=cached_response,
+                            response_time_ms=10,  # Minimal time for cache hit
+                            cache_hit=True,
+                            pii_detected=getattr(self, '_pii_detected', False),
+                            pii_types=getattr(self, '_pii_types', None)
+                        )
+                    except Exception as e:
+                        logger.error(
+                            "cache_hit_tracking_failed",
+                            error=str(e),
+                            provider=provider.provider_type.value,
+                            model=provider.model
+                        )
+                
                 return cached_response
         except Exception as e:
             logger.error(
@@ -102,12 +126,39 @@ class LangGraphAgent:
             )
         
         # Get fresh response from provider
+        import time
+        start_time = time.time()
+        
         response = await provider.chat_completion(
             messages=messages,
             tools=tools,
             temperature=temperature,
             max_tokens=max_tokens,
         )
+        
+        response_time_ms = int((time.time() - start_time) * 1000)
+        
+        # Track usage (only for non-cached responses)
+        if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):
+            try:
+                await usage_tracker.track_llm_usage(
+                    user_id=self._current_user_id,
+                    session_id=self._current_session_id,
+                    provider=provider.provider_type.value,
+                    model=provider.model,
+                    llm_response=response,
+                    response_time_ms=response_time_ms,
+                    cache_hit=False,
+                    pii_detected=getattr(self, '_pii_detected', False),
+                    pii_types=getattr(self, '_pii_types', None)
+                )
+            except Exception as e:
+                logger.error(
+                    "usage_tracking_failed",
+                    error=str(e),
+                    provider=provider.provider_type.value,
+                    model=provider.model
+                )
         
         # Cache the response for future use
         try:
@@ -434,6 +485,10 @@ class LangGraphAgent:
         Returns:
             list[dict]: The response from the LLM.
         """
+        # Store user and session info for tracking
+        self._current_user_id = user_id
+        self._current_session_id = session_id
+        
         if self._graph is None:
             self._graph = await self.create_graph()
         config = {
@@ -454,6 +509,10 @@ class LangGraphAgent:
         except Exception as e:
             logger.error(f"Error getting response: {str(e)}")
             raise e
+        finally:
+            # Clean up tracking info
+            self._current_user_id = None
+            self._current_session_id = None
 
     async def get_stream_response(
         self, messages: list[Message], session_id: str, user_id: Optional[str] = None
@@ -468,6 +527,10 @@ class LangGraphAgent:
         Yields:
             str: Tokens of the LLM response.
         """
+        # Store user and session info for tracking
+        self._current_user_id = user_id
+        self._current_session_id = session_id
+        
         config = {
             "configurable": {"thread_id": session_id},
             "callbacks": [
@@ -492,6 +555,10 @@ class LangGraphAgent:
         except Exception as stream_error:
             logger.error("Error in stream processing", error=str(stream_error), session_id=session_id)
             raise stream_error
+        finally:
+            # Clean up tracking info
+            self._current_user_id = None
+            self._current_session_id = None
 
     async def get_chat_history(self, session_id: str) -> list[Message]:
         """Get the chat history for a given thread ID.

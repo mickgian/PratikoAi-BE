@@ -207,19 +207,31 @@ jobs:
     
     - name: Generate Release Notes
       id: notes
+      env:
+        BREAKING_CHANGES: ${{ needs.analyze-changes.outputs.breaking_changes }}
+        NEW_FEATURES: ${{ needs.analyze-changes.outputs.new_features }}
+        BUG_FIXES: ${{ needs.analyze-changes.outputs.bug_fixes }}
+        CHANGE_TYPE: ${{ needs.analyze-changes.outputs.change_type }}
+        VERSION_BUMP: ${{ needs.analyze-changes.outputs.version_bump }}
       run: |
         python3 - <<'EOF'
         import json
         import os
         
-        # FIXED: Properly parse JSON from GitHub Actions outputs
+        # FIXED: Safely parse JSON from GitHub Actions outputs using environment variables
+        
+        # Get outputs from environment variables to avoid shell escaping issues
+        breaking_changes_json = os.environ.get('BREAKING_CHANGES', '[]')
+        new_features_json = os.environ.get('NEW_FEATURES', '[]')
+        bug_fixes_json = os.environ.get('BUG_FIXES', '[]')
+        change_type = os.environ.get('CHANGE_TYPE', 'maintenance')
+        version_bump = os.environ.get('VERSION_BUMP', 'patch')
+        
         try:
             # Parse the JSON outputs safely
-            breaking_changes = json.loads('${{ needs.analyze-changes.outputs.breaking_changes }}')
-            new_features = json.loads('${{ needs.analyze-changes.outputs.new_features }}')
-            bug_fixes = json.loads('${{ needs.analyze-changes.outputs.bug_fixes }}')
-            change_type = '${{ needs.analyze-changes.outputs.change_type }}'
-            version_bump = '${{ needs.analyze-changes.outputs.version_bump }}'
+            breaking_changes = json.loads(breaking_changes_json)
+            new_features = json.loads(new_features_json)
+            bug_fixes = json.loads(bug_fixes_json)
             
             print(f"Parsed inputs successfully:")
             print(f"  Breaking changes: {len(breaking_changes)}")
@@ -313,19 +325,42 @@ jobs:
     
     steps:
     - name: PR Change Analysis
+      env:
+        BREAKING_CHANGES: ${{ needs.analyze-changes.outputs.breaking_changes }}
+        NEW_FEATURES: ${{ needs.analyze-changes.outputs.new_features }}
+        BUG_FIXES: ${{ needs.analyze-changes.outputs.bug_fixes }}
+        CHANGE_TYPE: ${{ needs.analyze-changes.outputs.change_type }}
+        VERSION_BUMP: ${{ needs.analyze-changes.outputs.version_bump }}
       run: |
         echo "## 📊 Change Analysis" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Change Type:** ${{ needs.analyze-changes.outputs.change_type }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Recommended Version Bump:** ${{ needs.analyze-changes.outputs.version_bump }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Change Type:** $CHANGE_TYPE" >> $GITHUB_STEP_SUMMARY
+        echo "**Recommended Version Bump:** $VERSION_BUMP" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
-        # Parse and display changes safely
-        breaking_count=$(echo '${{ needs.analyze-changes.outputs.breaking_changes }}' | python3 -c "import sys, json; print(len(json.loads(sys.stdin.read())))")
-        features_count=$(echo '${{ needs.analyze-changes.outputs.new_features }}' | python3 -c "import sys, json; print(len(json.loads(sys.stdin.read())))")
-        fixes_count=$(echo '${{ needs.analyze-changes.outputs.bug_fixes }}' | python3 -c "import sys, json; print(len(json.loads(sys.stdin.read())))")
-        
-        echo "**Changes Detected:**" >> $GITHUB_STEP_SUMMARY
-        echo "- 💥 Breaking Changes: $breaking_count" >> $GITHUB_STEP_SUMMARY
-        echo "- ✨ New Features: $features_count" >> $GITHUB_STEP_SUMMARY
-        echo "- 🐛 Bug Fixes: $fixes_count" >> $GITHUB_STEP_SUMMARY
+        # Parse and display changes safely using environment variables
+        python3 - <<'EOF'
+import json
+import os
+
+try:
+    breaking_changes = json.loads(os.environ.get('BREAKING_CHANGES', '[]'))
+    new_features = json.loads(os.environ.get('NEW_FEATURES', '[]'))
+    bug_fixes = json.loads(os.environ.get('BUG_FIXES', '[]'))
+    
+    breaking_count = len(breaking_changes)
+    features_count = len(new_features)
+    fixes_count = len(bug_fixes)
+except json.JSONDecodeError:
+    # Fallback if JSON parsing fails
+    breaking_count = 0
+    features_count = 0 
+    fixes_count = 0
+
+# Write to step summary using environment variable
+with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+    f.write("**Changes Detected:**\n")
+    f.write(f"- 💥 Breaking Changes: {breaking_count}\n")
+    f.write(f"- ✨ New Features: {features_count}\n")
+    f.write(f"- 🐛 Bug Fixes: {fixes_count}\n")
+EOF

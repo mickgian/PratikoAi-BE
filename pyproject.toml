@@ -39,6 +39,9 @@ dependencies = [
 dev = ["black", "isort", "flake8", "ruff", "djlint==1.36.4"]
 
 [dependency-groups]
+dev = [
+    "ruff>=0.11.4",
+]
 test = ["httpx>=0.28.1", "pytest>=8.3.5"]
 
 

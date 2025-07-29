@@ -1,0 +1,445 @@
+# PratikoAI MCP Server Prometheus Configuration
+# Comprehensive monitoring configuration for all environments
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: 'pratiko-mcp'
+    region: 'us-west-2'
+
+# Rule files specify a list of globs
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+  - "/etc/prometheus/alerts/*.yml"
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+      scheme: http
+      timeout: 10s
+      api_version: v2
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # MCP Server monitoring
+  - job_name: 'mcp-server-development'
+    static_configs:
+      - targets: ['mcp-server-dev:9090']
+    scrape_interval: 15s
+    metrics_path: /metrics
+    params:
+      'match[]':
+        - '{__name__=~"mcp_.*"}'
+        - '{__name__=~"http_.*"}'
+        - '{__name__=~"process_.*"}'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: environment
+        replacement: 'development'
+
+  - job_name: 'mcp-server-staging'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - mcp-staging
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: mcp-server
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: kubernetes_pod_name
+      - source_labels: [__meta_kubernetes_pod_label_environment]
+        target_label: environment
+    scrape_interval: 15s
+
+  - job_name: 'mcp-server-production'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - mcp-production
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: mcp-server
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: kubernetes_pod_name
+      - source_labels: [__meta_kubernetes_pod_label_environment]
+        target_label: environment
+    scrape_interval: 10s  # More frequent for production
+
+  # Database monitoring
+  - job_name: 'postgres-development'
+    static_configs:
+      - targets: ['postgres-dev:5432']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: environment
+        replacement: 'development'
+
+  - job_name: 'postgres-staging'
+    kubernetes_sd_configs:
+      - role: service
+        namespaces:
+          names:
+            - mcp-staging
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_label_app]
+        action: keep
+        regex: postgresql
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: environment
+        replacement: 'staging'
+
+  - job_name: 'postgres-production'
+    kubernetes_sd_configs:
+      - role: service
+        namespaces:
+          names:
+            - mcp-production
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_label_app]
+        action: keep
+        regex: postgresql
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: environment
+        replacement: 'production'
+    scrape_interval: 15s
+
+  # Redis monitoring
+  - job_name: 'redis-development'
+    static_configs:
+      - targets: ['redis-dev:6379']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: environment
+        replacement: 'development'
+
+  - job_name: 'redis-staging'
+    kubernetes_sd_configs:
+      - role: service
+        namespaces:
+          names:
+            - mcp-staging
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_label_app]
+        action: keep
+        regex: redis
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: environment
+        replacement: 'staging'
+
+  - job_name: 'redis-production'
+    kubernetes_sd_configs:
+      - role: service
+        namespaces:
+          names:
+            - mcp-production
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_label_app]
+        action: keep
+        regex: redis
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: environment
+        replacement: 'production'
+    scrape_interval: 15s
+
+  # Kubernetes cluster monitoring
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+      - role: endpoints
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+      - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics
+
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+  # Node Exporter for system metrics
+  - job_name: 'node-exporter'
+    kubernetes_sd_configs:
+      - role: endpoints
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_endpoints_name]
+        action: keep
+        regex: node-exporter
+      - source_labels: [__meta_kubernetes_endpoint_address_target_name]
+        action: replace
+        target_label: node
+      - action: labelmap
+        regex: __meta_kubernetes_endpoint_node_label_(.+)
+
+  # cAdvisor for container metrics
+  - job_name: 'kubernetes-cadvisor'
+    kubernetes_sd_configs:
+      - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+
+  # AWS CloudWatch metrics (for cloud resources)
+  - job_name: 'aws-cloudwatch'
+    ec2_sd_configs:
+      - region: us-west-2
+        port: 9100
+        filters:
+          - name: tag:monitoring
+            values: ["enabled"]
+    relabel_configs:
+      - source_labels: [__meta_ec2_tag_Name]
+        target_label: instance_name
+      - source_labels: [__meta_ec2_instance_type]
+        target_label: instance_type
+      - source_labels: [__meta_ec2_availability_zone]
+        target_label: availability_zone
+
+  # Custom business metrics
+  - job_name: 'mcp-business-metrics'
+    kubernetes_sd_configs:
+      - role: service
+        namespaces:
+          names:
+            - mcp-production
+            - mcp-staging
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape_business]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+    scrape_interval: 60s  # Business metrics don't need frequent scraping
+
+# Remote write configuration for long-term storage
+remote_write:
+  - url: "https://prometheus-remote-write.pratiko.ai/api/v1/write"
+    basic_auth:
+      username: "prometheus"
+      password: "${REMOTE_WRITE_PASSWORD}"
+    write_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'mcp_.*|http_.*|postgres_.*|redis_.*'
+        action: keep
+    queue_config:
+      capacity: 10000
+      max_shards: 50
+      min_shards: 1
+      max_samples_per_send: 2000
+      batch_send_deadline: 5s
+      min_backoff: 30ms
+      max_backoff: 100ms
+
+# Remote read configuration for querying historical data
+remote_read:
+  - url: "https://prometheus-remote-read.pratiko.ai/api/v1/read"
+    basic_auth:
+      username: "prometheus"
+      password: "${REMOTE_READ_PASSWORD}"
+    read_recent: true
+
+# Storage configuration
+storage:
+  tsdb:
+    retention: "30d"
+    retention_size: "50GB"
+    wal_compression: true
+    min_block_duration: "2h"
+    max_block_duration: "24h"
+    no_lockfile: false
+
+# Web configuration
+web:
+  listen_address: "0.0.0.0:9090"
+  max_connections: 512
+  read_timeout: "30s"
+  route_prefix: "/"
+  external_url: ""
+  page_title: "PratikoAI MCP Prometheus"
+  cors:
+    origins: [".*"]
+  console:
+    libraries: "/etc/prometheus/console_libraries"
+    templates: "/etc/prometheus/consoles"
+
+# Feature flags for experimental features
+feature_flags:
+  - "promql-at-modifier"
+  - "expand-external-labels"
+  - "memory-snapshot-on-shutdown"
+
+# Tracing configuration (for debugging Prometheus itself)
+tracing:
+  enabled: true
+  endpoint: "http://jaeger-collector:14268/api/traces"
+  service_name: "prometheus"
+  sampling_ratio: 0.1
+
+# Custom metric relabeling rules
+metric_relabel_configs:
+  # Drop high cardinality metrics in development
+  - source_labels: [environment]
+    regex: 'development'
+    target_label: __tmp_drop_high_cardinality
+    replacement: 'true'
+  
+  - source_labels: [__name__, __tmp_drop_high_cardinality]
+    regex: 'http_request_duration_seconds_bucket;true'
+    action: drop
+  
+  # Normalize metric names
+  - source_labels: [__name__]
+    regex: 'mcp_server_(.*)'
+    target_label: __name__
+    replacement: 'mcp_${1}'
+  
+  # Add custom labels
+  - target_label: 'project'
+    replacement: 'pratiko-ai'
+  
+  - target_label: 'team'
+    replacement: 'platform-engineering'
+
+# External labels for federation
+external_labels:
+  cluster: 'pratiko-mcp'
+  region: 'us-west-2'
+  datacenter: 'aws-us-west-2a'
+  prometheus: 'pratiko-mcp-prometheus'
+  prometheus_replica: '${HOSTNAME}'

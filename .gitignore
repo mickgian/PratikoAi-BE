@@ -24,3 +24,5 @@ evals/reports/
 
 # Claude Code memory files - keep local only
 CLAUDE.md
+CLAUDE.local.md
+CLAUDE_ORIGINAL.md

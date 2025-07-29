@@ -1,0 +1,388 @@
+# PratikoAI MCP Server - AWS Startup-Friendly Resource Allocation
+# Ultra-low-cost AWS configuration with seamless scaling
+
+aws_startup_resource_allocation:
+  # Development Environment - Local + AWS Free Tier
+  development:
+    deployment_type: "local_plus_aws_free"
+    description: "Local development with AWS services for testing"
+    
+    local_services:
+      mcp_server: "Docker on Mac"
+      postgresql: "Docker on Mac" 
+      redis: "Docker on Mac"
+      cost: 0
+      
+    aws_services:
+      storage:
+        service: "S3"
+        tier: "free"
+        capacity: "5GB"
+        monthly_cost: 0
+        scaling_note: "First 5GB free forever"
+        
+      database_backup:
+        service: "S3"
+        tier: "free" 
+        capacity: "5GB"
+        monthly_cost: 0
+        
+      monitoring:
+        service: "CloudWatch"
+        tier: "free"
+        metrics: "10 custom metrics"
+        logs: "5GB"
+        monthly_cost: 0
+        
+    estimated_monthly_cost: 0
+    capacity:
+      concurrent_users: 5
+      storage: "10GB total"
+      
+  # Staging Environment - AWS Free Tier + Minimal Paid
+  staging:
+    deployment_type: "aws_free_tier_optimized"
+    description: "Maximum use of AWS free tier with minimal paid services"
+    
+    compute:
+      service: "EC2"
+      instance_type: "t3.micro"  # Free tier eligible
+      vcpu: 2
+      memory: "1GB"
+      monthly_hours: 750  # Free tier limit
+      monthly_cost: 0  # Free for first 12 months
+      
+    database:
+      service: "RDS PostgreSQL"
+      instance_class: "db.t3.micro"  # Free tier
+      storage: "20GB SSD"
+      monthly_cost: 0  # Free for first 12 months
+      backup: "7 days retention (free)"
+      
+    cache:
+      service: "ElastiCache Redis"
+      node_type: "cache.t3.micro"
+      monthly_cost: 12  # No free tier, but cheapest option
+      memory: "0.5GB"
+      
+    storage:
+      service: "S3"
+      capacity: "50GB"
+      monthly_cost: 1  # $0.023/GB beyond free 5GB
+      
+    load_balancer:
+      service: "Application Load Balancer"
+      monthly_cost: 16  # $0.0225/hour
+      
+    networking:
+      service: "VPC + NAT Gateway"
+      monthly_cost: 0  # VPC is free, single AZ
+      
+    dns:
+      service: "Route 53"
+      monthly_cost: 0.5
+      queries: "1M queries"
+      
+    ssl:
+      service: "ACM (SSL Certificate)"
+      monthly_cost: 0  # Free
+      
+    estimated_monthly_cost: 29.5  # After first 12 months: +$29 for EC2/RDS
+    capacity:
+      concurrent_users: 100
+      requests_per_month: 500000
+      storage: "50GB"
+      
+  # Production Phase 1 - Smart AWS Free Tier Usage
+  production_mvp:
+    deployment_type: "aws_optimized_free_tier"
+    description: "Smart use of AWS free tier + serverless for production"
+    
+    compute:
+      primary:
+        service: "AWS Lambda"
+        runtime: "Python 3.11"
+        memory: "1GB"
+        requests_per_month: 1000000  # Free tier
+        compute_time: "400,000 GB-seconds"  # Free tier
+        monthly_cost: 0
+        
+      api_gateway:
+        service: "API Gateway"
+        requests_per_month: 1000000  # Free tier
+        monthly_cost: 0
+        
+    database:
+      service: "RDS PostgreSQL"
+      instance_class: "db.t3.micro"
+      storage: "20GB"
+      monthly_cost: 0  # Free tier (first 12 months)
+      backup: "Automated backups included"
+      
+    cache:
+      service: "DynamoDB"  # Better free tier than ElastiCache
+      read_capacity: 25  # Free tier
+      write_capacity: 25  # Free tier  
+      storage: "25GB"  # Free tier
+      monthly_cost: 0
+      
+    storage:
+      service: "S3"
+      capacity: "100GB"
+      monthly_cost: 2.3  # Beyond 5GB free
+      cdn: "CloudFront (1TB free transfer)"
+      
+    monitoring:
+      service: "CloudWatch"
+      custom_metrics: 10  # Free
+      logs: "5GB"  # Free
+      alarms: 10  # Free
+      monthly_cost: 0
+      
+    security:
+      waf: "AWS WAF (free basic rules)"
+      ssl: "ACM Certificate (free)"
+      iam: "Free"
+      monthly_cost: 0
+      
+    estimated_monthly_cost: 2.3  # Just S3 storage!
+    
+    # After 12 months (when free tier expires):
+    post_free_tier_cost: 31.8  # +$29.5 for RDS/EC2 equivalents
+    
+    capacity:
+      concurrent_users: 500
+      requests_per_month: 1000000
+      storage: "100GB"
+      lambda_executions: "1M per month"
+      
+  # Production Phase 2 - Growth with AWS Efficiency  
+  production_growth:
+    deployment_type: "aws_serverless_scaling"
+    description: "Serverless-first with managed services for growth"
+    
+    compute:
+      lambda:
+        service: "AWS Lambda"
+        memory: "1GB"
+        monthly_executions: 5000000
+        monthly_cost: 20  # Beyond free tier
+        
+      fargate:
+        service: "ECS Fargate"  # For long-running processes
+        cpu: "0.5 vCPU"
+        memory: "1GB" 
+        monthly_cost: 25
+        
+      api_gateway:
+        service: "API Gateway"
+        requests_per_month: 5000000
+        monthly_cost: 18  # Beyond free tier
+        
+    database:
+      service: "RDS PostgreSQL"
+      instance_class: "db.t3.small"
+      storage: "100GB"
+      monthly_cost: 35
+      multi_az: false
+      
+    cache:
+      service: "ElastiCache Redis"
+      node_type: "cache.t3.small"
+      monthly_cost: 25
+      memory: "1.5GB"
+      
+    storage:
+      s3: "500GB at $11.5/month"
+      cloudfront: "1TB transfer free, then $0.085/GB"
+      monthly_cost: 15
+      
+    monitoring:
+      cloudwatch: "Enhanced monitoring $10/month"
+      x_ray: "Distributed tracing $5/month"
+      monthly_cost: 15
+      
+    estimated_monthly_cost: 153
+    capacity:
+      concurrent_users: 2500
+      requests_per_month: 5000000
+      storage: "500GB"
+      
+  # Production Phase 3 - Enterprise Scale
+  production_scale:
+    deployment_type: "aws_enterprise_ready"
+    description: "Full AWS enterprise features with auto-scaling"
+    
+    compute:
+      eks:
+        service: "EKS Cluster"
+        node_group: "3x t3.medium"
+        monthly_cost: 150
+        auto_scaling: "3-20 nodes"
+        
+      lambda:
+        service: "AWS Lambda"
+        monthly_executions: 20000000
+        monthly_cost: 80
+        
+    database:
+      primary:
+        service: "RDS PostgreSQL"
+        instance_class: "db.r5.large"
+        storage: "1TB"
+        multi_az: true
+        monthly_cost: 180
+        
+      read_replicas:
+        count: 2
+        instance_class: "db.t3.medium"
+        monthly_cost: 120
+        
+    cache:
+      service: "ElastiCache Redis Cluster"
+      node_type: "cache.r5.large"
+      shards: 3
+      replicas: 2
+      monthly_cost: 200
+      
+    storage:
+      s3: "5TB at $115/month"
+      cloudfront: "10TB transfer at $850/month"
+      monthly_cost: 965
+      
+    estimated_monthly_cost: 1695
+    capacity:
+      concurrent_users: 50000
+      requests_per_month: 100000000
+      storage: "5TB"
+
+# AWS Free Tier Maximization Strategy
+aws_free_tier_optimization:
+  always_free_services:
+    - service: "Lambda"
+      limit: "1M requests/month + 400,000 GB-seconds"
+      value: "$20/month equivalent"
+      
+    - service: "DynamoDB"
+      limit: "25GB storage + 25 RCU/WCU"
+      value: "$30/month equivalent"
+      
+    - service: "S3"
+      limit: "5GB storage + 20,000 GET + 2,000 PUT"
+      value: "$15/month equivalent"
+      
+    - service: "CloudFront"
+      limit: "1TB data transfer + 10M requests"
+      value: "$50/month equivalent"
+      
+    - service: "SES"
+      limit: "62,000 emails/month"
+      value: "$10/month equivalent"
+      
+    - service: "SNS"
+      limit: "1M publishes + 100,000 HTTP deliveries"
+      value: "$5/month equivalent"
+      
+    - service: "CloudWatch"
+      limit: "10 metrics + 5GB logs + 10 alarms"
+      value: "$25/month equivalent"
+
+  twelve_month_free_services:
+    - service: "EC2"
+      limit: "750 hours t3.micro (1 instance 24/7)"
+      value: "$8.5/month"
+      
+    - service: "RDS"
+      limit: "750 hours db.t3.micro + 20GB storage"
+      value: "$25/month"
+      
+    - service: "Elastic Load Balancer"
+      limit: "750 hours + 15GB processing"
+      value: "$18/month"
+
+# Migration Strategy Between AWS Phases
+aws_migration_strategy:
+  development_to_staging:
+    effort: "low"
+    time: "4 hours"
+    steps:
+      - "Set up AWS account and configure CLI"
+      - "Create VPC and security groups"
+      - "Deploy EC2 instance with Docker"
+      - "Set up RDS database"
+      - "Configure Route 53 domain"
+      - "Set up monitoring and alerts"
+      
+  staging_to_production_mvp:
+    effort: "medium"
+    time: "1 day"
+    steps:
+      - "Convert application to Lambda functions"
+      - "Set up API Gateway"
+      - "Configure DynamoDB for caching"
+      - "Set up S3 + CloudFront"
+      - "Implement proper IAM roles"
+      - "Configure monitoring and logging"
+      
+  mvp_to_growth:
+    effort: "medium"
+    time: "3 days"
+    steps:
+      - "Add ECS Fargate for long-running services"
+      - "Upgrade RDS instance and add read replicas"
+      - "Implement ElastiCache Redis"
+      - "Set up WAF and enhanced security"
+      - "Add comprehensive monitoring"
+      - "Implement CI/CD with CodePipeline"
+      
+  growth_to_scale:
+    effort: "high"
+    time: "2 weeks"
+    steps:
+      - "Deploy EKS cluster"
+      - "Implement microservices architecture"
+      - "Set up multi-region deployment"
+      - "Add comprehensive observability"
+      - "Implement disaster recovery"
+      - "Set up advanced security features"
+
+# Cost Comparison with Previous Solutions
+cost_comparison:
+  original_non_aws:
+    development: 0      # Local Mac
+    staging: 24         # DigitalOcean droplet
+    production_mvp: 5   # Railway + free tiers
+    total: 29
+    
+  aws_optimized:
+    development: 0      # Local + AWS free tier
+    staging: 0          # AWS free tier (first 12 months)
+    production_mvp: 2.3 # Just S3 storage beyond free tier
+    total: 2.3
+    
+  aws_post_free_tier:
+    development: 0
+    staging: 29.5       # After 12 months
+    production_mvp: 31.8 # After 12 months
+    total: 61.3
+    
+  savings_vs_original: "92% cost reduction in first year"
+  
+# AWS-Specific Scaling Triggers
+aws_scaling_triggers:
+  upgrade_to_growth_phase:
+    monthly_revenue: "$1,500+"
+    lambda_executions: "5M+ per month"
+    rds_cpu: ">70% consistently"
+    s3_storage: ">500GB"
+    
+  upgrade_to_scale_phase:
+    monthly_revenue: "$15,000+"
+    requests_per_month: "50M+"
+    multi_region_needed: true
+    compliance_requirements: "SOC2, HIPAA, etc."
+    
+  philosophy: |
+    "AWS free tier gives you 12 months to validate your business.
+     After that, scale costs proportionally to revenue.
+     Always use serverless-first approach for optimal cost efficiency."

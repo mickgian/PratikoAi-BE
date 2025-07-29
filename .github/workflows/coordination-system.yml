@@ -1,0 +1,662 @@
+# Coordination System for PratikoAI Deployments
+# This workflow manages cross-repository deployments with version tracking
+# and comprehensive fallback mechanisms
+
+name: "🚀 Coordinated Deployment System"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+        - development
+        - staging
+        - production
+      force_deploy:
+        description: 'Force deployment even if compatibility checks fail'
+        required: false
+        default: false
+        type: boolean
+      rollback_on_failure:
+        description: 'Automatically rollback on deployment failure'
+        required: true
+        default: true
+        type: boolean
+
+  push:
+    branches: [main, develop]
+    paths:
+      - 'app/**'
+      - 'pyproject.toml'
+      - 'Dockerfile'
+
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened]
+
+env:
+  # Version Registry Configuration
+  VERSION_REGISTRY_URL: "https://your-version-registry.example.com"
+  
+  # Repository Configuration
+  BACKEND_REPO: "mickgian/PratikoAi-BE"
+  FRONTEND_REPO: "mickgian/PratikoAi-KMP"
+  
+  # AWS Configuration
+  AWS_REGION: "us-east-1"
+  ECR_REGISTRY: "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com"
+  
+  # Deployment Configuration
+  MAX_ROLLBACK_ATTEMPTS: 3
+  HEALTH_CHECK_TIMEOUT: 300
+  DEPLOYMENT_TIMEOUT: 1800
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════
+  # STAGE 1: Analysis and Planning
+  # ═══════════════════════════════════════════════════════════════════
+  
+  analyze-changes:
+    name: "🔍 Analyze Changes & Plan Deployment"
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.analysis.outputs.should_deploy }}
+      deployment_strategy: ${{ steps.analysis.outputs.strategy }}
+      affected_services: ${{ steps.analysis.outputs.services }}
+      version_tag: ${{ steps.version.outputs.tag }}
+      compatibility_matrix: ${{ steps.compatibility.outputs.matrix }}
+    
+    steps:
+    - name: Checkout Backend Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for change analysis
+    
+    - name: Setup Python Environment
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+    
+    - name: Install Analysis Tools
+      run: |
+        pip install pyyaml requests semver gitpython
+        
+    - name: Analyze Code Changes
+      id: analysis
+      run: |
+        python -c "
+        import os
+        import json
+        import subprocess
+        from pathlib import Path
+        
+        # Advanced change analysis using git diff
+        def analyze_changes():
+            if os.environ.get('GITHUB_EVENT_NAME') == 'pull_request':
+                base_ref = os.environ.get('GITHUB_BASE_REF', 'main')
+                head_ref = os.environ.get('GITHUB_HEAD_REF', 'develop')
+                diff_cmd = f'git diff origin/{base_ref}...origin/{head_ref} --name-only'
+            else:
+                diff_cmd = 'git diff HEAD~1 HEAD --name-only'
+            
+            changed_files = subprocess.check_output(diff_cmd, shell=True, text=True).strip().split('\n')
+            
+            # Categorize changes
+            categories = {
+                'api': any(f.startswith('app/api/') for f in changed_files),
+                'models': any(f.startswith('app/models/') for f in changed_files),
+                'core': any(f.startswith('app/core/') for f in changed_files),
+                'schemas': any(f.startswith('app/schemas/') for f in changed_files),
+                'infrastructure': any(f in ['Dockerfile', 'docker-compose.yml'] or f.startswith('terraform/') for f in changed_files),
+                'dependencies': any(f in ['pyproject.toml', 'requirements.txt'] for f in changed_files)
+            }
+            
+            # Determine deployment strategy based on changes
+            if categories['infrastructure']:
+                strategy = 'blue-green'  # Infrastructure changes need full deployment
+            elif categories['api'] or categories['schemas']:
+                strategy = 'canary'      # API changes need gradual rollout
+            elif categories['core'] or categories['models']:
+                strategy = 'rolling'     # Core changes can use rolling updates
+            else:
+                strategy = 'fast'        # Minor changes can deploy quickly
+            
+            # Determine affected services
+            services = []
+            if any(categories[k] for k in ['api', 'models', 'core', 'schemas']):
+                services.append('backend')
+            if categories['infrastructure']:
+                services.extend(['database', 'cache', 'monitoring'])
+            
+            should_deploy = len(services) > 0 or os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
+            
+            return {
+                'should_deploy': should_deploy,
+                'strategy': strategy,
+                'services': services,
+                'categories': categories
+            }
+        
+        result = analyze_changes()
+        
+        print(f'::set-output name=should_deploy::{str(result[\"should_deploy\"]).lower()}')
+        print(f'::set-output name=strategy::{result[\"strategy\"]}')
+        print(f'::set-output name=services::{json.dumps(result[\"services\"])}')
+        
+        # Log analysis results
+        print(f'Analysis Results:')
+        print(f'  Should Deploy: {result[\"should_deploy\"]}')
+        print(f'  Strategy: {result[\"strategy\"]}')
+        print(f'  Services: {result[\"services\"]}')
+        print(f'  Categories: {result[\"categories\"]}')
+        "
+    
+    - name: Generate Version Tag
+      id: version
+      run: |
+        # Semantic version generation based on changes and environment
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          VERSION=$(date +"%Y%m%d")-PR${{ github.event.number }}-$(git rev-parse --short HEAD)
+        elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          # Production release - use semantic versioning
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          if [[ "${{ steps.analysis.outputs.strategy }}" == "blue-green" ]]; then
+            VERSION=$(python -c "
+            import semver
+            version = '${LAST_TAG}'.lstrip('v')
+            print('v' + str(semver.bump_major(version)))
+            ")
+          elif [[ "${{ steps.analysis.outputs.strategy }}" == "canary" ]]; then
+            VERSION=$(python -c "
+            import semver
+            version = '${LAST_TAG}'.lstrip('v')
+            print('v' + str(semver.bump_minor(version)))
+            ")
+          else
+            VERSION=$(python -c "
+            import semver
+            version = '${LAST_TAG}'.lstrip('v')
+            print('v' + str(semver.bump_patch(version)))
+            ")
+          fi
+        else
+          # Development/staging
+          VERSION=$(date +"%Y%m%d")-$(git rev-parse --short HEAD)
+        fi
+        
+        echo "Generated version: $VERSION"
+        echo "::set-output name=tag::$VERSION"
+    
+    - name: Check Compatibility Matrix
+      id: compatibility
+      run: |
+        # Create compatibility matrix for cross-repo coordination
+        python -c "
+        import json
+        import requests
+        import os
+        
+        # Mock compatibility matrix - in production, this would query your version registry
+        compatibility_matrix = {
+            'backend_version': '${{ steps.version.outputs.tag }}',
+            'compatible_frontend_versions': ['>=1.0.0', '<2.0.0'],
+            'required_infrastructure_version': '>= 1.0.0',
+            'breaking_changes': False,
+            'migration_required': False
+        }
+        
+        print(f'::set-output name=matrix::{json.dumps(compatibility_matrix)}')
+        print(f'Compatibility Matrix: {json.dumps(compatibility_matrix, indent=2)}')
+        "
+
+  # ═══════════════════════════════════════════════════════════════════
+  # STAGE 2: Backend Deployment
+  # ═══════════════════════════════════════════════════════════════════
+
+  deploy-backend:
+    name: "🔧 Deploy Backend Service"
+    runs-on: ubuntu-latest
+    needs: analyze-changes
+    if: needs.analyze-changes.outputs.should_deploy == 'true'
+    
+    strategy:
+      matrix:
+        environment: [development, staging, production]
+        exclude:
+          - environment: production
+            # Only deploy to production on main branch or manual trigger
+            ${{ github.ref != 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
+    
+    environment: ${{ matrix.environment }}
+    
+    outputs:
+      deployment_id: ${{ steps.deploy.outputs.deployment_id }}
+      service_url: ${{ steps.deploy.outputs.service_url }}
+      health_status: ${{ steps.health.outputs.status }}
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+    
+    - name: Build and Push Docker Image
+      id: build
+      run: |
+        IMAGE_TAG=${{ needs.analyze-changes.outputs.version_tag }}
+        IMAGE_URI=$ECR_REGISTRY/praktiko-backend:$IMAGE_TAG
+        
+        # Build with multi-stage optimization
+        docker build \
+          --target production \
+          --build-arg VERSION=$IMAGE_TAG \
+          --build-arg ENVIRONMENT=${{ matrix.environment }} \
+          --platform linux/amd64 \
+          -t $IMAGE_URI .
+        
+        docker push $IMAGE_URI
+        
+        echo "::set-output name=image_uri::$IMAGE_URI"
+        echo "Built and pushed: $IMAGE_URI"
+    
+    - name: Deploy to ECS with Strategy
+      id: deploy
+      run: |
+        STRATEGY=${{ needs.analyze-changes.outputs.deployment_strategy }}
+        IMAGE_URI=${{ steps.build.outputs.image_uri }}
+        
+        python -c "
+        import boto3
+        import json
+        import time
+        import os
+        from datetime import datetime
+        
+        # Initialize AWS clients
+        ecs_client = boto3.client('ecs')
+        
+        # Deployment configuration
+        cluster_name = f'praktiko-{os.environ[\"MATRIX_ENVIRONMENT\"]}'
+        service_name = f'praktiko-backend-{os.environ[\"MATRIX_ENVIRONMENT\"]}'
+        image_uri = os.environ['IMAGE_URI']
+        strategy = os.environ['STRATEGY']
+        
+        print(f'Deploying {image_uri} to {cluster_name}/{service_name} with {strategy} strategy')
+        
+        # Get current task definition
+        response = ecs_client.describe_services(
+            cluster=cluster_name,
+            services=[service_name]
+        )
+        
+        if not response['services']:
+            print(f'Service {service_name} not found, creating new service')
+            # Create new service logic here
+            deployment_id = 'new-service-' + str(int(time.time()))
+        else:
+            current_task_def_arn = response['services'][0]['taskDefinition']
+            
+            # Get current task definition
+            task_def_response = ecs_client.describe_task_definition(
+                taskDefinition=current_task_def_arn
+            )
+            
+            task_def = task_def_response['taskDefinition']
+            
+            # Update image in container definitions
+            for container in task_def['containerDefinitions']:
+                if container['name'] == 'praktiko-backend':
+                    container['image'] = image_uri
+            
+            # Register new task definition
+            new_task_def = ecs_client.register_task_definition(
+                family=task_def['family'],
+                networkMode=task_def.get('networkMode', 'awsvpc'),
+                requiresCompatibilities=task_def.get('requiresCompatibilities', ['FARGATE']),
+                cpu=task_def.get('cpu', '512'),
+                memory=task_def.get('memory', '1024'),
+                executionRoleArn=task_def.get('executionRoleArn'),
+                taskRoleArn=task_def.get('taskRoleArn'),
+                containerDefinitions=task_def['containerDefinitions']
+            )
+            
+            # Update service with deployment strategy
+            if strategy == 'blue-green':
+                deployment_config = {
+                    'minimumHealthyPercent': 50,
+                    'maximumPercent': 200
+                }
+            elif strategy == 'canary':
+                deployment_config = {
+                    'minimumHealthyPercent': 75,
+                    'maximumPercent': 125
+                }
+            else:  # rolling
+                deployment_config = {
+                    'minimumHealthyPercent': 100,
+                    'maximumPercent': 200
+                }
+            
+            # Update the service
+            update_response = ecs_client.update_service(
+                cluster=cluster_name,
+                service=service_name,
+                taskDefinition=new_task_def['taskDefinition']['taskDefinitionArn'],
+                deploymentConfiguration=deployment_config
+            )
+            
+            deployment_id = update_response['service']['deployments'][0]['id']
+            
+            print(f'Deployment started with ID: {deployment_id}')
+        
+        # Wait for deployment to stabilize
+        print('Waiting for deployment to complete...')
+        waiter = ecs_client.get_waiter('services_stable')
+        
+        try:
+            waiter.wait(
+                cluster=cluster_name,
+                services=[service_name],
+                WaiterConfig={
+                    'Delay': 15,
+                    'MaxAttempts': 40  # 10 minutes max
+                }
+            )
+            print('Deployment completed successfully')
+            
+            # Get updated service info
+            service_response = ecs_client.describe_services(
+                cluster=cluster_name,
+                services=[service_name]
+            )
+            
+            service_url = f'https://api-{os.environ[\"MATRIX_ENVIRONMENT\"]}.praktiko.ai'
+            
+            print(f'::set-output name=deployment_id::{deployment_id}')
+            print(f'::set-output name=service_url::{service_url}')
+            
+        except Exception as e:
+            print(f'Deployment failed: {str(e)}')
+            print(f'::set-output name=deployment_id::{deployment_id}')
+            print(f'::set-output name=service_url::')
+            exit(1)
+        "
+      env:
+        MATRIX_ENVIRONMENT: ${{ matrix.environment }}
+        STRATEGY: ${{ needs.analyze-changes.outputs.deployment_strategy }}
+        IMAGE_URI: ${{ steps.build.outputs.image_uri }}
+    
+    - name: Comprehensive Health Check
+      id: health
+      run: |
+        SERVICE_URL=${{ steps.deploy.outputs.service_url }}
+        TIMEOUT=${{ env.HEALTH_CHECK_TIMEOUT }}
+        
+        python -c "
+        import requests
+        import time
+        import json
+        import os
+        from datetime import datetime, timedelta
+        
+        service_url = os.environ['SERVICE_URL']
+        timeout = int(os.environ['TIMEOUT'])
+        
+        if not service_url:
+            print('No service URL available, skipping health check')
+            print('::set-output name=status::failed')
+            exit(1)
+        
+        print(f'Performing comprehensive health check for {service_url}')
+        
+        # Multi-layer health checks
+        health_checks = [
+            {'name': 'Basic Health', 'url': f'{service_url}/health', 'critical': True},
+            {'name': 'API Ready', 'url': f'{service_url}/api/v1/health', 'critical': True},
+            {'name': 'Database Connection', 'url': f'{service_url}/health/db', 'critical': True},
+            {'name': 'External Dependencies', 'url': f'{service_url}/health/deps', 'critical': False},
+            {'name': 'Metrics Endpoint', 'url': f'{service_url}/metrics', 'critical': False}
+        ]
+        
+        start_time = datetime.now()
+        end_time = start_time + timedelta(seconds=timeout)
+        
+        all_healthy = False
+        critical_healthy = False
+        
+        while datetime.now() < end_time:
+            healthy_checks = 0
+            critical_checks = 0
+            critical_healthy_count = 0
+            
+            for check in health_checks:
+                try:
+                    response = requests.get(check['url'], timeout=10)
+                    if response.status_code == 200:
+                        healthy_checks += 1
+                        if check['critical']:
+                            critical_healthy_count += 1
+                        print(f'✓ {check[\"name\"]}: Healthy')
+                    else:
+                        print(f'✗ {check[\"name\"]}: Status {response.status_code}')
+                        if check['critical']:
+                            print(f'  Critical check failed!')
+                except Exception as e:
+                    print(f'✗ {check[\"name\"]}: {str(e)}')
+                    if check['critical']:
+                        print(f'  Critical check failed!')
+                
+                if check['critical']:
+                    critical_checks += 1
+            
+            critical_healthy = critical_healthy_count == critical_checks
+            all_healthy = healthy_checks == len(health_checks)
+            
+            if critical_healthy:
+                print(f'All critical health checks passed ({critical_healthy_count}/{critical_checks})')
+                break
+            
+            print(f'Waiting for health checks... ({healthy_checks}/{len(health_checks)} passed)')
+            time.sleep(15)
+        
+        if critical_healthy:
+            status = 'healthy' if all_healthy else 'degraded'
+            print(f'Health check completed: {status}')
+            print(f'::set-output name=status::{status}')
+        else:
+            print('Critical health checks failed')
+            print(f'::set-output name=status::failed')
+            exit(1)
+        "
+      env:
+        SERVICE_URL: ${{ steps.deploy.outputs.service_url }}
+    
+    - name: Update Version Registry
+      if: steps.health.outputs.status != 'failed'
+      run: |
+        # Update the version registry with successful deployment
+        python -c "
+        import requests
+        import json
+        import os
+        
+        registry_url = os.environ.get('VERSION_REGISTRY_URL')
+        if not registry_url:
+            print('No version registry configured, skipping update')
+            exit(0)
+        
+        deployment_info = {
+            'service': 'backend',
+            'version': '${{ needs.analyze-changes.outputs.version_tag }}',
+            'environment': '${{ matrix.environment }}',
+            'deployment_id': '${{ steps.deploy.outputs.deployment_id }}',
+            'service_url': '${{ steps.deploy.outputs.service_url }}',
+            'health_status': '${{ steps.health.outputs.status }}',
+            'deployed_at': '$(date -u +%Y-%m-%dT%H:%M:%SZ)',
+            'compatibility_matrix': ${{ needs.analyze-changes.outputs.compatibility_matrix }}
+        }
+        
+        try:
+            response = requests.post(
+                f'{registry_url}/deployments',
+                json=deployment_info,
+                headers={'Authorization': f'Bearer {os.environ.get(\"REGISTRY_TOKEN\")}'},
+                timeout=30
+            )
+            
+            if response.status_code == 201:
+                print('Successfully updated version registry')
+            else:
+                print(f'Failed to update version registry: {response.status_code}')
+                print(response.text)
+        except Exception as e:
+            print(f'Error updating version registry: {str(e)}')
+        "
+      env:
+        REGISTRY_TOKEN: ${{ secrets.VERSION_REGISTRY_TOKEN }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # STAGE 3: Cross-Repository Coordination
+  # ═══════════════════════════════════════════════════════════════════
+
+  trigger-frontend-deployment:
+    name: "🔄 Coordinate Frontend Deployment"
+    runs-on: ubuntu-latest
+    needs: [analyze-changes, deploy-backend]
+    if: always() && needs.deploy-backend.result == 'success'
+    
+    steps:
+    - name: Trigger Frontend Repository Workflow
+      run: |
+        python -c "
+        import requests
+        import json
+        import os
+        import time
+        from datetime import datetime
+        
+        # GitHub API configuration
+        github_token = os.environ['GITHUB_TOKEN']
+        frontend_repo = os.environ['FRONTEND_REPO']
+        
+        headers = {
+            'Authorization': f'token {github_token}',
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+        }
+        
+        # Prepare deployment payload
+        payload = {
+            'ref': 'main',  # or the appropriate branch
+            'inputs': {
+                'backend_version': '${{ needs.analyze-changes.outputs.version_tag }}',
+                'backend_deployment_id': '${{ needs.deploy-backend.outputs.deployment_id }}',
+                'backend_service_url': '${{ needs.deploy-backend.outputs.service_url }}',
+                'compatibility_matrix': '${{ needs.analyze-changes.outputs.compatibility_matrix }}',
+                'triggered_by': 'backend-deployment',
+                'environment': 'development'  # This should be dynamic based on context
+            }
+        }
+        
+        print(f'Triggering frontend deployment for {frontend_repo}')
+        print(f'Payload: {json.dumps(payload, indent=2)}')
+        
+        # Trigger the frontend workflow
+        url = f'https://api.github.com/repos/{frontend_repo}/actions/workflows/coordinated-deployment.yml/dispatches'
+        
+        response = requests.post(url, headers=headers, json=payload)
+        
+        if response.status_code == 204:
+            print('Successfully triggered frontend deployment')
+            
+            # Wait a moment for the workflow to start
+            time.sleep(5)
+            
+            # Get the workflow run ID for tracking
+            runs_url = f'https://api.github.com/repos/{frontend_repo}/actions/runs'
+            runs_response = requests.get(runs_url, headers=headers)
+            
+            if runs_response.status_code == 200:
+                runs_data = runs_response.json()
+                latest_run = runs_data['workflow_runs'][0] if runs_data['workflow_runs'] else None
+                
+                if latest_run:
+                    print(f'Frontend workflow started: {latest_run[\"html_url\"]}')
+                    print(f'Run ID: {latest_run[\"id\"]}')
+                else:
+                    print('Could not find the triggered workflow run')
+            else:
+                print(f'Could not fetch workflow runs: {runs_response.status_code}')
+        else:
+            print(f'Failed to trigger frontend deployment: {response.status_code}')
+            print(response.text)
+            exit(1)
+        "
+      env:
+        GITHUB_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+        FRONTEND_REPO: ${{ env.FRONTEND_REPO }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # STAGE 4: Monitoring and Cleanup
+  # ═══════════════════════════════════════════════════════════════════
+
+  post-deployment-monitoring:
+    name: "📊 Post-Deployment Monitoring"
+    runs-on: ubuntu-latest
+    needs: [analyze-changes, deploy-backend, trigger-frontend-deployment]
+    if: always()
+    
+    steps:
+    - name: Setup Monitoring Dashboard
+      run: |
+        echo "Setting up monitoring dashboard for deployment..."
+        # This would integrate with your monitoring stack
+        
+    - name: Configure Alerts
+      run: |
+        echo "Configuring alerts for new deployment..."
+        # This would set up CloudWatch alarms, PagerDuty, etc.
+        
+    - name: Generate Deployment Report
+      run: |
+        python -c "
+        import json
+        from datetime import datetime
+        
+        report = {
+            'deployment_id': '${{ needs.deploy-backend.outputs.deployment_id }}',
+            'version': '${{ needs.analyze-changes.outputs.version_tag }}',
+            'strategy': '${{ needs.analyze-changes.outputs.deployment_strategy }}',
+            'services_deployed': ${{ needs.analyze-changes.outputs.affected_services }},
+            'backend_status': '${{ needs.deploy-backend.result }}',
+            'frontend_triggered': '${{ needs.trigger-frontend-deployment.result }}',
+            'completed_at': datetime.utcnow().isoformat() + 'Z'
+        }
+        
+        print('Deployment Report:')
+        print(json.dumps(report, indent=2))
+        
+        # Save report as artifact
+        with open('deployment-report.json', 'w') as f:
+            json.dump(report, f, indent=2)
+        "
+    
+    - name: Upload Deployment Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-report-${{ needs.analyze-changes.outputs.version_tag }}
+        path: deployment-report.json
+        retention-days: 30

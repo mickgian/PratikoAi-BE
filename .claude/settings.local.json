@@ -4,7 +4,8 @@
       "Bash(uv add:*)",
       "Bash(uv run ruff:*)",
       "Bash(mv:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(python:*)"
     ],
     "deny": []
   }

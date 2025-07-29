@@ -136,13 +136,15 @@ class RecoveryPlan:
   
   # Execution plan
   phases: Dict[RecoveryPhase, List[str]]  # phase -> list of strategy IDs
-  parallel_execution: bool = False
-  rollback_points: List[str] = None  # Strategy IDs where rollback is possible
   
   # Risk assessment
   estimated_impact: ImpactLevel
   success_probability: float
   estimated_duration_minutes: int
+  
+  # Execution configuration
+  parallel_execution: bool = False
+  rollback_points: List[str] = None  # Strategy IDs where rollback is possible
   
   # Coordination
   frontend_coordinator: Optional[str] = None

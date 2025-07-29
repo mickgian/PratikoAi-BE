@@ -200,6 +200,13 @@ class Settings:
         self.CACHE_CONVERSATION_TTL = int(os.getenv("CACHE_CONVERSATION_TTL", "7200"))  # 2 hours
         self.CACHE_LLM_RESPONSE_TTL = int(os.getenv("CACHE_LLM_RESPONSE_TTL", "86400"))  # 24 hours
         self.CACHE_MAX_QUERY_SIZE = int(os.getenv("CACHE_MAX_QUERY_SIZE", "10000"))  # Max chars to cache
+        
+        # Privacy and GDPR Configuration
+        self.PRIVACY_ANONYMIZE_LOGS = os.getenv("PRIVACY_ANONYMIZE_LOGS", "true").lower() in ("true", "1", "t", "yes")
+        self.PRIVACY_ANONYMIZE_REQUESTS = os.getenv("PRIVACY_ANONYMIZE_REQUESTS", "true").lower() in ("true", "1", "t", "yes")
+        self.PRIVACY_DATA_RETENTION_DAYS = int(os.getenv("PRIVACY_DATA_RETENTION_DAYS", "365"))  # 1 year default
+        self.PRIVACY_CONSENT_EXPIRY_DAYS = int(os.getenv("PRIVACY_CONSENT_EXPIRY_DAYS", "365"))  # 1 year consent validity
+        self.PRIVACY_PII_CONFIDENCE_THRESHOLD = float(os.getenv("PRIVACY_PII_CONFIDENCE_THRESHOLD", "0.7"))  # PII detection threshold
 
         # Rate Limiting Configuration
         self.RATE_LIMIT_DEFAULT = parse_list_from_env("RATE_LIMIT_DEFAULT", ["200 per day", "50 per hour"])

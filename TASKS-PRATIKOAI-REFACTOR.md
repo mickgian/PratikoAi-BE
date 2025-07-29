@@ -20,20 +20,20 @@ Transforming PratikoAI into a specialized AI assistant for Italian tax/legal pro
 ---
 
 ### 🤖 LLM Provider Abstraction
-**Priority:** CRITICAL | **Estimated Time:** 3 hours | **Status:** [ ]
+**Priority:** CRITICAL | **Estimated Time:** 3 hours | **Status:** [✅]
 
 **Why Critical:** Currently hardcoded to OpenAI - prevents cost optimization and provider switching.
 
 **Implementation Tasks:**
-- [ ] Create `app/core/llm/base.py` - Abstract base class for all providers
-- [ ] Create `app/core/llm/providers/openai_provider.py` - OpenAI implementation
-- [ ] Create `app/core/llm/providers/anthropic_provider.py` - Anthropic implementation  
-- [ ] Create `app/core/llm/factory.py` - Provider factory and routing logic
-- [ ] Create `app/core/llm/cost_calculator.py` - Cost estimation per provider
-- [ ] Update `app/core/langgraph/graph.py` - Use new abstraction
-- [ ] Update `app/core/config.py` - Add multi-provider settings
-- [ ] Create tests in `tests/core/llm/`
-- [ ] Update documentation
+- [✅] Create `app/core/llm/base.py` - Abstract base class for all providers
+- [✅] Create `app/core/llm/providers/openai_provider.py` - OpenAI implementation
+- [✅] Create `app/core/llm/providers/anthropic_provider.py` - Anthropic implementation  
+- [✅] Create `app/core/llm/factory.py` - Provider factory and routing logic
+- [✅] Create `app/core/llm/cost_calculator.py` - Cost estimation per provider
+- [✅] Update `app/core/langgraph/graph.py` - Use new abstraction
+- [✅] Update `app/core/config.py` - Add multi-provider settings
+- [✅] Create tests in `tests/core/llm/`
+- [✅] Update dependencies (added anthropic package)
 
 **Success Criteria:**
 - Can switch between OpenAI and Anthropic without code changes

@@ -147,9 +147,24 @@ class Settings:
         self.LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
         self.LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 
-        # LangGraph Configuration
+        # LLM Configuration - Multi-Provider Support
+        # Legacy OpenAI config (for backward compatibility)
         self.LLM_API_KEY = os.getenv("LLM_API_KEY", "")
         self.LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+        
+        # Multi-provider configuration
+        self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", os.getenv("LLM_API_KEY", ""))
+        self.OPENAI_MODEL = os.getenv("OPENAI_MODEL", os.getenv("LLM_MODEL", "gpt-4o-mini"))
+        
+        self.ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+        self.ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
+        
+        # LLM routing configuration
+        self.LLM_ROUTING_STRATEGY = os.getenv("LLM_ROUTING_STRATEGY", "cost_optimized")  # cost_optimized, quality_first, balanced, failover
+        self.LLM_MAX_COST_EUR = float(os.getenv("LLM_MAX_COST_EUR", "0.020"))  # Max €0.02 per request
+        self.LLM_PREFERRED_PROVIDER = os.getenv("LLM_PREFERRED_PROVIDER", "")  # openai, anthropic
+        
+        # General LLM settings
         self.DEFAULT_LLM_TEMPERATURE = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.2"))
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
         self.MAX_LLM_CALL_RETRIES = int(os.getenv("MAX_LLM_CALL_RETRIES", "3"))

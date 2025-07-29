@@ -31,6 +31,8 @@ from app.core.config import (
     settings,
 )
 from app.core.langgraph.tools import tools
+from app.core.llm.factory import get_llm_provider, RoutingStrategy
+from app.core.llm.base import LLMProvider
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
 from app.core.prompts import SYSTEM_PROMPT
@@ -53,39 +55,72 @@ class LangGraphAgent:
 
     def __init__(self):
         """Initialize the LangGraph Agent with necessary components."""
-        # Use environment-specific LLM model
-        self.llm = ChatOpenAI(
-            model=settings.LLM_MODEL,
-            temperature=settings.DEFAULT_LLM_TEMPERATURE,
-            api_key=settings.LLM_API_KEY,
-            max_tokens=settings.MAX_TOKENS,
-            **self._get_model_kwargs(),
-        ).bind_tools(tools)
+        # Initialize with fallback to legacy config for backward compatibility
         self.tools_by_name = {tool.name: tool for tool in tools}
         self._connection_pool: Optional[AsyncConnectionPool] = None
         self._graph: Optional[CompiledStateGraph] = None
+        self._current_provider: Optional[LLMProvider] = None
 
-        logger.info("llm_initialized", model=settings.LLM_MODEL, environment=settings.ENVIRONMENT.value)
+        logger.info("llm_agent_initialized", environment=settings.ENVIRONMENT.value)
 
-    def _get_model_kwargs(self) -> Dict[str, Any]:
-        """Get environment-specific model kwargs.
+    def _get_routing_strategy(self) -> RoutingStrategy:
+        """Get the LLM routing strategy from configuration.
 
         Returns:
-            Dict[str, Any]: Additional model arguments based on environment
+            RoutingStrategy: The configured routing strategy
         """
-        model_kwargs = {}
+        strategy_map = {
+            "cost_optimized": RoutingStrategy.COST_OPTIMIZED,
+            "quality_first": RoutingStrategy.QUALITY_FIRST,
+            "balanced": RoutingStrategy.BALANCED,
+            "failover": RoutingStrategy.FAILOVER,
+        }
+        
+        strategy_str = getattr(settings, 'LLM_ROUTING_STRATEGY', 'cost_optimized')
+        return strategy_map.get(strategy_str, RoutingStrategy.COST_OPTIMIZED)
 
-        # Development - we can use lower speeds for cost savings
-        if settings.ENVIRONMENT == Environment.DEVELOPMENT:
-            model_kwargs["top_p"] = 0.8
+    def _get_optimal_provider(self, messages: List[Message]) -> LLMProvider:
+        """Get the optimal LLM provider for the given messages.
 
-        # Production - use higher quality settings
-        elif settings.ENVIRONMENT == Environment.PRODUCTION:
-            model_kwargs["top_p"] = 0.95
-            model_kwargs["presence_penalty"] = 0.1
-            model_kwargs["frequency_penalty"] = 0.1
+        Args:
+            messages: List of conversation messages
 
-        return model_kwargs
+        Returns:
+            LLMProvider: The optimal provider for this request
+        """
+        try:
+            strategy = self._get_routing_strategy()
+            max_cost = getattr(settings, 'LLM_MAX_COST_EUR', 0.020)
+            preferred_provider = getattr(settings, 'LLM_PREFERRED_PROVIDER', None)
+            
+            provider = get_llm_provider(
+                messages=messages,
+                strategy=strategy,
+                max_cost_eur=max_cost,
+                preferred_provider=preferred_provider or None,
+            )
+            
+            logger.info(
+                "llm_provider_selected",
+                provider=provider.provider_type.value,
+                model=provider.model,
+                strategy=strategy.value,
+            )
+            
+            return provider
+            
+        except Exception as e:
+            logger.error(
+                "llm_provider_selection_failed",
+                error=str(e),
+                fallback_to_legacy=True,
+            )
+            # Fallback to legacy OpenAI configuration
+            from app.core.llm.providers.openai_provider import OpenAIProvider
+            return OpenAIProvider(
+                api_key=settings.LLM_API_KEY or settings.OPENAI_API_KEY,
+                model=settings.LLM_MODEL or settings.OPENAI_MODEL,
+            )
 
     async def _get_connection_pool(self) -> AsyncConnectionPool:
         """Get a PostgreSQL connection pool using environment-specific settings.
@@ -128,43 +163,95 @@ class LangGraphAgent:
         Returns:
             dict: Updated state with new messages.
         """
-        messages = prepare_messages(state.messages, self.llm, SYSTEM_PROMPT)
+        # Convert GraphState messages to Message objects for provider
+        conversation_messages = []
+        for msg in state.messages:
+            if hasattr(msg, 'role') and hasattr(msg, 'content'):
+                conversation_messages.append(Message(role=msg.role, content=msg.content))
+            else:
+                # Handle legacy message format
+                conversation_messages.append(Message(role="user", content=str(msg)))
+
+        # Add system prompt if not already present
+        if not conversation_messages or conversation_messages[0].role != "system":
+            system_message = Message(role="system", content=SYSTEM_PROMPT)
+            conversation_messages.insert(0, system_message)
 
         llm_calls_num = 0
-
-        # Configure retry attempts based on environment
         max_retries = settings.MAX_LLM_CALL_RETRIES
 
         for attempt in range(max_retries):
             try:
-                with llm_inference_duration_seconds.labels(model=self.llm.model_name).time():
-                    generated_state = {"messages": [await self.llm.ainvoke(dump_messages(messages))]}
+                # Get optimal provider for this conversation
+                provider = self._get_optimal_provider(conversation_messages)
+                self._current_provider = provider
+
+                # Make the LLM call with tools
+                with llm_inference_duration_seconds.labels(model=provider.model).time():
+                    response = await provider.chat_completion(
+                        messages=conversation_messages,
+                        tools=list(self.tools_by_name.values()),
+                        temperature=settings.DEFAULT_LLM_TEMPERATURE,
+                        max_tokens=settings.MAX_TOKENS,
+                    )
+
+                # Convert response back to LangChain format
+                if response.tool_calls:
+                    # Create AIMessage with tool calls
+                    from langchain_core.messages import AIMessage
+                    ai_message = AIMessage(
+                        content=response.content,
+                        tool_calls=response.tool_calls
+                    )
+                else:
+                    # Create simple AIMessage
+                    from langchain_core.messages import AIMessage
+                    ai_message = AIMessage(content=response.content)
+
                 logger.info(
                     "llm_response_generated",
                     session_id=state.session_id,
                     llm_calls_num=llm_calls_num + 1,
-                    model=settings.LLM_MODEL,
+                    model=provider.model,
+                    provider=provider.provider_type.value,
+                    cost_estimate=response.cost_estimate,
                     environment=settings.ENVIRONMENT.value,
                 )
-                return generated_state
-            except OpenAIError as e:
+                
+                return {"messages": [ai_message]}
+
+            except Exception as e:
                 logger.error(
                     "llm_call_failed",
                     llm_calls_num=llm_calls_num,
                     attempt=attempt + 1,
                     max_retries=max_retries,
                     error=str(e),
+                    provider=getattr(self._current_provider, 'provider_type', {}).get('value', 'unknown') if self._current_provider else 'unknown',
                     environment=settings.ENVIRONMENT.value,
                 )
                 llm_calls_num += 1
 
-                # In production, we might want to fall back to a more reliable model
+                # In production, we might want to fall back to a different provider/model
                 if settings.ENVIRONMENT == Environment.PRODUCTION and attempt == max_retries - 2:
-                    fallback_model = "gpt-4o"
                     logger.warning(
-                        "using_fallback_model", model=fallback_model, environment=settings.ENVIRONMENT.value
+                        "attempting_fallback_provider",
+                        environment=settings.ENVIRONMENT.value
                     )
-                    self.llm.model_name = fallback_model
+                    # Force failover strategy for next attempt
+                    try:
+                        fallback_provider = get_llm_provider(
+                            messages=conversation_messages,
+                            strategy=RoutingStrategy.FAILOVER,
+                            max_cost_eur=settings.LLM_MAX_COST_EUR * 2,  # Allow higher cost for fallback
+                        )
+                        self._current_provider = fallback_provider
+                    except Exception as fallback_error:
+                        logger.error(
+                            "fallback_provider_selection_failed",
+                            error=str(fallback_error),
+                            environment=settings.ENVIRONMENT.value,
+                        )
 
                 continue
 

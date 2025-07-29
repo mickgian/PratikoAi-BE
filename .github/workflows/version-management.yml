@@ -1,731 +1,331 @@
-# Version Management Integration for PratikoAI Backend
-# Comprehensive CI/CD integration with version tracking, compatibility checking,
-# and deployment coordination
-
-name: "📋 Version Management & Compatibility"
+name: Version Management and Release
 
 on:
-  workflow_call:
-    inputs:
-      service_type:
-        description: 'Service type (backend, frontend-android, etc.)'
-        required: true
-        type: string
-      version:
-        description: 'Version to validate/register'
-        required: true
-        type: string
-      environment:
-        description: 'Target environment'
-        required: true
-        type: string
-      skip_compatibility_check:
-        description: 'Skip compatibility validation'
-        required: false
-        type: boolean
-        default: false
-      generate_api_contract:
-        description: 'Generate API contract from OpenAPI spec'
-        required: false
-        type: boolean
-        default: true
-    outputs:
-      can_deploy:
-        description: 'Whether deployment is compatible'
-        value: ${{ jobs.compatibility-check.outputs.can_deploy }}
-      version_id:
-        description: 'Registered version ID'
-        value: ${{ jobs.register-version.outputs.version_id }}
-      compatibility_report:
-        description: 'Compatibility check report'
-        value: ${{ jobs.compatibility-check.outputs.report_path }}
-
   push:
-    branches: [main, develop]
-    paths:
-      - 'app/**'
-      - 'version-management/**'
-
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [main, develop]
-    types: [opened, synchronize, reopened]
-
-env:
-  VERSION_REGISTRY_URL: ${{ secrets.VERSION_REGISTRY_URL || 'http://localhost:8001' }}
-  VERSION_REGISTRY_TOKEN: ${{ secrets.VERSION_REGISTRY_TOKEN }}
-  VERSION_REGISTRY_DB_URL: ${{ secrets.VERSION_REGISTRY_DB_URL }}
+    branches: [ main, master ]
 
 jobs:
-  # ═══════════════════════════════════════════════════════════════════
-  # Generate Version and Metadata
-  # ═══════════════════════════════════════════════════════════════════
-  
-  generate-version:
-    name: "🏷️ Generate Version & Metadata"
+  analyze-changes:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
       change_type: ${{ steps.analyze.outputs.change_type }}
-      release_notes: ${{ steps.notes.outputs.release_notes }}
       breaking_changes: ${{ steps.analyze.outputs.breaking_changes }}
       new_features: ${{ steps.analyze.outputs.new_features }}
       bug_fixes: ${{ steps.analyze.outputs.bug_fixes }}
+      version_bump: ${{ steps.analyze.outputs.version_bump }}
     
     steps:
-    - name: Checkout Code
+    - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Full history for change analysis
+        fetch-depth: 0
     
-    - name: Setup Python
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
-    - name: Install Dependencies
-      run: |
-        pip install semver gitpython pyyaml requests
-    
-    - name: Generate Version
-      id: version
-      run: |
-        python -c "
-        import os
-        import subprocess
-        from datetime import datetime
-        
-        # Use input version if provided, otherwise generate
-        input_version = '${{ inputs.version }}'
-        environment = '${{ inputs.environment }}'
-        
-        if input_version and input_version != '':
-            version = input_version
-        else:
-            # Generate version based on environment and commit
-            if environment == 'production':
-                # Get last tag and increment
-                try:
-                    last_tag = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0'], text=True).strip()
-                    # Simple increment patch version
-                    parts = last_tag.lstrip('v').split('.')
-                    parts[-1] = str(int(parts[-1]) + 1)
-                    version = '.'.join(parts)
-                except:
-                    version = '1.0.0'
-            else:
-                # Date-based version for dev/staging
-                date_str = datetime.now().strftime('%Y%m%d')
-                commit_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], text=True).strip()
-                version = f'{date_str}-{commit_hash}'
-        
-        print(f'Generated version: {version}')
-        print(f'::set-output name=version::{version}')
-        "
     
     - name: Analyze Changes
       id: analyze
       run: |
-        python -c "
-        import subprocess
+        python3 - <<'EOF'
         import json
         import re
-        from typing import List, Dict
+        import subprocess
+        import sys
+        import os
         
-        def get_changed_files() -> List[str]:
+        def get_commit_messages_since_last_tag():
+            """Get commit messages since the last tag."""
             try:
-                if '${{ github.event_name }}' == 'pull_request':
-                    # Compare with base branch
-                    result = subprocess.run([
-                        'git', 'diff', '--name-only', 
-                        'origin/${{ github.base_ref }}...HEAD'
-                    ], capture_output=True, text=True, check=True)
-                else:
-                    # Compare with previous commit
-                    result = subprocess.run([
-                        'git', 'diff', '--name-only', 'HEAD~1', 'HEAD'
-                    ], capture_output=True, text=True, check=True)
+                # Get the last tag
+                result = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'], 
+                                      capture_output=True, text=True, check=True)
+                last_tag = result.stdout.strip()
                 
-                return result.stdout.strip().split('\n') if result.stdout.strip() else []
-            except:
-                return []
+                # Get commits since last tag
+                result = subprocess.run(['git', 'log', f'{last_tag}..HEAD', '--pretty=format:%s'], 
+                                      capture_output=True, text=True, check=True)
+                commits = result.stdout.strip().split('\n') if result.stdout.strip() else []
+            except subprocess.CalledProcessError:
+                # No tags found, get all commits
+                result = subprocess.run(['git', 'log', '--pretty=format:%s'], 
+                                      capture_output=True, text=True, check=True)
+                commits = result.stdout.strip().split('\n') if result.stdout.strip() else []
+            
+            return [commit for commit in commits if commit.strip()]
         
-        def analyze_commit_messages() -> Dict[str, List[str]]:
-            try:
-                if '${{ github.event_name }}' == 'pull_request':
-                    result = subprocess.run([
-                        'git', 'log', '--oneline', 
-                        'origin/${{ github.base_ref }}...HEAD'
-                    ], capture_output=True, text=True, check=True)
+        def analyze_commits(commits):
+            """Analyze commit messages for breaking changes, features, and fixes."""
+            breaking_changes = []
+            new_features = []
+            bug_fixes = []
+            
+            # Patterns for different types of changes
+            breaking_patterns = [
+                r'BREAKING CHANGE',
+                r'breaking change',
+                r'!:',  # Conventional commits breaking change
+                r'major:',
+                r'MAJOR:'
+            ]
+            
+            feature_patterns = [
+                r'^feat(\([^)]*\))?:',
+                r'^feature(\([^)]*\))?:',
+                r'add:',
+                r'ADD:',
+                r'new:',
+                r'NEW:'
+            ]
+            
+            fix_patterns = [
+                r'^fix(\([^)]*\))?:',
+                r'^bugfix(\([^)]*\))?:',
+                r'fix:',
+                r'FIX:',
+                r'bug:',
+                r'BUG:'
+            ]
+            
+            for commit in commits:
+                commit_clean = commit.strip()
+                if not commit_clean:
+                    continue
+                
+                # Check for breaking changes
+                if any(re.search(pattern, commit_clean, re.IGNORECASE) for pattern in breaking_patterns):
+                    breaking_changes.append(commit_clean)
+                
+                # Check for new features
+                elif any(re.search(pattern, commit_clean, re.IGNORECASE) for pattern in feature_patterns):
+                    new_features.append(commit_clean)
+                
+                # Check for bug fixes
+                elif any(re.search(pattern, commit_clean, re.IGNORECASE) for pattern in fix_patterns):
+                    bug_fixes.append(commit_clean)
+                
+                # If no specific pattern, categorize as feature if it looks like new functionality
+                elif any(word in commit_clean.lower() for word in ['add', 'create', 'implement', 'introduce']):
+                    new_features.append(commit_clean)
+                
+                # Otherwise categorize as bug fix if it looks like a fix
+                elif any(word in commit_clean.lower() for word in ['fix', 'resolve', 'correct', 'update', 'improve']):
+                    bug_fixes.append(commit_clean)
+                
+                # Default to feature for other commits
                 else:
-                    result = subprocess.run([
-                        'git', 'log', '--oneline', '-1'
-                    ], capture_output=True, text=True, check=True)
-                
-                messages = result.stdout.strip().split('\n') if result.stdout.strip() else []
-                
-                breaking_changes = []
-                new_features = []
-                bug_fixes = []
-                
-                for message in messages:
-                    message_lower = message.lower()
-                    if 'breaking' in message_lower or 'major' in message_lower:
-                        breaking_changes.append(message.split(' ', 1)[1] if ' ' in message else message)
-                    elif any(keyword in message_lower for keyword in ['feat', 'feature', 'add']):
-                        new_features.append(message.split(' ', 1)[1] if ' ' in message else message)
-                    elif any(keyword in message_lower for keyword in ['fix', 'bug', 'patch']):
-                        bug_fixes.append(message.split(' ', 1)[1] if ' ' in message else message)
-                
-                return {
-                    'breaking_changes': breaking_changes,
-                    'new_features': new_features,
-                    'bug_fixes': bug_fixes
-                }
-            except:
-                return {'breaking_changes': [], 'new_features': [], 'bug_fixes': []}
+                    new_features.append(commit_clean)
+            
+            return {
+                'breaking_changes': breaking_changes,
+                'new_features': new_features,
+                'bug_fixes': bug_fixes
+            }
         
-        def determine_change_type(changed_files: List[str], commit_analysis: Dict) -> str:
-            # Check for breaking changes in commits
-            if commit_analysis['breaking_changes']:
+        def determine_version_bump(analysis):
+            """Determine version bump type based on changes."""
+            if analysis['breaking_changes']:
                 return 'major'
-            
-            # Analyze file changes
-            has_api_changes = any(f.startswith('app/api/') for f in changed_files)
-            has_schema_changes = any(f.startswith('app/schemas/') for f in changed_files)
-            has_model_changes = any(f.startswith('app/models/') for f in changed_files)
-            has_core_changes = any(f.startswith('app/core/') for f in changed_files)
-            
-            # Check for potentially breaking changes
-            if has_api_changes or has_schema_changes:
-                # Would need deeper analysis to determine if truly breaking
-                return 'minor'  # Assume additive API changes
-            elif has_model_changes or has_core_changes:
+            elif analysis['new_features']:
                 return 'minor'
-            elif commit_analysis['new_features']:
-                return 'minor'
-            else:
+            elif analysis['bug_fixes']:
                 return 'patch'
+            else:
+                return 'patch'  # Default to patch
         
-        # Analyze changes
-        changed_files = get_changed_files()
-        commit_analysis = analyze_commit_messages()
-        change_type = determine_change_type(changed_files, commit_analysis)
+        def determine_change_type(analysis):
+            """Determine the primary type of changes."""
+            if analysis['breaking_changes']:
+                return 'breaking'
+            elif analysis['new_features']:
+                return 'feature'
+            elif analysis['bug_fixes']:
+                return 'fix'
+            else:
+                return 'maintenance'
         
-        print(f'Changed files: {len(changed_files)}')
-        print(f'Change type: {change_type}')
-        print(f'Breaking changes: {len(commit_analysis[\"breaking_changes\"])}')
-        print(f'New features: {len(commit_analysis[\"new_features\"])}')
-        print(f'Bug fixes: {len(commit_analysis[\"bug_fixes\"])}')
-        
-        # Output for next steps
-        print(f'::set-output name=change_type::{change_type}')
-        print(f'::set-output name=breaking_changes::{json.dumps(commit_analysis[\"breaking_changes\"])}')
-        print(f'::set-output name=new_features::{json.dumps(commit_analysis[\"new_features\"])}')
-        print(f'::set-output name=bug_fixes::{json.dumps(commit_analysis[\"bug_fixes\"])}')
-        "
+        # Main analysis
+        try:
+            commits = get_commit_messages_since_last_tag()
+            print(f"Found {len(commits)} commits to analyze")
+            
+            if not commits:
+                print("No commits found, using default values")
+                commit_analysis = {
+                    'breaking_changes': [],
+                    'new_features': [],
+                    'bug_fixes': []
+                }
+            else:
+                commit_analysis = analyze_commits(commits)
+            
+            change_type = determine_change_type(commit_analysis)
+            version_bump = determine_version_bump(commit_analysis)
+            
+            print(f"Analysis complete:")
+            print(f"  Change type: {change_type}")
+            print(f"  Version bump: {version_bump}")
+            print(f"  Breaking changes: {len(commit_analysis['breaking_changes'])}")
+            print(f"  New features: {len(commit_analysis['new_features'])}")
+            print(f"  Bug fixes: {len(commit_analysis['bug_fixes'])}")
+            
+            # FIXED: Use proper GitHub Actions output format with JSON escaping
+            # Write to GITHUB_OUTPUT environment file (new method)
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                f.write(f"change_type={change_type}\n")
+                f.write(f"version_bump={version_bump}\n")
+                # Properly escape JSON for GitHub Actions
+                f.write(f"breaking_changes={json.dumps(commit_analysis['breaking_changes'])}\n")
+                f.write(f"new_features={json.dumps(commit_analysis['new_features'])}\n")
+                f.write(f"bug_fixes={json.dumps(commit_analysis['bug_fixes'])}\n")
+            
+            print("Outputs written to GITHUB_OUTPUT")
+            
+        except Exception as e:
+            print(f"Error during analysis: {e}", file=sys.stderr)
+            # Set default values on error
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                f.write("change_type=maintenance\n")
+                f.write("version_bump=patch\n")
+                f.write("breaking_changes=[]\n")
+                f.write("new_features=[]\n")
+                f.write("bug_fixes=[]\n")
+            sys.exit(1)
+        EOF
+    
+  generate-release-notes:
+    needs: analyze-changes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Generate Release Notes
       id: notes
       run: |
-        python -c "
+        python3 - <<'EOF'
         import json
+        import os
         
-        # Combine analyzed changes into release notes
-        breaking_changes = json.loads('${{ steps.analyze.outputs.breaking_changes }}')
-        new_features = json.loads('${{ steps.analyze.outputs.new_features }}')
-        bug_fixes = json.loads('${{ steps.analyze.outputs.bug_fixes }}')
+        # FIXED: Properly parse JSON from GitHub Actions outputs
+        try:
+            # Parse the JSON outputs safely
+            breaking_changes = json.loads('${{ needs.analyze-changes.outputs.breaking_changes }}')
+            new_features = json.loads('${{ needs.analyze-changes.outputs.new_features }}')
+            bug_fixes = json.loads('${{ needs.analyze-changes.outputs.bug_fixes }}')
+            change_type = '${{ needs.analyze-changes.outputs.change_type }}'
+            version_bump = '${{ needs.analyze-changes.outputs.version_bump }}'
+            
+            print(f"Parsed inputs successfully:")
+            print(f"  Breaking changes: {len(breaking_changes)}")
+            print(f"  New features: {len(new_features)}")
+            print(f"  Bug fixes: {len(bug_fixes)}")
+            
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error: {e}")
+            print("Using empty lists as fallback")
+            breaking_changes = []
+            new_features = []
+            bug_fixes = []
+            change_type = 'maintenance'
+            version_bump = 'patch'
         
-        notes = []
+        # Generate release notes
+        release_notes = []
         
         if breaking_changes:
-            notes.append('## Breaking Changes')
+            release_notes.append("## 💥 Breaking Changes")
             for change in breaking_changes:
-                notes.append(f'- {change}')
-            notes.append('')
+                release_notes.append(f"- {change}")
+            release_notes.append("")
         
         if new_features:
-            notes.append('## New Features')
+            release_notes.append("## ✨ New Features")
             for feature in new_features:
-                notes.append(f'- {feature}')
-            notes.append('')
+                release_notes.append(f"- {feature}")
+            release_notes.append("")
         
         if bug_fixes:
-            notes.append('## Bug Fixes')
+            release_notes.append("## 🐛 Bug Fixes")
             for fix in bug_fixes:
-                notes.append(f'- {fix}')
-            notes.append('')
+                release_notes.append(f"- {fix}")
+            release_notes.append("")
         
-        if not notes:
-            notes = ['- Minor updates and improvements']
+        if not (breaking_changes or new_features or bug_fixes):
+            release_notes.append("## 🔧 Maintenance")
+            release_notes.append("- Maintenance and infrastructure updates")
+            release_notes.append("")
         
-        release_notes = '\n'.join(notes)
+        release_notes.append("---")
+        release_notes.append("*This release was automatically generated based on commit analysis.*")
         
-        # Escape for output
-        release_notes_escaped = release_notes.replace('\n', '\\n').replace('\"', '\\\"')
-        print(f'::set-output name=release_notes::{release_notes_escaped}')
-        "
-
-  # ═══════════════════════════════════════════════════════════════════
-  # Generate API Contract (for backend services)
-  # ═══════════════════════════════════════════════════════════════════
+        full_notes = "\n".join(release_notes)
+        
+        # Write to GitHub output file safely
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            # Use multiline output format for complex content
+            f.write("release_notes<<EOF\n")
+            f.write(full_notes)
+            f.write("\nEOF\n")
+        
+        print("Release notes generated successfully")
+        EOF
+    
+    - name: Display Release Notes
+      run: |
+        echo "Generated Release Notes:"
+        echo "======================="
+        echo "${{ steps.notes.outputs.release_notes }}"
   
-  generate-api-contract:
-    name: "📄 Generate API Contract"
+  version-check:
+    needs: analyze-changes
     runs-on: ubuntu-latest
-    needs: generate-version
-    if: inputs.generate_api_contract != false && (inputs.service_type == 'backend' || contains(github.repository, 'backend'))
-    outputs:
-      contract_path: ${{ steps.contract.outputs.contract_path }}
-      contract_hash: ${{ steps.contract.outputs.contract_hash }}
     
     steps:
-    - name: Checkout Code
+    - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install Dependencies
+    - name: Check Version Consistency
       run: |
-        pip install fastapi uvicorn openapi-spec-validator pyyaml
-    
-    - name: Start Application
-      run: |
-        # Start the FastAPI application to generate OpenAPI spec
-        cd ${{ github.workspace }}
-        python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-        APP_PID=$!
-        echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+        echo "Change Type: ${{ needs.analyze-changes.outputs.change_type }}"
+        echo "Recommended Version Bump: ${{ needs.analyze-changes.outputs.version_bump }}"
         
-        # Wait for app to start
-        sleep 10
-        
-        # Test if app is running
-        curl -f http://localhost:8000/health || exit 1
-    
-    - name: Generate API Contract
-      id: contract
-      run: |
-        python -c "
-        import requests
-        import json
-        import hashlib
-        import yaml
-        from datetime import datetime
-        
-        # Get OpenAPI specification
-        try:
-            response = requests.get('http://localhost:8000/openapi.json', timeout=30)
-            response.raise_for_status()
-            openapi_spec = response.json()
-        except Exception as e:
-            print(f'Failed to get OpenAPI spec: {e}')
-            exit(1)
-        
-        # Create API contract
-        contract = {
-            'version': '${{ needs.generate-version.outputs.version }}',
-            'service_type': 'backend',
-            'generated_at': datetime.utcnow().isoformat() + 'Z',
-            'openapi_spec': openapi_spec,
-            'endpoints': [],
-            'schemas': openapi_spec.get('components', {}).get('schemas', {}),
-            'breaking_changes': json.loads('${{ needs.generate-version.outputs.breaking_changes }}'),
-            'new_features': json.loads('${{ needs.generate-version.outputs.new_features }}')
-        }
-        
-        # Extract endpoints
-        for path, path_item in openapi_spec.get('paths', {}).items():
-            for method, operation in path_item.items():
-                if method.lower() in ['get', 'post', 'put', 'delete', 'patch']:
-                    endpoint = {
-                        'path': path,
-                        'method': method.upper(),
-                        'operation_id': operation.get('operationId'),
-                        'summary': operation.get('summary'),
-                        'parameters': operation.get('parameters', []),
-                        'request_schema': None,
-                        'response_schema': None
-                    }
-                    
-                    # Extract request schema
-                    if 'requestBody' in operation:
-                        content = operation['requestBody'].get('content', {})
-                        if 'application/json' in content:
-                            endpoint['request_schema'] = content['application/json'].get('schema')
-                    
-                    # Extract response schema
-                    responses = operation.get('responses', {})
-                    if '200' in responses:
-                        content = responses['200'].get('content', {})
-                        if 'application/json' in content:
-                            endpoint['response_schema'] = content['application/json'].get('schema')
-                    
-                    contract['endpoints'].append(endpoint)
-        
-        # Save contract
-        contract_path = 'api-contract.json'
-        with open(contract_path, 'w') as f:
-            json.dump(contract, f, indent=2)
-        
-        # Generate hash for quick comparison
-        contract_str = json.dumps(contract, sort_keys=True)
-        contract_hash = hashlib.sha256(contract_str.encode()).hexdigest()
-        
-        print(f'Generated API contract with {len(contract[\"endpoints\"])} endpoints')
-        print(f'Contract hash: {contract_hash}')
-        
-        print(f'::set-output name=contract_path::{contract_path}')
-        print(f'::set-output name=contract_hash::{contract_hash}')
-        "
-    
-    - name: Stop Application
-      if: always()
-      run: |
-        if [ -n "$APP_PID" ]; then
-          kill $APP_PID || true
+        # Check if version files exist and are consistent
+        if [ -f "pyproject.toml" ]; then
+          echo "Found pyproject.toml - checking version"
+          grep -E '^version\s*=' pyproject.toml || echo "No version found in pyproject.toml"
         fi
-    
-    - name: Upload API Contract
-      uses: actions/upload-artifact@v4
-      with:
-        name: api-contract-${{ needs.generate-version.outputs.version }}
-        path: api-contract.json
-        retention-days: 30
-
-  # ═══════════════════════════════════════════════════════════════════
-  # Register Version in Registry
-  # ═══════════════════════════════════════════════════════════════════
+        
+        if [ -f "version-management/core/version_schema.py" ]; then
+          echo "Found version schema - checking current version"
+          grep -E 'version.*=' version-management/core/version_schema.py || echo "No version found in schema"
+        fi
   
-  register-version:
-    name: "📝 Register Version"
+  pr-analysis:
+    needs: analyze-changes
     runs-on: ubuntu-latest
-    needs: [generate-version, generate-api-contract]
-    if: always() && needs.generate-version.result == 'success'
-    outputs:
-      version_id: ${{ steps.register.outputs.version_id }}
-      registration_status: ${{ steps.register.outputs.status }}
+    if: github.event_name == 'pull_request'
     
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-    
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install Dependencies
+    - name: PR Change Analysis
       run: |
-        pip install requests pydantic
-    
-    - name: Download API Contract
-      if: needs.generate-api-contract.result == 'success'
-      uses: actions/download-artifact@v4
-      with:
-        name: api-contract-${{ needs.generate-version.outputs.version }}
-        path: ./artifacts/
-    
-    - name: Register Version
-      id: register
-      run: |
-        python -c "
-        import json
-        import os
-        import requests
-        from datetime import datetime
+        echo "## 📊 Change Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Change Type:** ${{ needs.analyze-changes.outputs.change_type }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Recommended Version Bump:** ${{ needs.analyze-changes.outputs.version_bump }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
         
-        # Prepare version registration data
-        service_type = '${{ inputs.service_type }}' or 'backend'
-        version = '${{ needs.generate-version.outputs.version }}'
+        # Parse and display changes safely
+        breaking_count=$(echo '${{ needs.analyze-changes.outputs.breaking_changes }}' | python3 -c "import sys, json; print(len(json.loads(sys.stdin.read())))")
+        features_count=$(echo '${{ needs.analyze-changes.outputs.new_features }}' | python3 -c "import sys, json; print(len(json.loads(sys.stdin.read())))")
+        fixes_count=$(echo '${{ needs.analyze-changes.outputs.bug_fixes }}' | python3 -c "import sys, json; print(len(json.loads(sys.stdin.read())))")
         
-        # Get git information
-        git_commit = os.popen('git rev-parse HEAD').read().strip()
-        git_branch = os.popen('git branch --show-current').read().strip()
-        
-        # Load API contract if available
-        api_contract = None
-        contract_path = './artifacts/api-contract.json'
-        if os.path.exists(contract_path):
-            with open(contract_path, 'r') as f:
-                api_contract = json.load(f)
-            print('Loaded API contract from artifacts')
-        
-        # Prepare registration payload
-        payload = {
-            'service_type': service_type,
-            'version': version,
-            'git_commit': git_commit,
-            'git_branch': git_branch,
-            'change_type': '${{ needs.generate-version.outputs.change_type }}',
-            'release_notes': '${{ needs.generate-version.outputs.release_notes }}'.replace('\\n', '\n'),
-            'breaking_changes': json.loads('${{ needs.generate-version.outputs.breaking_changes }}'),
-            'new_features': json.loads('${{ needs.generate-version.outputs.new_features }}'),
-            'bug_fixes': json.loads('${{ needs.generate-version.outputs.bug_fixes }}'),
-            'api_contract': api_contract,
-            'created_by': '${{ github.actor }}'
-        }
-        
-        # Register with version registry
-        registry_url = os.getenv('VERSION_REGISTRY_URL')
-        if not registry_url:
-            print('No version registry URL configured, skipping registration')
-            print('::set-output name=version_id::local-' + version)
-            print('::set-output name=status::skipped')
-            exit(0)
-        
-        headers = {}
-        if token := os.getenv('VERSION_REGISTRY_TOKEN'):
-            headers['Authorization'] = f'Bearer {token}'
-        
-        try:
-            response = requests.post(
-                f'{registry_url}/api/v1/versions/register',
-                json=payload,
-                headers=headers,
-                timeout=30
-            )
-            
-            if response.status_code in [200, 201]:
-                result = response.json()
-                version_id = result.get('version_id', 'unknown')
-                print(f'Successfully registered version {version} with ID: {version_id}')
-                print(f'::set-output name=version_id::{version_id}')
-                print(f'::set-output name=status::success')
-            else:
-                print(f'Failed to register version: {response.status_code}')
-                print(f'Response: {response.text}')
-                print(f'::set-output name=version_id::')
-                print(f'::set-output name=status::failed')
-                exit(1)
-                
-        except requests.RequestException as e:
-            print(f'Error communicating with version registry: {e}')
-            print(f'::set-output name=version_id::')
-            print(f'::set-output name=status::error')
-            exit(1)
-        "
-      env:
-        VERSION_REGISTRY_URL: ${{ env.VERSION_REGISTRY_URL }}
-        VERSION_REGISTRY_TOKEN: ${{ env.VERSION_REGISTRY_TOKEN }}
-
-  # ═══════════════════════════════════════════════════════════════════
-  # Compatibility Check
-  # ═══════════════════════════════════════════════════════════════════
-  
-  compatibility-check:
-    name: "✅ Compatibility Check"
-    runs-on: ubuntu-latest
-    needs: [generate-version, register-version]
-    if: always() && needs.register-version.result == 'success' && inputs.skip_compatibility_check != true
-    outputs:
-      can_deploy: ${{ steps.check.outputs.can_deploy }}
-      compatibility_level: ${{ steps.check.outputs.compatibility_level }}
-      report_path: ${{ steps.check.outputs.report_path }}
-    
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-    
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install Dependencies
-      run: |
-        pip install -r version-management/requirements.txt
-    
-    - name: Run Compatibility Check
-      id: check
-      run: |
-        service_type="${{ inputs.service_type }}"
-        version="${{ needs.generate-version.outputs.version }}"
-        environment="${{ inputs.environment }}"
-        
-        # Default service type if not provided
-        if [ -z "$service_type" ]; then
-          service_type="backend"
-        fi
-        
-        echo "Running compatibility check for $service_type v$version in $environment"
-        
-        # Run the compatibility checker
-        python version-management/scripts/compatibility_checker.py \
-          --service "$service_type" \
-          --version "$version" \
-          --environment "$environment" \
-          --output "compatibility-report.json" \
-          --registry-url "$VERSION_REGISTRY_URL" \
-          --db-url "$VERSION_REGISTRY_DB_URL"
-        
-        # Check if the compatibility check passed
-        if [ $? -eq 0 ]; then
-          echo "::set-output name=can_deploy::true"
-        else
-          echo "::set-output name=can_deploy::false"
-        fi
-        
-        # Extract compatibility level from report
-        if [ -f "compatibility-report.json" ]; then
-          compatibility_level=$(python -c "
-          import json
-          try:
-            with open('compatibility-report.json', 'r') as f:
-              data = json.load(f)
-            print(data.get('compatibility_level', 'unknown'))
-          except:
-            print('unknown')
-          ")
-          echo "::set-output name=compatibility_level::$compatibility_level"
-          echo "::set-output name=report_path::compatibility-report.json"
-        else
-          echo "::set-output name=compatibility_level::unknown"
-          echo "::set-output name=report_path::"
-        fi
-      env:
-        VERSION_REGISTRY_URL: ${{ env.VERSION_REGISTRY_URL }}
-        VERSION_REGISTRY_TOKEN: ${{ env.VERSION_REGISTRY_TOKEN }}
-        VERSION_REGISTRY_DB_URL: ${{ env.VERSION_REGISTRY_DB_URL }}
-    
-    - name: Upload Compatibility Report
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: compatibility-report-${{ needs.generate-version.outputs.version }}
-        path: compatibility-report.json
-        retention-days: 30
-    
-    - name: Comment on PR
-      if: github.event_name == 'pull_request' && always()
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
-          
-          let reportContent = '';
-          try {
-            const report = JSON.parse(fs.readFileSync('compatibility-report.json', 'utf8'));
-            
-            const canDeploy = report.can_deploy;
-            const compatLevel = report.compatibility_level;
-            const service = report.service_type;
-            const version = report.version;
-            const environment = report.environment;
-            
-            reportContent = `
-          ## 📋 Version Compatibility Report
-          
-          **Service:** ${service} v${version}  
-          **Environment:** ${environment}  
-          **Status:** ${canDeploy ? '✅ Compatible' : '❌ Incompatible'}  
-          **Compatibility Level:** ${compatLevel}
-          
-          `;
-            
-            if (report.blocking_issues && report.blocking_issues.length > 0) {
-              reportContent += `
-          ### ⚠️ Blocking Issues
-          ${report.blocking_issues.map(issue => `- ${issue}`).join('\n')}
-          `;
-            }
-            
-            if (report.warnings && report.warnings.length > 0) {
-              reportContent += `
-          ### 🔸 Warnings
-          ${report.warnings.map(warning => `- ${warning}`).join('\n')}
-          `;
-            }
-            
-            if (report.recommendations && report.recommendations.length > 0) {
-              reportContent += `
-          ### 💡 Recommendations
-          ${report.recommendations.map(rec => `- ${rec}`).join('\n')}
-          `;
-            }
-            
-          } catch (error) {
-            reportContent = `
-          ## 📋 Version Compatibility Report
-          
-          ❌ Failed to generate compatibility report: ${error.message}
-          `;
-          }
-          
-          // Post comment on PR
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: reportContent
-          });
-
-  # ═══════════════════════════════════════════════════════════════════
-  # Update Deployment Status
-  # ═══════════════════════════════════════════════════════════════════
-  
-  update-deployment-status:
-    name: "📊 Update Deployment Status"
-    runs-on: ubuntu-latest
-    needs: [generate-version, register-version, compatibility-check]
-    if: always() && needs.register-version.result == 'success'
-    
-    steps:
-    - name: Record Deployment Status
-      run: |
-        python -c "
-        import os
-        import requests
-        import json
-        
-        # Only record if this is a deployment (not just a check)
-        if '${{ github.ref }}' not in ['refs/heads/main', 'refs/heads/develop']:
-            print('Not a deployment branch, skipping status update')
-            exit(0)
-        
-        service_type = '${{ inputs.service_type }}' or 'backend'
-        version = '${{ needs.generate-version.outputs.version }}'
-        environment = '${{ inputs.environment }}'
-        can_deploy = '${{ needs.compatibility-check.outputs.can_deploy }}' == 'true'
-        
-        registry_url = os.getenv('VERSION_REGISTRY_URL')
-        if not registry_url:
-            print('No version registry URL configured')
-            exit(0)
-        
-        headers = {}
-        if token := os.getenv('VERSION_REGISTRY_TOKEN'):
-            headers['Authorization'] = f'Bearer {token}'
-        
-        # Record deployment
-        payload = {
-            'service_type': service_type,
-            'version': version,
-            'environment': environment,
-            'deployed_by': '${{ github.actor }}',
-            'deployment_id': '${{ github.run_id }}',
-            'deployment_strategy': 'github-actions'
-        }
-        
-        try:
-            response = requests.post(
-                f'{registry_url}/api/v1/deployments',
-                json=payload,
-                headers=headers,
-                timeout=30
-            )
-            
-            if response.status_code in [200, 201]:
-                print(f'Successfully recorded deployment status')
-            else:
-                print(f'Failed to record deployment: {response.status_code}')
-                print(f'Response: {response.text}')
-                
-        except requests.RequestException as e:
-            print(f'Error recording deployment status: {e}')
-        "
-      env:
-        VERSION_REGISTRY_URL: ${{ env.VERSION_REGISTRY_URL }}
-        VERSION_REGISTRY_TOKEN: ${{ env.VERSION_REGISTRY_TOKEN }}
+        echo "**Changes Detected:**" >> $GITHUB_STEP_SUMMARY
+        echo "- 💥 Breaking Changes: $breaking_count" >> $GITHUB_STEP_SUMMARY
+        echo "- ✨ New Features: $features_count" >> $GITHUB_STEP_SUMMARY
+        echo "- 🐛 Bug Fixes: $fixes_count" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,43 @@
+# Core dependencies
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.4.2
+httpx==0.25.0
+websockets==12.0
+
+# Database
+sqlalchemy==2.0.23
+asyncpg==0.29.0
+alembic==1.12.1
+
+# Caching
+redis==5.0.1
+
+# Authentication and security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Templates and static files
+jinja2==3.1.2
+aiofiles==23.2.1
+
+# GitHub integration
+PyGithub==1.59.1
+
+# Data processing
+pyyaml==6.0.1
+networkx==3.2.1
+matplotlib==3.8.2
+
+# CLI
+click==8.1.7
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-mock==3.12.0
+
+# Development
+black==23.11.0
+isort==5.12.0
+mypy==1.7.1

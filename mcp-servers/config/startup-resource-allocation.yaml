@@ -1,0 +1,295 @@
+# PratikoAI MCP Server - Startup-Friendly Resource Allocation
+# Ultra-low-cost configuration with seamless scaling path
+
+startup_resource_allocation:
+  # Development Environment - Local Mac Development
+  development:
+    deployment_type: "local_docker"
+    compute:
+      # Runs on your Mac - no cloud costs
+      cpu_cores: 2  # Shared with your Mac
+      memory_gb: 2  # Minimal for development
+      storage_gb: 10  # Just for containers and data
+      
+    services:
+      mcp_server:
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+            
+      postgres:
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+            
+      redis:
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+            
+    estimated_monthly_cost: 0  # Local development - FREE!
+    
+    scaling_notes: |
+      - Perfect for development and testing
+      - Use Docker Desktop on your Mac
+      - All data stored locally
+      - Can handle 3-4 concurrent developers
+
+  # Staging Environment - Minimal Cloud Setup
+  staging:
+    deployment_type: "single_vps"  # One small VPS instead of Kubernetes
+    provider: "digitalocean"  # or "hetzner" for even cheaper
+    compute:
+      instance_type: "s-2vcpu-4gb"  # DigitalOcean droplet
+      cpu_cores: 2
+      memory_gb: 4
+      storage_gb: 50
+      
+    services:
+      # All services on one server using Docker Compose
+      mcp_server:
+        replicas: 1
+        resources:
+          memory: "1Gi"
+          cpu: "800m"
+          
+      postgres:
+        replicas: 1
+        resources:
+          memory: "1Gi"
+          cpu: "500m"
+          storage: "20Gi"
+          
+      redis:
+        replicas: 1
+        resources:
+          memory: "512Mi"
+          cpu: "200m"
+          
+      nginx:  # Simple reverse proxy
+        resources:
+          memory: "128Mi"
+          cpu: "100m"
+          
+    backup:
+      type: "daily_snapshots"  # DigitalOcean snapshots
+      retention: "7_days"
+      cost: "$1/month"
+      
+    monitoring:
+      type: "basic"  # Simple health checks + basic metrics
+      tools: ["uptime_monitoring", "basic_prometheus"]
+      
+    estimated_monthly_cost: 24  # $20 droplet + $1 backup + $3 monitoring
+    
+    scaling_path: |
+      - Start: Single $20/month droplet
+      - Growth: Add $20 database droplet when needed
+      - Scale: Move to $40 load-balanced setup
+      - Migrate: Move to Kubernetes when revenue justifies
+
+  # Production Environment - Smart Minimal Setup
+  production:
+    deployment_type: "managed_services"  # Use cheap managed services
+    
+    phase_1_mvp:  # For first customers (0-100 users)
+      compute:
+        app_server:
+          provider: "railway"  # or "render" - both have generous free tiers
+          instance: "shared-cpu-1x"
+          memory: "1GB"
+          cost: "$5/month"
+          
+        database:
+          provider: "supabase"  # PostgreSQL with free tier
+          tier: "free"  # 500MB, 2 connections
+          cost: "$0/month"
+          upgrade_path: "$25/month for 8GB"
+          
+        cache:
+          provider: "upstash"  # Redis with generous free tier
+          tier: "free"  # 10,000 commands/day
+          cost: "$0/month"
+          upgrade_path: "$10/month for 100K commands/day"
+          
+        storage:
+          provider: "cloudflare_r2"  # S3-compatible, cheaper
+          tier: "free"  # 10GB free
+          cost: "$0/month"
+          
+      estimated_monthly_cost: 5  # Just the app server!
+      
+      capacity:
+        concurrent_users: 50
+        requests_per_month: 100000
+        storage: 10GB
+        
+    phase_2_growth:  # For paying customers (100-1000 users)
+      compute:
+        app_server:
+          provider: "railway"
+          instance: "shared-cpu-2x"
+          memory: "2GB"
+          cost: "$20/month"
+          
+        database:
+          provider: "supabase"
+          tier: "pro"
+          storage: "8GB"
+          cost: "$25/month"
+          
+        cache:
+          provider: "upstash"
+          tier: "pay_as_you_go"
+          cost: "$10/month"
+          
+        cdn:
+          provider: "cloudflare"
+          cost: "$20/month"
+          
+      estimated_monthly_cost: 75
+      
+      capacity:
+        concurrent_users: 500
+        requests_per_month: 1000000
+        storage: 50GB
+        
+    phase_3_scale:  # For established business (1000+ users)
+      compute:
+        app_servers:
+          provider: "aws_ecs_fargate"  # Serverless containers
+          instances: "2-10 auto-scaling"
+          cost: "$100-300/month"
+          
+        database:
+          provider: "aws_rds"
+          instance: "db.t3.micro"
+          cost: "$15/month + storage"
+          
+        cache:
+          provider: "aws_elasticache"
+          instance: "cache.t3.micro"
+          cost: "$15/month"
+          
+        load_balancer:
+          provider: "aws_alb"
+          cost: "$20/month"
+          
+      estimated_monthly_cost: 200
+      
+      capacity:
+        concurrent_users: 5000
+        requests_per_month: 10000000
+        storage: 500GB
+
+# Migration Strategy Between Phases
+migration_strategy:
+  development_to_staging:
+    effort: "low"
+    time: "2 hours"
+    steps:
+      - "Export Docker Compose configuration"
+      - "Deploy to DigitalOcean droplet"
+      - "Configure domain and SSL"
+      - "Set up basic monitoring"
+      
+  staging_to_production_mvp:
+    effort: "medium"
+    time: "1 day"
+    steps:
+      - "Set up Railway/Render account"
+      - "Configure Supabase database"
+      - "Set up Upstash Redis"
+      - "Configure environment variables"
+      - "Set up custom domain"
+      
+  mvp_to_growth:
+    effort: "low"
+    time: "4 hours"
+    steps:
+      - "Upgrade service tiers"
+      - "Add CDN configuration"
+      - "Set up monitoring and alerts"
+      - "Configure backup strategy"
+      
+  growth_to_scale:
+    effort: "high"
+    time: "1 week"
+    steps:
+      - "Set up AWS account and IAM"
+      - "Deploy ECS Fargate containers"
+      - "Set up RDS database with migration"
+      - "Configure ElastiCache Redis"
+      - "Set up comprehensive monitoring"
+      - "Implement blue-green deployment"
+
+# Free Tier Maximization Strategy
+free_tier_optimization:
+  always_free_services:
+    - provider: "Cloudflare"
+      services: ["DNS", "Basic CDN", "SSL certificates"]
+      value: "$50/month equivalent"
+      
+    - provider: "Uptime Robot"
+      services: ["Website monitoring", "50 monitors"]
+      value: "$10/month equivalent"
+      
+    - provider: "GitHub"
+      services: ["CI/CD", "Package registry", "Actions"]
+      value: "$20/month equivalent"
+      
+    - provider: "Grafana Cloud"
+      services: ["Metrics", "Logs", "Alerts - free tier"]
+      value: "$30/month equivalent"
+      
+  total_free_value: "$110/month in services at zero cost"
+
+# Cost Comparison
+cost_comparison:
+  original_enterprise_setup:
+    development: 75
+    staging: 250
+    production: 1200
+    total: 1525
+    
+  startup_optimized_setup:
+    development: 0      # Local Mac
+    staging: 24         # Single DigitalOcean droplet
+    production_mvp: 5   # Railway + free tiers
+    total: 29
+    
+  savings: "98% cost reduction - $29 vs $1,525/month"
+  
+  growth_path:
+    month_1_3: 29      # MVP phase
+    month_4_12: 75     # Growth phase (when you have paying customers)
+    month_12_plus: 200  # Scale phase (when you're profitable)
+
+# Revenue-Based Scaling Guidelines
+scaling_triggers:
+  upgrade_to_growth_phase:
+    monthly_revenue: "$500+"
+    active_users: "100+"
+    monthly_requests: "500,000+"
+    
+  upgrade_to_scale_phase:
+    monthly_revenue: "$2,000+"
+    active_users: "1,000+"
+    monthly_requests: "5,000,000+"
+    
+  philosophy: |
+    "Only spend money when you're making money.
+     Scale infrastructure costs proportionally to revenue.
+     Always maintain 10:1 revenue to infrastructure cost ratio."

@@ -1,0 +1,201 @@
+monitoring_interval_seconds: 30
+metrics_retention_minutes: 60
+rollback_enabled: true
+log_preservation_enabled: true
+notification_channels:
+  - slack
+  - email
+
+system_resource_thresholds:
+  cpu_warning: 80
+  cpu_critical: 95
+  memory_warning: 80
+  memory_critical: 95
+  disk_warning: 85
+  disk_critical: 95
+
+health_checks:
+  - check_id: backend_health
+    service: backend
+    name: Backend Health Check
+    check_type: http_response
+    endpoint_url: "https://api.pratiko.ai/health"
+    interval_seconds: 30
+    timeout_seconds: 10
+    threshold_critical: 500  # HTTP status codes >= 500 are critical
+    consecutive_failures_for_critical: 3
+
+  - check_id: frontend_health
+    service: frontend
+    name: Frontend Health Check
+    check_type: http_response
+    endpoint_url: "https://pratiko.ai/health"
+    interval_seconds: 30
+    timeout_seconds: 10
+
+  - check_id: database_health
+    service: database
+    name: Database Connection
+    check_type: database_connection
+    endpoint_url: "postgresql://user:pass@localhost/pratiko"
+    interval_seconds: 60
+    timeout_seconds: 15
+
+  - check_id: system_cpu
+    service: system
+    name: CPU Usage
+    check_type: system_resource
+    threshold_warning: 80
+    threshold_critical: 95
+    metadata:
+      resource: cpu
+
+  - check_id: system_memory
+    service: system
+    name: Memory Usage
+    check_type: system_resource
+    threshold_warning: 80
+    threshold_critical: 95
+    metadata:
+      resource: memory
+
+  - check_id: system_disk
+    service: system
+    name: Disk Usage
+    check_type: system_resource
+    threshold_warning: 85
+    threshold_critical: 95
+    metadata:
+      resource: disk
+      path: "/"
+
+monitoring_rules:
+  - rule_id: critical_failure_rollback
+    name: Critical Service Failure Rollback
+    condition: "get_failure_count('backend', 5) >= 3 or get_failure_count('frontend', 5) >= 3"
+    action: rollback
+    priority: 1
+    cooldown_minutes: 30
+
+  - rule_id: system_resource_alert
+    name: System Resource Alert
+    condition: "get_latest_metric('system', 'system_resource') and get_latest_metric('system', 'system_resource').value > 90"
+    action: alert
+    priority: 2
+    cooldown_minutes: 15
+
+  - rule_id: multiple_service_degradation
+    name: Multiple Service Degradation
+    condition: "len([s for s, m in metrics.items() if m and any(isinstance(metric.value, (int, float)) and metric.value == 0 for metric in m[-3:])]) >= 2"
+    action: rollback
+    priority: 1
+    cooldown_minutes: 20
+
+  - rule_id: database_connection_failure
+    name: Database Connection Failure
+    condition: "get_failure_count('database', 3) >= 2"
+    action: rollback
+    priority: 1
+    cooldown_minutes: 15
+
+  - rule_id: high_error_rate
+    name: High Error Rate Detection
+    condition: "get_latest_metric('backend') and 'error' in str(get_latest_metric('backend').metadata).lower()"
+    action: alert
+    priority: 2
+    cooldown_minutes: 10
+
+  - rule_id: system_overload
+    name: System Resource Overload
+    condition: "all([get_latest_metric('system') and get_latest_metric('system').value > 95 for _ in range(1)])"
+    action: preserve_logs
+    priority: 2
+    cooldown_minutes: 5
+    metadata:
+      services: ["system", "backend", "frontend"]
+
+services:
+  backend:
+    log_sources:
+      - "/var/log/pratiko-backend"
+      - "/var/log/nginx/error.log"
+      - "/var/log/uvicorn"
+      - "/var/log/fastapi"
+    health_endpoints:
+      - "https://api.pratiko.ai/health"
+      - "https://api.pratiko.ai/metrics"
+    
+  frontend:
+    log_sources:
+      - "/var/log/nginx/access.log"
+      - "/var/log/nginx/error.log"
+      - "/var/log/frontend-app"
+    health_endpoints:
+      - "https://pratiko.ai/health"
+    
+  database:
+    log_sources:
+      - "/var/log/postgresql"
+      - "/var/log/postgres"
+    connection_strings:
+      - "postgresql://pratiko:${DB_PASSWORD}@localhost:5432/pratiko_prod"
+      - "postgresql://pratiko:${DB_PASSWORD}@localhost:5432/pratiko_staging"
+
+# Custom notification templates
+notification_templates:
+  rollback_triggered:
+    title: "🚨 Automatic Rollback Triggered"
+    message: "Health monitoring detected critical issues and initiated rollback for deployment {deployment_id}"
+    
+  health_alert:
+    title: "⚠️ Health Alert"
+    message: "Health monitoring rule '{rule_name}' triggered for deployment {deployment_id}"
+    
+  system_overload:
+    title: "🔥 System Resource Alert"
+    message: "System resources are critically high - immediate attention required"
+
+# Integration settings
+integrations:
+  slack:
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#deployment-alerts"
+    username: "PratikoAI Health Monitor"
+    
+  email:
+    smtp_host: "${SMTP_HOST}"
+    smtp_port: 587
+    username: "${SMTP_USERNAME}"
+    password: "${SMTP_PASSWORD}"
+    from_address: "health-monitor@pratiko.ai"
+    to_addresses:
+      - "devops@pratiko.ai"
+      - "oncall@pratiko.ai"
+      
+  github:
+    token: "${GITHUB_TOKEN}"
+    repository: "mickgian/PratikoAi-BE"
+    create_issues: true
+    label_prefix: "health-monitor"
+
+# Log preservation settings
+log_preservation:
+  base_directory: "/var/log/pratiko-rollback-logs"
+  retention_days: 30
+  compression_enabled: true
+  include_system_logs: true
+  system_log_sources:
+    - "/var/log/syslog"
+    - "/var/log/kern.log"
+    - "/var/log/auth.log"
+    - "/var/log/docker.log"
+    - "/var/log/systemd"
+    - "/var/log/nginx"
+
+# Advanced monitoring settings
+advanced:
+  metric_aggregation_window_seconds: 300
+  anomaly_detection_enabled: true
+  baseline_learning_period_hours: 24
+  correlation_analysis_enabled: true
+  predictive_alerting_enabled: false

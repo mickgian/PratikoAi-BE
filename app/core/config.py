@@ -187,6 +187,19 @@ class Settings:
         self.POSTGRES_POOL_SIZE = int(os.getenv("POSTGRES_POOL_SIZE", "20"))
         self.POSTGRES_MAX_OVERFLOW = int(os.getenv("POSTGRES_MAX_OVERFLOW", "10"))
         self.CHECKPOINT_TABLES = ["checkpoint_blobs", "checkpoint_writes", "checkpoints"]
+        
+        # Redis Configuration for Caching
+        self.REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+        self.REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+        self.REDIS_MAX_CONNECTIONS = int(os.getenv("REDIS_MAX_CONNECTIONS", "10"))
+        
+        # Caching Configuration
+        self.CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() in ("true", "1", "t", "yes")
+        self.CACHE_DEFAULT_TTL = int(os.getenv("CACHE_DEFAULT_TTL", "3600"))  # 1 hour
+        self.CACHE_CONVERSATION_TTL = int(os.getenv("CACHE_CONVERSATION_TTL", "7200"))  # 2 hours
+        self.CACHE_LLM_RESPONSE_TTL = int(os.getenv("CACHE_LLM_RESPONSE_TTL", "86400"))  # 24 hours
+        self.CACHE_MAX_QUERY_SIZE = int(os.getenv("CACHE_MAX_QUERY_SIZE", "10000"))  # Max chars to cache
 
         # Rate Limiting Configuration
         self.RATE_LIMIT_DEFAULT = parse_list_from_env("RATE_LIMIT_DEFAULT", ["200 per day", "50 per hour"])

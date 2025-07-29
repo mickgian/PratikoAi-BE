@@ -4,6 +4,7 @@ from typing import (
     Any,
     AsyncGenerator,
     Dict,
+    List,
     Literal,
     Optional,
 )
@@ -36,6 +37,8 @@ from app.core.llm.base import LLMProvider
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
 from app.core.prompts import SYSTEM_PROMPT
+from app.core.decorators.cache import cache_llm_response, cache_conversation
+from app.services.cache import cache_service
 from app.schemas import (
     GraphState,
     Message,
@@ -62,6 +65,72 @@ class LangGraphAgent:
         self._current_provider: Optional[LLMProvider] = None
 
         logger.info("llm_agent_initialized", environment=settings.ENVIRONMENT.value)
+
+    async def _get_cached_llm_response(self, provider: LLMProvider, messages: List[Message], tools: list, temperature: float, max_tokens: int):
+        """Get LLM response with caching support.
+        
+        Args:
+            provider: The LLM provider to use
+            messages: List of conversation messages
+            tools: Available tools for the LLM
+            temperature: Temperature setting
+            max_tokens: Maximum tokens to generate
+            
+        Returns:
+            LLMResponse: The response from the LLM (cached or fresh)
+        """
+        # Try to get cached response first
+        try:
+            cached_response = await cache_service.get_cached_response(
+                messages=messages,
+                model=provider.model,
+                temperature=temperature
+            )
+            if cached_response:
+                logger.info(
+                    "llm_cache_hit",
+                    model=provider.model,
+                    provider=provider.provider_type.value,
+                    message_count=len(messages)
+                )
+                return cached_response
+        except Exception as e:
+            logger.error(
+                "llm_cache_get_failed",
+                error=str(e),
+                model=provider.model
+            )
+        
+        # Get fresh response from provider
+        response = await provider.chat_completion(
+            messages=messages,
+            tools=tools,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        
+        # Cache the response for future use
+        try:
+            await cache_service.cache_response(
+                messages=messages,
+                model=provider.model,
+                response=response,
+                temperature=temperature
+            )
+            logger.info(
+                "llm_response_cached",
+                model=provider.model,
+                provider=provider.provider_type.value,
+                response_length=len(response.content)
+            )
+        except Exception as e:
+            logger.error(
+                "llm_cache_set_failed",
+                error=str(e),
+                model=provider.model
+            )
+        
+        return response
 
     def _get_routing_strategy(self) -> RoutingStrategy:
         """Get the LLM routing strategy from configuration.
@@ -186,9 +255,10 @@ class LangGraphAgent:
                 provider = self._get_optimal_provider(conversation_messages)
                 self._current_provider = provider
 
-                # Make the LLM call with tools
+                # Make the LLM call with tools (with caching)
                 with llm_inference_duration_seconds.labels(model=provider.model).time():
-                    response = await provider.chat_completion(
+                    response = await self._get_cached_llm_response(
+                        provider=provider,
                         messages=conversation_messages,
                         tools=list(self.tools_by_name.values()),
                         temperature=settings.DEFAULT_LLM_TEMPERATURE,
@@ -432,13 +502,49 @@ class LangGraphAgent:
         Returns:
             list[Message]: The chat history.
         """
+        # Try to get cached conversation first
+        try:
+            cached_messages = await cache_service.get_conversation_cache(session_id)
+            if cached_messages:
+                logger.info(
+                    "conversation_cache_hit",
+                    session_id=session_id,
+                    message_count=len(cached_messages)
+                )
+                return cached_messages
+        except Exception as e:
+            logger.error(
+                "conversation_cache_get_failed",
+                error=str(e),
+                session_id=session_id
+            )
+
+        # Get from database if not cached
         if self._graph is None:
             self._graph = await self.create_graph()
 
         state: StateSnapshot = await sync_to_async(self._graph.get_state)(
             config={"configurable": {"thread_id": session_id}}
         )
-        return self.__process_messages(state.values["messages"]) if state.values else []
+        messages = self.__process_messages(state.values["messages"]) if state.values else []
+        
+        # Cache the conversation for future use
+        if messages:
+            try:
+                await cache_service.cache_conversation(session_id, messages)
+                logger.info(
+                    "conversation_cached",
+                    session_id=session_id,
+                    message_count=len(messages)
+                )
+            except Exception as e:
+                logger.error(
+                    "conversation_cache_set_failed",
+                    error=str(e),
+                    session_id=session_id
+                )
+        
+        return messages
 
     def __process_messages(self, messages: list[BaseMessage]) -> list[Message]:
         openai_style_messages = convert_to_openai_messages(messages)
@@ -459,6 +565,17 @@ class LangGraphAgent:
             Exception: If there's an error clearing the chat history.
         """
         try:
+            # Clear cached conversation first
+            try:
+                await cache_service.invalidate_conversation(session_id)
+                logger.info("conversation_cache_invalidated", session_id=session_id)
+            except Exception as e:
+                logger.error(
+                    "conversation_cache_invalidation_failed",
+                    error=str(e),
+                    session_id=session_id
+                )
+
             # Make sure the pool is initialized in the current event loop
             conn_pool = await self._get_connection_pool()
 

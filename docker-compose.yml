@@ -14,10 +14,27 @@ services:
       - db-data:/var/lib/postgresql/data
     networks:
       - monitoring
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
   # Single API service with dynamic environment
   app:
     depends_on:
       - db
+      - redis
     build:
       context: .
       args:
@@ -96,4 +113,5 @@ networks:
 
 volumes:
   db-data:
+  redis-data:
   grafana-storage: 

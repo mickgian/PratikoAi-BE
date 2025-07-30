@@ -95,9 +95,14 @@ def check_file_for_sensitive_data(filepath: str) -> List[Tuple[int, str, str]]:
             for line_num, line in enumerate(f, 1):
                 for pattern, description in SENSITIVE_PATTERNS:
                     if re.search(pattern, line, re.IGNORECASE):
-                        # Don't flag example or placeholder values
+                        # Don't flag example, placeholder, or test values
                         if any(placeholder in line.lower() for placeholder in 
-                               ['example', 'your-', 'placeholder', 'changeme', 'xxx']):
+                               ['example', 'your-', 'placeholder', 'changeme', 'xxx', 'test-', 'mock-', 'fake-']):
+                            continue
+                        
+                        # Don't flag test files with obvious test values
+                        if '/test' in filepath.lower() and any(test_indicator in line.lower() for test_indicator in 
+                               ['test@', 'test-', 'mock', 'fake']):
                             continue
                         
                         issues.append((line_num, description, line.strip()))

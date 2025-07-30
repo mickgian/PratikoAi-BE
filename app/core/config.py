@@ -207,6 +207,15 @@ class Settings:
         self.PRIVACY_DATA_RETENTION_DAYS = int(os.getenv("PRIVACY_DATA_RETENTION_DAYS", "365"))  # 1 year default
         self.PRIVACY_CONSENT_EXPIRY_DAYS = int(os.getenv("PRIVACY_CONSENT_EXPIRY_DAYS", "365"))  # 1 year consent validity
         self.PRIVACY_PII_CONFIDENCE_THRESHOLD = float(os.getenv("PRIVACY_PII_CONFIDENCE_THRESHOLD", "0.7"))  # PII detection threshold
+        
+        # Stripe Payment Configuration
+        self.STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+        self.STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+        self.STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+        self.STRIPE_MONTHLY_PRICE_ID = os.getenv("STRIPE_MONTHLY_PRICE_ID", "")  # €69/month price ID
+        self.STRIPE_TRIAL_PERIOD_DAYS = int(os.getenv("STRIPE_TRIAL_PERIOD_DAYS", "7"))  # 7-day trial
+        self.STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", f"{self.BASE_URL}/payment/success")
+        self.STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", f"{self.BASE_URL}/payment/cancel")
 
         # Rate Limiting Configuration
         self.RATE_LIMIT_DEFAULT = parse_list_from_env("RATE_LIMIT_DEFAULT", ["200 per day", "50 per hour"])

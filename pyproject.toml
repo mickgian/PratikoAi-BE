@@ -35,6 +35,7 @@ dependencies = [
     "colorama>=0.4.6",
     "anthropic>=0.40.0",
     "redis>=5.0.0",
+    "stripe>=7.0.0",
 ]
 
 [project.optional-dependencies]

@@ -104,7 +104,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-# Set up CORS middleware
+# Set up middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -112,6 +112,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add cost limiter middleware for payment enforcement
+from app.core.middleware.cost_limiter import CostLimiterMiddleware, CostOptimizationMiddleware
+app.add_middleware(CostLimiterMiddleware)
+app.add_middleware(CostOptimizationMiddleware)
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)

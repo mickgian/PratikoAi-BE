@@ -254,6 +254,19 @@ class Settings:
         self.EVALUATION_API_KEY = os.getenv("EVALUATION_API_KEY", self.LLM_API_KEY)
         self.EVALUATION_SLEEP_TIME = int(os.getenv("EVALUATION_SLEEP_TIME", "10"))
 
+        # Email Settings
+        self.SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+        self.SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+        self.SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+        self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+        self.FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@pratikoai.com")
+        
+        # Metrics Report Recipients (comma-separated)
+        self.METRICS_REPORT_RECIPIENTS = os.getenv("METRICS_REPORT_RECIPIENTS", "admin@pratikoai.com")
+        self.METRICS_REPORT_RECIPIENTS_ADMIN = os.getenv("METRICS_REPORT_RECIPIENTS_ADMIN", "")
+        self.METRICS_REPORT_RECIPIENTS_TECH = os.getenv("METRICS_REPORT_RECIPIENTS_TECH", "")
+        self.METRICS_REPORT_RECIPIENTS_BUSINESS = os.getenv("METRICS_REPORT_RECIPIENTS_BUSINESS", "")
+
         # Apply environment-specific settings
         self.apply_environment_settings()
 

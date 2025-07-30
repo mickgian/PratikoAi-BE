@@ -13,6 +13,7 @@ from app.api.v1.analytics import router as analytics_router
 from app.api.v1.privacy import router as privacy_router
 from app.api.v1.italian import router as italian_router
 from app.api.v1.search import router as search_router
+from app.api.v1.security import router as security_router
 from app.core.logging import logger
 
 api_router = APIRouter()
@@ -25,6 +26,7 @@ api_router.include_router(analytics_router, prefix="/analytics", tags=["analytic
 api_router.include_router(privacy_router, prefix="/privacy", tags=["privacy"])
 api_router.include_router(italian_router, prefix="/italian", tags=["italian"])
 api_router.include_router(search_router, prefix="/search", tags=["search"])
+api_router.include_router(security_router, prefix="/security", tags=["security"])
 
 
 @api_router.get("/health")

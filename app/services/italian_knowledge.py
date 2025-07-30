@@ -9,6 +9,7 @@ from sqlalchemy.exc import NoResultFound
 
 from app.core.logging import logger
 from app.services.database import database_service
+from app.services.vector_service import vector_service
 from app.models.italian_data import (
     ItalianTaxRate, ItalianLegalTemplate, ItalianRegulation, 
     TaxCalculation, ComplianceCheck, ItalianKnowledgeSource,
@@ -275,23 +276,60 @@ class ItalianLegalService:
             logger.error("legal_template_retrieval_failed", template_code=template_code, error=str(e))
             return None
     
-    async def search_regulations(self, keywords: List[str], subjects: Optional[List[str]] = None) -> List[ItalianRegulation]:
+    async def search_regulations(self, keywords: List[str], subjects: Optional[List[str]] = None, use_semantic: bool = True) -> List[ItalianRegulation]:
         """Search Italian regulations by keywords and subjects.
         
         Args:
             keywords: Search keywords
             subjects: Subject matter filters
+            use_semantic: Whether to use semantic search
             
         Returns:
             List of matching regulations
         """
         try:
+            # Try semantic search first if available
+            if use_semantic and vector_service.is_available() and keywords:
+                # Create search query from keywords
+                search_query = " ".join(keywords)
+                
+                # Perform semantic search
+                semantic_results = vector_service.search_italian_knowledge(
+                    query=search_query,
+                    knowledge_type="regulation"
+                )
+                
+                # Extract regulation IDs from semantic results
+                regulation_ids = []
+                for result in semantic_results:
+                    if result.get("regulation_id"):
+                        regulation_ids.append(result["regulation_id"])
+                
+                # Fetch full regulation objects
+                if regulation_ids:
+                    async with database_service.get_db() as db:
+                        query = select(ItalianRegulation).where(
+                            ItalianRegulation.id.in_(regulation_ids)
+                        )
+                        result = await db.execute(query)
+                        regulations = result.scalars().all()
+                        
+                        # Sort by semantic search order
+                        id_to_regulation = {reg.id: reg for reg in regulations}
+                        sorted_regulations = []
+                        for reg_id in regulation_ids:
+                            if reg_id in id_to_regulation:
+                                sorted_regulations.append(id_to_regulation[reg_id])
+                        
+                        return sorted_regulations[:50]
+            
+            # Fallback to keyword search
             async with database_service.get_db() as db:
                 query = select(ItalianRegulation).where(
                     ItalianRegulation.repealed_date == None  # Only active regulations
                 )
                 
-                # Add keyword filtering (this would be more sophisticated in production)
+                # Add keyword filtering
                 if keywords:
                     keyword_filter = None
                     for keyword in keywords:

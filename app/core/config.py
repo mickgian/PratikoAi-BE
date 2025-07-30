@@ -216,6 +216,15 @@ class Settings:
         self.STRIPE_TRIAL_PERIOD_DAYS = int(os.getenv("STRIPE_TRIAL_PERIOD_DAYS", "7"))  # 7-day trial
         self.STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", f"{self.BASE_URL}/payment/success")
         self.STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", f"{self.BASE_URL}/payment/cancel")
+        
+        # Vector Database Configuration (Pinecone)
+        self.PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
+        self.PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "")
+        self.PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "normoai-knowledge")
+        self.VECTOR_DIMENSION = int(os.getenv("VECTOR_DIMENSION", "384"))  # sentence-transformers dimension
+        self.EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+        self.VECTOR_SIMILARITY_THRESHOLD = float(os.getenv("VECTOR_SIMILARITY_THRESHOLD", "0.7"))
+        self.MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "10"))
 
         # Rate Limiting Configuration
         self.RATE_LIMIT_DEFAULT = parse_list_from_env("RATE_LIMIT_DEFAULT", ["200 per day", "50 per hour"])

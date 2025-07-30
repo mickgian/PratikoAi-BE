@@ -36,6 +36,8 @@ dependencies = [
     "anthropic>=0.40.0",
     "redis>=5.0.0",
     "stripe>=7.0.0",
+    "pinecone-client>=3.0.0",
+    "sentence-transformers>=2.2.0",
 ]
 
 [project.optional-dependencies]

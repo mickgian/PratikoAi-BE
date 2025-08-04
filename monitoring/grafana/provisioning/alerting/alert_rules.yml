@@ -1,0 +1,417 @@
+apiVersion: 1
+
+groups:
+  # =============================================================================
+  # COST ALERTS - Critical for business profitability
+  # =============================================================================
+  - name: cost_alerts
+    orgId: 1
+    folder: PratikoAI Alerts
+    interval: 1m
+    rules:
+      - uid: high_user_cost
+        title: User Cost Exceeds €2.50 Target
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: avg(user_monthly_cost_eur) > 2.5
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          description: "Average user cost is €{{ $value }}, exceeding the €2.50 profitability threshold"
+          runbook_url: "https://docs.pratikoai.com/runbooks/cost-management"
+          summary: "CRITICAL: User cost exceeds profitability target"
+        labels:
+          severity: critical
+          team: finance
+          category: cost
+
+      - uid: daily_cost_spike
+        title: Daily Cost Spike >50%
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: (rate(llm_cost_total_eur[1h]) - rate(llm_cost_total_eur[1h] offset 24h)) / rate(llm_cost_total_eur[1h] offset 24h) * 100 > 50
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          description: "Daily cost increased by {{ $value }}% compared to yesterday"
+          summary: "WARNING: Sudden cost spike detected"
+        labels:
+          severity: warning
+          team: finance
+          category: cost
+
+      - uid: high_llm_daily_cost
+        title: Daily LLM Costs Exceed €100
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: increase(llm_cost_total_eur[24h]) > 100
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 10m
+        annotations:
+          description: "Daily LLM costs are €{{ $value }}, exceeding budget threshold"
+          summary: "Daily LLM costs exceed budget"
+        labels:
+          severity: warning
+          team: finance
+          category: cost
+
+  # =============================================================================  
+  # BUSINESS ALERTS - Revenue and customer health
+  # =============================================================================
+  - name: business_alerts
+    orgId: 1
+    folder: PratikoAI Alerts
+    interval: 5m
+    rules:
+      - uid: high_payment_failure_rate
+        title: Payment Failure Rate >5%
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: (rate(payment_operations_total{status="failed"}[1h]) / rate(payment_operations_total[1h])) * 100 > 5
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 10m
+        annotations:
+          description: "Payment failure rate is {{ $value }}%, exceeding 5% threshold"
+          runbook_url: "https://docs.pratikoai.com/runbooks/payment-failures"
+          summary: "CRITICAL: High payment failure rate"
+        labels:
+          severity: critical
+          team: business
+          category: payments
+
+      - uid: low_mrr_progress
+        title: MRR Below €20k Target
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: monthly_revenue_eur < 20000
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 30m
+        annotations:
+          description: "Monthly revenue is €{{ $value }}, below €20k milestone toward €25k target"
+          summary: "MRR below target milestone"
+        labels:
+          severity: warning
+          team: business
+          category: revenue
+
+      - uid: high_subscription_churn
+        title: Subscription Churn Rate >10%
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: (rate(active_subscriptions_total{status="cancelled"}[24h]) / rate(active_subscriptions_total[24h])) * 100 > 10
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 1h
+        annotations:
+          description: "Subscription churn rate is {{ $value }}% over 24h, exceeding 10% threshold"
+          summary: "High subscription churn detected"
+        labels:
+          severity: warning
+          team: business
+          category: retention
+
+      - uid: no_new_signups
+        title: No New Signups for 48 Hours
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 172800
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: increase(active_users_total{time_window="24h"}[48h]) == 0
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 2h
+        annotations:
+          description: "No new user signups detected in the last 48 hours"
+          summary: "No new signups - growth stalled"
+        labels:
+          severity: warning
+          team: growth
+          category: acquisition
+
+  # =============================================================================
+  # PERFORMANCE ALERTS - System reliability and user experience  
+  # =============================================================================
+  - name: performance_alerts
+    orgId: 1
+    folder: PratikoAI Alerts
+    interval: 30s
+    rules:
+      - uid: high_api_response_time
+        title: API Response Time >5 Seconds
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 5
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          description: "95th percentile API response time is {{ $value }}s, exceeding 5s SLA"
+          runbook_url: "https://docs.pratikoai.com/runbooks/performance"
+          summary: "CRITICAL: API response time SLA breach"
+        labels:
+          severity: critical
+          team: engineering
+          category: performance
+
+      - uid: low_cache_hit_ratio
+        title: Cache Hit Ratio <70%
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: min(cache_hit_ratio) < 0.7
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          description: "Cache hit ratio is {{ $value | humanizePercentage }}, below 70% efficiency threshold"
+          summary: "Poor cache performance detected"
+        labels:
+          severity: warning
+          team: engineering
+          category: performance
+
+      - uid: high_database_connections
+        title: Database Connections >80% of Pool
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: (database_connections_active / on() database_connections_total) > 0.8
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          description: "Database connection usage is {{ $value | humanizePercentage }}, approaching pool limit"
+          summary: "High database connection usage"
+        labels:
+          severity: warning
+          team: engineering
+          category: database
+
+      - uid: high_error_rate
+        title: API Error Rate >5%
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: (rate(api_errors_total[5m]) / rate(http_request_duration_seconds_count[5m])) * 100 > 5
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          description: "API error rate is {{ $value }}%, exceeding 5% threshold"
+          summary: "High API error rate detected"
+        labels:
+          severity: critical
+          team: engineering
+          category: reliability
+
+  # =============================================================================
+  # SECURITY ALERTS - Threat detection and access monitoring
+  # =============================================================================
+  - name: security_alerts
+    orgId: 1
+    folder: PratikoAI Alerts
+    interval: 1m
+    rules:
+      - uid: multiple_failed_auth
+        title: Multiple Failed Authentication Attempts
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: rate(api_errors_total{error_category="authentication"}[5m]) > 0.1
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          description: "Authentication failure rate: {{ $value }}/sec, possible brute force attack"
+          runbook_url: "https://docs.pratikoai.com/runbooks/security-incidents"
+          summary: "SECURITY: Multiple failed authentication attempts"
+        labels:
+          severity: critical
+          team: security
+          category: authentication
+
+      - uid: unusual_api_usage
+        title: Unusual API Usage Pattern
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: rate(http_request_duration_seconds_count[5m]) > 100
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          description: "API request rate: {{ $value }} req/sec, significantly above normal patterns"
+          summary: "Unusual API usage pattern detected"
+        labels:
+          severity: warning
+          team: security
+          category: anomaly
+
+      - uid: gdpr_data_export_request
+        title: GDPR Data Export Request
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus-uid
+            model:
+              expr: increase(user_actions_total{action_type="data_export"}[5m]) > 0
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          description: "GDPR data export request received, compliance action required within 30 days"
+          runbook_url: "https://docs.pratikoai.com/runbooks/gdpr-compliance"
+          summary: "GDPR data export request received"
+        labels:
+          severity: info
+          team: compliance
+          category: gdpr

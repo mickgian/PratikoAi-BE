@@ -27,6 +27,8 @@ from app.schemas.chat import (
     Message,
     StreamResponse,
 )
+from app.core.privacy.anonymizer import anonymizer
+from app.core.privacy.gdpr import gdpr_compliance, ProcessingPurpose, DataCategory
 
 router = APIRouter()
 agent = LangGraphAgent()
@@ -54,16 +56,44 @@ async def chat(
         HTTPException: If there's an error processing the request.
     """
     try:
+        # Record data processing for GDPR compliance
+        gdpr_compliance.data_processor.record_processing(
+            user_id=session.user_id,
+            data_category=DataCategory.CONTENT,
+            processing_purpose=ProcessingPurpose.SERVICE_PROVISION,
+            data_source="chat_api",
+            legal_basis="Service provision under contract",
+            anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS
+        )
+        
+        # Anonymize request if privacy settings require it
+        processed_messages = chat_request.messages
+        if settings.PRIVACY_ANONYMIZE_REQUESTS:
+            processed_messages = []
+            for message in chat_request.messages:
+                anonymization_result = anonymizer.anonymize_text(message.content)
+                processed_messages.append(Message(
+                    role=message.role,
+                    content=anonymization_result.anonymized_text
+                ))
+                
+                if anonymization_result.pii_matches:
+                    logger.info(
+                        "chat_request_pii_anonymized",
+                        session_id=session.id,
+                        pii_types=[match.pii_type.value for match in anonymization_result.pii_matches],
+                        pii_count=len(anonymization_result.pii_matches)
+                    )
+
         logger.info(
             "chat_request_received",
             session_id=session.id,
-            message_count=len(chat_request.messages),
+            message_count=len(processed_messages),
+            anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
         )
 
-       
-
         result = await agent.get_response(
-            chat_request.messages, session.id, user_id=session.user_id
+            processed_messages, session.id, user_id=session.user_id
         )
 
         logger.info("chat_request_processed", session_id=session.id)
@@ -95,10 +125,40 @@ async def chat_stream(
         HTTPException: If there's an error processing the request.
     """
     try:
+        # Record data processing for GDPR compliance
+        gdpr_compliance.data_processor.record_processing(
+            user_id=session.user_id,
+            data_category=DataCategory.CONTENT,
+            processing_purpose=ProcessingPurpose.SERVICE_PROVISION,
+            data_source="chat_stream_api",
+            legal_basis="Service provision under contract",
+            anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS
+        )
+        
+        # Anonymize request if privacy settings require it
+        processed_messages = chat_request.messages
+        if settings.PRIVACY_ANONYMIZE_REQUESTS:
+            processed_messages = []
+            for message in chat_request.messages:
+                anonymization_result = anonymizer.anonymize_text(message.content)
+                processed_messages.append(Message(
+                    role=message.role,
+                    content=anonymization_result.anonymized_text
+                ))
+                
+                if anonymization_result.pii_matches:
+                    logger.info(
+                        "stream_chat_request_pii_anonymized",
+                        session_id=session.id,
+                        pii_types=[match.pii_type.value for match in anonymization_result.pii_matches],
+                        pii_count=len(anonymization_result.pii_matches)
+                    )
+
         logger.info(
             "stream_chat_request_received",
             session_id=session.id,
-            message_count=len(chat_request.messages),
+            message_count=len(processed_messages),
+            anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
         )
 
         async def event_generator():
@@ -112,9 +172,9 @@ async def chat_stream(
             """
             try:
                 full_response = ""
-                with llm_stream_duration_seconds.labels(model=agent.llm.model_name).time():
+                with llm_stream_duration_seconds.labels(model="llm").time():
                     async for chunk in agent.get_stream_response(
-                        chat_request.messages, session.id, user_id=session.user_id
+                        processed_messages, session.id, user_id=session.user_id
                      ):
                         full_response += chunk
                         response = StreamResponse(content=chunk, done=False)

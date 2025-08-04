@@ -1,0 +1,276 @@
+{
+  "id": null,
+  "title": "PratikoAI - Performance Monitoring",
+    "tags": ["pratikoai", "performance", "technical"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "API Response Time (95th percentile)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "refId": "A",
+            "legendFormat": "{{method}} {{endpoint}}"
+          },
+          {
+            "expr": "5.0",
+            "refId": "B",
+            "legendFormat": "SLA Threshold (5s)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Response Time (seconds)",
+            "show": true
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [5],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "2m",
+          "frequency": "30s",
+          "handler": 1,
+          "name": "High API Latency",
+          "noDataState": "no_data",
+          "notifications": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Cache Hit Ratio",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "cache_hit_ratio",
+            "refId": "A",
+            "legendFormat": "{{cache_type}}"
+          },
+          {
+            "expr": "0.8",
+            "refId": "B",
+            "legendFormat": "Target (80%)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Hit Ratio",
+            "max": 1,
+            "min": 0,
+            "show": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "System Resource Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_memory_bytes{type=\"rss\"} / 1024 / 1024",
+            "refId": "A",
+            "legendFormat": "Memory (MB)"
+          },
+          {
+            "expr": "cpu_usage_percent",
+            "refId": "B",
+            "legendFormat": "CPU (%)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Usage",
+            "show": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Database Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "database_connections_active",
+            "refId": "A",
+            "legendFormat": "{{database_type}} - {{status}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Connections",
+            "show": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "HTTP Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_request_duration_seconds_count[5m])",
+            "refId": "A",
+            "legendFormat": "{{method}} {{endpoint}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests/sec",
+            "show": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 6,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(api_errors_total[5m])",
+            "refId": "A",
+            "legendFormat": "{{error_category}} - {{endpoint}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Errors/sec",
+            "show": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": 7,
+        "title": "Redis Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "redis_memory_usage_bytes / 1024 / 1024",
+            "refId": "A",
+            "legendFormat": "{{instance}} (MB)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Memory (MB)",
+            "show": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        }
+      },
+      {
+        "id": 8,
+        "title": "Document Processing Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(document_processing_duration_seconds_bucket[5m]))",
+            "refId": "A",
+            "legendFormat": "{{operation_type}} - {{document_type}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Processing Time (seconds)",
+            "show": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 24
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": [
+        {
+          "name": "endpoint",
+          "type": "query",
+          "query": "label_values(http_request_duration_seconds_count, endpoint)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Performance Alerts",
+          "enable": true,
+          "iconColor": "orange",
+          "query": "ALERTS{category=\"performance\"}"
+        }
+      ]
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 1,
+    "links": []
+}

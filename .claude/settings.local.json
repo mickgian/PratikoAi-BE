@@ -7,7 +7,14 @@
       "Bash(chmod:*)",
       "Bash(python:*)",
       "Bash(find:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker stop:*)"
     ],
     "deny": []
   }

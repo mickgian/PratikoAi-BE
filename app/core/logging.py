@@ -23,6 +23,58 @@ from app.core.config import (
     settings,
 )
 
+# Lazy import to avoid circular dependencies
+_anonymizer = None
+
+
+def _get_anonymizer():
+    """Get anonymizer instance with lazy loading."""
+    global _anonymizer
+    if _anonymizer is None:
+        try:
+            from app.core.privacy.anonymizer import anonymizer
+            _anonymizer = anonymizer
+        except ImportError:
+            # If privacy module is not available, create a no-op anonymizer
+            class NoOpAnonymizer:
+                def anonymize_text(self, text, **kwargs):
+                    from app.core.privacy.anonymizer import AnonymizationResult
+                    return AnonymizationResult(anonymized_text=text)
+            _anonymizer = NoOpAnonymizer()
+    return _anonymizer
+
+
+def _anonymize_pii_processor(logger, method_name, event_dict):
+    """Structlog processor to anonymize PII in log messages."""
+    # Only anonymize if privacy features are enabled
+    privacy_enabled = getattr(settings, 'PRIVACY_ANONYMIZE_LOGS', True)
+    if not privacy_enabled:
+        return event_dict
+    
+    anonymizer = _get_anonymizer()
+    
+    # Fields that should be anonymized
+    sensitive_fields = [
+        'message', 'error', 'user_input', 'query', 'response', 
+        'email', 'phone', 'address', 'content', 'text'
+    ]
+    
+    for field in sensitive_fields:
+        if field in event_dict and isinstance(event_dict[field], str):
+            try:
+                result = anonymizer.anonymize_text(event_dict[field])
+                if result.pii_matches:  # Only replace if PII was found
+                    event_dict[field] = result.anonymized_text
+                    # Add anonymization metadata (but not in production to avoid noise)
+                    if settings.ENVIRONMENT == Environment.DEVELOPMENT:
+                        event_dict[f'{field}_pii_anonymized'] = len(result.pii_matches)
+            except Exception:
+                # If anonymization fails, continue without anonymizing
+                # We don't want logging failures to break the application
+                pass
+    
+    return event_dict
+
 # Ensure log directory exists
 settings.LOG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -112,6 +164,9 @@ def get_structlog_processors(include_file_info: bool = True) -> List[Any]:
 
     # Add environment info
     processors.append(lambda _, __, event_dict: {**event_dict, "environment": settings.ENVIRONMENT.value})
+    
+    # Add PII anonymization processor
+    processors.append(_anonymize_pii_processor)
 
     return processors
 

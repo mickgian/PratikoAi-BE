@@ -1,0 +1,302 @@
+{
+  "id": null,
+  "title": "PratikoAI - Business KPIs",
+    "tags": ["pratikoai", "business", "revenue"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "MRR Progress to €25k Target",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "monthly_revenue_eur / 25000 * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 40
+                },
+                {
+                  "color": "green",
+                  "value": 80
+                }
+              ]
+            }
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value"
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Monthly Revenue",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "monthly_revenue_eur",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyEUR",
+            "decimals": 0,
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 10000
+                },
+                {
+                  "color": "green",
+                  "value": 25000
+                }
+              ]
+            }
+          }
+        },
+        "options": {
+          "text": {
+            "titleSize": 16,
+            "valueSize": 32
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Active Subscriptions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "active_subscriptions_total{status=\"active\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 25
+                },
+                {
+                  "color": "green",
+                  "value": 50
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 0
+        }
+      },
+      {
+        "id": 4,
+        "title": "Subscription Status Breakdown",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "active_subscriptions_total",
+            "refId": "A",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "pieType": "pie",
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          },
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "Trial Conversions",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(trial_conversions_total[1h])",
+            "refId": "A",
+            "legendFormat": "{{conversion_type}} to {{plan_type}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Conversions/hour",
+            "show": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 6,
+        "title": "Italian Tax Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(italian_tax_calculations_total[5m])",
+            "refId": "A",
+            "legendFormat": "{{calculation_type}} - {{status}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Operations/sec",
+            "show": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 7,
+        "title": "Payment Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(payment_operations_total{status=\"succeeded\"}[1h]) / rate(payment_operations_total[1h]) * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 1,
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 90
+                },
+                {
+                  "color": "green",
+                  "value": 95
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": 8,
+        "title": "User Activity",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "active_users_total",
+            "refId": "A",
+            "legendFormat": "{{time_window}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Active Users",
+            "show": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 16
+        }
+      }
+    ],
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Revenue Milestones",
+          "enable": true,
+          "iconColor": "green",
+          "query": "monthly_revenue_eur > 10000"
+        }
+      ]
+    },
+    "refresh": "5m",
+    "schemaVersion": 27,
+    "version": 1,
+    "links": []
+}

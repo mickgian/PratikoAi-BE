@@ -126,6 +126,101 @@ docker-compose-logs:
 	fi
 	APP_ENV=$(ENV) docker-compose logs -f
 
+# Monitoring automation commands
+monitoring-daily:
+	@echo "Running daily monitoring report..."
+	@python monitoring/scripts/run_monitoring.py daily-report --email --format html
+
+monitoring-costs:
+	@echo "Running cost optimization analysis..."
+	@python monitoring/scripts/run_monitoring.py optimize-costs --detailed
+
+monitoring-health:
+	@echo "Running system health check..."
+	@python monitoring/scripts/run_monitoring.py health-check
+
+monitoring-backup:
+	@echo "Backing up Grafana dashboards..."
+	@python monitoring/scripts/run_monitoring.py backup-dashboards
+
+monitoring-suite:
+	@echo "Running full monitoring suite..."
+	@python monitoring/scripts/run_monitoring.py full-suite --email --webhook
+
+monitoring-setup:
+	@echo "Setting up monitoring task scheduling..."
+	@python monitoring/scripts/run_monitoring.py schedule
+
+monitoring-compare:
+	@echo "Comparing current dashboards with backups..."
+	@python monitoring/scripts/backup_dashboards.py --compare
+
+monitoring-test:
+	@echo "Testing alert configurations..."
+	@python monitoring/test_alerts.py --test all
+
+# Complete monitoring stack management
+monitoring-up:
+	@echo "Starting complete monitoring stack..."
+	@docker-compose up -d prometheus grafana alertmanager redis-exporter postgres-exporter node-exporter cadvisor
+
+monitoring-start: monitoring-up
+	@echo "Monitoring stack started successfully!"
+	@echo "Access URLs:"
+	@echo "  Grafana:     http://localhost:3000 (admin/admin)"
+	@echo "  Prometheus:  http://localhost:9090"
+	@echo "  AlertManager: http://localhost:9093"
+
+monitoring-stop:
+	@echo "Stopping monitoring stack..."
+	@docker-compose stop prometheus grafana alertmanager redis-exporter postgres-exporter node-exporter cadvisor
+
+monitoring-down:
+	@echo "Stopping and removing monitoring containers..."
+	@docker-compose down prometheus grafana alertmanager redis-exporter postgres-exporter node-exporter cadvisor
+
+monitoring-logs:
+	@echo "Viewing monitoring stack logs..."
+	@docker-compose logs -f prometheus grafana alertmanager
+
+monitoring-status:
+	@echo "Monitoring stack status:"
+	@docker-compose ps prometheus grafana alertmanager redis-exporter postgres-exporter node-exporter cadvisor
+
+monitoring-reset:
+	@echo "Resetting monitoring data (WARNING: This will delete all metrics and dashboards)..."
+	@read -p "Are you sure? Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ] || exit 1
+	@echo "Stopping monitoring stack..."
+	@docker-compose down prometheus grafana alertmanager
+	@echo "Removing monitoring volumes..."
+	@docker volume rm pratikoai-be_prometheus-data pratikoai-be_grafana-storage pratikoai-be_alertmanager-data 2>/dev/null || true
+	@echo "Restarting monitoring stack..."
+	@make monitoring-up
+	@echo "Monitoring stack reset complete!"
+
+monitoring-backup-volumes:
+	@echo "Backing up monitoring volumes..."
+	@mkdir -p monitoring/backups/volumes
+	@docker run --rm -v pratikoai-be_prometheus-data:/data -v $(PWD)/monitoring/backups/volumes:/backup alpine tar czf /backup/prometheus-data-$(shell date +%Y%m%d_%H%M%S).tar.gz -C /data .
+	@docker run --rm -v pratikoai-be_grafana-storage:/data -v $(PWD)/monitoring/backups/volumes:/backup alpine tar czf /backup/grafana-storage-$(shell date +%Y%m%d_%H%M%S).tar.gz -C /data .
+	@echo "Volume backups completed in monitoring/backups/volumes/"
+
+monitoring-restore-volumes:
+	@echo "Available volume backups:"
+	@ls -la monitoring/backups/volumes/ 2>/dev/null || echo "No backups found"
+	@echo "To restore, specify backup file: make monitoring-restore-volume BACKUP=filename.tar.gz"
+
+monitoring-restore-volume:
+	@if [ -z "$(BACKUP)" ]; then echo "Usage: make monitoring-restore-volume BACKUP=filename.tar.gz"; exit 1; fi
+	@echo "Restoring volume from $(BACKUP)..."
+	@make monitoring-down
+	@docker volume rm pratikoai-be_prometheus-data pratikoai-be_grafana-storage 2>/dev/null || true
+	@docker volume create pratikoai-be_prometheus-data
+	@docker volume create pratikoai-be_grafana-storage
+	@docker run --rm -v pratikoai-be_prometheus-data:/data -v $(PWD)/monitoring/backups/volumes:/backup alpine tar xzf /backup/$(BACKUP) -C /data
+	@make monitoring-up
+	@echo "Volume restoration completed!"
+
 # Help
 help:
 	@echo "Usage: make <target>"
@@ -150,3 +245,16 @@ help:
 	@echo "  docker-compose-up: Start the entire stack (API, Prometheus, Grafana)"
 	@echo "  docker-compose-down: Stop the entire stack"
 	@echo "  docker-compose-logs: View logs from all services"
+	@echo ""
+	@echo "Monitoring Commands:"
+	@echo "  monitoring-daily: Generate daily monitoring report with email"
+	@echo "  monitoring-costs: Run cost optimization analysis"
+	@echo "  monitoring-health: Run comprehensive health check"
+	@echo "  monitoring-backup: Backup Grafana dashboards"
+	@echo "  monitoring-suite: Run full monitoring automation suite"
+	@echo "  monitoring-setup: Set up automated monitoring scheduling"
+	@echo "  monitoring-compare: Compare dashboards with previous backups"
+	@echo "  monitoring-test: Test alert configurations"
+	@echo "  monitoring-start: Start monitoring stack (Prometheus + Grafana)"
+	@echo "  monitoring-stop: Stop monitoring stack"
+	@echo "  monitoring-logs: View monitoring stack logs"

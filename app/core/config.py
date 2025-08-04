@@ -138,6 +138,9 @@ class Settings:
         )
         self.API_V1_STR = os.getenv("API_V1_STR", "/api/v1")
         self.DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "t", "yes")
+        
+        # Base URL configuration
+        self.BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
         # CORS Settings
         self.ALLOWED_ORIGINS = parse_list_from_env("ALLOWED_ORIGINS", ["*"])
@@ -147,9 +150,24 @@ class Settings:
         self.LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
         self.LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 
-        # LangGraph Configuration
+        # LLM Configuration - Multi-Provider Support
+        # Legacy OpenAI config (for backward compatibility)
         self.LLM_API_KEY = os.getenv("LLM_API_KEY", "")
         self.LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+        
+        # Multi-provider configuration
+        self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", os.getenv("LLM_API_KEY", ""))
+        self.OPENAI_MODEL = os.getenv("OPENAI_MODEL", os.getenv("LLM_MODEL", "gpt-4o-mini"))
+        
+        self.ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+        self.ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
+        
+        # LLM routing configuration
+        self.LLM_ROUTING_STRATEGY = os.getenv("LLM_ROUTING_STRATEGY", "cost_optimized")  # cost_optimized, quality_first, balanced, failover
+        self.LLM_MAX_COST_EUR = float(os.getenv("LLM_MAX_COST_EUR", "0.020"))  # Max €0.02 per request
+        self.LLM_PREFERRED_PROVIDER = os.getenv("LLM_PREFERRED_PROVIDER", "")  # openai, anthropic
+        
+        # General LLM settings
         self.DEFAULT_LLM_TEMPERATURE = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.2"))
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
         self.MAX_LLM_CALL_RETRIES = int(os.getenv("MAX_LLM_CALL_RETRIES", "3"))
@@ -172,6 +190,44 @@ class Settings:
         self.POSTGRES_POOL_SIZE = int(os.getenv("POSTGRES_POOL_SIZE", "20"))
         self.POSTGRES_MAX_OVERFLOW = int(os.getenv("POSTGRES_MAX_OVERFLOW", "10"))
         self.CHECKPOINT_TABLES = ["checkpoint_blobs", "checkpoint_writes", "checkpoints"]
+        
+        # Redis Configuration for Caching
+        self.REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+        self.REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+        self.REDIS_MAX_CONNECTIONS = int(os.getenv("REDIS_MAX_CONNECTIONS", "10"))
+        
+        # Caching Configuration
+        self.CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() in ("true", "1", "t", "yes")
+        self.CACHE_DEFAULT_TTL = int(os.getenv("CACHE_DEFAULT_TTL", "3600"))  # 1 hour
+        self.CACHE_CONVERSATION_TTL = int(os.getenv("CACHE_CONVERSATION_TTL", "7200"))  # 2 hours
+        self.CACHE_LLM_RESPONSE_TTL = int(os.getenv("CACHE_LLM_RESPONSE_TTL", "86400"))  # 24 hours
+        self.CACHE_MAX_QUERY_SIZE = int(os.getenv("CACHE_MAX_QUERY_SIZE", "10000"))  # Max chars to cache
+        
+        # Privacy and GDPR Configuration
+        self.PRIVACY_ANONYMIZE_LOGS = os.getenv("PRIVACY_ANONYMIZE_LOGS", "true").lower() in ("true", "1", "t", "yes")
+        self.PRIVACY_ANONYMIZE_REQUESTS = os.getenv("PRIVACY_ANONYMIZE_REQUESTS", "true").lower() in ("true", "1", "t", "yes")
+        self.PRIVACY_DATA_RETENTION_DAYS = int(os.getenv("PRIVACY_DATA_RETENTION_DAYS", "365"))  # 1 year default
+        self.PRIVACY_CONSENT_EXPIRY_DAYS = int(os.getenv("PRIVACY_CONSENT_EXPIRY_DAYS", "365"))  # 1 year consent validity
+        self.PRIVACY_PII_CONFIDENCE_THRESHOLD = float(os.getenv("PRIVACY_PII_CONFIDENCE_THRESHOLD", "0.7"))  # PII detection threshold
+        
+        # Stripe Payment Configuration
+        self.STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+        self.STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+        self.STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+        self.STRIPE_MONTHLY_PRICE_ID = os.getenv("STRIPE_MONTHLY_PRICE_ID", "")  # €69/month price ID
+        self.STRIPE_TRIAL_PERIOD_DAYS = int(os.getenv("STRIPE_TRIAL_PERIOD_DAYS", "7"))  # 7-day trial
+        self.STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", f"{self.BASE_URL}/payment/success")
+        self.STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", f"{self.BASE_URL}/payment/cancel")
+        
+        # Vector Database Configuration (Pinecone)
+        self.PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
+        self.PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "")
+        self.PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "normoai-knowledge")
+        self.VECTOR_DIMENSION = int(os.getenv("VECTOR_DIMENSION", "384"))  # sentence-transformers dimension
+        self.EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+        self.VECTOR_SIMILARITY_THRESHOLD = float(os.getenv("VECTOR_SIMILARITY_THRESHOLD", "0.7"))
+        self.MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "10"))
 
         # Rate Limiting Configuration
         self.RATE_LIMIT_DEFAULT = parse_list_from_env("RATE_LIMIT_DEFAULT", ["200 per day", "50 per hour"])
@@ -200,6 +256,19 @@ class Settings:
         self.EVALUATION_BASE_URL = os.getenv("EVALUATION_BASE_URL", "https://api.openai.com/v1")
         self.EVALUATION_API_KEY = os.getenv("EVALUATION_API_KEY", self.LLM_API_KEY)
         self.EVALUATION_SLEEP_TIME = int(os.getenv("EVALUATION_SLEEP_TIME", "10"))
+
+        # Email Settings
+        self.SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+        self.SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+        self.SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+        self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+        self.FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@pratikoai.com")
+        
+        # Metrics Report Recipients (comma-separated)
+        self.METRICS_REPORT_RECIPIENTS = os.getenv("METRICS_REPORT_RECIPIENTS", "admin@pratikoai.com")
+        self.METRICS_REPORT_RECIPIENTS_ADMIN = os.getenv("METRICS_REPORT_RECIPIENTS_ADMIN", "")
+        self.METRICS_REPORT_RECIPIENTS_TECH = os.getenv("METRICS_REPORT_RECIPIENTS_TECH", "")
+        self.METRICS_REPORT_RECIPIENTS_BUSINESS = os.getenv("METRICS_REPORT_RECIPIENTS_BUSINESS", "")
 
         # Apply environment-specific settings
         self.apply_environment_settings()

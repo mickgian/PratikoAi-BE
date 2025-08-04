@@ -4,6 +4,7 @@ from typing import (
     Any,
     AsyncGenerator,
     Dict,
+    List,
     Literal,
     Optional,
 )
@@ -31,9 +32,15 @@ from app.core.config import (
     settings,
 )
 from app.core.langgraph.tools import tools
+from app.core.llm.factory import get_llm_provider, RoutingStrategy
+from app.core.llm.base import LLMProvider
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
+from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_llm_error
 from app.core.prompts import SYSTEM_PROMPT
+from app.core.decorators.cache import cache_llm_response, cache_conversation
+from app.services.cache import cache_service
+from app.services.usage_tracker import usage_tracker
 from app.schemas import (
     GraphState,
     Message,
@@ -53,39 +60,217 @@ class LangGraphAgent:
 
     def __init__(self):
         """Initialize the LangGraph Agent with necessary components."""
-        # Use environment-specific LLM model
-        self.llm = ChatOpenAI(
-            model=settings.LLM_MODEL,
-            temperature=settings.DEFAULT_LLM_TEMPERATURE,
-            api_key=settings.LLM_API_KEY,
-            max_tokens=settings.MAX_TOKENS,
-            **self._get_model_kwargs(),
-        ).bind_tools(tools)
+        # Initialize with fallback to legacy config for backward compatibility
         self.tools_by_name = {tool.name: tool for tool in tools}
         self._connection_pool: Optional[AsyncConnectionPool] = None
         self._graph: Optional[CompiledStateGraph] = None
+        self._current_provider: Optional[LLMProvider] = None
 
-        logger.info("llm_initialized", model=settings.LLM_MODEL, environment=settings.ENVIRONMENT.value)
+        logger.info("llm_agent_initialized", environment=settings.ENVIRONMENT.value)
 
-    def _get_model_kwargs(self) -> Dict[str, Any]:
-        """Get environment-specific model kwargs.
+    async def _get_cached_llm_response(self, provider: LLMProvider, messages: List[Message], tools: list, temperature: float, max_tokens: int):
+        """Get LLM response with caching support.
+        
+        Args:
+            provider: The LLM provider to use
+            messages: List of conversation messages
+            tools: Available tools for the LLM
+            temperature: Temperature setting
+            max_tokens: Maximum tokens to generate
+            
+        Returns:
+            LLMResponse: The response from the LLM (cached or fresh)
+        """
+        # Try to get cached response first
+        try:
+            cached_response = await cache_service.get_cached_response(
+                messages=messages,
+                model=provider.model,
+                temperature=temperature
+            )
+            if cached_response:
+                logger.info(
+                    "llm_cache_hit",
+                    model=provider.model,
+                    provider=provider.provider_type.value,
+                    message_count=len(messages)
+                )
+                
+                # Track cache hit usage
+                if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):
+                    try:
+                        await usage_tracker.track_llm_usage(
+                            user_id=self._current_user_id,
+                            session_id=self._current_session_id,
+                            provider=provider.provider_type.value,
+                            model=provider.model,
+                            llm_response=cached_response,
+                            response_time_ms=10,  # Minimal time for cache hit
+                            cache_hit=True,
+                            pii_detected=getattr(self, '_pii_detected', False),
+                            pii_types=getattr(self, '_pii_types', None)
+                        )
+                    except Exception as e:
+                        logger.error(
+                            "cache_hit_tracking_failed",
+                            error=str(e),
+                            provider=provider.provider_type.value,
+                            model=provider.model
+                        )
+                
+                return cached_response
+        except Exception as e:
+            logger.error(
+                "llm_cache_get_failed",
+                error=str(e),
+                model=provider.model
+            )
+        
+        # Get fresh response from provider
+        import time
+        start_time = time.time()
+        
+        response = await provider.chat_completion(
+            messages=messages,
+            tools=tools,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        
+        response_time_ms = int((time.time() - start_time) * 1000)
+        
+        # Track Prometheus metrics for this LLM call
+        try:
+            user_id = getattr(self, '_current_user_id', 'unknown')
+            
+            # Track API call success/failure
+            status = "success" if response else "error"
+            track_api_call(
+                provider=provider.provider_type.value,
+                model=provider.model,
+                status=status
+            )
+            
+            # Track cost if response contains cost information
+            if response and hasattr(response, 'cost_eur') and response.cost_eur:
+                track_llm_cost(
+                    provider=provider.provider_type.value,
+                    model=provider.model,
+                    user_id=user_id,
+                    cost_eur=response.cost_eur
+                )
+                
+        except Exception as e:
+            logger.error(
+                "prometheus_metrics_tracking_failed",
+                error=str(e),
+                provider=provider.provider_type.value,
+                model=provider.model
+            )
+        
+        # Track usage (only for non-cached responses)
+        if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):
+            try:
+                await usage_tracker.track_llm_usage(
+                    user_id=self._current_user_id,
+                    session_id=self._current_session_id,
+                    provider=provider.provider_type.value,
+                    model=provider.model,
+                    llm_response=response,
+                    response_time_ms=response_time_ms,
+                    cache_hit=False,
+                    pii_detected=getattr(self, '_pii_detected', False),
+                    pii_types=getattr(self, '_pii_types', None)
+                )
+            except Exception as e:
+                logger.error(
+                    "usage_tracking_failed",
+                    error=str(e),
+                    provider=provider.provider_type.value,
+                    model=provider.model
+                )
+        
+        # Cache the response for future use
+        try:
+            await cache_service.cache_response(
+                messages=messages,
+                model=provider.model,
+                response=response,
+                temperature=temperature
+            )
+            logger.info(
+                "llm_response_cached",
+                model=provider.model,
+                provider=provider.provider_type.value,
+                response_length=len(response.content)
+            )
+        except Exception as e:
+            logger.error(
+                "llm_cache_set_failed",
+                error=str(e),
+                model=provider.model
+            )
+        
+        return response
+
+    def _get_routing_strategy(self) -> RoutingStrategy:
+        """Get the LLM routing strategy from configuration.
 
         Returns:
-            Dict[str, Any]: Additional model arguments based on environment
+            RoutingStrategy: The configured routing strategy
         """
-        model_kwargs = {}
+        strategy_map = {
+            "cost_optimized": RoutingStrategy.COST_OPTIMIZED,
+            "quality_first": RoutingStrategy.QUALITY_FIRST,
+            "balanced": RoutingStrategy.BALANCED,
+            "failover": RoutingStrategy.FAILOVER,
+        }
+        
+        strategy_str = getattr(settings, 'LLM_ROUTING_STRATEGY', 'cost_optimized')
+        return strategy_map.get(strategy_str, RoutingStrategy.COST_OPTIMIZED)
 
-        # Development - we can use lower speeds for cost savings
-        if settings.ENVIRONMENT == Environment.DEVELOPMENT:
-            model_kwargs["top_p"] = 0.8
+    def _get_optimal_provider(self, messages: List[Message]) -> LLMProvider:
+        """Get the optimal LLM provider for the given messages.
 
-        # Production - use higher quality settings
-        elif settings.ENVIRONMENT == Environment.PRODUCTION:
-            model_kwargs["top_p"] = 0.95
-            model_kwargs["presence_penalty"] = 0.1
-            model_kwargs["frequency_penalty"] = 0.1
+        Args:
+            messages: List of conversation messages
 
-        return model_kwargs
+        Returns:
+            LLMProvider: The optimal provider for this request
+        """
+        try:
+            strategy = self._get_routing_strategy()
+            max_cost = getattr(settings, 'LLM_MAX_COST_EUR', 0.020)
+            preferred_provider = getattr(settings, 'LLM_PREFERRED_PROVIDER', None)
+            
+            provider = get_llm_provider(
+                messages=messages,
+                strategy=strategy,
+                max_cost_eur=max_cost,
+                preferred_provider=preferred_provider or None,
+            )
+            
+            logger.info(
+                "llm_provider_selected",
+                provider=provider.provider_type.value,
+                model=provider.model,
+                strategy=strategy.value,
+            )
+            
+            return provider
+            
+        except Exception as e:
+            logger.error(
+                "llm_provider_selection_failed",
+                error=str(e),
+                fallback_to_legacy=True,
+            )
+            # Fallback to legacy OpenAI configuration
+            from app.core.llm.providers.openai_provider import OpenAIProvider
+            return OpenAIProvider(
+                api_key=settings.LLM_API_KEY or settings.OPENAI_API_KEY,
+                model=settings.LLM_MODEL or settings.OPENAI_MODEL,
+            )
 
     async def _get_connection_pool(self) -> AsyncConnectionPool:
         """Get a PostgreSQL connection pool using environment-specific settings.
@@ -128,43 +313,96 @@ class LangGraphAgent:
         Returns:
             dict: Updated state with new messages.
         """
-        messages = prepare_messages(state.messages, self.llm, SYSTEM_PROMPT)
+        # Convert GraphState messages to Message objects for provider
+        conversation_messages = []
+        for msg in state.messages:
+            if hasattr(msg, 'role') and hasattr(msg, 'content'):
+                conversation_messages.append(Message(role=msg.role, content=msg.content))
+            else:
+                # Handle legacy message format
+                conversation_messages.append(Message(role="user", content=str(msg)))
+
+        # Add system prompt if not already present
+        if not conversation_messages or conversation_messages[0].role != "system":
+            system_message = Message(role="system", content=SYSTEM_PROMPT)
+            conversation_messages.insert(0, system_message)
 
         llm_calls_num = 0
-
-        # Configure retry attempts based on environment
         max_retries = settings.MAX_LLM_CALL_RETRIES
 
         for attempt in range(max_retries):
             try:
-                with llm_inference_duration_seconds.labels(model=self.llm.model_name).time():
-                    generated_state = {"messages": [await self.llm.ainvoke(dump_messages(messages))]}
+                # Get optimal provider for this conversation
+                provider = self._get_optimal_provider(conversation_messages)
+                self._current_provider = provider
+
+                # Make the LLM call with tools (with caching)
+                with llm_inference_duration_seconds.labels(model=provider.model).time():
+                    response = await self._get_cached_llm_response(
+                        provider=provider,
+                        messages=conversation_messages,
+                        tools=list(self.tools_by_name.values()),
+                        temperature=settings.DEFAULT_LLM_TEMPERATURE,
+                        max_tokens=settings.MAX_TOKENS,
+                    )
+
+                # Convert response back to LangChain format
+                if response.tool_calls:
+                    # Create AIMessage with tool calls
+                    from langchain_core.messages import AIMessage
+                    ai_message = AIMessage(
+                        content=response.content,
+                        tool_calls=response.tool_calls
+                    )
+                else:
+                    # Create simple AIMessage
+                    from langchain_core.messages import AIMessage
+                    ai_message = AIMessage(content=response.content)
+
                 logger.info(
                     "llm_response_generated",
                     session_id=state.session_id,
                     llm_calls_num=llm_calls_num + 1,
-                    model=settings.LLM_MODEL,
+                    model=provider.model,
+                    provider=provider.provider_type.value,
+                    cost_estimate=response.cost_estimate,
                     environment=settings.ENVIRONMENT.value,
                 )
-                return generated_state
-            except OpenAIError as e:
+                
+                return {"messages": [ai_message]}
+
+            except Exception as e:
                 logger.error(
                     "llm_call_failed",
                     llm_calls_num=llm_calls_num,
                     attempt=attempt + 1,
                     max_retries=max_retries,
                     error=str(e),
+                    provider=getattr(self._current_provider, 'provider_type', {}).get('value', 'unknown') if self._current_provider else 'unknown',
                     environment=settings.ENVIRONMENT.value,
                 )
                 llm_calls_num += 1
 
-                # In production, we might want to fall back to a more reliable model
+                # In production, we might want to fall back to a different provider/model
                 if settings.ENVIRONMENT == Environment.PRODUCTION and attempt == max_retries - 2:
-                    fallback_model = "gpt-4o"
                     logger.warning(
-                        "using_fallback_model", model=fallback_model, environment=settings.ENVIRONMENT.value
+                        "attempting_fallback_provider",
+                        environment=settings.ENVIRONMENT.value
                     )
-                    self.llm.model_name = fallback_model
+                    # Force failover strategy for next attempt
+                    try:
+                        fallback_provider = get_llm_provider(
+                            messages=conversation_messages,
+                            strategy=RoutingStrategy.FAILOVER,
+                            max_cost_eur=settings.LLM_MAX_COST_EUR * 2,  # Allow higher cost for fallback
+                        )
+                        self._current_provider = fallback_provider
+                    except Exception as fallback_error:
+                        logger.error(
+                            "fallback_provider_selection_failed",
+                            error=str(fallback_error),
+                            environment=settings.ENVIRONMENT.value,
+                        )
 
                 continue
 
@@ -277,6 +515,10 @@ class LangGraphAgent:
         Returns:
             list[dict]: The response from the LLM.
         """
+        # Store user and session info for tracking
+        self._current_user_id = user_id
+        self._current_session_id = session_id
+        
         if self._graph is None:
             self._graph = await self.create_graph()
         config = {
@@ -297,6 +539,10 @@ class LangGraphAgent:
         except Exception as e:
             logger.error(f"Error getting response: {str(e)}")
             raise e
+        finally:
+            # Clean up tracking info
+            self._current_user_id = None
+            self._current_session_id = None
 
     async def get_stream_response(
         self, messages: list[Message], session_id: str, user_id: Optional[str] = None
@@ -311,6 +557,10 @@ class LangGraphAgent:
         Yields:
             str: Tokens of the LLM response.
         """
+        # Store user and session info for tracking
+        self._current_user_id = user_id
+        self._current_session_id = session_id
+        
         config = {
             "configurable": {"thread_id": session_id},
             "callbacks": [
@@ -335,6 +585,10 @@ class LangGraphAgent:
         except Exception as stream_error:
             logger.error("Error in stream processing", error=str(stream_error), session_id=session_id)
             raise stream_error
+        finally:
+            # Clean up tracking info
+            self._current_user_id = None
+            self._current_session_id = None
 
     async def get_chat_history(self, session_id: str) -> list[Message]:
         """Get the chat history for a given thread ID.
@@ -345,13 +599,49 @@ class LangGraphAgent:
         Returns:
             list[Message]: The chat history.
         """
+        # Try to get cached conversation first
+        try:
+            cached_messages = await cache_service.get_conversation_cache(session_id)
+            if cached_messages:
+                logger.info(
+                    "conversation_cache_hit",
+                    session_id=session_id,
+                    message_count=len(cached_messages)
+                )
+                return cached_messages
+        except Exception as e:
+            logger.error(
+                "conversation_cache_get_failed",
+                error=str(e),
+                session_id=session_id
+            )
+
+        # Get from database if not cached
         if self._graph is None:
             self._graph = await self.create_graph()
 
         state: StateSnapshot = await sync_to_async(self._graph.get_state)(
             config={"configurable": {"thread_id": session_id}}
         )
-        return self.__process_messages(state.values["messages"]) if state.values else []
+        messages = self.__process_messages(state.values["messages"]) if state.values else []
+        
+        # Cache the conversation for future use
+        if messages:
+            try:
+                await cache_service.cache_conversation(session_id, messages)
+                logger.info(
+                    "conversation_cached",
+                    session_id=session_id,
+                    message_count=len(messages)
+                )
+            except Exception as e:
+                logger.error(
+                    "conversation_cache_set_failed",
+                    error=str(e),
+                    session_id=session_id
+                )
+        
+        return messages
 
     def __process_messages(self, messages: list[BaseMessage]) -> list[Message]:
         openai_style_messages = convert_to_openai_messages(messages)
@@ -372,6 +662,17 @@ class LangGraphAgent:
             Exception: If there's an error clearing the chat history.
         """
         try:
+            # Clear cached conversation first
+            try:
+                await cache_service.invalidate_conversation(session_id)
+                logger.info("conversation_cache_invalidated", session_id=session_id)
+            except Exception as e:
+                logger.error(
+                    "conversation_cache_invalidation_failed",
+                    error=str(e),
+                    session_id=session_id
+                )
+
             # Make sure the pool is initialized in the current event loop
             conn_pool = await self._get_connection_pool()
 

@@ -1,0 +1,214 @@
+# PostgreSQL custom queries for PratikoAI business metrics
+pg_replication:
+  query: "SELECT CASE WHEN NOT pg_is_in_recovery() THEN 0 ELSE GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()))) END AS lag"
+  master: true
+  metrics:
+    - lag:
+        usage: "GAUGE"
+        description: "Replication lag behind master in seconds"
+
+pg_postmaster:
+  query: "SELECT pg_postmaster_start_time as start_time_seconds from pg_postmaster_start_time()"
+  master: true
+  metrics:
+    - start_time_seconds:
+        usage: "GAUGE"
+        description: "Time at which postmaster started"
+
+# PratikoAI Business Metrics
+pratikoai_active_users:
+  query: |
+    SELECT 
+      COUNT(DISTINCT user_id) as total_users,
+      COUNT(CASE WHEN created_at > NOW() - INTERVAL '24 hours' THEN 1 END) as active_24h,
+      COUNT(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN 1 END) as active_7d,
+      COUNT(CASE WHEN created_at > NOW() - INTERVAL '30 days' THEN 1 END) as active_30d
+    FROM sessions 
+    WHERE is_deleted = false
+  metrics:
+    - total_users:
+        usage: "GAUGE"
+        description: "Total number of registered users"
+    - active_24h:
+        usage: "GAUGE" 
+        description: "Users active in last 24 hours"
+    - active_7d:
+        usage: "GAUGE"
+        description: "Users active in last 7 days"
+    - active_30d:
+        usage: "GAUGE"
+        description: "Users active in last 30 days"
+
+pratikoai_subscriptions:
+  query: |
+    SELECT 
+      status,
+      plan_type,
+      COUNT(*) as subscription_count,
+      SUM(amount_eur) as total_revenue
+    FROM subscriptions 
+    WHERE status IN ('active', 'trialing', 'past_due', 'canceled')
+    GROUP BY status, plan_type
+  metrics:
+    - subscription_count:
+        usage: "GAUGE"
+        description: "Number of subscriptions by status and plan"
+        labels:
+          - status
+          - plan_type
+    - total_revenue:
+        usage: "GAUGE"
+        description: "Total revenue by subscription status and plan"
+        labels:
+          - status
+          - plan_type
+
+pratikoai_payments:
+  query: |
+    SELECT 
+      status,
+      payment_method_type,
+      COUNT(*) as payment_count,
+      SUM(amount_eur) as total_amount,
+      AVG(amount_eur) as avg_amount
+    FROM payments 
+    WHERE created_at > NOW() - INTERVAL '30 days'
+    GROUP BY status, payment_method_type
+  metrics:
+    - payment_count:
+        usage: "GAUGE"
+        description: "Payment count by status and method (30 days)"
+        labels:
+          - status
+          - payment_method_type
+    - total_amount:
+        usage: "GAUGE"
+        description: "Total payment amount by status and method (30 days)"
+        labels:
+          - status
+          - payment_method_type
+    - avg_amount:
+        usage: "GAUGE"
+        description: "Average payment amount by status and method (30 days)"
+        labels:
+          - status
+          - payment_method_type
+
+pratikoai_italian_knowledge:
+  query: |
+    SELECT 
+      'documents' as resource_type,
+      COUNT(*) as total_count,
+      COUNT(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN 1 END) as recent_count,
+      AVG(LENGTH(content)) as avg_size
+    FROM italian_documents
+    WHERE is_active = true
+    UNION ALL
+    SELECT 
+      'tax_calculations' as resource_type,
+      COUNT(*) as total_count,
+      COUNT(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN 1 END) as recent_count,
+      AVG(amount_eur) as avg_size
+    FROM italian_tax_calculations
+    WHERE created_at > NOW() - INTERVAL '90 days'
+  metrics:
+    - total_count:
+        usage: "GAUGE"
+        description: "Total count of Italian resources"
+        labels:
+          - resource_type
+    - recent_count:
+        usage: "GAUGE"
+        description: "Recent count of Italian resources (7 days)"
+        labels:
+          - resource_type
+    - avg_size:
+        usage: "GAUGE"
+        description: "Average size/value of Italian resources"
+        labels:
+          - resource_type
+
+pratikoai_database_performance:
+  query: |
+    SELECT 
+      schemaname,
+      tablename,
+      n_tup_ins as inserts,
+      n_tup_upd as updates,
+      n_tup_del as deletes,
+      n_live_tup as live_tuples,
+      n_dead_tup as dead_tuples,
+      last_vacuum,
+      last_autovacuum,
+      last_analyze,
+      last_autoanalyze
+    FROM pg_stat_user_tables 
+    WHERE schemaname = 'public'
+    ORDER BY n_live_tup DESC
+    LIMIT 10
+  metrics:
+    - inserts:
+        usage: "COUNTER"
+        description: "Number of rows inserted"
+        labels:
+          - schemaname
+          - tablename
+    - updates:
+        usage: "COUNTER"
+        description: "Number of rows updated"
+        labels:
+          - schemaname
+          - tablename
+    - deletes:
+        usage: "COUNTER"
+        description: "Number of rows deleted"
+        labels:
+          - schemaname
+          - tablename
+    - live_tuples:
+        usage: "GAUGE"
+        description: "Number of live rows"
+        labels:
+          - schemaname
+          - tablename
+    - dead_tuples:
+        usage: "GAUGE"
+        description: "Number of dead rows"
+        labels:
+          - schemaname
+          - tablename
+
+pratikoai_slow_queries:
+  query: |
+    SELECT 
+      query,
+      calls,
+      total_time,
+      mean_time,
+      stddev_time,
+      rows
+    FROM pg_stat_statements 
+    WHERE mean_time > 100
+    ORDER BY mean_time DESC 
+    LIMIT 5
+  metrics:
+    - calls:
+        usage: "COUNTER"
+        description: "Number of times executed"
+        labels:
+          - query
+    - total_time:
+        usage: "COUNTER"
+        description: "Total time spent in milliseconds"
+        labels:
+          - query
+    - mean_time:
+        usage: "GAUGE"
+        description: "Mean time per execution in milliseconds"
+        labels:
+          - query
+    - rows:
+        usage: "COUNTER"
+        description: "Total rows retrieved or affected"
+        labels:
+          - query

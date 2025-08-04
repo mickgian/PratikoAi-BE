@@ -1,0 +1,47 @@
+# Pre-commit hooks configuration
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  # Check for sensitive data
+  - repo: local
+    hooks:
+      - id: check-sensitive-data
+        name: Check for sensitive data
+        entry: python scripts/check_sensitive_data.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Python specific
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        language_version: python3.11
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  # Security checks
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: .*\.(lock|example)$

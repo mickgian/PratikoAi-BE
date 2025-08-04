@@ -130,14 +130,50 @@
 
   ## Monitoring Stack
 
-  • Prometheus metrics: http://localhost:9090
-  • Grafana dashboards: http://localhost:3000 (admin/admin)
-  • Langfuse LLM tracing integration
-  • Pre-configured dashboards for:
-  - API performance metrics
-  - Rate limiting statistics
-  - Database performance
-  - System resource usage
+  ### 📊 **Quick Access URLs**
+  • **Grafana Dashboards**: http://localhost:3000 (admin/admin)
+  • **Prometheus Metrics**: http://localhost:9090
+  • **Langfuse LLM Tracing**: http://localhost:3000 (if configured)
+  • **AlertManager**: http://localhost:9093
+
+  ### 🎛️ **Available Dashboards**
+  • **System Overview**: Executive summary of all key metrics
+  • **Cost Analysis**: User cost tracking (€2.00/month target)
+  • **Business Metrics**: Revenue tracking (€25k ARR target)
+  • **Performance**: API response times and system health
+  • **Alert Management**: Active alerts and incident tracking
+
+  ### 🚨 **Alert System**
+  • **14 Critical Alerts** across cost, business, performance, security
+  • **4 Notification Channels**: Email, Slack, Webhook, PagerDuty
+  • **Business-Aligned Thresholds**: €2.50/user cost, 5s API response, 95% payment success
+
+  ### 🤖 **Automation Scripts**
+  • **Daily Reports**: `make monitoring-daily` - Email business summaries
+  • **Cost Optimization**: `make monitoring-costs` - Identify savings opportunities  
+  • **Health Checks**: `make monitoring-health` - System validation
+  • **Dashboard Backups**: `make monitoring-backup` - Configuration protection
+
+  ### 🚀 **Getting Started**
+  ```bash
+  # Start monitoring stack
+  make monitoring-start
+  
+  # Run health check
+  make monitoring-health
+  
+  # Generate daily report
+  make monitoring-daily
+  
+  # Full monitoring suite
+  make monitoring-suite
+  ```
+
+  ### 📚 **Documentation**
+  • **Complete Guide**: [MONITORING.md](MONITORING.md) - Full system documentation
+  • **Quick Start**: [monitoring/QUICK_START.md](monitoring/QUICK_START.md) - 15-minute setup
+  • **Alert Runbooks**: [monitoring/RUNBOOKS.md](monitoring/RUNBOOKS.md) - Response procedures
+  • **Automation Guide**: [monitoring/AUTOMATION_GUIDE.md](monitoring/AUTOMATION_GUIDE.md) - Scripts usage
 
   ## Model Evaluation
 

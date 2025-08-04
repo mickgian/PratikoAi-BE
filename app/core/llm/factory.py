@@ -9,6 +9,7 @@ from app.core.llm.providers.openai_provider import OpenAIProvider
 from app.core.llm.providers.anthropic_provider import AnthropicProvider
 from app.core.llm.cost_calculator import CostCalculator, QueryComplexity
 from app.core.logging import logger
+from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_llm_error
 from app.schemas.chat import Message
 
 

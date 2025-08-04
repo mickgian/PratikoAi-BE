@@ -70,7 +70,7 @@ class Subscription(SQLModel, table=True):
     ended_at: Optional[datetime] = Field(default=None, description="End timestamp")
     
     # Additional data
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
+    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
     
     __table_args__ = (
         Index("idx_subscription_user_id", "user_id"),
@@ -115,7 +115,7 @@ class Payment(SQLModel, table=True):
     failure_code: Optional[str] = Field(default=None, description="Stripe failure code")
     
     # Additional data
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
+    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
     
     __table_args__ = (
         Index("idx_payment_user_id", "user_id"),
@@ -165,7 +165,7 @@ class Invoice(SQLModel, table=True):
     hosted_invoice_url: Optional[str] = Field(default=None, description="Stripe hosted invoice URL")
     
     # Additional data
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
+    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
     
     __table_args__ = (
         Index("idx_invoice_user_id", "user_id"),
@@ -208,7 +208,7 @@ class Customer(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
     # Additional data
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
+    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
     
     __table_args__ = (
         Index("idx_customer_user_id", "user_id"),

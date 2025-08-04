@@ -3,7 +3,7 @@
 ## Never Commit Sensitive Data
 
 ### ❌ What NOT to commit:
-- Personal email addresses (e.g., michele.giannone@gmail.com)
+- Personal email addresses (e.g., john.smith@gmail.com)
 - Real API keys (OpenAI, Stripe, etc.)
 - Actual passwords or tokens
 - Production database URLs with credentials
@@ -47,7 +47,7 @@ API_KEY=your-api-key-here
 DATABASE_URL=postgresql://username:password@localhost:5432/dbname
 
 # Bad examples (too specific):
-EMAIL=michele.giannone@gmail.com
+EMAIL=john.smith@gmail.com
 API_KEY=sk-proj-ABC123...
 DATABASE_URL=postgresql://admin:secretpass@prod.db.com:5432/pratikoai
 ```
@@ -58,7 +58,7 @@ DATABASE_URL=postgresql://admin:secretpass@prod.db.com:5432/pratikoai
 "Configure your email in METRICS_REPORT_RECIPIENTS environment variable"
 
 # Bad documentation:
-"Send reports to michele.giannone@gmail.com"
+"Send reports to john.smith@gmail.com"
 ```
 
 ## Git Configuration

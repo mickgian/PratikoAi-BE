@@ -1,0 +1,235 @@
+groups:
+  # =============================================================================  
+  # FINANCIAL ALERTS - Critical for business sustainability
+  # =============================================================================
+  - name: financial_alerts
+    rules:
+      - alert: HighUserCost
+        expr: user_monthly_cost_eur > 2.5
+        for: 5m
+        labels:
+          severity: critical
+          category: financial
+        annotations:
+          summary: "User monthly cost exceeds target"
+          description: "User {{ $labels.user_id }} has monthly cost of €{{ $value }}, exceeding target of €2.00"
+          
+      - alert: LowMonthlyRevenue
+        expr: monthly_revenue_eur < 20000
+        for: 1h
+        labels:
+          severity: warning
+          category: financial
+        annotations:
+          summary: "Monthly revenue below target"
+          description: "Current MRR is €{{ $value }}, target is €25k"
+          
+      - alert: HighLLMCosts
+        expr: rate(llm_cost_total_eur[1h]) > 50
+        for: 15m
+        labels:
+          severity: warning
+          category: cost_optimization
+        annotations:
+          summary: "LLM costs increasing rapidly"
+          description: "LLM costs are increasing at €{{ $value }}/hour"
+
+  # =============================================================================
+  # PERFORMANCE ALERTS - System health and user experience
+  # =============================================================================
+  - name: performance_alerts
+    rules:
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High API response time"
+          description: "95th percentile latency is {{ $value }}s on {{ $labels.endpoint }}"
+          
+      - alert: LowCacheHitRatio
+        expr: cache_hit_ratio < 0.7
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Low cache hit ratio"
+          description: "Cache hit ratio for {{ $labels.cache_type }} is {{ $value }}, target >0.8"
+          
+      - alert: HighErrorRate
+        expr: rate(api_errors_total[5m]) > 0.05 * rate(http_request_duration_seconds_count[5m])
+        for: 2m
+        labels:
+          severity: critical
+          category: reliability
+        annotations:
+          summary: "High API error rate"
+          description: "Error rate is {{ $value }} on {{ $labels.endpoint }}"
+
+  # =============================================================================
+  # BUSINESS OPERATION ALERTS - Core functionality monitoring
+  # =============================================================================
+  - name: business_alerts
+    rules:
+      - alert: PaymentFailures
+        expr: rate(payment_operations_total{status="failed"}[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          category: payments
+        annotations:
+          summary: "High payment failure rate"
+          description: "Payment failure rate is {{ $value }} for {{ $labels.payment_method }}"
+          
+      - alert: ItalianTaxCalculationFailures
+        expr: rate(italian_tax_calculations_total{status="failed"}[15m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: business_logic
+        annotations:
+          summary: "Italian tax calculation failures"
+          description: "Tax calculation failure rate is {{ $value }} for {{ $labels.calculation_type }}"
+          
+      - alert: DocumentProcessingFailures
+        expr: rate(document_processing_operations_total{status="failed"}[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: document_processing
+        annotations:
+          summary: "Document processing failures"
+          description: "Document processing failure rate is {{ $value }} for {{ $labels.document_type }}"
+
+  # =============================================================================
+  # SYSTEM RESOURCE ALERTS - Infrastructure monitoring
+  # =============================================================================
+  - name: system_alerts
+    rules:
+      - alert: HighMemoryUsage
+        expr: process_memory_bytes{type="rss"} > 1e+9  # 1GB
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }} bytes"
+          
+      - alert: HighCPUUsage
+        expr: cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}%"
+          
+      - alert: DatabaseConnectionIssues
+        expr: database_connections_active{status="active"} < 1
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "No active database connections"
+          description: "Database connectivity issues detected"
+          
+      - alert: RedisMemoryHigh
+        expr: redis_memory_usage_bytes > 500e+6  # 500MB
+        for: 10m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "High Redis memory usage"
+          description: "Redis memory usage is {{ $value }} bytes"
+
+  # =============================================================================
+  # SECURITY ALERTS - Security event monitoring
+  # =============================================================================
+  - name: security_alerts
+    rules:
+      - alert: HighFailedAuthAttempts
+        expr: rate(api_errors_total{error_category="authentication"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failures: {{ $value }}/sec on {{ $labels.endpoint }}"
+          
+      - alert: SuspiciousUserActivity
+        expr: rate(user_actions_total[1m]) > 100
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Unusually high user activity"
+          description: "User activity rate: {{ $value }}/sec for {{ $labels.feature }}"
+
+  # =============================================================================
+  # BUSINESS KPI ALERTS - Growth and conversion tracking
+  # =============================================================================
+  - name: business_kpi_alerts
+    rules:
+      - alert: LowTrialConversions
+        expr: rate(trial_conversions_total[24h]) < 0.1
+        for: 1h
+        labels:
+          severity: warning
+          category: growth
+        annotations:
+          summary: "Low trial conversion rate"
+          description: "Trial conversion rate is {{ $value }} (target >10%)"
+          
+      - alert: SubscriptionChurn
+        expr: rate(active_subscriptions_total{status="cancelled"}[1h]) > 0.05
+        for: 30m
+        labels:
+          severity: warning
+          category: retention
+        annotations:
+          summary: "High subscription churn rate"
+          description: "Subscription churn rate is {{ $value }}"
+          
+      - alert: KnowledgeBaseQueryFailures
+        expr: rate(knowledge_base_queries_total{status="failed"}[10m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: user_experience
+        annotations:
+          summary: "Knowledge base query failures"
+          description: "Query failure rate is {{ $value }} for {{ $labels.query_type }}"
+
+  # =============================================================================
+  # APPLICATION HEALTH ALERTS - Service availability
+  # =============================================================================
+  - name: health_alerts
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service is down"
+          description: "{{ $labels.job }} service is down"
+          
+      - alert: LLMProviderErrors
+        expr: rate(llm_errors_total[5m]) > 0.02
+        for: 5m
+        labels:
+          severity: warning
+          category: external_dependency
+        annotations:
+          summary: "LLM provider errors"
+          description: "LLM error rate is {{ $value }}/sec for {{ $labels.provider }}/{{ $labels.model }}"

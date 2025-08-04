@@ -9,6 +9,9 @@ from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
 from app.core.logging import logger
 from app.services.database import database_service
+from app.core.monitoring.metrics import (
+    update_subscription_metrics, update_monthly_revenue, track_trial_conversion
+)
 from app.models.payment import (
     Subscription, Payment, Invoice, Customer, WebhookEvent,
     SubscriptionStatus, PaymentStatus, PlanType
@@ -659,6 +662,43 @@ class StripeService:
                 error=str(e)
             )
             return []
+
+    async def update_business_metrics(self):
+        """Update Prometheus metrics for business performance."""
+        try:
+            async with database_service.get_db() as db:
+                # Count active subscriptions by status
+                active_query = select(Subscription).where(Subscription.status == SubscriptionStatus.ACTIVE)
+                active_result = await db.execute(active_query)
+                active_subscriptions = len(active_result.scalars().all())
+                
+                trial_query = select(Subscription).where(Subscription.status == SubscriptionStatus.TRIALING)
+                trial_result = await db.execute(trial_query)
+                trial_subscriptions = len(trial_result.scalars().all())
+                
+                cancelled_query = select(Subscription).where(Subscription.status == SubscriptionStatus.CANCELLED)
+                cancelled_result = await db.execute(cancelled_query)
+                cancelled_subscriptions = len(cancelled_result.scalars().all())
+                
+                # Update subscription metrics
+                update_subscription_metrics('monthly', 'active', active_subscriptions)
+                update_subscription_metrics('monthly', 'trial', trial_subscriptions)
+                update_subscription_metrics('monthly', 'cancelled', cancelled_subscriptions)
+                
+                # Calculate monthly revenue (€69 per active subscription)
+                monthly_revenue_eur = active_subscriptions * 69.0
+                update_monthly_revenue(monthly_revenue_eur)
+                
+                logger.info(
+                    "business_metrics_updated",
+                    active_subscriptions=active_subscriptions,
+                    trial_subscriptions=trial_subscriptions,
+                    cancelled_subscriptions=cancelled_subscriptions,
+                    monthly_revenue_eur=monthly_revenue_eur
+                )
+                
+        except Exception as e:
+            logger.error("business_metrics_update_failed", error=str(e))
 
 
 # Global instance

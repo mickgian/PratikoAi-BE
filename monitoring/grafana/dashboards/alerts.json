@@ -1,0 +1,319 @@
+{
+  "id": null,
+  "title": "PratikoAI - Alert Management",
+  "tags": ["pratikoai", "alerts", "monitoring"],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active Alerts by Severity",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count by (severity) (ALERTS{alertstate=\"firing\"})",
+          "refId": "A",
+          "legendFormat": "{{severity}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "pattern": "critical",
+                "result": {
+                  "color": "red"
+                }
+              }
+            },
+            {
+              "options": {
+                "pattern": "warning", 
+                "result": {
+                  "color": "yellow"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "Alert Frequency (Last 24h)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "increase(prometheus_notifications_total[1h])",
+          "refId": "A",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "yAxes": [
+        {
+          "label": "Alerts",
+          "show": true
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "Alerts by Team",
+      "type": "piechart",
+      "targets": [
+        {
+          "expr": "count by (team) (ALERTS{alertstate=\"firing\"})",
+          "refId": "A",
+          "legendFormat": "{{team}}"
+        }
+      ],
+      "options": {
+        "pieType": "pie",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      }
+    },
+    {
+      "id": 4,
+      "title": "Cost Alert Status",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "ALERTS{category=\"cost\"}",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "alertname": "Alert Name",
+              "alertstate": "Status",
+              "severity": "Severity",
+              "team": "Team"
+            }
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      }
+    },
+    {
+      "id": 5,
+      "title": "Business Alert Status", 
+      "type": "table",
+      "targets": [
+        {
+          "expr": "ALERTS{category=~\"payments|revenue|retention|acquisition\"}",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "alertname": "Alert Name",
+              "alertstate": "Status", 
+              "severity": "Severity",
+              "category": "Category"
+            }
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      }
+    },
+    {
+      "id": 6,
+      "title": "Performance Alert Trends",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(ALERTS{category=\"performance\",alertstate=\"firing\"}[5m])",
+          "refId": "A",
+          "legendFormat": "{{alertname}}"
+        }
+      ],
+      "yAxes": [
+        {
+          "label": "Alert Rate",
+          "show": true
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      }
+    },
+    {
+      "id": 7,
+      "title": "Security Alert Timeline",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "ALERTS{category=\"authentication\"}",
+          "refId": "A",
+          "legendFormat": "Auth Failures"
+        },
+        {
+          "expr": "ALERTS{category=\"anomaly\"}",
+          "refId": "B",
+          "legendFormat": "Usage Anomalies"
+        }
+      ],
+      "yAxes": [
+        {
+          "label": "Active Alerts",
+          "show": true
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      }
+    },
+    {
+      "id": 8,
+      "title": "Alert Resolution Time",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "avg(prometheus_notifications_total - prometheus_notifications_total offset 1h)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "minutes",
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 15
+              },
+              {
+                "color": "red",
+                "value": 60
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 24
+      }
+    },
+    {
+      "id": 9,
+      "title": "Critical Thresholds Status",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "label_replace(avg(user_monthly_cost_eur), \"metric\", \"User Cost (€)\", \"\", \"\")",
+          "refId": "A"
+        },
+        {
+          "expr": "label_replace(monthly_revenue_eur, \"metric\", \"MRR (€)\", \"\", \"\")",
+          "refId": "B"
+        },
+        {
+          "expr": "label_replace(histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])), \"metric\", \"API p95 (s)\", \"\", \"\")",
+          "refId": "C"
+        },
+        {
+          "expr": "label_replace(min(cache_hit_ratio), \"metric\", \"Cache Hit %\", \"\", \"\")",
+          "refId": "D"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "metric": "Metric",
+              "Value": "Current Value"
+            }
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 8,
+        "y": 24
+      }
+    }
+  ],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "schemaVersion": 27,
+  "version": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "severity",
+        "type": "query",
+        "query": "label_values(ALERTS, severity)", 
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "team",
+        "type": "query",
+        "query": "label_values(ALERTS, team)",
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  }
+}

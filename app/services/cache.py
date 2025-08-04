@@ -18,6 +18,7 @@ except ImportError:
     REDIS_AVAILABLE = False
 
 from app.core.config import settings
+from app.core.monitoring.metrics import track_cache_performance
 from app.core.logging import logger
 from app.schemas.chat import Message
 from app.core.llm.base import LLMResponse
@@ -169,6 +170,15 @@ class CacheService:
                         model=model,
                         cache_key=cache_key
                     )
+                    
+                    # Track cache hit in Prometheus
+                    try:
+                        # Cache hit metrics will be updated by periodic jobs
+                        # This individual hit is logged for statistics
+                        pass
+                    except Exception as e:
+                        logger.error("cache_metrics_tracking_failed", error=str(e))
+                    
                     return LLMResponse(**response_data)
                 except (json.JSONDecodeError, TypeError) as e:
                     logger.warning(
@@ -518,6 +528,36 @@ class CacheService:
                 logger.error("redis_pool_close_failed", error=str(e))
             finally:
                 self._connection_pool = None
+
+    async def update_cache_metrics(self):
+        """Update Prometheus metrics for cache performance."""
+        try:
+            redis_client = await self._get_redis()
+            if not redis_client:
+                return
+                
+            # Get cache statistics
+            info = await redis_client.info("stats")
+            
+            # Calculate hit ratio if available
+            hits = info.get('keyspace_hits', 0)
+            misses = info.get('keyspace_misses', 0)
+            total = hits + misses
+            
+            if total > 0:
+                hit_ratio = hits / total
+                track_cache_performance('llm_responses', hit_ratio)
+                track_cache_performance('conversations', hit_ratio)  # Simplified
+                
+                logger.debug(
+                    "cache_metrics_updated",
+                    hits=hits,
+                    misses=misses,
+                    hit_ratio=hit_ratio
+                )
+            
+        except Exception as e:
+            logger.error("cache_metrics_update_failed", error=str(e))
 
 
 # Global cache service instance

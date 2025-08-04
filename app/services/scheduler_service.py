@@ -23,6 +23,7 @@ class ScheduleInterval(str, Enum):
     """Schedule interval enumeration."""
     MINUTES_30 = "30_minutes"
     HOURLY = "hourly" 
+    EVERY_4_HOURS = "4_hours"
     EVERY_12_HOURS = "12_hours"
     DAILY = "daily"
     WEEKLY = "weekly"
@@ -170,6 +171,8 @@ class SchedulerService:
             return base_time + timedelta(minutes=30)
         elif interval == ScheduleInterval.HOURLY:
             return base_time + timedelta(hours=1)
+        elif interval == ScheduleInterval.EVERY_4_HOURS:
+            return base_time + timedelta(hours=4)
         elif interval == ScheduleInterval.EVERY_12_HOURS:
             return base_time + timedelta(hours=12)
         elif interval == ScheduleInterval.DAILY:
@@ -276,7 +279,18 @@ def setup_default_tasks() -> None:
     )
     scheduler_service.add_task(metrics_report_task)
     
-    logger.info("Default scheduled tasks configured")
+    # Add Italian document collection task (every 4 hours)
+    from app.services.italian_document_collector import collect_italian_documents_task
+    
+    italian_documents_task = ScheduledTask(
+        name="italian_documents_4h",
+        interval=ScheduleInterval.EVERY_4_HOURS,
+        function=collect_italian_documents_task,
+        enabled=True
+    )
+    scheduler_service.add_task(italian_documents_task)
+    
+    logger.info("Default scheduled tasks configured (metrics reports + Italian document collection)")
 
 
 async def start_scheduler() -> None:

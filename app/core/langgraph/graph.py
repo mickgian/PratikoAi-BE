@@ -36,6 +36,7 @@ from app.core.llm.factory import get_llm_provider, RoutingStrategy
 from app.core.llm.base import LLMProvider
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
+from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_llm_error
 from app.core.prompts import SYSTEM_PROMPT
 from app.core.decorators.cache import cache_llm_response, cache_conversation
 from app.services.cache import cache_service
@@ -137,6 +138,35 @@ class LangGraphAgent:
         )
         
         response_time_ms = int((time.time() - start_time) * 1000)
+        
+        # Track Prometheus metrics for this LLM call
+        try:
+            user_id = getattr(self, '_current_user_id', 'unknown')
+            
+            # Track API call success/failure
+            status = "success" if response else "error"
+            track_api_call(
+                provider=provider.provider_type.value,
+                model=provider.model,
+                status=status
+            )
+            
+            # Track cost if response contains cost information
+            if response and hasattr(response, 'cost_eur') and response.cost_eur:
+                track_llm_cost(
+                    provider=provider.provider_type.value,
+                    model=provider.model,
+                    user_id=user_id,
+                    cost_eur=response.cost_eur
+                )
+                
+        except Exception as e:
+            logger.error(
+                "prometheus_metrics_tracking_failed",
+                error=str(e),
+                provider=provider.provider_type.value,
+                model=provider.model
+            )
         
         # Track usage (only for non-cached responses)
         if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):

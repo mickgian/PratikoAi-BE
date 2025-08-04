@@ -138,6 +138,9 @@ class Settings:
         )
         self.API_V1_STR = os.getenv("API_V1_STR", "/api/v1")
         self.DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "t", "yes")
+        
+        # Base URL configuration
+        self.BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
         # CORS Settings
         self.ALLOWED_ORIGINS = parse_list_from_env("ALLOWED_ORIGINS", ["*"])

@@ -7,6 +7,7 @@ and user consumption patterns to maintain the €2/user/month target.
 from datetime import datetime
 from typing import Optional
 from sqlmodel import SQLModel, Field
+from sqlalchemy import UniqueConstraint
 from enum import Enum
 
 
@@ -123,7 +124,9 @@ class UserUsageSummary(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
     # Unique constraint on user_id + date
-    __table_args__ = {"sqlite_on_conflict_unique": "REPLACE"}
+    __table_args__ = (
+        UniqueConstraint("user_id", "date", name="unique_user_date_summary"),
+    )
 
 
 class CostAlert(SQLModel, table=True):
@@ -150,8 +153,8 @@ class CostAlert(SQLModel, table=True):
     notification_sent: bool = Field(default=False, description="Whether notification was sent")
     notification_type: Optional[str] = Field(default=None, description="Type of notification sent")
     
-    # Metadata
-    metadata: Optional[str] = Field(default=None, description="Additional metadata as JSON")
+    # Additional data
+    extra_data: Optional[str] = Field(default=None, description="Additional metadata as JSON")
     acknowledged: bool = Field(default=False, description="Whether alert was acknowledged")
     acknowledged_at: Optional[datetime] = Field(default=None, description="When alert was acknowledged")
 
@@ -230,4 +233,4 @@ class CostOptimizationSuggestion(SQLModel, table=True):
     effectiveness_score: Optional[float] = Field(default=None, description="How effective the suggestion was")
     
     # Metadata
-    metadata: Optional[str] = Field(default=None, description="Additional data as JSON")
+    extra_data: Optional[str] = Field(default=None, description="Additional data as JSON")

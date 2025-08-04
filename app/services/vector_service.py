@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 
 try:
-    import pinecone
+    from pinecone import Pinecone, ServerlessSpec
     from sentence_transformers import SentenceTransformer
     VECTOR_DEPENDENCIES_AVAILABLE = True
 except ImportError:

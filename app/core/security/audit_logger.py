@@ -74,7 +74,7 @@ class SecurityAuditLogger:
         self.enabled = settings.PRIVACY_ANONYMIZE_LOGS  # Reuse privacy setting
         self.max_log_retention_days = settings.PRIVACY_DATA_RETENTION_DAYS
         
-    def log_security_event(
+    async def log_security_event(
         self,
         event_type: SecurityEventType,
         severity: SecuritySeverity = SecuritySeverity.LOW,

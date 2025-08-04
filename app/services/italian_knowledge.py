@@ -1,7 +1,7 @@
 """Italian knowledge service for tax calculations and legal compliance."""
 
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 from typing import Optional, Dict, Any, List, Tuple
 from sqlmodel import select
@@ -13,6 +13,7 @@ from app.services.vector_service import vector_service
 from app.models.italian_data import (
     ItalianTaxRate, ItalianLegalTemplate, ItalianRegulation, 
     TaxCalculation, ComplianceCheck, ItalianKnowledgeSource,
+    ItalianOfficialDocument, DocumentCategory,
     TaxType, DocumentType, ComplianceStatus
 )
 
@@ -647,6 +648,286 @@ class ItalianLegalService:
                 error=str(e)
             )
             return None
+    
+    async def search_official_documents(
+        self, 
+        keywords: List[str], 
+        authority: Optional[str] = None,
+        category: Optional[DocumentCategory] = None,
+        tax_types: Optional[List[str]] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        use_semantic: bool = True,
+        limit: int = 20
+    ) -> List[ItalianOfficialDocument]:
+        """Search official Italian documents collected from RSS feeds.
+        
+        Args:
+            keywords: Search keywords
+            authority: Filter by issuing authority
+            category: Filter by document category
+            tax_types: Filter by tax types
+            date_from: Filter documents from this date
+            date_to: Filter documents until this date
+            use_semantic: Whether to use semantic search
+            limit: Maximum results to return
+            
+        Returns:
+            List of matching official documents
+        """
+        try:
+            # Try semantic search first if available
+            if use_semantic and vector_service and keywords:
+                # Create search query from keywords
+                search_query = " ".join(keywords)
+                
+                # Perform semantic search in Italian documents namespace
+                semantic_results = await vector_service.search(
+                    query=search_query,
+                    namespace="italian_documents",
+                    top_k=limit * 2  # Get more results for filtering
+                )
+                
+                # Extract document IDs and get full documents
+                if semantic_results:
+                    document_ids = []
+                    for result in semantic_results:
+                        if result.get("metadata", {}).get("document_id"):
+                            # Match document by document_id not database id
+                            document_ids.append(result["metadata"]["document_id"])
+                    
+                    if document_ids:
+                        async with database_service.get_session() as session:
+                            query = select(ItalianOfficialDocument).where(
+                                ItalianOfficialDocument.document_id.in_(document_ids),
+                                ItalianOfficialDocument.processing_status == "completed"
+                            )
+                            
+                            # Apply filters
+                            if authority:
+                                query = query.where(ItalianOfficialDocument.authority == authority)
+                            if category:
+                                query = query.where(ItalianOfficialDocument.category == category)
+                            if date_from:
+                                query = query.where(ItalianOfficialDocument.publication_date >= date_from)
+                            if date_to:
+                                query = query.where(ItalianOfficialDocument.publication_date <= date_to)
+                            
+                            result = await session.exec(query)
+                            documents = list(result)
+                            
+                            # Filter by tax types if specified
+                            if tax_types:
+                                documents = [doc for doc in documents 
+                                           if any(tax_type in doc.tax_types for tax_type in tax_types)]
+                            
+                            # Sort by semantic search order
+                            doc_id_to_document = {doc.document_id: doc for doc in documents}
+                            sorted_documents = []
+                            for doc_id in document_ids:
+                                if doc_id in doc_id_to_document:
+                                    sorted_documents.append(doc_id_to_document[doc_id])
+                            
+                            return sorted_documents[:limit]
+            
+            # Fallback to keyword search
+            async with database_service.get_session() as session:
+                query = select(ItalianOfficialDocument).where(
+                    ItalianOfficialDocument.processing_status == "completed"
+                )
+                
+                # Add keyword filtering
+                if keywords:
+                    keyword_filter = None
+                    for keyword in keywords:
+                        condition = (
+                            ItalianOfficialDocument.title.contains(keyword) |
+                            ItalianOfficialDocument.summary.contains(keyword) |
+                            ItalianOfficialDocument.full_content.contains(keyword)
+                        )
+                        keyword_filter = condition if keyword_filter is None else keyword_filter | condition
+                    
+                    if keyword_filter is not None:
+                        query = query.where(keyword_filter)
+                
+                # Apply other filters
+                if authority:
+                    query = query.where(ItalianOfficialDocument.authority == authority)
+                if category:
+                    query = query.where(ItalianOfficialDocument.category == category)
+                if date_from:
+                    query = query.where(ItalianOfficialDocument.publication_date >= date_from)
+                if date_to:
+                    query = query.where(ItalianOfficialDocument.publication_date <= date_to)
+                
+                query = query.order_by(ItalianOfficialDocument.publication_date.desc()).limit(limit)
+                
+                result = await session.exec(query)
+                documents = list(result)
+                
+                # Filter by tax types if specified
+                if tax_types:
+                    documents = [doc for doc in documents 
+                               if any(tax_type in doc.tax_types for tax_type in tax_types)]
+                
+                return documents[:limit]
+                
+        except Exception as e:
+            logger.error("official_documents_search_failed", keywords=keywords, error=str(e))
+            return []
+    
+    async def get_latest_documents(
+        self, 
+        authority: Optional[str] = None,
+        category: Optional[DocumentCategory] = None,
+        limit: int = 10
+    ) -> List[ItalianOfficialDocument]:
+        """Get the latest official Italian documents.
+        
+        Args:
+            authority: Filter by issuing authority
+            category: Filter by document category  
+            limit: Maximum results to return
+            
+        Returns:
+            List of latest documents
+        """
+        try:
+            async with database_service.get_session() as session:
+                query = select(ItalianOfficialDocument).where(
+                    ItalianOfficialDocument.processing_status == "completed"
+                )
+                
+                if authority:
+                    query = query.where(ItalianOfficialDocument.authority == authority)
+                if category:
+                    query = query.where(ItalianOfficialDocument.category == category)
+                
+                query = query.order_by(ItalianOfficialDocument.publication_date.desc()).limit(limit)
+                
+                result = await session.exec(query)
+                return list(result)
+                
+        except Exception as e:
+            logger.error("latest_documents_retrieval_failed", error=str(e))
+            return []
+    
+    async def get_document_by_id(self, document_id: str) -> Optional[ItalianOfficialDocument]:
+        """Get an official document by its document ID.
+        
+        Args:
+            document_id: Unique document identifier
+            
+        Returns:
+            Document if found, None otherwise
+        """
+        try:
+            async with database_service.get_session() as session:
+                query = select(ItalianOfficialDocument).where(
+                    ItalianOfficialDocument.document_id == document_id
+                )
+                
+                result = await session.exec(query)
+                return result.first()
+                
+        except Exception as e:
+            logger.error("document_retrieval_failed", document_id=document_id, error=str(e))
+            return None
+    
+    async def get_documents_by_tax_type(
+        self, 
+        tax_type: str, 
+        limit: int = 20,
+        days_back: int = 90
+    ) -> List[ItalianOfficialDocument]:
+        """Get documents related to a specific tax type.
+        
+        Args:
+            tax_type: Tax type to search for
+            limit: Maximum results to return
+            days_back: How many days back to search
+            
+        Returns:
+            List of tax-related documents
+        """
+        try:
+            cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+            
+            async with database_service.get_session() as session:
+                # Note: This uses JSON containment which works in PostgreSQL
+                query = select(ItalianOfficialDocument).where(
+                    ItalianOfficialDocument.processing_status == "completed",
+                    ItalianOfficialDocument.publication_date >= cutoff_date,
+                    ItalianOfficialDocument.tax_types.contains([tax_type])
+                ).order_by(ItalianOfficialDocument.publication_date.desc()).limit(limit)
+                
+                result = await session.exec(query)
+                return list(result)
+                
+        except Exception as e:
+            logger.error("tax_documents_retrieval_failed", tax_type=tax_type, error=str(e))
+            return []
+    
+    async def get_collection_statistics(self) -> Dict[str, Any]:
+        """Get statistics about the document collection.
+        
+        Returns:
+            Dictionary with collection statistics
+        """
+        try:
+            async with database_service.get_session() as session:
+                # Total documents
+                total_query = select(ItalianOfficialDocument)
+                total_result = await session.exec(total_query)
+                total_docs = len(list(total_result))
+                
+                # Documents by authority
+                authorities = {}
+                for authority in ["Agenzia delle Entrate", "INPS", "Ministero dell'Economia e delle Finanze", "Gazzetta Ufficiale"]:
+                    auth_query = select(ItalianOfficialDocument).where(
+                        ItalianOfficialDocument.authority == authority
+                    )
+                    auth_result = await session.exec(auth_query)
+                    authorities[authority] = len(list(auth_result))
+                
+                # Documents by category
+                categories = {}
+                for category in DocumentCategory:
+                    cat_query = select(ItalianOfficialDocument).where(
+                        ItalianOfficialDocument.category == category
+                    )
+                    cat_result = await session.exec(cat_query)
+                    categories[category.value] = len(list(cat_result))
+                
+                # Recent documents (last 30 days)
+                recent_cutoff = datetime.utcnow() - timedelta(days=30)
+                recent_query = select(ItalianOfficialDocument).where(
+                    ItalianOfficialDocument.publication_date >= recent_cutoff
+                )
+                recent_result = await session.exec(recent_query)
+                recent_docs = len(list(recent_result))
+                
+                # Processing status
+                status_counts = {}
+                for status in ["pending", "completed", "failed"]:
+                    status_query = select(ItalianOfficialDocument).where(
+                        ItalianOfficialDocument.processing_status == status
+                    )
+                    status_result = await session.exec(status_query)
+                    status_counts[status] = len(list(status_result))
+                
+                return {
+                    "total_documents": total_docs,
+                    "by_authority": authorities,
+                    "by_category": categories,
+                    "recent_documents_30d": recent_docs,
+                    "processing_status": status_counts,
+                    "last_updated": datetime.utcnow().isoformat()
+                }
+                
+        except Exception as e:
+            logger.error("collection_statistics_failed", error=str(e))
+            return {}
 
 
 # Global instance

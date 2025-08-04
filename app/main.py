@@ -16,7 +16,7 @@ from fastapi import (
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from langfuse import Langfuse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -27,6 +27,7 @@ from app.core.limiter import limiter
 from app.core.logging import logger
 from app.core.metrics import setup_metrics
 from app.core.middleware import MetricsMiddleware
+from app.core.monitoring.metrics import get_metrics_content
 from app.services.database import database_service
 
 # Load environment variables
@@ -115,8 +116,10 @@ app.add_middleware(
 
 # Add cost limiter middleware for payment enforcement
 from app.core.middleware.cost_limiter import CostLimiterMiddleware, CostOptimizationMiddleware
+from app.core.middleware.prometheus_middleware import PrometheusMiddleware
 app.add_middleware(CostLimiterMiddleware)
 app.add_middleware(CostOptimizationMiddleware)
+app.add_middleware(PrometheusMiddleware)
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
@@ -173,3 +176,26 @@ async def health_check(request: Request) -> Dict[str, Any]:
     status_code = status.HTTP_200_OK if overall_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
 
     return JSONResponse(content=response, status_code=status_code)
+
+
+@app.get("/metrics", response_class=PlainTextResponse)
+async def metrics():
+    """Prometheus metrics endpoint for scraping."""
+    from fastapi.responses import PlainTextResponse
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest, REGISTRY as DEFAULT_REGISTRY
+    
+    try:
+        # Get metrics from both registries
+        custom_metrics = get_metrics_content()
+        default_metrics = generate_latest(DEFAULT_REGISTRY).decode('utf-8')
+        
+        # Combine both metric sets
+        combined_metrics = default_metrics + "\n" + custom_metrics
+        
+        return Response(
+            content=combined_metrics,
+            media_type=CONTENT_TYPE_LATEST
+        )
+    except Exception as e:
+        logger.error("metrics_endpoint_failed", error=str(e), exc_info=True)
+        return PlainTextResponse("# Metrics unavailable\n", status_code=500)

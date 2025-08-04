@@ -277,6 +277,75 @@ class ComplianceCheck(SQLModel, table=True):
     )
 
 
+class DocumentCategory(str, Enum):
+    """Italian document categories from official sources."""
+    CIRCOLARE = "circolare"  # Circolari
+    RISOLUZIONE = "risoluzione"  # Risoluzioni
+    PROVVEDIMENTO = "provvedimento"  # Provvedimenti
+    DECRETO = "decreto"  # Decreti
+    LEGGE = "legge"  # Leggi
+    MESSAGGIO = "messaggio"  # Messaggi INPS
+    COMUNICATO = "comunicato"  # Comunicati stampa
+    ALTRO = "altro"  # Altri documenti
+
+
+class ItalianOfficialDocument(SQLModel, table=True):
+    """Official Italian government documents collected from RSS feeds."""
+    
+    __tablename__ = "italian_official_documents"
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    
+    # Document identification
+    document_id: str = Field(..., unique=True, description="Unique document identifier")
+    title: str = Field(..., description="Document title")
+    category: DocumentCategory = Field(..., description="Document category")
+    
+    # Source information
+    authority: str = Field(..., description="Issuing authority (Agenzia Entrate, INPS, etc.)")
+    source_url: str = Field(..., description="Original document URL")
+    rss_feed: str = Field(..., description="RSS feed where document was found")
+    
+    # Content
+    summary: Optional[str] = Field(default=None, sa_column=Column(Text), description="Document summary")
+    full_content: Optional[str] = Field(default=None, sa_column=Column(Text), description="Full document content")
+    content_hash: str = Field(..., description="Content hash for duplicate detection")
+    
+    # Dates
+    publication_date: datetime = Field(..., description="Official publication date")
+    effective_date: Optional[datetime] = Field(default=None, description="When document becomes effective")
+    expiry_date: Optional[datetime] = Field(default=None, description="Document expiry date if applicable")
+    
+    # Classification
+    tax_types: List[str] = Field(default_factory=list, sa_column=Column(JSON), description="Related tax types")
+    keywords: List[str] = Field(default_factory=list, sa_column=Column(JSON), description="Extracted keywords")
+    tags: List[str] = Field(default_factory=list, sa_column=Column(JSON), description="Classification tags")
+    
+    # Processing status
+    processing_status: str = Field(default="pending", description="Processing status")
+    indexed_at: Optional[datetime] = Field(default=None, description="When document was indexed")
+    vector_id: Optional[str] = Field(default=None, description="Vector database ID")
+    
+    # Metadata
+    file_type: Optional[str] = Field(default=None, description="Document file type (PDF, HTML, etc.)")
+    file_size: Optional[int] = Field(default=None, description="File size in bytes")
+    language: str = Field(default="it", description="Document language")
+    
+    # Collection metadata
+    collected_at: datetime = Field(default_factory=datetime.utcnow, description="When document was collected")
+    last_updated: datetime = Field(default_factory=datetime.utcnow, description="Last update time")
+    
+    __table_args__ = (
+        Index("idx_doc_id", "document_id"),
+        Index("idx_doc_authority", "authority"),
+        Index("idx_doc_category", "category"),
+        Index("idx_doc_pub_date", "publication_date"),
+        Index("idx_doc_status", "processing_status"),
+        Index("idx_doc_hash", "content_hash"),
+        Index("idx_doc_collection_date", "collected_at"),
+    )
+
+
 class ItalianKnowledgeSource(SQLModel, table=True):
     """Sources of Italian legal and tax knowledge."""
     
@@ -291,6 +360,7 @@ class ItalianKnowledgeSource(SQLModel, table=True):
     
     # Access information
     base_url: str = Field(..., description="Base URL for the source")
+    rss_url: Optional[str] = Field(default=None, description="RSS feed URL")
     api_endpoint: Optional[str] = Field(default=None, description="API endpoint if available")
     api_key_required: bool = Field(default=False, description="Whether API key is required")
     
@@ -306,11 +376,13 @@ class ItalianKnowledgeSource(SQLModel, table=True):
     # Quality and reliability
     reliability_score: float = Field(default=1.0, description="Source reliability score (0-1)")
     last_accessed: datetime = Field(default_factory=datetime.utcnow, description="Last successful access")
+    last_document_date: Optional[datetime] = Field(default=None, description="Date of most recent document")
     access_status: str = Field(default="active", description="Current access status")
     
     # Usage tracking
     usage_count: int = Field(default=0, description="Number of times accessed")
     success_rate: float = Field(default=1.0, description="Success rate of API calls")
+    documents_collected: int = Field(default=0, description="Total documents collected")
     
     # Metadata
     description: str = Field(..., sa_column=Column(Text), description="Source description")

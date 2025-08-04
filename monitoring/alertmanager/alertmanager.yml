@@ -1,0 +1,130 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alertmanager@pratikoai.com'
+  smtp_auth_username: ''
+  smtp_auth_password: ''
+
+# Route for all alerts
+route:
+  group_by: ['alertname', 'category']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'web.hook.default'
+  routes:
+    # Critical financial alerts - immediate notification
+    - match:
+        severity: critical
+        category: financial
+      receiver: 'critical-financial'
+      group_wait: 0s
+      repeat_interval: 5m
+      
+    # Performance issues - moderate urgency
+    - match:
+        category: performance
+      receiver: 'performance-alerts'
+      group_wait: 30s
+      repeat_interval: 1h
+      
+    # Security alerts - immediate notification
+    - match:
+        category: security
+      receiver: 'security-alerts'
+      group_wait: 0s
+      repeat_interval: 15m
+      
+    # Payment issues - high priority
+    - match:
+        category: payments
+      receiver: 'payment-alerts'
+      group_wait: 10s
+      repeat_interval: 30m
+
+receivers:
+  # Default webhook receiver
+  - name: 'web.hook.default'
+    webhook_configs:
+      - url: 'http://localhost:3001/webhook/alerts'
+        send_resolved: true
+        http_config:
+          basic_auth:
+            username: 'alertmanager'
+            password: 'webhook_secret'
+        title: 'PratikoAI Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Category: {{ .Labels.category }}
+          {{ end }}
+
+  # Critical financial alerts
+  - name: 'critical-financial'
+    webhook_configs:
+      - url: 'http://localhost:3001/webhook/critical'
+        send_resolved: true
+        title: '🚨 CRITICAL: Financial Alert'
+        text: |
+          URGENT: Financial threshold exceeded!
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}
+    
+  # Performance alerts
+  - name: 'performance-alerts'
+    webhook_configs:
+      - url: 'http://localhost:3001/webhook/performance'
+        send_resolved: true
+        title: '⚡ Performance Issue Detected'
+        text: |
+          Performance issue detected:
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}
+
+  # Security alerts  
+  - name: 'security-alerts'
+    webhook_configs:
+      - url: 'http://localhost:3001/webhook/security'
+        send_resolved: true
+        title: '🔒 Security Alert'
+        text: |
+          Security event detected:
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}
+
+  # Payment alerts
+  - name: 'payment-alerts'
+    webhook_configs:
+      - url: 'http://localhost:3001/webhook/payments'
+        send_resolved: true
+        title: '💳 Payment System Alert'
+        text: |
+          Payment system issue:
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}
+
+# Inhibit rules to prevent alert spam
+inhibit_rules:
+  # Inhibit all other alerts if service is down
+  - source_match:
+      alertname: 'ServiceDown'
+    target_match_re:
+      alertname: '.*'
+    equal: ['job']
+    
+  # Inhibit performance alerts if there are system resource issues
+  - source_match:
+      category: 'system'
+      severity: 'critical'
+    target_match:
+      category: 'performance'
+    equal: ['instance']

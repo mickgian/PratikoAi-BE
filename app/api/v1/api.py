@@ -16,6 +16,7 @@ from app.api.v1.search import router as search_router
 from app.api.v1.security import router as security_router
 from app.api.v1.performance import router as performance_router
 from app.api.v1.monitoring import router as monitoring_router
+from app.api.v1.regulatory import router as regulatory_router
 from app.core.logging import logger
 
 api_router = APIRouter()
@@ -31,6 +32,7 @@ api_router.include_router(search_router, prefix="/search", tags=["search"])
 api_router.include_router(security_router, prefix="/security", tags=["security"])
 api_router.include_router(performance_router, prefix="/performance", tags=["performance"])
 api_router.include_router(monitoring_router, prefix="/monitoring", tags=["monitoring"])
+api_router.include_router(regulatory_router, prefix="/regulatory", tags=["regulatory"])
 
 
 @api_router.get("/health")

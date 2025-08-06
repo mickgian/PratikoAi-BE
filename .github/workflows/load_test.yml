@@ -1,0 +1,443 @@
+name: Load Testing
+
+on:
+  schedule:
+    # Run weekly load tests on Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    # Allow manual triggering with parameters
+    inputs:
+      test_profile:
+        description: 'Load test profile to run'
+        required: false
+        default: 'peak_hours'
+        type: choice
+        options:
+          - baseline
+          - normal_day
+          - peak_hours
+          - tax_deadline
+          - stress_test
+          - spike_test
+      full_suite:
+        description: 'Run full test suite'
+        required: false
+        default: false
+        type: boolean
+      users:
+        description: 'Number of concurrent users (if not using profile)'
+        required: false
+        default: '50'
+        type: string
+      duration:
+        description: 'Test duration in seconds (if not using profile)'
+        required: false
+        default: '300'
+        type: string
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'app/**'
+      - 'load_testing/**'
+  pull_request:
+    branches: [ master, main ]
+    paths:
+      - 'app/**'
+      - 'load_testing/**'
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  # Light load test for PRs and regular pushes
+  quick-load-test:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pratikoai_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client redis-tools
+      
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+          uv sync
+          pip install locust psutil aioredis asyncpg aiohttp aiofiles
+      
+      - name: Set up environment variables
+        run: |
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
+          echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
+          echo "JWT_SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
+          echo "LLM_API_KEY=test-api-key" >> $GITHUB_ENV
+          echo "ENVIRONMENT=testing" >> $GITHUB_ENV
+      
+      - name: Run database migrations
+        run: |
+          uv run alembic upgrade head
+      
+      - name: Start application
+        run: |
+          uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 10
+          curl -f http://localhost:8000/health || exit 1
+        env:
+          ENVIRONMENT: testing
+      
+      - name: Run quick load test (10 users, 60s)
+        run: |
+          python load_testing/run_tests.py --users 10 --duration 60 --base-url http://localhost:8000
+        timeout-minutes: 5
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: quick-load-test-results
+          path: load_test_results/
+          retention-days: 7
+
+  # Comprehensive load test for scheduled runs and manual triggers
+  comprehensive-load-test:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pratikoai_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+      
+      # Add Prometheus for metrics collection
+      prometheus:
+        image: prom/prometheus:latest
+        ports:
+          - 9090:9090
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Set up Node.js (for k6)
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client redis-tools htop iotop
+      
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+          uv sync
+          pip install locust psutil aioredis asyncpg aiohttp aiofiles prometheus-client
+      
+      - name: Set up environment variables
+        run: |
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
+          echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
+          echo "JWT_SECRET_KEY=test-secret-key-for-ci-comprehensive" >> $GITHUB_ENV
+          echo "LLM_API_KEY=test-api-key" >> $GITHUB_ENV
+          echo "ENVIRONMENT=testing" >> $GITHUB_ENV
+          echo "PROMETHEUS_URL=http://localhost:9090" >> $GITHUB_ENV
+          echo "LOAD_TEST_BASE_URL=http://localhost:8000" >> $GITHUB_ENV
+      
+      - name: Optimize system for load testing
+        run: |
+          # Increase file descriptors
+          sudo sysctl -w fs.file-max=65536
+          ulimit -n 65536
+          
+          # Optimize network settings
+          sudo sysctl -w net.core.somaxconn=65535
+          sudo sysctl -w net.ipv4.ip_local_port_range="1024 65535"
+          sudo sysctl -w net.ipv4.tcp_tw_reuse=1
+      
+      - name: Run database migrations
+        run: |
+          uv run alembic upgrade head
+      
+      - name: Start application with monitoring
+        run: |
+          # Start application with metrics enabled
+          uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 &
+          
+          # Wait for startup
+          sleep 15
+          
+          # Health check
+          curl -f http://localhost:8000/health || exit 1
+          curl -f http://localhost:8000/metrics || echo "Metrics endpoint not available"
+        env:
+          ENVIRONMENT: testing
+          WORKERS: 4
+      
+      - name: Run comprehensive load test suite
+        if: github.event.inputs.full_suite == 'true' || github.event_name == 'schedule'
+        run: |
+          python load_testing/run_tests.py --full-suite --base-url http://localhost:8000
+        timeout-minutes: 45
+      
+      - name: Run specific profile test
+        if: github.event.inputs.full_suite != 'true' && github.event.inputs.test_profile && github.event_name == 'workflow_dispatch'
+        run: |
+          python load_testing/run_tests.py --profile ${{ github.event.inputs.test_profile }} --base-url http://localhost:8000
+        timeout-minutes: 20
+      
+      - name: Run custom load test
+        if: github.event.inputs.users && github.event.inputs.duration && github.event_name == 'workflow_dispatch'
+        run: |
+          python load_testing/run_tests.py --users ${{ github.event.inputs.users }} --duration ${{ github.event.inputs.duration }} --base-url http://localhost:8000
+        timeout-minutes: 20
+      
+      - name: Collect system metrics
+        if: always()
+        run: |
+          # Collect final system state
+          echo "=== SYSTEM RESOURCES ===" > system_metrics.txt
+          df -h >> system_metrics.txt
+          free -m >> system_metrics.txt
+          ps aux --sort=-%cpu | head -20 >> system_metrics.txt
+          
+          echo "=== DATABASE STATS ===" >> system_metrics.txt
+          PGPASSWORD=postgres psql -h localhost -U postgres -d pratikoai_test -c "SELECT * FROM pg_stat_database WHERE datname='pratikoai_test';" >> system_metrics.txt || true
+          
+          echo "=== REDIS STATS ===" >> system_metrics.txt
+          redis-cli -h localhost info stats >> system_metrics.txt || true
+      
+      - name: Generate load test badge
+        if: github.event_name == 'schedule'
+        run: |
+          # Create status badge based on test results
+          if [ -f "load_test_results/load_test_report_*.json" ]; then
+            # Parse test results and create badge
+            python -c "
+          import json, glob, os
+          files = glob.glob('load_test_results/load_test_report_*.json')
+          if files:
+              with open(files[0]) as f:
+                  report = json.load(f)
+              passed = report['test_suite_summary']['overall_passed']
+              color = 'brightgreen' if passed else 'red'
+              status = 'passing' if passed else 'failing'
+              badge_url = f'https://img.shields.io/badge/load_tests-{status}-{color}'
+              print(f'LOAD_TEST_BADGE={badge_url}')
+              # Save to GitHub environment
+              with open(os.environ['GITHUB_ENV'], 'a') as f:
+                  f.write(f'LOAD_TEST_BADGE={badge_url}\n')
+          "
+          fi
+      
+      - name: Upload comprehensive test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: comprehensive-load-test-results
+          path: |
+            load_test_results/
+            system_metrics.txt
+            *.log
+          retention-days: 30
+      
+      - name: Upload test reports to GitHub Pages
+        if: github.event_name == 'schedule' && success()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./load_test_results
+          destination_dir: load-test-reports
+          keep_files: true
+      
+      - name: Create GitHub issue on failure
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = '🚨 Scheduled Load Test Failed';
+            const body = `
+            ## Load Test Failure Report
+            
+            **Date**: ${new Date().toISOString()}
+            **Workflow**: ${context.workflow}
+            **Run ID**: ${context.runId}
+            
+            The scheduled load test has failed. This indicates potential performance regression or infrastructure issues.
+            
+            ### Action Required:
+            1. Review the test results in the workflow artifacts
+            2. Investigate any performance bottlenecks
+            3. Check system resource utilization
+            4. Verify recent code changes haven't introduced performance issues
+            
+            ### Links:
+            - [Workflow Run](${context.payload.repository.html_url}/actions/runs/${context.runId})
+            - [Load Test Results](${context.payload.repository.html_url}/actions/runs/${context.runId}#artifacts)
+            
+            /cc @dev-team
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['performance', 'urgent', 'load-test']
+            });
+      
+      - name: Comment on PR with load test results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Look for test result files
+            const resultsDir = 'load_test_results';
+            if (fs.existsSync(resultsDir)) {
+              const files = fs.readdirSync(resultsDir);
+              const reportFile = files.find(f => f.includes('summary') && f.endsWith('.md'));
+              
+              if (reportFile) {
+                const reportPath = path.join(resultsDir, reportFile);
+                const reportContent = fs.readFileSync(reportPath, 'utf8');
+                
+                const comment = `## 📊 Load Test Results
+                
+                ${reportContent}
+                
+                *View detailed results in the [workflow artifacts](${context.payload.repository.html_url}/actions/runs/${context.runId}#artifacts)*
+                `;
+                
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: comment
+                });
+              }
+            }
+
+  # Performance regression analysis
+  regression-analysis:
+    if: github.event_name == 'schedule'
+    needs: comprehensive-load-test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download test results
+        uses: actions/download-artifact@v3
+        with:
+          name: comprehensive-load-test-results
+          path: current_results/
+      
+      - name: Download previous results
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: load_test.yml
+          name: comprehensive-load-test-results
+          path: previous_results/
+          if_no_artifact_found: ignore
+      
+      - name: Analyze performance regression
+        run: |
+          python -c "
+          import json, glob, os
+          
+          current_files = glob.glob('current_results/load_test_report_*.json')
+          previous_files = glob.glob('previous_results/load_test_report_*.json')
+          
+          if current_files and previous_files:
+              with open(current_files[0]) as f:
+                  current = json.load(f)
+              with open(previous_files[0]) as f:
+                  previous = json.load(f)
+              
+              current_p95 = current['performance_summary']['avg_p95_response_time']
+              previous_p95 = previous['performance_summary']['avg_p95_response_time']
+              
+              regression = (current_p95 - previous_p95) / previous_p95 * 100
+              
+              if regression > 10:  # 10% regression threshold
+                  print(f'Performance regression detected: {regression:.1f}%')
+                  print(f'Current P95: {current_p95:.0f}ms, Previous P95: {previous_p95:.0f}ms')
+                  exit(1)
+              else:
+                  print(f'Performance stable: {regression:.1f}% change')
+          else:
+              print('Insufficient data for regression analysis')
+          "

@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 
-from app.core.database import Base
+from app.models.ccnl_database import Base
 
 
 class ExportFormat(str, Enum):

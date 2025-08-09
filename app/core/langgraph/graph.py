@@ -34,9 +34,11 @@ from app.core.config import (
 from app.core.langgraph.tools import tools
 from app.core.llm.factory import get_llm_provider, RoutingStrategy
 from app.core.llm.base import LLMProvider
+from app.services.domain_action_classifier import DomainActionClassifier, DomainActionClassification
+from app.services.domain_prompt_templates import PromptTemplateManager
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
-from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_llm_error
+from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_llm_error, track_classification_usage
 from app.core.prompts import SYSTEM_PROMPT
 from app.core.decorators.cache import cache_llm_response, cache_conversation
 from app.services.cache import cache_service
@@ -65,8 +67,64 @@ class LangGraphAgent:
         self._connection_pool: Optional[AsyncConnectionPool] = None
         self._graph: Optional[CompiledStateGraph] = None
         self._current_provider: Optional[LLMProvider] = None
+        
+        # Initialize domain-action classification services
+        self._domain_classifier = DomainActionClassifier()
+        self._prompt_template_manager = PromptTemplateManager()
+        self._current_classification = None  # Store current query classification
+        self._response_metadata = None  # Store response metadata
 
         logger.info("llm_agent_initialized", environment=settings.ENVIRONMENT.value)
+
+    async def _classify_user_query(self, messages: List[Message]) -> Optional[DomainActionClassification]:
+        """Classify the latest user query using domain-action classifier.
+        
+        Args:
+            messages: List of conversation messages
+            
+        Returns:
+            DomainActionClassification or None if no messages
+        """
+        if not messages:
+            return None
+            
+        # Find the latest user message
+        user_message = None
+        for message in reversed(messages):
+            if message.role == "user":
+                user_message = message.content
+                break
+                
+        if not user_message:
+            return None
+            
+        try:
+            # Perform classification
+            classification = await self._domain_classifier.classify(user_message)
+            
+            # Log classification result
+            logger.info(
+                "query_classified",
+                domain=classification.domain.value,
+                action=classification.action.value,
+                confidence=classification.confidence,
+                sub_domain=classification.sub_domain,
+                fallback_used=classification.fallback_used
+            )
+            
+            # Track classification metrics
+            track_classification_usage(
+                domain=classification.domain.value,
+                action=classification.action.value,
+                confidence=classification.confidence,
+                fallback_used=classification.fallback_used
+            )
+            
+            return classification
+            
+        except Exception as e:
+            logger.error("query_classification_failed", error=str(e), exc_info=True)
+            return None
 
     async def _get_cached_llm_response(self, provider: LLMProvider, messages: List[Message], tools: list, temperature: float, max_tokens: int):
         """Get LLM response with caching support.
@@ -229,6 +287,123 @@ class LangGraphAgent:
         strategy_str = getattr(settings, 'LLM_ROUTING_STRATEGY', 'cost_optimized')
         return strategy_map.get(strategy_str, RoutingStrategy.COST_OPTIMIZED)
 
+    def _get_classification_aware_routing(self, classification: DomainActionClassification) -> tuple[RoutingStrategy, float]:
+        """Get routing strategy and cost limit based on domain-action classification.
+        
+        Args:
+            classification: The domain-action classification result
+            
+        Returns:
+            tuple: (routing_strategy, max_cost_eur)
+        """
+        # Map domain-action combinations to routing strategies
+        strategy_map = {
+            # High-accuracy requirements (legal, financial calculations)
+            ("legal", "document_generation"): (RoutingStrategy.QUALITY_FIRST, 0.030),
+            ("legal", "compliance_check"): (RoutingStrategy.QUALITY_FIRST, 0.025),
+            ("tax", "calculation_request"): (RoutingStrategy.QUALITY_FIRST, 0.020),
+            ("accounting", "document_analysis"): (RoutingStrategy.QUALITY_FIRST, 0.025),
+            ("business", "strategic_advice"): (RoutingStrategy.QUALITY_FIRST, 0.025),
+            
+            # CCNL-specific routing (balanced for accuracy and cost)
+            ("labor", "ccnl_query"): (RoutingStrategy.BALANCED, 0.018),
+            ("labor", "calculation_request"): (RoutingStrategy.BALANCED, 0.020),
+            
+            # Balanced requirements (moderate complexity)
+            ("tax", "strategic_advice"): (RoutingStrategy.BALANCED, 0.015),
+            ("labor", "compliance_check"): (RoutingStrategy.BALANCED, 0.015),
+            ("business", "document_generation"): (RoutingStrategy.BALANCED, 0.020),
+            ("accounting", "compliance_check"): (RoutingStrategy.BALANCED, 0.015),
+            
+            # Cost-optimized for simple queries
+            ("tax", "information_request"): (RoutingStrategy.COST_OPTIMIZED, 0.010),
+            ("legal", "information_request"): (RoutingStrategy.COST_OPTIMIZED, 0.010),
+            ("labor", "information_request"): (RoutingStrategy.COST_OPTIMIZED, 0.010),
+            ("business", "information_request"): (RoutingStrategy.COST_OPTIMIZED, 0.010),
+            ("accounting", "information_request"): (RoutingStrategy.COST_OPTIMIZED, 0.010),
+        }
+        
+        # Get strategy for this domain-action combination
+        key = (classification.domain.value, classification.action.value)
+        strategy, max_cost = strategy_map.get(key, (RoutingStrategy.BALANCED, 0.020))
+        
+        # Adjust cost limits based on confidence
+        if classification.confidence < 0.7:
+            # Lower confidence -> use failover strategy and reduce cost limit
+            strategy = RoutingStrategy.FAILOVER
+            max_cost *= 0.8
+        elif classification.confidence > 0.9:
+            # Very high confidence -> can afford slightly higher cost for quality
+            max_cost *= 1.2
+        
+        # Respect global maximum cost limit
+        global_max_cost = getattr(settings, 'LLM_MAX_COST_EUR', 0.020)
+        max_cost = min(max_cost, global_max_cost)
+        
+        return strategy, max_cost
+
+    def _get_system_prompt(self, messages: List[Message], classification: Optional[DomainActionClassification]) -> str:
+        """Get the appropriate system prompt based on classification.
+        
+        Args:
+            messages: List of conversation messages
+            classification: Domain-action classification result
+            
+        Returns:
+            str: The system prompt to use
+        """
+        if not classification:
+            # Fallback to default system prompt
+            return SYSTEM_PROMPT
+            
+        # Only use domain-specific prompts for high confidence classifications
+        if classification.confidence < settings.CLASSIFICATION_CONFIDENCE_THRESHOLD:
+            logger.info(
+                "classification_confidence_too_low",
+                confidence=classification.confidence,
+                threshold=settings.CLASSIFICATION_CONFIDENCE_THRESHOLD,
+                using_default_prompt=True
+            )
+            return SYSTEM_PROMPT
+            
+        try:
+            # Get the latest user message for context
+            user_query = ""
+            for message in reversed(messages):
+                if message.role == "user":
+                    user_query = message.content
+                    break
+            
+            # Generate domain-specific prompt
+            domain_prompt = self._prompt_template_manager.get_prompt(
+                domain=classification.domain,
+                action=classification.action,
+                query=user_query,
+                context=None,  # Could be enhanced later with conversation context
+                document_type=classification.document_type
+            )
+            
+            logger.info(
+                "domain_specific_prompt_selected",
+                domain=classification.domain.value,
+                action=classification.action.value,
+                confidence=classification.confidence
+            )
+            
+            # Track domain-specific prompt usage
+            track_classification_usage(
+                domain=classification.domain.value,
+                action=classification.action.value,
+                confidence=classification.confidence,
+                prompt_used=True
+            )
+            
+            return domain_prompt
+            
+        except Exception as e:
+            logger.error("domain_prompt_generation_failed", error=str(e), exc_info=True)
+            return SYSTEM_PROMPT
+
     def _get_optimal_provider(self, messages: List[Message]) -> LLMProvider:
         """Get the optimal LLM provider for the given messages.
 
@@ -239,8 +414,13 @@ class LangGraphAgent:
             LLMProvider: The optimal provider for this request
         """
         try:
-            strategy = self._get_routing_strategy()
-            max_cost = getattr(settings, 'LLM_MAX_COST_EUR', 0.020)
+            # Use classification-aware routing if available
+            if self._current_classification:
+                strategy, max_cost = self._get_classification_aware_routing(self._current_classification)
+            else:
+                strategy = self._get_routing_strategy()
+                max_cost = getattr(settings, 'LLM_MAX_COST_EUR', 0.020)
+            
             preferred_provider = getattr(settings, 'LLM_PREFERRED_PROVIDER', None)
             
             provider = get_llm_provider(
@@ -255,6 +435,9 @@ class LangGraphAgent:
                 provider=provider.provider_type.value,
                 model=provider.model,
                 strategy=strategy.value,
+                classification_used=self._current_classification is not None,
+                domain=self._current_classification.domain.value if self._current_classification else None,
+                action=self._current_classification.action.value if self._current_classification else None,
             )
             
             return provider
@@ -322,17 +505,26 @@ class LangGraphAgent:
                 # Handle legacy message format
                 conversation_messages.append(Message(role="user", content=str(msg)))
 
+        # Classify user query
+        self._current_classification = await self._classify_user_query(conversation_messages)
+
+        # Get domain-specific system prompt or default
+        system_prompt = self._get_system_prompt(conversation_messages, self._current_classification)
+        
         # Add system prompt if not already present
         if not conversation_messages or conversation_messages[0].role != "system":
-            system_message = Message(role="system", content=SYSTEM_PROMPT)
+            system_message = Message(role="system", content=system_prompt)
             conversation_messages.insert(0, system_message)
+        elif self._current_classification:
+            # Replace existing system prompt with domain-specific one
+            conversation_messages[0] = Message(role="system", content=system_prompt)
 
         llm_calls_num = 0
         max_retries = settings.MAX_LLM_CALL_RETRIES
 
         for attempt in range(max_retries):
             try:
-                # Get optimal provider for this conversation
+                # Get optimal provider for this conversation (now classification-aware)
                 provider = self._get_optimal_provider(conversation_messages)
                 self._current_provider = provider
 

@@ -11,11 +11,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from fastapi.responses import RedirectResponse, Response
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user
-from app.core.database import get_db
+from app.api.v1.auth import get_current_user
+from app.core.database import get_async_session as get_db
 from app.core.logging import logger
 from app.core.rate_limiting import rate_limit
 from app.models.user import User
@@ -64,17 +64,18 @@ class CreateExportRequest(BaseModel):
     include_faq_interactions: bool = Field(True, description="Include FAQ interactions")
     include_knowledge_searches: bool = Field(True, description="Include knowledge base searches")
     
-    @validator('date_to')
-    def validate_date_range(cls, v, values):
-        if v and values.get('date_from') and v < values['date_from']:
-            raise ValueError("Data di fine deve essere successiva alla data di inizio")
-        return v
-    
-    @validator('date_from', 'date_to')
+    @field_validator('date_from', 'date_to')
+    @classmethod
     def validate_future_dates(cls, v):
         if v and v > date.today():
             raise ValueError("Le date non possono essere future")
         return v
+    
+    @model_validator(mode='after')
+    def validate_date_range(self):
+        if self.date_to and self.date_from and self.date_to < self.date_from:
+            raise ValueError("Data di fine deve essere successiva alla data di inizio")
+        return self
 
 
 class UpdateExportRequest(BaseModel):

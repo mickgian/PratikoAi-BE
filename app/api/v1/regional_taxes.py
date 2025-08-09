@@ -11,11 +11,11 @@ from typing import Dict, List, Optional, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user
-from app.core.database import get_db
+from app.api.v1.auth import get_current_user
+from app.core.database import get_async_session as get_db
 from app.core.logging import logger
 from app.core.rate_limiting import rate_limit
 from app.models.user import User
@@ -39,11 +39,12 @@ router = APIRouter(prefix="/regional-taxes", tags=["Regional Taxes"])
 class IMUCalculationRequest(BaseModel):
     """Request for IMU calculation"""
     property_value: float = Field(..., gt=0, description="Valore catastale dell'immobile in euro")
-    cap: str = Field(..., regex=r"^\d{5}$", description="CAP dell'immobile")
+    cap: str = Field(..., pattern=r"^\d{5}$", description="CAP dell'immobile")
     is_prima_casa: bool = Field(False, description="È abitazione principale")
     property_type: str = Field("standard", description="Tipo immobile (standard, commerciale, industriale, agricolo)")
     
-    @validator('property_type')
+    @field_validator('property_type')
+    @classmethod
     def validate_property_type(cls, v):
         allowed_types = ["standard", "commerciale", "industriale", "agricolo"]
         if v not in allowed_types:
@@ -57,7 +58,8 @@ class IRAPCalculationRequest(BaseModel):
     region: str = Field(..., description="Nome della regione")
     business_type: str = Field("standard", description="Tipo attività")
     
-    @validator('business_type')
+    @field_validator('business_type')
+    @classmethod
     def validate_business_type(cls, v):
         allowed_types = ["standard", "banks", "insurance", "agriculture", "cooperatives"]
         if v not in allowed_types:
@@ -68,19 +70,20 @@ class IRAPCalculationRequest(BaseModel):
 class IRPEFAddizionaliRequest(BaseModel):
     """Request for IRPEF addizionali calculation"""
     taxable_income: float = Field(..., ge=0, description="Reddito imponibile IRPEF in euro")
-    cap: str = Field(..., regex=r"^\d{5}$", description="CAP di residenza")
+    cap: str = Field(..., pattern=r"^\d{5}$", description="CAP di residenza")
 
 
 class CompleteTaxCalculationRequest(BaseModel):
     """Request for complete regional tax calculation"""
-    cap: str = Field(..., regex=r"^\d{5}$", description="CAP di riferimento")
+    cap: str = Field(..., pattern=r"^\d{5}$", description="CAP di riferimento")
     income: Optional[float] = Field(None, ge=0, description="Reddito imponibile per addizionali IRPEF")
     property_value: Optional[float] = Field(None, gt=0, description="Valore immobile per IMU")
     is_prima_casa: bool = Field(True, description="Immobile è abitazione principale")
     business_revenue: Optional[float] = Field(None, gt=0, description="Fatturato per IRAP")
     business_type: str = Field("standard", description="Tipo attività per IRAP")
     
-    @validator('business_type')
+    @field_validator('business_type')
+    @classmethod
     def validate_business_type(cls, v):
         allowed_types = ["standard", "banks", "insurance", "agriculture", "cooperatives"]
         if v not in allowed_types:
@@ -97,9 +100,9 @@ class LocationSearchRequest(BaseModel):
 
 class AddressValidationRequest(BaseModel):
     """Request for address validation"""
-    cap: str = Field(..., regex=r"^\d{5}$", description="Codice postale")
+    cap: str = Field(..., pattern=r"^\d{5}$", description="Codice postale")
     comune: Optional[str] = Field(None, description="Nome comune")
-    provincia: Optional[str] = Field(None, regex=r"^[A-Z]{2}$", description="Sigla provincia")
+    provincia: Optional[str] = Field(None, pattern=r"^[A-Z]{2}$", description="Sigla provincia")
     regione: Optional[str] = Field(None, description="Nome regione")
 
 
@@ -183,7 +186,7 @@ class AddressValidationResponse(BaseModel):
 @router.get("/rates/{cap}", response_model=TaxRatesResponse)
 @rate_limit("regional_tax_rates", max_requests=100, window_hours=1)
 async def get_regional_tax_rates(
-    cap: str = Path(..., regex=r"^\d{5}$", description="CAP della località"),
+    cap: str = Path(..., pattern=r"^\d{5}$", description="CAP della località"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaxRatesResponse:
@@ -490,8 +493,8 @@ async def calculate_complete_regional_taxes(
 @router.get("/compare", response_model=TaxComparisonResponse)
 @rate_limit("tax_comparison", max_requests=10, window_hours=1)
 async def compare_regional_taxes(
-    cap1: str = Query(..., regex=r"^\d{5}$", description="CAP prima località"),
-    cap2: str = Query(..., regex=r"^\d{5}$", description="CAP seconda località"),
+    cap1: str = Query(..., pattern=r"^\d{5}$", description="CAP prima località"),
+    cap2: str = Query(..., pattern=r"^\d{5}$", description="CAP seconda località"),
     income: float = Query(..., ge=0, description="Reddito imponibile per confronto"),
     property_value: Optional[float] = Query(None, gt=0, description="Valore immobile (opzionale)"),
     current_user: User = Depends(get_current_user),
@@ -629,7 +632,7 @@ async def validate_italian_address(
 @router.get("/locations/{cap}", response_model=LocationResponse)
 @rate_limit("location_lookup", max_requests=200, window_hours=1)
 async def get_location_by_cap(
-    cap: str = Path(..., regex=r"^\d{5}$", description="CAP della località"),
+    cap: str = Path(..., pattern=r"^\d{5}$", description="CAP della località"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> LocationResponse:
@@ -669,7 +672,7 @@ async def get_location_by_cap(
 @router.get("/locations/{cap}/nearby")
 @rate_limit("nearby_locations", max_requests=50, window_hours=1)
 async def get_nearby_locations(
-    cap: str = Path(..., regex=r"^\d{5}$", description="CAP di riferimento"),
+    cap: str = Path(..., pattern=r"^\d{5}$", description="CAP di riferimento"),
     radius_km: float = Query(50, ge=1, le=200, description="Raggio di ricerca in km"),
     limit: int = Query(10, ge=1, le=50, description="Numero massimo risultati"),
     current_user: User = Depends(get_current_user),

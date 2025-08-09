@@ -44,6 +44,39 @@ api_calls_by_provider = Counter(
 )
 
 # =============================================================================
+# CCNL INTEGRATION METRICS - Track CCNL query usage and performance
+# =============================================================================
+
+ccnl_queries_total = Counter(
+    'ccnl_queries_total',
+    'Total CCNL queries by type and sector',
+    ['query_type', 'sector', 'status'],
+    registry=REGISTRY
+)
+
+ccnl_query_duration_seconds = Histogram(
+    'ccnl_query_duration_seconds',
+    'CCNL query execution time in seconds',
+    ['query_type', 'sector'],
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
+    registry=REGISTRY
+)
+
+ccnl_cache_hits_total = Counter(
+    'ccnl_cache_hits_total',
+    'CCNL cache hits by query type',
+    ['query_type', 'cache_type'],
+    registry=REGISTRY
+)
+
+ccnl_semantic_search_usage = Counter(
+    'ccnl_semantic_search_usage_total',
+    'Usage of semantic search for CCNL queries',
+    ['sector', 'success'],
+    registry=REGISTRY
+)
+
+# =============================================================================
 # PERFORMANCE METRICS - Track response times and system efficiency
 # =============================================================================
 
@@ -175,6 +208,36 @@ knowledge_base_results_found = Histogram(
     'Number of results found in knowledge base queries',
     ['query_type', 'source'],
     buckets=(0, 1, 5, 10, 25, 50, 100, float('inf')),
+    registry=REGISTRY
+)
+
+# Domain-Action Classification Metrics
+query_classifications_total = Counter(
+    'query_classifications_total',
+    'Total query classifications performed',
+    ['domain', 'action', 'confidence_bucket', 'fallback_used'],
+    registry=REGISTRY
+)
+
+classification_confidence_distribution = Histogram(
+    'classification_confidence_distribution',
+    'Distribution of classification confidence scores',
+    ['domain', 'action'],
+    buckets=(0.0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0),
+    registry=REGISTRY
+)
+
+domain_specific_prompts_used = Counter(
+    'domain_specific_prompts_used_total',
+    'Total usage of domain-specific prompts',
+    ['domain', 'action', 'confidence_bucket'],
+    registry=REGISTRY
+)
+
+classification_routing_changes = Counter(
+    'classification_routing_changes_total',
+    'Total routing changes based on classification',
+    ['domain', 'action', 'new_strategy', 'old_strategy'],
     registry=REGISTRY
 )
 
@@ -476,6 +539,130 @@ def track_user_action(action_type: str, feature: str, user_type: str):
         feature=feature,
         user_type=user_type
     ).inc()
+
+
+def track_ccnl_query(query_type: str, sector: str, status: str, duration_seconds: float = None, semantic_search_used: bool = False):
+    """Track CCNL query metrics.
+    
+    Args:
+        query_type: Type of CCNL query (salary_calculation, leave_calculation, etc.)
+        sector: CCNL sector (metalmeccanico, edilizia, etc.)
+        status: success or error
+        duration_seconds: Query execution time
+        semantic_search_used: Whether semantic search was used
+    """
+    try:
+        # Track query count
+        ccnl_queries_total.labels(
+            query_type=query_type,
+            sector=sector or "unknown",
+            status=status
+        ).inc()
+        
+        # Track duration if provided
+        if duration_seconds is not None:
+            ccnl_query_duration_seconds.labels(
+                query_type=query_type,
+                sector=sector or "unknown"
+            ).observe(duration_seconds)
+        
+        # Track semantic search usage
+        if semantic_search_used:
+            ccnl_semantic_search_usage.labels(
+                sector=sector or "unknown",
+                success=status
+            ).inc()
+            
+        logger.debug(
+            "ccnl_metrics_tracked",
+            query_type=query_type,
+            sector=sector,
+            status=status,
+            duration_seconds=duration_seconds,
+            semantic_search_used=semantic_search_used
+        )
+        
+    except Exception as e:
+        logger.error("ccnl_metrics_tracking_failed", error=str(e))
+
+
+def track_ccnl_cache_hit(query_type: str, cache_type: str):
+    """Track CCNL cache hits.
+    
+    Args:
+        query_type: Type of CCNL query that was cached
+        cache_type: Type of cache (response, calculation, search)
+    """
+    try:
+        ccnl_cache_hits_total.labels(
+            query_type=query_type,
+            cache_type=cache_type
+        ).inc()
+        
+        logger.debug(
+            "ccnl_cache_hit_tracked",
+            query_type=query_type,
+            cache_type=cache_type
+        )
+        
+    except Exception as e:
+        logger.error("ccnl_cache_metrics_tracking_failed", error=str(e))
+
+
+def track_classification_usage(domain: str, action: str, confidence: float, fallback_used: bool = False, prompt_used: bool = False, old_strategy: str = None, new_strategy: str = None):
+    """Track domain-action classification usage and metrics.
+    
+    Args:
+        domain: The classified domain (tax, legal, labor, business, accounting)
+        action: The classified action (information_request, document_generation, etc.)
+        confidence: Classification confidence score (0-1)
+        fallback_used: Whether LLM fallback was used for classification
+        prompt_used: Whether domain-specific prompt was used
+        old_strategy: Previous routing strategy (if changed)
+        new_strategy: New routing strategy (if changed)
+    """
+    # Determine confidence bucket
+    if confidence >= 0.9:
+        confidence_bucket = "very_high"
+    elif confidence >= 0.8:
+        confidence_bucket = "high"
+    elif confidence >= 0.7:
+        confidence_bucket = "medium"
+    elif confidence >= 0.6:
+        confidence_bucket = "low"
+    else:
+        confidence_bucket = "very_low"
+    
+    # Track classification
+    query_classifications_total.labels(
+        domain=domain,
+        action=action,
+        confidence_bucket=confidence_bucket,
+        fallback_used=str(fallback_used)
+    ).inc()
+    
+    # Track confidence distribution
+    classification_confidence_distribution.labels(
+        domain=domain,
+        action=action
+    ).observe(confidence)
+    
+    # Track domain-specific prompt usage
+    if prompt_used:
+        domain_specific_prompts_used.labels(
+            domain=domain,
+            action=action,
+            confidence_bucket=confidence_bucket
+        ).inc()
+    
+    # Track routing strategy changes
+    if old_strategy and new_strategy and old_strategy != new_strategy:
+        classification_routing_changes.labels(
+            domain=domain,
+            action=action,
+            new_strategy=new_strategy,
+            old_strategy=old_strategy
+        ).inc()
 
 
 # Initialize metrics on module import

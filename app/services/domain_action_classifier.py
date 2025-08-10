@@ -108,14 +108,28 @@ class DomainActionClassifier:
                     'citazione', 'procura', 'intimazione', 'pignoramento', 'udienza',
                     'notifica', 'controversia', 'cassazione', 'tar', 'consiglio stato',
                     'appello', 'primo grado', 'secondo grado', 'legittimità',
+                    'precetto', 'decreto ingiuntivo', 'opposizione', 'istanza',
                     # Legal documents and procedures
                     'contratto', 'clausola', 'clausole', 'accordo', 'transazione',
                     'risoluzione', 'rescissione', 'nullità', 'annullamento',
                     'inadempimento', 'mora', 'danni', 'risarcimento',
                     'responsabilità', 'garanzia', 'fideiussione',
+                    'diffida', 'messa in mora', 'lettera di diffida',
                     # Legal entities and roles
                     'avvocato', 'legale', 'patrocinio', 'rappresentanza',
-                    'mandato', 'procuratore', 'difensore'
+                    'mandato', 'procuratore', 'difensore',
+                    # Colloquial Italian patterns for legal requests
+                    'ho bisogno di', 'mi serve', 'devo fare', 'voglio',
+                    'mi aiuti a', 'puoi', 'vorrei', 'come faccio a',
+                    'help me', 'aiuto', 'urgente', 'subito',
+                    'problema', 'questione', 'situazione', 'caso',
+                    'difendermi', 'tutelarmi', 'proteggere', 'diritti',
+                    'causa', 'lite', 'disputa', 'conflitto',
+                    'pagare', 'soldi', 'debito', 'creditore',
+                    'sfratto', 'affitto', 'locazione', 'inquilino',
+                    'lavoro', 'licenziamento', 'mobbing', 'infortunio',
+                    'separazione', 'divorzio', 'matrimonio', 'famiglia',
+                    'eredità', 'testamento', 'successione'
                 ],
                 'sub_domains': {
                     'civile': ['civile', 'contratto', 'responsabilità', 'danni', 'risarcimento'],
@@ -221,19 +235,35 @@ class DomainActionClassifier:
             Action.DOCUMENT_GENERATION: {
                 'verbs': [
                     'scrivi', 'redigi', 'prepara', 'crea', 'formula', 'predisponi',
-                    'compila', 'draft', 'elabora', 'stendi', 'genera'
+                    'compila', 'draft', 'elabora', 'stendi', 'genera',
+                    # Colloquial Italian verbs for document requests
+                    'fai', 'fammi', 'aiutami a fare', 'mi serve', 'ho bisogno di',
+                    'devo scrivere', 'vorrei', 'puoi fare', 'mi aiuti con',
+                    # Problem-solution patterns (implicit document requests)
+                    'devo fare', 'che documento', 'che atto', 'come faccio',
+                    'che documenti servono', 'cosa devo fare', 'serve un',
+                    'devo scrivere', 'come mi difendo', 'come tutelarmi'
                 ],
                 'indicators': [
-                    'modello', 'fac simile', 'bozza', 'template', 'schema'
+                    'modello', 'fac simile', 'bozza', 'template', 'schema',
+                    # Problem indicators that imply document needs
+                    'che documento', 'documenti servono', 'atto fare', 'serve un',
+                    'non paga', 'non pagato', 'causa', 'difendermi', 'tutelarmi',
+                    'problema', 'questione', 'disputa', 'lite', 'controversia'
                 ],
                 'document_types': {
-                    'ricorso': ['ricorso', 'impugnazione', 'opposizione'],
-                    'contratto': ['contratto', 'accordo', 'convenzione'],
-                    'atto': ['atto', 'citazione', 'decreto', 'intimazione'],
-                    'lettera': ['lettera', 'diffida', 'messa in mora'],
+                    'ricorso': ['ricorso', 'impugnazione', 'opposizione', 'ricorso al tar', 'ricorso tributario'],
+                    'contratto': ['contratto', 'accordo', 'convenzione', 'patto'],
+                    'atto': ['atto', 'citazione', 'decreto', 'intimazione', 'decreto ingiuntivo'],
+                    'lettera': ['lettera', 'diffida', 'messa in mora', 'lettera di diffida'],
                     'dichiarazione': ['dichiarazione', 'autocertificazione'],
-                    'istanza': ['istanza', 'domanda', 'richiesta'],
-                    'procura': ['procura', 'mandato', 'delega']
+                    'istanza': ['istanza', 'domanda', 'richiesta', 'istanza di rimborso'],
+                    'procura': ['procura', 'mandato', 'delega', 'rappresentanza'],
+                    'precetto': ['precetto', 'atto di precetto', 'esecuzione'],
+                    'sentenza': ['sentenza', 'decreto', 'ordinanza'],
+                    'transazione': ['transazione', 'accordo transattivo', 'conciliazione'],
+                    'denuncia': ['denuncia', 'querela', 'esposto'],
+                    'testamento': ['testamento', 'disposizioni testamentarie', 'volontà']
                 }
             },
             
@@ -342,13 +372,32 @@ class DomainActionClassifier:
         document_type = self._extract_document_type(query_lower, best_action)
         
         # Use LLM fallback if confidence is too low
+        # Lower thresholds for legal documents and document generation to improve coverage
+        if best_domain == Domain.LEGAL and best_action == Action.DOCUMENT_GENERATION:
+            threshold = 0.3  # Very low threshold for legal document generation
+        elif best_domain == Domain.LEGAL:
+            threshold = 0.4  # Lower threshold for any legal query
+        elif best_action == Action.DOCUMENT_GENERATION:
+            threshold = 0.45  # Lower threshold for any document generation
+        else:
+            threshold = 0.6  # Standard threshold for other domains/actions
+            
         fallback_used = False
-        if combined_confidence < 0.6:
+        if combined_confidence < threshold:
             logger.info(f"Low confidence classification ({combined_confidence:.2f}), using LLM fallback")
             try:
                 llm_result = await self._llm_fallback_classification(query)
                 if llm_result and llm_result.confidence > combined_confidence:
-                    return llm_result._replace(fallback_used=True)
+                    # Create new instance with fallback_used=True
+                    return DomainActionClassification(
+                        domain=llm_result.domain,
+                        action=llm_result.action,
+                        confidence=llm_result.confidence,
+                        sub_domain=llm_result.sub_domain,
+                        document_type=llm_result.document_type,
+                        reasoning=llm_result.reasoning,
+                        fallback_used=True
+                    )
             except Exception as e:
                 logger.warning(f"LLM fallback failed: {e}, using rule-based result")
         
@@ -379,7 +428,10 @@ class DomainActionClassifier:
                     length_weight = len(keyword) / 20  # Longer keywords get higher weight
                     position_weight = 1.2 if query.find(keyword) < len(query) / 3 else 1.0  # Early position bonus
                     
-                    match_score = count * (1 + length_weight) * position_weight
+                    # Extra weight for legal domain keywords to improve coverage
+                    domain_weight = 1.3 if domain == Domain.LEGAL else 1.0
+                    
+                    match_score = count * (1 + length_weight) * position_weight * domain_weight
                     matches.append(match_score)
             
             if matches:
@@ -396,9 +448,29 @@ class DomainActionClassifier:
         """Calculate confidence scores for each action"""
         scores = {}
         
+        # Special handling for explicit document requests (override other patterns)
+        document_request_patterns = [
+            'che documento', 'che documenti', 'che atto', 'che atti', 'documenti servono',
+            'documento devo', 'atto devo', 'documento fare', 'atto fare'
+        ]
+        
+        # "che fare?" questions with legal context should be treated as document requests
+        legal_action_patterns = [
+            'che fare', 'cosa fare', 'che azione', 'come agire', 'come procedere'
+        ]
+        legal_context = ['non paga', 'non pagato', 'causa', 'tutela', 'diritti', 'opporsi', 'difendermi']
+        
+        is_explicit_document_request = any(pattern in query for pattern in document_request_patterns)
+        is_legal_action_request = (any(action_pattern in query for action_pattern in legal_action_patterns) 
+                                  and any(legal_term in query for legal_term in legal_context))
+        
         for action, patterns in self.action_patterns.items():
             score = 0.0
             matches = []
+            
+            # Boost document generation for explicit document requests
+            if action == Action.DOCUMENT_GENERATION and (is_explicit_document_request or is_legal_action_request):
+                matches.append(5.0)  # Very high weight for explicit document requests
             
             # Check verbs
             for verb in patterns.get('verbs', []):
@@ -411,14 +483,20 @@ class DomainActionClassifier:
             # Check indicators
             for indicator in patterns.get('indicators', []):
                 if indicator in query:
-                    matches.append(1.5)
+                    # Higher weight for problem indicators that imply document needs
+                    problem_indicators = ['che documento', 'documenti servono', 'non paga', 'causa', 'problema', 'disputa', 'lite']
+                    weight = 3.0 if any(prob in indicator for prob in problem_indicators) else 1.5
+                    matches.append(weight)
             
             # Check document types for document_generation
             if action == Action.DOCUMENT_GENERATION:
                 for doc_type, terms in patterns.get('document_types', {}).items():
                     for term in terms:
                         if term in query:
-                            matches.append(3.0)  # High weight for document type identification
+                            # Extra high weight for legal document types
+                            legal_docs = ['ricorso', 'citazione', 'diffida', 'precetto', 'istanza', 'decreto', 'opposizione', 'contratto']
+                            weight = 4.5 if any(legal_term in term for legal_term in legal_docs) else 3.0
+                            matches.append(weight)
             
             # Check question patterns for CCNL queries
             if action == Action.CCNL_QUERY:
@@ -515,9 +593,11 @@ Rispondi SOLO con formato JSON:
 
             user_prompt = f"Query: {query}"
             
+            # Convert to Message objects for LLM provider
+            from app.schemas.chat import Message
             messages = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt)
+                Message(role="system", content=system_prompt),
+                Message(role="user", content=user_prompt)
             ]
             
             # Get cost-optimized LLM provider

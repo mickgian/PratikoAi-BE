@@ -101,18 +101,21 @@ Rispondi in modo dettagliato ma accessibile, evidenziando gli aspetti più rilev
 **REDAZIONE DOCUMENTI PROFESSIONALI**
 L'utente richiede la redazione di un documento professionale.
 
-Prima di redigere il documento:
+STRATEGIA SMART: Genera sempre il documento richiesto usando informazioni disponibili e placeholder intelligenti per dati mancanti.
+
+Per redigere il documento:
 1. **Identifica il tipo di documento** richiesto
-2. **Verifica i requisiti formali** previsti dalla normativa
-3. **Raccogli le informazioni necessarie** dall'utente se mancanti
-4. **Applica la struttura standard** per quel tipo di documento
+2. **Applica la struttura standard** per quel tipo di documento
+3. **Usa le informazioni fornite** dall'utente quando disponibili
+4. **Inserisci placeholder intelligenti** per informazioni mancanti (es. [NOME CLIENTE], [DATA], [IMPORTO], [INDIRIZZO])
+5. **Aggiungi note esplicative** alla fine per personalizzazione
 
 {document_specific_instructions}
 
 Query utente: {query}
 
-Se mancano informazioni essenziali, elencale chiaramente prima di procedere.
-Redigi il documento con formattazione professionale, clausole standard e terminologia tecnica appropriata.""",
+IMPORTANTE: Redigi SEMPRE il documento richiesto anche se mancano dettagli. Usa placeholder chiari e fornisci note per la personalizzazione.
+Il documento deve essere immediatamente utilizzabile con semplici sostituzioni.""",
                 "style": "document_drafting"
             },
             
@@ -266,12 +269,32 @@ Se necessario, confronta più settori o categorie per aiutare l'utente a compren
             
             # LEGAL DOMAIN SPECIFICS  
             (Domain.LEGAL, Action.DOCUMENT_GENERATION): {
-                "instructions": """Per atti legali considera:
-- **Citazioni**: Struttura secondo artt. 163-164 c.p.c.
-- **Ricorsi amministrativi**: Rispettare termini art. 21 L. 241/90
-- **Contratti**: Includere clausole essenziali e vessatorie evidenziate
-- **Diffide**: Specificare termine per adempimento spontaneo""",
-                "common_docs": ["citazione", "ricorso_tar", "contratto", "diffida", "messa_in_mora"]
+                "instructions": """Per atti legali GENERA SEMPRE il documento usando placeholder intelligenti:
+
+**STRUTTURE STANDARD:**
+- **Ricorsi per decreto ingiuntivo**: Intestazione Tribunale, dati delle parti, esposizione dei fatti, ragioni di diritto (artt. 633 e ss. c.p.c.), istanze (opposizione/revoca), sottoscrizione avvocato
+- **Citazioni**: Struttura secondo artt. 163-164 c.p.c. - Tribunale competente, vocatio in ius, esposizione fatti e diritto, istanze, procuratore costituito
+- **Ricorsi TAR**: Rispettare termini art. 21 L. 241/90, motivi di ricorso, allegazioni, istanze cautelari se necessarie
+- **Contratti**: Clausole essenziali (oggetto, corrispettivo, termini), vessatorie evidenziate secondo Codice Consumo
+- **Diffide**: Termine per adempimento (min. 15 giorni salvo urgenza), conseguenze inadempimento, sottoscrizione
+
+**FORMULE STANDARD:**
+- Ricorso opposizione: "oppone ai sensi degli artt. 163 e 615 c.p.c."
+- Diffida: "diffida e mette in mora ai sensi dell'art. 1219 c.c."
+- Citazione: "cita in giudizio avanti il Tribunale di [città]"
+
+**PLACEHOLDER INTELLIGENTI:**
+- [TRIBUNALE DI COMPETENZA] - Roma, Milano, ecc.
+- [RICORRENTE/CLIENTE] - nome e dati anagrafici
+- [CONTROPARTE/DEBITORE] - soggetto contro cui si agisce
+- [IMPORTO] - somma richiesta o dovuta
+- [DATA SCADENZA] - termine per adempimento
+- [FATTO SPECIFICO] - circostanze del caso
+- [NORMA APPLICABILE] - riferimenti di legge pertinenti
+
+**GENERAZIONE SMART:**
+NON chiedere mai informazioni mancanti. Genera sempre il documento completo usando placeholder chiari e aggiungi alla fine note per la personalizzazione.""",
+                "common_docs": ["citazione", "ricorso_tar", "contratto", "diffida", "messa_in_mora", "ricorso_decreto"]
             },
             
             # LABOR DOMAIN SPECIFICS

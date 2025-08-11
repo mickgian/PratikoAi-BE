@@ -562,3 +562,13 @@ class CacheService:
 
 # Global cache service instance
 cache_service = CacheService()
+
+
+async def get_redis_client():
+    """
+    Get Redis client from the global cache service.
+    
+    Returns:
+        Redis client instance or None if Redis is not available
+    """
+    return await cache_service._get_redis()

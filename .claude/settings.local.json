@@ -16,7 +16,8 @@
       "Bash(docker-compose:*)",
       "Bash(docker stop:*)",
       "Bash(grep:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

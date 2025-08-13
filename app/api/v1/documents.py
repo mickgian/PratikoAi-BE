@@ -305,7 +305,9 @@ async def analyze_document(
     analysis_result = await analyzer.analyze_document(
       document_data=document.extracted_data,
       query=query,
-      analysis_type=analysis_type
+      analysis_type=analysis_type,
+      document_category=document.document_category,
+      extracted_text=document.extracted_text
     )
     
     if analysis_result["success"]:
@@ -425,7 +427,7 @@ async def get_upload_configuration():
       "PDF": {
         "extensions": [".pdf"],
         "mime_types": ["application/pdf"],
-        "description": "Fatture elettroniche, F24, dichiarazioni fiscali"
+        "description": "Documenti fiscali (fatture, F24, dichiarazioni) e legali (citazioni, ricorsi, contratti)"
       },
       "Excel": {
         "extensions": [".xlsx", ".xls"],
@@ -433,7 +435,7 @@ async def get_upload_configuration():
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           "application/vnd.ms-excel"
         ],
-        "description": "Bilanci, registri IVA, contabilità"
+        "description": "Bilanci, registri IVA, contabilità aziendale"
       },
       "CSV": {
         "extensions": [".csv"],
@@ -444,10 +446,10 @@ async def get_upload_configuration():
     "processing_timeout_seconds": DOCUMENT_CONFIG["PROCESSING_TIMEOUT_SECONDS"],
     "default_expiration_hours": DOCUMENT_CONFIG["DEFAULT_EXPIRATION_HOURS"],
     "italian_text": {
-      "drop_zone_text": "Trascina qui i tuoi documenti fiscali (PDF, Excel, CSV)",
+      "drop_zone_text": "Trascina qui i tuoi documenti fiscali e legali (PDF, Excel, CSV)",
       "or_browse": "oppure seleziona i file",
       "max_size_text": f"Massimo {DOCUMENT_CONFIG['MAX_FILE_SIZE_MB']}MB per file, fino a {DOCUMENT_CONFIG['MAX_FILES_PER_UPLOAD']} file",
-      "supported_formats": "Formati supportati: fatture elettroniche, F24, bilanci, registri IVA",
+      "supported_formats": "Formati supportati: fatture elettroniche, F24, bilanci, citazioni, contratti, ricorsi",
       "processing_time": "I documenti verranno elaborati automaticamente e conservati per 48 ore"
     }
   }
@@ -525,7 +527,9 @@ async def process_document_background(document_id: UUID, analysis_query: Optiona
             analysis_result = await analyzer.analyze_document(
               document_data=document.extracted_data,
               query=analysis_query,
-              analysis_type="general"
+              analysis_type="general",
+              document_category=document.document_category,
+              extracted_text=document.extracted_text
             )
             
             if analysis_result["success"]:

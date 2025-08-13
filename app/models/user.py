@@ -23,17 +23,28 @@ class User(BaseModel, table=True):
     Attributes:
         id: The primary key
         email: User's email (unique)
-        hashed_password: Bcrypt hashed password
+        hashed_password: Bcrypt hashed password (nullable for OAuth users)
         refresh_token_hash: Hash of the current refresh token (nullable)
+        name: User's full name (from OAuth or manual registration)
+        avatar_url: URL to user's profile picture (from OAuth)
+        provider: Authentication provider ('email', 'google', 'linkedin')
+        provider_id: Unique ID from the OAuth provider (nullable)
         created_at: When the user was created (inherited from BaseModel)
         sessions: Relationship to user's chat sessions
     """
 
     id: int = Field(default=None, primary_key=True)
     email: str = Field(unique=True, index=True)
-    hashed_password: str
+    hashed_password: str | None = Field(default=None)  # Nullable for OAuth users
     # Store hash of refresh token for security - allows token revocation
     refresh_token_hash: str | None = Field(default=None, index=True)
+    
+    # OAuth and profile fields
+    name: str | None = Field(default=None, max_length=255)
+    avatar_url: str | None = Field(default=None, max_length=512)
+    provider: str = Field(default="email", max_length=50, index=True)  # 'email', 'google', 'linkedin'
+    provider_id: str | None = Field(default=None, max_length=255, index=True)  # OAuth provider user ID
+    
     sessions: List["Session"] = Relationship(back_populates="user")
 
     def verify_password(self, password: str) -> bool:

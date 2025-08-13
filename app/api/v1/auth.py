@@ -4,6 +4,7 @@ This module provides endpoints for user registration, login, session management,
 and token verification.
 """
 
+import os
 import uuid
 from typing import List
 
@@ -30,6 +31,8 @@ from app.schemas.auth import (
     TokenResponse,
     UserCreate,
     UserResponse,
+    OAuthLoginResponse,
+    OAuthTokenResponse,
 )
 from app.services.database import DatabaseService
 from app.utils.auth import (
@@ -43,6 +46,8 @@ from app.utils.sanitization import (
     sanitize_string,
     validate_password_strength,
 )
+from app.services.google_oauth_service import google_oauth_service
+from app.services.linkedin_oauth_service import linkedin_oauth_service
 
 router = APIRouter()
 security = HTTPBearer()
@@ -284,7 +289,7 @@ async def create_session(user: User = Depends(get_current_user)):
             expires_at=token.expires_at.isoformat(),
         )
 
-        return SessionResponse(session_id=session_id, name=session.name, token=token)
+        return SessionResponse(session_id=session_id, name=session.name, token=token, created_at=session.created_at)
     except ValueError as ve:
         logger.error("session_creation_validation_failed", error=str(ve), user_id=user.id, exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
@@ -320,7 +325,7 @@ async def update_session_name(
         # Create a new token (not strictly necessary but maintains consistency)
         token = create_access_token(sanitized_session_id)
 
-        return SessionResponse(session_id=sanitized_session_id, name=session.name, token=token)
+        return SessionResponse(session_id=sanitized_session_id, name=session.name, token=token, created_at=session.created_at)
     except ValueError as ve:
         logger.error("session_update_validation_failed", error=str(ve), session_id=session_id, exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
@@ -372,6 +377,7 @@ async def get_user_sessions(user: User = Depends(get_current_user)):
                 session_id=sanitize_string(session.id),
                 name=sanitize_string(session.name),
                 token=create_access_token(session.id),
+                created_at=session.created_at,
             )
             for session in sessions
         ]
@@ -482,3 +488,189 @@ async def logout_user(request: Request, user: User = Depends(get_current_user)):
     except Exception as e:
         logger.error("logout_failed", user_id=user.id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Logout failed")
+
+
+# OAuth Endpoints
+
+@router.get("/google/login", response_model=OAuthLoginResponse)
+@limiter.limit("20 per minute")
+async def google_login(request: Request):
+    """Initiate Google OAuth login flow.
+    
+    Redirects the user to Google's OAuth authorization page.
+    
+    Args:
+        request: The FastAPI request object for rate limiting.
+        
+    Returns:
+        dict: Authorization URL for redirecting to Google OAuth.
+        
+    Raises:
+        HTTPException: If Google OAuth is not configured or redirect fails.
+    """
+    try:
+        if not google_oauth_service.is_configured():
+            logger.error("google_oauth_not_configured")
+            raise HTTPException(
+                status_code=500, 
+                detail="Google OAuth is not configured. Please contact administrator."
+            )
+            
+        # Generate authorization URL with frontend callback endpoint
+        # For development, use localhost:3000, for production use the configured frontend URL
+        frontend_base_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        redirect_uri = f"{frontend_base_url}/auth/callback"
+        auth_url = google_oauth_service.get_authorization_url(redirect_uri)
+        
+        logger.info("google_oauth_login_initiated", redirect_uri=redirect_uri)
+        
+        return OAuthLoginResponse(authorization_url=auth_url)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("google_oauth_login_failed", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to initiate Google OAuth")
+
+
+@router.get("/google/callback")
+@limiter.limit("20 per minute")
+async def google_callback(request: Request, code: str, state: str = None):
+    """Handle Google OAuth callback.
+    
+    Processes the authorization code from Google and creates or authenticates the user.
+    
+    Args:
+        request: The FastAPI request object for rate limiting.
+        code: Authorization code from Google OAuth.
+        state: Optional state parameter for CSRF protection.
+        
+    Returns:
+        TokenResponse: User authentication tokens.
+        
+    Raises:
+        HTTPException: If OAuth callback processing fails.
+    """
+    try:
+        if not google_oauth_service.is_configured():
+            logger.error("google_oauth_not_configured")
+            raise HTTPException(
+                status_code=500,
+                detail="Google OAuth is not configured. Please contact administrator."
+            )
+        
+        # Sanitize inputs
+        code = sanitize_string(code)
+        if state:
+            state = sanitize_string(state)
+            
+        # Handle OAuth callback
+        result = await google_oauth_service.handle_callback(code, state)
+        
+        logger.info("google_oauth_callback_success", user_id=result["user"]["id"])
+        
+        # Return in the same format as regular login
+        return TokenResponse(
+            access_token=result["access_token"],
+            refresh_token=result["refresh_token"], 
+            token_type=result["token_type"],
+            expires_at=None  # Will be set by token creation
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("google_oauth_callback_failed", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Google OAuth authentication failed")
+
+
+@router.get("/linkedin/login", response_model=OAuthLoginResponse)
+@limiter.limit("20 per minute")
+async def linkedin_login(request: Request):
+    """Initiate LinkedIn OAuth login flow.
+    
+    Redirects the user to LinkedIn's OAuth authorization page.
+    
+    Args:
+        request: The FastAPI request object for rate limiting.
+        
+    Returns:
+        dict: Authorization URL for redirecting to LinkedIn OAuth.
+        
+    Raises:
+        HTTPException: If LinkedIn OAuth is not configured or redirect fails.
+    """
+    try:
+        if not linkedin_oauth_service.is_configured():
+            logger.error("linkedin_oauth_not_configured")
+            raise HTTPException(
+                status_code=500,
+                detail="LinkedIn OAuth is not configured. Please contact administrator."
+            )
+            
+        # Generate authorization URL with frontend callback endpoint
+        # For development, use localhost:3000, for production use the configured frontend URL
+        frontend_base_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        redirect_uri = f"{frontend_base_url}/auth/callback"
+        auth_url = linkedin_oauth_service.get_authorization_url(redirect_uri)
+        
+        logger.info("linkedin_oauth_login_initiated", redirect_uri=redirect_uri)
+        
+        return OAuthLoginResponse(authorization_url=auth_url)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("linkedin_oauth_login_failed", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to initiate LinkedIn OAuth")
+
+
+@router.get("/linkedin/callback")
+@limiter.limit("20 per minute")
+async def linkedin_callback(request: Request, code: str, state: str = None):
+    """Handle LinkedIn OAuth callback.
+    
+    Processes the authorization code from LinkedIn and creates or authenticates the user.
+    
+    Args:
+        request: The FastAPI request object for rate limiting.
+        code: Authorization code from LinkedIn OAuth.
+        state: Optional state parameter for CSRF protection.
+        
+    Returns:
+        TokenResponse: User authentication tokens.
+        
+    Raises:
+        HTTPException: If OAuth callback processing fails.
+    """
+    try:
+        if not linkedin_oauth_service.is_configured():
+            logger.error("linkedin_oauth_not_configured")
+            raise HTTPException(
+                status_code=500,
+                detail="LinkedIn OAuth is not configured. Please contact administrator."
+            )
+        
+        # Sanitize inputs
+        code = sanitize_string(code)
+        if state:
+            state = sanitize_string(state)
+            
+        # Handle OAuth callback
+        result = await linkedin_oauth_service.handle_callback(code, state)
+        
+        logger.info("linkedin_oauth_callback_success", user_id=result["user"]["id"])
+        
+        # Return in the same format as regular login
+        return TokenResponse(
+            access_token=result["access_token"],
+            refresh_token=result["refresh_token"],
+            token_type=result["token_type"],
+            expires_at=None  # Will be set by token creation
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("linkedin_oauth_callback_failed", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="LinkedIn OAuth authentication failed")

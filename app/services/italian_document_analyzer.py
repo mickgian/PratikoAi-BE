@@ -1,8 +1,8 @@
 """
 Italian Document Analysis Service for AI-powered Document Understanding.
 
-Provides AI-powered analysis of Italian tax documents with compliance checking,
-financial health analysis, and actionable business insights.
+Provides AI-powered analysis of Italian tax, financial, and legal documents with 
+compliance checking, financial health analysis, and actionable business insights.
 """
 
 import json
@@ -15,10 +15,28 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.core.config import settings
 from app.core.logging import logger
+from app.models.document_simple import ItalianDocumentCategory
+from app.services.legal_document_analyzer import ItalianLegalDocumentAnalyzer
 
 
 class ItalianDocumentAnalyzer:
-  """AI-powered analyzer for Italian tax and financial documents"""
+  """AI-powered analyzer for Italian tax, financial, and legal documents"""
+  
+  # Legal document categories
+  LEGAL_CATEGORIES = {
+    ItalianDocumentCategory.CITAZIONE,
+    ItalianDocumentCategory.RICORSO,
+    ItalianDocumentCategory.DECRETO_INGIUNTIVO,
+    ItalianDocumentCategory.ATTO_GIUDIZIARIO,
+    ItalianDocumentCategory.DIFFIDA,
+    ItalianDocumentCategory.CONTRATTO,
+    ItalianDocumentCategory.VERBALE,
+    ItalianDocumentCategory.SENTENZA,
+    ItalianDocumentCategory.ORDINANZA,
+    ItalianDocumentCategory.PRECETTO,
+    ItalianDocumentCategory.COMPARSA,
+    ItalianDocumentCategory.MEMORIA
+  }
   
   def __init__(self):
     self.settings = settings
@@ -28,12 +46,16 @@ class ItalianDocumentAnalyzer:
       temperature=0.1,  # Low temperature for factual analysis
       max_tokens=2000
     )
+    # Initialize legal document analyzer
+    self.legal_analyzer = ItalianLegalDocumentAnalyzer()
   
   async def analyze_document(
     self, 
     document_data: Dict[str, Any], 
     query: str,
-    analysis_type: str = "general"
+    analysis_type: str = "general",
+    document_category: Optional[str] = None,
+    extracted_text: Optional[str] = None
   ) -> Dict[str, Any]:
     """
     Analyze document with AI and provide structured response.
@@ -42,11 +64,24 @@ class ItalianDocumentAnalyzer:
       document_data: Structured data extracted from document
       query: User's analysis question
       analysis_type: Type of analysis (compliance_check, financial_analysis, etc.)
+      document_category: Category of document for specialized analysis
+      extracted_text: Full text extracted from document
       
     Returns:
       Dictionary with analysis results
     """
     try:
+      # Check if this is a legal document that requires specialized analysis
+      if document_category and self._is_legal_document(document_category):
+        logger.info(f"Using specialized legal analysis for {document_category}")
+        return await self._analyze_legal_document(
+          document_category,
+          extracted_text or "",
+          document_data,
+          query
+        )
+      
+      # Standard tax/financial document analysis
       # Build analysis prompt based on type
       system_prompt = self._build_system_prompt(analysis_type)
       user_prompt = self._build_user_prompt(document_data, query)
@@ -338,3 +373,234 @@ Focus su consigli concreti, scadenze e azioni specifiche da intraprendere."""
         )
     
     return processed
+  
+  def _is_legal_document(self, document_category: str) -> bool:
+    """Check if document category is a legal document"""
+    try:
+      category_enum = ItalianDocumentCategory(document_category)
+      return category_enum in self.LEGAL_CATEGORIES
+    except ValueError:
+      return False
+  
+  async def _analyze_legal_document(
+    self,
+    document_category: str,
+    extracted_text: str,
+    document_data: Dict[str, Any],
+    query: str
+  ) -> Dict[str, Any]:
+    """Analyze legal document using specialized legal analyzer"""
+    try:
+      # Convert string category to enum
+      category_enum = ItalianDocumentCategory(document_category)
+      
+      # Use specialized legal analyzer
+      legal_result = await self.legal_analyzer.analyze_legal_document(
+        document_category=category_enum,
+        extracted_text=extracted_text,
+        extracted_data=document_data,
+        analysis_query=query
+      )
+      
+      if legal_result["success"]:
+        # Transform legal analysis to match expected format
+        return {
+          "success": True,
+          "analysis": legal_result["legal_analysis"],
+          "response": self._format_legal_response(legal_result["legal_analysis"]),
+          "confidence_score": self._calculate_legal_confidence(legal_result["legal_analysis"]),
+          "analysis_type": "legal_document",
+          "document_category": document_category,
+          "timestamp": legal_result["timestamp"]
+        }
+      else:
+        # Fallback to general analysis
+        logger.warning(f"Legal analysis failed, falling back to general: {legal_result.get('error', 'Unknown error')}")
+        return await self._fallback_to_general_analysis(document_data, query, document_category)
+        
+    except Exception as e:
+      logger.error(f"Legal document analysis error: {str(e)}")
+      # Fallback to general analysis
+      return await self._fallback_to_general_analysis(document_data, query, document_category)
+  
+  def _format_legal_response(self, legal_analysis: Dict[str, Any]) -> str:
+    """Format legal analysis into natural language response"""
+    try:
+      response_parts = []
+      
+      # Document type and stage
+      if "document_type" in legal_analysis:
+        doc_type = legal_analysis["document_type"]
+        stage = legal_analysis.get("procedural_stage", "")
+        response_parts.append(f"📄 **Tipo documento**: {doc_type} - {stage}")
+      
+      # Parties
+      if "parti" in legal_analysis:
+        parti = legal_analysis["parti"]
+        if isinstance(parti, dict):
+          if "attore" in parti:
+            response_parts.append(f"👤 **Attore**: {parti['attore']}")
+          if "convenuto" in parti:
+            response_parts.append(f"👤 **Convenuto**: {parti['convenuto']}")
+      
+      # Court and case info
+      if "tribunale" in legal_analysis:
+        response_parts.append(f"🏛️ **Tribunale**: {legal_analysis['tribunale']}")
+      
+      if "numero_rg" in legal_analysis:
+        response_parts.append(f"📋 **R.G.**: {legal_analysis['numero_rg']}")
+      
+      # Key dates and deadlines
+      if "data_udienza" in legal_analysis:
+        response_parts.append(f"📅 **Data udienza**: {legal_analysis['data_udienza']}")
+      
+      if "scadenze" in legal_analysis:
+        response_parts.append("⏰ **Scadenze importanti**:")
+        for scadenza_nome, scadenza_info in legal_analysis["scadenze"].items():
+          if isinstance(scadenza_info, dict):
+            giorni = scadenza_info.get("giorni_rimanenti", 0)
+            tipo = scadenza_info.get("tipo", scadenza_nome)
+            urgenza = "🚨 URGENTE" if giorni < 5 else "⚠️ PROSSIMA" if giorni < 15 else "📝"
+            response_parts.append(f"   • {urgenza} {tipo}: {giorni} giorni rimanenti")
+      
+      # Amount/value
+      if "valore_causa" in legal_analysis:
+        valore = legal_analysis["valore_causa"]
+        response_parts.append(f"💰 **Valore causa**: €{valore:,.2f}")
+      
+      if "importo_decreto" in legal_analysis:
+        importo = legal_analysis["importo_decreto"]
+        response_parts.append(f"💰 **Importo decreto**: €{importo:,.2f}")
+      
+      # Legal basis
+      if "fondamento_giuridico" in legal_analysis and legal_analysis["fondamento_giuridico"]:
+        norme = ", ".join(legal_analysis["fondamento_giuridico"][:3])  # First 3 references
+        response_parts.append(f"⚖️ **Base normativa**: {norme}")
+      
+      # Compliance status
+      if "compliance_check" in legal_analysis:
+        compliance = legal_analysis["compliance_check"]
+        status = "✅ Documento valido" if compliance.get("valido", True) else "❌ Problemi rilevati"
+        response_parts.append(f"🔍 **Conformità**: {status}")
+        
+        if compliance.get("problemi"):
+          response_parts.append("   **Problemi identificati**:")
+          for problema in compliance["problemi"][:3]:  # First 3 problems
+            response_parts.append(f"   • {problema}")
+      
+      # Risk assessment
+      if "risk_assessment" in legal_analysis:
+        risk = legal_analysis["risk_assessment"]
+        livello = risk.get("livello_rischio", "basso")
+        urgenza = risk.get("urgenza", "normale")
+        
+        risk_emoji = {
+          "basso": "🟢",
+          "medio": "🟡", 
+          "alto": "🟠",
+          "critico": "🔴"
+        }
+        
+        response_parts.append(f"⚠️ **Livello rischio**: {risk_emoji.get(livello, '🟡')} {livello.upper()}")
+        
+        if urgenza != "normale":
+          response_parts.append(f"🚨 **Urgenza**: {urgenza.upper()}")
+        
+        if risk.get("azioni_immediate"):
+          response_parts.append("🎯 **Azioni immediate**:")
+          for azione in risk["azioni_immediate"][:3]:  # First 3 actions
+            response_parts.append(f"   • {azione}")
+      
+      # AI analysis if present
+      if "ai_analysis" in legal_analysis and legal_analysis["ai_analysis"].get("risposta"):
+        ai_response = legal_analysis["ai_analysis"]["risposta"]
+        response_parts.append(f"\n🤖 **Analisi approfondita**:\n{ai_response}")
+      
+      # Combine all parts
+      if response_parts:
+        return "\n".join(response_parts)
+      else:
+        return f"Documento legale di tipo {legal_analysis.get('document_type', 'generico')} analizzato. Consulta i dettagli nell'analisi strutturata."
+        
+    except Exception as e:
+      logger.error(f"Error formatting legal response: {str(e)}")
+      return "Analisi legale completata. I dettagli sono disponibili nella sezione analisi strutturata."
+  
+  def _calculate_legal_confidence(self, legal_analysis: Dict[str, Any]) -> int:
+    """Calculate confidence score for legal analysis"""
+    try:
+      confidence = 70  # Base confidence for legal documents
+      
+      # Add confidence based on data extracted
+      if "tribunale" in legal_analysis:
+        confidence += 5
+      if "numero_rg" in legal_analysis:
+        confidence += 5
+      if "parti" in legal_analysis or "ricorrente" in legal_analysis:
+        confidence += 5
+      if "scadenze" in legal_analysis:
+        confidence += 10
+      if "compliance_check" in legal_analysis:
+        confidence += 5
+      
+      # AI analysis adds confidence
+      if "ai_analysis" in legal_analysis and legal_analysis["ai_analysis"].get("risposta"):
+        confidence += 10
+      
+      return min(confidence, 95)  # Cap at 95%
+      
+    except Exception:
+      return 75  # Default confidence for legal documents
+  
+  async def _fallback_to_general_analysis(
+    self,
+    document_data: Dict[str, Any],
+    query: str,
+    document_category: str
+  ) -> Dict[str, Any]:
+    """Fallback to general analysis when legal analysis fails"""
+    try:
+      # Use general analysis but with legal context
+      system_prompt = f"""Sei un consulente esperto in documenti legali italiani.
+Stai analizzando un documento di categoria: {document_category}
+
+Anche se non puoi fare un'analisi legale specializzata, fornisci:
+1. Una sintesi del contenuto del documento
+2. Identificazione delle parti coinvolte
+3. Date e termini rilevanti
+4. Suggerimenti generali per la gestione
+
+Rispondi sempre in italiano con linguaggio professionale."""
+      
+      user_prompt = f"""DOCUMENTO DA ANALIZZARE:
+{json.dumps(document_data, indent=2, ensure_ascii=False)}
+
+DOMANDA DELL'UTENTE:
+{query}
+
+Fornisci una risposta strutturata in formato JSON con:
+1. "analysis": oggetto con i risultati dell'analisi
+2. "response": risposta in linguaggio naturale (in italiano)
+3. "confidence_score": punteggio di affidabilità (0-100)"""
+      
+      # Execute general analysis
+      analysis_result = await self._analyze_with_llm(system_prompt, user_prompt)
+      processed_result = self._post_process_analysis(analysis_result, "legal_fallback")
+      
+      return {
+        "success": True,
+        "analysis": processed_result["analysis"],
+        "response": f"⚠️ **Analisi generale del documento legale**\n\n{processed_result['response']}\n\n💡 *Per un'analisi legale più approfondita, contatta un avvocato specializzato.*",
+        "confidence_score": max(processed_result.get("confidence_score", 60) - 20, 40),  # Lower confidence for fallback
+        "analysis_type": "legal_fallback",
+        "document_category": document_category,
+        "timestamp": datetime.utcnow().isoformat()
+      }
+      
+    except Exception as e:
+      logger.error(f"Fallback analysis failed: {str(e)}")
+      return {
+        "success": False,
+        "error": f"Analisi del documento legale non riuscita: {str(e)}",
+        "analysis_type": "legal_fallback"
+      }

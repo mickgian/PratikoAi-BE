@@ -145,6 +145,13 @@ class Settings:
         # CORS Settings
         self.ALLOWED_ORIGINS = parse_list_from_env("ALLOWED_ORIGINS", ["*"])
 
+        # OAuth Configuration
+        self.GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+        self.GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+        self.LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID", "")
+        self.LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET", "")
+        self.OAUTH_REDIRECT_URI = os.getenv("OAUTH_REDIRECT_URI", f"{self.BASE_URL}/api/v1/auth/oauth/callback")
+
         # Langfuse Configuration
         self.LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
         self.LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")

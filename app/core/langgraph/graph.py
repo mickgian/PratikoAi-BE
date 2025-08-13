@@ -715,7 +715,9 @@ class LangGraphAgent:
             self._graph = await self.create_graph()
         config = {
             "configurable": {"thread_id": session_id},
-            "callbacks": [CallbackHandler()],
+            "callbacks": [
+                CallbackHandler()
+            ],
             "metadata": {
                 "user_id": user_id,
                 "session_id": session_id,
@@ -756,9 +758,7 @@ class LangGraphAgent:
         config = {
             "configurable": {"thread_id": session_id},
             "callbacks": [
-                CallbackHandler(
-                    environment=settings.ENVIRONMENT.value, debug=False, user_id=user_id, session_id=session_id
-                )
+                CallbackHandler()
             ],
         }
         if self._graph is None:

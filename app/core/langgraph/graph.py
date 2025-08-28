@@ -741,7 +741,7 @@ class LangGraphAgent:
     async def get_stream_response(
         self, messages: list[Message], session_id: str, user_id: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
-        """Get a stream response from the LLM.
+        """Get a stream response from the LLM with HTML formatting.
 
         Args:
             messages (list[Message]): The messages to send to the LLM.
@@ -749,11 +749,16 @@ class LangGraphAgent:
             user_id (Optional[str]): The user ID for the conversation.
 
         Yields:
-            str: Tokens of the LLM response.
+            str: HTML-formatted chunks of the LLM response.
         """
+        from app.core.content_formatter import StreamingHTMLProcessor
+        
         # Store user and session info for tracking
         self._current_user_id = user_id
         self._current_session_id = session_id
+        
+        # Initialize HTML processor for this stream
+        html_processor = StreamingHTMLProcessor()
         
         config = {
             "configurable": {"thread_id": session_id},
@@ -769,11 +774,26 @@ class LangGraphAgent:
                 {"messages": dump_messages(messages), "session_id": session_id}, config, stream_mode="messages"
             ):
                 try:
-                    yield token.content
+                    # Get the content from the token
+                    content = token.content if hasattr(token, 'content') else str(token)
+                    
+                    # Process each character through HTML formatter for proper streaming
+                    for char in content:
+                        html_chunk = await html_processor.process_token(char)
+                        if html_chunk:
+                            # Yield HTML chunk instead of raw token
+                            yield html_chunk
+                            
                 except Exception as token_error:
                     logger.error("Error processing token", error=str(token_error), session_id=session_id)
                     # Continue with next token even if current one fails
                     continue
+            
+            # Finalize any remaining content in the processor
+            final_chunk = await html_processor.finalize()
+            if final_chunk:
+                yield final_chunk
+                
         except Exception as stream_error:
             logger.error("Error in stream processing", error=str(stream_error), session_id=session_id)
             raise stream_error

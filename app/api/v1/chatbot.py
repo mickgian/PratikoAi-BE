@@ -4,7 +4,6 @@ This module provides endpoints for chat interactions, including regular chat,
 streaming chat, message history management, and chat history clearing.
 """
 
-import json
 from typing import List
 
 from fastapi import (
@@ -25,10 +24,12 @@ from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
     Message,
-    StreamResponse,
 )
 from app.core.privacy.anonymizer import anonymizer
 from app.core.privacy.gdpr import gdpr_compliance, ProcessingPurpose, DataCategory
+from app.core.streaming_processor import EnhancedStreamingProcessor
+from app.core.streaming_guard import SinglePassStream
+from app.core.sse_write import write_sse
 
 router = APIRouter()
 agent = LangGraphAgent()
@@ -162,37 +163,57 @@ async def chat_stream(
         )
 
         async def event_generator():
-            """Generate streaming events.
+            """Generate streaming events with pure HTML output and deduplication.
 
             Yields:
-                str: Server-sent events in JSON format.
+                str: Server-sent events with HTML-only content.
 
             Raises:
                 Exception: If there's an error during streaming.
             """
+            # Create processor with session ID for tracking
+            processor = EnhancedStreamingProcessor(stream_id=session.id)
+            
             try:
-                full_response = ""
                 with llm_stream_duration_seconds.labels(model="llm").time():
-                    async for chunk in agent.get_stream_response(
+                    # Wrap the original stream to prevent double iteration
+                    original_stream = SinglePassStream(agent.get_stream_response(
                         processed_messages, session.id, user_id=session.user_id
-                     ):
-                        full_response += chunk
-                        response = StreamResponse(content=chunk, done=False)
-                        yield f"data: {json.dumps(response.model_dump())}\n\n"
+                    ))
+                    
+                    async for chunk in original_stream:
+                        # Process chunk through enhanced processor
+                        html_delta = await processor.process_chunk(chunk)
+                        if html_delta:
+                            # Only emit if there's new content
+                            frame = processor.format_sse_frame(content=html_delta, done=False)
+                            # Log and yield what we're sending
+                            yield write_sse(None, frame)
 
-                # Send final message indicating completion
-                final_response = StreamResponse(content="", done=True)
-                yield f"data: {json.dumps(final_response.model_dump())}\n\n"
+                # Send final frame with done=true and no content
+                final_frame = processor.format_sse_frame(done=True)
+                yield write_sse(None, final_frame)
+                
+                # Log final stats
+                processor.finalize()
 
+            except RuntimeError as re:
+                if "iterated twice" in str(re):
+                    logger.error(
+                        f"CRITICAL: Stream iterated twice - session: {session.id}",
+                        exc_info=True
+                    )
+                raise
             except Exception as e:
+                stats = processor.get_stats()
                 logger.error(
-                    "stream_chat_request_failed",
-                    session_id=session.id,
-                    error=str(e),
-                    exc_info=True,
+                    f"stream_chat_request_failed - session: {session.id}, error: {str(e)}, "
+                    f"stats: frames={stats['total_frames']}, bytes={stats['total_bytes_emitted']}",
+                    exc_info=True
                 )
-                error_response = StreamResponse(content=str(e), done=True)
-                yield f"data: {json.dumps(error_response.model_dump())}\n\n"
+                # Send error done frame
+                error_frame = processor.format_sse_frame(done=True)
+                yield write_sse(None, error_frame)
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
 

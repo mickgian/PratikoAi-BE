@@ -17,7 +17,8 @@
       "Bash(docker stop:*)",
       "Bash(grep:*)",
       "Bash(sed:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(pytest:*)"
     ],
     "deny": []
   }

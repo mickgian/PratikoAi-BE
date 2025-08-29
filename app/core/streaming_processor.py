@@ -16,6 +16,7 @@ import time
 import os
 from typing import Optional, AsyncGenerator
 import markdown2
+from app.core.hash_gate import HashGate
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class EnhancedStreamingProcessor:
     - Comprehensive logging for debugging
     """
     
-    def __init__(self, stream_id: str | None = None):
+    def __init__(self, stream_id: str | None = None, enable_hash_gate: bool = False):
         """Initialize the streaming processor."""
         self.accumulated_html = ""  # Track all emitted HTML
         self.accumulated_raw = ""   # Track raw input for debugging
@@ -39,6 +40,8 @@ class EnhancedStreamingProcessor:
         self.total_bytes_emitted = 0
         self.seq = 0
         self.stream_id = stream_id or f"{int(time.time()*1000)}-{os.getpid()}"
+        self.hash_gate = HashGate(self.stream_id) if enable_hash_gate else None
+        self.emitted_hashes = set()  # Track emitted deltas by SHA1 to prevent duplicates
         self.markdown_converter = markdown2.Markdown(
             extras=[
                 "tables",
@@ -74,104 +77,205 @@ class EnhancedStreamingProcessor:
         # Lowercase + collapse whitespace for resilient matching
         return re.sub(r'\s+', ' ', self._strip_tags(s)).strip().lower()
     
-    def _compute_delta(self, new_content: str) -> str:
-        """
-        Compute the delta between accumulated and new content.
-        """
-        if not new_content:
-            return ""
-
-        # If accumulated is empty, everything is new
-        if not self.accumulated_html:
-            return new_content
-
-        # Check if new content is already in accumulated (duplicate)
-        if new_content in self.accumulated_html:
-            logger.debug(
-                f"Duplicate content detected, skipping {len(new_content)} bytes"
-            )
-            return ""
-
-        # Check if accumulated is prefix of new content (continuation)
-        if new_content.startswith(self.accumulated_html):
-            delta = new_content[len(self.accumulated_html):]
-        # Check for overlap - new content might contain accumulated somewhere
-        elif self.accumulated_html in new_content:
-            last_idx = new_content.rfind(self.accumulated_html)
-            delta = new_content[last_idx + len(self.accumulated_html):]
-        else:
-            # No clear relationship - this might be a format switch or provider replay.
-            logger.warning(
-                "Content discontinuity detected - accumulated=%sB, new=%sB",
-                len(self.accumulated_html), len(new_content)
-            )
-            delta = new_content
-
-        # 🔐 Second-start guard: if delta seems to re-begin from the head, trim it.
-        head = self.accumulated_html[:120]  # first 120 chars of emitted HTML
-        head_norm = self._norm_text(head)
-        delta_norm = self._norm_text(delta)
-        pos = delta_norm.find(head_norm)
-        if pos != -1:
-            # Map approximately to raw index by searching in tagless views
-            raw_pos = self._strip_tags(delta).lower().find(self._strip_tags(head).lower())
-            if raw_pos != -1:
-                logger.warning(
-                    "Second-start detected in delta; trimming duplicate restart "
-                    "(head_len=%s, delta_len=%s, cut_at=%s)",
-                    len(head), len(delta), raw_pos
-                )
-                delta = delta[:raw_pos]
-        return delta
+    def _strip_overlap(self, accumulated: str, incoming: str) -> str:
+        """Remove overlap when incoming snapshot's head overlaps our tail."""
+        window = 200
+        a_tail = accumulated[-window:]
+        i_head = incoming[:window]
+        best = 0
+        m = min(len(a_tail), len(i_head))
+        for k in range(1, m + 1):
+            if a_tail[-k:] == i_head[:k]:
+                best = k
+        return incoming[best:]
     
-    async def process_chunk(self, raw_chunk: str) -> Optional[str]:
+    def _compute_delta_lcp(self, new_content: str) -> str:
         """
-        Process a raw chunk from LLM and return HTML delta if any.
+        Compute delta using robust Longest Common Prefix (LCP) algorithm.
+        
+        This prevents previously-emitted content from being replayed by ensuring
+        we only emit the new tail beyond what's already been accumulated.
         
         Args:
-            raw_chunk: Raw text chunk from LLM
+            new_content: The new normalized HTML content
             
         Returns:
-            HTML delta to emit, or None if nothing new
+            str: Only the new content that hasn't been emitted yet
+        """
+        if not new_content:
+            logger.debug("LCP_DELTA stream_id=%s branch=empty_new_content", self.stream_id)
+            return ""
+
+        # If nothing accumulated yet, everything is new
+        if not self.accumulated_html:
+            logger.debug(
+                "LCP_DELTA stream_id=%s branch=empty_accumulated new_len=%s",
+                self.stream_id, len(new_content)
+            )
+            return new_content
+
+        # Find the longest common prefix between accumulated and new content
+        lcp_len = 0
+        min_len = min(len(self.accumulated_html), len(new_content))
+        
+        for i in range(min_len):
+            if self.accumulated_html[i] == new_content[i]:
+                lcp_len += 1
+            else:
+                break
+        
+        logger.debug(
+            "LCP_DELTA stream_id=%s lcp_len=%s acc_len=%s new_len=%s",
+            self.stream_id, lcp_len, len(self.accumulated_html), len(new_content)
+        )
+        
+        # Case 1: new_content is exact prefix of accumulated (should not happen in normal streaming)
+        if lcp_len == len(new_content):
+            logger.info(
+                "LCP_DELTA stream_id=%s branch=new_is_prefix_of_acc no_delta_needed",
+                self.stream_id
+            )
+            return ""
+            
+        # Case 2: accumulated is exact prefix of new_content (normal continuation)  
+        if lcp_len == len(self.accumulated_html):
+            delta = new_content[lcp_len:]
+            logger.debug(
+                "LCP_DELTA stream_id=%s branch=acc_is_prefix_of_new delta_len=%s",
+                self.stream_id, len(delta)
+            )
+            return delta
+            
+        # Case 3: Potential replay or divergence - be VERY strict
+        # Check if new content contains any of the already-emitted content
+        # This is the critical anti-replay protection
+        acc_text_normalized = self._strip_tags(self.accumulated_html).lower().strip()
+        new_text_normalized = self._strip_tags(new_content).lower().strip()
+        
+        # If normalized accumulated text appears anywhere in the new content,
+        # this is likely a replay scenario - BLOCK IT
+        if acc_text_normalized and acc_text_normalized in new_text_normalized:
+            logger.warning(
+                "LCP_DELTA stream_id=%s branch=replay_detected BLOCKING_EMISSION acc_normalized_len=%s found_in_new=True",
+                self.stream_id, len(acc_text_normalized)
+            )
+            return ""
+        
+        # Case 4: Content appears to be restarting or diverged significantly
+        # This is where the old logic would cause duplicates
+        # Instead, we reject any content that would replay already-emitted material
+        logger.warning(
+            "LCP_DELTA stream_id=%s branch=divergence_detected rejecting_potential_replay acc_len=%s new_len=%s lcp_len=%s",
+            self.stream_id, len(self.accumulated_html), len(new_content), lcp_len
+        )
+        
+        # Log the divergence for debugging
+        logger.debug(
+            "LCP_DIVERGENCE stream_id=%s acc_head='%s' new_head='%s'",
+            self.stream_id,
+            self.accumulated_html[:100] + ("..." if len(self.accumulated_html) > 100 else ""),
+            new_content[:100] + ("..." if len(new_content) > 100 else "")
+        )
+        
+        # Return empty to prevent any duplication
+        return ""
+        
+    def _compute_similarity(self, text1: str, text2: str) -> float:
+        """Compute similarity ratio between two texts."""
+        if not text1 or not text2:
+            return 0.0
+        
+        # Simple character-based similarity
+        matches = sum(1 for a, b in zip(text1, text2) if a == b)
+        total = max(len(text1), len(text2))
+        return matches / total if total > 0 else 0.0
+
+    async def process_chunk(self, raw_chunk: str) -> Optional[str]:
+        """
+        Emit ONLY the new tail beyond already-emitted HTML.
+        Block replay/second-start snapshots.
         """
         if not raw_chunk:
             return None
-        
-        # Accumulate raw input for debugging
+
+        next_seq = self.frame_count + 1
+
+        # Append raw for deterministic normalization of the same corpus
         self.accumulated_raw += raw_chunk
-        
-        # Strip trailing newlines from chunk
         raw_chunk = raw_chunk.rstrip('\r\n')
-        
-        # Always normalize entire RAW buffer to HTML
-        format_type = self._detect_format(self.accumulated_raw)  # for logging only
-        normalized_html = self._normalize_to_html(self.accumulated_raw)
-        
-        # Compute delta
-        delta = self._compute_delta(normalized_html)
-        
-        if delta:
-            # Skip whitespace-only deltas unless they contain HTML tags
-            if not re.search(r'\S|<[^>]+>', delta):
-                return None
-            
-            # Update accumulated HTML
-            self.accumulated_html = normalized_html
-            self.frame_count += 1
-            self.total_bytes_emitted += len(delta)
-            
-            # Log at DEBUG level
-            raw_preview = raw_chunk[:50] + "..." if len(raw_chunk) > 50 else raw_chunk
-            logger.debug(
-                f"Streaming chunk processed - format: {format_type}, delta: {len(delta)} bytes, "
-                f"total: {len(self.accumulated_html)} bytes, frame: {self.frame_count}, "
-                f"raw: '{raw_preview}'"
+
+        # Normalize the WHOLE RAW so far to get a coherent snapshot
+        new_full_html = self._normalize_to_html(self.accumulated_raw)
+        acc = self.accumulated_html
+
+        # ── Guard 1: ignore shrinks so we don't starve the tail ─────────────────────
+        # If snapshot shrank relative to what we've already emitted, do nothing.
+        # Prevents overzealous RESTART_BLOCKED from starving output.
+        if len(new_full_html) < len(acc):
+            logger.info(
+                "SHRINK_SNAPSHOT_IGNORED stream_id=%s acc_len=%s new_len=%s",
+                self.stream_id, len(acc), len(new_full_html)
             )
-            
-            return delta
-        
-        return None
-    
+            return None
+
+        # Compute delta against what we've already emitted
+        if not acc:
+            delta = new_full_html
+        elif new_full_html.startswith(acc):
+            # Happy path: continuation
+            delta = new_full_html[len(acc):]
+        else:
+            # Replay/divergence handling
+            last_idx = new_full_html.rfind(acc)
+            if last_idx != -1:
+                # Keep only the tail after the last occurrence of what we've shown
+                delta = new_full_html[last_idx + len(acc):]
+            else:
+                # "Second start" (new_full_html begins again like head) → block
+                head_norm = self._norm_text(acc[:160])
+                new_head_norm = self._norm_text(new_full_html[:max(160, len(head_norm))])
+                if head_norm and new_head_norm.startswith(head_norm):
+                    logger.warning(
+                        "RESTART_BLOCKED stream_id=%s seq=%s acc_len=%s new_len=%s",
+                        self.stream_id, next_seq, len(acc), len(new_full_html)
+                    )
+                    return None
+                # Partial overlap fallback
+                delta = self._strip_overlap(acc, new_full_html)
+
+                # ── Guard 2: textual head replay trim for overlap fallback ──────────
+                # If the would-be delta still looks like a replayed head, drop it.
+                delta_text = self._strip_tags(delta).lower().strip()
+                acc_text = self._strip_tags(acc).lower().strip()
+                if acc_text and delta_text.startswith(acc_text[: min(300, len(acc_text))]):
+                    logger.warning(
+                        "DELTA_HEAD_REPLAY_TRIM stream_id=%s seq=%s",
+                        self.stream_id, next_seq
+                    )
+                    return None
+
+        # Ignore empty/whitespace-only
+        if not delta or not re.search(r'\S|<[^>]+>', delta):
+            return None
+
+        # Hash-based dedup for identical delta repeats
+        delta_sha1 = hashlib.sha1(delta.encode("utf-8")).hexdigest()[:12]
+        if delta_sha1 in self.emitted_hashes:
+            logger.warning(
+                "DUP_DELTA_BLOCKED stream_id=%s seq=%s sha1=%s delta_len=%s already_emitted",
+                self.stream_id, next_seq, delta_sha1, len(delta)
+            )
+            return None
+        if self.hash_gate:
+            self.hash_gate.check_delta(delta, next_seq)
+
+        # Commit
+        self.emitted_hashes.add(delta_sha1)
+        self.accumulated_html = acc + delta
+        self.frame_count += 1
+        self.total_bytes_emitted += len(delta)
+        return delta
+
     def format_sse_frame(self, content: str | None = None, done: bool = False) -> str:
         """
         Format content as SSE frame.

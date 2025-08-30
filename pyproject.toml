@@ -5,6 +5,7 @@ description = "LangGraph FastAPI Template"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "alembic>=1.13",
     "fastapi>=0.115.12",
     "langchain>=0.3.25",
     "langchain-core>=0.3.58",

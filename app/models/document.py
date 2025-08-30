@@ -5,14 +5,13 @@ Database models for handling document uploads, processing, and metadata
 for Italian tax professional document analysis.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 from typing import Dict, List, Optional, Any
 from uuid import UUID, uuid4
 
-from sqlmodel import SQLModel, Field, Relationship, Column, JSON
-from sqlalchemy import String, Integer, DateTime, Text, Boolean, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID, JSONB
+from sqlmodel import SQLModel, Field, Relationship, Column
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app.models.base import BaseModel
 
@@ -58,67 +57,67 @@ class Document(BaseModel, table=True):
     """Document upload and processing tracking"""
     __tablename__ = "documents"
 
-    id = Column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4, index=True)
-    user_id = Column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
     
     # File metadata
-    filename = Column(String(500), nullable=False)  # Stored filename (UUID-based)
-    original_filename = Column(String(500), nullable=False)  # Original user filename
-    file_type = Column(String(20), nullable=False)  # DocumentType enum
-    file_size = Column(Integer, nullable=False)  # Size in bytes
-    mime_type = Column(String(100), nullable=False)
-    file_hash = Column(String(64), nullable=False, index=True)  # SHA-256 hash
+    filename: str = Field(max_length=500)  # Stored filename (UUID-based)
+    original_filename: str = Field(max_length=500)  # Original user filename
+    file_type: str = Field(max_length=20)  # DocumentType enum
+    file_size: int = Field()  # Size in bytes
+    mime_type: str = Field(max_length=100)
+    file_hash: str = Field(max_length=64, index=True)  # SHA-256 hash
     
     # Upload tracking
-    upload_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
-    upload_ip = Column(String(45))  # IPv4/IPv6 address
+    upload_timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
+    upload_ip: Optional[str] = Field(default=None, max_length=45)  # IPv4/IPv6 address
     
     # Processing status
-    processing_status = Column(String(20), default=ProcessingStatus.UPLOADED.value, nullable=False, index=True)
-    processing_started_at = Column(DateTime, nullable=True)
-    processing_completed_at = Column(DateTime, nullable=True)
-    processing_duration_seconds = Column(Integer, nullable=True)
+    processing_status: str = Field(default=ProcessingStatus.UPLOADED.value, max_length=20, index=True)
+    processing_started_at: Optional[datetime] = Field(default=None)
+    processing_completed_at: Optional[datetime] = Field(default=None)
+    processing_duration_seconds: Optional[int] = Field(default=None)
     
     # Document classification
-    document_category = Column(String(50), nullable=True)  # ItalianDocumentCategory enum
-    document_confidence = Column(Integer, nullable=True)  # 0-100 confidence score
+    document_category: Optional[str] = Field(default=None, max_length=50)  # ItalianDocumentCategory enum
+    document_confidence: Optional[int] = Field(default=None)  # 0-100 confidence score
     
     # Extracted data
-    extracted_text = Column(Text, nullable=True)
-    extracted_data = Column(JSONB, nullable=True)  # Structured data extraction
-    extracted_tables = Column(JSONB, nullable=True)  # Tabular data from Excel/CSV
+    extracted_text: Optional[str] = Field(default=None)
+    extracted_data: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Structured data extraction
+    extracted_tables: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Tabular data from Excel/CSV
     
     # Processing results
-    processing_log = Column(JSONB, nullable=True)  # Processing steps and results
-    error_message = Column(Text, nullable=True)
-    warnings = Column(JSONB, nullable=True)  # Non-fatal processing warnings
+    processing_log: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Processing steps and results
+    error_message: Optional[str] = Field(default=None)
+    warnings: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Non-fatal processing warnings
     
     # Security and compliance
-    virus_scan_status = Column(String(20), default="pending", nullable=False)
-    virus_scan_result = Column(String(100), nullable=True)
-    is_sensitive_data = Column(Boolean, default=False, nullable=False)
+    virus_scan_status: str = Field(default="pending", max_length=20)
+    virus_scan_result: Optional[str] = Field(default=None, max_length=100)
+    is_sensitive_data: bool = Field(default=False)
     
     # Expiration and cleanup
-    expires_at = Column(DateTime, nullable=False, index=True)
-    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
-    deleted_at = Column(DateTime, nullable=True)
+    expires_at: datetime = Field(index=True)
+    is_deleted: bool = Field(default=False, index=True)
+    deleted_at: Optional[datetime] = Field(default=None)
     
     # Analytics
-    analysis_count = Column(Integer, default=0, nullable=False)
-    last_analyzed_at = Column(DateTime, nullable=True)
+    analysis_count: int = Field(default=0)
+    last_analyzed_at: Optional[datetime] = Field(default=None)
     
     # Relationships
-    analyses = relationship("DocumentAnalysis", back_populates="document", cascade="all, delete-orphan")
+    analyses: List["DocumentAnalysis"] = Relationship(back_populates="document", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not self.expires_at:
-            self.expires_at = datetime.utcnow() + timedelta(hours=48)  # 48-hour default expiration
+            self.expires_at = datetime.now(UTC) + timedelta(hours=48)  # 48-hour default expiration
     
     @property
     def is_expired(self) -> bool:
         """Check if document has expired"""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(UTC) > self.expires_at
     
     @property
     def processing_time_seconds(self) -> Optional[int]:
@@ -162,40 +161,40 @@ class Document(BaseModel, table=True):
         return data
 
 
-class DocumentAnalysis(Base):
+class DocumentAnalysis(BaseModel, table=True):
     """Document analysis requests and results"""
     __tablename__ = "document_analyses"
 
-    id = Column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4, index=True)
-    document_id = Column(PostgreSQLUUID(as_uuid=True), ForeignKey("documents.id"), nullable=False, index=True)
-    user_id = Column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    document_id: UUID = Field(foreign_key="documents.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
     
     # Analysis request
-    query = Column(Text, nullable=False)  # User's analysis question
-    analysis_type = Column(String(50), default="general", nullable=False)
+    query: str = Field()  # User's analysis question
+    analysis_type: str = Field(default="general", max_length=50)
     
     # Analysis timing
-    requested_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    completed_at = Column(DateTime, nullable=True)
-    duration_seconds = Column(Integer, nullable=True)
+    requested_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    completed_at: Optional[datetime] = Field(default=None)
+    duration_seconds: Optional[int] = Field(default=None)
     
     # Analysis results
-    analysis_result = Column(JSONB, nullable=True)  # Structured analysis results
-    ai_response = Column(Text, nullable=True)  # Natural language response
-    confidence_score = Column(Integer, nullable=True)  # 0-100 confidence
+    analysis_result: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Structured analysis results
+    ai_response: Optional[str] = Field(default=None)  # Natural language response
+    confidence_score: Optional[int] = Field(default=None)  # 0-100 confidence
     
     # Context and metadata
-    context_used = Column(JSONB, nullable=True)  # Document excerpts used
-    llm_model = Column(String(50), nullable=True)  # Model used for analysis
-    cost = Column(Integer, nullable=True)  # Cost in micro-euros (€0.000001)
+    context_used: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Document excerpts used
+    llm_model: Optional[str] = Field(default=None, max_length=50)  # Model used for analysis
+    cost: Optional[int] = Field(default=None)  # Cost in micro-euros (€0.000001)
     
     # Quality and validation
-    quality_score = Column(Integer, nullable=True)  # 0-100 quality score
-    validation_status = Column(String(20), default="pending", nullable=False)
-    expert_validated = Column(Boolean, default=False, nullable=False)
+    quality_score: Optional[int] = Field(default=None)  # 0-100 quality score
+    validation_status: str = Field(default="pending", max_length=20)
+    expert_validated: bool = Field(default=False)
     
     # Relationships
-    document = relationship("Document", back_populates="analyses")
+    document: Optional["Document"] = Relationship(back_populates="analyses")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert analysis to dictionary"""
@@ -216,39 +215,38 @@ class DocumentAnalysis(Base):
         }
 
 
-class DocumentProcessingJob(Base):
+class DocumentProcessingJob(BaseModel, table=True):
     """Document processing job queue"""
     __tablename__ = "document_processing_jobs"
 
-    id = Column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4, index=True)
-    document_id = Column(PostgreSQLUUID(as_uuid=True), ForeignKey("documents.id"), nullable=False, index=True)
+    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    document_id: UUID = Field(foreign_key="documents.id", index=True)
     
     # Job details
-    job_type = Column(String(50), nullable=False)  # text_extraction, data_extraction, analysis
-    priority = Column(Integer, default=50, nullable=False)  # 1-100, higher = more priority
+    job_type: str = Field(max_length=50)  # text_extraction, data_extraction, analysis
+    priority: int = Field(default=50)  # 1-100, higher = more priority
     
     # Job status
-    status = Column(String(20), default="queued", nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    status: str = Field(default="queued", max_length=20, index=True)
+    started_at: Optional[datetime] = Field(default=None)
+    completed_at: Optional[datetime] = Field(default=None)
     
     # Job execution
-    worker_id = Column(String(100), nullable=True)  # Processing worker identifier
-    attempts = Column(Integer, default=0, nullable=False)
-    max_attempts = Column(Integer, default=3, nullable=False)
+    worker_id: Optional[str] = Field(default=None, max_length=100)  # Processing worker identifier
+    attempts: int = Field(default=0)
+    max_attempts: int = Field(default=3)
     
     # Results and errors
-    result = Column(JSONB, nullable=True)
-    error_message = Column(Text, nullable=True)
+    result: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))
+    error_message: Optional[str] = Field(default=None)
     
     # Expiration
-    expires_at = Column(DateTime, nullable=False, index=True)
+    expires_at: datetime = Field(index=True)
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not self.expires_at:
-            self.expires_at = datetime.utcnow() + timedelta(hours=24)  # 24-hour job expiration
+            self.expires_at = datetime.now(UTC) + timedelta(hours=24)  # 24-hour job expiration
 
 
 # Document processing configuration

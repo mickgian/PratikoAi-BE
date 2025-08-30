@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 # revision identifiers, used by Alembic.
 revision = '20250805_add_gdpr_deletion_system'
-down_revision = '20250805_add_database_encryption'
+down_revision = 'add_database_encryption_20250805'
 branch_labels = None
 depends_on = None
 

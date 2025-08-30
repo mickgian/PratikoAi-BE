@@ -127,7 +127,7 @@ jobs:
       
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: quick-load-test-results
           path: load_test_results/
@@ -301,7 +301,7 @@ jobs:
       
       - name: Upload comprehensive test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: comprehensive-load-test-results
           path: |
@@ -400,7 +400,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Download test results
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: comprehensive-load-test-results
           path: current_results/

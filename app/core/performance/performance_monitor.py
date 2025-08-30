@@ -125,10 +125,15 @@ class PerformanceMonitor:
             "baseline_established": False
         }
         
-        # Start monitoring tasks
+        # Start monitoring tasks (only if event loop is running)
         if self.enabled:
-            asyncio.create_task(self._system_metrics_collector())
-            asyncio.create_task(self._performance_analyzer())
+            try:
+                asyncio.get_running_loop()
+                asyncio.create_task(self._system_metrics_collector())
+                asyncio.create_task(self._performance_analyzer())
+            except RuntimeError:
+                # No running event loop - tasks will be started when needed
+                pass
     
     async def record_request_metrics(
         self,

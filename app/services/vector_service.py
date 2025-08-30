@@ -500,6 +500,285 @@ class VectorService:
             )
             return False
     
+    def store_ccnl_data(
+        self,
+        ccnl_id: int,
+        sector: str,
+        title: str,
+        description: str,
+        content: str,
+        metadata: Dict[str, Any]
+    ) -> bool:
+        """Store CCNL agreement data for semantic search.
+        
+        Args:
+            ccnl_id: CCNL agreement database ID
+            sector: CCNL sector (metalmeccanico, edilizia, etc.)
+            title: Agreement title
+            description: Agreement description
+            content: Full agreement content
+            metadata: Additional CCNL metadata
+            
+        Returns:
+            True if successful
+        """
+        try:
+            # Create comprehensive searchable text
+            searchable_text = f"""
+            CCNL {sector}: {title}
+            Descrizione: {description}
+            Contenuto: {content}
+            
+            Settore: {sector}
+            Tipologia: contratto collettivo nazionale di lavoro
+            """
+            
+            # Prepare document ID and metadata
+            document_id = f"ccnl_{ccnl_id}"
+            vector_metadata = {
+                **metadata,
+                "type": "ccnl_agreement",
+                "ccnl_id": ccnl_id,
+                "sector": sector.lower(),
+                "title": title,
+                "description": description,
+                "language": "italian",
+                "content_type": "labor_agreement"
+            }
+            
+            return self.store_document(document_id, searchable_text, vector_metadata)
+            
+        except Exception as e:
+            logger.error(
+                "ccnl_storage_failed",
+                ccnl_id=ccnl_id,
+                sector=sector,
+                error=str(e)
+            )
+            return False
+    
+    def store_ccnl_salary_data(
+        self,
+        salary_id: int,
+        sector: str,
+        job_category: str,
+        level: str,
+        monthly_salary: float,
+        geographic_area: str,
+        metadata: Dict[str, Any]
+    ) -> bool:
+        """Store CCNL salary table data for semantic search.
+        
+        Args:
+            salary_id: Salary table database ID
+            sector: CCNL sector
+            job_category: Worker category (operaio, impiegato, etc.)
+            level: Job level within category
+            monthly_salary: Monthly salary amount
+            geographic_area: Geographic area (nord, centro, sud)
+            metadata: Additional metadata
+            
+        Returns:
+            True if successful
+        """
+        try:
+            # Create searchable text for salary information
+            searchable_text = f"""
+            Stipendio CCNL {sector}
+            Categoria: {job_category} livello {level}
+            Retribuzione: €{monthly_salary}/mese
+            Area geografica: {geographic_area}
+            
+            Settore: {sector}
+            Inquadramento: {job_category}
+            Livello retributivo: {level}
+            Salario mensile: {monthly_salary} euro
+            Zona: {geographic_area}
+            """
+            
+            # Prepare document ID and metadata
+            document_id = f"ccnl_salary_{salary_id}"
+            vector_metadata = {
+                **metadata,
+                "type": "ccnl_salary",
+                "salary_id": salary_id,
+                "sector": sector.lower(),
+                "job_category": job_category.lower(),
+                "level": level,
+                "monthly_salary": monthly_salary,
+                "geographic_area": geographic_area.lower(),
+                "language": "italian",
+                "content_type": "salary_data"
+            }
+            
+            return self.store_document(document_id, searchable_text, vector_metadata)
+            
+        except Exception as e:
+            logger.error(
+                "ccnl_salary_storage_failed",
+                salary_id=salary_id,
+                sector=sector,
+                error=str(e)
+            )
+            return False
+    
+    def store_ccnl_benefits_data(
+        self,
+        benefit_id: int,
+        sector: str,
+        benefit_type: str,
+        description: str,
+        amount_or_days: float,
+        conditions: str,
+        metadata: Dict[str, Any]
+    ) -> bool:
+        """Store CCNL benefits and leave data for semantic search.
+        
+        Args:
+            benefit_id: Benefit database ID
+            sector: CCNL sector
+            benefit_type: Type of benefit (ferie, malattia, etc.)
+            description: Benefit description
+            amount_or_days: Benefit amount or days
+            conditions: Applicable conditions
+            metadata: Additional metadata
+            
+        Returns:
+            True if successful
+        """
+        try:
+            # Create searchable text for benefits
+            searchable_text = f"""
+            Benefit CCNL {sector}: {benefit_type}
+            Descrizione: {description}
+            Quantità: {amount_or_days}
+            Condizioni: {conditions}
+            
+            Settore: {sector}
+            Tipologia benefit: {benefit_type}
+            Valore: {amount_or_days}
+            """
+            
+            # Prepare document ID and metadata  
+            document_id = f"ccnl_benefit_{benefit_id}"
+            vector_metadata = {
+                **metadata,
+                "type": "ccnl_benefit",
+                "benefit_id": benefit_id,
+                "sector": sector.lower(),
+                "benefit_type": benefit_type.lower(),
+                "description": description,
+                "amount_or_days": amount_or_days,
+                "conditions": conditions,
+                "language": "italian",
+                "content_type": "benefit_data"
+            }
+            
+            return self.store_document(document_id, searchable_text, vector_metadata)
+            
+        except Exception as e:
+            logger.error(
+                "ccnl_benefit_storage_failed",
+                benefit_id=benefit_id,
+                sector=sector,
+                error=str(e)
+            )
+            return False
+    
+    def search_ccnl_semantic(
+        self,
+        query: str,
+        sector_filter: Optional[str] = None,
+        content_type_filter: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Semantic search specifically for CCNL data.
+        
+        Args:
+            query: Search query about CCNL
+            sector_filter: Optional sector filter  
+            content_type_filter: Optional filter by content type
+            
+        Returns:
+            Relevant CCNL data items
+        """
+        try:
+            # Prepare filters for CCNL content
+            filters = {"language": "italian"}
+            
+            # Add CCNL-specific filters
+            ccnl_types = ["ccnl_agreement", "ccnl_salary", "ccnl_benefit"]
+            if content_type_filter and content_type_filter in ccnl_types:
+                filters["type"] = content_type_filter
+            else:
+                # Search all CCNL content types
+                pass  # We'll filter in post-processing
+            
+            if sector_filter:
+                filters["sector"] = sector_filter.lower()
+            
+            # Perform semantic search
+            results = self.search_similar_documents(
+                query=query,
+                filter_metadata=filters
+            )
+            
+            # Filter for CCNL content only and enhance results
+            ccnl_results = []
+            for result in results:
+                metadata = result["metadata"]
+                result_type = metadata.get("type", "")
+                
+                # Only include CCNL content
+                if result_type.startswith("ccnl_"):
+                    enhanced_result = {
+                        **result,
+                        "ccnl_type": result_type,
+                        "sector": metadata.get("sector", ""),
+                        "relevance_score": result["score"]
+                    }
+                    
+                    # Add type-specific enhancements
+                    if result_type == "ccnl_salary":
+                        enhanced_result.update({
+                            "job_category": metadata.get("job_category", ""),
+                            "level": metadata.get("level", ""),
+                            "monthly_salary": metadata.get("monthly_salary", 0),
+                            "geographic_area": metadata.get("geographic_area", "")
+                        })
+                    elif result_type == "ccnl_benefit":
+                        enhanced_result.update({
+                            "benefit_type": metadata.get("benefit_type", ""),
+                            "amount_or_days": metadata.get("amount_or_days", 0),
+                            "conditions": metadata.get("conditions", "")
+                        })
+                    elif result_type == "ccnl_agreement":
+                        enhanced_result.update({
+                            "agreement_title": metadata.get("title", ""),
+                            "description": metadata.get("description", "")
+                        })
+                    
+                    ccnl_results.append(enhanced_result)
+            
+            logger.info(
+                "ccnl_semantic_search_completed",
+                query=query[:50],
+                sector_filter=sector_filter,
+                content_type_filter=content_type_filter,
+                results_count=len(ccnl_results)
+            )
+            
+            return ccnl_results
+            
+        except Exception as e:
+            logger.error(
+                "ccnl_semantic_search_failed",
+                query=query[:100],
+                sector_filter=sector_filter,
+                error=str(e),
+                exc_info=True
+            )
+            return []
+
     def search_italian_knowledge(
         self,
         query: str,

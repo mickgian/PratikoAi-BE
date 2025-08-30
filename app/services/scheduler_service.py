@@ -280,7 +280,7 @@ def setup_default_tasks() -> None:
     scheduler_service.add_task(metrics_report_task)
     
     # Add Italian document collection task (every 4 hours)
-    from app.services.italian_document_collector import collect_italian_documents_task
+    from app.services.dynamic_knowledge_collector import collect_italian_documents_task
     
     italian_documents_task = ScheduledTask(
         name="italian_documents_4h",

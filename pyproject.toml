@@ -26,11 +26,13 @@ dependencies = [
     "bcrypt>=4.3.0",
     "slowapi>=0.1.9",
     "email-validator>=2.2.0",
+    "authlib>=1.4.0",
+    "httpx>=0.27.0",
     "prometheus-client>=0.21.0",
     "starlette-prometheus>=0.7.0",
     "psutil>=6.1.0",
     "asgiref>=3.8.1",
-    "duckduckgo-search>=3.9.0",
+    "duckduckgo-search>=6.2.0",
     "langchain-community>=0.3.20",
     "tqdm>=4.67.1",
     "colorama>=0.4.6",
@@ -43,6 +45,20 @@ dependencies = [
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",
     "python-dateutil>=2.8.0",
+    # Document processing dependencies
+    "PyPDF2>=3.0.1",
+    "pdfplumber>=0.9.0",
+    "pytesseract>=0.3.10",
+    "openpyxl>=3.1.0",
+    "pandas>=2.0.0",
+    "pdf2image>=1.16.0",
+    "Pillow>=10.0.0",
+    "python-magic>=0.4.27",
+    "cryptography>=41.0.0",
+    # Security scanning dependencies
+    "aiohttp>=3.8.0",
+    "asyncio-throttle>=1.0.2",
+    "reportlab>=4.4.3",
 ]
 
 [project.optional-dependencies]
@@ -50,6 +66,7 @@ dev = ["black", "isort", "flake8", "ruff", "djlint==1.36.4"]
 
 [dependency-groups]
 dev = [
+    "pytest-asyncio>=1.1.0",
     "ruff>=0.11.4",
 ]
 test = ["httpx>=0.28.1", "pytest>=8.3.5"]

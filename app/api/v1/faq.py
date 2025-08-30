@@ -348,7 +348,7 @@ async def get_categories(
 @router.get("/analytics", response_model=FAQAnalyticsResponse)
 async def get_analytics(
     period_days: int = Query(7, ge=1, le=90, description="Analytics period in days"),
-    period_type: str = Query("daily", regex="^(daily|weekly|monthly)$", description="Period type"),
+    period_type: str = Query("daily", pattern="^(daily|weekly|monthly)$", description="Period type"),
     current_user: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_async_db)
 ) -> FAQAnalyticsResponse:

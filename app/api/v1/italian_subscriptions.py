@@ -12,11 +12,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.responses import Response
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user
-from app.core.database import get_db
+from app.api.v1.auth import get_current_user
+from app.core.database import get_async_session as get_db
 from app.core.logging import logger
 from app.models.user import User
 from app.models.subscription import Subscription, SubscriptionPlan, BillingPeriod
@@ -42,7 +42,7 @@ class ItalianCustomerData(BaseModel):
     # Invoice information
     invoice_name: str = Field(..., min_length=1, max_length=255, description="Company name or full name")
     invoice_address: str = Field(..., min_length=1, max_length=500, description="Street address")
-    invoice_cap: str = Field(..., regex=r'^\d{5}$', description="5-digit Italian postal code")
+    invoice_cap: str = Field(..., pattern=r'^\d{5}$', description="5-digit Italian postal code")
     invoice_city: str = Field(..., min_length=1, max_length=100, description="City name")
     invoice_province: str = Field(..., min_length=2, max_length=2, description="2-letter province code (e.g., RM, MI)")
     invoice_country: str = Field(default="IT", description="Country code")
@@ -51,33 +51,30 @@ class ItalianCustomerData(BaseModel):
     sdi_code: Optional[str] = Field(None, min_length=7, max_length=7, description="SDI destination code")
     pec_email: Optional[str] = Field(None, description="PEC email for electronic invoice")
     
-    @validator('partita_iva')
-    def validate_partita_iva_format(cls, v, values):
-        if values.get('is_business') and not v:
+    @field_validator('partita_iva')
+    @classmethod
+    def validate_partita_iva_format(cls, v, info):
+        # Access other field values via info.data
+        if info.data and info.data.get('is_business') and not v:
             raise ValueError("Partita IVA is required for business customers")
         if v and not v.isdigit():
             raise ValueError("Partita IVA must contain only digits")
         return v
     
-    @validator('codice_fiscale')
-    def validate_codice_fiscale_format(cls, v, values):
-        if not values.get('is_business') and not v:
+    @model_validator(mode='after')
+    def validate_business_requirements(self):
+        if self.is_business and not self.partita_iva:
+            raise ValueError("Partita IVA is required for business customers")
+        if not self.is_business and not self.codice_fiscale:
             raise ValueError("Codice Fiscale is required for individual customers")
-        return v
-    
-    @validator('sdi_code', 'pec_email')
-    def validate_electronic_invoice_data(cls, v, values, field):
-        if values.get('is_business'):
-            sdi_code = values.get('sdi_code') if field.name != 'sdi_code' else v
-            pec_email = values.get('pec_email') if field.name != 'pec_email' else v
-            if not sdi_code and not pec_email:
-                raise ValueError("Either SDI code or PEC email is required for business customers")
-        return v
+        if self.is_business and not self.sdi_code and not self.pec_email:
+            raise ValueError("Either SDI code or PEC email is required for business customers")
+        return self
 
 
 class CreateSubscriptionRequest(BaseModel):
     """Request to create new subscription"""
-    plan_type: str = Field(..., regex=r'^(monthly|annual)$', description="Subscription plan type")
+    plan_type: str = Field(..., pattern=r'^(monthly|annual)$', description="Subscription plan type")
     payment_method_id: str = Field(..., description="Stripe payment method ID")
     customer_data: ItalianCustomerData
     trial_days: Optional[int] = Field(None, ge=0, le=30, description="Trial period override (0-30 days)")
@@ -85,7 +82,7 @@ class CreateSubscriptionRequest(BaseModel):
 
 class ChangePlanRequest(BaseModel):
     """Request to change subscription plan"""
-    new_plan_type: str = Field(..., regex=r'^(monthly|annual)$', description="New plan type")
+    new_plan_type: str = Field(..., pattern=r'^(monthly|annual)$', description="New plan type")
     prorate: bool = Field(default=True, description="Whether to prorate the change")
 
 

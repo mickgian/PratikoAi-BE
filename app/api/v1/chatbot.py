@@ -29,6 +29,8 @@ from app.schemas.chat import (
 )
 from app.core.privacy.anonymizer import anonymizer
 from app.core.privacy.gdpr import gdpr_compliance, ProcessingPurpose, DataCategory
+from app.core.streaming_guard import SinglePassStream
+from app.core.sse_write import write_sse
 
 router = APIRouter()
 agent = LangGraphAgent()
@@ -162,28 +164,36 @@ async def chat_stream(
         )
 
         async def event_generator():
-            """Generate streaming events.
+            """Generate streaming events with pure markdown output and deduplication.
 
             Yields:
-                str: Server-sent events in JSON format.
+                str: Server-sent events with markdown content.
 
             Raises:
                 Exception: If there's an error during streaming.
             """
             try:
-                full_response = ""
                 with llm_stream_duration_seconds.labels(model="llm").time():
-                    async for chunk in agent.get_stream_response(
+                    # Wrap the original stream to prevent double iteration
+                    original_stream = SinglePassStream(agent.get_stream_response(
                         processed_messages, session.id, user_id=session.user_id
-                     ):
-                        full_response += chunk
-                        response = StreamResponse(content=chunk, done=False)
-                        yield f"data: {json.dumps(response.model_dump())}\n\n"
+                    ))
+                    
+                    async for chunk in original_stream:
+                        if chunk and chunk.strip():
+                            # Direct markdown streaming without processing
+                            yield write_sse(None, chunk)
 
-                # Send final message indicating completion
-                final_response = StreamResponse(content="", done=True)
-                yield f"data: {json.dumps(final_response.model_dump())}\n\n"
+                # Send final done frame
+                yield write_sse(None, "[DONE]")
 
+            except RuntimeError as re:
+                if "iterated twice" in str(re):
+                    logger.error(
+                        f"CRITICAL: Stream iterated twice - session: {session.id}",
+                        exc_info=True
+                    )
+                raise
             except Exception as e:
                 logger.error(
                     "stream_chat_request_failed",

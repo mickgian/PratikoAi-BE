@@ -145,6 +145,13 @@ class Settings:
         # CORS Settings
         self.ALLOWED_ORIGINS = parse_list_from_env("ALLOWED_ORIGINS", ["*"])
 
+        # OAuth Configuration
+        self.GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+        self.GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+        self.LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID", "")
+        self.LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET", "")
+        self.OAUTH_REDIRECT_URI = os.getenv("OAUTH_REDIRECT_URI", f"{self.BASE_URL}/api/v1/auth/oauth/callback")
+
         # Langfuse Configuration
         self.LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
         self.LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
@@ -220,6 +227,9 @@ class Settings:
         self.STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", f"{self.BASE_URL}/payment/success")
         self.STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", f"{self.BASE_URL}/payment/cancel")
         
+        # Domain-Action Classification Configuration  
+        self.CLASSIFICATION_CONFIDENCE_THRESHOLD = float(os.getenv("CLASSIFICATION_CONFIDENCE_THRESHOLD", "0.6"))
+        
         # Vector Database Configuration (Pinecone)
         self.PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
         self.PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "")
@@ -270,6 +280,24 @@ class Settings:
         self.METRICS_REPORT_RECIPIENTS_TECH = os.getenv("METRICS_REPORT_RECIPIENTS_TECH", "")
         self.METRICS_REPORT_RECIPIENTS_BUSINESS = os.getenv("METRICS_REPORT_RECIPIENTS_BUSINESS", "")
 
+        # Security and Antivirus Settings
+        self.ENABLE_EXTERNAL_AV_SCAN = os.getenv("ENABLE_EXTERNAL_AV_SCAN", "false").lower() in ("true", "1", "t", "yes")
+        self.CLAMAV_HOST = os.getenv("CLAMAV_HOST", "localhost")
+        self.CLAMAV_PORT = int(os.getenv("CLAMAV_PORT", "3310"))
+        self.CLAMAV_TIMEOUT = int(os.getenv("CLAMAV_TIMEOUT", "30"))
+        self.VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY", "")
+        self.VIRUSTOTAL_TIMEOUT = int(os.getenv("VIRUSTOTAL_TIMEOUT", "60"))
+        self.VIRUS_SCAN_MAX_FILE_SIZE_MB = int(os.getenv("VIRUS_SCAN_MAX_FILE_SIZE_MB", "100"))
+        self.QUARANTINE_INFECTED_FILES = os.getenv("QUARANTINE_INFECTED_FILES", "true").lower() in ("true", "1", "t", "yes")
+        self.SECURITY_SCAN_TIMEOUT = int(os.getenv("SECURITY_SCAN_TIMEOUT", "30"))
+        
+        # Document Security Settings
+        self.MAX_DOCUMENT_ENTROPY = float(os.getenv("MAX_DOCUMENT_ENTROPY", "7.5"))
+        self.ALLOW_MACROS_IN_DOCUMENTS = os.getenv("ALLOW_MACROS_IN_DOCUMENTS", "false").lower() in ("true", "1", "t", "yes")
+        self.ALLOW_JAVASCRIPT_IN_PDF = os.getenv("ALLOW_JAVASCRIPT_IN_PDF", "false").lower() in ("true", "1", "t", "yes")
+        self.MAX_EXTERNAL_REFERENCES = int(os.getenv("MAX_EXTERNAL_REFERENCES", "5"))
+        self.ENABLE_CONTENT_STRUCTURE_VALIDATION = os.getenv("ENABLE_CONTENT_STRUCTURE_VALIDATION", "true").lower() in ("true", "1", "t", "yes")
+
         # Apply environment-specific settings
         self.apply_environment_settings()
 
@@ -313,3 +341,7 @@ class Settings:
 
 # Create settings instance
 settings = Settings()
+
+def get_settings() -> Settings:
+    """Get the global settings instance."""
+    return settings

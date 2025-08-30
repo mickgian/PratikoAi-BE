@@ -21,7 +21,7 @@ from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID, ARRAY
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 
-from app.core.database import Base
+from app.models.ccnl_database import Base
 
 
 class FeedbackType(enum.Enum):

@@ -50,7 +50,19 @@ async def lifespan(app: FastAPI):
         version=settings.VERSION,
         api_prefix=settings.API_V1_STR,
     )
+    
+    # Start the scheduler service for RSS feed collection
+    from app.services.scheduler_service import start_scheduler, stop_scheduler
+    logger.info("Starting scheduler service for RSS feed collection...")
+    await start_scheduler()
+    logger.info("Scheduler service started successfully")
+    
     yield
+    
+    # Stop the scheduler service during shutdown
+    logger.info("Stopping scheduler service...")
+    await stop_scheduler()
+    logger.info("Scheduler service stopped")
     logger.info("application_shutdown")
 
 

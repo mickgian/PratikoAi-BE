@@ -12,6 +12,27 @@ from app.models.user import User
 from app.models.session import Session
 from app.models.document import Document, DocumentAnalysis, DocumentProcessingJob
 from app.models.thread import Thread
+from app.models.cassazione import CassazioneDecision
+from app.models.encrypted_user import EncryptedUser, EncryptedQueryLog, EncryptedSubscriptionData
+from app.models.faq import (
+    FAQEntry, FAQUsageLog, FAQVersionHistory, FAQObsolescenceCheck,
+    FAQCategory, FAQVariationCache, FAQAnalyticsSummary
+)
+from app.models.italian_data import (
+    ItalianTaxRate, ItalianLegalTemplate, ItalianRegulation, TaxCalculation,
+    ComplianceCheck, ItalianOfficialDocument, ItalianKnowledgeSource
+)
+from app.models.knowledge import KnowledgeItem, KnowledgeFeedback
+from app.models.payment import Subscription, Payment, Invoice, Customer, WebhookEvent
+from app.models.query_normalization import (
+    QueryNormalizationLog, QueryNormalizationStats, QueryNormalizationPattern
+)
+from app.models.regulatory_documents import (
+    RegulatoryDocument, FeedStatus, DocumentProcessingLog, DocumentCollection
+)
+from app.models.usage import (
+    UsageEvent, UserUsageSummary, CostAlert, UsageQuota, CostOptimizationSuggestion
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

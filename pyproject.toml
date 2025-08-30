@@ -56,6 +56,10 @@ dependencies = [
     "Pillow>=10.0.0",
     "python-magic>=0.4.27",
     "cryptography>=41.0.0",
+    # Load testing dependencies
+    "asyncpg>=0.29.0",
+    "aiofiles>=24.1.0",
+    "locust>=2.31.4",
     # Security scanning dependencies
     "aiohttp>=3.8.0",
     "asyncio-throttle>=1.0.2",

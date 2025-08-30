@@ -96,11 +96,12 @@ class PratikoAIUser(HttpUser):
             if response.status_code == 200:
                 # Check if response is from cache
                 if response.headers.get('X-Cache-Hit') == 'true':
-                    events.request_success.fire(
+                    events.request.fire(
                         request_type="CACHE_HIT",
                         name="/api/query [simple]",
                         response_time=response_time * 1000,
-                        response_length=len(response.content)
+                        response_length=len(response.content),
+                        exception=None
                     )
                 
                 # Validate response time SLA
@@ -376,17 +377,19 @@ class SpikeLoadShape(LoadTestShape):
 
 
 # Event handlers for detailed metrics collection
-@events.request_success.add_listener
-def on_request_success(request_type, name, response_time, response_length, **kwargs):
+@events.request.add_listener
+def on_request_success(request_type, name, response_time, response_length, exception=None, **kwargs):
     """Track successful requests for analysis"""
-    # Could send to monitoring system
-    logger.debug(f"Success: {name} in {response_time}ms")
+    if exception is None:  # Success case
+        # Could send to monitoring system
+        logger.debug(f"Success: {name} in {response_time}ms")
 
 
-@events.request_failure.add_listener
-def on_request_failure(request_type, name, response_time, exception, **kwargs):
+@events.request.add_listener
+def on_request_failure(request_type, name, response_time, response_length, exception=None, **kwargs):
     """Track failed requests for analysis"""
-    logger.warning(f"Failure: {name} - {exception}")
+    if exception is not None:  # Failure case
+        logger.warning(f"Failure: {name} - {exception}")
 
 
 @events.test_start.add_listener

@@ -102,6 +102,7 @@ jobs:
       - name: Set up environment variables
         run: |
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
+          echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
           echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
           echo "JWT_SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
           echo "LLM_API_KEY=test-api-key" >> $GITHUB_ENV
@@ -227,6 +228,7 @@ jobs:
       - name: Set up environment variables
         run: |
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
+          echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
           echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
           echo "JWT_SECRET_KEY=test-secret-key-for-ci-comprehensive" >> $GITHUB_ENV
           echo "LLM_API_KEY=test-api-key" >> $GITHUB_ENV

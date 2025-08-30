@@ -59,7 +59,6 @@ dependencies = [
     "aiohttp>=3.8.0",
     "asyncio-throttle>=1.0.2",
     "reportlab>=4.4.3",
-    "markdown2>=2.5.4",
 ]
 
 [project.optional-dependencies]

@@ -34,7 +34,7 @@ from app.core.config import (
 from app.core.langgraph.tools import tools
 from app.core.llm.factory import get_llm_provider, RoutingStrategy
 from app.core.llm.base import LLMProvider
-from app.services.domain_action_classifier import DomainActionClassifier, DomainActionClassification
+from app.services.domain_action_classifier import DomainActionClassifier, DomainActionClassification, Action
 from app.services.domain_prompt_templates import PromptTemplateManager
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
@@ -738,10 +738,42 @@ class LangGraphAgent:
             self._current_user_id = None
             self._current_session_id = None
 
+    def _needs_complex_workflow(self, classification: Optional[DomainActionClassification]) -> bool:
+        """Determine if query needs tools/complex workflow based on classification.
+        
+        Args:
+            classification: Domain-action classification result
+            
+        Returns:
+            bool: True if complex workflow is needed, False for simple streaming
+        """
+        if not classification:
+            return False
+            
+        # Actions that always need database/tool access
+        complex_actions = {
+            Action.CCNL_QUERY,           # Always needs CCNL database access
+            Action.DOCUMENT_ANALYSIS,    # Might need document processing tools
+            Action.CALCULATION_REQUEST,  # Might need calculation tools
+            Action.COMPLIANCE_CHECK,     # Might need regulation lookup tools
+        }
+        
+        needs_complex = classification.action in complex_actions
+        
+        logger.info(
+            "workflow_decision",
+            action=classification.action.value,
+            domain=classification.domain.value,
+            confidence=classification.confidence,
+            needs_complex_workflow=needs_complex,
+        )
+        
+        return needs_complex
+    
     async def get_stream_response(
         self, messages: list[Message], session_id: str, user_id: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
-        """Get a stream response from the LLM with HTML formatting.
+        """Get a hybrid stream response using optimal approach based on query complexity.
 
         Args:
             messages (list[Message]): The messages to send to the LLM.
@@ -749,58 +781,175 @@ class LangGraphAgent:
             user_id (Optional[str]): The user ID for the conversation.
 
         Yields:
-            str: HTML-formatted chunks of the LLM response.
+            str: Raw markdown chunks of the LLM response.
         """
-        from app.core.content_formatter import StreamingHTMLProcessor
-        
         # Store user and session info for tracking
         self._current_user_id = user_id
         self._current_session_id = session_id
         
-        # Initialize HTML processor for this stream
-        html_processor = StreamingHTMLProcessor()
-        
-        config = {
-            "configurable": {"thread_id": session_id},
-            "callbacks": [
-                CallbackHandler()
-            ],
-        }
-        if self._graph is None:
-            self._graph = await self.create_graph()
-
         try:
-            async for token, _ in self._graph.astream(
-                {"messages": dump_messages(messages), "session_id": session_id}, config, stream_mode="messages"
-            ):
-                try:
-                    # Get the content from the token
-                    content = token.content if hasattr(token, 'content') else str(token)
-                    
-                    # Process each character through HTML formatter for proper streaming
-                    for char in content:
-                        html_chunk = await html_processor.process_token(char)
-                        if html_chunk:
-                            # Yield HTML chunk instead of raw token
-                            yield html_chunk
-                            
-                except Exception as token_error:
-                    logger.error("Error processing token", error=str(token_error), session_id=session_id)
-                    # Continue with next token even if current one fails
-                    continue
+            # Classify user query to determine streaming strategy
+            self._current_classification = await self._classify_user_query(messages)
             
-            # Finalize any remaining content in the processor
-            final_chunk = await html_processor.finalize()
-            if final_chunk:
-                yield final_chunk
-                
+            # Decide streaming approach based on classification
+            if self._needs_complex_workflow(self._current_classification):
+                # Use LangGraph workflow streaming for tool-heavy operations
+                async for chunk in self._stream_with_langgraph_workflow(messages, session_id):
+                    yield chunk
+            else:
+                # Use direct LLM streaming for simple Q&A
+                async for chunk in self._stream_with_direct_llm(messages, session_id):
+                    yield chunk
+                    
         except Exception as stream_error:
-            logger.error("Error in stream processing", error=str(stream_error), session_id=session_id)
+            logger.error(
+                "hybrid_stream_failed",
+                error=str(stream_error),
+                session_id=session_id,
+                classification_used=self._current_classification is not None,
+                domain=self._current_classification.domain.value if self._current_classification else None,
+                action=self._current_classification.action.value if self._current_classification else None,
+            )
             raise stream_error
         finally:
             # Clean up tracking info
             self._current_user_id = None
             self._current_session_id = None
+            self._current_classification = None
+    
+    async def _stream_with_direct_llm(
+        self, messages: list[Message], session_id: str
+    ) -> AsyncGenerator[str, None]:
+        """Stream directly from LLM provider for simple queries (no tools).
+        
+        Args:
+            messages: List of conversation messages
+            session_id: Session ID for logging
+            
+        Yields:
+            str: Raw markdown chunks
+        """
+        try:
+            # Get domain-specific system prompt or default
+            system_prompt = self._get_system_prompt(messages, self._current_classification)
+            
+            # Prepare messages with system prompt
+            processed_messages = messages.copy()
+            if not processed_messages or processed_messages[0].role != "system":
+                system_message = Message(role="system", content=system_prompt)
+                processed_messages.insert(0, system_message)
+            elif self._current_classification:
+                # Replace existing system prompt with domain-specific one
+                processed_messages[0] = Message(role="system", content=system_prompt)
+            
+            # Get optimal provider (classification-aware)
+            provider = self._get_optimal_provider(processed_messages)
+            self._current_provider = provider
+            
+            logger.info(
+                "direct_llm_stream_started",
+                session_id=session_id,
+                model=provider.model,
+                provider=provider.provider_type.value,
+                classification_used=self._current_classification is not None,
+                domain=self._current_classification.domain.value if self._current_classification else None,
+                action=self._current_classification.action.value if self._current_classification else None,
+            )
+            
+            # Stream directly from LLM provider (no tools)
+            async for chunk in provider.stream_completion(
+                messages=processed_messages,
+                tools=None,  # No tools for simple streaming
+                temperature=settings.DEFAULT_LLM_TEMPERATURE,
+                max_tokens=settings.MAX_TOKENS,
+            ):
+                if chunk.content:
+                    yield chunk.content
+                    
+                # Log when streaming completes
+                if chunk.done:
+                    logger.info(
+                        "direct_llm_stream_completed",
+                        session_id=session_id,
+                        model=provider.model,
+                        provider=provider.provider_type.value,
+                    )
+                    break
+                    
+        except Exception as e:
+            logger.error(
+                "direct_llm_stream_failed",
+                error=str(e),
+                session_id=session_id,
+                provider=getattr(self._current_provider, 'provider_type', {}).get('value', 'unknown') if self._current_provider else 'unknown',
+            )
+            raise
+    
+    async def _stream_with_langgraph_workflow(
+        self, messages: list[Message], session_id: str
+    ) -> AsyncGenerator[str, None]:
+        """Stream using LangGraph workflow for complex queries (with tools).
+        
+        Args:
+            messages: List of conversation messages
+            session_id: Session ID for logging
+            
+        Yields:
+            str: Raw markdown chunks and workflow updates
+        """
+        try:
+            # Ensure graph is initialized
+            if self._graph is None:
+                self._graph = await self.create_graph()
+            
+            config = {
+                "configurable": {"thread_id": session_id},
+                "callbacks": [CallbackHandler()],
+            }
+            
+            logger.info(
+                "langgraph_workflow_stream_started",
+                session_id=session_id,
+                classification_used=self._current_classification is not None,
+                domain=self._current_classification.domain.value if self._current_classification else None,
+                action=self._current_classification.action.value if self._current_classification else None,
+            )
+            
+            # Stream from LangGraph with filtering to avoid duplicates
+            async for token, metadata in self._graph.astream(
+                {"messages": dump_messages(messages), "session_id": session_id}, 
+                config, 
+                stream_mode="messages"
+            ):
+                try:
+                    # Filter only from the main chat node to avoid tool call duplicates
+                    if metadata.get("langgraph_node") == "chat":
+                        if hasattr(token, 'content') and token.content:
+                            # Avoid yielding very large chunks (likely complete messages)
+                            # This helps prevent the final complete message from being duplicated
+                            if len(token.content) < 150:  # Threshold for token vs complete message
+                                yield token.content
+                            
+                except Exception as token_error:
+                    logger.error(
+                        "langgraph_token_processing_error", 
+                        error=str(token_error), 
+                        session_id=session_id
+                    )
+                    continue
+            
+            logger.info(
+                "langgraph_workflow_stream_completed",
+                session_id=session_id,
+            )
+                    
+        except Exception as e:
+            logger.error(
+                "langgraph_workflow_stream_failed",
+                error=str(e),
+                session_id=session_id,
+            )
+            raise
 
     async def get_chat_history(self, session_id: str) -> list[Message]:
         """Get the chat history for a given thread ID.

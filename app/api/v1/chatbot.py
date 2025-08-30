@@ -4,6 +4,7 @@ This module provides endpoints for chat interactions, including regular chat,
 streaming chat, message history management, and chat history clearing.
 """
 
+import json
 from typing import List
 
 from fastapi import (
@@ -24,10 +25,10 @@ from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
     Message,
+    StreamResponse,
 )
 from app.core.privacy.anonymizer import anonymizer
 from app.core.privacy.gdpr import gdpr_compliance, ProcessingPurpose, DataCategory
-from app.core.streaming_processor import EnhancedStreamingProcessor
 from app.core.streaming_guard import SinglePassStream
 from app.core.sse_write import write_sse
 
@@ -163,17 +164,14 @@ async def chat_stream(
         )
 
         async def event_generator():
-            """Generate streaming events with pure HTML output and deduplication.
+            """Generate streaming events with pure markdown output and deduplication.
 
             Yields:
-                str: Server-sent events with HTML-only content.
+                str: Server-sent events with markdown content.
 
             Raises:
                 Exception: If there's an error during streaming.
             """
-            # Create processor with session ID for tracking
-            processor = EnhancedStreamingProcessor(stream_id=session.id)
-            
             try:
                 with llm_stream_duration_seconds.labels(model="llm").time():
                     # Wrap the original stream to prevent double iteration
@@ -182,20 +180,12 @@ async def chat_stream(
                     ))
                     
                     async for chunk in original_stream:
-                        # Process chunk through enhanced processor
-                        html_delta = await processor.process_chunk(chunk)
-                        if html_delta:
-                            # Only emit if there's new content
-                            frame = processor.format_sse_frame(content=html_delta, done=False)
-                            # Log and yield what we're sending
-                            yield write_sse(None, frame)
+                        if chunk and chunk.strip():
+                            # Direct markdown streaming without processing
+                            yield write_sse(None, chunk)
 
-                # Send final frame with done=true and no content
-                final_frame = processor.format_sse_frame(done=True)
-                yield write_sse(None, final_frame)
-                
-                # Log final stats
-                processor.finalize()
+                # Send final done frame
+                yield write_sse(None, "[DONE]")
 
             except RuntimeError as re:
                 if "iterated twice" in str(re):
@@ -205,15 +195,14 @@ async def chat_stream(
                     )
                 raise
             except Exception as e:
-                stats = processor.get_stats()
                 logger.error(
-                    f"stream_chat_request_failed - session: {session.id}, error: {str(e)}, "
-                    f"stats: frames={stats['total_frames']}, bytes={stats['total_bytes_emitted']}",
-                    exc_info=True
+                    "stream_chat_request_failed",
+                    session_id=session.id,
+                    error=str(e),
+                    exc_info=True,
                 )
-                # Send error done frame
-                error_frame = processor.format_sse_frame(done=True)
-                yield write_sse(None, error_frame)
+                error_response = StreamResponse(content=str(e), done=True)
+                yield f"data: {json.dumps(error_response.model_dump())}\n\n"
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
 

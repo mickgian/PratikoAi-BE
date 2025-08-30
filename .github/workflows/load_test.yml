@@ -109,7 +109,29 @@ jobs:
       
       - name: Run database migrations
         run: |
-          uv run alembic upgrade head
+          echo "Creating database tables first..."
+          uv run python -c "
+          import sys
+          sys.path.insert(0, '.')
+          import os
+          from sqlmodel import SQLModel, create_engine
+          
+          # Create all tables first
+          engine = create_engine(os.environ['DATABASE_URL'])
+          SQLModel.metadata.create_all(engine)
+          print('✅ All tables created successfully')
+          "
+          
+          echo "Running alembic migrations..."
+          uv run alembic stamp head || {
+            echo "Failed to stamp migrations. Running upgrade instead..."
+            uv run alembic upgrade head || {
+              echo "Migration failed. Debugging..."
+              uv run alembic history --verbose || true
+              uv run alembic current || true
+              exit 1
+            }
+          }
       
       - name: Start application
         run: |

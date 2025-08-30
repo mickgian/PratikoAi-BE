@@ -45,9 +45,7 @@ class EncryptedUser(BaseModel, table=True):
     
     # Encrypted PII fields - automatically encrypted/decrypted
     email: str = Field(
-        sa_column=Column(EncryptedEmail(255)),
-        unique=True,
-        index=True,
+        sa_column=Column(EncryptedEmail(255), unique=True, index=True),
         description="User's email address (encrypted)"
     )
     

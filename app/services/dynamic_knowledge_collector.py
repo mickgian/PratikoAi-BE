@@ -755,27 +755,31 @@ async def collect_italian_documents_task() -> None:
     
     This function is called by the scheduler service every 4 hours.
     """
+    db_session = None
     try:
-        from app.core.database import get_async_session
+        from app.services.database import database_service
         
-        async with get_async_session() as db_session:
-            collector = DynamicKnowledgeCollector(db_session)
-            results = await collector.collect_and_process_updates()
-            
-            # Log summary for scheduled task
-            total_new_docs = sum(len(r.get('new_documents', [])) for r in results if r.get('success'))
-            successful_sources = sum(1 for r in results if r.get('success'))
-            
-            logger.info(
-                "scheduled_italian_documents_collection_completed",
-                total_sources=len(results),
-                successful_sources=successful_sources,
-                total_new_documents=total_new_docs
-            )
-            
+        db_session = database_service.get_session_maker()
+        collector = DynamicKnowledgeCollector(db_session)
+        results = await collector.collect_and_process_updates()
+        
+        # Log summary for scheduled task
+        total_new_docs = sum(len(r.get('new_documents', [])) for r in results if r.get('success'))
+        successful_sources = sum(1 for r in results if r.get('success'))
+        
+        logger.info(
+            "scheduled_italian_documents_collection_completed",
+            total_sources=len(results),
+            successful_sources=successful_sources,
+            total_new_documents=total_new_docs
+        )
+        
     except Exception as e:
         logger.error(
             "scheduled_italian_documents_collection_failed",
             error=str(e),
             exc_info=True
         )
+    finally:
+        if db_session:
+            db_session.close()

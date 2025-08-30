@@ -2,8 +2,11 @@
 
 import re
 from typing import (
+    Dict,
     List,
     Literal,
+    Optional,
+    Any,
 )
 
 from pydantic import (
@@ -51,6 +54,30 @@ class Message(BaseModel):
         return v
 
 
+class QueryClassificationMetadata(BaseModel):
+    """Metadata about query classification for debugging and monitoring."""
+    
+    domain: str = Field(..., description="The classified professional domain")
+    action: str = Field(..., description="The classified user action/intent")
+    confidence: float = Field(..., description="Classification confidence score (0-1)")
+    sub_domain: Optional[str] = Field(None, description="Specific sub-domain if detected")
+    document_type: Optional[str] = Field(None, description="Document type for generation requests")
+    fallback_used: bool = Field(False, description="Whether LLM fallback was used")
+    domain_prompt_used: bool = Field(False, description="Whether domain-specific prompt was used")
+    reasoning: Optional[str] = Field(None, description="Classification reasoning")
+
+
+class ResponseMetadata(BaseModel):
+    """Response metadata for debugging and monitoring."""
+    
+    model_used: str = Field(..., description="LLM model that generated the response")
+    provider: str = Field(..., description="LLM provider used")
+    strategy: str = Field(..., description="Routing strategy applied")
+    cost_eur: Optional[float] = Field(None, description="Estimated cost in EUR")
+    processing_time_ms: Optional[int] = Field(None, description="Total processing time in milliseconds")
+    classification: Optional[QueryClassificationMetadata] = Field(None, description="Query classification metadata")
+
+
 class ChatRequest(BaseModel):
     """Request model for chat endpoint.
 
@@ -70,9 +97,11 @@ class ChatResponse(BaseModel):
 
     Attributes:
         messages: List of messages in the conversation.
+        metadata: Optional response metadata for debugging and monitoring.
     """
 
     messages: List[Message] = Field(..., description="List of messages in the conversation")
+    metadata: Optional[ResponseMetadata] = Field(None, description="Response metadata for debugging and monitoring")
 
 
 class StreamResponse(BaseModel):

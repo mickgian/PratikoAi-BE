@@ -122,7 +122,7 @@ class PIIAnonymizer:
         ]
         
         # Pattern for names with titles
-        title_pattern = f"(?:{'|'.join(italian_prefixes)})\.?\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*)"
+        title_pattern = f"(?:{'|'.join(italian_prefixes)})\\.?\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*)"
         
         return [
             re.compile(title_pattern, re.IGNORECASE),

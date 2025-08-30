@@ -53,6 +53,10 @@ services:
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
       - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-supersecretkeythatshouldbechangedforproduction}
+      # Override database URL for Docker (use service name instead of localhost)
+      - POSTGRES_URL=postgresql://aifinance:devpass@db:5432/aifinance
+      # Ensure CORS is configured for frontend
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:8000,http://localhost:8080
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

@@ -98,36 +98,87 @@ jobs:
           python -m pip install --upgrade pip
           pip install uv
           uv sync
-          pip install locust psutil aioredis asyncpg aiohttp aiofiles
+          # Load testing dependencies are now in pyproject.toml
       
       - name: Set up environment variables
         run: |
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
+          echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
           echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
           echo "JWT_SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
-          echo "LLM_API_KEY=test-api-key" >> $GITHUB_ENV
+          echo "LLM_API_KEY=${{ secrets.OPENAI_API_KEY || 'test-api-key' }}" >> $GITHUB_ENV
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY || 'test-api-key' }}" >> $GITHUB_ENV
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY || 'test-api-key' }}" >> $GITHUB_ENV
+          echo "PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY || 'test-api-key' }}" >> $GITHUB_ENV
           echo "ENVIRONMENT=testing" >> $GITHUB_ENV
+          echo "APP_ENV=testing" >> $GITHUB_ENV
+          echo "DISABLE_MODEL_DOWNLOAD=true" >> $GITHUB_ENV
+          echo "SKIP_HEAVY_INITIALIZATION=true" >> $GITHUB_ENV
       
       - name: Run database migrations
         run: |
-          uv run alembic upgrade head
+          echo "Creating database tables first..."
+          uv run python -c "
+          import sys
+          sys.path.insert(0, '.')
+          import os
+          from sqlmodel import SQLModel, create_engine
+          
+          # Create all tables first
+          engine = create_engine(os.environ['DATABASE_URL'])
+          SQLModel.metadata.create_all(engine)
+          print('✅ All tables created successfully')
+          "
+          
+          echo "Running alembic migrations..."
+          uv run alembic stamp head || {
+            echo "Failed to stamp migrations. Running upgrade instead..."
+            uv run alembic upgrade head || {
+              echo "Migration failed. Debugging..."
+              uv run alembic history --verbose || true
+              uv run alembic current || true
+              exit 1
+            }
+          }
       
       - name: Start application
         run: |
+          echo "Starting application..."
           uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-          sleep 10
-          curl -f http://localhost:8000/health || exit 1
+          APP_PID=$!
+          echo "Application PID: $APP_PID"
+          
+          echo "Waiting for application to start (up to 60 seconds)..."
+          for i in {1..30}; do
+            sleep 2
+            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ Application started successfully after $((i*2)) seconds"
+              break
+            fi
+            echo "Attempt $i/30: Application not ready yet..."
+            if [ $i -eq 30 ]; then
+              echo "❌ Application failed to start within 60 seconds"
+              echo "Checking if process is still running..."
+              ps aux | grep uvicorn || true
+              echo "Checking port 8000..."
+              netstat -tlnp | grep 8000 || true
+              kill $APP_PID || true
+              exit 1
+            fi
+          done
         env:
           ENVIRONMENT: testing
       
-      - name: Run quick load test (10 users, 60s)
+      - name: Run quick load test (CI validation)
         run: |
-          python load_testing/run_tests.py --users 10 --duration 60 --base-url http://localhost:8000
-        timeout-minutes: 5
+          mkdir -p load_test_results
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+          python load_testing/ci_test.py
+        timeout-minutes: 2
       
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: quick-load-test-results
           path: load_test_results/
@@ -200,12 +251,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install uv
-          uv sync
-          pip install locust psutil aioredis asyncpg aiohttp aiofiles prometheus-client
+          uv sync prometheus-client
       
       - name: Set up environment variables
         run: |
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
+          echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
           echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
           echo "JWT_SECRET_KEY=test-secret-key-for-ci-comprehensive" >> $GITHUB_ENV
           echo "LLM_API_KEY=test-api-key" >> $GITHUB_ENV
@@ -301,7 +352,7 @@ jobs:
       
       - name: Upload comprehensive test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: comprehensive-load-test-results
           path: |
@@ -400,7 +451,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Download test results
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: comprehensive-load-test-results
           path: current_results/

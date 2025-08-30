@@ -1,0 +1,15 @@
+Data;Numero;Cliente;Partita_IVA;Imponibile;Aliquota_IVA;Imposta;Totale;Note
+01/01/2024;001/2024;Studio Legale Bianchi;12345678901;1500,00;22;330,00;1830,00;Consulenza contrattuale
+03/01/2024;002/2024;Azienda Rossi SRL;23456789012;2500,00;22;550,00;3050,00;Servizi di revisione
+05/01/2024;003/2024;Impresa Verdi SpA;34567890123;3200,00;22;704,00;3904,00;Assistenza fiscale annuale
+08/01/2024;004/2024;Commerciale Neri SAS;45678901234;800,00;22;176,00;976,00;Pratiche amministrative
+10/01/2024;005/2024;Società Gialli SRL;56789012345;1200,00;22;264,00;1464,00;Consulenza societaria
+12/01/2024;006/2024;Ditta Blu di Mario Blu;67890123456;950,00;22;209,00;1159,00;Dichiarazione dei redditi
+15/01/2024;007/2024;Cooperativa Verde;78901234567;1800,00;22;396,00;2196,00;Bilancio sociale
+18/01/2024;008/2024;Associazione Viola;89012345678;650,00;10;65,00;715,00;Servizi no-profit
+20/01/2024;009/2024;Fondazione Arancione;90123456789;1100,00;22;242,00;1342,00;Consulenza tributaria
+22/01/2024;010/2024;Ente Grigio;01234567890;2200,00;22;484,00;2684,00;Revisione contabile
+25/01/2024;011/2024;Startup Rosa SRL;12345098765;750,00;22;165,00;915,00;Costituzione società
+28/01/2024;012/2024;Holding Marrone SpA;23450987654;4500,00;22;990,00;5490,00;Consulenza strategica
+30/01/2024;013/2024;PMI Celeste SAS;34509876543;1350,00;22;297,00;1647,00;Pratiche INPS
+31/01/2024;014/2024;Agenzia Oro SNC;45098765432;2800,00;22;616,00;3416,00;Contabilità mensile

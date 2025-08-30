@@ -5,7 +5,7 @@ This service handles Italian geographic data including CAP to comune mapping,
 provincia to region relationships, and location validation.
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from decimal import Decimal
 
 from app.services.cache import CacheService

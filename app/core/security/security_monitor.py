@@ -88,9 +88,14 @@ class SecurityMonitor:
         # Security rules
         self.security_rules = self._initialize_security_rules()
         
-        # Start background monitoring
+        # Start background monitoring (only if event loop is running)
         self.monitoring_active = True
-        asyncio.create_task(self._cleanup_old_data())
+        try:
+            asyncio.get_running_loop()
+            asyncio.create_task(self._cleanup_old_data())
+        except RuntimeError:
+            # No running event loop - task will be started when needed
+            pass
     
     def _initialize_security_rules(self) -> List[SecurityRule]:
         """Initialize default security monitoring rules."""

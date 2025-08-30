@@ -64,7 +64,7 @@ class RegulatoryDocument(SQLModel, table=True):
     authority: Optional[str] = Field(default=None, description="Publishing authority name")
     
     # Metadata and version management
-    metadata: Dict[str, Any] = Field(
+    document_metadata: Dict[str, Any] = Field(
         default_factory=dict,
         sa_column=Column(JSON),
         description="Additional document metadata"

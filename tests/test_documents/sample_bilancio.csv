@@ -1,0 +1,40 @@
+Conto;Descrizione;Dare;Avere;Saldo
+100;Immobilizzazioni materiali;150000,00;0,00;150000,00
+110;Fabbricati;120000,00;0,00;120000,00
+120;Impianti e macchinari;30000,00;0,00;30000,00
+200;Rimanenze;25000,00;0,00;25000,00
+210;Materie prime;15000,00;0,00;15000,00
+220;Prodotti finiti;10000,00;0,00;10000,00
+300;Crediti verso clienti;45000,00;0,00;45000,00
+310;Clienti Italia;40000,00;0,00;40000,00
+320;Clienti Estero;5000,00;0,00;5000,00
+400;Disponibilità liquide;18000,00;0,00;18000,00
+410;Depositi bancari;15000,00;0,00;15000,00
+420;Denaro e valori in cassa;3000,00;0,00;3000,00
+500;Capitale sociale;0,00;100000,00;-100000,00
+600;Riserve;0,00;50000,00;-50000,00
+610;Riserva legale;0,00;10000,00;-10000,00
+620;Altre riserve;0,00;40000,00;-40000,00
+700;Debiti verso fornitori;0,00;35000,00;-35000,00
+710;Fornitori Italia;0,00;30000,00;-30000,00
+720;Fornitori Estero;0,00;5000,00;-5000,00
+800;Ricavi delle vendite;0,00;180000,00;-180000,00
+810;Vendite Italia;0,00;150000,00;-150000,00
+820;Vendite Estero;0,00;30000,00;-30000,00
+900;Costi per materie prime;80000,00;0,00;80000,00
+910;Acquisti materie prime;75000,00;0,00;75000,00
+920;Variazione rimanenze;5000,00;0,00;5000,00
+1000;Costi per servizi;25000,00;0,00;25000,00
+1010;Energia elettrica;8000,00;0,00;8000,00
+1020;Consulenze professionali;12000,00;0,00;12000,00
+1030;Assicurazioni;5000,00;0,00;5000,00
+1100;Costi per il personale;40000,00;0,00;40000,00
+1110;Salari e stipendi;30000,00;0,00;30000,00
+1120;Contributi previdenziali;8000,00;0,00;8000,00
+1130;TFR;2000,00;0,00;2000,00
+1200;Ammortamenti;15000,00;0,00;15000,00
+1210;Ammortamento fabbricati;6000,00;0,00;6000,00
+1220;Ammortamento impianti;9000,00;0,00;9000,00
+1300;Imposte sul reddito;8000,00;0,00;8000,00
+1310;IRES;6000,00;0,00;6000,00
+1320;IRAP;2000,00;0,00;2000,00

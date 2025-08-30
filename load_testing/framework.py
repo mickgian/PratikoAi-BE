@@ -320,7 +320,10 @@ class LoadTestFramework:
         # Build locust command
         cmd = ["locust", "-f", "load_testing/locust_tests.py"]
         for key, value in locust_config.items():
-            cmd.extend([f"--{key}", str(value)])
+            if isinstance(value, bool) and value:
+                cmd.append(f"--{key}")
+            else:
+                cmd.extend([f"--{key}", str(value)])
         
         # Run Locust
         start_time = time.time()

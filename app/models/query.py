@@ -45,12 +45,12 @@ class LLMResponse:
     tokens_used: int
     cost: float
     processing_time: float
-    metadata: Dict[str, Any]
+    response_metadata: Dict[str, Any]
     
     def __post_init__(self):
         """Add timestamp if not present."""
-        if 'timestamp' not in self.metadata:
-            self.metadata['timestamp'] = datetime.now(timezone.utc).isoformat()
+        if 'timestamp' not in self.response_metadata:
+            self.response_metadata['timestamp'] = datetime.now(timezone.utc).isoformat()
 
 
 @dataclass
@@ -69,11 +69,11 @@ class QueryResponse:
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     retry_count: int = 0
-    metadata: Dict[str, Any] = None
+    query_metadata: Dict[str, Any] = None
     
     def __post_init__(self):
-        if self.metadata is None:
-            self.metadata = {}
+        if self.query_metadata is None:
+            self.query_metadata = {}
 
 
 class QueryRequest(BaseModel):

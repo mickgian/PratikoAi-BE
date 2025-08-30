@@ -1,8 +1,13 @@
 """Response compression system for optimizing API response sizes."""
 
 import gzip
-import brotli
 import json
+try:
+    import brotli
+    BROTLI_AVAILABLE = True
+except ImportError:
+    BROTLI_AVAILABLE = False
+    brotli = None
 import time
 from typing import Any, Dict, List, Optional, Union, Tuple
 from enum import Enum
@@ -156,10 +161,17 @@ class ResponseCompressor:
                     compresslevel=self.compression_level_gzip
                 )
             elif compression_type == CompressionType.BROTLI:
-                compressed_content = brotli.compress(
-                    content,
-                    quality=self.compression_level_brotli
-                )
+                if BROTLI_AVAILABLE:
+                    compressed_content = brotli.compress(
+                        content,
+                        quality=self.compression_level_brotli
+                    )
+                else:
+                    # Fallback to gzip if brotli not available
+                    compressed_content = gzip.compress(
+                        content,
+                        compresslevel=self.compression_level_gzip
+                    )
             else:
                 return content, 0.0, 1.0
             

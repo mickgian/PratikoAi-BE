@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PratikoAI - Carica Documenti Fiscali</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .upload-section {
+            padding: 40px;
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone.dragover {
+            border-color: #764ba2;
+            background: #f0f4ff;
+            transform: scale(1.02);
+        }
+
+        .drop-zone::before {
+            content: '📄';
+            font-size: 4em;
+            display: block;
+            margin-bottom: 20px;
+            opacity: 0.6;
+        }
+
+        .drop-zone h3 {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .drop-zone p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .browse-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .browse-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-list {
+            margin-top: 30px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+        }
+
+        .file-icon {
+            font-size: 1.5em;
+            margin-right: 15px;
+            width: 40px;
+            text-align: center;
+        }
+
+        .file-info {
+            flex-grow: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .file-status {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-processing {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .upload-btn {
+            background: #28a745;
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .upload-btn:hover:not(:disabled) {
+            background: #218838;
+        }
+
+        .upload-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .analysis-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .analysis-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            margin-bottom: 15px;
+            resize: vertical;
+        }
+
+        .analysis-btn {
+            background: #17a2b8;
+            color: white;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .results-section {
+            margin-top: 30px;
+        }
+
+        .document-result {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .document-header {
+            background: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+        }
+
+        .document-content {
+            padding: 20px;
+            display: none;
+        }
+
+        .document-content.active {
+            display: block;
+        }
+
+        .response-text {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 8px;
+            line-height: 1.6;
+            color: #333;
+            border-left: 4px solid #667eea;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .confidence-high {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .confidence-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .confidence-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .limits-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #004085;
+        }
+
+        .limits-info ul {
+            margin-left: 20px;
+            margin-top: 8px;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 PratikoAI Document Analysis</h1>
+            <p>Carica e analizza i tuoi documenti fiscali italiani con intelligenza artificiale</p>
+        </div>
+
+        <div class="upload-section">
+            <!-- Upload Area -->
+            <div class="drop-zone" id="dropZone">
+                <h3>Trascina qui i tuoi documenti fiscali</h3>
+                <p>Supportiamo fatture elettroniche, F24, bilanci, registri IVA e dichiarazioni fiscali</p>
+                <button class="browse-btn" onclick="document.getElementById('fileInput').click()">
+                    oppure seleziona i file
+                </button>
+                <input type="file" id="fileInput" class="file-input" multiple 
+                       accept=".pdf,.xlsx,.xls,.csv,.xml">
+            </div>
+
+            <!-- File List -->
+            <div class="file-list" id="fileList" style="display: none;">
+                <h4>Documenti selezionati:</h4>
+                <div id="selectedFiles"></div>
+                
+                <!-- Analysis Question -->
+                <div class="analysis-section">
+                    <label for="analysisQuery">Domanda di analisi (opzionale):</label>
+                    <textarea id="analysisQuery" class="analysis-input" rows="3" 
+                              placeholder="Es: Verifica la conformità di questa fattura alla normativa italiana, oppure Analizza i trend finanziari di questo bilancio"></textarea>
+                </div>
+
+                <button class="upload-btn" id="uploadBtn" onclick="uploadFiles()">
+                    🚀 Carica e Analizza Documenti
+                </button>
+            </div>
+
+            <!-- Upload Limits Info -->
+            <div class="limits-info">
+                <strong>ℹ️ Informazioni sui limiti:</strong>
+                <ul>
+                    <li><strong>Dimensione massima:</strong> 10MB per file</li>
+                    <li><strong>File simultanei:</strong> fino a 5 documenti</li>
+                    <li><strong>Formati supportati:</strong> PDF, Excel (.xlsx, .xls), CSV, XML</li>
+                    <li><strong>Conservazione:</strong> i documenti vengono conservati per 48 ore</li>
+                    <li><strong>Privacy:</strong> eliminazione sicura conforme GDPR</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <h3>📈 Risultati dell'analisi</h3>
+            <div id="analysisResults"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const selectedFilesDiv = document.getElementById('selectedFiles');
+
+        // Drag and drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            
+            const files = Array.from(e.dataTransfer.files);
+            handleFileSelection(files);
+        });
+
+        // File input handler
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            handleFileSelection(files);
+        });
+
+        function handleFileSelection(files) {
+            // Validate file count
+            if (files.length > 5) {
+                alert('⚠️ Puoi caricare massimo 5 file alla volta');
+                return;
+            }
+
+            // Validate file types and sizes
+            const validTypes = [
+                'application/pdf',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-excel',
+                'text/csv',
+                'application/xml',
+                'text/xml'
+            ];
+
+            const validFiles = files.filter(file => {
+                if (!validTypes.includes(file.type) && !file.name.match(/\.(pdf|xlsx|xls|csv|xml)$/i)) {
+                    alert(`⚠️ Tipo di file non supportato: ${file.name}`);
+                    return false;
+                }
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`⚠️ File troppo grande: ${file.name} (max 10MB)`);
+                    return false;
+                }
+                return true;
+            });
+
+            selectedFiles = validFiles;
+            displaySelectedFiles();
+        }
+
+        function displaySelectedFiles() {
+            if (selectedFiles.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+
+            fileList.style.display = 'block';
+            selectedFilesDiv.innerHTML = '';
+
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                const icon = getFileIcon(file.type, file.name);
+                const sizeText = formatFileSize(file.size);
+                
+                fileItem.innerHTML = `
+                    <div class="file-icon">${icon}</div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${sizeText}</div>
+                    </div>
+                    <div class="file-status status-pending">In attesa</div>
+                `;
+                
+                selectedFilesDiv.appendChild(fileItem);
+            });
+        }
+
+        function getFileIcon(type, filename) {
+            if (type.includes('pdf') || filename.toLowerCase().endsWith('.pdf')) return '📄';
+            if (type.includes('excel') || filename.match(/\.(xlsx|xls)$/i)) return '📊';
+            if (type.includes('csv') || filename.toLowerCase().endsWith('.csv')) return '📈';
+            if (type.includes('xml') || filename.toLowerCase().endsWith('.xml')) return '📋';
+            return '📄';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function uploadFiles() {
+            if (selectedFiles.length === 0) {
+                alert('⚠️ Seleziona almeno un file da caricare');
+                return;
+            }
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            const analysisQuery = document.getElementById('analysisQuery').value;
+            
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '⏳ Caricamento in corso...';
+
+            // Update file statuses to processing
+            const fileItems = selectedFilesDiv.querySelectorAll('.file-item');
+            fileItems.forEach(item => {
+                const status = item.querySelector('.file-status');
+                status.className = 'file-status status-processing';
+                status.textContent = 'Elaborazione...';
+            });
+
+            // Create FormData
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
+            
+            if (analysisQuery.trim()) {
+                formData.append('analysis_query', analysisQuery.trim());
+            }
+
+            try {
+                // Simulate API call for demo
+                // In real implementation: const response = await fetch('/api/v1/documents/upload', {
+                await simulateUpload();
+                
+                // Show success
+                fileItems.forEach(item => {
+                    const status = item.querySelector('.file-status');
+                    status.className = 'file-status status-completed';
+                    status.textContent = 'Completato ✅';
+                });
+
+                // Show mock results
+                showMockResults();
+
+            } catch (error) {
+                console.error('Upload failed:', error);
+                
+                // Show error
+                fileItems.forEach(item => {
+                    const status = item.querySelector('.file-status');
+                    status.className = 'file-status status-error';
+                    status.textContent = 'Errore ❌';
+                });
+
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = '❌ Errore durante il caricamento. Riprova.';
+                fileList.appendChild(errorDiv);
+            }
+
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = '🚀 Carica e Analizza Documenti';
+        }
+
+        async function simulateUpload() {
+            // Simulate processing time
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+
+        function showMockResults() {
+            const resultsSection = document.getElementById('resultsSection');
+            const analysisResults = document.getElementById('analysisResults');
+            
+            resultsSection.style.display = 'block';
+            
+            // Mock analysis results
+            const mockResults = [
+                {
+                    filename: 'fattura_001.pdf',
+                    analysis: 'La fattura elettronica FE001/2024 è conforme alla normativa italiana. Tutti i campi obbligatori sono presenti e l\'IVA è calcolata correttamente al 22%. Il documento rispetta i requisiti del DPR 633/72.',
+                    confidence: 95,
+                    category: 'Fattura Elettronica'
+                },
+                {
+                    filename: 'bilancio_2024.xlsx',
+                    analysis: 'Il bilancio mostra una situazione finanziaria solida con un patrimonio netto di €150.000 e un leverage ratio contenuto al 33%. L\'EBITDA positivo indica buona operatività aziendale.',
+                    confidence: 88,
+                    category: 'Bilancio'
+                }
+            ];
+
+            analysisResults.innerHTML = '';
+            
+            mockResults.forEach((result, index) => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'document-result';
+                
+                const confidenceClass = result.confidence >= 90 ? 'confidence-high' : 
+                                       result.confidence >= 75 ? 'confidence-medium' : 'confidence-low';
+                
+                resultDiv.innerHTML = `
+                    <div class="document-header" onclick="toggleResult(${index})">
+                        <strong>📊 ${result.filename}</strong>
+                        <span class="confidence-badge ${confidenceClass}">
+                            Affidabilità: ${result.confidence}%
+                        </span>
+                        <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                            ${result.category} • Clicca per espandere
+                        </div>
+                    </div>
+                    <div class="document-content" id="result-${index}">
+                        <div class="response-text">
+                            💡 <strong>Analisi AI:</strong><br><br>
+                            ${result.analysis}
+                        </div>
+                    </div>
+                `;
+                
+                analysisResults.appendChild(resultDiv);
+            });
+
+            // Scroll to results
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function toggleResult(index) {
+            const content = document.getElementById(`result-${index}`);
+            content.classList.toggle('active');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 PratikoAI Document Upload Interface inizializzata');
+        });
+    </script>
+</body>
+</html>

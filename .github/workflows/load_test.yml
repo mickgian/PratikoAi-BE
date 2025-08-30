@@ -171,6 +171,7 @@ jobs:
       - name: Run quick load test (10 users, 60s)
         run: |
           mkdir -p load_test_results
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)"
           python load_testing/run_tests.py --users 10 --duration 60 --base-url http://localhost:8000
         timeout-minutes: 5
       

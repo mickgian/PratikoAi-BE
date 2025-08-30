@@ -7,7 +7,7 @@ metrics during load testing to identify bottlenecks and ensure SLA compliance.
 
 import asyncio
 import asyncpg
-import aioredis
+import redis.asyncio as aioredis
 import psutil
 import time
 import json
@@ -371,10 +371,9 @@ class LoadTestMonitor:
     async def _collect_redis_metrics(self, timestamp: datetime) -> RedisMetrics:
         """Collect Redis performance metrics"""
         try:
-            redis = await aioredis.create_redis_pool(self.redis_url)
+            redis = aioredis.from_url(self.redis_url)
             info = await redis.info()
-            redis.close()
-            await redis.wait_closed()
+            await redis.aclose()
             
             return RedisMetrics(
                 timestamp=timestamp,

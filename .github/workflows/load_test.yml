@@ -98,7 +98,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install uv
           uv sync
-          pip install aiohttp aiofiles locust asyncpg psutil aioredis
+          # Load testing dependencies are now in pyproject.toml
       
       - name: Set up environment variables
         run: |
@@ -169,12 +169,12 @@ jobs:
         env:
           ENVIRONMENT: testing
       
-      - name: Run quick load test (10 users, 60s)
+      - name: Run quick load test (CI validation)
         run: |
           mkdir -p load_test_results
           export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-          python load_testing/run_tests.py --users 10 --duration 60 --base-url http://localhost:8000
-        timeout-minutes: 5
+          python load_testing/ci_test.py
+        timeout-minutes: 2
       
       - name: Upload test results
         if: always()

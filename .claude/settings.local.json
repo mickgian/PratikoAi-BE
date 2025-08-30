@@ -18,7 +18,8 @@
       "Bash(grep:*)",
       "Bash(sed:*)",
       "Bash(rm:*)",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(uv run:*)"
     ],
     "deny": []
   }

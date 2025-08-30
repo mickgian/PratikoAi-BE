@@ -19,7 +19,8 @@
       "Bash(sed:*)",
       "Bash(rm:*)",
       "Bash(pytest:*)",
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }

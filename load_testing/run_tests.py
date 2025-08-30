@@ -20,6 +20,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
 
+# Add current directory to Python path for module imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from load_testing.framework import LoadTestFramework
 from load_testing.config import LoadTestProfiles, LoadTestProfile
 from load_testing.monitoring import LoadTestMonitor

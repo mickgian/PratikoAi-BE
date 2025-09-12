@@ -1,0 +1,1216 @@
+steps:
+- step: 1
+  id: RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate
+  node_id: ValidateRequest
+  node_label: ChatbotController.chat Validate request and authenticate
+  type: process
+  category: platform
+  nodes:
+  - ValidateRequest
+  code_owner: TBD
+- step: 2
+  id: RAG.platform.user.submits.query.via.post.api.v1.chat
+  node_id: Start
+  node_label: User submits query via POST /api/v1/chat
+  type: startEnd
+  category: platform
+  nodes:
+  - Start
+  code_owner: TBD
+- step: 3
+  id: RAG.platform.request.valid
+  node_id: ValidCheck
+  node_label: Request valid?
+  type: decision
+  category: platform
+  nodes:
+  - ValidCheck
+  code_owner: TBD
+- step: 4
+  id: RAG.privacy.gdprcompliance.record.processing.log.data.processing
+  node_id: GDPRLog
+  node_label: GDPRCompliance.record_processing Log data processing
+  type: process
+  category: privacy
+  nodes:
+  - GDPRLog
+  code_owner: TBD
+- step: 5
+  id: RAG.platform.return.400.bad.request
+  node_id: Error400
+  node_label: Return 400 Bad Request
+  type: error
+  category: platform
+  nodes:
+  - Error400
+  code_owner: TBD
+- step: 6
+  id: RAG.privacy.privacy.anonymize.requests.enabled
+  node_id: PrivacyCheck
+  node_label: PRIVACY_ANONYMIZE_REQUESTS enabled?
+  type: decision
+  category: privacy
+  nodes:
+  - PrivacyCheck
+  code_owner: TBD
+- step: 7
+  id: RAG.privacy.anonymizer.anonymize.text.anonymize.pii
+  node_id: AnonymizeText
+  node_label: Anonymizer.anonymize_text Anonymize PII
+  type: process
+  category: privacy
+  nodes:
+  - AnonymizeText
+  code_owner: TBD
+- step: 8
+  id: RAG.response.langgraphagent.get.response.initialize.workflow
+  node_id: InitAgent
+  node_label: LangGraphAgent.get_response Initialize workflow
+  type: process
+  category: response
+  nodes:
+  - InitAgent
+  code_owner: TBD
+- step: 9
+  id: RAG.platform.pii.detected
+  node_id: PIICheck
+  node_label: PII detected?
+  type: decision
+  category: platform
+  nodes:
+  - PIICheck
+  code_owner: TBD
+- step: 10
+  id: RAG.platform.logger.info.log.pii.anonymization
+  node_id: LogPII
+  node_label: Logger.info Log PII anonymization
+  type: process
+  category: platform
+  nodes:
+  - LogPII
+  code_owner: TBD
+- step: 11
+  id: RAG.platform.langgraphagent.chat.convert.to.message.objects
+  node_id: ConvertMessages
+  node_label: LangGraphAgent._chat Convert to Message objects
+  type: process
+  category: platform
+  nodes:
+  - ConvertMessages
+  code_owner: TBD
+- step: 12
+  id: RAG.classify.langgraphagent.classify.user.query.extract.user.message
+  node_id: ExtractQuery
+  node_label: LangGraphAgent._classify_user_query Extract user message
+  type: process
+  category: classify
+  nodes:
+  - ExtractQuery
+  code_owner: TBD
+- step: 13
+  id: RAG.platform.user.message.exists
+  node_id: MessageExists
+  node_label: User message exists?
+  type: decision
+  category: platform
+  nodes:
+  - MessageExists
+  code_owner: TBD
+- step: 14
+  id: RAG.facts.atomicfactsextractor.extract.extract.atomic.facts
+  node_id: ExtractFacts
+  node_label: AtomicFactsExtractor.extract Extract atomic facts
+  type: process
+  category: facts
+  nodes:
+  - ExtractFacts
+  code_owner: TBD
+- step: 15
+  id: RAG.prompting.continue.without.classification
+  node_id: DefaultPrompt
+  node_label: Continue without classification
+  type: process
+  category: prompting
+  nodes:
+  - DefaultPrompt
+  code_owner: TBD
+- step: 16
+  id: RAG.facts.atomicfactsextractor.canonicalize.normalize.dates.amounts.rates
+  node_id: CanonicalizeFacts
+  node_label: AtomicFactsExtractor.canonicalize Normalize dates amounts rates
+  type: process
+  category: facts
+  nodes:
+  - CanonicalizeFacts
+  code_owner: TBD
+- step: 17
+  id: RAG.preflight.attachmentfingerprint.compute.sha.256.per.attachment
+  node_id: AttachmentFingerprint
+  node_label: AttachmentFingerprint.compute SHA-256 per attachment
+  type: process
+  category: preflight
+  nodes:
+  - AttachmentFingerprint
+  code_owner: TBD
+- step: 18
+  id: RAG.facts.querysignature.compute.hash.from.canonical.facts
+  node_id: QuerySig
+  node_label: QuerySignature.compute Hash from canonical facts
+  type: process
+  category: facts
+  nodes:
+  - QuerySig
+  code_owner: TBD
+- step: 19
+  id: RAG.preflight.attachments.present
+  node_id: AttachCheck
+  node_label: Attachments present?
+  type: process
+  category: preflight
+  nodes:
+  - AttachCheck
+  code_owner: TBD
+- step: 20
+  id: RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe
+  node_id: GoldenFastGate
+  node_label: Golden fast-path eligible? no doc or quick check safe
+  type: process
+  category: golden
+  nodes:
+  - GoldenFastGate
+  code_owner: TBD
+- step: 21
+  id: RAG.preflight.docpreingest.quick.extract.type.sniff.and.key.fields
+  node_id: QuickPreIngest
+  node_label: DocPreIngest.quick_extract type sniff and key fields
+  type: process
+  category: preflight
+  nodes:
+  - QuickPreIngest
+  code_owner: TBD
+- step: 22
+  id: RAG.docs.doc.dependent.or.refers.to.doc
+  node_id: DocDependent
+  node_label: Doc-dependent or refers to doc?
+  type: process
+  category: docs
+  nodes:
+  - DocDependent
+  code_owner: TBD
+- step: 23
+  id: RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb
+  node_id: RequireDocIngest
+  node_label: PlannerHint.require_doc_ingest_first ingest then Golden and KB
+  type: process
+  category: golden
+  nodes:
+  - RequireDocIngest
+  code_owner: TBD
+- step: 24
+  id: RAG.preflight.goldenset.match.by.signature.or.semantic
+  node_id: GoldenLookup
+  node_label: GoldenSet.match_by_signature_or_semantic
+  type: process
+  category: preflight
+  nodes:
+  - GoldenLookup
+  code_owner: TBD
+- step: 25
+  id: RAG.golden.high.confidence.match.score.at.least.0.90
+  node_id: GoldenHit
+  node_label: High confidence match? score at least 0.90
+  type: process
+  category: golden
+  nodes:
+  - GoldenHit
+  code_owner: TBD
+- step: 26
+  id: RAG.kb.knowledgesearch.context.topk.fetch.recent.kb.for.changes
+  node_id: KBContextCheck
+  node_label: KnowledgeSearch.context_topk fetch recent KB for changes
+  type: process
+  category: kb
+  nodes:
+  - KBContextCheck
+  code_owner: TBD
+- step: 27
+  id: RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags
+  node_id: KBDelta
+  node_label: KB newer than Golden as of or conflicting tags?
+  type: process
+  category: golden
+  nodes:
+  - KBDelta
+  code_owner: TBD
+- step: 28
+  id: RAG.golden.serve.golden.answer.with.citations
+  node_id: ServeGolden
+  node_label: Serve Golden answer with citations
+  type: process
+  category: golden
+  nodes:
+  - ServeGolden
+  code_owner: TBD
+- step: 29
+  id: RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.doc.facts.if.present
+  node_id: PreContextFromGolden
+  node_label: ContextBuilder.merge facts and KB docs and doc facts if present
+  type: process
+  category: facts
+  nodes:
+  - PreContextFromGolden
+  code_owner: TBD
+- step: 30
+  id: RAG.response.return.chatresponse
+  node_id: ReturnComplete
+  node_label: Return ChatResponse
+  type: process
+  category: response
+  nodes:
+  - ReturnComplete
+  code_owner: TBD
+- step: 31
+  id: RAG.classify.domainactionclassifier.classify.rule.based.classification
+  node_id: ClassifyDomain
+  node_label: DomainActionClassifier.classify Rule-based classification
+  type: process
+  category: classify
+  nodes:
+  - ClassifyDomain
+  code_owner: TBD
+- step: 32
+  id: RAG.classify.calculate.domain.and.action.scores.match.italian.keywords
+  node_id: CalcScores
+  node_label: Calculate domain and action scores Match Italian keywords
+  type: process
+  category: classify
+  nodes:
+  - CalcScores
+  code_owner: TBD
+- step: 33
+  id: RAG.classify.confidence.at.least.threshold
+  node_id: ConfidenceCheck
+  node_label: Confidence at least threshold?
+  type: process
+  category: classify
+  nodes:
+  - ConfidenceCheck
+  code_owner: TBD
+- step: 34
+  id: RAG.metrics.classificationmetrics.track.record.metrics
+  node_id: TrackMetrics
+  node_label: ClassificationMetrics.track Record metrics
+  type: process
+  category: metrics
+  nodes:
+  - TrackMetrics
+  code_owner: TBD
+- step: 35
+  id: RAG.classify.domainactionclassifier.llm.fallback.use.llm.classification
+  node_id: LLMFallback
+  node_label: DomainActionClassifier._llm_fallback Use LLM classification
+  type: process
+  category: classify
+  nodes:
+  - LLMFallback
+  code_owner: TBD
+- step: 36
+  id: RAG.llm.llm.better.than.rule.based
+  node_id: LLMBetter
+  node_label: LLM better than rule-based?
+  type: decision
+  category: llm
+  nodes:
+  - LLMBetter
+  code_owner: TBD
+- step: 37
+  id: RAG.llm.use.llm.classification
+  node_id: UseLLM
+  node_label: Use LLM classification
+  type: process
+  category: llm
+  nodes:
+  - UseLLM
+  code_owner: TBD
+- step: 38
+  id: RAG.platform.use.rule.based.classification
+  node_id: UseRuleBased
+  node_label: Use rule-based classification
+  type: process
+  category: platform
+  nodes:
+  - UseRuleBased
+  code_owner: TBD
+- step: 39
+  id: RAG.preflight.knowledgesearch.retrieve.topk.bm25.and.vectors.and.recency.boost
+  node_id: KBPreFetch
+  node_label: KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost
+  type: process
+  category: preflight
+  nodes:
+  - KBPreFetch
+  code_owner: TBD
+- step: 40
+  id: RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.optional.doc.facts
+  node_id: BuildContext
+  node_label: ContextBuilder.merge facts and KB docs and optional doc facts
+  type: process
+  category: facts
+  nodes:
+  - BuildContext
+  code_owner: TBD
+- step: 41
+  id: RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt
+  node_id: SelectPrompt
+  node_label: LangGraphAgent._get_system_prompt Select appropriate prompt
+  type: process
+  category: prompting
+  nodes:
+  - SelectPrompt
+  code_owner: TBD
+- step: 42
+  id: RAG.classify.classification.exists.and.confidence.at.least.0.6
+  node_id: ClassConfidence
+  node_label: Classification exists and confidence at least 0.6?
+  type: decision
+  category: classify
+  nodes:
+  - ClassConfidence
+  code_owner: TBD
+- step: 43
+  id: RAG.classify.prompttemplatemanager.get.prompt.get.domain.specific.prompt
+  node_id: DomainPrompt
+  node_label: PromptTemplateManager.get_prompt Get domain-specific prompt
+  type: process
+  category: classify
+  nodes:
+  - DomainPrompt
+  code_owner: TBD
+- step: 44
+  id: RAG.prompting.use.default.system.prompt
+  node_id: DefaultSysPrompt
+  node_label: Use default SYSTEM_PROMPT
+  type: process
+  category: prompting
+  nodes:
+  - DefaultSysPrompt
+  code_owner: TBD
+- step: 45
+  id: RAG.prompting.system.message.exists
+  node_id: CheckSysMsg
+  node_label: System message exists?
+  type: decision
+  category: prompting
+  nodes:
+  - CheckSysMsg
+  code_owner: TBD
+- step: 46
+  id: RAG.prompting.replace.system.message
+  node_id: ReplaceMsg
+  node_label: Replace system message
+  type: process
+  category: prompting
+  nodes:
+  - ReplaceMsg
+  code_owner: TBD
+- step: 47
+  id: RAG.prompting.insert.system.message
+  node_id: InsertMsg
+  node_label: Insert system message
+  type: process
+  category: prompting
+  nodes:
+  - InsertMsg
+  code_owner: TBD
+- step: 48
+  id: RAG.providers.langgraphagent.get.optimal.provider.select.llm.provider
+  node_id: SelectProvider
+  node_label: LangGraphAgent._get_optimal_provider Select LLM provider
+  type: process
+  category: providers
+  nodes:
+  - SelectProvider
+  code_owner: TBD
+- step: 49
+  id: RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy
+  node_id: RouteStrategy
+  node_label: LLMFactory.get_optimal_provider Apply routing strategy
+  type: process
+  category: facts
+  nodes:
+  - RouteStrategy
+  code_owner: TBD
+- step: 50
+  id: RAG.platform.routing.strategy
+  node_id: StrategyType
+  node_label: Routing strategy?
+  type: decision
+  category: platform
+  nodes:
+  - StrategyType
+  code_owner: TBD
+- step: 51
+  id: RAG.providers.select.cheapest.provider
+  node_id: CheapProvider
+  node_label: Select cheapest provider
+  type: process
+  category: providers
+  nodes:
+  - CheapProvider
+  code_owner: TBD
+- step: 52
+  id: RAG.providers.select.best.provider
+  node_id: BestProvider
+  node_label: Select best provider
+  type: process
+  category: providers
+  nodes:
+  - BestProvider
+  code_owner: TBD
+- step: 53
+  id: RAG.providers.balance.cost.and.quality
+  node_id: BalanceProvider
+  node_label: Balance cost and quality
+  type: process
+  category: providers
+  nodes:
+  - BalanceProvider
+  code_owner: TBD
+- step: 54
+  id: RAG.providers.use.primary.provider
+  node_id: PrimaryProvider
+  node_label: Use primary provider
+  type: process
+  category: providers
+  nodes:
+  - PrimaryProvider
+  code_owner: TBD
+- step: 55
+  id: RAG.providers.costcalculator.estimate.cost.calculate.query.cost
+  node_id: EstimateCost
+  node_label: CostCalculator.estimate_cost Calculate query cost
+  type: process
+  category: providers
+  nodes:
+  - EstimateCost
+  code_owner: TBD
+- step: 56
+  id: RAG.providers.cost.within.budget
+  node_id: CostCheck
+  node_label: Cost within budget?
+  type: decision
+  category: providers
+  nodes:
+  - CostCheck
+  code_owner: TBD
+- step: 57
+  id: RAG.providers.create.provider.instance
+  node_id: CreateProvider
+  node_label: Create provider instance
+  type: process
+  category: providers
+  nodes:
+  - CreateProvider
+  code_owner: TBD
+- step: 58
+  id: RAG.providers.select.cheaper.provider.or.fail
+  node_id: CheaperProvider
+  node_label: Select cheaper provider or fail
+  type: process
+  category: providers
+  nodes:
+  - CheaperProvider
+  code_owner: TBD
+- step: 59
+  id: RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response
+  node_id: CheckCache
+  node_label: LangGraphAgent._get_cached_llm_response Check for cached response
+  type: process
+  category: cache
+  nodes:
+  - CheckCache
+  code_owner: TBD
+- step: 60
+  id: RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version
+  node_id: ResolveEpochs
+  node_label: EpochStamps.resolve kb_epoch golden_epoch ccnl_epoch parser_version
+  type: process
+  category: golden
+  nodes:
+  - ResolveEpochs
+  code_owner: TBD
+- step: 61
+  id: RAG.cache.cacheservice.generate.response.key.sig.and.doc.hashes.and.epochs.and.versions
+  node_id: GenHash
+  node_label: CacheService._generate_response_key sig and doc_hashes and epochs and versions
+  type: process
+  category: cache
+  nodes:
+  - GenHash
+  code_owner: TBD
+- step: 62
+  id: RAG.cache.cache.hit
+  node_id: CacheHit
+  node_label: Cache hit?
+  type: decision
+  category: cache
+  nodes:
+  - CacheHit
+  code_owner: TBD
+- step: 63
+  id: RAG.cache.usagetracker.track.track.cache.hit
+  node_id: TrackCacheHit
+  node_label: UsageTracker.track Track cache hit
+  type: process
+  category: cache
+  nodes:
+  - TrackCacheHit
+  code_owner: TBD
+- step: 64
+  id: RAG.providers.llmprovider.chat.completion.make.api.call
+  node_id: LLMCall
+  node_label: LLMProvider.chat_completion Make API call
+  type: process
+  category: providers
+  nodes:
+  - LLMCall
+  code_owner: TBD
+- step: 65
+  id: RAG.cache.logger.info.log.cache.hit
+  node_id: LogCacheHit
+  node_label: Logger.info Log cache hit
+  type: process
+  category: cache
+  nodes:
+  - LogCacheHit
+  code_owner: TBD
+- step: 66
+  id: RAG.cache.return.cached.response
+  node_id: ReturnCached
+  node_label: Return cached response
+  type: process
+  category: cache
+  nodes:
+  - ReturnCached
+  code_owner: TBD
+- step: 67
+  id: RAG.llm.llm.call.successful
+  node_id: LLMSuccess
+  node_label: LLM call successful?
+  type: decision
+  category: llm
+  nodes:
+  - LLMSuccess
+  code_owner: TBD
+- step: 68
+  id: RAG.cache.cacheservice.cache.response.store.in.redis
+  node_id: CacheResponse
+  node_label: CacheService.cache_response Store in Redis
+  type: process
+  category: cache
+  nodes:
+  - CacheResponse
+  code_owner: TBD
+- step: 69
+  id: RAG.platform.another.attempt.allowed
+  node_id: RetryCheck
+  node_label: Another attempt allowed?
+  type: decision
+  category: platform
+  nodes:
+  - RetryCheck
+  code_owner: TBD
+- step: 70
+  id: RAG.platform.prod.environment.and.last.retry
+  node_id: ProdCheck
+  node_label: Prod environment and last retry?
+  type: decision
+  category: platform
+  nodes:
+  - ProdCheck
+  code_owner: TBD
+- step: 71
+  id: RAG.platform.return.500.error
+  node_id: Error500
+  node_label: Return 500 error
+  type: error
+  category: platform
+  nodes:
+  - Error500
+  code_owner: TBD
+- step: 72
+  id: RAG.providers.get.failover.provider
+  node_id: FailoverProvider
+  node_label: Get FAILOVER provider
+  type: process
+  category: providers
+  nodes:
+  - FailoverProvider
+  code_owner: TBD
+- step: 73
+  id: RAG.providers.retry.same.provider
+  node_id: RetrySame
+  node_label: Retry same provider
+  type: process
+  category: providers
+  nodes:
+  - RetrySame
+  code_owner: TBD
+- step: 74
+  id: RAG.metrics.usagetracker.track.track.api.usage
+  node_id: TrackUsage
+  node_label: UsageTracker.track Track API usage
+  type: process
+  category: metrics
+  nodes:
+  - TrackUsage
+  code_owner: TBD
+- step: 75
+  id: RAG.response.response.has.tool.calls
+  node_id: ToolCheck
+  node_label: Response has tool_calls?
+  type: process
+  category: response
+  nodes:
+  - ToolCheck
+  code_owner: TBD
+- step: 76
+  id: RAG.platform.convert.to.aimessage.with.tool.calls
+  node_id: ConvertAIMsg
+  node_label: Convert to AIMessage with tool_calls
+  type: process
+  category: platform
+  nodes:
+  - ConvertAIMsg
+  code_owner: TBD
+- step: 77
+  id: RAG.platform.convert.to.simple.aimessage
+  node_id: SimpleAIMsg
+  node_label: Convert to simple AIMessage
+  type: process
+  category: platform
+  nodes:
+  - SimpleAIMsg
+  code_owner: TBD
+- step: 78
+  id: RAG.platform.langgraphagent.tool.call.execute.tools
+  node_id: ExecuteTools
+  node_label: LangGraphAgent._tool_call Execute tools
+  type: process
+  category: platform
+  nodes:
+  - ExecuteTools
+  code_owner: TBD
+- step: 79
+  id: RAG.routing.tool.type
+  node_id: ToolType
+  node_label: Tool type?
+  type: decision
+  category: routing
+  nodes:
+  - ToolType
+  code_owner: TBD
+- step: 80
+  id: RAG.kb.knowledgesearchtool.search.kb.on.demand
+  node_id: KBQueryTool
+  node_label: KnowledgeSearchTool.search KB on demand
+  type: process
+  category: kb
+  nodes:
+  - KBQueryTool
+  code_owner: TBD
+- step: 81
+  id: RAG.ccnl.ccnltool.ccnl.query.query.labor.agreements
+  node_id: CCNLQuery
+  node_label: CCNLTool.ccnl_query Query labor agreements
+  type: process
+  category: ccnl
+  nodes:
+  - CCNLQuery
+  code_owner: TBD
+- step: 82
+  id: RAG.preflight.documentingesttool.process.process.attachments
+  node_id: DocIngest
+  node_label: DocumentIngestTool.process Process attachments
+  type: process
+  category: preflight
+  nodes:
+  - DocIngest
+  code_owner: TBD
+- step: 83
+  id: RAG.golden.faqtool.faq.query.query.golden.set
+  node_id: FAQQuery
+  node_label: FAQTool.faq_query Query Golden Set
+  type: process
+  category: golden
+  nodes:
+  - FAQQuery
+  code_owner: TBD
+- step: 84
+  id: RAG.preflight.attachmentvalidator.validate.check.files.and.limits
+  node_id: ValidateAttach
+  node_label: AttachmentValidator.validate Check files and limits
+  type: process
+  category: preflight
+  nodes:
+  - ValidateAttach
+  code_owner: TBD
+- step: 85
+  id: RAG.preflight.valid.attachments
+  node_id: AttachOK
+  node_label: Valid attachments?
+  type: decision
+  category: preflight
+  nodes:
+  - AttachOK
+  code_owner: TBD
+- step: 86
+  id: RAG.platform.return.tool.error.invalid.file
+  node_id: ToolErr
+  node_label: Return tool error Invalid file
+  type: error
+  category: platform
+  nodes:
+  - ToolErr
+  code_owner: TBD
+- step: 87
+  id: RAG.docs.docsanitizer.sanitize.strip.macros.and.js
+  node_id: DocSecurity
+  node_label: DocSanitizer.sanitize Strip macros and JS
+  type: process
+  category: docs
+  nodes:
+  - DocSecurity
+  code_owner: TBD
+- step: 88
+  id: RAG.classify.docclassifier.classify.detect.document.type
+  node_id: DocClassify
+  node_label: DocClassifier.classify Detect document type
+  type: process
+  category: classify
+  nodes:
+  - DocClassify
+  code_owner: TBD
+- step: 89
+  id: RAG.docs.document.type
+  node_id: DocType
+  node_label: Document type?
+  type: decision
+  category: docs
+  nodes:
+  - DocType
+  code_owner: TBD
+- step: 90
+  id: RAG.docs.fatturaparser.parse.xsd.xsd.validation
+  node_id: FatturaParser
+  node_label: FatturaParser.parse_xsd XSD validation
+  type: process
+  category: docs
+  nodes:
+  - FatturaParser
+  code_owner: TBD
+- step: 91
+  id: RAG.docs.f24parser.parse.ocr.layout.aware.ocr
+  node_id: F24Parser
+  node_label: F24Parser.parse_ocr Layout aware OCR
+  type: process
+  category: docs
+  nodes:
+  - F24Parser
+  code_owner: TBD
+- step: 92
+  id: RAG.docs.contractparser.parse
+  node_id: ContractParser
+  node_label: ContractParser.parse
+  type: process
+  category: docs
+  nodes:
+  - ContractParser
+  code_owner: TBD
+- step: 93
+  id: RAG.docs.payslipparser.parse
+  node_id: PayslipParser
+  node_label: PayslipParser.parse
+  type: process
+  category: docs
+  nodes:
+  - PayslipParser
+  code_owner: TBD
+- step: 94
+  id: RAG.docs.genericocr.parse.with.layout
+  node_id: GenericOCR
+  node_label: GenericOCR.parse_with_layout
+  type: process
+  category: docs
+  nodes:
+  - GenericOCR
+  code_owner: TBD
+- step: 95
+  id: RAG.facts.extractor.extract.structured.fields
+  node_id: ExtractDocFacts
+  node_label: Extractor.extract Structured fields
+  type: process
+  category: facts
+  nodes:
+  - ExtractDocFacts
+  code_owner: TBD
+- step: 96
+  id: RAG.docs.blobstore.put.encrypted.ttl.storage
+  node_id: StoreBlob
+  node_label: BlobStore.put Encrypted TTL storage
+  type: process
+  category: docs
+  nodes:
+  - StoreBlob
+  code_owner: TBD
+- step: 97
+  id: RAG.docs.provenance.log.ledger.entry
+  node_id: Provenance
+  node_label: Provenance.log Ledger entry
+  type: process
+  category: docs
+  nodes:
+  - Provenance
+  code_owner: TBD
+- step: 98
+  id: RAG.facts.convert.to.toolmessage.facts.and.spans
+  node_id: ToToolResults
+  node_label: Convert to ToolMessage facts and spans
+  type: process
+  category: facts
+  nodes:
+  - ToToolResults
+  code_owner: TBD
+- step: 99
+  id: RAG.platform.return.to.tool.caller
+  node_id: ToolResults
+  node_label: Return to tool caller
+  type: process
+  category: platform
+  nodes:
+  - ToolResults
+  code_owner: TBD
+- step: 100
+  id: RAG.ccnl.ccnlcalculator.calculate.perform.calculations
+  node_id: CCNLCalc
+  node_label: CCNLCalculator.calculate Perform calculations
+  type: process
+  category: ccnl
+  nodes:
+  - CCNLCalc
+  code_owner: TBD
+- step: 101
+  id: RAG.response.return.to.chat.node.for.final.response
+  node_id: FinalResponse
+  node_label: Return to chat node for final response
+  type: process
+  category: response
+  nodes:
+  - FinalResponse
+  code_owner: TBD
+- step: 102
+  id: RAG.response.langgraphagent.process.messages.convert.to.dict
+  node_id: ProcessMsg
+  node_label: LangGraphAgent.__process_messages Convert to dict
+  type: process
+  category: response
+  nodes:
+  - ProcessMsg
+  code_owner: TBD
+- step: 103
+  id: RAG.platform.logger.info.log.completion
+  node_id: LogComplete
+  node_label: Logger.info Log completion
+  type: process
+  category: platform
+  nodes:
+  - LogComplete
+  code_owner: TBD
+- step: 104
+  id: RAG.streaming.streaming.requested
+  node_id: StreamCheck
+  node_label: Streaming requested?
+  type: decision
+  category: streaming
+  nodes:
+  - StreamCheck
+  code_owner: TBD
+- step: 105
+  id: RAG.streaming.chatbotcontroller.chat.stream.setup.sse
+  node_id: StreamSetup
+  node_label: ChatbotController.chat_stream Setup SSE
+  type: process
+  category: streaming
+  nodes:
+  - StreamSetup
+  code_owner: TBD
+- step: 106
+  id: RAG.platform.create.async.generator
+  node_id: AsyncGen
+  node_label: Create async generator
+  type: process
+  category: platform
+  nodes:
+  - AsyncGen
+  code_owner: TBD
+- step: 107
+  id: RAG.preflight.singlepassstream.prevent.double.iteration
+  node_id: SinglePass
+  node_label: SinglePassStream Prevent double iteration
+  type: process
+  category: preflight
+  nodes:
+  - SinglePass
+  code_owner: TBD
+- step: 108
+  id: RAG.streaming.write.sse.format.chunks
+  node_id: WriteSSE
+  node_label: write_sse Format chunks
+  type: process
+  category: streaming
+  nodes:
+  - WriteSSE
+  code_owner: TBD
+- step: 109
+  id: RAG.streaming.streamingresponse.send.chunks
+  node_id: StreamResponse
+  node_label: StreamingResponse Send chunks
+  type: process
+  category: streaming
+  nodes:
+  - StreamResponse
+  code_owner: TBD
+- step: 110
+  id: RAG.platform.send.done.frame
+  node_id: SendDone
+  node_label: Send DONE frame
+  type: process
+  category: platform
+  nodes:
+  - SendDone
+  code_owner: TBD
+- step: 111
+  id: RAG.metrics.collect.usage.metrics
+  node_id: CollectMetrics
+  node_label: Collect usage metrics
+  type: process
+  category: metrics
+  nodes:
+  - CollectMetrics
+  code_owner: TBD
+- step: 112
+  id: RAG.response.return.response.to.user
+  node_id: End
+  node_label: Return response to user
+  type: startEnd
+  category: response
+  nodes:
+  - End
+  code_owner: TBD
+- step: 113
+  id: RAG.feedback.feedbackui.show.options.correct.incomplete.wrong
+  node_id: FeedbackUI
+  node_label: FeedbackUI.show_options Correct Incomplete Wrong
+  type: process
+  category: feedback
+  nodes:
+  - FeedbackUI
+  code_owner: TBD
+- step: 114
+  id: RAG.feedback.user.provides.feedback
+  node_id: FeedbackProvided
+  node_label: User provides feedback?
+  type: decision
+  category: feedback
+  nodes:
+  - FeedbackProvided
+  code_owner: TBD
+- step: 115
+  id: RAG.feedback.no.feedback
+  node_id: FeedbackEnd
+  node_label: No feedback
+  type: process
+  category: feedback
+  nodes:
+  - FeedbackEnd
+  code_owner: TBD
+- step: 116
+  id: RAG.feedback.feedback.type.selected
+  node_id: FeedbackTypeSel
+  node_label: Feedback type selected
+  type: process
+  category: feedback
+  nodes:
+  - FeedbackTypeSel
+  code_owner: TBD
+- step: 117
+  id: RAG.golden.post.api.v1.faq.feedback
+  node_id: FAQFeedback
+  node_label: POST /api/v1/faq/feedback
+  type: process
+  category: golden
+  nodes:
+  - FAQFeedback
+  code_owner: TBD
+- step: 118
+  id: RAG.kb.post.api.v1.knowledge.feedback
+  node_id: KnowledgeFeedback
+  node_label: POST /api/v1/knowledge/feedback
+  type: process
+  category: kb
+  nodes:
+  - KnowledgeFeedback
+  code_owner: TBD
+- step: 119
+  id: RAG.metrics.expertfeedbackcollector.collect.feedback
+  node_id: ExpertFeedbackCollector
+  node_label: ExpertFeedbackCollector.collect_feedback
+  type: process
+  category: metrics
+  nodes:
+  - ExpertFeedbackCollector
+  code_owner: TBD
+- step: 120
+  id: RAG.platform.validate.expert.credentials
+  node_id: ValidateExpert
+  node_label: Validate expert credentials
+  type: process
+  category: platform
+  nodes:
+  - ValidateExpert
+  code_owner: TBD
+- step: 121
+  id: RAG.classify.trust.score.at.least.0.7
+  node_id: TrustScoreOK
+  node_label: Trust score at least 0.7?
+  type: decision
+  category: classify
+  nodes:
+  - TrustScoreOK
+  code_owner: TBD
+- step: 122
+  id: RAG.feedback.feedback.rejected
+  node_id: FeedbackRejected
+  node_label: Feedback rejected
+  type: error
+  category: feedback
+  nodes:
+  - FeedbackRejected
+  code_owner: TBD
+- step: 123
+  id: RAG.feedback.create.expertfeedback.record
+  node_id: CreateFeedbackRec
+  node_label: Create ExpertFeedback record
+  type: process
+  category: feedback
+  nodes:
+  - CreateFeedbackRec
+  code_owner: TBD
+- step: 124
+  id: RAG.metrics.update.expert.metrics
+  node_id: UpdateExpertMetrics
+  node_label: Update expert metrics
+  type: process
+  category: metrics
+  nodes:
+  - UpdateExpertMetrics
+  code_owner: TBD
+- step: 125
+  id: RAG.cache.cache.feedback.1h.ttl
+  node_id: CacheFeedback
+  node_label: Cache feedback 1h TTL
+  type: process
+  category: cache
+  nodes:
+  - CacheFeedback
+  code_owner: TBD
+- step: 126
+  id: RAG.platform.determine.action
+  node_id: DetermineAction
+  node_label: Determine action
+  type: process
+  category: platform
+  nodes:
+  - DetermineAction
+  code_owner: TBD
+- step: 127
+  id: RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback
+  node_id: GoldenCandidate
+  node_label: GoldenSetUpdater.propose_candidate from expert feedback
+  type: process
+  category: golden
+  nodes:
+  - GoldenCandidate
+  code_owner: TBD
+- step: 128
+  id: RAG.golden.auto.threshold.met.or.manual.approval
+  node_id: GoldenApproval
+  node_label: Auto threshold met or manual approval?
+  type: decision
+  category: golden
+  nodes:
+  - GoldenApproval
+  code_owner: TBD
+- step: 129
+  id: RAG.golden.goldenset.publish.or.update.versioned.entry
+  node_id: PublishGolden
+  node_label: GoldenSet.publish_or_update versioned entry
+  type: process
+  category: golden
+  nodes:
+  - PublishGolden
+  code_owner: TBD
+- step: 130
+  id: RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature
+  node_id: InvalidateFAQCache
+  node_label: CacheService.invalidate_faq by id or signature
+  type: process
+  category: preflight
+  nodes:
+  - InvalidateFAQCache
+  code_owner: TBD
+- step: 131
+  id: RAG.golden.vectorindex.upsert.faq.update.embeddings
+  node_id: VectorReindex
+  node_label: VectorIndex.upsert_faq update embeddings
+  type: process
+  category: golden
+  nodes:
+  - VectorReindex
+  code_owner: TBD
+- step: 132
+  id: RAG.kb.rss.monitor
+  node_id: RSSMonitor
+  node_label: RSS Monitor
+  type: process
+  category: kb
+  nodes:
+  - RSSMonitor
+  code_owner: TBD
+- step: 133
+  id: RAG.platform.fetch.and.parse.sources
+  node_id: FetchFeeds
+  node_label: Fetch and parse sources
+  type: process
+  category: platform
+  nodes:
+  - FetchFeeds
+  code_owner: TBD
+- step: 134
+  id: RAG.docs.extract.text.and.metadata
+  node_id: ParseDocs
+  node_label: Extract text and metadata
+  type: process
+  category: docs
+  nodes:
+  - ParseDocs
+  code_owner: TBD
+- step: 135
+  id: RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates
+  node_id: GoldenRules
+  node_label: GoldenSetUpdater.auto_rule_eval new or obsolete candidates
+  type: process
+  category: golden
+  nodes:
+  - GoldenRules
+  code_owner: TBD

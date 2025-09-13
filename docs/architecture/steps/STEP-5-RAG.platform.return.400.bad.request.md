@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.14
+Status: ❌  |  Confidence: 0.16
 
 Top candidates:
-1) app/services/resilient_llm_service.py:56 — app.services.resilient_llm_service.LLMRequest (score 0.14)
-   Evidence: Score 0.14, LLM request with metadata.
-2) app/schemas/chat.py:81 — app.schemas.chat.ChatRequest (score 0.14)
-   Evidence: Score 0.14, Request model for chat endpoint.
+1) app/services/resilient_llm_service.py:56 — app.services.resilient_llm_service.LLMRequest (score 0.16)
+   Evidence: Score 0.16, LLM request with metadata.
+2) app/schemas/chat.py:81 — app.schemas.chat.ChatRequest (score 0.15)
+   Evidence: Score 0.15, Request model for chat endpoint.
 
 Attributes:
     messages: List of messages in ...
-3) feature-flags/feature_flag_service.py:169 — feature-flags.feature_flag_service.FlagRequest (score 0.14)
-   Evidence: Score 0.14, Request model for creating/updating flags.
-4) feature-flags/feature_flag_service.py:179 — feature-flags.feature_flag_service.FlagRequest.validate_flag_id (score 0.14)
-   Evidence: Score 0.14, method: validate_flag_id
-5) app/models/query.py:79 — app.models.query.QueryRequest (score 0.13)
-   Evidence: Score 0.13, Pydantic model for incoming query requests.
+3) feature-flags/feature_flag_service.py:169 — feature-flags.feature_flag_service.FlagRequest (score 0.15)
+   Evidence: Score 0.15, Request model for creating/updating flags.
+4) feature-flags/feature_flag_service.py:179 — feature-flags.feature_flag_service.FlagRequest.validate_flag_id (score 0.15)
+   Evidence: Score 0.15, method: validate_flag_id
+5) app/models/query.py:79 — app.models.query.QueryRequest (score 0.14)
+   Evidence: Score 0.14, Pydantic model for incoming query requests.
 
 Notes:
 - Weak or missing implementation

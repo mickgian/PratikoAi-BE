@@ -36,38 +36,34 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.45
+Status: 🔌  |  Confidence: 0.53
 
 Top candidates:
-1) app/services/cache.py:118 — app.services.cache.CacheService._generate_query_key (score 0.45)
-   Evidence: Score 0.45, Generate cache key for LLM query response.
-
-Args:
-    query_hash: Hash of the qu...
-2) app/services/cache.py:107 — app.services.cache.CacheService._generate_conversation_key (score 0.41)
-   Evidence: Score 0.41, Generate cache key for conversation history.
+1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.53)
+   Evidence: Score 0.53, Initialize the cache service.
+2) app/services/cache.py:107 — app.services.cache.CacheService._generate_conversation_key (score 0.53)
+   Evidence: Score 0.53, Generate cache key for conversation history.
 
 Args:
     session_id: Unique sessi...
-3) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.39)
-   Evidence: Score 0.39, Decorator to cache LLM responses based on messages and model.
+3) app/services/cache.py:118 — app.services.cache.CacheService._generate_query_key (score 0.53)
+   Evidence: Score 0.53, Generate cache key for LLM query response.
+
+Args:
+    query_hash: Hash of the qu...
+4) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.51)
+   Evidence: Score 0.51, Decorator to cache LLM responses based on messages and model.
 
 Args:
     ttl: Ti...
-4) app/core/decorators/cache.py:190 — app.core.decorators.cache.cache_result (score 0.39)
-   Evidence: Score 0.39, Generic caching decorator for any function result.
+5) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.51)
+   Evidence: Score 0.51, Decorator to cache conversation history.
 
 Args:
-    key_func: Function...
-5) app/core/decorators/cache.py:304 — app.core.decorators.cache.invalidate_cache_on_update (score 0.39)
-   Evidence: Score 0.39, Decorator to invalidate cache entries when data is updated.
-
-Args:
-    cache_key...
+    ttl: Time to live in seconds...
 
 Notes:
 - Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

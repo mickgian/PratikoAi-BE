@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/services/expert_feedback_collector.py:43 — app.services.expert_feedback_collector.ExpertFeedbackCollector.__init__ (score 0.32)
-   Evidence: Score 0.32, method: __init__
-2) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.32)
-   Evidence: Score 0.32, Validate feedback data structure and content
-3) app/services/expert_feedback_collector.py:297 — app.services.expert_feedback_collector.ExpertFeedbackCollector._update_statistics (score 0.32)
-   Evidence: Score 0.32, Update internal statistics tracking
-4) app/services/expert_feedback_collector.py:515 — app.services.expert_feedback_collector.ExpertFeedbackCollector.get_statistics (score 0.32)
-   Evidence: Score 0.32, Get current session statistics
-5) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.28)
-   Evidence: Score 0.28, Service for collecting and processing expert feedback on AI responses.
+1) app/services/expert_feedback_collector.py:43 — app.services.expert_feedback_collector.ExpertFeedbackCollector.__init__ (score 0.34)
+   Evidence: Score 0.34, method: __init__
+2) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.34)
+   Evidence: Score 0.34, Validate feedback data structure and content
+3) app/services/expert_feedback_collector.py:297 — app.services.expert_feedback_collector.ExpertFeedbackCollector._update_statistics (score 0.34)
+   Evidence: Score 0.34, Update internal statistics tracking
+4) app/services/expert_feedback_collector.py:515 — app.services.expert_feedback_collector.ExpertFeedbackCollector.get_statistics (score 0.34)
+   Evidence: Score 0.34, Get current session statistics
+5) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.30)
+   Evidence: Score 0.30, Service for collecting and processing expert feedback on AI responses.
 
 Features...
 

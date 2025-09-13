@@ -36,25 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.30)
-   Evidence: Score 0.30, Validate the message content.
+1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.32)
+   Evidence: Score 0.32, Validate the message content.
 
 Args:
     v: The content to validate
 
 Returns:
   ...
-2) failure-recovery-system/cicd_integration.py:1196 — failure-recovery-system.cicd_integration.create_webhook_endpoints (score 0.30)
-   Evidence: Score 0.30, Create webhook endpoints for different platforms.
-3) rollback-system/health_monitor.py:163 — rollback-system.health_monitor.ApplicationHealthChecker.__init__ (score 0.30)
-   Evidence: Score 0.30, method: __init__
-4) rollback-system/health_monitor.py:318 — rollback-system.health_monitor.LogPreserver.__init__ (score 0.30)
-   Evidence: Score 0.30, method: __init__
-5) rollback-system/health_monitor.py:401 — rollback-system.health_monitor.HealthMonitor.__init__ (score 0.30)
-   Evidence: Score 0.30, method: __init__
+2) failure-recovery-system/cicd_integration.py:1196 — failure-recovery-system.cicd_integration.create_webhook_endpoints (score 0.32)
+   Evidence: Score 0.32, Create webhook endpoints for different platforms.
+3) rollback-system/health_monitor.py:163 — rollback-system.health_monitor.ApplicationHealthChecker.__init__ (score 0.32)
+   Evidence: Score 0.32, method: __init__
+4) rollback-system/health_monitor.py:318 — rollback-system.health_monitor.LogPreserver.__init__ (score 0.32)
+   Evidence: Score 0.32, method: __init__
+5) rollback-system/health_monitor.py:401 — rollback-system.health_monitor.HealthMonitor.__init__ (score 0.32)
+   Evidence: Score 0.32, method: __init__
 
 Notes:
 - Implementation exists but may not be wired correctly

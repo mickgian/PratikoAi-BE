@@ -36,28 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/core/security/api_key_rotation.py:16 — app.core.security.api_key_rotation.APIKeyRotationManager.__init__ (score 0.25)
-   Evidence: Score 0.25, Initialize API key rotation manager.
-2) app/core/security/api_key_rotation.py:23 — app.core.security.api_key_rotation.APIKeyRotationManager.generate_api_key (score 0.25)
-   Evidence: Score 0.25, Generate a new API key for a user.
-
-Args:
-    user_id: User identifier
-    key_t...
-3) app/core/security/api_key_rotation.py:67 — app.core.security.api_key_rotation.APIKeyRotationManager.hash_api_key (score 0.25)
-   Evidence: Score 0.25, Create hash of API key for secure storage.
-
-Args:
-    api_key: Raw API key
-    
-...
-4) app/core/security/audit_logger.py:72 — app.core.security.audit_logger.SecurityAuditLogger.__init__ (score 0.25)
-   Evidence: Score 0.25, Initialize security audit logger.
-5) app/core/security/audit_logger.py:454 — app.core.security.audit_logger.SecurityAuditLogger._anonymize_user_id (score 0.25)
-   Evidence: Score 0.25, Anonymize user ID for privacy.
+1) app/services/document_uploader.py:351 — app.services.document_uploader.DocumentUploader._document_security_scan (score 0.28)
+   Evidence: Score 0.28, Document-specific security scanning
+2) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
+   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
+3) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
+4) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.27)
+   Evidence: Score 0.27, Convert document to dictionary
+5) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
 
 Notes:
 - Weak or missing implementation

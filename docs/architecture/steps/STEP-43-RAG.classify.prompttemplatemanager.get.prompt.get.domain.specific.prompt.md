@@ -36,11 +36,11 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.44
+Status: 🔌  |  Confidence: 0.43
 
 Top candidates:
-1) app/services/domain_prompt_templates.py:346 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.44)
-   Evidence: Score 0.44, Get the appropriate prompt for domain-action combination.
+1) app/services/domain_prompt_templates.py:346 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.43)
+   Evidence: Score 0.43, Get the appropriate prompt for domain-action combination.
 
 Args:
     domain: Pro...
@@ -48,10 +48,10 @@ Args:
    Evidence: Score 0.41, Load all domain-action prompt template combinations
 3) app/services/domain_prompt_templates.py:430 — app.services.domain_prompt_templates.PromptTemplateManager.get_available_combinations (score 0.41)
    Evidence: Score 0.41, Get all available domain-action combinations
-4) app/services/domain_prompt_templates.py:14 — app.services.domain_prompt_templates.PromptTemplateManager (score 0.37)
-   Evidence: Score 0.37, Manages domain-action specific prompt templates for Italian professionals
-5) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.36)
-   Evidence: Score 0.36, Get the appropriate system prompt based on classification.
+4) app/services/domain_prompt_templates.py:14 — app.services.domain_prompt_templates.PromptTemplateManager (score 0.36)
+   Evidence: Score 0.36, Manages domain-action specific prompt templates for Italian professionals
+5) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.35)
+   Evidence: Score 0.35, Get the appropriate system prompt based on classification.
 
 Args:
     messages: ...

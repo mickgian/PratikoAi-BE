@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) feature-flags/feature_flag_service.py:179 — feature-flags.feature_flag_service.FlagRequest.validate_flag_id (score 0.24)
-   Evidence: Score 0.24, method: validate_flag_id
-2) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.24)
-   Evidence: Score 0.24, Validate the citation.
-3) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.24)
-   Evidence: Score 0.24, Validate the result.
-4) app/services/ccnl_service.py:91 — app.services.ccnl_service.CCNLQueryFilters.is_valid (score 0.24)
-   Evidence: Score 0.24, Validate filter constraints.
-5) app/core/security/request_signing.py:16 — app.core.security.request_signing.RequestSigner.__init__ (score 0.23)
-   Evidence: Score 0.23, Initialize request signer.
+1) feature-flags/feature_flag_service.py:179 — feature-flags.feature_flag_service.FlagRequest.validate_flag_id (score 0.25)
+   Evidence: Score 0.25, method: validate_flag_id
+2) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.25)
+   Evidence: Score 0.25, Validate the citation.
+3) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.25)
+   Evidence: Score 0.25, Validate the result.
+4) app/services/ccnl_service.py:91 — app.services.ccnl_service.CCNLQueryFilters.is_valid (score 0.25)
+   Evidence: Score 0.25, Validate filter constraints.
+5) app/core/security/request_signing.py:16 — app.core.security.request_signing.RequestSigner.__init__ (score 0.24)
+   Evidence: Score 0.24, Initialize request signer.
 
 Notes:
 - Weak or missing implementation

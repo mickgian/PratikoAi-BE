@@ -36,30 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/models/user.py:20 — app.models.user.User (score 0.30)
-   Evidence: Score 0.30, User model for storing user accounts.
+1) app/models/user.py:20 — app.models.user.User (score 0.32)
+   Evidence: Score 0.32, User model for storing user accounts.
 
 Attributes:
     id: The primary key
     e...
-2) app/api/v1/ccnl_calculations.py:31 — app.api.v1.ccnl_calculations.CompensationRequest (score 0.30)
-   Evidence: Score 0.30, Request model for compensation calculation.
-3) app/api/v1/ccnl_calculations.py:44 — app.api.v1.ccnl_calculations.LeaveBalanceRequest (score 0.30)
-   Evidence: Score 0.30, Request model for leave balance calculation.
-4) app/api/v1/ccnl_calculations.py:52 — app.api.v1.ccnl_calculations.SeniorityBenefitsRequest (score 0.30)
-   Evidence: Score 0.30, Request model for seniority benefits calculation.
-5) app/api/v1/ccnl_calculations.py:60 — app.api.v1.ccnl_calculations.ComplexQueryRequest (score 0.30)
-   Evidence: Score 0.30, Request model for complex CCNL queries.
+2) app/api/v1/ccnl_calculations.py:31 — app.api.v1.ccnl_calculations.CompensationRequest (score 0.31)
+   Evidence: Score 0.31, Request model for compensation calculation.
+3) app/api/v1/ccnl_calculations.py:44 — app.api.v1.ccnl_calculations.LeaveBalanceRequest (score 0.31)
+   Evidence: Score 0.31, Request model for leave balance calculation.
+4) app/api/v1/ccnl_calculations.py:52 — app.api.v1.ccnl_calculations.SeniorityBenefitsRequest (score 0.31)
+   Evidence: Score 0.31, Request model for seniority benefits calculation.
+5) app/api/v1/ccnl_calculations.py:60 — app.api.v1.ccnl_calculations.ComplexQueryRequest (score 0.31)
+   Evidence: Score 0.31, Request model for complex CCNL queries.
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create startEnd implementation for Start
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

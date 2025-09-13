@@ -36,31 +36,31 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.24)
-   Evidence: Score 0.24, Validate the message content.
+1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.25)
+   Evidence: Score 0.25, Validate the message content.
 
 Args:
     v: The content to validate
 
 Returns:
   ...
-2) app/core/llm/factory.py:27 — app.core.llm.factory.LLMFactory.__init__ (score 0.23)
-   Evidence: Score 0.23, Initialize the LLM factory.
-3) app/core/llm/factory.py:33 — app.core.llm.factory.LLMFactory._get_provider_configs (score 0.23)
-   Evidence: Score 0.23, Get provider configurations from settings.
+2) app/core/llm/factory.py:27 — app.core.llm.factory.LLMFactory.__init__ (score 0.24)
+   Evidence: Score 0.24, Initialize the LLM factory.
+3) app/core/llm/factory.py:33 — app.core.llm.factory.LLMFactory._get_provider_configs (score 0.24)
+   Evidence: Score 0.24, Get provider configurations from settings.
 
 Returns:
     Dictionary of provider ...
-4) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.23)
-   Evidence: Score 0.23, Create an LLM provider instance.
+4) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.24)
+   Evidence: Score 0.24, Create an LLM provider instance.
 
 Args:
     provider_type: Type of provider to c...
-5) app/core/llm/factory.py:105 — app.core.llm.factory.LLMFactory.get_available_providers (score 0.23)
-   Evidence: Score 0.23, Get all available configured providers.
+5) app/core/llm/factory.py:105 — app.core.llm.factory.LLMFactory.get_available_providers (score 0.24)
+   Evidence: Score 0.24, Get all available configured providers.
 
 Returns:
     List of available provider...

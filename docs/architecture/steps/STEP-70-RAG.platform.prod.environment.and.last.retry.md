@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/core/config.py:38 — app.core.config.get_environment (score 0.25)
-   Evidence: Score 0.25, Get the current environment.
+1) app/core/config.py:38 — app.core.config.get_environment (score 0.26)
+   Evidence: Score 0.26, Get the current environment.
 
 Returns:
     Environment: The current environment ...
-2) version-management/registry/database.py:75 — version-management.registry.database.ServiceVersionModel.to_service_version (score 0.24)
-   Evidence: Score 0.24, Convert database model to ServiceVersion object.
-3) version-management/registry/database.py:233 — version-management.registry.database.VersionRegistryDB.__init__ (score 0.24)
-   Evidence: Score 0.24, method: __init__
-4) version-management/registry/database.py:237 — version-management.registry.database.VersionRegistryDB.create_tables (score 0.24)
-   Evidence: Score 0.24, Create all database tables.
-5) version-management/registry/database.py:241 — version-management.registry.database.VersionRegistryDB.get_session (score 0.24)
-   Evidence: Score 0.24, Get database session.
+2) version-management/registry/database.py:75 — version-management.registry.database.ServiceVersionModel.to_service_version (score 0.25)
+   Evidence: Score 0.25, Convert database model to ServiceVersion object.
+3) version-management/registry/database.py:233 — version-management.registry.database.VersionRegistryDB.__init__ (score 0.25)
+   Evidence: Score 0.25, method: __init__
+4) version-management/registry/database.py:237 — version-management.registry.database.VersionRegistryDB.create_tables (score 0.25)
+   Evidence: Score 0.25, Create all database tables.
+5) version-management/registry/database.py:241 — version-management.registry.database.VersionRegistryDB.get_session (score 0.25)
+   Evidence: Score 0.25, Get database session.
 
 Notes:
 - Weak or missing implementation

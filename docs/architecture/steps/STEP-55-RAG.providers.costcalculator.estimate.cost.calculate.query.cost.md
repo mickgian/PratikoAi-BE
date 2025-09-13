@@ -36,31 +36,35 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
+Status: 🔌  |  Confidence: 0.46
 
 Top candidates:
-1) app/core/llm/base.py:144 — app.core.llm.base.LLMProvider.estimate_cost (score 0.35)
-   Evidence: Score 0.35, Estimate cost for given token counts.
+1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.46)
+   Evidence: Score 0.46, Route with failover logic - primary provider with fallbacks.
 
 Args:
-    input_tokens: Number of input t...
-2) app/core/llm/cost_calculator.py:34 — app.core.llm.cost_calculator.CostCalculator.__init__ (score 0.35)
-   Evidence: Score 0.35, Initialize cost calculator.
-3) app/core/llm/cost_calculator.py:51 — app.core.llm.cost_calculator.CostCalculator.classify_query_complexity (score 0.35)
-   Evidence: Score 0.35, Classify the complexity of a query based on content analysis.
-
-Args:
-    message...
-4) app/core/llm/cost_calculator.py:106 — app.core.llm.cost_calculator.CostCalculator.estimate_output_tokens (score 0.35)
-   Evidence: Score 0.35, Estimate output tokens based on input and complexity.
-
-Args:
-    input_tokens: N...
-5) app/core/llm/cost_calculator.py:141 — app.core.llm.cost_calculator.CostCalculator.calculate_cost_estimate (score 0.35)
-   Evidence: Score 0.35, Calculate cost estimate for a query with a specific provider.
+    provider...
+2) app/core/llm/cost_calculator.py:141 — app.core.llm.cost_calculator.CostCalculator.calculate_cost_estimate (score 0.45)
+   Evidence: Score 0.45, Calculate cost estimate for a query with a specific provider.
 
 Args:
     provide...
+3) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.43)
+   Evidence: Score 0.43, Convenience function to get an optimal LLM provider.
+
+Args:
+    messages: List o...
+4) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.42)
+   Evidence: Score 0.42, Initialize the LLM provider.
+
+Args:
+    api_key: API key for the provider
+    mo...
+5) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.42)
+   Evidence: Score 0.42, Create an LLM provider instance.
+
+Args:
+    provider_type: Type of provider to c...
 
 Notes:
 - Implementation exists but may not be wired correctly

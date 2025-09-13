@@ -36,28 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) load_testing/locust_tests.py:215 — load_testing.locust_tests.PratikoAIUser.knowledge_search (score 0.27)
-   Evidence: Score 0.27, Test regulatory knowledge searches
-2) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.23)
-   Evidence: Score 0.23, Decorator to cache LLM responses based on messages and model.
+1) load_testing/locust_tests.py:215 — load_testing.locust_tests.PratikoAIUser.knowledge_search (score 0.28)
+   Evidence: Score 0.28, Test regulatory knowledge searches
+2) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.25)
+   Evidence: Score 0.25, Decorator to cache LLM responses based on messages and model.
 
 Args:
     ttl: Ti...
-3) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.23)
-   Evidence: Score 0.23, Decorator to cache conversation history.
+3) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.25)
+   Evidence: Score 0.25, Decorator to cache conversation history.
 
 Args:
     ttl: Time to live in seconds...
-4) app/core/decorators/cache.py:190 — app.core.decorators.cache.cache_result (score 0.23)
-   Evidence: Score 0.23, Generic caching decorator for any function result.
+4) app/core/decorators/cache.py:190 — app.core.decorators.cache.cache_result (score 0.25)
+   Evidence: Score 0.25, Generic caching decorator for any function result.
 
 Args:
     key_func: Function...
-5) app/core/decorators/cache.py:304 — app.core.decorators.cache.invalidate_cache_on_update (score 0.23)
-   Evidence: Score 0.23, Decorator to invalidate cache entries when data is updated.
+5) app/core/decorators/cache.py:304 — app.core.decorators.cache.invalidate_cache_on_update (score 0.25)
+   Evidence: Score 0.25, Decorator to invalidate cache entries when data is updated.
 
 Args:
     cache_key...

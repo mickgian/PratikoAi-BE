@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.23
+Status: ❌  |  Confidence: 0.24
 
 Top candidates:
-1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.23)
-   Evidence: Score 0.23, Convert internal SearchResponse to API model.
-2) app/api/v1/data_export.py:69 — app.api.v1.data_export.CreateExportRequest.validate_future_dates (score 0.23)
-   Evidence: Score 0.23, method: validate_future_dates
-3) app/api/v1/data_export.py:75 — app.api.v1.data_export.CreateExportRequest.validate_date_range (score 0.23)
-   Evidence: Score 0.23, method: validate_date_range
-4) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.23)
-   Evidence: Score 0.23, Analyze distribution of precedent values in decisions.
-5) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.23)
-   Evidence: Score 0.23, Analyze temporal distribution of decisions.
+1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.24)
+   Evidence: Score 0.24, Convert internal SearchResponse to API model.
+2) app/api/v1/data_export.py:69 — app.api.v1.data_export.CreateExportRequest.validate_future_dates (score 0.24)
+   Evidence: Score 0.24, method: validate_future_dates
+3) app/api/v1/data_export.py:75 — app.api.v1.data_export.CreateExportRequest.validate_date_range (score 0.24)
+   Evidence: Score 0.24, method: validate_date_range
+4) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.24)
+   Evidence: Score 0.24, Analyze distribution of precedent values in decisions.
+5) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.24)
+   Evidence: Score 0.24, Analyze temporal distribution of decisions.
 
 Notes:
 - Weak or missing implementation

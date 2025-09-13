@@ -36,29 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.23
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.23)
-   Evidence: Score 0.23, Initialize the LLM provider.
-
-Args:
-    api_key: API key for the provider
-    mo...
-2) app/core/llm/base.py:75 — app.core.llm.base.LLMProvider.provider_type (score 0.23)
-   Evidence: Score 0.23, Get the provider type.
-3) app/core/llm/base.py:81 — app.core.llm.base.LLMProvider.supported_models (score 0.23)
-   Evidence: Score 0.23, Get supported models and their cost information.
-4) app/core/llm/base.py:132 — app.core.llm.base.LLMProvider.estimate_tokens (score 0.23)
-   Evidence: Score 0.23, Estimate token count for a list of messages.
-
-Args:
-    messages: List of conver...
-5) app/core/llm/base.py:144 — app.core.llm.base.LLMProvider.estimate_cost (score 0.23)
-   Evidence: Score 0.23, Estimate cost for given token counts.
-
-Args:
-    input_tokens: Number of input t...
+1) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
+   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
+2) app/services/legal_document_analyzer.py:883 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_parties (score 0.28)
+   Evidence: Score 0.28, Extract parties from contract
+3) app/services/legal_document_analyzer.py:919 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_price (score 0.27)
+   Evidence: Score 0.27, Extract contract price
+4) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
+5) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.27)
+   Evidence: Score 0.27, Convert document to dictionary
 
 Notes:
 - Weak or missing implementation

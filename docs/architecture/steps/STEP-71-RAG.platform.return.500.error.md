@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.13
+Status: ❌  |  Confidence: 0.14
 
 Top candidates:
-1) app/services/ccnl_service.py:153 — app.services.ccnl_service.CCNLValidationResult.add_error (score 0.13)
-   Evidence: Score 0.13, Add validation error.
-2) app/services/llm_retry_service.py:118 — app.services.llm_retry_service.RetryError (score 0.12)
-   Evidence: Score 0.12, Base exception for retry-related errors.
-3) evals/main.py:64 — evals.main.print_error (score 0.12)
-   Evidence: Score 0.12, Print an error message with colors.
+1) app/services/ccnl_service.py:153 — app.services.ccnl_service.CCNLValidationResult.add_error (score 0.14)
+   Evidence: Score 0.14, Add validation error.
+2) app/services/llm_retry_service.py:118 — app.services.llm_retry_service.RetryError (score 0.13)
+   Evidence: Score 0.13, Base exception for retry-related errors.
+3) evals/main.py:64 — evals.main.print_error (score 0.13)
+   Evidence: Score 0.13, Print an error message with colors.
 
 Args:
     message: The message to print
-4) version-management/cli/version_cli.py:69 — version-management.cli.version_cli.VersionCLI.print_error (score 0.12)
-   Evidence: Score 0.12, Print error message.
-5) feature-flags/admin/web_interface.py:1 — feature-flags.admin.web_interface (score 0.12)
-   Evidence: Score 0.12, PratikoAI Feature Flag Admin Web Interface
+4) version-management/cli/version_cli.py:69 — version-management.cli.version_cli.VersionCLI.print_error (score 0.13)
+   Evidence: Score 0.13, Print error message.
+5) feature-flags/admin/web_interface.py:1 — feature-flags.admin.web_interface (score 0.13)
+   Evidence: Score 0.13, PratikoAI Feature Flag Admin Web Interface
 
 Advanced web-based admin interface f...
 

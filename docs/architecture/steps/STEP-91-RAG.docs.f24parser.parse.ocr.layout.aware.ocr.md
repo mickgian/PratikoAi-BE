@@ -36,25 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/core/langgraph/tools/ccnl_tool.py:535 — app.core.langgraph.tools.ccnl_tool.CCNLTool._parse_sector (score 0.24)
-   Evidence: Score 0.24, Parse sector string to enum.
-2) app/services/ccnl_search_service.py:206 — app.services.ccnl_search_service.NaturalLanguageProcessor.parse_query (score 0.23)
-   Evidence: Score 0.23, Parse natural language query into search filters.
-3) app/services/scrapers/cassazione_scheduler.py:24 — app.services.scrapers.cassazione_scheduler.MockSchedulerService.pause_job (score 0.23)
-   Evidence: Score 0.23, method: pause_job
-4) app/services/scrapers/cassazione_scheduler.py:295 — app.services.scrapers.cassazione_scheduler.CassazioneScheduler.pause_job (score 0.23)
-   Evidence: Score 0.23, Pause a scheduled job.
-
-Args:
-    job_id: ID of job to pause
-    
-Returns:
-    T...
-5) version-management/core/version_schema.py:334 — version-management.core.version_schema.VersioningScheme.parse_version (score 0.23)
-   Evidence: Score 0.23, Parse a version string and extract components.
+1) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
+   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
+2) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
+3) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.27)
+   Evidence: Score 0.27, Convert document to dictionary
+4) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
+5) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.27)
+   Evidence: Score 0.27, Convert document to dictionary for API responses
 
 Notes:
 - Weak or missing implementation

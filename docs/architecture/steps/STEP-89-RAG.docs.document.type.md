@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) app/models/document.py:112 — app.models.document.Document.__init__ (score 0.32)
-   Evidence: Score 0.32, method: __init__
-2) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.32)
-   Evidence: Score 0.32, Check if document has expired
-3) app/models/document.py:123 — app.models.document.Document.processing_time_seconds (score 0.32)
-   Evidence: Score 0.32, Calculate processing time in seconds
-4) app/models/document.py:130 — app.models.document.Document.file_size_mb (score 0.32)
-   Evidence: Score 0.32, File size in megabytes
-5) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.32)
-   Evidence: Score 0.32, Convert document to dictionary
+1) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.35)
+   Evidence: Score 0.35, Check if document has expired
+2) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.35)
+   Evidence: Score 0.35, Convert document to dictionary
+3) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.35)
+   Evidence: Score 0.35, Check if document has expired
+4) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.35)
+   Evidence: Score 0.35, Convert document to dictionary for API responses
+5) app/models/document.py:112 — app.models.document.Document.__init__ (score 0.33)
+   Evidence: Score 0.33, method: __init__
 
 Notes:
 - Implementation exists but may not be wired correctly

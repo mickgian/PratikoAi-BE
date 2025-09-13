@@ -36,24 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/models/user.py:50 — app.models.user.User.verify_password (score 0.25)
-   Evidence: Score 0.25, Verify if the provided password matches the hash.
-2) app/models/user.py:55 — app.models.user.User.hash_password (score 0.25)
-   Evidence: Score 0.25, Hash a password using bcrypt.
-3) app/models/user.py:60 — app.models.user.User.set_refresh_token_hash (score 0.25)
-   Evidence: Score 0.25, Set the hash of the refresh token.
+1) app/models/user.py:50 — app.models.user.User.verify_password (score 0.27)
+   Evidence: Score 0.27, Verify if the provided password matches the hash.
+2) app/models/user.py:55 — app.models.user.User.hash_password (score 0.27)
+   Evidence: Score 0.27, Hash a password using bcrypt.
+3) app/models/user.py:60 — app.models.user.User.set_refresh_token_hash (score 0.27)
+   Evidence: Score 0.27, Set the hash of the refresh token.
 
 Stores a bcrypt hash of the refresh token fo...
-4) app/models/user.py:72 — app.models.user.User.verify_refresh_token (score 0.25)
-   Evidence: Score 0.25, Verify if the provided refresh token matches the stored hash.
+4) app/models/user.py:72 — app.models.user.User.verify_refresh_token (score 0.27)
+   Evidence: Score 0.27, Verify if the provided refresh token matches the stored hash.
 
 Args:
     refresh...
-5) app/models/user.py:85 — app.models.user.User.revoke_refresh_token (score 0.25)
-   Evidence: Score 0.25, Revoke the current refresh token by clearing its hash.
+5) app/models/user.py:85 — app.models.user.User.revoke_refresh_token (score 0.27)
+   Evidence: Score 0.27, Revoke the current refresh token by clearing its hash.
 
 This effectively invalid...
 

@@ -36,23 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.23
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/core/performance/cdn_integration.py:69 — app.core.performance.cdn_integration.CDNManager.__init__ (score 0.23)
-   Evidence: Score 0.23, Initialize CDN manager.
-2) app/core/performance/cdn_integration.py:107 — app.core.performance.cdn_integration.CDNManager.generate_asset_url (score 0.23)
-   Evidence: Score 0.23, Generate CDN URL for an asset.
-
-Args:
-    original_url: Original asset URL
-    c...
-3) app/core/performance/cdn_integration.py:177 — app.core.performance.cdn_integration.CDNManager._get_cache_control_for_type (score 0.23)
-   Evidence: Score 0.23, Get appropriate cache control for content type.
-4) app/core/performance/cdn_integration.py:277 — app.core.performance.cdn_integration.CDNManager._minify_css (score 0.23)
-   Evidence: Score 0.23, Simple CSS minification.
-5) app/core/performance/cdn_integration.py:294 — app.core.performance.cdn_integration.CDNManager._minify_javascript (score 0.23)
-   Evidence: Score 0.23, Simple JavaScript minification.
+1) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
+   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
+2) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
+3) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.27)
+   Evidence: Score 0.27, Convert document to dictionary
+4) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
+5) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.27)
+   Evidence: Score 0.27, Convert document to dictionary for API responses
 
 Notes:
 - Weak or missing implementation

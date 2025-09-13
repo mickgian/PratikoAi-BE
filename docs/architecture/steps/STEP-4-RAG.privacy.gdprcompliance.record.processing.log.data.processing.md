@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.48
+Status: 🔌  |  Confidence: 0.47
 
 Top candidates:
-1) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.48)
-   Evidence: Score 0.48, Anonymize PII in text while preserving structure.
-2) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.48)
-   Evidence: Score 0.48, Anonymize PII in structured data (dictionaries).
-3) app/core/privacy/gdpr.py:465 — app.core.privacy.gdpr.GDPRCompliance.__init__ (score 0.46)
-   Evidence: Score 0.46, Initialize GDPR compliance system.
-4) app/core/privacy/gdpr.py:471 — app.core.privacy.gdpr.GDPRCompliance.handle_data_subject_request (score 0.46)
-   Evidence: Score 0.46, Handle data subject requests under GDPR (Article 15-22).
-5) app/core/privacy/gdpr.py:576 — app.core.privacy.gdpr.GDPRCompliance.get_compliance_status (score 0.46)
-   Evidence: Score 0.46, Get overall GDPR compliance status.
+1) app/core/privacy/gdpr.py:465 — app.core.privacy.gdpr.GDPRCompliance.__init__ (score 0.47)
+   Evidence: Score 0.47, Initialize GDPR compliance system.
+2) app/core/privacy/gdpr.py:471 — app.core.privacy.gdpr.GDPRCompliance.handle_data_subject_request (score 0.47)
+   Evidence: Score 0.47, Handle data subject requests under GDPR (Article 15-22).
+3) app/core/privacy/gdpr.py:576 — app.core.privacy.gdpr.GDPRCompliance.get_compliance_status (score 0.47)
+   Evidence: Score 0.47, Get overall GDPR compliance status.
+4) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.47)
+   Evidence: Score 0.47, Anonymize PII in text while preserving structure.
+5) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.47)
+   Evidence: Score 0.47, Anonymize PII in structured data (dictionaries).
 
 Notes:
 - Implementation exists but may not be wired correctly

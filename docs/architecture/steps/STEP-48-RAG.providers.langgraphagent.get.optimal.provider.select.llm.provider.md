@@ -36,29 +36,35 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
+Status: 🔌  |  Confidence: 0.47
 
 Top candidates:
-1) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.35)
-   Evidence: Score 0.35, Get the global LLM factory instance.
+1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.47)
+   Evidence: Score 0.47, Route with failover logic - primary provider with fallbacks.
 
-Returns:
-    LLM factory instance
-2) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.35)
-   Evidence: Score 0.35, Convenience function to get an optimal LLM provider.
+Args:
+    provider...
+2) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.43)
+   Evidence: Score 0.43, Convenience function to get an optimal LLM provider.
 
 Args:
     messages: List o...
-3) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.35)
-   Evidence: Score 0.35, Initialize the LLM provider.
+3) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.43)
+   Evidence: Score 0.43, Initialize the LLM provider.
 
 Args:
     api_key: API key for the provider
     mo...
-4) app/core/llm/base.py:75 — app.core.llm.base.LLMProvider.provider_type (score 0.35)
-   Evidence: Score 0.35, Get the provider type.
-5) app/core/llm/base.py:81 — app.core.llm.base.LLMProvider.supported_models (score 0.35)
-   Evidence: Score 0.35, Get supported models and their cost information.
+4) app/core/llm/cost_calculator.py:141 — app.core.llm.cost_calculator.CostCalculator.calculate_cost_estimate (score 0.43)
+   Evidence: Score 0.43, Calculate cost estimate for a query with a specific provider.
+
+Args:
+    provide...
+5) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.43)
+   Evidence: Score 0.43, Create an LLM provider instance.
+
+Args:
+    provider_type: Type of provider to c...
 
 Notes:
 - Implementation exists but may not be wired correctly

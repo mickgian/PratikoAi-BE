@@ -36,28 +36,35 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: 🔌  |  Confidence: 0.47
 
 Top candidates:
-1) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.32)
-   Evidence: Score 0.32, Create an LLM provider instance.
+1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.47)
+   Evidence: Score 0.47, Route with failover logic - primary provider with fallbacks.
+
+Args:
+    provider...
+2) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.43)
+   Evidence: Score 0.43, Convenience function to get an optimal LLM provider.
+
+Args:
+    messages: List o...
+3) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.43)
+   Evidence: Score 0.43, Initialize the LLM provider.
+
+Args:
+    api_key: API key for the provider
+    mo...
+4) app/core/llm/cost_calculator.py:141 — app.core.llm.cost_calculator.CostCalculator.calculate_cost_estimate (score 0.43)
+   Evidence: Score 0.43, Calculate cost estimate for a query with a specific provider.
+
+Args:
+    provide...
+5) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.43)
+   Evidence: Score 0.43, Create an LLM provider instance.
 
 Args:
     provider_type: Type of provider to c...
-2) app/core/llm/providers/anthropic_provider.py:29 — app.core.llm.providers.anthropic_provider.AnthropicProvider.__init__ (score 0.31)
-   Evidence: Score 0.31, Initialize Anthropic provider.
-
-Args:
-    api_key: Anthropic API key
-    model: ...
-3) app/core/llm/providers/anthropic_provider.py:46 — app.core.llm.providers.anthropic_provider.AnthropicProvider.client (score 0.31)
-   Evidence: Score 0.31, Get the Anthropic async client.
-4) app/core/llm/providers/anthropic_provider.py:53 — app.core.llm.providers.anthropic_provider.AnthropicProvider.provider_type (score 0.31)
-   Evidence: Score 0.31, Get the provider type.
-5) app/core/llm/providers/anthropic_provider.py:58 — app.core.llm.providers.anthropic_provider.AnthropicProvider.supported_models (score 0.31)
-   Evidence: Score 0.31, Get supported Anthropic models and their cost information.
-
-Costs are in EUR per...
 
 Notes:
 - Implementation exists but may not be wired correctly

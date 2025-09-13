@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.42
+Status: 🔌  |  Confidence: 0.41
 
 Top candidates:
-1) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.42)
-   Evidence: Score 0.42, Calculate confidence scores for each domain
-2) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.42)
-   Evidence: Score 0.42, Calculate confidence scores for each action
-3) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.36)
-   Evidence: Score 0.36, Track domain-action classification usage and metrics.
+1) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.41)
+   Evidence: Score 0.41, Calculate confidence scores for each domain
+2) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.41)
+   Evidence: Score 0.41, Calculate confidence scores for each action
+3) app/services/domain_action_classifier.py:516 — app.services.domain_action_classifier.DomainActionClassifier._extract_sub_domain (score 0.36)
+   Evidence: Score 0.36, Extract sub-domain from query based on domain patterns
+4) app/services/domain_action_classifier.py:530 — app.services.domain_action_classifier.DomainActionClassifier._extract_document_type (score 0.36)
+   Evidence: Score 0.36, Extract document type for document generation actions
+5) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)
+   Evidence: Score 0.34, Track domain-action classification usage and metrics.
 
 Args:
     domain: The cla...
-4) app/services/domain_action_classifier.py:516 — app.services.domain_action_classifier.DomainActionClassifier._extract_sub_domain (score 0.35)
-   Evidence: Score 0.35, Extract sub-domain from query based on domain patterns
-5) app/services/domain_action_classifier.py:530 — app.services.domain_action_classifier.DomainActionClassifier._extract_document_type (score 0.35)
-   Evidence: Score 0.35, Extract document type for document generation actions
 
 Notes:
 - Implementation exists but may not be wired correctly

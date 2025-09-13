@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) load_testing/framework.py:81 — load_testing.framework.LoadTestFramework.__init__ (score 0.24)
-   Evidence: Score 0.24, method: __init__
-2) load_testing/framework.py:498 — load_testing.framework.LoadTestFramework._get_scenario_weights (score 0.24)
-   Evidence: Score 0.24, Get scenario weights based on scenario name
-3) load_testing/framework.py:539 — load_testing.framework.LoadTestFramework.identify_bottlenecks (score 0.24)
-   Evidence: Score 0.24, Identify performance bottlenecks from test metrics
-4) load_testing/framework.py:585 — load_testing.framework.LoadTestFramework.generate_scaling_recommendations (score 0.24)
-   Evidence: Score 0.24, Generate scaling recommendations based on metrics
-5) load_testing/framework.py:661 — load_testing.framework.LoadTestFramework.get_throughput_windows (score 0.24)
-   Evidence: Score 0.24, Get throughput in time windows
+1) load_testing/framework.py:81 — load_testing.framework.LoadTestFramework.__init__ (score 0.25)
+   Evidence: Score 0.25, method: __init__
+2) load_testing/framework.py:498 — load_testing.framework.LoadTestFramework._get_scenario_weights (score 0.25)
+   Evidence: Score 0.25, Get scenario weights based on scenario name
+3) load_testing/framework.py:539 — load_testing.framework.LoadTestFramework.identify_bottlenecks (score 0.25)
+   Evidence: Score 0.25, Identify performance bottlenecks from test metrics
+4) load_testing/framework.py:585 — load_testing.framework.LoadTestFramework.generate_scaling_recommendations (score 0.25)
+   Evidence: Score 0.25, Generate scaling recommendations based on metrics
+5) load_testing/framework.py:661 — load_testing.framework.LoadTestFramework.get_throughput_windows (score 0.25)
+   Evidence: Score 0.25, Get throughput in time windows
 
 Notes:
 - Weak or missing implementation

@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.22
+Status: ❌  |  Confidence: 0.23
 
 Top candidates:
-1) app/services/document_uploader.py:277 — app.services.document_uploader.DocumentUploader._signature_based_scan (score 0.22)
-   Evidence: Score 0.22, Signature-based malware detection
-2) app/models/cassazione_data.py:345 — app.models.cassazione_data.ScrapingStatistics.reset (score 0.22)
-   Evidence: Score 0.22, Reset all statistics.
-3) app/services/vector_service.py:688 — app.services.vector_service.VectorService.search_ccnl_semantic (score 0.22)
-   Evidence: Score 0.22, Semantic search specifically for CCNL data.
+1) app/services/document_uploader.py:277 — app.services.document_uploader.DocumentUploader._signature_based_scan (score 0.23)
+   Evidence: Score 0.23, Signature-based malware detection
+2) app/models/cassazione_data.py:345 — app.models.cassazione_data.ScrapingStatistics.reset (score 0.23)
+   Evidence: Score 0.23, Reset all statistics.
+3) app/services/vector_service.py:688 — app.services.vector_service.VectorService.search_ccnl_semantic (score 0.23)
+   Evidence: Score 0.23, Semantic search specifically for CCNL data.
 
 Args:
     query: Search query about...
 4) app/core/privacy/gdpr.py:95 — app.core.privacy.gdpr.ConsentManager.grant_consent (score 0.22)
    Evidence: Score 0.22, Grant consent for a specific purpose.
-5) app/core/llm/providers/anthropic_provider.py:46 — app.core.llm.providers.anthropic_provider.AnthropicProvider.client (score 0.21)
-   Evidence: Score 0.21, Get the Anthropic async client.
+5) app/core/llm/providers/anthropic_provider.py:46 — app.core.llm.providers.anthropic_provider.AnthropicProvider.client (score 0.22)
+   Evidence: Score 0.22, Get the Anthropic async client.
 
 Notes:
 - Weak or missing implementation

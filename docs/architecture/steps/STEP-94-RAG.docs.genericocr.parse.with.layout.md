@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.23
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/services/legal_document_analyzer.py:450 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._parse_italian_amount (score 0.23)
-   Evidence: Score 0.23, Parse Italian currency format to float
-2) app/models/subscription.py:127 — app.models.subscription.SubscriptionPlan.price_with_iva (score 0.23)
-   Evidence: Score 0.23, Total price including 22% IVA
-3) app/services/legal_document_analyzer.py:435 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._parse_italian_date (score 0.22)
-   Evidence: Score 0.22, Parse Italian date formats to ISO format
-4) app/services/scrapers/cassazione_scraper.py:607 — app.services.scrapers.cassazione_scraper.CassazioneScraper._parse_italian_date (score 0.22)
-   Evidence: Score 0.22, Parse Italian date string.
-5) app/services/ccnl_update_processor.py:207 — app.services.ccnl_update_processor.CCNLUpdateProcessor._parse_html_document (score 0.22)
-   Evidence: Score 0.22, Parse HTML document content.
+1) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
+   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
+2) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
+3) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.27)
+   Evidence: Score 0.27, Convert document to dictionary
+4) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
+5) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.27)
+   Evidence: Score 0.27, Convert document to dictionary for API responses
 
 Notes:
 - Weak or missing implementation

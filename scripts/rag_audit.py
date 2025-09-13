@@ -21,8 +21,8 @@ from difflib import SequenceMatcher
 class RAGAuditor:
     """Audit RAG steps against code implementation."""
     
-    # Keywords for hint matching by category
-    HINT_KEYWORDS = {
+    # Default keywords for hint matching by category
+    DEFAULT_HINT_KEYWORDS = {
         'faq': ['faq', 'golden', 'question', 'answer'],
         'golden': ['golden', 'faq', 'expert', 'feedback'],
         'kb': ['kb', 'knowledge', 'search', 'vector', 'retrieve'],
@@ -42,8 +42,8 @@ class RAGAuditor:
         'prompt': ['prompt', 'system', 'template', 'message']
     }
     
-    # Path hints by category
-    PATH_HINTS = {
+    # Default path hints by category
+    DEFAULT_PATH_HINTS = {
         'cache': ['/cache/', '/redis/'],
         'kb': ['/knowledge/', '/search/', '/vector/'],
         'faq': ['/faq/', '/golden/'],
@@ -57,14 +57,44 @@ class RAGAuditor:
         'metrics': ['/metric/', '/usage/', '/track/']
     }
     
-    def __init__(self, steps_file: Path, code_index_file: Path, verbose: bool = False):
+    def __init__(self, steps_file: Path, code_index_file: Path, config_file: Path = None, verbose: bool = False):
         self.steps_file = steps_file
         self.code_index_file = code_index_file
+        self.config_file = config_file or Path(__file__).parent / 'rag_audit_config.yml'
         self.verbose = verbose
         self.steps = []
         self.code_graph = {}
         self.symbol_index = {}  # qualname -> symbol
         self.audit_results = {}
+        self.config = self._load_config()
+        
+    def _load_config(self) -> Dict:
+        """Load configuration file if it exists."""
+        if not self.config_file.exists():
+            if self.verbose:
+                print(f"Config file not found: {self.config_file}, using defaults")
+            return {
+                'thresholds': {'implemented': 0.80, 'partial': 0.50, 'not_wired_callers_min': 1},
+                'weights': {'name_similarity': 0.40, 'docstring_hints': 0.25, 'path_hints': 0.20, 'graph_proximity': 0.15},
+                'synonyms': {},
+                'path_bias': {}
+            }
+        
+        try:
+            with open(self.config_file, 'r') as f:
+                config = yaml.safe_load(f)
+                if self.verbose:
+                    print(f"Loaded config from: {self.config_file}")
+                return config
+        except Exception as e:
+            if self.verbose:
+                print(f"Failed to load config: {e}, using defaults")
+            return {
+                'thresholds': {'implemented': 0.80, 'partial': 0.50, 'not_wired_callers_min': 1},
+                'weights': {'name_similarity': 0.40, 'docstring_hints': 0.25, 'path_hints': 0.20, 'graph_proximity': 0.15},
+                'synonyms': {},
+                'path_bias': {}
+            }
         
     def load_data(self):
         """Load steps registry and code graph."""
@@ -166,10 +196,18 @@ class RAGAuditor:
         text = f"{step['node_label']} {step['node_id']}"
         tokens.update(self._tokenize(text))
         
+        # Add synonyms from config
+        synonyms = self.config.get('synonyms', {})
+        node_label = step['node_label']
+        if node_label in synonyms:
+            for synonym in synonyms[node_label]:
+                tokens.update(self._tokenize(synonym))
+        
         # Add category-specific hints
         category = step['category']
-        if category in self.HINT_KEYWORDS:
-            tokens.update(self.HINT_KEYWORDS[category])
+        hint_keywords = {**self.DEFAULT_HINT_KEYWORDS, **self.config.get('path_bias', {})}
+        if category in hint_keywords:
+            tokens.update(hint_keywords[category])
         
         return tokens
     
@@ -181,23 +219,29 @@ class RAGAuditor:
     
     def _score_symbol(self, symbol: Dict, query_tokens: Set[str], step: Dict) -> float:
         """Score a symbol for relevance to the step."""
+        weights = self.config.get('weights', {
+            'name_similarity': 0.40, 'docstring_hints': 0.25, 
+            'path_hints': 0.20, 'graph_proximity': 0.15
+        })
+        
         scores = []
         
-        # 1. Name similarity (40% weight)
+        # 1. Name similarity
         name_score = self._name_similarity(symbol, query_tokens)
-        scores.append(('name', name_score, 0.4))
+        scores.append(('name', name_score, weights.get('name_similarity', 0.40)))
         
-        # 2. Docstring/comment hints (25% weight)
+        # 2. Docstring/comment hints
         hint_score = self._hint_score(symbol, step['category'])
-        scores.append(('hint', hint_score, 0.25))
+        scores.append(('hint', hint_score, weights.get('docstring_hints', 0.25)))
         
-        # 3. Path hints (20% weight)
+        # 3. Path hints
         path_score = self._path_hint_score(symbol['file_path'], step['category'])
-        scores.append(('path', path_score, 0.20))
+        scores.append(('path', path_score, weights.get('path_hints', 0.20)))
         
-        # 4. Type relevance (15% weight)
+        # 4. Type relevance (remaining weight)
+        remaining_weight = 1.0 - sum(w for _, _, w in scores)
         type_score = self._type_relevance(symbol, step['type'])
-        scores.append(('type', type_score, 0.15))
+        scores.append(('type', type_score, remaining_weight))
         
         # Calculate weighted average
         total_score = sum(score * weight for _, score, weight in scores)
@@ -231,7 +275,9 @@ class RAGAuditor:
     
     def _hint_score(self, symbol: Dict, category: str) -> float:
         """Score based on docstring and comment hints."""
-        hints = self.HINT_KEYWORDS.get(category, [])
+        # Use path_bias from config if available, otherwise default
+        path_bias = self.config.get('path_bias', {})
+        hints = path_bias.get(category, self.DEFAULT_HINT_KEYWORDS.get(category, []))
         if not hints:
             return 0.0
         
@@ -244,7 +290,9 @@ class RAGAuditor:
     
     def _path_hint_score(self, file_path: str, category: str) -> float:
         """Score based on file path hints."""
-        path_hints = self.PATH_HINTS.get(category, [])
+        # Use path_bias from config if available, otherwise default
+        path_bias = self.config.get('path_bias', {})
+        path_hints = path_bias.get(category, self.DEFAULT_PATH_HINTS.get(category, []))
         if not path_hints:
             return 0.0
         
@@ -324,10 +372,18 @@ class RAGAuditor:
         if any('test' in c['path'].lower() for c in candidates[:3]):
             signals += 1
         
+        # Use thresholds from config
+        thresholds = self.config.get('thresholds', {
+            'implemented': 0.80, 'partial': 0.50, 'not_wired_callers_min': 1
+        })
+        
         # Determine status
-        if top_score >= 0.80 or (top_score >= 0.70 and signals >= 2):
+        implemented_threshold = thresholds.get('implemented', 0.80)
+        partial_threshold = thresholds.get('partial', 0.50)
+        
+        if top_score >= implemented_threshold or (top_score >= implemented_threshold - 0.05 and signals >= 2):
             return '✅'
-        elif top_score >= 0.50:
+        elif top_score >= partial_threshold:
             return '🟡'
         elif top_score >= 0.30:
             return '🔌'
@@ -479,60 +535,69 @@ class RAGAuditor:
         return '\n'.join(lines)
     
     def update_conformance_dashboard(self, base_dir: Path):
-        """Update the conformance dashboard."""
+        """Update the conformance dashboard with current audit results."""
         dashboard_path = base_dir / 'docs/architecture/rag_conformance.md'
         
         # Read existing content
         with open(dashboard_path, 'r') as f:
             content = f.read()
         
-        # Update status in table
         lines = content.split('\n')
-        updated_lines = []
         
+        # Find and update the table
+        updated_lines = []
         in_table = False
-        for line in lines:
-            if '|------|' in line:  # Table header separator
+        table_updated = False
+        
+        for i, line in enumerate(lines):
+            if not table_updated and '| Step | Name | Type | Category |' in line:
+                # Found table header - ensure proper "Status" column
+                if 'Owner' in line:
+                    line = line.replace('Owner', 'Status')
+                updated_lines.append(line)
                 in_table = True
+            elif in_table and line.startswith('|') and '---' in line:
+                # Table separator row
                 updated_lines.append(line)
             elif in_table and line.startswith('|') and ' | ' in line:
-                # Table row - update status
-                parts = line.split(' | ')
-                if len(parts) >= 7:
-                    step_num = parts[0].strip('| ')
-                    try:
-                        step_num = int(step_num)
-                        if step_num in self.audit_results:
-                            status = self.audit_results[step_num]['status']
-                            # Keep existing owner if not TBD, otherwise use status
-                            if parts[5].strip() == 'TBD':
-                                parts[5] = status
-                    except (ValueError, IndexError):
-                        pass
-                updated_lines.append(' | '.join(parts))
+                # Table data row
+                parts = [p.strip() for p in line.split('|')]
+                if len(parts) >= 7 and parts[1].isdigit():  # Valid step row
+                    step_num = int(parts[1])
+                    if step_num in self.audit_results:
+                        # Update status column (index 6, accounting for empty first/last parts)
+                        parts[6] = self.audit_results[step_num]['status']
+                updated_lines.append('| ' + ' | '.join(parts[1:-1]) + ' |')
             elif in_table and not line.startswith('|'):
                 # End of table
                 in_table = False
+                table_updated = True
                 updated_lines.append(line)
             else:
                 updated_lines.append(line)
         
-        # Add summary at the top (after title)
-        summary = self._generate_dashboard_summary()
-        
-        # Insert summary after the first paragraph
+        # Replace the entire Audit Summary section
         final_lines = []
-        added_summary = False
+        skip_section = False
         
-        for i, line in enumerate(updated_lines):
-            final_lines.append(line)
-            
-            # Add summary after the description paragraph
-            if not added_summary and line.strip() == '' and i > 3:
-                if any('This dashboard tracks' in updated_lines[j] for j in range(max(0, i-3), i)):
-                    final_lines.extend(summary)
-                    final_lines.append('')
-                    added_summary = True
+        for line in updated_lines:
+            if line.startswith('## Audit Summary'):
+                # Start replacement - add new summary
+                final_lines.extend(self._generate_dashboard_summary())
+                skip_section = True
+                continue
+            elif skip_section and line.startswith('## '):
+                # Hit next section - stop skipping
+                skip_section = False
+                final_lines.append(line)
+            elif not skip_section:
+                # Normal line outside audit summary
+                final_lines.append(line)
+        
+        # If no Audit Summary section found, append it
+        if not any('## Audit Summary' in line for line in updated_lines):
+            final_lines.extend(['', ''])
+            final_lines.extend(self._generate_dashboard_summary())
         
         # Write back
         with open(dashboard_path, 'w') as f:
@@ -547,7 +612,7 @@ class RAGAuditor:
             '',
             f'**Implementation Status Overview:**',
             f'- ✅ Implemented: {summary["by_status"]["✅"]} steps',
-            f'- 🟡 Partial: {summary["by_status"]["🟡"]} steps',  
+            f'- 🟡 Partial: {summary["by_status"]["🟡"]} steps',
             f'- 🔌 Not wired: {summary["by_status"]["🔌"]} steps',
             f'- ❌ Missing: {summary["by_status"]["❌"]} steps',
             '',

@@ -36,24 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
+Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) app/core/langgraph/graph.py:1007 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.33)
-   Evidence: Score 0.33, method: __process_messages
-2) app/core/langgraph/graph.py:63 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
-   Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
-3) app/core/langgraph/graph.py:274 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.30)
-   Evidence: Score 0.30, Get the LLM routing strategy from configuration.
+1) app/core/langgraph/graph.py:1007 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.35)
+   Evidence: Score 0.35, method: __process_messages
+2) app/core/langgraph/graph.py:63 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.32)
+   Evidence: Score 0.32, Initialize the LangGraph Agent with necessary components.
+3) app/core/langgraph/graph.py:274 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
+   Evidence: Score 0.32, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-4) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.30)
-   Evidence: Score 0.30, Get routing strategy and cost limit based on domain-action classification.
+4) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.32)
+   Evidence: Score 0.32, Get routing strategy and cost limit based on domain-action classification.
 
 Args...
-5) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.30)
-   Evidence: Score 0.30, Get the appropriate system prompt based on classification.
+5) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.32)
+   Evidence: Score 0.32, Get the appropriate system prompt based on classification.
 
 Args:
     messages: ...

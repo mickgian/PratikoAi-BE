@@ -43,12 +43,12 @@ Top candidates:
    Evidence: Score 0.48, Anonymize PII in text while preserving structure.
 2) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.48)
    Evidence: Score 0.48, Anonymize PII in structured data (dictionaries).
-3) app/core/privacy/gdpr.py:239 — app.core.privacy.gdpr.DataProcessor.can_process_data (score 0.45)
-   Evidence: Score 0.45, Check if data processing is allowed under GDPR.
-4) app/core/privacy/gdpr.py:379 — app.core.privacy.gdpr.AuditLogger._log_event (score 0.45)
-   Evidence: Score 0.45, Log a GDPR audit event.
-5) app/core/privacy/gdpr.py:465 — app.core.privacy.gdpr.GDPRCompliance.__init__ (score 0.45)
-   Evidence: Score 0.45, Initialize GDPR compliance system.
+3) app/core/privacy/gdpr.py:239 — app.core.privacy.gdpr.DataProcessor.can_process_data (score 0.46)
+   Evidence: Score 0.46, Check if data processing is allowed under GDPR.
+4) app/core/privacy/gdpr.py:379 — app.core.privacy.gdpr.AuditLogger._log_event (score 0.46)
+   Evidence: Score 0.46, Log a GDPR audit event.
+5) app/core/privacy/gdpr.py:465 — app.core.privacy.gdpr.GDPRCompliance.__init__ (score 0.46)
+   Evidence: Score 0.46, Initialize GDPR compliance system.
 
 Notes:
 - Implementation exists but may not be wired correctly

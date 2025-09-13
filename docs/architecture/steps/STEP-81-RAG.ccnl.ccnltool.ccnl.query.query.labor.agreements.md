@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.44
+Status: 🔌  |  Confidence: 0.41
 
 Top candidates:
-1) app/models/ccnl_data.py:715 — app.models.ccnl_data.CCNLCalculator.__init__ (score 0.44)
-   Evidence: Score 0.44, Initialize calculator with CCNL agreement.
-2) app/core/langgraph/tools/ccnl_tool.py:64 — app.core.langgraph.tools.ccnl_tool.CCNLTool (score 0.43)
-   Evidence: Score 0.43, LangGraph tool for accessing CCNL (Italian Collective Labor Agreements) data.
-3) app/services/ccnl_calculator_engine.py:1 — app.services.ccnl_calculator_engine (score 0.37)
-   Evidence: Score 0.37, CCNL Calculation Engine - Enhanced calculator for Italian Collective Labor Agree...
-4) app/models/ccnl_database.py:103 — app.models.ccnl_database.CCNLAgreementDB.is_currently_valid (score 0.36)
-   Evidence: Score 0.36, Check if CCNL agreement is currently valid.
-5) app/services/ccnl_service.py:806 — app.services.ccnl_service.CCNLService._convert_external_data_to_agreement (score 0.35)
-   Evidence: Score 0.35, Convert external data format to CCNLAgreement.
+1) app/core/langgraph/tools/ccnl_tool.py:64 — app.core.langgraph.tools.ccnl_tool.CCNLTool (score 0.41)
+   Evidence: Score 0.41, LangGraph tool for accessing CCNL (Italian Collective Labor Agreements) data.
+2) app/models/ccnl_data.py:715 — app.models.ccnl_data.CCNLCalculator.__init__ (score 0.41)
+   Evidence: Score 0.41, Initialize calculator with CCNL agreement.
+3) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.36)
+   Evidence: Score 0.36, Execute CCNL query (synchronous version).
+4) app/models/ccnl_database.py:103 — app.models.ccnl_database.CCNLAgreementDB.is_currently_valid (score 0.35)
+   Evidence: Score 0.35, Check if CCNL agreement is currently valid.
+5) app/services/ccnl_service.py:806 — app.services.ccnl_service.CCNLService._convert_external_data_to_agreement (score 0.34)
+   Evidence: Score 0.34, Convert external data format to CCNLAgreement.
 
 Notes:
 - Implementation exists but may not be wired correctly

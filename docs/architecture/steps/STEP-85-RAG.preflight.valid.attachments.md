@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.24)
-   Evidence: Score 0.24, Validate the citation.
-2) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.24)
-   Evidence: Score 0.24, Validate the result.
-3) app/services/ccnl_service.py:91 — app.services.ccnl_service.CCNLQueryFilters.is_valid (score 0.24)
-   Evidence: Score 0.24, Validate filter constraints.
-4) app/services/validators/financial_validation_engine.py:187 — app.services.validators.financial_validation_engine.FinancialValidationEngine.__init__ (score 0.23)
-   Evidence: Score 0.23, Initialize the Financial Validation Engine.
+1) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.25)
+   Evidence: Score 0.25, Validate the citation.
+2) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.25)
+   Evidence: Score 0.25, Validate the result.
+3) app/services/ccnl_service.py:91 — app.services.ccnl_service.CCNLQueryFilters.is_valid (score 0.25)
+   Evidence: Score 0.25, Validate filter constraints.
+4) app/services/validators/financial_validation_engine.py:187 — app.services.validators.financial_validation_engine.FinancialValidationEngine.__init__ (score 0.24)
+   Evidence: Score 0.24, Initialize the Financial Validation Engine.
 
 Args:
     config: Engine configurat...
-5) app/services/validators/financial_validation_engine.py:209 — app.services.validators.financial_validation_engine.FinancialValidationEngine._initialize_components (score 0.23)
-   Evidence: Score 0.23, Initialize all validation components based on configuration.
+5) app/services/validators/financial_validation_engine.py:209 — app.services.validators.financial_validation_engine.FinancialValidationEngine._initialize_components (score 0.24)
+   Evidence: Score 0.24, Initialize all validation components based on configuration.
 
 Notes:
 - Weak or missing implementation

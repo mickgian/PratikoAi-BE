@@ -36,28 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) feature-flags/dependency_tracking/cross_repo_tracker.py:771 — feature-flags.dependency_tracking.cross_repo_tracker.sync (score 0.26)
-   Evidence: Score 0.26, Sync dependencies from all repositories.
-2) app/schemas/auth.py:69 — app.schemas.auth.UserCreate.validate_password (score 0.24)
-   Evidence: Score 0.24, Validate password strength.
+1) feature-flags/dependency_tracking/cross_repo_tracker.py:771 — feature-flags.dependency_tracking.cross_repo_tracker.sync (score 0.27)
+   Evidence: Score 0.27, Sync dependencies from all repositories.
+2) app/schemas/auth.py:69 — app.schemas.auth.UserCreate.validate_password (score 0.25)
+   Evidence: Score 0.25, Validate password strength.
 
 Args:
     v: The password to validate
 
 Returns:
    ...
-3) evals/helpers.py:169 — evals.helpers.generate_report (score 0.24)
-   Evidence: Score 0.24, Generate a JSON report file with evaluation results.
+3) evals/helpers.py:169 — evals.helpers.generate_report (score 0.25)
+   Evidence: Score 0.25, Generate a JSON report file with evaluation results.
 
 Args:
     report: The repo...
-4) load_testing/config.py:263 — load_testing.config.TestDataGenerator.generate_italian_queries (score 0.23)
-   Evidence: Score 0.23, Generate realistic Italian tax/regulatory queries
-5) load_testing/config.py:279 — load_testing.config.TestDataGenerator.generate_tax_calculation_requests (score 0.23)
-   Evidence: Score 0.23, Generate tax calculation test requests
+4) load_testing/config.py:263 — load_testing.config.TestDataGenerator.generate_italian_queries (score 0.24)
+   Evidence: Score 0.24, Generate realistic Italian tax/regulatory queries
+5) load_testing/config.py:279 — load_testing.config.TestDataGenerator.generate_tax_calculation_requests (score 0.24)
+   Evidence: Score 0.24, Generate tax calculation test requests
 
 Notes:
 - Weak or missing implementation

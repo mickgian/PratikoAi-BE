@@ -36,23 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.42
+Status: 🔌  |  Confidence: 0.41
 
 Top candidates:
-1) app/models/quality_analysis.py:105 — app.models.quality_analysis.ExpertFeedback (score 0.42)
-   Evidence: Score 0.42, Expert feedback on AI-generated answers
-2) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.38)
-   Evidence: Score 0.38, Expert Feedback Collection Service for Quality Analysis System.
-
-Handles collect...
-3) app/models/quality_analysis.py:27 — app.models.quality_analysis.FeedbackType (score 0.37)
-   Evidence: Score 0.37, Types of expert feedback
-4) app/models/quality_analysis.py:361 — app.models.quality_analysis.ExpertValidation (score 0.36)
-   Evidence: Score 0.36, Expert validation records for complex queries
-5) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.36)
-   Evidence: Score 0.36, Service for collecting and processing expert feedback on AI responses.
+1) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.41)
+   Evidence: Score 0.41, Service for collecting and processing expert feedback on AI responses.
 
 Features...
+2) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.40)
+   Evidence: Score 0.40, Validate feedback data structure and content
+3) app/services/automatic_improvement_engine.py:662 — app.services.automatic_improvement_engine.AutomaticImprovementEngine._initialize_improvement_strategies (score 0.38)
+   Evidence: Score 0.38, Initialize improvement strategies for different pattern types
+4) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.37)
+   Evidence: Score 0.37, Automatic Improvement Engine for Quality Analysis System.
+
+Automatically generat...
+5) app/models/quality_analysis.py:105 — app.models.quality_analysis.ExpertFeedback (score 0.37)
+   Evidence: Score 0.37, Expert feedback on AI-generated answers
 
 Notes:
 - Implementation exists but may not be wired correctly

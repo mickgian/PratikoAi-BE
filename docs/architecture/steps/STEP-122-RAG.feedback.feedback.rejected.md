@@ -36,21 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.36
+Status: 🔌  |  Confidence: 0.37
 
 Top candidates:
-1) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.36)
-   Evidence: Score 0.36, Expert Feedback Collection Service for Quality Analysis System.
+1) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.37)
+   Evidence: Score 0.37, Automatic Improvement Engine for Quality Analysis System.
+
+Automatically generat...
+2) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.32)
+   Evidence: Score 0.32, Service for collecting and processing expert feedback on AI responses.
+
+Features...
+3) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.32)
+   Evidence: Score 0.32, Expert Feedback Collection Service for Quality Analysis System.
 
 Handles collect...
-2) app/models/quality_analysis.py:27 — app.models.quality_analysis.FeedbackType (score 0.31)
-   Evidence: Score 0.31, Types of expert feedback
-3) app/models/quality_analysis.py:361 — app.models.quality_analysis.ExpertValidation (score 0.30)
-   Evidence: Score 0.30, Expert validation records for complex queries
-4) app/models/quality_analysis.py:105 — app.models.quality_analysis.ExpertFeedback (score 0.30)
-   Evidence: Score 0.30, Expert feedback on AI-generated answers
-5) app/models/quality_analysis.py:60 — app.models.quality_analysis.ExpertProfile (score 0.29)
-   Evidence: Score 0.29, Expert profiles for validation and trust scoring
+4) app/services/failure_pattern_analyzer.py:1 — app.services.failure_pattern_analyzer (score 0.31)
+   Evidence: Score 0.31, Failure Pattern Analyzer for Quality Analysis System.
+
+Identifies and analyzes p...
+5) app/models/quality_analysis.py:1 — app.models.quality_analysis (score 0.29)
+   Evidence: Score 0.29, Database Models for Quality Analysis System with Expert Feedback Loop.
+
+Defines ...
 
 Notes:
 - Implementation exists but may not be wired correctly

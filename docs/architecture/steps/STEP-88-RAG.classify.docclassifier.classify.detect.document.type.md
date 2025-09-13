@@ -36,27 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.36
+Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.36)
-   Evidence: Score 0.36, Calculate confidence scores for each domain
-2) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.36)
-   Evidence: Score 0.36, Calculate confidence scores for each action
-3) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)
-   Evidence: Score 0.34, Track domain-action classification usage and metrics.
+1) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.35)
+   Evidence: Score 0.35, Calculate confidence scores for each domain
+2) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.35)
+   Evidence: Score 0.35, Calculate confidence scores for each action
+3) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.32)
+   Evidence: Score 0.32, Track domain-action classification usage and metrics.
 
 Args:
     domain: The cla...
-4) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.33)
-   Evidence: Score 0.33, Get routing strategy and cost limit based on domain-action classification.
-
-Args...
-5) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.33)
-   Evidence: Score 0.33, Get the appropriate system prompt based on classification.
-
-Args:
-    messages: ...
+4) app/services/domain_action_classifier.py:26 — app.services.domain_action_classifier.Domain (score 0.32)
+   Evidence: Score 0.32, Professional domains for Italian market
+5) app/services/domain_action_classifier.py:35 — app.services.domain_action_classifier.Action (score 0.32)
+   Evidence: Score 0.32, Professional actions/intents
 
 Notes:
 - Implementation exists but may not be wired correctly

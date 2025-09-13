@@ -36,25 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.26)
-   Evidence: Score 0.26, Validate the message content.
+1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.27)
+   Evidence: Score 0.27, Validate the message content.
 
 Args:
     v: The content to validate
 
 Returns:
   ...
-2) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.23)
-   Evidence: Score 0.23, method: __init__
-3) app/core/langgraph/tools/ccnl_tool.py:90 — app.core.langgraph.tools.ccnl_tool.CCNLTool.search_service (score 0.23)
-   Evidence: Score 0.23, method: search_service
-4) app/core/langgraph/tools/ccnl_tool.py:96 — app.core.langgraph.tools.ccnl_tool.CCNLTool.calculator_engine (score 0.23)
-   Evidence: Score 0.23, method: calculator_engine
-5) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.23)
-   Evidence: Score 0.23, Execute CCNL query (synchronous version).
+2) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.24)
+   Evidence: Score 0.24, method: __init__
+3) app/core/langgraph/tools/ccnl_tool.py:90 — app.core.langgraph.tools.ccnl_tool.CCNLTool.search_service (score 0.24)
+   Evidence: Score 0.24, method: search_service
+4) app/core/langgraph/tools/ccnl_tool.py:96 — app.core.langgraph.tools.ccnl_tool.CCNLTool.calculator_engine (score 0.24)
+   Evidence: Score 0.24, method: calculator_engine
+5) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.24)
+   Evidence: Score 0.24, Execute CCNL query (synchronous version).
 
 Notes:
 - Weak or missing implementation

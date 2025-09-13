@@ -44,14 +44,14 @@ Top candidates:
 
 Args:
     query: The u...
-2) app/data/ccnl_priority1.py:31 — app.data.ccnl_priority1.get_metalmeccanici_industria_ccnl (score 0.23)
-   Evidence: Score 0.23, Get CCNL for Metalmeccanici Industria - largest industrial sector.
-3) app/data/ccnl_priority1.py:239 — app.data.ccnl_priority1.get_commercio_terziario_ccnl (score 0.23)
-   Evidence: Score 0.23, Get CCNL for Commercio e Terziario - largest commercial sector.
-4) app/data/ccnl_priority1.py:337 — app.data.ccnl_priority1.get_edilizia_industria_ccnl (score 0.23)
-   Evidence: Score 0.23, Get CCNL for Edilizia Industria - construction industry.
-5) app/data/ccnl_priority1.py:434 — app.data.ccnl_priority1.get_pubblici_esercizi_ccnl (score 0.23)
-   Evidence: Score 0.23, Get CCNL for Pubblici Esercizi - bars, restaurants, hotels.
+2) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
+   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
+3) app/services/italian_document_collector.py:451 — app.services.italian_document_collector.ItalianDocumentCollector._extract_keywords (score 0.27)
+   Evidence: Score 0.27, Extract relevant keywords from document content.
+4) app/services/italian_document_collector.py:440 — app.services.italian_document_collector.ItalianDocumentCollector._extract_tax_types (score 0.27)
+   Evidence: Score 0.27, Extract relevant tax types from document content.
+5) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
 
 Notes:
 - Implementation exists but may not be wired correctly

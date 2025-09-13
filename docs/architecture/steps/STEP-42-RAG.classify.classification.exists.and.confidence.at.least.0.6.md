@@ -36,24 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.36
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.36)
-   Evidence: Score 0.36, Track domain-action classification usage and metrics.
+1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)
+   Evidence: Score 0.34, Track domain-action classification usage and metrics.
 
 Args:
     domain: The cla...
-2) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.35)
-   Evidence: Score 0.35, Get routing strategy and cost limit based on domain-action classification.
+2) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.33)
+   Evidence: Score 0.33, Get routing strategy and cost limit based on domain-action classification.
 
 Args...
-3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.33)
-   Evidence: Score 0.33, Calculate confidence scores for each domain
-4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.33)
-   Evidence: Score 0.33, Calculate confidence scores for each action
-5) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.33)
-   Evidence: Score 0.33, Extract parameters for CCNL tool from user query and classification.
+3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.31)
+   Evidence: Score 0.31, Calculate confidence scores for each domain
+4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.31)
+   Evidence: Score 0.31, Calculate confidence scores for each action
+5) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.31)
+   Evidence: Score 0.31, Extract parameters for CCNL tool from user query and classification.
 
 Args:
     ...

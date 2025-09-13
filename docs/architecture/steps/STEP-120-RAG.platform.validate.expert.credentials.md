@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) app/services/validators/financial_validation_engine.py:187 — app.services.validators.financial_validation_engine.FinancialValidationEngine.__init__ (score 0.24)
-   Evidence: Score 0.24, Initialize the Financial Validation Engine.
+1) app/services/validators/financial_validation_engine.py:187 — app.services.validators.financial_validation_engine.FinancialValidationEngine.__init__ (score 0.25)
+   Evidence: Score 0.25, Initialize the Financial Validation Engine.
 
 Args:
     config: Engine configurat...
-2) app/services/validators/financial_validation_engine.py:209 — app.services.validators.financial_validation_engine.FinancialValidationEngine._initialize_components (score 0.24)
-   Evidence: Score 0.24, Initialize all validation components based on configuration.
-3) app/services/validators/financial_validation_engine.py:273 — app.services.validators.financial_validation_engine.FinancialValidationEngine.is_ready (score 0.24)
-   Evidence: Score 0.24, Check if the engine is ready to process requests.
-4) app/services/validators/financial_validation_engine.py:285 — app.services.validators.financial_validation_engine.FinancialValidationEngine.supported_task_types (score 0.24)
-   Evidence: Score 0.24, Get list of supported task types based on enabled modules.
-5) app/services/validators/financial_validation_engine.py:302 — app.services.validators.financial_validation_engine.FinancialValidationEngine.execute_single_task (score 0.24)
-   Evidence: Score 0.24, Execute a single validation task.
+2) app/services/validators/financial_validation_engine.py:209 — app.services.validators.financial_validation_engine.FinancialValidationEngine._initialize_components (score 0.25)
+   Evidence: Score 0.25, Initialize all validation components based on configuration.
+3) app/services/validators/financial_validation_engine.py:273 — app.services.validators.financial_validation_engine.FinancialValidationEngine.is_ready (score 0.25)
+   Evidence: Score 0.25, Check if the engine is ready to process requests.
+4) app/services/validators/financial_validation_engine.py:285 — app.services.validators.financial_validation_engine.FinancialValidationEngine.supported_task_types (score 0.25)
+   Evidence: Score 0.25, Get list of supported task types based on enabled modules.
+5) app/services/validators/financial_validation_engine.py:302 — app.services.validators.financial_validation_engine.FinancialValidationEngine.execute_single_task (score 0.25)
+   Evidence: Score 0.25, Execute a single validation task.
 
 Args:
     task: The validation task to execut...

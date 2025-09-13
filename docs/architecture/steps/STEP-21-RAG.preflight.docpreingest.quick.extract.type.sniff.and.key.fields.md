@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.23
+Status: ❌  |  Confidence: 0.24
 
 Top candidates:
-1) app/services/atomic_facts_extractor.py:421 — app.services.atomic_facts_extractor.AtomicFactsExtractor.extract (score 0.23)
-   Evidence: Score 0.23, Extract atomic facts from an Italian professional query.
+1) app/services/atomic_facts_extractor.py:421 — app.services.atomic_facts_extractor.AtomicFactsExtractor.extract (score 0.24)
+   Evidence: Score 0.24, Extract atomic facts from an Italian professional query.
 
 Args:
     query: The u...
-2) app/models/cassazione_data.py:261 — app.models.cassazione_data.ScrapingResult.success_rate (score 0.22)
-   Evidence: Score 0.22, Calculate success rate.
-3) app/models/cassazione_data.py:268 — app.models.cassazione_data.ScrapingResult.processing_rate (score 0.22)
-   Evidence: Score 0.22, Calculate processing rate.
-4) app/models/cassazione_data.py:275 — app.models.cassazione_data.ScrapingResult.duration_minutes (score 0.22)
-   Evidence: Score 0.22, Get duration in minutes.
-5) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.22)
-   Evidence: Score 0.22, Validate the result.
+2) app/models/cassazione_data.py:261 — app.models.cassazione_data.ScrapingResult.success_rate (score 0.23)
+   Evidence: Score 0.23, Calculate success rate.
+3) app/models/cassazione_data.py:268 — app.models.cassazione_data.ScrapingResult.processing_rate (score 0.23)
+   Evidence: Score 0.23, Calculate processing rate.
+4) app/models/cassazione_data.py:275 — app.models.cassazione_data.ScrapingResult.duration_minutes (score 0.23)
+   Evidence: Score 0.23, Get duration in minutes.
+5) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.23)
+   Evidence: Score 0.23, Validate the result.
 
 Notes:
 - Weak or missing implementation

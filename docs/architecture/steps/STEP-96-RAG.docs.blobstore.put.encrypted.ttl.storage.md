@@ -36,26 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/core/encryption/encrypted_types.py:40 — app.core.encryption.encrypted_types.EncryptedType.__init__ (score 0.25)
-   Evidence: Score 0.25, Initialize encrypted type.
-
-Args:
-    impl_type: Underlying SQLAlchemy type (Str...
-2) app/core/encryption/encrypted_types.py:63 — app.core.encryption.encrypted_types.EncryptedType.load_dialect_impl (score 0.25)
-   Evidence: Score 0.25, Load dialect-specific implementation.
-3) app/core/encryption/encrypted_types.py:67 — app.core.encryption.encrypted_types.EncryptedType.process_bind_param (score 0.25)
-   Evidence: Score 0.25, Encrypt value when binding to database parameter.
-
-Called when saving data to da...
-4) app/core/encryption/encrypted_types.py:96 — app.core.encryption.encrypted_types.EncryptedType.process_result_value (score 0.25)
-   Evidence: Score 0.25, Decrypt value when loading from database result.
-
-Called when loading data from ...
-5) app/core/encryption/encrypted_types.py:124 — app.core.encryption.encrypted_types.EncryptedType._get_encryption_service (score 0.25)
-   Evidence: Score 0.25, Get or create encryption service instance.
+1) app/services/secure_document_storage.py:292 — app.services.secure_document_storage.SecureDocumentStorage._encrypt_content (score 0.28)
+   Evidence: Score 0.28, Encrypt document content
+2) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
+   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
+3) app/services/secure_document_storage.py:300 — app.services.secure_document_storage.SecureDocumentStorage._decrypt_content (score 0.27)
+   Evidence: Score 0.27, Decrypt document content
+4) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
+   Evidence: Score 0.27, Check if document has expired
+5) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.27)
+   Evidence: Score 0.27, Convert document to dictionary
 
 Notes:
 - Weak or missing implementation

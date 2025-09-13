@@ -36,28 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.26)
-   Evidence: Score 0.26, Validate the message content.
+1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.27)
+   Evidence: Score 0.27, Validate the message content.
 
 Args:
     v: The content to validate
 
 Returns:
   ...
-2) evals/helpers.py:21 — evals.helpers.format_messages (score 0.23)
-   Evidence: Score 0.23, Format a list of messages for evaluation.
+2) evals/helpers.py:21 — evals.helpers.format_messages (score 0.24)
+   Evidence: Score 0.24, Format a list of messages for evaluation.
 
 Args:
     messages: List of message d...
-3) failure-recovery-system/cicd_integration.py:118 — failure-recovery-system.cicd_integration.CICDEvent.__post_init__ (score 0.23)
-   Evidence: Score 0.23, method: __post_init__
-4) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.23)
-   Evidence: Score 0.23, method: __post_init__
-5) failure-recovery-system/cicd_integration.py:170 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.__init__ (score 0.23)
-   Evidence: Score 0.23, method: __init__
+3) failure-recovery-system/cicd_integration.py:118 — failure-recovery-system.cicd_integration.CICDEvent.__post_init__ (score 0.24)
+   Evidence: Score 0.24, method: __post_init__
+4) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.24)
+   Evidence: Score 0.24, method: __post_init__
+5) failure-recovery-system/cicd_integration.py:170 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.__init__ (score 0.24)
+   Evidence: Score 0.24, method: __init__
 
 Notes:
 - Weak or missing implementation

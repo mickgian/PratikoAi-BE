@@ -39,23 +39,20 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.38
 
 Top candidates:
-1) app/models/user.py:60 — app.models.user.User.set_refresh_token_hash (score 0.38)
-   Evidence: Score 0.38, Set the hash of the refresh token.
+1) app/services/automatic_improvement_engine.py:662 — app.services.automatic_improvement_engine.AutomaticImprovementEngine._initialize_improvement_strategies (score 0.38)
+   Evidence: Score 0.38, Initialize improvement strategies for different pattern types
+2) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.38)
+   Evidence: Score 0.38, Validate feedback data structure and content
+3) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.38)
+   Evidence: Score 0.38, Automatic Improvement Engine for Quality Analysis System.
 
-Stores a bcrypt hash of the refresh token fo...
-2) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.37)
-   Evidence: Score 0.37, Expert Feedback Collection Service for Quality Analysis System.
+Automatically generat...
+4) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.36)
+   Evidence: Score 0.36, Service for collecting and processing expert feedback on AI responses.
 
-Handles collect...
-3) app/models/quality_analysis.py:27 — app.models.quality_analysis.FeedbackType (score 0.34)
-   Evidence: Score 0.34, Types of expert feedback
-4) app/models/quality_analysis.py:361 — app.models.quality_analysis.ExpertValidation (score 0.33)
-   Evidence: Score 0.33, Expert validation records for complex queries
-5) app/services/validators/financial_validation_engine.py:187 — app.services.validators.financial_validation_engine.FinancialValidationEngine.__init__ (score 0.33)
-   Evidence: Score 0.33, Initialize the Financial Validation Engine.
-
-Args:
-    config: Engine configurat...
+Features...
+5) app/services/automatic_improvement_engine.py:645 — app.services.automatic_improvement_engine.AutomaticImprovementEngine._generate_improvement_summary (score 0.33)
+   Evidence: Score 0.33, Generate human-readable improvement summary
 
 Notes:
 - Implementation exists but may not be wired correctly

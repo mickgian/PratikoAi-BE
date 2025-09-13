@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) app/models/regional_taxes.py:134 — app.models.regional_taxes.Comune.__repr__ (score 0.24)
-   Evidence: Score 0.24, method: __repr__
-2) app/models/regional_taxes.py:137 — app.models.regional_taxes.Comune.get_primary_cap (score 0.24)
-   Evidence: Score 0.24, Get the primary postal code for this comune
-3) app/models/regional_taxes.py:141 — app.models.regional_taxes.Comune.has_cap (score 0.24)
-   Evidence: Score 0.24, Check if this comune includes the given CAP
-4) app/models/regional_taxes.py:145 — app.models.regional_taxes.Comune.to_dict (score 0.24)
-   Evidence: Score 0.24, method: to_dict
-5) app/services/vector_provider_factory.py:20 — app.services.vector_provider_factory.VectorSearchProvider.upsert (score 0.23)
-   Evidence: Score 0.23, Upsert vectors into the provider.
+1) app/models/regional_taxes.py:134 — app.models.regional_taxes.Comune.__repr__ (score 0.25)
+   Evidence: Score 0.25, method: __repr__
+2) app/models/regional_taxes.py:137 — app.models.regional_taxes.Comune.get_primary_cap (score 0.25)
+   Evidence: Score 0.25, Get the primary postal code for this comune
+3) app/models/regional_taxes.py:141 — app.models.regional_taxes.Comune.has_cap (score 0.25)
+   Evidence: Score 0.25, Check if this comune includes the given CAP
+4) app/models/regional_taxes.py:145 — app.models.regional_taxes.Comune.to_dict (score 0.25)
+   Evidence: Score 0.25, method: to_dict
+5) app/services/vector_provider_factory.py:20 — app.services.vector_provider_factory.VectorSearchProvider.upsert (score 0.24)
+   Evidence: Score 0.24, Upsert vectors into the provider.
 
 Notes:
 - Weak or missing implementation

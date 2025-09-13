@@ -36,27 +36,27 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
+Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.33)
-   Evidence: Score 0.33, Get the appropriate system prompt based on classification.
+1) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.35)
+   Evidence: Score 0.35, Get the appropriate system prompt based on classification.
 
 Args:
     messages: ...
-2) app/core/langgraph/graph.py:63 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
-   Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
-3) app/core/langgraph/graph.py:274 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.30)
-   Evidence: Score 0.30, Get the LLM routing strategy from configuration.
+2) app/core/langgraph/graph.py:63 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.31)
+   Evidence: Score 0.31, Initialize the LangGraph Agent with necessary components.
+3) app/core/langgraph/graph.py:274 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.31)
+   Evidence: Score 0.31, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-4) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.30)
-   Evidence: Score 0.30, Get routing strategy and cost limit based on domain-action classification.
+4) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
+   Evidence: Score 0.31, Get routing strategy and cost limit based on domain-action classification.
 
 Args...
-5) app/core/langgraph/graph.py:407 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.30)
-   Evidence: Score 0.30, Get the optimal LLM provider for the given messages.
+5) app/core/langgraph/graph.py:407 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.31)
+   Evidence: Score 0.31, Get the optimal LLM provider for the given messages.
 
 Args:
     messages: List o...

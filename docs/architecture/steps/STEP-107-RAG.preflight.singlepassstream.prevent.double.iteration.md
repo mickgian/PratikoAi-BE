@@ -36,20 +36,20 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.30)
-   Evidence: Score 0.30, method: __init__
-2) app/core/streaming_guard.py:23 — app.core.streaming_guard.SinglePassStream.__aiter__ (score 0.30)
-   Evidence: Score 0.30, method: __aiter__
-3) app/core/streaming_guard.py:13 — app.core.streaming_guard.SinglePassStream (score 0.26)
-   Evidence: Score 0.26, Wraps an async generator to ensure it's only iterated once.
+1) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.32)
+   Evidence: Score 0.32, method: __init__
+2) app/core/streaming_guard.py:23 — app.core.streaming_guard.SinglePassStream.__aiter__ (score 0.32)
+   Evidence: Score 0.32, method: __aiter__
+3) app/core/streaming_guard.py:13 — app.core.streaming_guard.SinglePassStream (score 0.28)
+   Evidence: Score 0.28, Wraps an async generator to ensure it's only iterated once.
 Raises RuntimeError ...
-4) app/models/cassazione_data.py:209 — app.models.cassazione_data.Citation.is_law_citation (score 0.25)
-   Evidence: Score 0.25, Check if this is a citation to law.
-5) app/models/cassazione_data.py:213 — app.models.cassazione_data.Citation.is_decision_citation (score 0.25)
-   Evidence: Score 0.25, Check if this is a citation to another decision.
+4) app/models/cassazione_data.py:209 — app.models.cassazione_data.Citation.is_law_citation (score 0.26)
+   Evidence: Score 0.26, Check if this is a citation to law.
+5) app/models/cassazione_data.py:213 — app.models.cassazione_data.Citation.is_decision_citation (score 0.26)
+   Evidence: Score 0.26, Check if this is a citation to another decision.
 
 Notes:
 - Implementation exists but may not be wired correctly

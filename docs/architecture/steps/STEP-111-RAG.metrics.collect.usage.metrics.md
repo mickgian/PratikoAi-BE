@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: 🔌  |  Confidence: 0.33
 
 Top candidates:
-1) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.31)
-   Evidence: Score 0.31, Set up Prometheus metrics middleware and endpoints.
+1) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.33)
+   Evidence: Score 0.33, Set up Prometheus metrics middleware and endpoints.
 
 Args:
     app: FastAPI appl...
-2) app/core/monitoring/metrics.py:310 — app.core.monitoring.metrics.initialize_metrics (score 0.30)
-   Evidence: Score 0.30, Initialize metrics with system information and default values.
-3) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.30)
-   Evidence: Score 0.30, Update system-level metrics like memory and CPU usage.
-4) app/core/monitoring/metrics.py:376 — app.core.monitoring.metrics.get_registry (score 0.30)
-   Evidence: Score 0.30, Get the Prometheus registry for metrics export.
-5) app/core/monitoring/metrics.py:381 — app.core.monitoring.metrics.get_metrics_content (score 0.30)
-   Evidence: Score 0.30, Get metrics in Prometheus format.
+2) app/core/monitoring/metrics.py:310 — app.core.monitoring.metrics.initialize_metrics (score 0.32)
+   Evidence: Score 0.32, Initialize metrics with system information and default values.
+3) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.32)
+   Evidence: Score 0.32, Update system-level metrics like memory and CPU usage.
+4) app/core/monitoring/metrics.py:376 — app.core.monitoring.metrics.get_registry (score 0.32)
+   Evidence: Score 0.32, Get the Prometheus registry for metrics export.
+5) app/core/monitoring/metrics.py:381 — app.core.monitoring.metrics.get_metrics_content (score 0.32)
+   Evidence: Score 0.32, Get metrics in Prometheus format.
 
 Notes:
 - Implementation exists but may not be wired correctly

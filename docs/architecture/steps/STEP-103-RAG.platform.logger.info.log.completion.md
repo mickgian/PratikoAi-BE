@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.23
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) app/core/privacy/gdpr.py:331 — app.core.privacy.gdpr.AuditLogger.__init__ (score 0.23)
-   Evidence: Score 0.23, Initialize audit logger.
-2) app/core/privacy/gdpr.py:335 — app.core.privacy.gdpr.AuditLogger.log_consent_event (score 0.23)
-   Evidence: Score 0.23, Log a consent-related event.
-3) app/core/privacy/gdpr.py:346 — app.core.privacy.gdpr.AuditLogger.log_processing_event (score 0.23)
-   Evidence: Score 0.23, Log a data processing event.
-4) app/core/privacy/gdpr.py:357 — app.core.privacy.gdpr.AuditLogger.log_access_event (score 0.23)
-   Evidence: Score 0.23, Log a data access event.
-5) app/core/privacy/gdpr.py:368 — app.core.privacy.gdpr.AuditLogger.log_deletion_event (score 0.23)
-   Evidence: Score 0.23, Log a data deletion event.
+1) app/core/privacy/gdpr.py:331 — app.core.privacy.gdpr.AuditLogger.__init__ (score 0.25)
+   Evidence: Score 0.25, Initialize audit logger.
+2) app/core/privacy/gdpr.py:335 — app.core.privacy.gdpr.AuditLogger.log_consent_event (score 0.25)
+   Evidence: Score 0.25, Log a consent-related event.
+3) app/core/privacy/gdpr.py:346 — app.core.privacy.gdpr.AuditLogger.log_processing_event (score 0.25)
+   Evidence: Score 0.25, Log a data processing event.
+4) app/core/privacy/gdpr.py:357 — app.core.privacy.gdpr.AuditLogger.log_access_event (score 0.25)
+   Evidence: Score 0.25, Log a data access event.
+5) app/core/privacy/gdpr.py:368 — app.core.privacy.gdpr.AuditLogger.log_deletion_event (score 0.25)
+   Evidence: Score 0.25, Log a data deletion event.
 
 Notes:
 - Weak or missing implementation

@@ -53,13 +53,13 @@ Args:
 
 Args:
 ...
-4) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)
-   Evidence: Score 0.34, Track domain-action classification usage and metrics.
+4) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.33)
+   Evidence: Score 0.33, Track domain-action classification usage and metrics.
 
 Args:
     domain: The cla...
-5) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.34)
-   Evidence: Score 0.34, Select optimal LLM provider based on domain-action requirements
+5) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.32)
+   Evidence: Score 0.32, Select optimal LLM provider based on domain-action requirements
 
 Notes:
 - Implementation exists but may not be wired correctly

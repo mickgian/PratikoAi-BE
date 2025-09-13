@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.30)
-   Evidence: Score 0.30, Convert internal SearchResponse to API model.
-2) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.30)
-   Evidence: Score 0.30, Analyze distribution of precedent values in decisions.
-3) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.30)
-   Evidence: Score 0.30, Analyze temporal distribution of decisions.
-4) app/api/v1/data_sources.py:1384 — app.api.v1.data_sources._count_legal_areas (score 0.30)
-   Evidence: Score 0.30, Count legal areas in principles.
-5) app/api/v1/data_sources.py:1393 — app.api.v1.data_sources._count_precedent_strength (score 0.30)
-   Evidence: Score 0.30, Count precedent strength in principles.
+1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.32)
+   Evidence: Score 0.32, Convert internal SearchResponse to API model.
+2) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.32)
+   Evidence: Score 0.32, Analyze distribution of precedent values in decisions.
+3) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.32)
+   Evidence: Score 0.32, Analyze temporal distribution of decisions.
+4) app/api/v1/data_sources.py:1384 — app.api.v1.data_sources._count_legal_areas (score 0.32)
+   Evidence: Score 0.32, Count legal areas in principles.
+5) app/api/v1/data_sources.py:1393 — app.api.v1.data_sources._count_precedent_strength (score 0.32)
+   Evidence: Score 0.32, Count precedent strength in principles.
 
 Notes:
 - Implementation exists but may not be wired correctly

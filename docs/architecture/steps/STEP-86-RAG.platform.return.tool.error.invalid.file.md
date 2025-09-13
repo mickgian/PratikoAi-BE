@@ -36,23 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.15
+Status: ❌  |  Confidence: 0.16
 
 Top candidates:
-1) app/core/langgraph/tools/__init__.py:1 — app.core.langgraph.tools.__init__ (score 0.15)
-   Evidence: Score 0.15, LangGraph tools for enhanced language model capabilities.
+1) app/core/langgraph/tools/__init__.py:1 — app.core.langgraph.tools.__init__ (score 0.16)
+   Evidence: Score 0.16, LangGraph tools for enhanced language model capabilities.
 
 This package contains...
-2) app/core/langgraph/tools/ccnl_tool.py:1 — app.core.langgraph.tools.ccnl_tool (score 0.15)
-   Evidence: Score 0.15, CCNL Integration Tool for LangGraph.
+2) app/core/langgraph/tools/ccnl_tool.py:1 — app.core.langgraph.tools.ccnl_tool (score 0.16)
+   Evidence: Score 0.16, CCNL Integration Tool for LangGraph.
 
 This tool enables the LLM to access Italia...
-3) app/core/langgraph/tools/ccnl_tool.py:29 — app.core.langgraph.tools.ccnl_tool.CCNLQueryInput (score 0.15)
-   Evidence: Score 0.15, Input schema for CCNL queries.
-4) app/core/langgraph/tools/ccnl_tool.py:64 — app.core.langgraph.tools.ccnl_tool.CCNLTool (score 0.15)
-   Evidence: Score 0.15, LangGraph tool for accessing CCNL (Italian Collective Labor Agreements) data.
-5) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.15)
-   Evidence: Score 0.15, method: __init__
+3) app/core/langgraph/tools/ccnl_tool.py:29 — app.core.langgraph.tools.ccnl_tool.CCNLQueryInput (score 0.16)
+   Evidence: Score 0.16, Input schema for CCNL queries.
+4) app/core/langgraph/tools/ccnl_tool.py:64 — app.core.langgraph.tools.ccnl_tool.CCNLTool (score 0.16)
+   Evidence: Score 0.16, LangGraph tool for accessing CCNL (Italian Collective Labor Agreements) data.
+5) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.16)
+   Evidence: Score 0.16, method: __init__
 
 Notes:
 - Weak or missing implementation

@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) version-management/validation/contract_validator.py:75 — version-management.validation.contract_validator.APIContractValidator.__init__ (score 0.30)
-   Evidence: Score 0.30, method: __init__
-2) version-management/validation/contract_validator.py:78 — version-management.validation.contract_validator.APIContractValidator._load_breaking_change_rules (score 0.30)
-   Evidence: Score 0.30, Load rules for detecting breaking changes.
-3) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.30)
-   Evidence: Score 0.30, Convert APIContract to OpenAPI specification.
-4) version-management/validation/contract_validator.py:633 — version-management.validation.contract_validator.APIContractValidator._generate_summary (score 0.30)
-   Evidence: Score 0.30, Generate summary statistics.
-5) version-management/validation/contract_validator.py:728 — version-management.validation.contract_validator.APIContractValidator._generate_test_data (score 0.30)
-   Evidence: Score 0.30, Generate test data based on JSON schema.
+1) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.35)
+   Evidence: Score 0.35, Convert APIContract to OpenAPI specification.
+2) version-management/validation/contract_validator.py:75 — version-management.validation.contract_validator.APIContractValidator.__init__ (score 0.32)
+   Evidence: Score 0.32, method: __init__
+3) version-management/validation/contract_validator.py:78 — version-management.validation.contract_validator.APIContractValidator._load_breaking_change_rules (score 0.32)
+   Evidence: Score 0.32, Load rules for detecting breaking changes.
+4) version-management/validation/contract_validator.py:633 — version-management.validation.contract_validator.APIContractValidator._generate_summary (score 0.32)
+   Evidence: Score 0.32, Generate summary statistics.
+5) version-management/validation/contract_validator.py:728 — version-management.validation.contract_validator.APIContractValidator._generate_test_data (score 0.32)
+   Evidence: Score 0.32, Generate test data based on JSON schema.
 
 Notes:
 - Implementation exists but may not be wired correctly

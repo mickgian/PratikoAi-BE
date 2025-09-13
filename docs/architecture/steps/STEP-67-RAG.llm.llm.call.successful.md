@@ -36,29 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.30)
-   Evidence: Score 0.30, Get the global LLM factory instance.
+1) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.32)
+   Evidence: Score 0.32, Get the global LLM factory instance.
 
 Returns:
     LLM factory instance
-2) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.30)
-   Evidence: Score 0.30, Convenience function to get an optimal LLM provider.
+2) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.32)
+   Evidence: Score 0.32, Convenience function to get an optimal LLM provider.
 
 Args:
     messages: List o...
-3) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.30)
-   Evidence: Score 0.30, Initialize the LLM provider.
+3) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.32)
+   Evidence: Score 0.32, Initialize the LLM provider.
 
 Args:
     api_key: API key for the provider
     mo...
-4) app/core/llm/base.py:75 — app.core.llm.base.LLMProvider.provider_type (score 0.30)
-   Evidence: Score 0.30, Get the provider type.
-5) app/core/llm/base.py:81 — app.core.llm.base.LLMProvider.supported_models (score 0.30)
-   Evidence: Score 0.30, Get supported models and their cost information.
+4) app/core/llm/base.py:75 — app.core.llm.base.LLMProvider.provider_type (score 0.32)
+   Evidence: Score 0.32, Get the provider type.
+5) app/core/llm/base.py:81 — app.core.llm.base.LLMProvider.supported_models (score 0.32)
+   Evidence: Score 0.32, Get supported models and their cost information.
 
 Notes:
 - Implementation exists but may not be wired correctly

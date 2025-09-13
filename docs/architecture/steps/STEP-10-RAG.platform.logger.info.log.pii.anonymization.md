@@ -36,33 +36,33 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) app/utils/sanitization.py:14 — app.utils.sanitization.sanitize_string (score 0.24)
-   Evidence: Score 0.24, Sanitize a string to prevent XSS and other injection attacks.
+1) app/utils/sanitization.py:14 — app.utils.sanitization.sanitize_string (score 0.25)
+   Evidence: Score 0.25, Sanitize a string to prevent XSS and other injection attacks.
 
 Args:
     value: ...
-2) app/utils/sanitization.py:39 — app.utils.sanitization.sanitize_email (score 0.24)
-   Evidence: Score 0.24, Sanitize an email address.
+2) app/utils/sanitization.py:39 — app.utils.sanitization.sanitize_email (score 0.25)
+   Evidence: Score 0.25, Sanitize an email address.
 
 Args:
     email: The email address to sanitize
 
 Retu...
-3) app/utils/sanitization.py:58 — app.utils.sanitization.sanitize_dict (score 0.24)
-   Evidence: Score 0.24, Recursively sanitize all string values in a dictionary.
+3) app/utils/sanitization.py:58 — app.utils.sanitization.sanitize_dict (score 0.25)
+   Evidence: Score 0.25, Recursively sanitize all string values in a dictionary.
 
 Args:
     data: The dic...
-4) app/utils/sanitization.py:80 — app.utils.sanitization.sanitize_list (score 0.24)
-   Evidence: Score 0.24, Recursively sanitize all string values in a list.
+4) app/utils/sanitization.py:80 — app.utils.sanitization.sanitize_list (score 0.25)
+   Evidence: Score 0.25, Recursively sanitize all string values in a list.
 
 Args:
     data: The list to s...
-5) app/utils/sanitization.py:102 — app.utils.sanitization.validate_password_strength (score 0.24)
-   Evidence: Score 0.24, Validate password strength.
+5) app/utils/sanitization.py:102 — app.utils.sanitization.validate_password_strength (score 0.25)
+   Evidence: Score 0.25, Validate password strength.
 
 Args:
     password: The password to validate

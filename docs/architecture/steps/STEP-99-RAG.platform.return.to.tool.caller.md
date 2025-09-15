@@ -36,19 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.19
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/services/vector_providers/local_provider.py:199 — app.services.vector_providers.local_provider.LocalVectorProvider.clear (score 0.19)
-   Evidence: Score 0.19, Clear all vectors from local storage.
-2) app/services/ccnl_update_service.py:73 — app.services.ccnl_update_service.CCNLAlert.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-3) app/services/ccnl_service.py:115 — app.services.ccnl_service.CCNLSearchResult.has_results (score 0.18)
-   Evidence: Score 0.18, Check if search returned any results.
-4) feature-flags/admin/web_interface.py:71 — feature-flags.admin.web_interface.ConnectionManager.__init__ (score 0.18)
-   Evidence: Score 0.18, method: __init__
-5) feature-flags/admin/web_interface.py:78 — feature-flags.admin.web_interface.ConnectionManager.disconnect (score 0.18)
-   Evidence: Score 0.18, method: disconnect
+1) evals/helpers.py:129 — evals.helpers.process_trace_results (score 0.26)
+   Evidence: Score 0.26, Process results for a single trace.
+
+Args:
+    report: The report dictionary.
+  ...
+2) app/services/hybrid_search_engine.py:406 — app.services.hybrid_search_engine.HybridSearchEngine._merge_results (score 0.26)
+   Evidence: Score 0.26, Merge and deduplicate keyword and vector results
+3) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.25)
+   Evidence: Score 0.25, method: __init__
+4) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.25)
+   Evidence: Score 0.25, Execute CCNL query (synchronous version).
+5) app/services/ccnl_service.py:115 — app.services.ccnl_service.CCNLSearchResult.has_results (score 0.25)
+   Evidence: Score 0.25, Check if search returned any results.
 
 Notes:
 - Weak or missing implementation

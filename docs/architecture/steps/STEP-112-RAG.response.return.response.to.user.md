@@ -36,34 +36,36 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/models/user.py:20 — app.models.user.User (score 0.27)
+1) app/schemas/auth.py:102 — app.schemas.auth.UserResponse (score 0.31)
+   Evidence: Score 0.31, Response model for user operations.
+
+Attributes:
+    id: User's ID
+    email: Us...
+2) app/schemas/auth.py:205 — app.schemas.auth.EnhancedUserResponse (score 0.30)
+   Evidence: Score 0.30, Enhanced user response model that includes OAuth provider information.
+
+This ext...
+3) app/api/v1/gdpr_cleanup.py:64 — app.api.v1.gdpr_cleanup.UserDeletionResponse (score 0.29)
+   Evidence: Score 0.29, User data deletion response
+4) app/models/user.py:20 — app.models.user.User (score 0.27)
    Evidence: Score 0.27, User model for storing user accounts.
 
-    Attributes:
-        id: The primary k...
-2) app/models/user.py:58 — app.models.user.User.verify_password (score 0.25)
-   Evidence: Score 0.25, Verify if the provided password matches the hash.
-3) app/models/user.py:63 — app.models.user.User.hash_password (score 0.25)
-   Evidence: Score 0.25, Hash a password using bcrypt.
-4) app/models/user.py:68 — app.models.user.User.set_refresh_token_hash (score 0.25)
-   Evidence: Score 0.25, Set the hash of the refresh token.
-
-Stores a bcrypt hash of the refresh token fo...
-5) app/models/user.py:80 — app.models.user.User.verify_refresh_token (score 0.25)
-   Evidence: Score 0.25, Verify if the provided refresh token matches the stored hash.
-
-Args:
-    refresh...
+Attributes:
+    id: The primary key
+    e...
+5) app/models/encrypted_user.py:28 — app.models.encrypted_user.EncryptedUser (score 0.27)
+   Evidence: Score 0.27, Enhanced User model with encrypted PII fields for Italian data protection compli...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create startEnd implementation for End
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

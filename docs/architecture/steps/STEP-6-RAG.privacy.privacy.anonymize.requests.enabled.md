@@ -36,25 +36,21 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.39
+Status: 🔌  |  Confidence: 0.48
 
 Top candidates:
-1) app/core/privacy/__init__.py:1 — app.core.privacy.__init__ (score 0.39)
-   Evidence: Score 0.39, Privacy and GDPR compliance utilities.
-2) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.35)
-   Evidence: Score 0.35, Anonymize user data for GDPR "right to be forgotten" compliance.
+1) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.48)
+   Evidence: Score 0.48, Anonymize PII in text while preserving structure.
+2) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.47)
+   Evidence: Score 0.47, Anonymize PII in structured data (dictionaries).
+3) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.46)
+   Evidence: Score 0.46, Anonymize user data for GDPR "right to be forgotten" compliance.
 
 Replaces PII w...
-3) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.32)
-   Evidence: Score 0.32, Validate PII type string.
-4) app/api/v1/privacy.py:1 — app.api.v1.privacy (score 0.31)
-   Evidence: Score 0.31, Privacy and GDPR compliance API endpoints.
-
-This module provides endpoints for p...
-5) app/schemas/privacy.py:1 — app.schemas.privacy (score 0.31)
-   Evidence: Score 0.31, Privacy-related schemas and data models.
-
-This module defines Pydantic models fo...
+4) app/core/privacy/gdpr.py:465 — app.core.privacy.gdpr.GDPRCompliance.__init__ (score 0.42)
+   Evidence: Score 0.42, Initialize GDPR compliance system.
+5) app/core/privacy/anonymizer.py:164 — app.core.privacy.anonymizer.PIIAnonymizer.detect_pii (score 0.41)
+   Evidence: Score 0.41, Detect PII in text and return matches.
 
 Notes:
 - Implementation exists but may not be wired correctly

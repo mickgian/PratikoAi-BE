@@ -36,27 +36,33 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.50
+Status: 🔌  |  Confidence: 0.55
 
 Top candidates:
-1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.50)
-   Evidence: Score 0.50, Initialize the cache service.
-2) app/services/cache.py:119 — app.services.cache.CacheService._generate_conversation_key (score 0.50)
-   Evidence: Score 0.50, Generate cache key for conversation history.
+1) app/core/middleware/performance_middleware.py:416 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_hit (score 0.55)
+   Evidence: Score 0.55, Record a cache hit.
 
 Args:
-    session_id: Unique sessi...
-3) app/services/cache.py:130 — app.services.cache.CacheService._generate_query_key (score 0.50)
-   Evidence: Score 0.50, Generate cache key for LLM query response.
+    cache_key: Cache key that was hit
+    cache_type:...
+2) app/core/middleware/performance_middleware.py:442 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_miss (score 0.51)
+   Evidence: Score 0.51, Record a cache miss.
 
 Args:
-    query_hash: Hash of the qu...
-4) app/services/cache.py:27 — app.services.cache.CacheService (score 0.46)
-   Evidence: Score 0.46, Redis-based caching service for LLM responses and conversations.
-5) app/services/cache.py:1 — app.services.cache (score 0.45)
-   Evidence: Score 0.45, Redis-based caching service for LLM responses and conversations.
+    cache_key: Cache key that was missed
+    cache_t...
+3) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.51)
+   Evidence: Score 0.51, Decorator to cache conversation history.
 
-This module pr...
+Args:
+    ttl: Time to live in seconds...
+4) app/core/decorators/cache.py:190 — app.core.decorators.cache.cache_result (score 0.51)
+   Evidence: Score 0.51, Generic caching decorator for any function result.
+
+Args:
+    key_func: Function...
+5) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.51)
+   Evidence: Score 0.51, Initialize the cache service.
 
 Notes:
 - Implementation exists but may not be wired correctly

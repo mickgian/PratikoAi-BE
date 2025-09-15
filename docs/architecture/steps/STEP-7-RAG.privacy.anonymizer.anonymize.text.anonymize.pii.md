@@ -36,31 +36,31 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.39
+Status: 🟡  |  Confidence: 0.56
 
 Top candidates:
-1) app/core/privacy/__init__.py:1 — app.core.privacy.__init__ (score 0.39)
-   Evidence: Score 0.39, Privacy and GDPR compliance utilities.
-2) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.36)
-   Evidence: Score 0.36, Anonymize user data for GDPR "right to be forgotten" compliance.
+1) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.56)
+   Evidence: Score 0.56, Anonymize PII in text while preserving structure.
+2) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.51)
+   Evidence: Score 0.51, Anonymize PII in structured data (dictionaries).
+3) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.46)
+   Evidence: Score 0.46, Anonymize user data for GDPR "right to be forgotten" compliance.
 
 Replaces PII w...
-3) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.32)
-   Evidence: Score 0.32, Validate PII type string.
-4) app/core/security/audit_logger.py:454 — app.core.security.audit_logger.SecurityAuditLogger._anonymize_user_id (score 0.31)
-   Evidence: Score 0.31, Anonymize user ID for privacy.
-5) app/api/v1/privacy.py:1 — app.api.v1.privacy (score 0.31)
-   Evidence: Score 0.31, Privacy and GDPR compliance API endpoints.
+4) app/core/privacy/anonymizer.py:164 — app.core.privacy.anonymizer.PIIAnonymizer.detect_pii (score 0.45)
+   Evidence: Score 0.45, Detect PII in text and return matches.
+5) app/core/privacy/anonymizer.py:1 — app.core.privacy.anonymizer (score 0.43)
+   Evidence: Score 0.43, PII detection and anonymization utilities for GDPR compliance.
 
-This module provides endpoints for p...
+This module prov...
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
+- Partial implementation identified
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Complete partial implementation
+- Add missing error handling
+- Expand test coverage
+- Add performance benchmarks if needed
 - Test PII detection and anonymization
 <!-- AUTO-AUDIT:END -->

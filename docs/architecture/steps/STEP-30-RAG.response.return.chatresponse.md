@@ -36,22 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/schemas/chat.py:119 — app.schemas.chat.ChatResponse (score 0.24)
-   Evidence: Score 0.24, Response model for chat endpoint.
+1) app/schemas/chat.py:95 — app.schemas.chat.ChatResponse (score 0.29)
+   Evidence: Score 0.29, Response model for chat endpoint.
 
 Attributes:
     messages: List of messages in...
-2) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.19)
-   Evidence: Score 0.19, Add timestamp if not present.
-3) failure-recovery-system/cicd_integration.py:1042 — failure-recovery-system.cicd_integration.CICDIntegrationManager._create_error_response (score 0.18)
-   Evidence: Score 0.18, Create an error recovery response.
-4) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-5) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
+2) app/schemas/chat.py:70 — app.schemas.chat.ResponseMetadata (score 0.28)
+   Evidence: Score 0.28, Response metadata for debugging and monitoring.
+3) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.28)
+   Evidence: Score 0.28, Response model for streaming chat endpoint.
+
+Attributes:
+    content: The conten...
+4) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
+   Evidence: Score 0.26, Convert internal SearchResponse to API model.
+5) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.26)
+   Evidence: Score 0.26, Decorator to cache LLM responses based on messages and model.
+
+Args:
+    ttl: Ti...
 
 Notes:
 - Weak or missing implementation

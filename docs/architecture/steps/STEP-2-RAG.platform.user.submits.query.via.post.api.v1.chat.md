@@ -36,22 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/models/user.py:20 — app.models.user.User (score 0.26)
-   Evidence: Score 0.26, User model for storing user accounts.
-
-    Attributes:
-        id: The primary k...
-2) app/api/v1/ccnl_calculations.py:31 — app.api.v1.ccnl_calculations.CompensationRequest (score 0.25)
-   Evidence: Score 0.25, Request model for compensation calculation.
-3) app/api/v1/ccnl_calculations.py:44 — app.api.v1.ccnl_calculations.LeaveBalanceRequest (score 0.25)
-   Evidence: Score 0.25, Request model for leave balance calculation.
-4) app/api/v1/ccnl_calculations.py:52 — app.api.v1.ccnl_calculations.SeniorityBenefitsRequest (score 0.25)
-   Evidence: Score 0.25, Request model for seniority benefits calculation.
-5) app/api/v1/ccnl_calculations.py:60 — app.api.v1.ccnl_calculations.ComplexQueryRequest (score 0.25)
-   Evidence: Score 0.25, Request model for complex CCNL queries.
+1) app/api/v1/performance.py:25 — app.api.v1.performance.OptimizeQueryRequest (score 0.27)
+   Evidence: Score 0.27, Request to optimize a database query.
+2) app/models/encrypted_user.py:278 — app.models.encrypted_user.EncryptedQueryLog (score 0.27)
+   Evidence: Score 0.27, Query log model with encrypted query content for privacy compliance.
+3) app/schemas/chat.py:57 — app.schemas.chat.QueryClassificationMetadata (score 0.27)
+   Evidence: Score 0.27, Metadata about query classification for debugging and monitoring.
+4) app/api/v1/ccnl_calculations.py:60 — app.api.v1.ccnl_calculations.ComplexQueryRequest (score 0.27)
+   Evidence: Score 0.27, Request model for complex CCNL queries.
+5) app/api/v1/gdpr_cleanup.py:64 — app.api.v1.gdpr_cleanup.UserDeletionResponse (score 0.27)
+   Evidence: Score 0.27, User data deletion response
 
 Notes:
 - Weak or missing implementation

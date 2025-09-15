@@ -36,40 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: 🔌  |  Confidence: 0.42
 
 Top candidates:
-1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.29)
-   Evidence: Score 0.29, Track domain-action classification usage and metrics.
-    
-    Args:
-        dom...
-2) app/core/langgraph/graph.py:346 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.28)
-   Evidence: Score 0.28, Get routing strategy and cost limit based on domain-action classification.
-
-Args...
-3) app/core/langgraph/graph.py:401 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.28)
-   Evidence: Score 0.28, Get the appropriate system prompt based on classification.
-
-Args:
-    messages: ...
-4) app/core/langgraph/graph.py:797 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.28)
-   Evidence: Score 0.28, Determine if query needs tools/complex workflow based on classification.
+1) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.42)
+   Evidence: Score 0.42, Calculate confidence scores for each domain
+2) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.42)
+   Evidence: Score 0.42, Calculate confidence scores for each action
+3) app/services/domain_action_classifier.py:530 — app.services.domain_action_classifier.DomainActionClassifier._extract_document_type (score 0.41)
+   Evidence: Score 0.41, Extract document type for document generation actions
+4) app/services/domain_prompt_templates.py:20 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
+   Evidence: Score 0.37, Load all domain-action prompt template combinations
+5) app/services/domain_prompt_templates.py:346 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.37)
+   Evidence: Score 0.37, Get the appropriate prompt for domain-action combination.
 
 Args:
-...
-5) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.28)
-   Evidence: Score 0.28, Extract parameters for CCNL tool from user query and classification.
-
-Args:
-    ...
+    domain: Pro...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for DocClassify
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

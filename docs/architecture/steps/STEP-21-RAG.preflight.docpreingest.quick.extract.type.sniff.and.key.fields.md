@@ -36,19 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.18
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/models/cassazione_data.py:261 — app.models.cassazione_data.ScrapingResult.success_rate (score 0.18)
-   Evidence: Score 0.18, Calculate success rate.
-2) app/models/cassazione_data.py:268 — app.models.cassazione_data.ScrapingResult.processing_rate (score 0.18)
-   Evidence: Score 0.18, Calculate processing rate.
-3) app/models/cassazione_data.py:275 — app.models.cassazione_data.ScrapingResult.duration_minutes (score 0.18)
-   Evidence: Score 0.18, Get duration in minutes.
-4) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.18)
-   Evidence: Score 0.18, Validate the result.
-5) app/models/cassazione_data.py:288 — app.models.cassazione_data.ScrapingResult.combine (score 0.18)
-   Evidence: Score 0.18, Combine multiple scraping results.
+1) app/services/domain_action_classifier.py:530 — app.services.domain_action_classifier.DomainActionClassifier._extract_document_type (score 0.26)
+   Evidence: Score 0.26, Extract document type for document generation actions
+2) app/services/scrapers/cassazione_scraper.py:443 — app.services.scrapers.cassazione_scraper.CassazioneScraper._extract_decision_type (score 0.26)
+   Evidence: Score 0.26, Extract decision type.
+3) app/services/legal_document_analyzer.py:950 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_key_clauses (score 0.26)
+   Evidence: Score 0.26, Extract important contract clauses
+4) app/services/rss_feed_monitor.py:388 — app.services.rss_feed_monitor.RSSFeedMonitor._extract_agenzia_entrate_type (score 0.26)
+   Evidence: Score 0.26, Extract document type from Agenzia Entrate feed URL.
+
+Args:
+    feed_url: RSS fe...
+5) app/ragsteps/golden/step_20_rag_golden_golden_fast_path_eligible_no_doc_or_quick_check_safe.py:18 — app.ragsteps.golden.step_20_rag_golden_golden_fast_path_eligible_no_doc_or_quick_check_safe.step_20_rag_golden_golden_fast_path_eligible_no_doc_or_quick_check_safe (score 0.26)
+   Evidence: Score 0.26, RAG STEP 20 — Golden fast-path eligible? no doc or quick check safe
+
+Node: Golde...
 
 Notes:
 - Weak or missing implementation

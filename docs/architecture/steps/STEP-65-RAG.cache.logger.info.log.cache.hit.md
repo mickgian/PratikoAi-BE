@@ -36,33 +36,36 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.49
+Status: 🔌  |  Confidence: 0.53
 
 Top candidates:
-1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.49)
-   Evidence: Score 0.49, Initialize the cache service.
-2) app/services/cache.py:119 — app.services.cache.CacheService._generate_conversation_key (score 0.49)
-   Evidence: Score 0.49, Generate cache key for conversation history.
-
-Args:
-    session_id: Unique sessi...
-3) app/services/cache.py:130 — app.services.cache.CacheService._generate_query_key (score 0.49)
-   Evidence: Score 0.49, Generate cache key for LLM query response.
-
-Args:
-    query_hash: Hash of the qu...
-4) app/services/cache.py:27 — app.services.cache.CacheService (score 0.47)
-   Evidence: Score 0.47, Redis-based caching service for LLM responses and conversations.
-5) app/core/middleware/performance_middleware.py:416 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_hit (score 0.43)
-   Evidence: Score 0.43, Record a cache hit.
+1) app/core/middleware/performance_middleware.py:416 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_hit (score 0.53)
+   Evidence: Score 0.53, Record a cache hit.
 
 Args:
     cache_key: Cache key that was hit
     cache_type:...
+2) app/core/middleware/performance_middleware.py:442 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_miss (score 0.50)
+   Evidence: Score 0.50, Record a cache miss.
+
+Args:
+    cache_key: Cache key that was missed
+    cache_t...
+3) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.50)
+   Evidence: Score 0.50, Decorator to cache conversation history.
+
+Args:
+    ttl: Time to live in seconds...
+4) app/core/decorators/cache.py:190 — app.core.decorators.cache.cache_result (score 0.50)
+   Evidence: Score 0.50, Generic caching decorator for any function result.
+
+Args:
+    key_func: Function...
+5) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.50)
+   Evidence: Score 0.50, Initialize the cache service.
 
 Notes:
 - Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

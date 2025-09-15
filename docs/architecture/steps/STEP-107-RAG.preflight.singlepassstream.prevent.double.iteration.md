@@ -36,26 +36,33 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.20
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/models/cassazione_data.py:209 — app.models.cassazione_data.Citation.is_law_citation (score 0.20)
-   Evidence: Score 0.20, Check if this is a citation to law.
-2) app/models/cassazione_data.py:213 — app.models.cassazione_data.Citation.is_decision_citation (score 0.20)
-   Evidence: Score 0.20, Check if this is a citation to another decision.
-3) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.20)
-   Evidence: Score 0.20, Validate the citation.
-4) app/models/cassazione_data.py:222 — app.models.cassazione_data.Citation.extract_from_text (score 0.20)
-   Evidence: Score 0.20, Extract citations from decision text.
-5) app/core/performance/cdn_integration.py:69 — app.core.performance.cdn_integration.CDNManager.__init__ (score 0.19)
-   Evidence: Score 0.19, Initialize CDN manager.
+1) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.31)
+   Evidence: Score 0.31, method: __init__
+2) app/core/streaming_guard.py:23 — app.core.streaming_guard.SinglePassStream.__aiter__ (score 0.31)
+   Evidence: Score 0.31, method: __aiter__
+3) app/core/streaming_guard.py:13 — app.core.streaming_guard.SinglePassStream (score 0.28)
+   Evidence: Score 0.28, Wraps an async generator to ensure it's only iterated once.
+Raises RuntimeError ...
+4) app/services/validators/financial_validation_engine.py:302 — app.services.validators.financial_validation_engine.FinancialValidationEngine.execute_single_task (score 0.25)
+   Evidence: Score 0.25, Execute a single validation task.
+
+Args:
+    task: The validation task to execut...
+5) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.23)
+   Evidence: Score 0.23, Response model for streaming chat endpoint.
+
+Attributes:
+    content: The conten...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for SinglePass
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

@@ -36,24 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.20
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/core/security/request_signing.py:79 — app.core.security.request_signing.RequestSigner.verify_signature (score 0.20)
-   Evidence: Score 0.20, Verify request signature.
+1) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.27)
+   Evidence: Score 0.27, Generate a deterministic hash for query deduplication.
 
 Args:
-    method: HTTP method
-    path: Request path
-...
-2) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.20)
-   Evidence: Score 0.20, Add timestamp if not present.
-3) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.20)
-   Evidence: Score 0.20, method: __post_init__
-4) app/models/query.py:181 — app.models.query.QueryMetrics.success_rate (score 0.20)
-   Evidence: Score 0.20, Calculate success rate percentage.
-5) app/models/query.py:188 — app.models.query.QueryMetrics.failure_rate (score 0.20)
-   Evidence: Score 0.20, Calculate failure rate percentage.
+    messages: List...
+2) app/core/performance/database_optimizer.py:382 — app.core.performance.database_optimizer.DatabaseOptimizer._extract_table_from_query (score 0.27)
+   Evidence: Score 0.27, Extract primary table name from query.
+3) app/core/hash_gate.py:21 — app.core.hash_gate.HashGate.__init__ (score 0.25)
+   Evidence: Score 0.25, method: __init__
+4) app/models/user.py:55 — app.models.user.User.hash_password (score 0.25)
+   Evidence: Score 0.25, Hash a password using bcrypt.
+5) app/services/query_service.py:67 — app.services.query_service.QueryService.__init__ (score 0.25)
+   Evidence: Score 0.25, Initialize query service.
+
+Args:
+    db_session: Optional database session for q...
 
 Notes:
 - Weak or missing implementation

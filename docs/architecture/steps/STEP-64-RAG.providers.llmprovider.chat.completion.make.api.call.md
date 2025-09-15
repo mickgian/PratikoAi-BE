@@ -36,31 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.41
+Status: 🔌  |  Confidence: 0.48
 
 Top candidates:
-1) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.41)
-   Evidence: Score 0.41, Initialize the LLM provider.
+1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.48)
+   Evidence: Score 0.48, Route with failover logic - primary provider with fallbacks.
 
 Args:
-    api_key: API key for the provider
-    mo...
-2) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.40)
-   Evidence: Score 0.40, Main query router that integrates classification, prompt templates,
+    provider...
+2) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.47)
+   Evidence: Score 0.47, Select optimal LLM provider based on domain-action requirements
+3) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
+   Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
 context enri...
-3) app/core/llm/cost_calculator.py:141 — app.core.llm.cost_calculator.CostCalculator.calculate_cost_estimate (score 0.39)
-   Evidence: Score 0.39, Calculate cost estimate for a query with a specific provider.
-
-Args:
-    provide...
-4) app/core/llm/providers/anthropic_provider.py:29 — app.core.llm.providers.anthropic_provider.AnthropicProvider.__init__ (score 0.39)
-   Evidence: Score 0.39, Initialize Anthropic provider.
-
-Args:
-    api_key: Anthropic API key
-    model: ...
-5) app/core/llm/providers/anthropic_provider.py:53 — app.core.llm.providers.anthropic_provider.AnthropicProvider.provider_type (score 0.39)
-   Evidence: Score 0.39, Get the provider type.
+4) app/ragsteps/providers/step_64_rag_providers_llmprovider_chat_completion_make_api_call.py:1 — app.ragsteps.providers.step_64_rag_providers_llmprovider_chat_completion_make_api_call (score 0.45)
+   Evidence: Score 0.45, RAG STEP 64 — LLMProvider.chat_completion Make API call
+ID: RAG.providers.llmpro...
+5) app/ragsteps/providers/step_64_rag_providers_llmprovider_chat_completion_make_api_call.py:31 — app.ragsteps.providers.step_64_rag_providers_llmprovider_chat_completion_make_api_call.run (score 0.42)
+   Evidence: Score 0.42, Conformance adapter for STEP 64.
 
 Notes:
 - Implementation exists but may not be wired correctly

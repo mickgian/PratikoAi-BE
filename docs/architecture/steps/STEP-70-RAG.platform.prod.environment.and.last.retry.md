@@ -36,24 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.21
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/core/config.py:24 — app.core.config.Environment (score 0.21)
-   Evidence: Score 0.21, Application environment types.
-
-Defines the possible environments the applicatio...
-2) app/services/metrics_service.py:37 — app.services.metrics_service.Environment (score 0.21)
-   Evidence: Score 0.21, Environment enumeration.
-3) deployment-orchestration/orchestrator.py:56 — deployment-orchestration.orchestrator.Environment (score 0.21)
-   Evidence: Score 0.21, Environment enumeration.
-4) app/core/config.py:38 — app.core.config.get_environment (score 0.21)
-   Evidence: Score 0.21, Get the current environment.
+1) app/core/config.py:38 — app.core.config.get_environment (score 0.26)
+   Evidence: Score 0.26, Get the current environment.
 
 Returns:
     Environment: The current environment ...
-5) version-management/core/version_schema.py:54 — version-management.core.version_schema.Environment (score 0.21)
-   Evidence: Score 0.21, Deployment environments.
+2) load_testing/config.py:246 — load_testing.config.get_environment_config (score 0.26)
+   Evidence: Score 0.26, Get environment-specific configuration
+3) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
+   Evidence: Score 0.26, Check compatibility for a version deployment.
+4) app/core/config.py:304 — app.core.config.Settings.apply_environment_settings (score 0.25)
+   Evidence: Score 0.25, Apply environment-specific settings based on the current environment.
+5) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.25)
+   Evidence: Score 0.25, Check if this delta has been seen before.
+
+Args:
+    delta: The delta content to...
 
 Notes:
 - Weak or missing implementation

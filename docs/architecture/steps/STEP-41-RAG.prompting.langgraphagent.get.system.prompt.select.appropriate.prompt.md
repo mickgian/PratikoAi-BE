@@ -36,37 +36,37 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: 🔌  |  Confidence: 0.39
 
 Top candidates:
-1) app/core/langgraph/graph.py:401 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.28)
-   Evidence: Score 0.28, Get the appropriate system prompt based on classification.
+1) app/core/langgraph/graph.py:529 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.39)
+   Evidence: Score 0.39, Get the appropriate system prompt based on classification.
 
 Args:
     messages: ...
-2) app/core/langgraph/graph.py:64 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.25)
-   Evidence: Score 0.25, Initialize the LangGraph Agent with necessary components.
-3) app/core/langgraph/graph.py:330 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.25)
-   Evidence: Score 0.25, Get the LLM routing strategy from configuration.
+2) app/core/langgraph/graph.py:458 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
+   Evidence: Score 0.32, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-4) app/core/langgraph/graph.py:346 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.25)
-   Evidence: Score 0.25, Get routing strategy and cost limit based on domain-action classification.
-
-Args...
-5) app/core/langgraph/graph.py:463 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.25)
-   Evidence: Score 0.25, Get the optimal LLM provider for the given messages.
+3) app/core/langgraph/graph.py:591 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.32)
+   Evidence: Score 0.32, Get the optimal LLM provider for the given messages.
 
 Args:
     messages: List o...
+4) app/core/langgraph/graph.py:474 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
+   Evidence: Score 0.31, Get routing strategy and cost limit based on domain-action classification.
+
+Args...
+5) app/core/langgraph/graph.py:61 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
+   Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for SelectPrompt
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

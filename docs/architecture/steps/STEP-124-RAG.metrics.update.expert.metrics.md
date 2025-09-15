@@ -36,29 +36,32 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.27)
-   Evidence: Score 0.27, Set up Prometheus metrics middleware and endpoints.
+1) evals/helpers.py:92 — evals.helpers.update_success_metrics (score 0.32)
+   Evidence: Score 0.32, Update metrics for a successful evaluation.
 
-    Args:
-        app: Fast...
-2) app/core/monitoring/metrics.py:310 — app.core.monitoring.metrics.initialize_metrics (score 0.26)
-   Evidence: Score 0.26, Initialize metrics with system information and default values.
-3) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.26)
-   Evidence: Score 0.26, Update system-level metrics like memory and CPU usage.
-4) app/core/monitoring/metrics.py:376 — app.core.monitoring.metrics.get_registry (score 0.26)
-   Evidence: Score 0.26, Get the Prometheus registry for metrics export.
-5) app/core/monitoring/metrics.py:381 — app.core.monitoring.metrics.get_metrics_content (score 0.26)
-   Evidence: Score 0.26, Get metrics in Prometheus format.
+Args:
+    report: The report dictio...
+2) evals/helpers.py:114 — evals.helpers.update_failure_metrics (score 0.32)
+   Evidence: Score 0.32, Update metrics for a failed evaluation.
+
+Args:
+    report: The report dictionary...
+3) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.31)
+   Evidence: Score 0.31, Update system-level metrics like memory and CPU usage.
+4) app/core/monitoring/metrics.py:426 — app.core.monitoring.metrics.update_subscription_metrics (score 0.31)
+   Evidence: Score 0.31, Update subscription counts.
+5) app/core/monitoring/metrics.py:431 — app.core.monitoring.metrics.update_monthly_revenue (score 0.30)
+   Evidence: Score 0.30, Update monthly revenue.
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for UpdateExpertMetrics
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

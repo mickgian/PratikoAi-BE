@@ -36,33 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.19
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/core/security/request_signing.py:16 — app.core.security.request_signing.RequestSigner.__init__ (score 0.19)
-   Evidence: Score 0.19, Initialize request signer.
-2) app/core/security/request_signing.py:23 — app.core.security.request_signing.RequestSigner.generate_signature (score 0.19)
-   Evidence: Score 0.19, Generate HMAC signature for request.
+1) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.28)
+   Evidence: Score 0.28, method: __init__
+2) app/core/streaming_guard.py:23 — app.core.streaming_guard.SinglePassStream.__aiter__ (score 0.28)
+   Evidence: Score 0.28, method: __aiter__
+3) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
+   Evidence: Score 0.26, Check compatibility for a version deployment.
+4) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
+   Evidence: Score 0.26, Check if this delta has been seen before.
 
 Args:
-    method: HTTP method (GET, POST, ...
-3) app/core/security/request_signing.py:79 — app.core.security.request_signing.RequestSigner.verify_signature (score 0.19)
-   Evidence: Score 0.19, Verify request signature.
-
-Args:
-    method: HTTP method
-    path: Request path
-...
-4) app/core/security/request_signing.py:148 — app.core.security.request_signing.RequestSigner._is_timestamp_valid (score 0.19)
-   Evidence: Score 0.19, Check if timestamp is within acceptable range.
-
-Args:
-    timestamp_str: Unix ti...
-5) app/core/security/request_signing.py:229 — app.core.security.request_signing.RequestSigner.create_webhook_signature (score 0.19)
-   Evidence: Score 0.19, Create signature for webhook payloads (like Stripe).
-
-Args:
-    payload: Webhook...
+    delta: The delta content to...
+5) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.26)
+   Evidence: Score 0.26, Check if a file exists and return status.
 
 Notes:
 - Weak or missing implementation

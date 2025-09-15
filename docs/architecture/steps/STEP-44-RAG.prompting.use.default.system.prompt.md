@@ -36,26 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.21
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/models/user.py:58 — app.models.user.User.verify_password (score 0.21)
-   Evidence: Score 0.21, Verify if the provided password matches the hash.
-2) app/models/user.py:63 — app.models.user.User.hash_password (score 0.21)
-   Evidence: Score 0.21, Hash a password using bcrypt.
-3) app/models/user.py:68 — app.models.user.User.set_refresh_token_hash (score 0.21)
-   Evidence: Score 0.21, Set the hash of the refresh token.
-
-Stores a bcrypt hash of the refresh token fo...
-4) app/models/user.py:80 — app.models.user.User.verify_refresh_token (score 0.21)
-   Evidence: Score 0.21, Verify if the provided refresh token matches the stored hash.
+1) app/core/prompts/__init__.py:9 — app.core.prompts.__init__.load_system_prompt (score 0.28)
+   Evidence: Score 0.28, Load the system prompt from the file.
+2) app/services/italian_document_analyzer.py:189 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._build_system_prompt (score 0.28)
+   Evidence: Score 0.28, Build system prompt based on analysis type
+3) deployment-orchestration/notification_system.py:674 — deployment-orchestration.notification_system.NotificationManager.setup_default_rules (score 0.28)
+   Evidence: Score 0.28, Setup default notification rules.
+4) app/core/langgraph/graph.py:529 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.27)
+   Evidence: Score 0.27, Get the appropriate system prompt based on classification.
 
 Args:
-    refresh...
-5) app/models/user.py:93 — app.models.user.User.revoke_refresh_token (score 0.21)
-   Evidence: Score 0.21, Revoke the current refresh token by clearing its hash.
-
-This effectively invalid...
+    messages: ...
+5) app/services/italian_document_analyzer.py:239 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._build_comparison_system_prompt (score 0.27)
+   Evidence: Score 0.27, Build system prompt for document comparison
 
 Notes:
 - Weak or missing implementation

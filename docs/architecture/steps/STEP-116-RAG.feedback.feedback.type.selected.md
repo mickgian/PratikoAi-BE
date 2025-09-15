@@ -36,26 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
+Status: 🔌  |  Confidence: 0.49
 
 Top candidates:
-1) app/services/failure_pattern_analyzer.py:1 — app.services.failure_pattern_analyzer (score 0.33)
-   Evidence: Score 0.33, Failure Pattern Analyzer for Quality Analysis System.
+1) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.49)
+   Evidence: Score 0.49, Service for collecting and processing expert feedback on AI responses.
 
-Identifies and analyzes p...
-2) app/models/quality_analysis.py:1 — app.models.quality_analysis (score 0.32)
-   Evidence: Score 0.32, Database Models for Quality Analysis System with Expert Feedback Loop.
+Features...
+2) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.49)
+   Evidence: Score 0.49, Automatic Improvement Engine for Quality Analysis System.
 
-Defines ...
-3) app/services/failure_pattern_analyzer.py:39 — app.services.failure_pattern_analyzer.FailurePatternAnalyzer (score 0.31)
-   Evidence: Score 0.31, Advanced failure pattern analyzer for quality improvement.
+Automatically generat...
+3) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.45)
+   Evidence: Score 0.45, Expert Feedback Collection Service for Quality Analysis System.
 
-Features:
-- DBSCAN c...
-4) app/models/quality_analysis.py:27 — app.models.quality_analysis.FeedbackType (score 0.31)
-   Evidence: Score 0.31, Types of expert feedback
-5) app/services/failure_pattern_analyzer.py:273 — app.services.failure_pattern_analyzer.FailurePatternAnalyzer._categorize_feedback (score 0.29)
-   Evidence: Score 0.29, Categorize feedback by Italian categories
+Handles collect...
+4) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.45)
+   Evidence: Score 0.45, Validate feedback data structure and content
+5) app/services/automatic_improvement_engine.py:662 — app.services.automatic_improvement_engine.AutomaticImprovementEngine._initialize_improvement_strategies (score 0.43)
+   Evidence: Score 0.43, Initialize improvement strategies for different pattern types
 
 Notes:
 - Implementation exists but may not be wired correctly

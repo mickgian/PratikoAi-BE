@@ -36,32 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: 🔌  |  Confidence: 0.33
 
 Top candidates:
-1) app/services/italian_query_normalizer.py:239 — app.services.italian_query_normalizer.ItalianQueryNormalizer.normalize (score 0.25)
-   Evidence: Score 0.25, Normalize an Italian tax/legal query for improved cache hits.
-
-Args:
-    query: ...
-2) app/core/middleware/prometheus_middleware.py:74 — app.core.middleware.prometheus_middleware.PrometheusMiddleware._normalize_path (score 0.19)
-   Evidence: Score 0.19, Normalize path to reduce cardinality in metrics.
-
-Args:
-    path: Original reque...
-3) app/core/performance/database_optimizer.py:162 — app.core.performance.database_optimizer.DatabaseOptimizer._normalize_query (score 0.19)
-   Evidence: Score 0.19, Normalize query for consistent tracking.
-4) app/models/subscription.py:122 — app.models.subscription.SubscriptionPlan.iva_amount (score 0.19)
-   Evidence: Score 0.19, IVA amount in euros (22% of base price)
-5) app/services/ccnl_response_formatter.py:357 — app.services.ccnl_response_formatter.CCNLResponseFormatter._capitalize (score 0.19)
-   Evidence: Score 0.19, Capitalize text properly for Italian.
+1) app/services/atomic_facts_extractor.py:581 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_dates (score 0.33)
+   Evidence: Score 0.33, Extract dates, durations, and time-related facts from the query.
+2) app/services/atomic_facts_extractor.py:882 — app.services.atomic_facts_extractor.AtomicFactsExtractor._canonicalize_number (score 0.33)
+   Evidence: Score 0.33, Convert Italian number format to decimal.
+3) app/services/atomic_facts_extractor.py:911 — app.services.atomic_facts_extractor.AtomicFactsExtractor._canonicalize_date (score 0.33)
+   Evidence: Score 0.33, Convert Italian date format to ISO format (YYYY-MM-DD).
+4) app/services/atomic_facts_extractor.py:934 — app.services.atomic_facts_extractor.AtomicFactsExtractor._canonicalize_entity (score 0.33)
+   Evidence: Score 0.33, Canonicalize legal entity text.
+5) app/services/atomic_facts_extractor.py:461 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_monetary_amounts (score 0.32)
+   Evidence: Score 0.32, Extract monetary amounts and percentages from the query.
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for CanonicalizeFacts
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

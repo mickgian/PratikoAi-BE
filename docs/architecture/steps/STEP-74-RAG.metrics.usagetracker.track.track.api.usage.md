@@ -36,26 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
-   Evidence: Score 0.26, Convert internal SearchResponse to API model.
-2) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.26)
-   Evidence: Score 0.26, Analyze distribution of precedent values in decisions.
-3) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.26)
-   Evidence: Score 0.26, Analyze temporal distribution of decisions.
-4) app/api/v1/data_sources.py:1384 — app.api.v1.data_sources._count_legal_areas (score 0.26)
-   Evidence: Score 0.26, Count legal areas in principles.
-5) app/api/v1/data_sources.py:1393 — app.api.v1.data_sources._count_precedent_strength (score 0.26)
-   Evidence: Score 0.26, Count precedent strength in principles.
+1) app/services/usage_tracker.py:64 — app.services.usage_tracker.UsageTracker.__init__ (score 0.31)
+   Evidence: Score 0.31, Initialize the usage tracker.
+2) app/services/usage_tracker.py:61 — app.services.usage_tracker.UsageTracker (score 0.29)
+   Evidence: Score 0.29, Tracks and manages usage for cost control.
+3) app/core/monitoring/metrics.py:406 — app.core.monitoring.metrics.track_api_call (score 0.29)
+   Evidence: Score 0.29, Track API call by provider and status.
+4) app/core/monitoring/metrics.py:525 — app.core.monitoring.metrics.track_api_error (score 0.29)
+   Evidence: Score 0.29, Track categorized API error.
+5) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.29)
+   Evidence: Score 0.29, Track domain-action classification usage and metrics.
+
+Args:
+    domain: The cla...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for TrackUsage
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

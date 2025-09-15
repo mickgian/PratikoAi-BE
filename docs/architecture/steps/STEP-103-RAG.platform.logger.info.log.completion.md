@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.18
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/core/security/audit_logger.py:72 — app.core.security.audit_logger.SecurityAuditLogger.__init__ (score 0.18)
-   Evidence: Score 0.18, Initialize security audit logger.
-2) app/core/security/audit_logger.py:454 — app.core.security.audit_logger.SecurityAuditLogger._anonymize_user_id (score 0.18)
-   Evidence: Score 0.18, Anonymize user ID for privacy.
-3) app/core/security/audit_logger.py:459 — app.core.security.audit_logger.SecurityAuditLogger._anonymize_ip_address (score 0.18)
-   Evidence: Score 0.18, Anonymize IP address for privacy.
-4) app/core/security/audit_logger.py:484 — app.core.security.audit_logger.SecurityAuditLogger._get_gdpr_article (score 0.18)
-   Evidence: Score 0.18, Get GDPR article reference for action.
-5) feature-flags/ci_cd/github_actions.py:445 — feature-flags.ci_cd.github_actions.toggle (score 0.18)
-   Evidence: Score 0.18, Toggle a feature flag.
+1) app/core/privacy/gdpr.py:379 — app.core.privacy.gdpr.AuditLogger._log_event (score 0.28)
+   Evidence: Score 0.28, Log a GDPR audit event.
+2) app/core/privacy/gdpr.py:436 — app.core.privacy.gdpr.AuditLogger.export_audit_log (score 0.28)
+   Evidence: Score 0.28, Export audit log in specified format.
+3) app/core/privacy/gdpr.py:335 — app.core.privacy.gdpr.AuditLogger.log_consent_event (score 0.27)
+   Evidence: Score 0.27, Log a consent-related event.
+4) app/core/privacy/gdpr.py:346 — app.core.privacy.gdpr.AuditLogger.log_processing_event (score 0.27)
+   Evidence: Score 0.27, Log a data processing event.
+5) app/core/privacy/gdpr.py:357 — app.core.privacy.gdpr.AuditLogger.log_access_event (score 0.27)
+   Evidence: Score 0.27, Log a data access event.
 
 Notes:
 - Weak or missing implementation

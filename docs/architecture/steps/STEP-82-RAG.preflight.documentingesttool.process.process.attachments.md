@@ -36,22 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.18
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/models/cassazione_data.py:268 — app.models.cassazione_data.ScrapingResult.processing_rate (score 0.18)
-   Evidence: Score 0.18, Calculate processing rate.
-2) app/services/document_processing_service.py:36 — app.services.document_processing_service.DocumentProcessor.__init__ (score 0.18)
-   Evidence: Score 0.18, method: __init__
-3) app/services/document_processing_service.py:587 — app.services.document_processing_service.DocumentProcessor._parse_italian_number_safe (score 0.18)
-   Evidence: Score 0.18, Safe version of Italian number parsing for pandas apply
-4) app/services/document_processing_service.py:612 — app.services.document_processing_service.DocumentProcessor._get_document_storage_path (score 0.18)
-   Evidence: Score 0.18, Get file system path for stored document
-5) app/services/document_processor.py:23 — app.services.document_processor.DocumentProcessor.__init__ (score 0.18)
-   Evidence: Score 0.18, Initialize document processor.
-
-Args:
-    timeout: HTTP request timeout in secon...
+1) app/services/italian_document_analyzer.py:338 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._post_process_analysis (score 0.27)
+   Evidence: Score 0.27, Post-process and validate analysis results
+2) app/models/document.py:112 — app.models.document.Document.__init__ (score 0.26)
+   Evidence: Score 0.26, method: __init__
+3) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.26)
+   Evidence: Score 0.26, Check if document has expired
+4) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.26)
+   Evidence: Score 0.26, Convert document to dictionary
+5) app/models/document.py:130 — app.models.document.Document.file_size_mb (score 0.26)
+   Evidence: Score 0.26, File size in megabytes
 
 Notes:
 - Weak or missing implementation

@@ -36,19 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.18
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.18)
-   Evidence: Score 0.18, Convert internal SearchResponse to API model.
-2) app/api/v1/data_export.py:69 — app.api.v1.data_export.CreateExportRequest.validate_future_dates (score 0.18)
-   Evidence: Score 0.18, method: validate_future_dates
-3) app/api/v1/data_export.py:75 — app.api.v1.data_export.CreateExportRequest.validate_date_range (score 0.18)
-   Evidence: Score 0.18, method: validate_date_range
-4) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.18)
-   Evidence: Score 0.18, Analyze distribution of precedent values in decisions.
-5) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.18)
-   Evidence: Score 0.18, Analyze temporal distribution of decisions.
+1) app/core/logging.py:47 — app.core.logging._anonymize_pii_processor (score 0.26)
+   Evidence: Score 0.26, Structlog processor to anonymize PII in log messages.
+2) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.26)
+   Evidence: Score 0.26, Validate PII type string.
+3) app/core/privacy/anonymizer.py:164 — app.core.privacy.anonymizer.PIIAnonymizer.detect_pii (score 0.26)
+   Evidence: Score 0.26, Detect PII in text and return matches.
+4) app/models/encrypted_user.py:174 — app.models.encrypted_user.EncryptedUser.update_pii_timestamp (score 0.26)
+   Evidence: Score 0.26, Update the PII last updated timestamp for audit compliance.
+5) app/core/middleware/security_middleware.py:233 — app.core.middleware.security_middleware.SecurityMiddleware._detect_bot_behavior (score 0.21)
+   Evidence: Score 0.21, Detect potential bot/automated behavior.
+
+Args:
+    user_agent: User agent strin...
 
 Notes:
 - Weak or missing implementation

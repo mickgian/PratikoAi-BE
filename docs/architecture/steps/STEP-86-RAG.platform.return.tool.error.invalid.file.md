@@ -36,23 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.14
+Status: ❌  |  Confidence: 0.20
 
 Top candidates:
-1) app/core/langgraph/tools/__init__.py:1 — app.core.langgraph.tools.__init__ (score 0.14)
-   Evidence: Score 0.14, LangGraph tools for enhanced language model capabilities.
+1) app/services/italian_tax_calculator.py:68 — app.services.italian_tax_calculator.InvalidIncomeError (score 0.20)
+   Evidence: Score 0.20, Raised when income value is invalid.
+2) app/services/italian_tax_calculator.py:73 — app.services.italian_tax_calculator.InvalidLocationError (score 0.20)
+   Evidence: Score 0.20, Raised when location cannot be found or is invalid.
+3) app/services/italian_tax_calculator.py:78 — app.services.italian_tax_calculator.InvalidTaxTypeError (score 0.20)
+   Evidence: Score 0.20, Raised when tax type is not supported.
+4) evals/main.py:64 — evals.main.print_error (score 0.19)
+   Evidence: Score 0.19, Print an error message with colors.
 
-This package contains...
-2) app/core/langgraph/tools/duckduckgo_search.py:1 — app.core.langgraph.tools.duckduckgo_search (score 0.14)
-   Evidence: Score 0.14, DuckDuckGo search tool for LangGraph.
-
-This module provides a DuckDuckGo search ...
-3) app/services/location_service.py:17 — app.services.location_service.InvalidCAP (score 0.13)
-   Evidence: Score 0.13, Raised when CAP format is invalid
-4) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.13)
-   Evidence: Score 0.13, Validate the citation.
-5) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.13)
-   Evidence: Score 0.13, Validate the result.
+Args:
+    message: The message to print
+5) app/models/document.py:130 — app.models.document.Document.file_size_mb (score 0.19)
+   Evidence: Score 0.19, File size in megabytes
 
 Notes:
 - Weak or missing implementation

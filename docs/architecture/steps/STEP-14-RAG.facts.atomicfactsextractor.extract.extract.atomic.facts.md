@@ -36,28 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.20
+Status: 🔌  |  Confidence: 0.42
 
 Top candidates:
-1) deployment-orchestration/adaptive_deployment_engine.py:502 — deployment-orchestration.adaptive_deployment_engine.DeploymentMLOptimizer.extract_features (score 0.20)
-   Evidence: Score 0.20, Extract feature vector from deployment context for ML prediction.
+1) app/services/atomic_facts_extractor.py:421 — app.services.atomic_facts_extractor.AtomicFactsExtractor.extract (score 0.42)
+   Evidence: Score 0.42, Extract atomic facts from an Italian professional query.
 
-Features incl...
-2) app/services/legal_document_analyzer.py:459 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_parties (score 0.19)
-   Evidence: Score 0.19, Extract plaintiff and defendant from legal text
-3) app/services/italian_document_collector.py:440 — app.services.italian_document_collector.ItalianDocumentCollector._extract_tax_types (score 0.18)
-   Evidence: Score 0.18, Extract relevant tax types from document content.
-4) app/services/scrapers/cassazione_scraper.py:532 — app.services.scrapers.cassazione_scraper.CassazioneScraper._extract_law_citations (score 0.18)
-   Evidence: Score 0.18, Extract citations to laws from HTML.
-5) app/services/legal_document_analyzer.py:583 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_exceptions (score 0.18)
-   Evidence: Score 0.18, Extract legal exceptions raised
+Args:
+    query: The u...
+2) app/services/atomic_facts_extractor.py:581 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_dates (score 0.39)
+   Evidence: Score 0.39, Extract dates, durations, and time-related facts from the query.
+3) app/services/atomic_facts_extractor.py:461 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_monetary_amounts (score 0.37)
+   Evidence: Score 0.37, Extract monetary amounts and percentages from the query.
+4) app/services/atomic_facts_extractor.py:716 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_legal_entities (score 0.37)
+   Evidence: Score 0.37, Extract legal entities, tax codes, and document types.
+5) app/services/atomic_facts_extractor.py:779 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_professional_categories (score 0.37)
+   Evidence: Score 0.37, Extract professional categories, job levels, and contract types.
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for ExtractFacts
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

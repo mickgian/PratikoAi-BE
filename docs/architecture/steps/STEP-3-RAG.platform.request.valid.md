@@ -36,19 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.20
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) feature-flags/feature_flag_service.py:179 — feature-flags.feature_flag_service.FlagRequest.validate_flag_id (score 0.20)
-   Evidence: Score 0.20, method: validate_flag_id
-2) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.20)
-   Evidence: Score 0.20, Validate the citation.
-3) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.20)
-   Evidence: Score 0.20, Validate the result.
-4) app/services/ccnl_service.py:91 — app.services.ccnl_service.CCNLQueryFilters.is_valid (score 0.20)
-   Evidence: Score 0.20, Validate filter constraints.
-5) app/core/security/request_signing.py:16 — app.core.security.request_signing.RequestSigner.__init__ (score 0.19)
-   Evidence: Score 0.19, Initialize request signer.
+1) app/core/security/request_signing.py:148 — app.core.security.request_signing.RequestSigner._is_timestamp_valid (score 0.29)
+   Evidence: Score 0.29, Check if timestamp is within acceptable range.
+
+Args:
+    timestamp_str: Unix ti...
+2) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.27)
+   Evidence: Score 0.27, Check compatibility for a version deployment.
+3) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
+   Evidence: Score 0.26, Check if this delta has been seen before.
+
+Args:
+    delta: The delta content to...
+4) app/jobs/data_export_jobs.py:73 — app.jobs.data_export_jobs.process_export_request (score 0.26)
+   Evidence: Score 0.26, Process a data export request asynchronously.
+
+Args:
+    export_id: UUID of the ...
+5) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.26)
+   Evidence: Score 0.26, Validate the citation.
 
 Notes:
 - Weak or missing implementation

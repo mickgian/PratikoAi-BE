@@ -36,29 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.21
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.21)
-   Evidence: Score 0.21, Initialize the LLM provider.
+1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.26)
+   Evidence: Score 0.26, Track domain-action classification usage and metrics.
 
 Args:
-    api_key: API key for the provider
-    mo...
-2) app/core/llm/base.py:75 — app.core.llm.base.LLMProvider.provider_type (score 0.21)
-   Evidence: Score 0.21, Get the provider type.
-3) app/core/llm/base.py:81 — app.core.llm.base.LLMProvider.supported_models (score 0.21)
-   Evidence: Score 0.21, Get supported models and their cost information.
-4) app/core/llm/base.py:132 — app.core.llm.base.LLMProvider.estimate_tokens (score 0.21)
-   Evidence: Score 0.21, Estimate token count for a list of messages.
+    domain: The cla...
+2) app/services/document_uploader.py:277 — app.services.document_uploader.DocumentUploader._signature_based_scan (score 0.26)
+   Evidence: Score 0.26, Signature-based malware detection
+3) rollback-system/health_monitor.py:645 — rollback-system.health_monitor.HealthMonitor._evaluate_rule_condition (score 0.26)
+   Evidence: Score 0.26, Evaluate a monitoring rule condition.
+4) app/core/llm/cost_calculator.py:281 — app.core.llm.cost_calculator.CostCalculator.should_use_cache (score 0.25)
+   Evidence: Score 0.25, Determine if caching would be beneficial for this query.
 
 Args:
-    messages: List of conver...
-5) app/core/llm/base.py:144 — app.core.llm.base.LLMProvider.estimate_cost (score 0.21)
-   Evidence: Score 0.21, Estimate cost for given token counts.
-
-Args:
-    input_tokens: Number of input t...
+    cost_estimat...
+5) app/services/domain_action_classifier.py:633 — app.services.domain_action_classifier.DomainActionClassifier.get_classification_stats (score 0.25)
+   Evidence: Score 0.25, Get statistics about the classification patterns
 
 Notes:
 - Weak or missing implementation

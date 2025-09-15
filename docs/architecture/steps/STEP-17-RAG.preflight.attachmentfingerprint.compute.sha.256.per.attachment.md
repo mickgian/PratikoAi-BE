@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.20
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) app/models/regional_taxes.py:134 — app.models.regional_taxes.Comune.__repr__ (score 0.20)
-   Evidence: Score 0.20, method: __repr__
-2) app/models/regional_taxes.py:137 — app.models.regional_taxes.Comune.get_primary_cap (score 0.20)
-   Evidence: Score 0.20, Get the primary postal code for this comune
-3) app/models/regional_taxes.py:141 — app.models.regional_taxes.Comune.has_cap (score 0.20)
-   Evidence: Score 0.20, Check if this comune includes the given CAP
-4) app/models/regional_taxes.py:145 — app.models.regional_taxes.Comune.to_dict (score 0.20)
-   Evidence: Score 0.20, method: to_dict
-5) app/services/vector_provider_factory.py:20 — app.services.vector_provider_factory.VectorSearchProvider.upsert (score 0.18)
-   Evidence: Score 0.18, Upsert vectors into the provider.
+1) app/models/query.py:193 — app.models.query.QueryMetrics.average_cost_per_query (score 0.25)
+   Evidence: Score 0.25, Calculate average cost per query.
+2) app/services/database_encryption_service.py:425 — app.services.database_encryption_service.DatabaseEncryptionService._encrypt_aes_256_cbc (score 0.25)
+   Evidence: Score 0.25, Encrypt using AES-256-CBC.
+3) app/services/database_encryption_service.py:447 — app.services.database_encryption_service.DatabaseEncryptionService._decrypt_aes_256_cbc (score 0.25)
+   Evidence: Score 0.25, Decrypt using AES-256-CBC.
+4) app/api/v1/regional_taxes.py:87 — app.api.v1.regional_taxes.CompleteTaxCalculationRequest.validate_business_type (score 0.20)
+   Evidence: Score 0.20, method: validate_business_type
+5) app/services/validators/italian_tax_calculator.py:334 — app.services.validators.italian_tax_calculator.ItalianTaxCalculator.calculate_complete_individual_taxes (score 0.20)
+   Evidence: Score 0.20, Calculate complete individual tax burden.
 
 Notes:
 - Weak or missing implementation

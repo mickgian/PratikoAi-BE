@@ -36,27 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.21
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.21)
-   Evidence: Score 0.21, Validate the message content.
-
-    Args:
-        v: The content to validate
-
-   ...
-2) evals/helpers.py:21 — evals.helpers.format_messages (score 0.18)
-   Evidence: Score 0.18, Format a list of messages for evaluation.
-
-Args:
-    messages: List of message d...
-3) failure-recovery-system/cicd_integration.py:118 — failure-recovery-system.cicd_integration.CICDEvent.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-4) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-5) failure-recovery-system/cicd_integration.py:170 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.__init__ (score 0.18)
-   Evidence: Score 0.18, method: __init__
+1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
+   Evidence: Score 0.25, Convert internal SearchResponse to API model.
+2) app/models/subscription.py:127 — app.models.subscription.SubscriptionPlan.price_with_iva (score 0.25)
+   Evidence: Score 0.25, Total price including 22% IVA
+3) app/services/ccnl_service.py:334 — app.services.ccnl_service.CCNLService._convert_to_db_model (score 0.25)
+   Evidence: Score 0.25, Convert domain CCNL model to database model.
+4) version-management/core/version_schema.py:168 — version-management.core.version_schema.ServiceVersion.is_compatible_with (score 0.25)
+   Evidence: Score 0.25, Check compatibility with another service version.
+5) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.25)
+   Evidence: Score 0.25, method: __init__
 
 Notes:
 - Weak or missing implementation

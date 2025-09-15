@@ -36,23 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.23
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/services/document_uploader.py:351 — app.services.document_uploader.DocumentUploader._document_security_scan (score 0.23)
-   Evidence: Score 0.23, Document-specific security scanning
-2) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.22)
-   Evidence: Score 0.22, Check if document has expired
-3) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.22)
-   Evidence: Score 0.22, Convert document to dictionary for API responses
-4) app/services/legal_document_analyzer.py:919 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_price (score 0.22)
-   Evidence: Score 0.22, Extract contract price
-5) app/models/regulatory_documents.py:310 — app.models.regulatory_documents.create_document_id (score 0.22)
-   Evidence: Score 0.22, Create standardized document ID.
-
-Args:
-    source: Source authority
-    documen...
+1) app/services/document_uploader.py:351 — app.services.document_uploader.DocumentUploader._document_security_scan (score 0.29)
+   Evidence: Score 0.29, Document-specific security scanning
+2) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.29)
+   Evidence: Score 0.29, Convert APIContract to OpenAPI specification.
+3) app/services/legal_document_analyzer.py:883 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_parties (score 0.29)
+   Evidence: Score 0.29, Extract parties from contract
+4) app/services/legal_document_analyzer.py:905 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_object (score 0.29)
+   Evidence: Score 0.29, Extract contract object/purpose
+5) app/services/legal_document_analyzer.py:919 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_price (score 0.29)
+   Evidence: Score 0.29, Extract contract price
 
 Notes:
 - Weak or missing implementation

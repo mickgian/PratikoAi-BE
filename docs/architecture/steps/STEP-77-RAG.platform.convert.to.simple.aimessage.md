@@ -36,27 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.21
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.21)
-   Evidence: Score 0.21, Validate the message content.
-
-    Args:
-        v: The content to validate
-
-   ...
-2) evals/helpers.py:21 — evals.helpers.format_messages (score 0.18)
-   Evidence: Score 0.18, Format a list of messages for evaluation.
-
-Args:
-    messages: List of message d...
-3) failure-recovery-system/cicd_integration.py:118 — failure-recovery-system.cicd_integration.CICDEvent.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-4) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-5) failure-recovery-system/cicd_integration.py:170 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.__init__ (score 0.18)
-   Evidence: Score 0.18, method: __init__
+1) app/models/document_simple.py:126 — app.models.document_simple.Document.__init__ (score 0.26)
+   Evidence: Score 0.26, method: __init__
+2) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.26)
+   Evidence: Score 0.26, Check if document has expired
+3) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.26)
+   Evidence: Score 0.26, Convert document to dictionary for API responses
+4) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
+   Evidence: Score 0.26, Convert internal SearchResponse to API model.
+5) app/models/document_simple.py:188 — app.models.document_simple.DocumentAnalysis.to_dict (score 0.26)
+   Evidence: Score 0.26, Convert analysis to dictionary for API responses
 
 Notes:
 - Weak or missing implementation

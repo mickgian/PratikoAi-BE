@@ -39,26 +39,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.26)
+1) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.26)
+   Evidence: Score 0.26, Get the global LLM factory instance.
+
+Returns:
+    LLM factory instance
+2) version-management/cli/version_cli.py:81 — version-management.cli.version_cli.VersionCLI.call_api (score 0.26)
+   Evidence: Score 0.26, Make API call to version registry.
+3) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.26)
+   Evidence: Score 0.26, Decorator to cache LLM responses based on messages and model.
+
+Args:
+    ttl: Ti...
+4) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.26)
    Evidence: Score 0.26, Initialize the LLM provider.
 
 Args:
     api_key: API key for the provider
     mo...
-2) app/core/llm/base.py:75 — app.core.llm.base.LLMProvider.provider_type (score 0.26)
-   Evidence: Score 0.26, Get the provider type.
-3) app/core/llm/base.py:81 — app.core.llm.base.LLMProvider.supported_models (score 0.26)
-   Evidence: Score 0.26, Get supported models and their cost information.
-4) app/core/llm/base.py:132 — app.core.llm.base.LLMProvider.estimate_tokens (score 0.26)
-   Evidence: Score 0.26, Estimate token count for a list of messages.
-
-Args:
-    messages: List of conver...
-5) app/core/llm/base.py:144 — app.core.llm.base.LLMProvider.estimate_cost (score 0.26)
-   Evidence: Score 0.26, Estimate cost for given token counts.
-
-Args:
-    input_tokens: Number of input t...
+5) app/core/llm/cost_calculator.py:34 — app.core.llm.cost_calculator.CostCalculator.__init__ (score 0.26)
+   Evidence: Score 0.26, Initialize cost calculator.
 
 Notes:
 - Weak or missing implementation

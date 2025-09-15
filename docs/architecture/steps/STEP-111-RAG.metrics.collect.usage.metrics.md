@@ -36,22 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.27)
+1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.30)
+   Evidence: Score 0.30, Track domain-action classification usage and metrics.
+
+Args:
+    domain: The cla...
+2) app/services/usage_tracker.py:26 — app.services.usage_tracker.UsageMetrics (score 0.29)
+   Evidence: Score 0.29, Container for usage metrics.
+3) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.27)
    Evidence: Score 0.27, Set up Prometheus metrics middleware and endpoints.
 
-    Args:
-        app: Fast...
-2) app/core/monitoring/metrics.py:310 — app.core.monitoring.metrics.initialize_metrics (score 0.26)
-   Evidence: Score 0.26, Initialize metrics with system information and default values.
-3) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.26)
-   Evidence: Score 0.26, Update system-level metrics like memory and CPU usage.
-4) app/core/monitoring/metrics.py:376 — app.core.monitoring.metrics.get_registry (score 0.26)
-   Evidence: Score 0.26, Get the Prometheus registry for metrics export.
-5) app/core/monitoring/metrics.py:381 — app.core.monitoring.metrics.get_metrics_content (score 0.26)
-   Evidence: Score 0.26, Get metrics in Prometheus format.
+Args:
+    app: FastAPI appl...
+4) app/core/monitoring/metrics.py:310 — app.core.monitoring.metrics.initialize_metrics (score 0.27)
+   Evidence: Score 0.27, Initialize metrics with system information and default values.
+5) app/services/metrics_service.py:72 — app.services.metrics_service.MetricsService.__init__ (score 0.27)
+   Evidence: Score 0.27, method: __init__
 
 Notes:
 - Weak or missing implementation

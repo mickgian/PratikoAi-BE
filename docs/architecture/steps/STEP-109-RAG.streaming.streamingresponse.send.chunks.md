@@ -36,28 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/schemas/chat.py:131 — app.schemas.chat.StreamResponse (score 0.24)
-   Evidence: Score 0.24, Response model for streaming chat endpoint.
+1) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.28)
+   Evidence: Score 0.28, method: __init__
+2) app/core/streaming_guard.py:23 — app.core.streaming_guard.SinglePassStream.__aiter__ (score 0.28)
+   Evidence: Score 0.28, method: __aiter__
+3) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.27)
+   Evidence: Score 0.27, Response model for streaming chat endpoint.
 
 Attributes:
     content: The conten...
-2) app/schemas/auth.py:139 — app.schemas.auth.SessionResponse.sanitize_name (score 0.19)
-   Evidence: Score 0.19, Sanitize the session name.
+4) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
+   Evidence: Score 0.26, Convert internal SearchResponse to API model.
+5) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.26)
+   Evidence: Score 0.26, Decorator to cache LLM responses based on messages and model.
 
 Args:
-    v: The name to sanitize
-
-Returns:
-    str:...
-3) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.19)
-   Evidence: Score 0.19, Add timestamp if not present.
-4) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-5) app/services/auto_faq_generator.py:288 — app.services.auto_faq_generator.AutomatedFAQGenerator._parse_faq_response (score 0.18)
-   Evidence: Score 0.18, Parse LLM response to extract FAQ data
+    ttl: Ti...
 
 Notes:
 - Weak or missing implementation

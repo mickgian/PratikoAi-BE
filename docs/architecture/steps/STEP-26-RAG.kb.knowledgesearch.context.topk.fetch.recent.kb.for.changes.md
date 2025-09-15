@@ -36,23 +36,21 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Status: 🔌  |  Confidence: 0.43
 
 Top candidates:
-1) app/models/knowledge.py:13 — app.models.knowledge.KnowledgeItem (score 0.34)
-   Evidence: Score 0.34, Knowledge base item with full-text search support.
+1) app/services/knowledge_search_service.py:1 — app.services.knowledge_search_service (score 0.43)
+   Evidence: Score 0.43, Knowledge Search Service - RAG STEP 39 Implementation.
 
-This model stores processed ...
-2) app/models/knowledge.py:112 — app.models.knowledge.KnowledgeQuery (score 0.34)
-   Evidence: Score 0.34, Query model for knowledge search requests
-3) app/models/knowledge.py:125 — app.models.knowledge.KnowledgeSearchResponse (score 0.34)
-   Evidence: Score 0.34, Response model for knowledge search results
-4) app/services/hybrid_search_engine.py:43 — app.services.hybrid_search_engine.HybridSearchEngine (score 0.31)
-   Evidence: Score 0.31, Advanced hybrid search combining keyword and vector search.
-
-Provides sub-300ms ...
-5) load_testing/locust_tests.py:215 — load_testing.locust_tests.PratikoAIUser.knowledge_search (score 0.31)
-   Evidence: Score 0.31, Test regulatory knowledge searches
+Implements RAG STEP 39 —...
+2) app/services/knowledge_search_service.py:97 — app.services.knowledge_search_service.KnowledgeSearchService (score 0.43)
+   Evidence: Score 0.43, Service for hybrid knowledge search with BM25, vector search and recency boost.
+3) app/services/knowledge_search_service.py:32 — app.services.knowledge_search_service.SearchMode (score 0.43)
+   Evidence: Score 0.43, Search mode for knowledge retrieval.
+4) app/services/vector_providers/pinecone_provider.py:21 — app.services.vector_providers.pinecone_provider.PineconeProvider (score 0.43)
+   Evidence: Score 0.43, Pinecone vector search provider.
+5) app/services/knowledge_search_service.py:100 — app.services.knowledge_search_service.KnowledgeSearchService.__init__ (score 0.42)
+   Evidence: Score 0.42, Initialize knowledge search service.
 
 Notes:
 - Implementation exists but may not be wired correctly

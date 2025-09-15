@@ -36,25 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.20
+Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/services/validators/financial_validation_engine.py:187 — app.services.validators.financial_validation_engine.FinancialValidationEngine.__init__ (score 0.20)
-   Evidence: Score 0.20, Initialize the Financial Validation Engine.
-
-Args:
-    config: Engine configurat...
-2) app/services/validators/financial_validation_engine.py:209 — app.services.validators.financial_validation_engine.FinancialValidationEngine._initialize_components (score 0.20)
-   Evidence: Score 0.20, Initialize all validation components based on configuration.
-3) app/services/validators/financial_validation_engine.py:273 — app.services.validators.financial_validation_engine.FinancialValidationEngine.is_ready (score 0.20)
-   Evidence: Score 0.20, Check if the engine is ready to process requests.
-4) app/services/validators/financial_validation_engine.py:285 — app.services.validators.financial_validation_engine.FinancialValidationEngine.supported_task_types (score 0.20)
-   Evidence: Score 0.20, Get list of supported task types based on enabled modules.
-5) app/services/validators/financial_validation_engine.py:302 — app.services.validators.financial_validation_engine.FinancialValidationEngine.execute_single_task (score 0.20)
-   Evidence: Score 0.20, Execute a single validation task.
-
-Args:
-    task: The validation task to execut...
+1) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.30)
+   Evidence: Score 0.30, Validate feedback data structure and content
+2) app/services/expert_validation_workflow.py:371 — app.services.expert_validation_workflow.ExpertValidationWorkflow._calculate_credentials_score (score 0.29)
+   Evidence: Score 0.29, Calculate score based on professional credentials
+3) app/services/expert_validation_workflow.py:430 — app.services.expert_validation_workflow.ExpertValidationWorkflow._validate_regulatory_references (score 0.29)
+   Evidence: Score 0.29, Validate regulatory references for accuracy and currency
+4) validate_italian_implementation.py:37 — validate_italian_implementation.main (score 0.27)
+   Evidence: Score 0.27, Validate Italian Knowledge Base implementation.
+5) validate_payment_implementation.py:37 — validate_payment_implementation.main (score 0.27)
+   Evidence: Score 0.27, Validate payment integration implementation.
 
 Notes:
 - Weak or missing implementation

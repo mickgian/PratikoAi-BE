@@ -36,24 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.26)
-   Evidence: Score 0.26, Validate the message content.
-
-    Args:
-        v: The content to validate
-
-   ...
-2) failure-recovery-system/cicd_integration.py:1196 — failure-recovery-system.cicd_integration.create_webhook_endpoints (score 0.26)
-   Evidence: Score 0.26, Create webhook endpoints for different platforms.
-3) rollback-system/health_monitor.py:163 — rollback-system.health_monitor.ApplicationHealthChecker.__init__ (score 0.26)
-   Evidence: Score 0.26, method: __init__
-4) rollback-system/health_monitor.py:318 — rollback-system.health_monitor.LogPreserver.__init__ (score 0.26)
-   Evidence: Score 0.26, method: __init__
-5) rollback-system/health_monitor.py:401 — rollback-system.health_monitor.HealthMonitor.__init__ (score 0.26)
-   Evidence: Score 0.26, method: __init__
+1) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.28)
+   Evidence: Score 0.28, Check if a file exists and return status.
+2) validate_payment_implementation.py:8 — validate_payment_implementation.check_file_exists (score 0.28)
+   Evidence: Score 0.28, Check if a file exists and return status.
+3) deployment-orchestration/notification_system.py:764 — deployment-orchestration.notification_system.NotificationManager._create_notification_message (score 0.28)
+   Evidence: Score 0.28, Create a formatted notification message.
+4) deployment-orchestration/notification_system.py:924 — deployment-orchestration.notification_system.NotificationManager._check_conditions (score 0.28)
+   Evidence: Score 0.28, Check if context matches the rule conditions.
+5) failure-recovery-system/recovery_orchestrator.py:865 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._add_status_message (score 0.28)
+   Evidence: Score 0.28, Add a status message to the execution log.
 
 Notes:
 - Weak or missing implementation

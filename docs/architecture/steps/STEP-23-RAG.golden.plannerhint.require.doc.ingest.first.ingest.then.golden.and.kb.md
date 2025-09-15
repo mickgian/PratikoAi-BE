@@ -36,21 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.47
+Status: 🔌  |  Confidence: 0.46
 
 Top candidates:
-1) app/api/v1/faq.py:1 — app.api.v1.faq (score 0.47)
-   Evidence: Score 0.47, FAQ API endpoints for the Intelligent FAQ System.
+1) app/api/v1/faq.py:1 — app.api.v1.faq (score 0.46)
+   Evidence: Score 0.46, FAQ API endpoints for the Intelligent FAQ System.
 
 This module provides REST API...
-2) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.46)
-   Evidence: Score 0.46, Request model for FAQ queries.
-3) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.46)
-   Evidence: Score 0.46, Response model for FAQ queries.
-4) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.46)
-   Evidence: Score 0.46, Request model for creating FAQ entries.
-5) app/api/v1/faq.py:69 — app.api.v1.faq.FAQUpdateRequest (score 0.46)
-   Evidence: Score 0.46, Request model for updating FAQ entries.
+2) app/api/v1/faq_automation.py:1 — app.api.v1.faq_automation (score 0.46)
+   Evidence: Score 0.46, FAQ Automation API Endpoints.
+
+Admin dashboard and management endpoints for the ...
+3) app/models/faq_automation.py:351 — app.models.faq_automation.GeneratedFAQ.should_auto_approve (score 0.45)
+   Evidence: Score 0.45, Determine if FAQ should be auto-approved based on quality
+4) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.44)
+   Evidence: Score 0.44, Request model for FAQ queries.
+5) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.44)
+   Evidence: Score 0.44, Response model for FAQ queries.
 
 Notes:
 - Implementation exists but may not be wired correctly

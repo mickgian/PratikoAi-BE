@@ -36,19 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.19
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.19)
-   Evidence: Score 0.19, Analyze distribution of precedent values in decisions.
-2) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.19)
-   Evidence: Score 0.19, Analyze temporal distribution of decisions.
-3) app/api/v1/data_sources.py:1384 — app.api.v1.data_sources._count_legal_areas (score 0.19)
-   Evidence: Score 0.19, Count legal areas in principles.
-4) app/api/v1/data_sources.py:1393 — app.api.v1.data_sources._count_precedent_strength (score 0.19)
-   Evidence: Score 0.19, Count precedent strength in principles.
-5) app/api/v1/data_sources.py:1402 — app.api.v1.data_sources._generate_cassazione_recommendations (score 0.19)
-   Evidence: Score 0.19, Generate recommendations based on validation results.
+1) evals/evaluator.py:182 — evals.evaluator.Evaluator.__fetch_traces (score 0.26)
+   Evidence: Score 0.26, Fetch traces from the past 24 hours without scores.
+
+Returns:
+    List of traces...
+2) app/services/data_sources_manager.py:63 — app.services.data_sources_manager.DataSourcesManager.__init__ (score 0.26)
+   Evidence: Score 0.26, method: __init__
+3) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.25)
+   Evidence: Score 0.25, Analyze distribution of precedent values in decisions.
+4) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.25)
+   Evidence: Score 0.25, Analyze temporal distribution of decisions.
+5) app/api/v1/data_sources.py:1384 — app.api.v1.data_sources._count_legal_areas (score 0.25)
+   Evidence: Score 0.25, Count legal areas in principles.
 
 Notes:
 - Weak or missing implementation

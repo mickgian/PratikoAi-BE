@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.13
+Status: ❌  |  Confidence: 0.19
 
 Top candidates:
-1) app/services/resilient_llm_service.py:56 — app.services.resilient_llm_service.LLMRequest (score 0.13)
-   Evidence: Score 0.13, LLM request with metadata.
-2) app/schemas/chat.py:105 — app.schemas.chat.ChatRequest (score 0.13)
-   Evidence: Score 0.13, Request model for chat endpoint.
+1) app/models/query.py:79 — app.models.query.QueryRequest (score 0.19)
+   Evidence: Score 0.19, Pydantic model for incoming query requests.
+2) app/schemas/chat.py:81 — app.schemas.chat.ChatRequest (score 0.19)
+   Evidence: Score 0.19, Request model for chat endpoint.
 
 Attributes:
     messages: List of messages in ...
-3) feature-flags/feature_flag_service.py:169 — feature-flags.feature_flag_service.FlagRequest (score 0.13)
-   Evidence: Score 0.13, Request model for creating/updating flags.
-4) feature-flags/feature_flag_service.py:179 — feature-flags.feature_flag_service.FlagRequest.validate_flag_id (score 0.13)
-   Evidence: Score 0.13, method: validate_flag_id
-5) app/models/query.py:79 — app.models.query.QueryRequest (score 0.12)
-   Evidence: Score 0.12, Pydantic model for incoming query requests.
+3) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.19)
+   Evidence: Score 0.19, Request model for FAQ queries.
+4) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.19)
+   Evidence: Score 0.19, Request model for creating FAQ entries.
+5) app/api/v1/faq.py:69 — app.api.v1.faq.FAQUpdateRequest (score 0.19)
+   Evidence: Score 0.19, Request model for updating FAQ entries.
 
 Notes:
 - Weak or missing implementation

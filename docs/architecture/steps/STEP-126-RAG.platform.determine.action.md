@@ -36,19 +36,31 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.19
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/models/cassazione_data.py:209 — app.models.cassazione_data.Citation.is_law_citation (score 0.19)
-   Evidence: Score 0.19, Check if this is a citation to law.
-2) app/models/cassazione_data.py:213 — app.models.cassazione_data.Citation.is_decision_citation (score 0.19)
-   Evidence: Score 0.19, Check if this is a citation to another decision.
-3) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.19)
-   Evidence: Score 0.19, Validate the citation.
-4) app/models/cassazione_data.py:222 — app.models.cassazione_data.Citation.extract_from_text (score 0.19)
-   Evidence: Score 0.19, Extract citations from decision text.
-5) app/services/failure_pattern_analyzer.py:407 — app.services.failure_pattern_analyzer.FailurePatternAnalyzer._determine_impact_tier (score 0.19)
-   Evidence: Score 0.19, Determine impact tier based on score
+1) app/models/cassazione.py:311 — app.models.cassazione.determine_related_sectors (score 0.27)
+   Evidence: Score 0.27, Determine which CCNL sectors are related to a legal decision.
+2) app/services/document_processor.py:501 — app.services.document_processor.DocumentProcessor._determine_document_type (score 0.27)
+   Evidence: Score 0.27, Determine document type from URL.
+
+Args:
+    document_url: Document URL
+    
+Ret...
+3) app/services/domain_action_classifier.py:68 — app.services.domain_action_classifier.DomainActionClassifier.__init__ (score 0.27)
+   Evidence: Score 0.27, method: __init__
+4) app/services/knowledge_integrator.py:519 — app.services.knowledge_integrator.KnowledgeIntegrator._determine_knowledge_category (score 0.27)
+   Evidence: Score 0.27, Determine knowledge category based on document data.
+
+Args:
+    document_data: D...
+5) app/services/knowledge_integrator.py:556 — app.services.knowledge_integrator.KnowledgeIntegrator._determine_knowledge_subcategory (score 0.27)
+   Evidence: Score 0.27, Determine knowledge subcategory.
+
+Args:
+    document_data: Document information
+...
 
 Notes:
 - Weak or missing implementation

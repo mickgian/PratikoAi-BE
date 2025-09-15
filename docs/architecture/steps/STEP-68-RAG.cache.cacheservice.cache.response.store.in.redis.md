@@ -36,29 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.53
+Status: 🔌  |  Confidence: 0.54
 
 Top candidates:
-1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.53)
-   Evidence: Score 0.53, Initialize the cache service.
-2) app/services/cache.py:119 — app.services.cache.CacheService._generate_conversation_key (score 0.53)
-   Evidence: Score 0.53, Generate cache key for conversation history.
+1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.54)
+   Evidence: Score 0.54, Initialize the cache service.
+2) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.53)
+   Evidence: Score 0.53, Decorator to cache LLM responses based on messages and model.
+
+Args:
+    ttl: Ti...
+3) app/services/cache.py:107 — app.services.cache.CacheService._generate_conversation_key (score 0.52)
+   Evidence: Score 0.52, Generate cache key for conversation history.
 
 Args:
     session_id: Unique sessi...
-3) app/services/cache.py:130 — app.services.cache.CacheService._generate_query_key (score 0.53)
-   Evidence: Score 0.53, Generate cache key for LLM query response.
+4) app/services/cache.py:118 — app.services.cache.CacheService._generate_query_key (score 0.52)
+   Evidence: Score 0.52, Generate cache key for LLM query response.
 
 Args:
     query_hash: Hash of the qu...
-4) app/services/cache.py:27 — app.services.cache.CacheService (score 0.51)
-   Evidence: Score 0.51, Redis-based caching service for LLM responses and conversations.
-5) app/core/middleware/performance_middleware.py:416 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_hit (score 0.43)
-   Evidence: Score 0.43, Record a cache hit.
-
-Args:
-    cache_key: Cache key that was hit
-    cache_type:...
+5) app/services/cache.py:27 — app.services.cache.CacheService (score 0.52)
+   Evidence: Score 0.52, Redis-based caching service for LLM responses and conversations.
 
 Notes:
 - Implementation exists but may not be wired correctly

@@ -36,29 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.26)
-   Evidence: Score 0.26, Set up Prometheus metrics middleware and endpoints.
+1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)
+   Evidence: Score 0.34, Track domain-action classification usage and metrics.
 
-    Args:
-        app: Fast...
-2) app/core/monitoring/metrics.py:310 — app.core.monitoring.metrics.initialize_metrics (score 0.26)
-   Evidence: Score 0.26, Initialize metrics with system information and default values.
-3) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.26)
-   Evidence: Score 0.26, Update system-level metrics like memory and CPU usage.
-4) app/core/monitoring/metrics.py:376 — app.core.monitoring.metrics.get_registry (score 0.26)
-   Evidence: Score 0.26, Get the Prometheus registry for metrics export.
-5) app/core/monitoring/metrics.py:381 — app.core.monitoring.metrics.get_metrics_content (score 0.26)
-   Evidence: Score 0.26, Get metrics in Prometheus format.
+Args:
+    domain: The cla...
+2) app/core/monitoring/metrics.py:401 — app.core.monitoring.metrics.track_llm_cost (score 0.29)
+   Evidence: Score 0.29, Track LLM API cost.
+3) app/core/monitoring/metrics.py:406 — app.core.monitoring.metrics.track_api_call (score 0.29)
+   Evidence: Score 0.29, Track API call by provider and status.
+4) app/core/monitoring/metrics.py:416 — app.core.monitoring.metrics.track_cache_performance (score 0.29)
+   Evidence: Score 0.29, Update cache hit ratio.
+5) app/core/monitoring/metrics.py:436 — app.core.monitoring.metrics.track_trial_conversion (score 0.29)
+   Evidence: Score 0.29, Track trial conversion.
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for TrackMetrics
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

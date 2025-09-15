@@ -36,28 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.26)
-   Evidence: Score 0.26, Initialize the cache service.
-2) app/services/cache.py:94 — app.services.cache.CacheService._generate_query_hash (score 0.26)
-   Evidence: Score 0.26, Generate a deterministic hash for query deduplication.
+1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.29)
+   Evidence: Score 0.29, Initialize the cache service.
+2) app/core/decorators/cache.py:304 — app.core.decorators.cache.invalidate_cache_on_update (score 0.28)
+   Evidence: Score 0.28, Decorator to invalidate cache entries when data is updated.
+
+Args:
+    cache_key...
+3) app/models/faq.py:486 — app.models.faq.generate_faq_cache_key (score 0.28)
+   Evidence: Score 0.28, Generate cache key for FAQ variations.
+4) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.28)
+   Evidence: Score 0.28, Generate a deterministic hash for query deduplication.
 
 Args:
     messages: List...
-3) app/services/cache.py:119 — app.services.cache.CacheService._generate_conversation_key (score 0.26)
-   Evidence: Score 0.26, Generate cache key for conversation history.
+5) app/services/cache.py:107 — app.services.cache.CacheService._generate_conversation_key (score 0.28)
+   Evidence: Score 0.28, Generate cache key for conversation history.
 
 Args:
     session_id: Unique sessi...
-4) app/services/cache.py:130 — app.services.cache.CacheService._generate_query_key (score 0.26)
-   Evidence: Score 0.26, Generate cache key for LLM query response.
-
-Args:
-    query_hash: Hash of the qu...
-5) app/services/cache.py:27 — app.services.cache.CacheService (score 0.24)
-   Evidence: Score 0.24, Redis-based caching service for LLM responses and conversations.
 
 Notes:
 - Weak or missing implementation

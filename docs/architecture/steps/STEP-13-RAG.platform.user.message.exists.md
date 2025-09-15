@@ -39,23 +39,20 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/models/user.py:58 — app.models.user.User.verify_password (score 0.27)
+1) app/models/user.py:50 — app.models.user.User.verify_password (score 0.27)
    Evidence: Score 0.27, Verify if the provided password matches the hash.
-2) app/models/user.py:63 — app.models.user.User.hash_password (score 0.27)
+2) app/models/user.py:55 — app.models.user.User.hash_password (score 0.27)
    Evidence: Score 0.27, Hash a password using bcrypt.
-3) app/models/user.py:68 — app.models.user.User.set_refresh_token_hash (score 0.27)
-   Evidence: Score 0.27, Set the hash of the refresh token.
-
-Stores a bcrypt hash of the refresh token fo...
-4) app/models/user.py:80 — app.models.user.User.verify_refresh_token (score 0.27)
-   Evidence: Score 0.27, Verify if the provided refresh token matches the stored hash.
+3) evals/main.py:82 — evals.main.get_user_input (score 0.27)
+   Evidence: Score 0.27, Get user input with a colored prompt.
 
 Args:
-    refresh...
-5) app/models/user.py:93 — app.models.user.User.revoke_refresh_token (score 0.27)
-   Evidence: Score 0.27, Revoke the current refresh token by clearing its hash.
-
-This effectively invalid...
+    prompt: The prompt to display
+ ...
+4) validate_security_implementation.py:7 — validate_security_implementation.validate_file_exists (score 0.27)
+   Evidence: Score 0.27, Validate that a file exists.
+5) validate_vector_implementation.py:7 — validate_vector_implementation.validate_file_exists (score 0.27)
+   Evidence: Score 0.27, Validate that a file exists.
 
 Notes:
 - Weak or missing implementation

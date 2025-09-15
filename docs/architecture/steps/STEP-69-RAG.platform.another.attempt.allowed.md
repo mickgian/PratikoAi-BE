@@ -36,23 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.18
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/services/llm_retry_service.py:217 — app.services.llm_retry_service.RetryHandler.__init__ (score 0.18)
-   Evidence: Score 0.18, Initialize retry handler.
+1) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
+   Evidence: Score 0.26, Check compatibility for a version deployment.
+2) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
+   Evidence: Score 0.26, Check if this delta has been seen before.
 
 Args:
-    config: Retry configuration
-    circuit_bre...
-2) app/services/llm_retry_service.py:336 — app.services.llm_retry_service.RetryHandler._is_retryable_http_error (score 0.18)
-   Evidence: Score 0.18, Check if HTTP error is retryable.
-3) app/services/llm_retry_service.py:342 — app.services.llm_retry_service.RetryHandler._is_retryable_error (score 0.18)
-   Evidence: Score 0.18, Check if error is generally retryable.
-4) app/services/llm_retry_service.py:377 — app.services.llm_retry_service.RetryHandler._calculate_backoff_delay (score 0.18)
-   Evidence: Score 0.18, Calculate exponential backoff delay with jitter.
-5) app/services/llm_retry_service.py:395 — app.services.llm_retry_service.RetryHandler._generate_request_id (score 0.18)
-   Evidence: Score 0.18, Generate unique request ID for tracking.
+    delta: The delta content to...
+3) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.26)
+   Evidence: Score 0.26, Check if a file exists and return status.
+4) validate_italian_implementation.py:19 — validate_italian_implementation.check_file_content (score 0.26)
+   Evidence: Score 0.26, Check if a file contains expected content.
+5) validate_payment_implementation.py:8 — validate_payment_implementation.check_file_exists (score 0.26)
+   Evidence: Score 0.26, Check if a file exists and return status.
 
 Notes:
 - Weak or missing implementation

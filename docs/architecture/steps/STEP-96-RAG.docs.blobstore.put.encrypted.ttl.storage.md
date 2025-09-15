@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.23
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/services/secure_document_storage.py:292 — app.services.secure_document_storage.SecureDocumentStorage._encrypt_content (score 0.23)
-   Evidence: Score 0.23, Encrypt document content
-2) app/services/secure_document_storage.py:300 — app.services.secure_document_storage.SecureDocumentStorage._decrypt_content (score 0.22)
-   Evidence: Score 0.22, Decrypt document content
-3) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.22)
-   Evidence: Score 0.22, Check if document has expired
-4) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.22)
-   Evidence: Score 0.22, Convert document to dictionary for API responses
-5) app/services/document_uploader.py:639 — app.services.document_uploader.DocumentUploader.get_storage_filename (score 0.22)
-   Evidence: Score 0.22, Generate secure storage filename using document ID.
+1) app/services/document_uploader.py:639 — app.services.document_uploader.DocumentUploader.get_storage_filename (score 0.29)
+   Evidence: Score 0.29, Generate secure storage filename using document ID.
 
 Args:
   document_id: Unique...
+2) app/services/secure_document_storage.py:292 — app.services.secure_document_storage.SecureDocumentStorage._encrypt_content (score 0.29)
+   Evidence: Score 0.29, Encrypt document content
+3) app/services/secure_document_storage.py:300 — app.services.secure_document_storage.SecureDocumentStorage._decrypt_content (score 0.29)
+   Evidence: Score 0.29, Decrypt document content
+4) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.29)
+   Evidence: Score 0.29, Convert APIContract to OpenAPI specification.
+5) app/services/document_processing_service.py:612 — app.services.document_processing_service.DocumentProcessor._get_document_storage_path (score 0.29)
+   Evidence: Score 0.29, Get file system path for stored document
 
 Notes:
 - Weak or missing implementation

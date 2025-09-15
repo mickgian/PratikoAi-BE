@@ -36,22 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.20
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.20)
-   Evidence: Score 0.20, Validate the citation.
-2) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.20)
-   Evidence: Score 0.20, Validate the result.
-3) app/services/ccnl_service.py:91 — app.services.ccnl_service.CCNLQueryFilters.is_valid (score 0.20)
-   Evidence: Score 0.20, Validate filter constraints.
-4) app/services/validators/financial_validation_engine.py:187 — app.services.validators.financial_validation_engine.FinancialValidationEngine.__init__ (score 0.18)
-   Evidence: Score 0.18, Initialize the Financial Validation Engine.
-
-Args:
-    config: Engine configurat...
-5) app/services/validators/financial_validation_engine.py:209 — app.services.validators.financial_validation_engine.FinancialValidationEngine._initialize_components (score 0.18)
-   Evidence: Score 0.18, Initialize all validation components based on configuration.
+1) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.26)
+   Evidence: Score 0.26, Validate the citation.
+2) version-management/core/version_schema.py:140 — version-management.core.version_schema.ServiceVersion.is_valid_version (score 0.26)
+   Evidence: Score 0.26, Validate if a version string follows our versioning scheme.
+3) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.26)
+   Evidence: Score 0.26, Validate the result.
+4) app/models/ccnl_data.py:389 — app.models.ccnl_data.SalaryTable.is_valid_on (score 0.26)
+   Evidence: Score 0.26, Check if salary table is valid on a specific date.
+5) app/models/ccnl_data.py:682 — app.models.ccnl_data.CCNLAgreement.is_currently_valid (score 0.26)
+   Evidence: Score 0.26, Check if CCNL is currently valid.
 
 Notes:
 - Weak or missing implementation

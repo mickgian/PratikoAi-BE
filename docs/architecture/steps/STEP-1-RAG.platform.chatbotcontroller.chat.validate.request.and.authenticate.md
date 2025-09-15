@@ -36,30 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.25)
-   Evidence: Score 0.25, Validate the message content.
+1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.28)
+   Evidence: Score 0.28, Validate the message content.
 
-    Args:
-        v: The content to validate
+Args:
+    v: The content to validate
 
-   ...
-2) app/schemas/chat.py:19 — app.schemas.chat.Message (score 0.23)
-   Evidence: Score 0.23, Message model for chat endpoint.
-
-Attributes:
-    role: The role of the message ...
-3) app/schemas/chat.py:81 — app.schemas.chat.QueryClassificationMetadata (score 0.23)
-   Evidence: Score 0.23, Metadata about query classification for debugging and monitoring.
-4) app/schemas/chat.py:94 — app.schemas.chat.ResponseMetadata (score 0.23)
-   Evidence: Score 0.23, Response metadata for debugging and monitoring.
-5) app/schemas/chat.py:105 — app.schemas.chat.ChatRequest (score 0.23)
-   Evidence: Score 0.23, Request model for chat endpoint.
-
-Attributes:
-    messages: List of messages in ...
+Returns:
+  ...
+2) feature-flags/feature_flag_service.py:179 — feature-flags.feature_flag_service.FlagRequest.validate_flag_id (score 0.28)
+   Evidence: Score 0.28, method: validate_flag_id
+3) app/api/v1/italian.py:38 — app.api.v1.italian.TaxCalculationRequest.validate_tax_year (score 0.27)
+   Evidence: Score 0.27, method: validate_tax_year
+4) app/api/v1/data_export.py:69 — app.api.v1.data_export.CreateExportRequest.validate_future_dates (score 0.27)
+   Evidence: Score 0.27, method: validate_future_dates
+5) app/api/v1/data_export.py:75 — app.api.v1.data_export.CreateExportRequest.validate_date_range (score 0.27)
+   Evidence: Score 0.27, method: validate_date_range
 
 Notes:
 - Weak or missing implementation

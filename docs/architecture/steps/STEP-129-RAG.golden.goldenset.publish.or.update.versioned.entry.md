@@ -43,14 +43,16 @@ Top candidates:
    Evidence: Score 0.48, FAQ API endpoints for the Intelligent FAQ System.
 
 This module provides REST API...
-2) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.46)
+2) app/api/v1/faq_automation.py:1 — app.api.v1.faq_automation (score 0.47)
+   Evidence: Score 0.47, FAQ Automation API Endpoints.
+
+Admin dashboard and management endpoints for the ...
+3) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.46)
    Evidence: Score 0.46, Request model for FAQ queries.
-3) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.46)
+4) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.46)
    Evidence: Score 0.46, Response model for FAQ queries.
-4) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.46)
+5) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.46)
    Evidence: Score 0.46, Request model for creating FAQ entries.
-5) app/api/v1/faq.py:69 — app.api.v1.faq.FAQUpdateRequest (score 0.46)
-   Evidence: Score 0.46, Request model for updating FAQ entries.
 
 Notes:
 - Implementation exists but may not be wired correctly

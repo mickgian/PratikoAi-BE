@@ -36,19 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.18
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/core/startup.py:45 — app.core.startup.setup_startup_handlers (score 0.18)
-   Evidence: Score 0.18, Setup startup and shutdown handlers for the FastAPI application.
-2) failure-recovery-system/cicd_integration.py:118 — failure-recovery-system.cicd_integration.CICDEvent.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-3) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-4) failure-recovery-system/cicd_integration.py:170 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.__init__ (score 0.18)
-   Evidence: Score 0.18, method: __init__
-5) failure-recovery-system/cicd_integration.py:173 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.validate_github_signature (score 0.18)
-   Evidence: Score 0.18, Validate GitHub webhook signature.
+1) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.26)
+   Evidence: Score 0.26, Response model for streaming chat endpoint.
+
+Attributes:
+    content: The conten...
+2) app/core/logging.py:174 — app.core.logging.setup_logging (score 0.26)
+   Evidence: Score 0.26, Configure structlog with different formatters based on environment.
+
+In developm...
+3) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.26)
+   Evidence: Score 0.26, Set up Prometheus metrics middleware and endpoints.
+
+Args:
+    app: FastAPI appl...
+4) app/core/sse_write.py:15 — app.core.sse_write.write_sse (score 0.26)
+   Evidence: Score 0.26, Log an SSE frame that will be written to the response.
+
+Args:
+    response: The ...
+5) app/core/startup.py:45 — app.core.startup.setup_startup_handlers (score 0.26)
+   Evidence: Score 0.26, Setup startup and shutdown handlers for the FastAPI application.
 
 Notes:
 - Weak or missing implementation

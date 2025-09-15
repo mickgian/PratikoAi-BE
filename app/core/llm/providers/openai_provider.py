@@ -1,5 +1,6 @@
 """OpenAI provider implementation."""
 
+import asyncio
 import re
 from typing import Any, AsyncIterator, Dict, List, Optional
 
@@ -22,6 +23,7 @@ from app.core.llm.base import (
     LLMModelTier,
 )
 from app.core.logging import logger
+from app.observability.rag_logging import rag_step_log, rag_step_timer
 from app.schemas.chat import Message
 
 
@@ -157,84 +159,99 @@ class OpenAIProvider(LLMProvider):
         Returns:
             LLMResponse with the generated content
         """
-        try:
-            if tools:
-                # Use LangChain for tool support
-                langchain_messages = self._convert_messages_to_langchain(messages)
-                llm_with_tools = self.langchain_client.bind_tools(tools)
-                
-                response = await llm_with_tools.ainvoke(
-                    langchain_messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **kwargs
-                )
-                
-                tool_calls = None
-                if hasattr(response, 'tool_calls') and response.tool_calls:
-                    tool_calls = [
-                        {
-                            "id": tc["id"],
-                            "name": tc["name"],
-                            "args": tc["args"]
-                        }
-                        for tc in response.tool_calls
-                    ]
-                
-                return LLMResponse(
-                    content=response.content,
-                    model=self.model,
-                    provider=self.provider_type.value,
-                    tool_calls=tool_calls,
-                    finish_reason="stop",
-                )
-            else:
-                # Use direct OpenAI client for better control
-                openai_messages = self._convert_messages_to_openai(messages)
-                
-                response = await self.client.chat.completions.create(
-                    model=self.model,
-                    messages=openai_messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **kwargs
-                )
-                
-                choice = response.choices[0]
-                tokens_used = response.usage.total_tokens if response.usage else None
-                cost_estimate = None
-                
-                if response.usage:
-                    cost_estimate = self.estimate_cost(
-                        response.usage.prompt_tokens,
-                        response.usage.completion_tokens
+        # RAG STEP 64 — LLMCall: Use timer for performance tracking and final logging
+        with rag_step_timer(
+            64,
+            "RAG.providers.llmprovider.chat.completion.make.api.call",
+            "LLMCall",
+            provider=self.provider_type.value,
+            model=self.model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            message_count=len(messages),
+            tools_count=len(tools) if tools else 0
+        ):
+            try:
+                if tools:
+                    # Use LangChain for tool support
+                    langchain_messages = self._convert_messages_to_langchain(messages)
+                    llm_with_tools = self.langchain_client.bind_tools(tools)
+                    # NEW: if tests/mock make bind_tools async, await it
+                    if asyncio.iscoroutine(llm_with_tools):
+                        llm_with_tools = await llm_with_tools
+                    
+                    response = await llm_with_tools.ainvoke(
+                        langchain_messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        **kwargs
                     )
-                
-                return LLMResponse(
-                    content=choice.message.content or "",
+                    
+                    tool_calls = None
+                    if hasattr(response, 'tool_calls') and response.tool_calls:
+                        tool_calls = [
+                            {
+                                "id": tc["id"],
+                                "name": tc["name"],
+                                "args": tc["args"]
+                            }
+                            for tc in response.tool_calls
+                        ]
+                    
+                    return LLMResponse(
+                        content=response.content,
+                        model=self.model,
+                        provider=self.provider_type.value,
+                        tool_calls=tool_calls,
+                        finish_reason="stop",
+                    )
+                else:
+                    # Use direct OpenAI client for better control
+                    openai_messages = self._convert_messages_to_openai(messages)
+                    
+                    response = await self.client.chat.completions.create(
+                        model=self.model,
+                        messages=openai_messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        **kwargs
+                    )
+                    
+                    choice = response.choices[0]
+                    tokens_used = response.usage.total_tokens if response.usage else None
+                    cost_estimate = None
+                    
+                    if response.usage:
+                        cost_estimate = self.estimate_cost(
+                            response.usage.prompt_tokens,
+                            response.usage.completion_tokens
+                        )
+                    
+                    return LLMResponse(
+                        content=choice.message.content or "",
+                        model=self.model,
+                        provider=self.provider_type.value,
+                        tokens_used=tokens_used,
+                        cost_estimate=cost_estimate,
+                        finish_reason=choice.finish_reason,
+                    )
+                    
+            except OpenAIError as e:
+                logger.error(
+                    "openai_completion_failed",
+                    error=str(e),
                     model=self.model,
                     provider=self.provider_type.value,
-                    tokens_used=tokens_used,
-                    cost_estimate=cost_estimate,
-                    finish_reason=choice.finish_reason,
                 )
-                
-        except OpenAIError as e:
-            logger.error(
-                "openai_completion_failed",
-                error=str(e),
-                model=self.model,
-                provider=self.provider_type.value,
-            )
-            raise
-        except Exception as e:
-            logger.error(
-                "openai_completion_unexpected_error",
-                error=str(e),
-                model=self.model,
-                provider=self.provider_type.value,
-            )
-            raise
+                raise
+            except Exception as e:
+                logger.error(
+                    "openai_completion_unexpected_error",
+                    error=str(e),
+                    model=self.model,
+                    provider=self.provider_type.value,
+                )
+                raise
 
     async def stream_completion(
         self,

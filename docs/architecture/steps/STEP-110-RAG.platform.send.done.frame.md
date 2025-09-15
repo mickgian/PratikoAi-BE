@@ -36,23 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.19
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) load_testing/framework.py:81 — load_testing.framework.LoadTestFramework.__init__ (score 0.19)
-   Evidence: Score 0.19, method: __init__
-2) load_testing/framework.py:498 — load_testing.framework.LoadTestFramework._get_scenario_weights (score 0.19)
-   Evidence: Score 0.19, Get scenario weights based on scenario name
-3) load_testing/framework.py:539 — load_testing.framework.LoadTestFramework.identify_bottlenecks (score 0.19)
-   Evidence: Score 0.19, Identify performance bottlenecks from test metrics
-4) load_testing/framework.py:585 — load_testing.framework.LoadTestFramework.generate_scaling_recommendations (score 0.19)
-   Evidence: Score 0.19, Generate scaling recommendations based on metrics
-5) load_testing/framework.py:661 — load_testing.framework.LoadTestFramework.get_throughput_windows (score 0.19)
-   Evidence: Score 0.19, Get throughput in time windows
+1) app/services/ccnl_notification_service.py:248 — app.services.ccnl_notification_service.CCNLNotificationService.send_notification (score 0.26)
+   Evidence: Score 0.26, Send notification through specified channels.
+2) app/services/scrapers/cassazione_scheduler.py:559 — app.services.scrapers.cassazione_scheduler.CassazioneScheduler._should_send_notification (score 0.26)
+   Evidence: Score 0.26, Check if notification should be sent (with throttling).
+
+Args:
+    job: Schedule...
+3) app/services/ccnl_notification_service.py:292 — app.services.ccnl_notification_service.CCNLNotificationService._send_via_channel (score 0.25)
+   Evidence: Score 0.25, Send notification via specific channel (mock implementation).
+4) failure-recovery-system/decision_tree_engine.py:1628 — failure-recovery-system.decision_tree_engine.DecisionTreeEngine._execute_send_alerts (score 0.25)
+   Evidence: Score 0.25, Execute alert sending.
+5) app/services/legal_document_analyzer.py:840 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_sender (score 0.20)
+   Evidence: Score 0.20, Extract sender of diffida
 
 Notes:
 - Weak or missing implementation
-- Top match is in test files
 - Low confidence in symbol matching
 
 Suggested next TDD actions:

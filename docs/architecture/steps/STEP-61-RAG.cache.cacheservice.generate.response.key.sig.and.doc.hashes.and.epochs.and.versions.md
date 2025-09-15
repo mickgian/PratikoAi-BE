@@ -36,25 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.51
+Status: 🔌  |  Confidence: 0.54
 
 Top candidates:
-1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.51)
-   Evidence: Score 0.51, Initialize the cache service.
-2) app/services/cache.py:119 — app.services.cache.CacheService._generate_conversation_key (score 0.51)
-   Evidence: Score 0.51, Generate cache key for conversation history.
+1) app/services/cache.py:107 — app.services.cache.CacheService._generate_conversation_key (score 0.54)
+   Evidence: Score 0.54, Generate cache key for conversation history.
 
 Args:
     session_id: Unique sessi...
-3) app/services/cache.py:130 — app.services.cache.CacheService._generate_query_key (score 0.51)
-   Evidence: Score 0.51, Generate cache key for LLM query response.
+2) app/services/cache.py:118 — app.services.cache.CacheService._generate_query_key (score 0.54)
+   Evidence: Score 0.54, Generate cache key for LLM query response.
 
 Args:
     query_hash: Hash of the qu...
-4) app/services/cache.py:27 — app.services.cache.CacheService (score 0.48)
-   Evidence: Score 0.48, Redis-based caching service for LLM responses and conversations.
-5) app/core/middleware/performance_middleware.py:416 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_hit (score 0.42)
-   Evidence: Score 0.42, Record a cache hit.
+3) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.50)
+   Evidence: Score 0.50, Initialize the cache service.
+4) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.50)
+   Evidence: Score 0.50, Decorator to cache LLM responses based on messages and model.
+
+Args:
+    ttl: Ti...
+5) app/core/middleware/performance_middleware.py:416 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_hit (score 0.49)
+   Evidence: Score 0.49, Record a cache hit.
 
 Args:
     cache_key: Cache key that was hit

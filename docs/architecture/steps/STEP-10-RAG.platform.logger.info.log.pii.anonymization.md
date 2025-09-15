@@ -36,38 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.19
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/utils/sanitization.py:14 — app.utils.sanitization.sanitize_string (score 0.19)
-   Evidence: Score 0.19, Sanitize a string to prevent XSS and other injection attacks.
-
-Args:
-    value: ...
-2) app/utils/sanitization.py:39 — app.utils.sanitization.sanitize_email (score 0.19)
-   Evidence: Score 0.19, Sanitize an email address.
-
-Args:
-    email: The email address to sanitize
-
-Retu...
-3) app/utils/sanitization.py:58 — app.utils.sanitization.sanitize_dict (score 0.19)
-   Evidence: Score 0.19, Recursively sanitize all string values in a dictionary.
-
-Args:
-    data: The dic...
-4) app/utils/sanitization.py:80 — app.utils.sanitization.sanitize_list (score 0.19)
-   Evidence: Score 0.19, Recursively sanitize all string values in a list.
-
-Args:
-    data: The list to s...
-5) app/utils/sanitization.py:102 — app.utils.sanitization.validate_password_strength (score 0.19)
-   Evidence: Score 0.19, Validate password strength.
-
-Args:
-    password: The password to validate
-
-Retur...
+1) app/core/privacy/gdpr.py:379 — app.core.privacy.gdpr.AuditLogger._log_event (score 0.28)
+   Evidence: Score 0.28, Log a GDPR audit event.
+2) app/core/privacy/gdpr.py:436 — app.core.privacy.gdpr.AuditLogger.export_audit_log (score 0.28)
+   Evidence: Score 0.28, Export audit log in specified format.
+3) app/core/privacy/gdpr.py:335 — app.core.privacy.gdpr.AuditLogger.log_consent_event (score 0.27)
+   Evidence: Score 0.27, Log a consent-related event.
+4) app/core/privacy/gdpr.py:346 — app.core.privacy.gdpr.AuditLogger.log_processing_event (score 0.27)
+   Evidence: Score 0.27, Log a data processing event.
+5) app/core/privacy/gdpr.py:357 — app.core.privacy.gdpr.AuditLogger.log_access_event (score 0.27)
+   Evidence: Score 0.27, Log a data access event.
 
 Notes:
 - Weak or missing implementation

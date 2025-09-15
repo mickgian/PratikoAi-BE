@@ -36,25 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.21
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.21)
-   Evidence: Score 0.21, Add timestamp if not present.
-2) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.20)
-   Evidence: Score 0.20, method: __post_init__
-3) app/schemas/auth.py:139 — app.schemas.auth.SessionResponse.sanitize_name (score 0.19)
-   Evidence: Score 0.19, Sanitize the session name.
+1) app/ragsteps/cache/step_59_rag_cache_langgraphagent_get_cached_llm_response_check_for_cached_response.py:40 — app.ragsteps.cache.step_59_rag_cache_langgraphagent_get_cached_llm_response_check_for_cached_response.run (score 0.26)
+   Evidence: Score 0.26, Adapter for RAG STEP 59.
+
+Expected behavior is defined in:
+docs/architecture/ste...
+2) app/api/v1/italian.py:65 — app.api.v1.italian.ComplianceCheckResponse (score 0.26)
+   Evidence: Score 0.26, Compliance check response.
+3) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
+   Evidence: Score 0.26, Check compatibility for a version deployment.
+4) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
+   Evidence: Score 0.26, Convert internal SearchResponse to API model.
+5) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.26)
+   Evidence: Score 0.26, Decorator to cache LLM responses based on messages and model.
 
 Args:
-    v: The name to sanitize
-
-Returns:
-    str:...
-4) app/models/regional_taxes.py:61 — app.models.regional_taxes.Regione.__repr__ (score 0.18)
-   Evidence: Score 0.18, method: __repr__
-5) app/models/regional_taxes.py:64 — app.models.regional_taxes.Regione.to_dict (score 0.18)
-   Evidence: Score 0.18, method: to_dict
+    ttl: Ti...
 
 Notes:
 - Weak or missing implementation

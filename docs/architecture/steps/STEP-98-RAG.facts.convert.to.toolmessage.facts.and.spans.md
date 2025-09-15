@@ -36,24 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.20
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.20)
-   Evidence: Score 0.20, Validate the message content.
+1) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.27)
+   Evidence: Score 0.27, Combine results from BM25 and vector search, removing duplicates.
+2) evals/helpers.py:129 — evals.helpers.process_trace_results (score 0.25)
+   Evidence: Score 0.25, Process results for a single trace.
 
-    Args:
-        v: The content to validate
+Args:
+    report: The report dictionary.
+  ...
+3) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
+   Evidence: Score 0.25, Convert internal SearchResponse to API model.
+4) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.25)
+   Evidence: Score 0.25, Validate the message content.
 
-   ...
-2) failure-recovery-system/cicd_integration.py:118 — failure-recovery-system.cicd_integration.CICDEvent.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-3) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-4) failure-recovery-system/cicd_integration.py:170 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.__init__ (score 0.18)
-   Evidence: Score 0.18, method: __init__
-5) failure-recovery-system/cicd_integration.py:173 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.validate_github_signature (score 0.18)
-   Evidence: Score 0.18, Validate GitHub webhook signature.
+Args:
+    v: The content to validate
+
+Returns:
+  ...
+5) app/services/atomic_facts_extractor.py:145 — app.services.atomic_facts_extractor.AtomicFacts.is_empty (score 0.25)
+   Evidence: Score 0.25, Check if no facts were extracted.
 
 Notes:
 - Weak or missing implementation

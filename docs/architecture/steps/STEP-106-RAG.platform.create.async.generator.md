@@ -36,28 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.21
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) feature-flags/dependency_tracking/cross_repo_tracker.py:771 — feature-flags.dependency_tracking.cross_repo_tracker.sync (score 0.21)
-   Evidence: Score 0.21, Sync dependencies from all repositories.
-2) app/schemas/auth.py:69 — app.schemas.auth.UserCreate.validate_password (score 0.19)
-   Evidence: Score 0.19, Validate password strength.
+1) app/models/ccnl_data.py:813 — app.models.ccnl_data.create_ccnl_id (score 0.26)
+   Evidence: Score 0.26, Create standardized CCNL ID.
+2) app/core/database.py:10 — app.core.database.get_async_session (score 0.26)
+   Evidence: Score 0.26, Get async database session.
+3) app/models/regulatory_documents.py:310 — app.models.regulatory_documents.create_document_id (score 0.26)
+   Evidence: Score 0.26, Create standardized document ID.
 
 Args:
-    v: The password to validate
+    source: Source authority
+    documen...
+4) app/services/export_file_generator.py:29 — app.services.export_file_generator.ExportFileGenerator.__init__ (score 0.26)
+   Evidence: Score 0.26, method: __init__
+5) app/services/vector_service.py:112 — app.services.vector_service.VectorService.create_embedding (score 0.26)
+   Evidence: Score 0.26, Create embedding vector for text.
 
+Args:
+    text: Text to embed
+    
 Returns:
-   ...
-3) evals/helpers.py:169 — evals.helpers.generate_report (score 0.19)
-   Evidence: Score 0.19, Generate a JSON report file with evaluation results.
-
-Args:
-    report: The repo...
-4) load_testing/config.py:263 — load_testing.config.TestDataGenerator.generate_italian_queries (score 0.19)
-   Evidence: Score 0.19, Generate realistic Italian tax/regulatory queries
-5) load_testing/config.py:279 — load_testing.config.TestDataGenerator.generate_tax_calculation_requests (score 0.19)
-   Evidence: Score 0.19, Generate tax calculation test requests
+ ...
 
 Notes:
 - Weak or missing implementation

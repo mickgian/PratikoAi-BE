@@ -36,30 +36,32 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.30)
-   Evidence: Score 0.30, Check if document has expired
-2) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.30)
-   Evidence: Score 0.30, Convert document to dictionary for API responses
-3) app/models/document_simple.py:126 — app.models.document_simple.Document.__init__ (score 0.27)
-   Evidence: Score 0.27, method: __init__
-4) app/models/document_simple.py:77 — app.models.document_simple.Document (score 0.25)
-   Evidence: Score 0.25, Document model with GDPR compliance fields
-5) app/services/document_uploader.py:189 — app.services.document_uploader.DocumentUploader._validate_file_signature (score 0.24)
-   Evidence: Score 0.24, Validate file content matches expected file type signatures.
+1) app/services/document_processor.py:501 — app.services.document_processor.DocumentProcessor._determine_document_type (score 0.32)
+   Evidence: Score 0.32, Determine document type from URL.
 
 Args:
-  content: F...
+    document_url: Document URL
+    
+Ret...
+2) app/services/legal_document_analyzer.py:883 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_parties (score 0.31)
+   Evidence: Score 0.31, Extract parties from contract
+3) app/services/legal_document_analyzer.py:905 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_object (score 0.31)
+   Evidence: Score 0.31, Extract contract object/purpose
+4) app/services/legal_document_analyzer.py:919 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_price (score 0.31)
+   Evidence: Score 0.31, Extract contract price
+5) app/services/legal_document_analyzer.py:933 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_duration (score 0.31)
+   Evidence: Score 0.31, Extract contract duration
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create decision implementation for DocType
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 - Test document parsing and validation
 <!-- AUTO-AUDIT:END -->

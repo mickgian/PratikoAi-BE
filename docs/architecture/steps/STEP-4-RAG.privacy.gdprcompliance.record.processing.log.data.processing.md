@@ -36,23 +36,21 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.38
+Status: 🔌  |  Confidence: 0.49
 
 Top candidates:
-1) app/core/privacy/__init__.py:1 — app.core.privacy.__init__ (score 0.38)
-   Evidence: Score 0.38, Privacy and GDPR compliance utilities.
-2) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.35)
-   Evidence: Score 0.35, Anonymize user data for GDPR "right to be forgotten" compliance.
+1) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.49)
+   Evidence: Score 0.49, Anonymize PII in structured data (dictionaries).
+2) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.47)
+   Evidence: Score 0.47, Anonymize PII in text while preserving structure.
+3) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.45)
+   Evidence: Score 0.45, Anonymize user data for GDPR "right to be forgotten" compliance.
 
 Replaces PII w...
-3) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.31)
-   Evidence: Score 0.31, Validate PII type string.
-4) app/core/security/audit_logger.py:454 — app.core.security.audit_logger.SecurityAuditLogger._anonymize_user_id (score 0.31)
-   Evidence: Score 0.31, Anonymize user ID for privacy.
-5) app/api/v1/privacy.py:1 — app.api.v1.privacy (score 0.31)
-   Evidence: Score 0.31, Privacy and GDPR compliance API endpoints.
-
-This module provides endpoints for p...
+4) app/core/privacy/gdpr.py:471 — app.core.privacy.gdpr.GDPRCompliance.handle_data_subject_request (score 0.44)
+   Evidence: Score 0.44, Handle data subject requests under GDPR (Article 15-22).
+5) app/core/privacy/gdpr.py:465 — app.core.privacy.gdpr.GDPRCompliance.__init__ (score 0.43)
+   Evidence: Score 0.43, Initialize GDPR compliance system.
 
 Notes:
 - Implementation exists but may not be wired correctly

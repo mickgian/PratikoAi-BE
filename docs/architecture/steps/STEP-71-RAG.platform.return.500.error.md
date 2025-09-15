@@ -36,24 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.12
+Status: ❌  |  Confidence: 0.20
 
 Top candidates:
-1) app/services/ccnl_service.py:153 — app.services.ccnl_service.CCNLValidationResult.add_error (score 0.12)
-   Evidence: Score 0.12, Add validation error.
-2) app/services/llm_retry_service.py:118 — app.services.llm_retry_service.RetryError (score 0.11)
-   Evidence: Score 0.11, Base exception for retry-related errors.
-3) evals/main.py:64 — evals.main.print_error (score 0.11)
-   Evidence: Score 0.11, Print an error message with colors.
+1) evals/main.py:64 — evals.main.print_error (score 0.20)
+   Evidence: Score 0.20, Print an error message with colors.
 
 Args:
     message: The message to print
-4) version-management/cli/version_cli.py:69 — version-management.cli.version_cli.VersionCLI.print_error (score 0.11)
-   Evidence: Score 0.11, Print error message.
-5) feature-flags/admin/web_interface.py:1 — feature-flags.admin.web_interface (score 0.11)
-   Evidence: Score 0.11, PratikoAI Feature Flag Admin Web Interface
-
-Advanced web-based admin interface f...
+2) app/models/query.py:131 — app.models.query.QueryErrorResponse (score 0.19)
+   Evidence: Score 0.19, Error response for failed queries.
+3) version-management/cli/version_cli.py:69 — version-management.cli.version_cli.VersionCLI.print_error (score 0.19)
+   Evidence: Score 0.19, Print error message.
+4) app/models/cassazione_data.py:355 — app.models.cassazione_data.ScrapingError (score 0.19)
+   Evidence: Score 0.19, Represents a scraping error with context.
+5) app/services/automatic_improvement_engine.py:28 — app.services.automatic_improvement_engine.ImprovementEngineError (score 0.19)
+   Evidence: Score 0.19, Custom exception for improvement engine operations
 
 Notes:
 - Weak or missing implementation

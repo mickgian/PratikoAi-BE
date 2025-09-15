@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.23
+Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/services/legal_document_analyzer.py:883 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_parties (score 0.23)
-   Evidence: Score 0.23, Extract parties from contract
-2) app/services/legal_document_analyzer.py:919 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_price (score 0.23)
-   Evidence: Score 0.23, Extract contract price
-3) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.22)
-   Evidence: Score 0.22, Check if document has expired
-4) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.22)
-   Evidence: Score 0.22, Convert document to dictionary for API responses
-5) alembic/versions/20250804_add_regulatory_documents.py:26 — alembic.versions.20250804_add_regulatory_documents.upgrade (score 0.22)
-   Evidence: Score 0.22, Add regulatory documents tables.
+1) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.30)
+   Evidence: Score 0.30, Convert APIContract to OpenAPI specification.
+2) app/services/legal_document_analyzer.py:883 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_parties (score 0.30)
+   Evidence: Score 0.30, Extract parties from contract
+3) app/services/legal_document_analyzer.py:905 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_object (score 0.30)
+   Evidence: Score 0.30, Extract contract object/purpose
+4) app/services/legal_document_analyzer.py:919 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_price (score 0.30)
+   Evidence: Score 0.30, Extract contract price
+5) app/services/legal_document_analyzer.py:933 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_duration (score 0.30)
+   Evidence: Score 0.30, Extract contract duration
 
 Notes:
 - Weak or missing implementation

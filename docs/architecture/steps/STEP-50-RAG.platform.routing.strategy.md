@@ -36,19 +36,27 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.18
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) failure-recovery-system/decision_tree_engine.py:207 — failure-recovery-system.decision_tree_engine.RecoveryStrategy.__post_init__ (score 0.18)
-   Evidence: Score 0.18, method: __post_init__
-2) app/models/cassazione_data.py:367 — app.models.cassazione_data.ScrapingError.category (score 0.18)
-   Evidence: Score 0.18, Categorize the error.
-3) app/services/export_file_generator.py:792 — app.services.export_file_generator.ExportFileGenerator._translate_query_type (score 0.18)
-   Evidence: Score 0.18, Translate query type to Italian
-4) failure-recovery-system/recovery_orchestrator.py:879 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._get_strategy_by_id (score 0.17)
-   Evidence: Score 0.17, Get a strategy by its ID from all available strategies.
-5) app/models/cassazione_data.py:319 — app.models.cassazione_data.ScrapingStatistics.save_rate (score 0.17)
-   Evidence: Score 0.17, Calculate decision save rate.
+1) app/core/langgraph/graph.py:458 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
+   Evidence: Score 0.28, Get the LLM routing strategy from configuration.
+
+Returns:
+    RoutingStrategy: ...
+2) app/schemas/privacy.py:191 — app.schemas.privacy.validate_consent_type (score 0.26)
+   Evidence: Score 0.26, Validate consent type string.
+3) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.26)
+   Evidence: Score 0.26, Validate PII type string.
+4) app/services/document_processor.py:501 — app.services.document_processor.DocumentProcessor._determine_document_type (score 0.26)
+   Evidence: Score 0.26, Determine document type from URL.
+
+Args:
+    document_url: Document URL
+    
+Ret...
+5) failure-recovery-system/failure_categorizer.py:655 — failure-recovery-system.failure_categorizer.FailureCategorizer._identify_failure_type (score 0.26)
+   Evidence: Score 0.26, Identify the primary failure type using pattern matching.
 
 Notes:
 - Weak or missing implementation

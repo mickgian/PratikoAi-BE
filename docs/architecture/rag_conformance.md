@@ -9,8 +9,8 @@ Each step should be audited and its documentation filled during the conformance 
 **Implementation Status Overview:**
 - ✅ Implemented: 0 steps
 - 🟡 Partial: 1 steps
-- 🔌 Not wired: 77 steps
-- ❌ Missing: 57 steps
+- 🔌 Not wired: 88 steps
+- ❌ Missing: 46 steps
 
 **By Category:**
 - **cache**: 0/8 implemented
@@ -31,7 +31,6 @@ Each step should be audited and its documentation filled during the conformance 
 - **response**: 0/6 implemented
 - **routing**: 0/1 implemented
 - **streaming**: 0/4 implemented
-
 ## Step Registry
 
 | Step | ID | Node | Type | Category | Owner | Doc |

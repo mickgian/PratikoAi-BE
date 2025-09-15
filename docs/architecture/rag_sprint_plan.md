@@ -139,7 +139,7 @@ This prioritized sprint plan focuses on the most critical RAG pipeline component
 
 ## Next Steps After Sprint Plan
 
-1. Run `python scripts/rag_backlog.py --create-github --dry-run` to preview GitHub issues
+1. Run `python scripts/rag_issue_prompter.py --create --dry-run` to preview issues
 2. Assign engineering resources to each week
 3. Set up monitoring dashboards for each step
 4. Schedule weekly reviews against conformance dashboard

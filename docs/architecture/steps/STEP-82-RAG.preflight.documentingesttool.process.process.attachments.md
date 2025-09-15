@@ -36,19 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.18
 
 Top candidates:
-1) app/core/privacy/gdpr.py:226 — app.core.privacy.gdpr.DataProcessor.__init__ (score 0.24)
-   Evidence: Score 0.24, Initialize data processor.
-2) app/core/privacy/gdpr.py:239 — app.core.privacy.gdpr.DataProcessor.can_process_data (score 0.24)
-   Evidence: Score 0.24, Check if data processing is allowed under GDPR.
-3) app/core/privacy/gdpr.py:272 — app.core.privacy.gdpr.DataProcessor.record_processing (score 0.24)
-   Evidence: Score 0.24, Record a data processing activity.
-4) app/core/privacy/gdpr.py:311 — app.core.privacy.gdpr.DataProcessor.get_user_processing_records (score 0.24)
-   Evidence: Score 0.24, Get all processing records for a user.
-5) app/core/privacy/gdpr.py:315 — app.core.privacy.gdpr.DataProcessor.get_retention_period (score 0.24)
-   Evidence: Score 0.24, Get retention period for a data category.
+1) app/models/cassazione_data.py:268 — app.models.cassazione_data.ScrapingResult.processing_rate (score 0.18)
+   Evidence: Score 0.18, Calculate processing rate.
+2) app/services/document_processing_service.py:36 — app.services.document_processing_service.DocumentProcessor.__init__ (score 0.18)
+   Evidence: Score 0.18, method: __init__
+3) app/services/document_processing_service.py:587 — app.services.document_processing_service.DocumentProcessor._parse_italian_number_safe (score 0.18)
+   Evidence: Score 0.18, Safe version of Italian number parsing for pandas apply
+4) app/services/document_processing_service.py:612 — app.services.document_processing_service.DocumentProcessor._get_document_storage_path (score 0.18)
+   Evidence: Score 0.18, Get file system path for stored document
+5) app/services/document_processor.py:23 — app.services.document_processor.DocumentProcessor.__init__ (score 0.18)
+   Evidence: Score 0.18, Initialize document processor.
+
+Args:
+    timeout: HTTP request timeout in secon...
 
 Notes:
 - Weak or missing implementation

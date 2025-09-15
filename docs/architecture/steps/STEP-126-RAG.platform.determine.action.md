@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: ❌  |  Confidence: 0.19
 
 Top candidates:
-1) app/services/domain_action_classifier.py:35 — app.services.domain_action_classifier.Action (score 0.29)
-   Evidence: Score 0.29, Professional actions/intents
-2) app/models/cassazione_data.py:209 — app.models.cassazione_data.Citation.is_law_citation (score 0.25)
-   Evidence: Score 0.25, Check if this is a citation to law.
-3) app/models/cassazione_data.py:213 — app.models.cassazione_data.Citation.is_decision_citation (score 0.25)
-   Evidence: Score 0.25, Check if this is a citation to another decision.
-4) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.25)
-   Evidence: Score 0.25, Validate the citation.
-5) app/models/cassazione_data.py:222 — app.models.cassazione_data.Citation.extract_from_text (score 0.25)
-   Evidence: Score 0.25, Extract citations from decision text.
+1) app/models/cassazione_data.py:209 — app.models.cassazione_data.Citation.is_law_citation (score 0.19)
+   Evidence: Score 0.19, Check if this is a citation to law.
+2) app/models/cassazione_data.py:213 — app.models.cassazione_data.Citation.is_decision_citation (score 0.19)
+   Evidence: Score 0.19, Check if this is a citation to another decision.
+3) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.19)
+   Evidence: Score 0.19, Validate the citation.
+4) app/models/cassazione_data.py:222 — app.models.cassazione_data.Citation.extract_from_text (score 0.19)
+   Evidence: Score 0.19, Extract citations from decision text.
+5) app/services/failure_pattern_analyzer.py:407 — app.services.failure_pattern_analyzer.FailurePatternAnalyzer._determine_impact_tier (score 0.19)
+   Evidence: Score 0.19, Determine impact tier based on score
 
 Notes:
 - Weak or missing implementation

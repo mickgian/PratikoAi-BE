@@ -36,25 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.43
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/services/domain_prompt_templates.py:346 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.43)
-   Evidence: Score 0.43, Get the appropriate prompt for domain-action combination.
-
-Args:
-    domain: Pro...
-2) app/services/domain_prompt_templates.py:20 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.41)
-   Evidence: Score 0.41, Load all domain-action prompt template combinations
-3) app/services/domain_prompt_templates.py:430 — app.services.domain_prompt_templates.PromptTemplateManager.get_available_combinations (score 0.41)
-   Evidence: Score 0.41, Get all available domain-action combinations
-4) app/services/domain_prompt_templates.py:14 — app.services.domain_prompt_templates.PromptTemplateManager (score 0.36)
-   Evidence: Score 0.36, Manages domain-action specific prompt templates for Italian professionals
-5) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.35)
-   Evidence: Score 0.35, Get the appropriate system prompt based on classification.
+1) app/core/langgraph/graph.py:401 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.31)
+   Evidence: Score 0.31, Get the appropriate system prompt based on classification.
 
 Args:
     messages: ...
+2) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.29)
+   Evidence: Score 0.29, Extract parameters for CCNL tool from user query and classification.
+
+Args:
+    ...
+3) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.29)
+   Evidence: Score 0.29, Select optimal LLM provider based on domain-action requirements
+4) app/core/langgraph/graph.py:346 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.28)
+   Evidence: Score 0.28, Get routing strategy and cost limit based on domain-action classification.
+
+Args...
+5) app/core/langgraph/graph.py:797 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.28)
+   Evidence: Score 0.28, Determine if query needs tools/complex workflow based on classification.
+
+Args:
+...
 
 Notes:
 - Implementation exists but may not be wired correctly

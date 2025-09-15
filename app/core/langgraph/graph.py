@@ -1,9 +1,7 @@
 """This file contains the LangGraph Agent/workflow and interactions with the LLM."""
 
 from typing import (
-    Any,
     AsyncGenerator,
-    Dict,
     List,
     Literal,
     Optional,
@@ -15,7 +13,6 @@ from langchain_core.messages import (
     ToolMessage,
     convert_to_openai_messages,
 )
-from langchain_openai import ChatOpenAI
 from langfuse.langchain import CallbackHandler
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import (
@@ -24,7 +21,6 @@ from langgraph.graph import (
 )
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import StateSnapshot
-from openai import OpenAIError
 from psycopg_pool import AsyncConnectionPool
 
 from app.core.config import (
@@ -32,24 +28,23 @@ from app.core.config import (
     settings,
 )
 from app.core.langgraph.tools import tools
-from app.core.llm.factory import get_llm_provider, RoutingStrategy
 from app.core.llm.base import LLMProvider
-from app.services.domain_action_classifier import DomainActionClassifier, DomainActionClassification, Action
-from app.services.domain_prompt_templates import PromptTemplateManager
+from app.core.llm.factory import get_llm_provider, RoutingStrategy
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
-from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_llm_error, track_classification_usage
+from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_classification_usage
 from app.core.prompts import SYSTEM_PROMPT
-from app.core.decorators.cache import cache_llm_response, cache_conversation
-from app.services.cache import cache_service
-from app.services.usage_tracker import usage_tracker
 from app.schemas import (
     GraphState,
     Message,
 )
+from app.services.cache import cache_service
+from app.services.domain_action_classifier import DomainActionClassifier, DomainActionClassification, Action
+from app.services.domain_prompt_templates import PromptTemplateManager
+from app.services.golden_fast_path import GoldenFastPathService, EligibilityDecision
+from app.services.usage_tracker import usage_tracker
 from app.utils import (
     dump_messages,
-    prepare_messages,
 )
 
 
@@ -71,6 +66,7 @@ class LangGraphAgent:
         # Initialize domain-action classification services
         self._domain_classifier = DomainActionClassifier()
         self._prompt_template_manager = PromptTemplateManager()
+        self._golden_fast_path_service = GoldenFastPathService()
         self._current_classification = None  # Store current query classification
         self._response_metadata = None  # Store response metadata
 
@@ -125,6 +121,52 @@ class LangGraphAgent:
         except Exception as e:
             logger.error("query_classification_failed", error=str(e), exc_info=True)
             return None
+
+    async def _check_golden_fast_path_eligibility(self, messages: List[Message], session_id: str, user_id: Optional[str]) -> 'EligibilityResult':
+        """
+        Check if the current query is eligible for golden fast-path processing.
+        
+        Args:
+            messages: List of conversation messages
+            session_id: Session identifier
+            user_id: User identifier
+            
+        Returns:
+            EligibilityResult with decision and reasoning
+        """
+        import time
+        
+        # Find the latest user message
+        user_message = None
+        for message in reversed(messages):
+            if message.role == "user":
+                user_message = message.content
+                break
+        
+        if not user_message:
+            # No user message found, not eligible
+            from app.services.golden_fast_path import EligibilityResult, EligibilityDecision
+            return EligibilityResult(
+                decision=EligibilityDecision.NOT_ELIGIBLE,
+                confidence=1.0,
+                reasons=["no_user_message"],
+                next_step="ClassifyDomain",
+                allows_golden_lookup=False
+            )
+        
+        # Prepare query data for golden fast-path service
+        query_data = {
+            "query": user_message,
+            "attachments": [],  # TODO: Extract attachments from request context in future
+            "user_id": user_id or "anonymous",
+            "session_id": session_id,
+            "canonical_facts": [],  # TODO: Extract from atomic facts extraction in future
+            "query_signature": f"session_{session_id}_{hash(user_message)}",
+            "trace_id": f"trace_{session_id}_{int(time.time())}"
+        }
+        
+        # Check eligibility using golden fast-path service
+        return await self._golden_fast_path_service.is_eligible_for_fast_path(query_data)
 
     async def _get_cached_llm_response(self, provider: LLMProvider, messages: List[Message], tools: list, temperature: float, max_tokens: int):
         """Get LLM response with caching support.
@@ -791,8 +833,22 @@ class LangGraphAgent:
             # Classify user query to determine streaming strategy
             self._current_classification = await self._classify_user_query(messages)
             
-            # Decide streaming approach based on classification
-            if self._needs_complex_workflow(self._current_classification):
+            # RAG STEP 20: Check golden fast-path eligibility
+            golden_eligibility = await self._check_golden_fast_path_eligibility(messages, session_id, user_id)
+            
+            # Decide streaming approach based on classification and golden fast-path eligibility
+            if golden_eligibility.decision == EligibilityDecision.ELIGIBLE and golden_eligibility.allows_golden_lookup:
+                # TODO: Implement golden lookup in future step
+                # For now, use direct LLM streaming but log the golden eligibility
+                logger.info(
+                    "golden_fast_path_eligible_fallback_to_llm",
+                    session_id=session_id,
+                    confidence=golden_eligibility.confidence,
+                    reasons=golden_eligibility.reasons
+                )
+                async for chunk in self._stream_with_direct_llm(messages, session_id):
+                    yield chunk
+            elif self._needs_complex_workflow(self._current_classification):
                 # Use LangGraph workflow streaming for tool-heavy operations
                 async for chunk in self._stream_with_langgraph_workflow(messages, session_id):
                     yield chunk

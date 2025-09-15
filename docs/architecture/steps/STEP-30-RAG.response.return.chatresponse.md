@@ -36,25 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: ❌  |  Confidence: 0.24
 
 Top candidates:
-1) app/schemas/chat.py:95 — app.schemas.chat.ChatResponse (score 0.29)
-   Evidence: Score 0.29, Response model for chat endpoint.
+1) app/schemas/chat.py:119 — app.schemas.chat.ChatResponse (score 0.24)
+   Evidence: Score 0.24, Response model for chat endpoint.
 
 Attributes:
     messages: List of messages in...
-2) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.24)
-   Evidence: Score 0.24, Add timestamp if not present.
-3) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.24)
-   Evidence: Score 0.24, Decorator to cache LLM responses based on messages and model.
-
-Args:
-    ttl: Ti...
-4) failure-recovery-system/cicd_integration.py:1042 — failure-recovery-system.cicd_integration.CICDIntegrationManager._create_error_response (score 0.24)
-   Evidence: Score 0.24, Create an error recovery response.
-5) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.24)
-   Evidence: Score 0.24, method: __post_init__
+2) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.19)
+   Evidence: Score 0.19, Add timestamp if not present.
+3) failure-recovery-system/cicd_integration.py:1042 — failure-recovery-system.cicd_integration.CICDIntegrationManager._create_error_response (score 0.18)
+   Evidence: Score 0.18, Create an error recovery response.
+4) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.18)
+   Evidence: Score 0.18, method: __post_init__
+5) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.18)
+   Evidence: Score 0.18, method: __post_init__
 
 Notes:
 - Weak or missing implementation

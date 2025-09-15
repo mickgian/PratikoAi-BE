@@ -36,34 +36,31 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.52
+Status: 🔌  |  Confidence: 0.50
 
 Top candidates:
-1) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.52)
-   Evidence: Score 0.52, Decorator to cache LLM responses based on messages and model.
+1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.50)
+   Evidence: Score 0.50, Initialize the cache service.
+2) app/services/cache.py:119 — app.services.cache.CacheService._generate_conversation_key (score 0.50)
+   Evidence: Score 0.50, Generate cache key for conversation history.
 
 Args:
-    ttl: Ti...
-2) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.52)
-   Evidence: Score 0.52, Decorator to cache conversation history.
+    session_id: Unique sessi...
+3) app/services/cache.py:130 — app.services.cache.CacheService._generate_query_key (score 0.50)
+   Evidence: Score 0.50, Generate cache key for LLM query response.
 
 Args:
-    ttl: Time to live in seconds...
-3) app/core/decorators/cache.py:190 — app.core.decorators.cache.cache_result (score 0.52)
-   Evidence: Score 0.52, Generic caching decorator for any function result.
+    query_hash: Hash of the qu...
+4) app/services/cache.py:27 — app.services.cache.CacheService (score 0.47)
+   Evidence: Score 0.47, Redis-based caching service for LLM responses and conversations.
+5) app/services/cache.py:1 — app.services.cache (score 0.44)
+   Evidence: Score 0.44, Redis-based caching service for LLM responses and conversations.
 
-Args:
-    key_func: Function...
-4) app/core/decorators/cache.py:304 — app.core.decorators.cache.invalidate_cache_on_update (score 0.52)
-   Evidence: Score 0.52, Decorator to invalidate cache entries when data is updated.
-
-Args:
-    cache_key...
-5) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.52)
-   Evidence: Score 0.52, Initialize the cache service.
+This module pr...
 
 Notes:
 - Implementation exists but may not be wired correctly
+- Low confidence in symbol matching
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

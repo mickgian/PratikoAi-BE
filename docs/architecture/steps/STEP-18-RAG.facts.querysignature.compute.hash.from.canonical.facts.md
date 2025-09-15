@@ -36,24 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.20
 
 Top candidates:
-1) app/core/security/request_signing.py:79 — app.core.security.request_signing.RequestSigner.verify_signature (score 0.26)
-   Evidence: Score 0.26, Verify request signature.
+1) app/core/security/request_signing.py:79 — app.core.security.request_signing.RequestSigner.verify_signature (score 0.20)
+   Evidence: Score 0.20, Verify request signature.
 
 Args:
     method: HTTP method
     path: Request path
 ...
-2) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.25)
-   Evidence: Score 0.25, Add timestamp if not present.
-3) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.25)
-   Evidence: Score 0.25, method: __post_init__
-4) app/models/query.py:181 — app.models.query.QueryMetrics.success_rate (score 0.25)
-   Evidence: Score 0.25, Calculate success rate percentage.
-5) app/models/query.py:188 — app.models.query.QueryMetrics.failure_rate (score 0.25)
-   Evidence: Score 0.25, Calculate failure rate percentage.
+2) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.20)
+   Evidence: Score 0.20, Add timestamp if not present.
+3) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.20)
+   Evidence: Score 0.20, method: __post_init__
+4) app/models/query.py:181 — app.models.query.QueryMetrics.success_rate (score 0.20)
+   Evidence: Score 0.20, Calculate success rate percentage.
+5) app/models/query.py:188 — app.models.query.QueryMetrics.failure_rate (score 0.20)
+   Evidence: Score 0.20, Calculate failure rate percentage.
 
 Notes:
 - Weak or missing implementation

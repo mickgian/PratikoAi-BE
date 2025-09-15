@@ -36,29 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/core/sse_write.py:15 — app.core.sse_write.write_sse (score 0.33)
-   Evidence: Score 0.33, Log an SSE frame that will be written to the response.
-
-Args:
-    response: The ...
-2) app/services/i18n_service.py:322 — app.services.i18n_service.I18nService.format_date (score 0.25)
-   Evidence: Score 0.25, Format date according to language preferences.
-3) app/models/cassazione_data.py:345 — app.models.cassazione_data.ScrapingStatistics.reset (score 0.23)
-   Evidence: Score 0.23, Reset all statistics.
-4) load_testing/locust_tests.py:64 — load_testing.locust_tests.PratikoAIUser._register_user (score 0.23)
-   Evidence: Score 0.23, Register a new test user
-5) app/core/performance/cdn_integration.py:69 — app.core.performance.cdn_integration.CDNManager.__init__ (score 0.23)
-   Evidence: Score 0.23, Initialize CDN manager.
+1) app/core/sse_write.py:15 — app.core.sse_write.write_sse (score 0.27)
+   Evidence: Score 0.27, Log an SSE frame that will be written to the response.
+    
+    Args:
+        re...
+2) app/services/i18n_service.py:322 — app.services.i18n_service.I18nService.format_date (score 0.19)
+   Evidence: Score 0.19, Format date according to language preferences.
+3) app/models/cassazione_data.py:345 — app.models.cassazione_data.ScrapingStatistics.reset (score 0.18)
+   Evidence: Score 0.18, Reset all statistics.
+4) load_testing/locust_tests.py:64 — load_testing.locust_tests.PratikoAIUser._register_user (score 0.18)
+   Evidence: Score 0.18, Register a new test user
+5) app/core/performance/cdn_integration.py:69 — app.core.performance.cdn_integration.CDNManager.__init__ (score 0.17)
+   Evidence: Score 0.17, Initialize CDN manager.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for WriteSSE
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

@@ -36,19 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: ❌  |  Confidence: 0.23
 
 Top candidates:
-1) app/services/secure_document_storage.py:292 — app.services.secure_document_storage.SecureDocumentStorage._encrypt_content (score 0.28)
-   Evidence: Score 0.28, Encrypt document content
-2) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
-   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
-3) app/services/secure_document_storage.py:300 — app.services.secure_document_storage.SecureDocumentStorage._decrypt_content (score 0.27)
-   Evidence: Score 0.27, Decrypt document content
-4) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
-   Evidence: Score 0.27, Check if document has expired
-5) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.27)
-   Evidence: Score 0.27, Convert document to dictionary
+1) app/services/secure_document_storage.py:292 — app.services.secure_document_storage.SecureDocumentStorage._encrypt_content (score 0.23)
+   Evidence: Score 0.23, Encrypt document content
+2) app/services/secure_document_storage.py:300 — app.services.secure_document_storage.SecureDocumentStorage._decrypt_content (score 0.22)
+   Evidence: Score 0.22, Decrypt document content
+3) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.22)
+   Evidence: Score 0.22, Check if document has expired
+4) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.22)
+   Evidence: Score 0.22, Convert document to dictionary for API responses
+5) app/services/document_uploader.py:639 — app.services.document_uploader.DocumentUploader.get_storage_filename (score 0.22)
+   Evidence: Score 0.22, Generate secure storage filename using document ID.
+
+Args:
+  document_id: Unique...
 
 Notes:
 - Weak or missing implementation

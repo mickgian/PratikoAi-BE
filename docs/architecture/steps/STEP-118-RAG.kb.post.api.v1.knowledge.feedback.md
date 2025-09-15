@@ -36,21 +36,21 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.38
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.38)
-   Evidence: Score 0.38, Convert internal SearchResponse to API model.
-2) app/services/vector_providers/pinecone_provider.py:113 — app.services.vector_providers.pinecone_provider.PineconeProvider.upsert (score 0.37)
-   Evidence: Score 0.37, Upsert vectors into Pinecone index.
-3) app/services/vector_providers/pinecone_provider.py:161 — app.services.vector_providers.pinecone_provider.PineconeProvider.query (score 0.37)
-   Evidence: Score 0.37, Query vectors from Pinecone index.
-4) app/models/knowledge.py:13 — app.models.knowledge.KnowledgeItem (score 0.36)
-   Evidence: Score 0.36, Knowledge base item with full-text search support.
+1) app/models/knowledge.py:13 — app.models.knowledge.KnowledgeItem (score 0.34)
+   Evidence: Score 0.34, Knowledge base item with full-text search support.
 
 This model stores processed ...
-5) app/models/knowledge.py:112 — app.models.knowledge.KnowledgeQuery (score 0.36)
-   Evidence: Score 0.36, Query model for knowledge search requests
+2) app/models/knowledge.py:112 — app.models.knowledge.KnowledgeQuery (score 0.34)
+   Evidence: Score 0.34, Query model for knowledge search requests
+3) app/models/knowledge.py:125 — app.models.knowledge.KnowledgeSearchResponse (score 0.34)
+   Evidence: Score 0.34, Response model for knowledge search results
+4) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.33)
+   Evidence: Score 0.33, Convert internal SearchResponse to API model.
+5) app/api/v1/search.py:30 — app.api.v1.search.SemanticSearchRequest (score 0.32)
+   Evidence: Score 0.32, Semantic search request model.
 
 Notes:
 - Implementation exists but may not be wired correctly

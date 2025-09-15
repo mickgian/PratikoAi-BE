@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.18
 
 Top candidates:
-1) app/core/privacy/gdpr.py:331 — app.core.privacy.gdpr.AuditLogger.__init__ (score 0.25)
-   Evidence: Score 0.25, Initialize audit logger.
-2) app/core/privacy/gdpr.py:335 — app.core.privacy.gdpr.AuditLogger.log_consent_event (score 0.25)
-   Evidence: Score 0.25, Log a consent-related event.
-3) app/core/privacy/gdpr.py:346 — app.core.privacy.gdpr.AuditLogger.log_processing_event (score 0.25)
-   Evidence: Score 0.25, Log a data processing event.
-4) app/core/privacy/gdpr.py:357 — app.core.privacy.gdpr.AuditLogger.log_access_event (score 0.25)
-   Evidence: Score 0.25, Log a data access event.
-5) app/core/privacy/gdpr.py:368 — app.core.privacy.gdpr.AuditLogger.log_deletion_event (score 0.25)
-   Evidence: Score 0.25, Log a data deletion event.
+1) app/core/security/audit_logger.py:72 — app.core.security.audit_logger.SecurityAuditLogger.__init__ (score 0.18)
+   Evidence: Score 0.18, Initialize security audit logger.
+2) app/core/security/audit_logger.py:454 — app.core.security.audit_logger.SecurityAuditLogger._anonymize_user_id (score 0.18)
+   Evidence: Score 0.18, Anonymize user ID for privacy.
+3) app/core/security/audit_logger.py:459 — app.core.security.audit_logger.SecurityAuditLogger._anonymize_ip_address (score 0.18)
+   Evidence: Score 0.18, Anonymize IP address for privacy.
+4) app/core/security/audit_logger.py:484 — app.core.security.audit_logger.SecurityAuditLogger._get_gdpr_article (score 0.18)
+   Evidence: Score 0.18, Get GDPR article reference for action.
+5) feature-flags/ci_cd/github_actions.py:445 — feature-flags.ci_cd.github_actions.toggle (score 0.18)
+   Evidence: Score 0.18, Toggle a feature flag.
 
 Notes:
 - Weak or missing implementation

@@ -36,22 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.21
 
 Top candidates:
-1) app/core/config.py:38 — app.core.config.get_environment (score 0.26)
-   Evidence: Score 0.26, Get the current environment.
+1) app/core/config.py:24 — app.core.config.Environment (score 0.21)
+   Evidence: Score 0.21, Application environment types.
+
+Defines the possible environments the applicatio...
+2) app/services/metrics_service.py:37 — app.services.metrics_service.Environment (score 0.21)
+   Evidence: Score 0.21, Environment enumeration.
+3) deployment-orchestration/orchestrator.py:56 — deployment-orchestration.orchestrator.Environment (score 0.21)
+   Evidence: Score 0.21, Environment enumeration.
+4) app/core/config.py:38 — app.core.config.get_environment (score 0.21)
+   Evidence: Score 0.21, Get the current environment.
 
 Returns:
     Environment: The current environment ...
-2) version-management/registry/database.py:75 — version-management.registry.database.ServiceVersionModel.to_service_version (score 0.25)
-   Evidence: Score 0.25, Convert database model to ServiceVersion object.
-3) version-management/registry/database.py:233 — version-management.registry.database.VersionRegistryDB.__init__ (score 0.25)
-   Evidence: Score 0.25, method: __init__
-4) version-management/registry/database.py:237 — version-management.registry.database.VersionRegistryDB.create_tables (score 0.25)
-   Evidence: Score 0.25, Create all database tables.
-5) version-management/registry/database.py:241 — version-management.registry.database.VersionRegistryDB.get_session (score 0.25)
-   Evidence: Score 0.25, Get database session.
+5) version-management/core/version_schema.py:54 — version-management.core.version_schema.Environment (score 0.21)
+   Evidence: Score 0.21, Deployment environments.
 
 Notes:
 - Weak or missing implementation

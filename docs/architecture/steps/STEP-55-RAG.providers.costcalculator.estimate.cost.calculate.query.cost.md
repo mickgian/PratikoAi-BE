@@ -36,35 +36,34 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.46
+Status: 🔌  |  Confidence: 0.41
 
 Top candidates:
-1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.46)
-   Evidence: Score 0.46, Route with failover logic - primary provider with fallbacks.
-
-Args:
-    provider...
-2) app/core/llm/cost_calculator.py:141 — app.core.llm.cost_calculator.CostCalculator.calculate_cost_estimate (score 0.45)
-   Evidence: Score 0.45, Calculate cost estimate for a query with a specific provider.
+1) app/core/llm/cost_calculator.py:141 — app.core.llm.cost_calculator.CostCalculator.calculate_cost_estimate (score 0.41)
+   Evidence: Score 0.41, Calculate cost estimate for a query with a specific provider.
 
 Args:
     provide...
-3) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.43)
-   Evidence: Score 0.43, Convenience function to get an optimal LLM provider.
-
-Args:
-    messages: List o...
-4) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.42)
-   Evidence: Score 0.42, Initialize the LLM provider.
+2) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.39)
+   Evidence: Score 0.39, Initialize the LLM provider.
 
 Args:
     api_key: API key for the provider
     mo...
-5) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.42)
-   Evidence: Score 0.42, Create an LLM provider instance.
+3) app/core/llm/providers/anthropic_provider.py:29 — app.core.llm.providers.anthropic_provider.AnthropicProvider.__init__ (score 0.39)
+   Evidence: Score 0.39, Initialize Anthropic provider.
 
 Args:
-    provider_type: Type of provider to c...
+    api_key: Anthropic API key
+    model: ...
+4) app/core/llm/providers/anthropic_provider.py:53 — app.core.llm.providers.anthropic_provider.AnthropicProvider.provider_type (score 0.39)
+   Evidence: Score 0.39, Get the provider type.
+5) app/core/llm/providers/openai_provider.py:31 — app.core.llm.providers.openai_provider.OpenAIProvider.__init__ (score 0.39)
+   Evidence: Score 0.39, Initialize OpenAI provider.
+
+Args:
+    api_key: OpenAI API key
+    model: Model ...
 
 Notes:
 - Implementation exists but may not be wired correctly

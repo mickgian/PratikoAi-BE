@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: ❌  |  Confidence: 0.22
 
 Top candidates:
-1) app/services/context_builder.py:56 — app.services.context_builder.MultiSourceContextBuilder.__init__ (score 0.28)
-   Evidence: Score 0.28, method: __init__
-2) app/services/context_builder.py:179 — app.services.context_builder.MultiSourceContextBuilder._group_results_by_source (score 0.28)
-   Evidence: Score 0.28, Group search results by source type
-3) app/services/context_builder.py:367 — app.services.context_builder.MultiSourceContextBuilder._find_best_span (score 0.28)
-   Evidence: Score 0.28, Find the best span of content that covers most query term positions
-4) app/services/context_builder.py:395 — app.services.context_builder.MultiSourceContextBuilder._clean_excerpt (score 0.28)
-   Evidence: Score 0.28, Clean and improve excerpt boundaries
-5) app/services/context_builder.py:417 — app.services.context_builder.MultiSourceContextBuilder._truncate_at_sentence_boundary (score 0.28)
-   Evidence: Score 0.28, Truncate text at a sentence boundary
+1) app/services/context_builder.py:56 — app.services.context_builder.MultiSourceContextBuilder.__init__ (score 0.22)
+   Evidence: Score 0.22, method: __init__
+2) app/services/context_builder.py:179 — app.services.context_builder.MultiSourceContextBuilder._group_results_by_source (score 0.22)
+   Evidence: Score 0.22, Group search results by source type
+3) app/services/context_builder.py:367 — app.services.context_builder.MultiSourceContextBuilder._find_best_span (score 0.22)
+   Evidence: Score 0.22, Find the best span of content that covers most query term positions
+4) app/services/context_builder.py:395 — app.services.context_builder.MultiSourceContextBuilder._clean_excerpt (score 0.22)
+   Evidence: Score 0.22, Clean and improve excerpt boundaries
+5) app/services/context_builder.py:417 — app.services.context_builder.MultiSourceContextBuilder._truncate_at_sentence_boundary (score 0.22)
+   Evidence: Score 0.22, Truncate text at a sentence boundary
 
 Notes:
 - Weak or missing implementation

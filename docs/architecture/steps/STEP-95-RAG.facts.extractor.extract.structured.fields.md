@@ -36,31 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: ❌  |  Confidence: 0.19
 
 Top candidates:
-1) app/services/atomic_facts_extractor.py:421 — app.services.atomic_facts_extractor.AtomicFactsExtractor.extract (score 0.32)
-   Evidence: Score 0.32, Extract atomic facts from an Italian professional query.
-
-Args:
-    query: The u...
-2) app/services/atomic_facts_extractor.py:581 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_dates (score 0.25)
-   Evidence: Score 0.25, Extract dates, durations, and time-related facts from the query.
-3) deployment-orchestration/adaptive_deployment_engine.py:502 — deployment-orchestration.adaptive_deployment_engine.DeploymentMLOptimizer.extract_features (score 0.25)
-   Evidence: Score 0.25, Extract feature vector from deployment context for ML prediction.
+1) deployment-orchestration/adaptive_deployment_engine.py:502 — deployment-orchestration.adaptive_deployment_engine.DeploymentMLOptimizer.extract_features (score 0.19)
+   Evidence: Score 0.19, Extract feature vector from deployment context for ML prediction.
 
 Features incl...
-4) app/services/atomic_facts_extractor.py:24 — app.services.atomic_facts_extractor.ExtractionSpan.length (score 0.24)
-   Evidence: Score 0.24, method: length
-5) app/models/cassazione_data.py:180 — app.models.cassazione_data.LegalPrinciple._extract_keywords (score 0.24)
-   Evidence: Score 0.24, Extract keywords from principle text.
+2) app/models/cassazione_data.py:180 — app.models.cassazione_data.LegalPrinciple._extract_keywords (score 0.19)
+   Evidence: Score 0.19, Extract keywords from principle text.
+3) app/services/italian_document_collector.py:451 — app.services.italian_document_collector.ItalianDocumentCollector._extract_keywords (score 0.19)
+   Evidence: Score 0.19, Extract relevant keywords from document content.
+4) app/services/legal_document_analyzer.py:826 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_debitore (score 0.19)
+   Evidence: Score 0.19, Extract debtor from decreto ingiuntivo
+5) app/services/scrapers/cassazione_scraper.py:550 — app.services.scrapers.cassazione_scraper.CassazioneScraper._extract_keywords (score 0.19)
+   Evidence: Score 0.19, Extract keywords from decision content.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for ExtractDocFacts
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

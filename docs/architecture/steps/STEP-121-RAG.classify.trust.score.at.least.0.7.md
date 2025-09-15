@@ -36,33 +36,33 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.37
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.37)
-   Evidence: Score 0.37, Get routing strategy and cost limit based on domain-action classification.
+1) app/core/langgraph/graph.py:346 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.34)
+   Evidence: Score 0.34, Get routing strategy and cost limit based on domain-action classification.
 
 Args...
-2) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.37)
-   Evidence: Score 0.37, Get the appropriate system prompt based on classification.
+2) app/core/langgraph/graph.py:401 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.34)
+   Evidence: Score 0.34, Get the appropriate system prompt based on classification.
 
 Args:
     messages: ...
-3) app/core/langgraph/graph.py:741 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.37)
-   Evidence: Score 0.37, Determine if query needs tools/complex workflow based on classification.
+3) app/core/langgraph/graph.py:797 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.34)
+   Evidence: Score 0.34, Determine if query needs tools/complex workflow based on classification.
 
 Args:
 ...
-4) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.37)
-   Evidence: Score 0.37, Track domain-action classification usage and metrics.
+4) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)
+   Evidence: Score 0.34, Track domain-action classification usage and metrics.
+    
+    Args:
+        dom...
+5) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.28)
+   Evidence: Score 0.28, Extract parameters for CCNL tool from user query and classification.
 
 Args:
-    domain: The cla...
-5) app/core/llm/cost_calculator.py:51 — app.core.llm.cost_calculator.CostCalculator.classify_query_complexity (score 0.32)
-   Evidence: Score 0.32, Classify the complexity of a query based on content analysis.
-
-Args:
-    message...
+    ...
 
 Notes:
 - Implementation exists but may not be wired correctly

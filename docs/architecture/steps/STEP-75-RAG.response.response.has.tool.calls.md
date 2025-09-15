@@ -36,25 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.21
 
 Top candidates:
-1) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.26)
-   Evidence: Score 0.26, Add timestamp if not present.
-2) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.25)
-   Evidence: Score 0.25, method: __post_init__
-3) app/schemas/auth.py:139 — app.schemas.auth.SessionResponse.sanitize_name (score 0.24)
-   Evidence: Score 0.24, Sanitize the session name.
+1) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.21)
+   Evidence: Score 0.21, Add timestamp if not present.
+2) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.20)
+   Evidence: Score 0.20, method: __post_init__
+3) app/schemas/auth.py:139 — app.schemas.auth.SessionResponse.sanitize_name (score 0.19)
+   Evidence: Score 0.19, Sanitize the session name.
 
 Args:
     v: The name to sanitize
 
 Returns:
     str:...
-4) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.24)
-   Evidence: Score 0.24, method: __init__
-5) app/core/langgraph/tools/ccnl_tool.py:90 — app.core.langgraph.tools.ccnl_tool.CCNLTool.search_service (score 0.24)
-   Evidence: Score 0.24, method: search_service
+4) app/models/regional_taxes.py:61 — app.models.regional_taxes.Regione.__repr__ (score 0.18)
+   Evidence: Score 0.18, method: __repr__
+5) app/models/regional_taxes.py:64 — app.models.regional_taxes.Regione.to_dict (score 0.18)
+   Evidence: Score 0.18, method: to_dict
 
 Notes:
 - Weak or missing implementation

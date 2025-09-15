@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: ❌  |  Confidence: 0.19
 
 Top candidates:
-1) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.27)
-   Evidence: Score 0.27, method: __init__
-2) app/core/langgraph/tools/ccnl_tool.py:90 — app.core.langgraph.tools.ccnl_tool.CCNLTool.search_service (score 0.27)
-   Evidence: Score 0.27, method: search_service
-3) app/core/langgraph/tools/ccnl_tool.py:96 — app.core.langgraph.tools.ccnl_tool.CCNLTool.calculator_engine (score 0.27)
-   Evidence: Score 0.27, method: calculator_engine
-4) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.27)
-   Evidence: Score 0.27, Execute CCNL query (synchronous version).
-5) app/core/langgraph/tools/ccnl_tool.py:535 — app.core.langgraph.tools.ccnl_tool.CCNLTool._parse_sector (score 0.27)
-   Evidence: Score 0.27, Parse sector string to enum.
+1) app/services/vector_providers/local_provider.py:199 — app.services.vector_providers.local_provider.LocalVectorProvider.clear (score 0.19)
+   Evidence: Score 0.19, Clear all vectors from local storage.
+2) app/services/ccnl_update_service.py:73 — app.services.ccnl_update_service.CCNLAlert.__post_init__ (score 0.18)
+   Evidence: Score 0.18, method: __post_init__
+3) app/services/ccnl_service.py:115 — app.services.ccnl_service.CCNLSearchResult.has_results (score 0.18)
+   Evidence: Score 0.18, Check if search returned any results.
+4) feature-flags/admin/web_interface.py:71 — feature-flags.admin.web_interface.ConnectionManager.__init__ (score 0.18)
+   Evidence: Score 0.18, method: __init__
+5) feature-flags/admin/web_interface.py:78 — feature-flags.admin.web_interface.ConnectionManager.disconnect (score 0.18)
+   Evidence: Score 0.18, method: disconnect
 
 Notes:
 - Weak or missing implementation

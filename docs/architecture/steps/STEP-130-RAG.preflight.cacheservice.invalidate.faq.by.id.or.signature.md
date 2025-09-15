@@ -36,35 +36,35 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.32)
-   Evidence: Score 0.32, Initialize the cache service.
-2) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.32)
-   Evidence: Score 0.32, Generate a deterministic hash for query deduplication.
+1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.26)
+   Evidence: Score 0.26, Initialize the cache service.
+2) app/services/cache.py:94 — app.services.cache.CacheService._generate_query_hash (score 0.26)
+   Evidence: Score 0.26, Generate a deterministic hash for query deduplication.
 
 Args:
     messages: List...
-3) app/services/cache.py:107 — app.services.cache.CacheService._generate_conversation_key (score 0.32)
-   Evidence: Score 0.32, Generate cache key for conversation history.
+3) app/services/cache.py:119 — app.services.cache.CacheService._generate_conversation_key (score 0.26)
+   Evidence: Score 0.26, Generate cache key for conversation history.
 
 Args:
     session_id: Unique sessi...
-4) app/services/cache.py:118 — app.services.cache.CacheService._generate_query_key (score 0.32)
-   Evidence: Score 0.32, Generate cache key for LLM query response.
+4) app/services/cache.py:130 — app.services.cache.CacheService._generate_query_key (score 0.26)
+   Evidence: Score 0.26, Generate cache key for LLM query response.
 
 Args:
     query_hash: Hash of the qu...
-5) app/services/cache.py:27 — app.services.cache.CacheService (score 0.28)
-   Evidence: Score 0.28, Redis-based caching service for LLM responses and conversations.
+5) app/services/cache.py:27 — app.services.cache.CacheService (score 0.24)
+   Evidence: Score 0.24, Redis-based caching service for LLM responses and conversations.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for InvalidateFAQCache
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

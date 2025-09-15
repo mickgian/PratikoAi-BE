@@ -36,26 +36,33 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: ❌  |  Confidence: 0.18
 
 Top candidates:
-1) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.31)
-   Evidence: Score 0.31, method: __init__
-2) app/core/langgraph/tools/ccnl_tool.py:90 — app.core.langgraph.tools.ccnl_tool.CCNLTool.search_service (score 0.31)
-   Evidence: Score 0.31, method: search_service
-3) app/core/langgraph/tools/ccnl_tool.py:96 — app.core.langgraph.tools.ccnl_tool.CCNLTool.calculator_engine (score 0.31)
-   Evidence: Score 0.31, method: calculator_engine
-4) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.31)
-   Evidence: Score 0.31, Execute CCNL query (synchronous version).
-5) app/core/langgraph/tools/ccnl_tool.py:535 — app.core.langgraph.tools.ccnl_tool.CCNLTool._parse_sector (score 0.31)
-   Evidence: Score 0.31, Parse sector string to enum.
+1) failure-recovery-system/decision_tree_engine.py:1403 — failure-recovery-system.decision_tree_engine.DecisionTreeEngine._execute_action (score 0.18)
+   Evidence: Score 0.18, Execute an action node.
+2) app/core/langgraph/tools/__init__.py:1 — app.core.langgraph.tools.__init__ (score 0.18)
+   Evidence: Score 0.18, LangGraph tools for enhanced language model capabilities.
+
+This package contains...
+3) app/core/langgraph/tools/duckduckgo_search.py:1 — app.core.langgraph.tools.duckduckgo_search (score 0.18)
+   Evidence: Score 0.18, DuckDuckGo search tool for LangGraph.
+
+This module provides a DuckDuckGo search ...
+4) app/services/validators/financial_validation_engine.py:557 — app.services.validators.financial_validation_engine.FinancialValidationEngine.execute_pipeline (score 0.18)
+   Evidence: Score 0.18, Execute a pipeline of validation tasks.
+
+Args:
+    request: Validation request w...
+5) app/models/user.py:58 — app.models.user.User.verify_password (score 0.18)
+   Evidence: Score 0.18, Verify if the provided password matches the hash.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create decision implementation for ToolType
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

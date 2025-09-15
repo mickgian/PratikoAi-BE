@@ -36,35 +36,34 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/models/user.py:20 — app.models.user.User (score 0.34)
-   Evidence: Score 0.34, User model for storing user accounts.
+1) app/models/user.py:20 — app.models.user.User (score 0.27)
+   Evidence: Score 0.27, User model for storing user accounts.
 
-Attributes:
-    id: The primary key
-    e...
-2) app/models/user.py:50 — app.models.user.User.verify_password (score 0.30)
-   Evidence: Score 0.30, Verify if the provided password matches the hash.
-3) app/models/user.py:55 — app.models.user.User.hash_password (score 0.30)
-   Evidence: Score 0.30, Hash a password using bcrypt.
-4) app/models/user.py:60 — app.models.user.User.set_refresh_token_hash (score 0.30)
-   Evidence: Score 0.30, Set the hash of the refresh token.
+    Attributes:
+        id: The primary k...
+2) app/models/user.py:58 — app.models.user.User.verify_password (score 0.25)
+   Evidence: Score 0.25, Verify if the provided password matches the hash.
+3) app/models/user.py:63 — app.models.user.User.hash_password (score 0.25)
+   Evidence: Score 0.25, Hash a password using bcrypt.
+4) app/models/user.py:68 — app.models.user.User.set_refresh_token_hash (score 0.25)
+   Evidence: Score 0.25, Set the hash of the refresh token.
 
 Stores a bcrypt hash of the refresh token fo...
-5) app/models/user.py:72 — app.models.user.User.verify_refresh_token (score 0.30)
-   Evidence: Score 0.30, Verify if the provided refresh token matches the stored hash.
+5) app/models/user.py:80 — app.models.user.User.verify_refresh_token (score 0.25)
+   Evidence: Score 0.25, Verify if the provided refresh token matches the stored hash.
 
 Args:
     refresh...
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create startEnd implementation for End
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

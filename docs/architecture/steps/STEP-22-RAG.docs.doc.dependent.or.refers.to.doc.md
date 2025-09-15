@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: ❌  |  Confidence: 0.23
 
 Top candidates:
-1) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
-   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
-2) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.28)
-   Evidence: Score 0.28, Check if document has expired
-3) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.28)
-   Evidence: Score 0.28, Convert document to dictionary
-4) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.28)
-   Evidence: Score 0.28, Check if document has expired
-5) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.28)
-   Evidence: Score 0.28, Convert document to dictionary for API responses
+1) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.23)
+   Evidence: Score 0.23, Check if document has expired
+2) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.23)
+   Evidence: Score 0.23, Convert document to dictionary for API responses
+3) app/services/secure_document_storage.py:300 — app.services.secure_document_storage.SecureDocumentStorage._decrypt_content (score 0.22)
+   Evidence: Score 0.22, Decrypt document content
+4) app/services/legal_document_analyzer.py:919 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_price (score 0.22)
+   Evidence: Score 0.22, Extract contract price
+5) app/services/legal_document_analyzer.py:905 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_object (score 0.22)
+   Evidence: Score 0.22, Extract contract object/purpose
 
 Notes:
 - Weak or missing implementation

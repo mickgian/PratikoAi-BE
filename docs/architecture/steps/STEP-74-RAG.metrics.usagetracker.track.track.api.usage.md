@@ -36,26 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.32)
-   Evidence: Score 0.32, Convert internal SearchResponse to API model.
-2) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.32)
-   Evidence: Score 0.32, Analyze distribution of precedent values in decisions.
-3) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.32)
-   Evidence: Score 0.32, Analyze temporal distribution of decisions.
-4) app/api/v1/data_sources.py:1384 — app.api.v1.data_sources._count_legal_areas (score 0.32)
-   Evidence: Score 0.32, Count legal areas in principles.
-5) app/api/v1/data_sources.py:1393 — app.api.v1.data_sources._count_precedent_strength (score 0.32)
-   Evidence: Score 0.32, Count precedent strength in principles.
+1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
+   Evidence: Score 0.26, Convert internal SearchResponse to API model.
+2) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.26)
+   Evidence: Score 0.26, Analyze distribution of precedent values in decisions.
+3) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.26)
+   Evidence: Score 0.26, Analyze temporal distribution of decisions.
+4) app/api/v1/data_sources.py:1384 — app.api.v1.data_sources._count_legal_areas (score 0.26)
+   Evidence: Score 0.26, Count legal areas in principles.
+5) app/api/v1/data_sources.py:1393 — app.api.v1.data_sources._count_precedent_strength (score 0.26)
+   Evidence: Score 0.26, Count precedent strength in principles.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for TrackUsage
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

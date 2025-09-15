@@ -36,21 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.37
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/services/vector_providers/pinecone_provider.py:113 — app.services.vector_providers.pinecone_provider.PineconeProvider.upsert (score 0.37)
-   Evidence: Score 0.37, Upsert vectors into Pinecone index.
-2) app/services/vector_providers/pinecone_provider.py:161 — app.services.vector_providers.pinecone_provider.PineconeProvider.query (score 0.37)
-   Evidence: Score 0.37, Query vectors from Pinecone index.
-3) app/services/vector_providers/pinecone_provider.py:21 — app.services.vector_providers.pinecone_provider.PineconeProvider (score 0.36)
-   Evidence: Score 0.36, Pinecone vector search provider.
-4) app/models/knowledge.py:13 — app.models.knowledge.KnowledgeItem (score 0.36)
-   Evidence: Score 0.36, Knowledge base item with full-text search support.
+1) app/models/knowledge.py:13 — app.models.knowledge.KnowledgeItem (score 0.34)
+   Evidence: Score 0.34, Knowledge base item with full-text search support.
 
 This model stores processed ...
-5) app/models/knowledge.py:112 — app.models.knowledge.KnowledgeQuery (score 0.36)
-   Evidence: Score 0.36, Query model for knowledge search requests
+2) app/models/knowledge.py:112 — app.models.knowledge.KnowledgeQuery (score 0.34)
+   Evidence: Score 0.34, Query model for knowledge search requests
+3) app/models/knowledge.py:125 — app.models.knowledge.KnowledgeSearchResponse (score 0.34)
+   Evidence: Score 0.34, Response model for knowledge search results
+4) app/services/hybrid_search_engine.py:43 — app.services.hybrid_search_engine.HybridSearchEngine (score 0.31)
+   Evidence: Score 0.31, Advanced hybrid search combining keyword and vector search.
+
+Provides sub-300ms ...
+5) load_testing/locust_tests.py:215 — load_testing.locust_tests.PratikoAIUser.knowledge_search (score 0.31)
+   Evidence: Score 0.31, Test regulatory knowledge searches
 
 Notes:
 - Implementation exists but may not be wired correctly

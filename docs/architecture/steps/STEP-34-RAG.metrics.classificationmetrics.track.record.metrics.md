@@ -36,29 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.32)
-   Evidence: Score 0.32, Set up Prometheus metrics middleware and endpoints.
+1) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.26)
+   Evidence: Score 0.26, Set up Prometheus metrics middleware and endpoints.
 
-Args:
-    app: FastAPI appl...
-2) app/core/monitoring/metrics.py:310 — app.core.monitoring.metrics.initialize_metrics (score 0.32)
-   Evidence: Score 0.32, Initialize metrics with system information and default values.
-3) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.32)
-   Evidence: Score 0.32, Update system-level metrics like memory and CPU usage.
-4) app/core/monitoring/metrics.py:376 — app.core.monitoring.metrics.get_registry (score 0.32)
-   Evidence: Score 0.32, Get the Prometheus registry for metrics export.
-5) app/core/monitoring/metrics.py:381 — app.core.monitoring.metrics.get_metrics_content (score 0.32)
-   Evidence: Score 0.32, Get metrics in Prometheus format.
+    Args:
+        app: Fast...
+2) app/core/monitoring/metrics.py:310 — app.core.monitoring.metrics.initialize_metrics (score 0.26)
+   Evidence: Score 0.26, Initialize metrics with system information and default values.
+3) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.26)
+   Evidence: Score 0.26, Update system-level metrics like memory and CPU usage.
+4) app/core/monitoring/metrics.py:376 — app.core.monitoring.metrics.get_registry (score 0.26)
+   Evidence: Score 0.26, Get the Prometheus registry for metrics export.
+5) app/core/monitoring/metrics.py:381 — app.core.monitoring.metrics.get_metrics_content (score 0.26)
+   Evidence: Score 0.26, Get metrics in Prometheus format.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for TrackMetrics
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

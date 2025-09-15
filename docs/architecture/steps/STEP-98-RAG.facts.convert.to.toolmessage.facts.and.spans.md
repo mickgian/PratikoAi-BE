@@ -36,34 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.20
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.25)
-   Evidence: Score 0.25, Validate the message content.
+1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.20)
+   Evidence: Score 0.20, Validate the message content.
 
-Args:
-    v: The content to validate
+    Args:
+        v: The content to validate
 
-Returns:
-  ...
-2) app/core/llm/factory.py:27 — app.core.llm.factory.LLMFactory.__init__ (score 0.24)
-   Evidence: Score 0.24, Initialize the LLM factory.
-3) app/core/llm/factory.py:33 — app.core.llm.factory.LLMFactory._get_provider_configs (score 0.24)
-   Evidence: Score 0.24, Get provider configurations from settings.
-
-Returns:
-    Dictionary of provider ...
-4) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.24)
-   Evidence: Score 0.24, Create an LLM provider instance.
-
-Args:
-    provider_type: Type of provider to c...
-5) app/core/llm/factory.py:105 — app.core.llm.factory.LLMFactory.get_available_providers (score 0.24)
-   Evidence: Score 0.24, Get all available configured providers.
-
-Returns:
-    List of available provider...
+   ...
+2) failure-recovery-system/cicd_integration.py:118 — failure-recovery-system.cicd_integration.CICDEvent.__post_init__ (score 0.18)
+   Evidence: Score 0.18, method: __post_init__
+3) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.18)
+   Evidence: Score 0.18, method: __post_init__
+4) failure-recovery-system/cicd_integration.py:170 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.__init__ (score 0.18)
+   Evidence: Score 0.18, method: __init__
+5) failure-recovery-system/cicd_integration.py:173 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.validate_github_signature (score 0.18)
+   Evidence: Score 0.18, Validate GitHub webhook signature.
 
 Notes:
 - Weak or missing implementation

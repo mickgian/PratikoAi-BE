@@ -36,33 +36,33 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/models/user.py:50 — app.models.user.User.verify_password (score 0.33)
-   Evidence: Score 0.33, Verify if the provided password matches the hash.
-2) app/models/user.py:55 — app.models.user.User.hash_password (score 0.33)
-   Evidence: Score 0.33, Hash a password using bcrypt.
-3) app/models/user.py:60 — app.models.user.User.set_refresh_token_hash (score 0.33)
-   Evidence: Score 0.33, Set the hash of the refresh token.
+1) app/models/user.py:58 — app.models.user.User.verify_password (score 0.27)
+   Evidence: Score 0.27, Verify if the provided password matches the hash.
+2) app/models/user.py:63 — app.models.user.User.hash_password (score 0.27)
+   Evidence: Score 0.27, Hash a password using bcrypt.
+3) app/models/user.py:68 — app.models.user.User.set_refresh_token_hash (score 0.27)
+   Evidence: Score 0.27, Set the hash of the refresh token.
 
 Stores a bcrypt hash of the refresh token fo...
-4) app/models/user.py:72 — app.models.user.User.verify_refresh_token (score 0.33)
-   Evidence: Score 0.33, Verify if the provided refresh token matches the stored hash.
+4) app/models/user.py:80 — app.models.user.User.verify_refresh_token (score 0.27)
+   Evidence: Score 0.27, Verify if the provided refresh token matches the stored hash.
 
 Args:
     refresh...
-5) app/models/user.py:85 — app.models.user.User.revoke_refresh_token (score 0.33)
-   Evidence: Score 0.33, Revoke the current refresh token by clearing its hash.
+5) app/models/user.py:93 — app.models.user.User.revoke_refresh_token (score 0.27)
+   Evidence: Score 0.27, Revoke the current refresh token by clearing its hash.
 
 This effectively invalid...
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create decision implementation for MessageExists
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

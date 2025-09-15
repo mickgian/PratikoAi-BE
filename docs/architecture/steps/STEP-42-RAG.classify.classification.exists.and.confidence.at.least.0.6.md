@@ -36,27 +36,33 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)
-   Evidence: Score 0.34, Track domain-action classification usage and metrics.
-
-Args:
-    domain: The cla...
-2) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.33)
-   Evidence: Score 0.33, Get routing strategy and cost limit based on domain-action classification.
+1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.31)
+   Evidence: Score 0.31, Track domain-action classification usage and metrics.
+    
+    Args:
+        dom...
+2) app/core/langgraph/graph.py:346 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.30)
+   Evidence: Score 0.30, Get routing strategy and cost limit based on domain-action classification.
 
 Args...
-3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.31)
-   Evidence: Score 0.31, Calculate confidence scores for each domain
-4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.31)
-   Evidence: Score 0.31, Calculate confidence scores for each action
-5) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.31)
-   Evidence: Score 0.31, Extract parameters for CCNL tool from user query and classification.
+3) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.28)
+   Evidence: Score 0.28, Extract parameters for CCNL tool from user query and classification.
 
 Args:
     ...
+4) app/core/langgraph/graph.py:401 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.28)
+   Evidence: Score 0.28, Get the appropriate system prompt based on classification.
+
+Args:
+    messages: ...
+5) app/core/langgraph/graph.py:797 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.28)
+   Evidence: Score 0.28, Determine if query needs tools/complex workflow based on classification.
+
+Args:
+...
 
 Notes:
 - Implementation exists but may not be wired correctly

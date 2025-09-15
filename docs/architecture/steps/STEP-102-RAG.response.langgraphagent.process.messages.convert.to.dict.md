@@ -36,34 +36,34 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/core/langgraph/graph.py:1007 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.35)
-   Evidence: Score 0.35, method: __process_messages
-2) app/core/langgraph/graph.py:63 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.32)
-   Evidence: Score 0.32, Initialize the LangGraph Agent with necessary components.
-3) app/core/langgraph/graph.py:274 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
-   Evidence: Score 0.32, Get the LLM routing strategy from configuration.
+1) app/core/langgraph/graph.py:1077 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.29)
+   Evidence: Score 0.29, method: __process_messages
+2) app/core/langgraph/graph.py:64 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.26)
+   Evidence: Score 0.26, Initialize the LangGraph Agent with necessary components.
+3) app/core/langgraph/graph.py:330 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.26)
+   Evidence: Score 0.26, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-4) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.32)
-   Evidence: Score 0.32, Get routing strategy and cost limit based on domain-action classification.
+4) app/core/langgraph/graph.py:346 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.26)
+   Evidence: Score 0.26, Get routing strategy and cost limit based on domain-action classification.
 
 Args...
-5) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.32)
-   Evidence: Score 0.32, Get the appropriate system prompt based on classification.
+5) app/core/langgraph/graph.py:401 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.26)
+   Evidence: Score 0.26, Get the appropriate system prompt based on classification.
 
 Args:
     messages: ...
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for ProcessMsg
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

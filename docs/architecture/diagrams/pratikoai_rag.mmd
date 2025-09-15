@@ -1,0 +1,242 @@
+flowchart TD
+    %% Entry Point
+    Start([User submits query via POST /api/v1/chat]) --> ValidateRequest[ChatbotController.chat<br/>Validate request and authenticate]
+
+    ValidateRequest --> ValidCheck{Request valid?}
+    ValidCheck -->|Yes| GDPRLog[GDPRCompliance.record_processing<br/>Log data processing]
+    ValidCheck -->|No| Error400[Return 400 Bad Request]
+
+    GDPRLog --> PrivacyCheck{PRIVACY_ANONYMIZE_REQUESTS<br/>enabled?}
+    PrivacyCheck -->|Yes| AnonymizeText[Anonymizer.anonymize_text<br/>Anonymize PII]
+    PrivacyCheck -->|No| InitAgent[LangGraphAgent.get_response<br/>Initialize workflow]
+
+    AnonymizeText --> PIICheck{PII detected?}
+    PIICheck -->|Yes| LogPII[Logger.info<br/>Log PII anonymization]
+    PIICheck -->|No| InitAgent
+    LogPII --> InitAgent
+
+    %% Query extraction
+    InitAgent --> ConvertMessages[LangGraphAgent._chat<br/>Convert to Message objects]
+    ConvertMessages --> ExtractQuery[LangGraphAgent._classify_user_query<br/>Extract user message]
+
+    ExtractQuery --> MessageExists{User message<br/>exists?}
+    MessageExists -->|Yes| ExtractFacts[AtomicFactsExtractor.extract<br/>Extract atomic facts]
+    MessageExists -->|No| DefaultPrompt[Continue without classification]
+
+    ExtractFacts --> CanonicalizeFacts[AtomicFactsExtractor.canonicalize<br/>Normalize dates amounts rates]
+
+    %% NEW: compute attachment hashes early for safe caching
+    CanonicalizeFacts --> AttachmentFingerprint[AttachmentFingerprint.compute<br/>SHA-256 per attachment]
+    AttachmentFingerprint --> QuerySig[QuerySignature.compute<br/>Hash from canonical facts]
+
+    %% Attachment-aware gating + Golden fast-path (pre-LLM)
+    QuerySig --> AttachCheck{Attachments present?}
+    AttachCheck -->|No| GoldenFastGate[Golden fast-path eligible?<br/>no doc or quick check safe]
+    AttachCheck -->|Yes| QuickPreIngest[DocPreIngest.quick_extract<br/>type sniff and key fields]
+    QuickPreIngest --> DocDependent{Doc-dependent or refers to doc?}
+    DocDependent -->|Yes| RequireDocIngest[PlannerHint.require_doc_ingest_first<br/>ingest then Golden and KB]
+    DocDependent -->|No| GoldenFastGate
+
+    GoldenFastGate -->|Yes| GoldenLookup[GoldenSet.match_by_signature_or_semantic]
+    GoldenFastGate -->|No| ClassifyDomain
+
+    GoldenLookup --> GoldenHit{High confidence match?<br/>score at least 0.90}
+    GoldenHit -->|Yes| KBContextCheck[KnowledgeSearch.context_topk<br/>fetch recent KB for changes]
+    GoldenHit -->|No| ClassifyDomain
+
+    %% If Golden hits, still consult KB; if KB newer or conflicting -> go to LLM with context
+    KBContextCheck --> KBDelta{KB newer than Golden as of<br/>or conflicting tags?}
+    KBDelta -->|No| ServeGolden[Serve Golden answer<br/>with citations]
+    KBDelta -->|Yes| PreContextFromGolden[ContextBuilder.merge<br/>facts and KB docs and doc facts if present]
+    ServeGolden --> ReturnComplete[Return ChatResponse]
+
+    %% Domain classification
+    RequireDocIngest --> ClassifyDomain[DomainActionClassifier.classify<br/>Rule-based classification]
+    ClassifyDomain --> CalcScores[Calculate domain and action scores<br/>Match Italian keywords]
+    CalcScores --> ConfidenceCheck{Confidence at least threshold?}
+    ConfidenceCheck -->|Yes| TrackMetrics[ClassificationMetrics.track<br/>Record metrics]
+    ConfidenceCheck -->|No| LLMFallback[DomainActionClassifier._llm_fallback<br/>Use LLM classification]
+    LLMFallback --> LLMBetter{LLM better than rule-based?}
+    LLMBetter -->|Yes| UseLLM[Use LLM classification]
+    LLMBetter -->|No| UseRuleBased[Use rule-based classification]
+    UseLLM --> TrackMetrics
+    UseRuleBased --> TrackMetrics
+
+    %% Always fetch KB context before LLM (RSS never bypassed)
+    TrackMetrics --> KBPreFetch[KnowledgeSearch.retrieve_topk<br/>BM25 and vectors and recency boost]
+    PreContextFromGolden --> KBPreFetch
+    KBPreFetch --> BuildContext[ContextBuilder.merge<br/>facts and KB docs and optional doc facts]
+
+    %% Prompt and provider
+    BuildContext --> SelectPrompt[LangGraphAgent._get_system_prompt<br/>Select appropriate prompt]
+    DefaultPrompt --> SelectPrompt
+    SelectPrompt --> ClassConfidence{Classification exists<br/>and confidence at least 0.6?}
+    ClassConfidence -->|Yes| DomainPrompt[PromptTemplateManager.get_prompt<br/>Get domain-specific prompt]
+    ClassConfidence -->|No| DefaultSysPrompt[Use default SYSTEM_PROMPT]
+    DomainPrompt --> CheckSysMsg{System message exists?}
+    DefaultSysPrompt --> CheckSysMsg
+    CheckSysMsg -->|Yes| ReplaceMsg[Replace system message]
+    CheckSysMsg -->|No| InsertMsg[Insert system message]
+    ReplaceMsg --> SelectProvider[LangGraphAgent._get_optimal_provider<br/>Select LLM provider]
+    InsertMsg --> SelectProvider
+
+    %% LLM Provider Selection
+    SelectProvider --> RouteStrategy[LLMFactory.get_optimal_provider<br/>Apply routing strategy]
+    RouteStrategy --> StrategyType{Routing strategy?}
+    StrategyType -->|COST_OPTIMIZED| CheapProvider[Select cheapest provider]
+    StrategyType -->|QUALITY_FIRST| BestProvider[Select best provider]
+    StrategyType -->|BALANCED| BalanceProvider[Balance cost and quality]
+    StrategyType -->|FAILOVER| PrimaryProvider[Use primary provider]
+    CheapProvider --> EstimateCost[CostCalculator.estimate_cost<br/>Calculate query cost]
+    BestProvider --> EstimateCost
+    BalanceProvider --> EstimateCost
+    PrimaryProvider --> EstimateCost
+    EstimateCost --> CostCheck{Cost within budget?}
+    CostCheck -->|Yes| CreateProvider[Create provider instance]
+    CostCheck -->|No| CheaperProvider[Select cheaper provider or fail]
+
+    %% Response-level cache check (now uses doc hashes and epochs)
+    CreateProvider --> CheckCache[LangGraphAgent._get_cached_llm_response<br/>Check for cached response]
+    CheaperProvider --> CheckCache
+    CheckCache --> ResolveEpochs[EpochStamps.resolve<br/>kb_epoch golden_epoch ccnl_epoch parser_version]
+    ResolveEpochs --> GenHash[CacheService._generate_response_key<br/>sig and doc_hashes and epochs and versions]
+    GenHash --> RedisGet[RedisCache.get<br/>Check cache]
+    RedisGet --> CacheHit{Cache hit?}
+    CacheHit -->|Yes| TrackCacheHit[UsageTracker.track<br/>Track cache hit]
+    CacheHit -->|No| LLMCall[LLMProvider.chat_completion<br/>Make API call]
+    TrackCacheHit --> LogCacheHit[Logger.info<br/>Log cache hit]
+    LogCacheHit --> ReturnCached[Return cached response]
+
+    %% LLM Execution and Tools
+    LLMCall --> LLMSuccess{LLM call successful?}
+    LLMSuccess -->|Yes| CacheResponse[CacheService.cache_response<br/>Store in Redis]
+    LLMSuccess -->|No| RetryCheck{Another attempt allowed?}
+    RetryCheck -->|Yes| ProdCheck{Prod environment and last retry?}
+    RetryCheck -->|No| Error500[Return 500 error]
+    ProdCheck -->|Yes| FailoverProvider[Get FAILOVER provider]
+    ProdCheck -->|No| RetrySame[Retry same provider]
+    FailoverProvider --> LLMCall
+    RetrySame --> LLMCall
+    CacheResponse --> TrackUsage[UsageTracker.track<br/>Track API usage]
+    TrackUsage --> ToolCheck{Response has tool_calls?}
+
+    ToolCheck -->|Yes| ConvertAIMsg[Convert to AIMessage<br/>with tool_calls]
+    ToolCheck -->|No| SimpleAIMsg[Convert to simple AIMessage]
+    ConvertAIMsg --> ExecuteTools[LangGraphAgent._tool_call<br/>Execute tools]
+    ExecuteTools --> ToolType{Tool type?}
+
+    ToolType -->|Knowledge| KBQueryTool[KnowledgeSearchTool.search<br/>KB on demand]
+    ToolType -->|CCNL| CCNLQuery[CCNLTool.ccnl_query<br/>Query labor agreements]
+    ToolType -->|Document| DocIngest[DocumentIngestTool.process<br/>Process attachments]
+    ToolType -->|FAQ| FAQQuery[FAQTool.faq_query<br/>Query Golden Set]
+
+    %% Document Ingest Tool Pipeline
+    DocIngest --> ValidateAttach[AttachmentValidator.validate<br/>Check files and limits]
+    ValidateAttach --> AttachOK{Valid attachments?}
+    AttachOK -->|No| ToolErr[Return tool error<br/>Invalid file]
+    AttachOK -->|Yes| DocSecurity[DocSanitizer.sanitize<br/>Strip macros and JS]
+    DocSecurity --> DocClassify[DocClassifier.classify<br/>Detect document type]
+    DocClassify --> DocType{Document type?}
+    DocType -->|Fattura XML| FatturaParser[FatturaParser.parse_xsd<br/>XSD validation]
+    DocType -->|F24| F24Parser[F24Parser.parse_ocr<br/>Layout aware OCR]
+    DocType -->|Contratto| ContractParser[ContractParser.parse]
+    DocType -->|Busta paga| PayslipParser[PayslipParser.parse]
+    DocType -->|Other| GenericOCR[GenericOCR.parse_with_layout]
+    FatturaParser --> ExtractDocFacts[Extractor.extract<br/>Structured fields]
+    F24Parser --> ExtractDocFacts
+    ContractParser --> ExtractDocFacts
+    PayslipParser --> ExtractDocFacts
+    GenericOCR --> ExtractDocFacts
+    ExtractDocFacts --> StoreBlob[BlobStore.put<br/>Encrypted TTL storage]
+    StoreBlob --> Provenance[Provenance.log<br/>Ledger entry]
+    Provenance --> ToToolResults[Convert to ToolMessage<br/>facts and spans]
+    ToToolResults --> ToolResults[Return to tool caller]
+
+    %% Knowledge Tool path
+    KBQueryTool --> ToolResults
+
+    %% FAQ Tool path
+    FAQQuery --> ToolResults
+    GoldenSetDB[(Golden Set / FAQ Store)] -.-> FAQQuery
+    GoldenSetDB -.-> GoldenLookup
+
+    %% CCNL Tool path
+    CCNLQuery --> PostgresQuery[PostgreSQL<br/>Search CCNL database]
+    PostgresQuery --> CCNLCalc[CCNLCalculator.calculate<br/>Perform calculations]
+    CCNLCalc --> ToolResults
+
+    %% Back to agent
+    ToolResults --> FinalResponse[Return to chat node<br/>for final response]
+    SimpleAIMsg --> FinalResponse
+
+    %% Response Processing
+    FinalResponse --> ProcessMsg[LangGraphAgent.__process_messages<br/>Convert to dict]
+    ReturnCached --> ProcessMsg
+    ProcessMsg --> LogComplete[Logger.info<br/>Log completion]
+    LogComplete --> StreamCheck{Streaming requested?}
+    StreamCheck -->|Yes| StreamSetup[ChatbotController.chat_stream<br/>Setup SSE]
+    StreamCheck -->|No| ReturnComplete[Return ChatResponse]
+    StreamSetup --> AsyncGen[Create async generator]
+    AsyncGen --> SinglePass[SinglePassStream<br/>Prevent double iteration]
+    SinglePass --> WriteSSE[write_sse<br/>Format chunks]
+    WriteSSE --> StreamResponse[StreamingResponse<br/>Send chunks]
+    StreamResponse --> SendDone[Send DONE frame]
+    SendDone --> CollectMetrics[Collect usage metrics]
+    ReturnComplete --> CollectMetrics
+    CollectMetrics --> End([Return response to user])
+
+    %% Expert Feedback System (async, post-response) + Golden management
+    CollectMetrics --> FeedbackUI[FeedbackUI.show_options<br/>Correct Incomplete Wrong]
+    FeedbackUI --> FeedbackProvided{User provides feedback?}
+    FeedbackProvided -->|No| FeedbackEnd[No feedback]
+    FeedbackProvided -->|Yes| FeedbackTypeSel[Feedback type selected]
+    FeedbackTypeSel --> FAQFeedback[POST /api/v1/faq/feedback]
+    FeedbackTypeSel --> KnowledgeFeedback[POST /api/v1/knowledge/feedback]
+    FeedbackTypeSel --> ExpertFeedbackCollector[ExpertFeedbackCollector.collect_feedback]
+    FAQFeedback --> ExpertFeedbackCollector
+    KnowledgeFeedback --> ExpertFeedbackCollector
+    ExpertFeedbackCollector --> ValidateExpert[Validate expert credentials]
+    ValidateExpert --> TrustScoreOK{Trust score at least 0.7?}
+    TrustScoreOK -->|No| FeedbackRejected[Feedback rejected]
+    TrustScoreOK -->|Yes| CreateFeedbackRec[Create ExpertFeedback record]
+    CreateFeedbackRec --> UpdateExpertMetrics[Update expert metrics]
+    UpdateExpertMetrics --> CacheFeedback[Cache feedback 1h TTL]
+    CacheFeedback --> DetermineAction[Determine action]
+
+    DetermineAction --> GoldenCandidate[GoldenSetUpdater.propose_candidate<br/>from expert feedback]
+    GoldenCandidate --> GoldenApproval{Auto threshold met<br/>or manual approval?}
+    GoldenApproval -->|Auto or approved| PublishGolden[GoldenSet.publish_or_update<br/>versioned entry]
+    GoldenApproval -->|Rejected| FeedbackEnd
+    PublishGolden --> InvalidateFAQCache[CacheService.invalidate_faq<br/>by id or signature]
+    PublishGolden --> VectorReindex[VectorIndex.upsert_faq<br/>update embeddings]
+    PublishGolden --> GoldenSetDB
+
+    %% Background RSS Influence (schedule)
+    RSSMonitor[RSS Monitor] --> FetchFeeds[Fetch and parse sources]
+    FetchFeeds --> ParseDocs[Extract text and metadata]
+    ParseDocs --> KnowledgeStore[(Knowledge Base)]
+    KnowledgeStore --> GoldenRules[GoldenSetUpdater.auto_rule_eval<br/>new or obsolete candidates]
+    GoldenRules --> GoldenCandidate
+
+    %% KB wiring (read-only pulls)
+    KnowledgeStore -.-> KBPreFetch
+    KnowledgeStore -.-> KBContextCheck
+    KnowledgeStore -.-> KBQueryTool
+
+    %% Error Paths
+    ToolErr --> FinalResponse
+    Error400 --> End
+    Error500 --> End
+
+    %% Styling
+    classDef startEnd fill:#d4f1d4,stroke:#4a7c59,stroke-width:2px,color:#000
+    classDef process  fill:#e8f4f8,stroke:#4a90e2,stroke-width:2px,color:#000
+    classDef decision fill:#fff4e6,stroke:#f39c12,stroke-width:2px,color:#000
+    classDef error    fill:#ffe6e6,stroke:#e74c3c,stroke-width:2px,color:#000
+    classDef database fill:#f0e6ff,stroke:#8e44ad,stroke-width:2px,color:#000
+
+    class Start,End startEnd
+    class ValidateRequest,GDPRLog,AnonymizeText,LogPII,InitAgent,ConvertMessages,ExtractQuery,ExtractFacts,CanonicalizeFacts,AttachmentFingerprint,QuerySig,AttachCheck,QuickPreIngest,DocDependent,RequireDocIngest,GoldenFastGate,GoldenLookup,GoldenHit,KBContextCheck,KBDelta,ServeGolden,PreContextFromGolden,ClassifyDomain,CalcScores,ConfidenceCheck,TrackMetrics,KBPreFetch,BuildContext,SelectPrompt,DomainPrompt,DefaultSysPrompt,CheckSysMsg,ReplaceMsg,InsertMsg,SelectProvider,RouteStrategy,CheapProvider,BestProvider,BalanceProvider,PrimaryProvider,EstimateCost,CreateProvider,CheaperProvider,CheckCache,ResolveEpochs,GenHash,RedisGet,LLMCall,CacheResponse,TrackUsage,ToolCheck,ConvertAIMsg,ExecuteTools,ToolResults,SimpleAIMsg,FinalResponse,ProcessMsg,LogComplete,StreamSetup,AsyncGen,SinglePass,WriteSSE,StreamResponse,SendDone,ReturnComplete,CollectMetrics,FeedbackUI,FeedbackTypeSel,FAQFeedback,KnowledgeFeedback,ExpertFeedbackCollector,ValidateExpert,CreateFeedbackRec,UpdateExpertMetrics,CacheFeedback,DetermineAction,GoldenCandidate,GoldenApproval,PublishGolden,InvalidateFAQCache,VectorReindex,RSSMonitor,FetchFeeds,ParseDocs,GoldenRules,DocIngest,ValidateAttach,DocSecurity,DocClassify,FatturaParser,F24Parser,ContractParser,PayslipParser,GenericOCR,ExtractDocFacts,StoreBlob,Provenance,ToToolResults,KBQueryTool,CCNLQuery,PostgresQuery,CCNLCalc,ReturnCached,FeedbackEnd process
+    class ValidCheck,PIICheck,MessageExists,LLMBetter,ClassConfidence,CheckSysMsg,StrategyType,CostCheck,CacheHit,LLMSuccess,RetryCheck,ProdCheck,ToolType,AttachOK,DocType,StreamCheck,TrustScoreOK,GoldenApproval decision
+    class Error400,Error500,ToolErr,FeedbackRejected error
+    class RedisGet,PostgresQuery,GoldenSetDB,KnowledgeStore database

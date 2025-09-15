@@ -36,27 +36,33 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.19
 
 Top candidates:
-1) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.25)
-   Evidence: Score 0.25, method: __init__
-2) app/core/streaming_guard.py:23 — app.core.streaming_guard.SinglePassStream.__aiter__ (score 0.25)
-   Evidence: Score 0.25, method: __aiter__
-3) app/core/security/request_signing.py:16 — app.core.security.request_signing.RequestSigner.__init__ (score 0.25)
-   Evidence: Score 0.25, Initialize request signer.
-4) app/core/security/request_signing.py:23 — app.core.security.request_signing.RequestSigner.generate_signature (score 0.25)
-   Evidence: Score 0.25, Generate HMAC signature for request.
+1) app/core/security/request_signing.py:16 — app.core.security.request_signing.RequestSigner.__init__ (score 0.19)
+   Evidence: Score 0.19, Initialize request signer.
+2) app/core/security/request_signing.py:23 — app.core.security.request_signing.RequestSigner.generate_signature (score 0.19)
+   Evidence: Score 0.19, Generate HMAC signature for request.
 
 Args:
     method: HTTP method (GET, POST, ...
-5) app/core/security/request_signing.py:79 — app.core.security.request_signing.RequestSigner.verify_signature (score 0.25)
-   Evidence: Score 0.25, Verify request signature.
+3) app/core/security/request_signing.py:79 — app.core.security.request_signing.RequestSigner.verify_signature (score 0.19)
+   Evidence: Score 0.19, Verify request signature.
 
 Args:
     method: HTTP method
     path: Request path
 ...
+4) app/core/security/request_signing.py:148 — app.core.security.request_signing.RequestSigner._is_timestamp_valid (score 0.19)
+   Evidence: Score 0.19, Check if timestamp is within acceptable range.
+
+Args:
+    timestamp_str: Unix ti...
+5) app/core/security/request_signing.py:229 — app.core.security.request_signing.RequestSigner.create_webhook_signature (score 0.19)
+   Evidence: Score 0.19, Create signature for webhook payloads (like Stripe).
+
+Args:
+    payload: Webhook...
 
 Notes:
 - Weak or missing implementation

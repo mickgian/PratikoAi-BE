@@ -36,28 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.19
 
 Top candidates:
-1) app/services/domain_action_classifier.py:633 — app.services.domain_action_classifier.DomainActionClassifier.get_classification_stats (score 0.25)
-   Evidence: Score 0.25, Get statistics about the classification patterns
-2) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.24)
-   Evidence: Score 0.24, Track domain-action classification usage and metrics.
-
-Args:
-    domain: The cla...
-3) app/services/domain_prompt_templates.py:346 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.24)
-   Evidence: Score 0.24, Get the appropriate prompt for domain-action combination.
-
-Args:
-    domain: Pro...
-4) app/services/ccnl_rss_monitor.py:358 — app.services.ccnl_rss_monitor.CCNLUpdateDetector.classify_sector (score 0.24)
-   Evidence: Score 0.24, Classify which CCNL sector an update refers to.
-5) app/core/langgraph/graph.py:625 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.24)
-   Evidence: Score 0.24, Determine if the agent should continue or end based on the last message.
+1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.19)
+   Evidence: Score 0.19, Track domain-action classification usage and metrics.
+    
+    Args:
+        dom...
+2) app/services/ccnl_rss_monitor.py:358 — app.services.ccnl_rss_monitor.CCNLUpdateDetector.classify_sector (score 0.19)
+   Evidence: Score 0.19, Classify which CCNL sector an update refers to.
+3) app/core/langgraph/graph.py:681 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.18)
+   Evidence: Score 0.18, Determine if the agent should continue or end based on the last message.
 
 Args:
 ...
+4) app/models/cassazione.py:244 — app.models.cassazione.extract_legal_keywords (score 0.18)
+   Evidence: Score 0.18, Extract legal keywords from decision text.
+5) app/models/cassazione.py:261 — app.models.cassazione.classify_precedent_value (score 0.18)
+   Evidence: Score 0.18, Classify the precedent value of a Cassazione decision.
 
 Notes:
 - Weak or missing implementation

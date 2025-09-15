@@ -36,31 +36,35 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: ❌  |  Confidence: 0.22
 
 Top candidates:
-1) load_testing/locust_tests.py:215 — load_testing.locust_tests.PratikoAIUser.knowledge_search (score 0.28)
-   Evidence: Score 0.28, Test regulatory knowledge searches
-2) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.25)
-   Evidence: Score 0.25, Decorator to cache LLM responses based on messages and model.
+1) load_testing/locust_tests.py:215 — load_testing.locust_tests.PratikoAIUser.knowledge_search (score 0.22)
+   Evidence: Score 0.22, Test regulatory knowledge searches
+2) app/services/knowledge_integrator.py:22 — app.services.knowledge_integrator.KnowledgeIntegrator.__init__ (score 0.19)
+   Evidence: Score 0.19, Initialize knowledge integrator.
 
 Args:
-    ttl: Ti...
-3) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.25)
-   Evidence: Score 0.25, Decorator to cache conversation history.
+    db_session: Database session for ope...
+3) app/services/knowledge_integrator.py:505 — app.services.knowledge_integrator.KnowledgeIntegrator._generate_content_hash (score 0.19)
+   Evidence: Score 0.19, Generate SHA256 hash of content.
 
 Args:
-    ttl: Time to live in seconds...
-4) app/core/decorators/cache.py:190 — app.core.decorators.cache.cache_result (score 0.25)
-   Evidence: Score 0.25, Generic caching decorator for any function result.
+    content: Text content
+    
+Returns:
+...
+4) app/services/knowledge_integrator.py:519 — app.services.knowledge_integrator.KnowledgeIntegrator._determine_knowledge_category (score 0.19)
+   Evidence: Score 0.19, Determine knowledge category based on document data.
 
 Args:
-    key_func: Function...
-5) app/core/decorators/cache.py:304 — app.core.decorators.cache.invalidate_cache_on_update (score 0.25)
-   Evidence: Score 0.25, Decorator to invalidate cache entries when data is updated.
+    document_data: D...
+5) app/services/knowledge_integrator.py:556 — app.services.knowledge_integrator.KnowledgeIntegrator._determine_knowledge_subcategory (score 0.19)
+   Evidence: Score 0.19, Determine knowledge subcategory.
 
 Args:
-    cache_key...
+    document_data: Document information
+...
 
 Notes:
 - Weak or missing implementation

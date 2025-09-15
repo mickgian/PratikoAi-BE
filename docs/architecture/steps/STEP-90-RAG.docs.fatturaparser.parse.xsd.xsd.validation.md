@@ -36,27 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
+Status: ❌  |  Confidence: 0.23
 
 Top candidates:
-1) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.35)
-   Evidence: Score 0.35, Convert APIContract to OpenAPI specification.
-2) version-management/validation/contract_validator.py:75 — version-management.validation.contract_validator.APIContractValidator.__init__ (score 0.32)
-   Evidence: Score 0.32, method: __init__
-3) version-management/validation/contract_validator.py:78 — version-management.validation.contract_validator.APIContractValidator._load_breaking_change_rules (score 0.32)
-   Evidence: Score 0.32, Load rules for detecting breaking changes.
-4) version-management/validation/contract_validator.py:633 — version-management.validation.contract_validator.APIContractValidator._generate_summary (score 0.32)
-   Evidence: Score 0.32, Generate summary statistics.
-5) version-management/validation/contract_validator.py:728 — version-management.validation.contract_validator.APIContractValidator._generate_test_data (score 0.32)
-   Evidence: Score 0.32, Generate test data based on JSON schema.
+1) app/services/validators/financial_validation_engine.py:518 — app.services.validators.financial_validation_engine.FinancialValidationEngine._execute_document_parsing (score 0.23)
+   Evidence: Score 0.23, Execute document parsing task.
+2) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.22)
+   Evidence: Score 0.22, Check if document has expired
+3) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.22)
+   Evidence: Score 0.22, Convert document to dictionary for API responses
+4) app/services/document_uploader.py:189 — app.services.document_uploader.DocumentUploader._validate_file_signature (score 0.22)
+   Evidence: Score 0.22, Validate file content matches expected file type signatures.
+
+Args:
+  content: F...
+5) app/services/legal_document_analyzer.py:919 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_price (score 0.22)
+   Evidence: Score 0.22, Extract contract price
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for FatturaParser
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 - Test document parsing and validation
 <!-- AUTO-AUDIT:END -->

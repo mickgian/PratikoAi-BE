@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.19
 
 Top candidates:
-1) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.25)
-   Evidence: Score 0.25, Analyze distribution of precedent values in decisions.
-2) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.25)
-   Evidence: Score 0.25, Analyze temporal distribution of decisions.
-3) app/api/v1/data_sources.py:1384 — app.api.v1.data_sources._count_legal_areas (score 0.25)
-   Evidence: Score 0.25, Count legal areas in principles.
-4) app/api/v1/data_sources.py:1393 — app.api.v1.data_sources._count_precedent_strength (score 0.25)
-   Evidence: Score 0.25, Count precedent strength in principles.
-5) app/api/v1/data_sources.py:1402 — app.api.v1.data_sources._generate_cassazione_recommendations (score 0.25)
-   Evidence: Score 0.25, Generate recommendations based on validation results.
+1) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.19)
+   Evidence: Score 0.19, Analyze distribution of precedent values in decisions.
+2) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.19)
+   Evidence: Score 0.19, Analyze temporal distribution of decisions.
+3) app/api/v1/data_sources.py:1384 — app.api.v1.data_sources._count_legal_areas (score 0.19)
+   Evidence: Score 0.19, Count legal areas in principles.
+4) app/api/v1/data_sources.py:1393 — app.api.v1.data_sources._count_precedent_strength (score 0.19)
+   Evidence: Score 0.19, Count precedent strength in principles.
+5) app/api/v1/data_sources.py:1402 — app.api.v1.data_sources._generate_cassazione_recommendations (score 0.19)
+   Evidence: Score 0.19, Generate recommendations based on validation results.
 
 Notes:
 - Weak or missing implementation

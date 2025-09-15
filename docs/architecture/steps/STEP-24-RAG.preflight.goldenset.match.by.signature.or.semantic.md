@@ -36,22 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.23
+Status: ❌  |  Confidence: 0.18
 
 Top candidates:
-1) app/services/document_uploader.py:277 — app.services.document_uploader.DocumentUploader._signature_based_scan (score 0.23)
-   Evidence: Score 0.23, Signature-based malware detection
-2) app/models/cassazione_data.py:345 — app.models.cassazione_data.ScrapingStatistics.reset (score 0.23)
-   Evidence: Score 0.23, Reset all statistics.
-3) app/services/vector_service.py:688 — app.services.vector_service.VectorService.search_ccnl_semantic (score 0.23)
-   Evidence: Score 0.23, Semantic search specifically for CCNL data.
-
-Args:
-    query: Search query about...
-4) app/core/privacy/gdpr.py:95 — app.core.privacy.gdpr.ConsentManager.grant_consent (score 0.22)
-   Evidence: Score 0.22, Grant consent for a specific purpose.
-5) app/core/llm/providers/anthropic_provider.py:46 — app.core.llm.providers.anthropic_provider.AnthropicProvider.client (score 0.22)
-   Evidence: Score 0.22, Get the Anthropic async client.
+1) app/services/golden_fast_path.py:44 — app.services.golden_fast_path.EligibilityResult.to_dict (score 0.18)
+   Evidence: Score 0.18, Convert to dictionary for structured logging.
+2) app/services/golden_fast_path.py:52 — app.services.golden_fast_path.GoldenFastPathService.__init__ (score 0.18)
+   Evidence: Score 0.18, Initialize the golden fast-path service.
+3) app/services/golden_fast_path.py:230 — app.services.golden_fast_path.GoldenFastPathService._contains_document_keywords (score 0.18)
+   Evidence: Score 0.18, Check if query contains document-dependent keywords.
+4) app/services/golden_fast_path.py:235 — app.services.golden_fast_path.GoldenFastPathService._contains_complex_keywords (score 0.18)
+   Evidence: Score 0.18, Check if query contains complex analysis keywords.
+5) app/services/golden_fast_path.py:250 — app.services.golden_fast_path.GoldenFastPathService._is_safe_quick_query (score 0.18)
+   Evidence: Score 0.18, Check if query is a safe, quick factual query.
 
 Notes:
 - Weak or missing implementation

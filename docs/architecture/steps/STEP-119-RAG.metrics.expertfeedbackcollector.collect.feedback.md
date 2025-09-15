@@ -36,28 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Status: ❌  |  Confidence: 0.18
 
 Top candidates:
-1) app/services/expert_feedback_collector.py:43 — app.services.expert_feedback_collector.ExpertFeedbackCollector.__init__ (score 0.34)
-   Evidence: Score 0.34, method: __init__
-2) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.34)
-   Evidence: Score 0.34, Validate feedback data structure and content
-3) app/services/expert_feedback_collector.py:297 — app.services.expert_feedback_collector.ExpertFeedbackCollector._update_statistics (score 0.34)
-   Evidence: Score 0.34, Update internal statistics tracking
-4) app/services/expert_feedback_collector.py:515 — app.services.expert_feedback_collector.ExpertFeedbackCollector.get_statistics (score 0.34)
-   Evidence: Score 0.34, Get current session statistics
-5) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.30)
-   Evidence: Score 0.30, Service for collecting and processing expert feedback on AI responses.
-
-Features...
+1) app/services/failure_pattern_analyzer.py:273 — app.services.failure_pattern_analyzer.FailurePatternAnalyzer._categorize_feedback (score 0.18)
+   Evidence: Score 0.18, Categorize feedback by Italian categories
+2) rollback-system/health_monitor.py:163 — rollback-system.health_monitor.ApplicationHealthChecker.__init__ (score 0.17)
+   Evidence: Score 0.17, method: __init__
+3) rollback-system/health_monitor.py:318 — rollback-system.health_monitor.LogPreserver.__init__ (score 0.17)
+   Evidence: Score 0.17, method: __init__
+4) rollback-system/health_monitor.py:401 — rollback-system.health_monitor.HealthMonitor.__init__ (score 0.17)
+   Evidence: Score 0.17, method: __init__
+5) rollback-system/health_monitor.py:419 — rollback-system.health_monitor.HealthMonitor._load_config (score 0.17)
+   Evidence: Score 0.17, Load configuration from file.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for ExpertFeedbackCollector
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

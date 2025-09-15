@@ -210,13 +210,24 @@ class RAGAuditor:
             tokens.update(hint_keywords[category])
         
         return tokens
-    
+
     def _tokenize(self, text: str) -> List[str]:
-        """Tokenize text into lowercase words."""
-        # Split on word boundaries, convert to lowercase
-        tokens = re.findall(r'\b\w+\b', text.lower())
-        return [t for t in tokens if len(t) > 2]  # Skip short words
-    
+        """Tokenize text into lowercase words.
+
+        - Split on underscores, slashes, and dots
+        - Split CamelCase
+        - Keep only a–z0–9 tokens, length > 2
+        """
+        # Split CamelCase: "GoldenFastPath" -> "Golden Fast Path"
+        text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+
+        # Normalize common separators so they act like spaces
+        text = text.replace('_', ' ').replace('/', ' ').replace('.', ' ')
+
+        # Extract alphanumeric tokens
+        tokens = re.findall(r'[a-z0-9]+', text.lower())
+        return [t for t in tokens if len(t) > 2]
+
     def _score_symbol(self, symbol: Dict, query_tokens: Set[str], step: Dict) -> float:
         """Score a symbol for relevance to the step."""
         weights = self.config.get('weights', {

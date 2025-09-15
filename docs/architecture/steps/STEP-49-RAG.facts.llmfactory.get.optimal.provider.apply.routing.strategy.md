@@ -36,38 +36,32 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
+Status: ❌  |  Confidence: 0.22
 
 Top candidates:
-1) app/core/llm/factory.py:127 — app.core.llm.factory.LLMFactory.get_optimal_provider (score 0.35)
-   Evidence: Score 0.35, Get the optimal provider based on routing strategy.
+1) app/core/langgraph/graph.py:463 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.22)
+   Evidence: Score 0.22, Get the optimal LLM provider for the given messages.
 
 Args:
-    messages: List of...
-2) app/core/llm/factory.py:27 — app.core.llm.factory.LLMFactory.__init__ (score 0.31)
-   Evidence: Score 0.31, Initialize the LLM factory.
-3) app/core/llm/factory.py:33 — app.core.llm.factory.LLMFactory._get_provider_configs (score 0.31)
-   Evidence: Score 0.31, Get provider configurations from settings.
-
-Returns:
-    Dictionary of provider ...
-4) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.31)
-   Evidence: Score 0.31, Create an LLM provider instance.
+    messages: List o...
+2) app/core/llm/cost_calculator.py:176 — app.core.llm.cost_calculator.CostCalculator.find_optimal_provider (score 0.20)
+   Evidence: Score 0.20, Find the optimal provider based on cost and capability requirements.
 
 Args:
-    provider_type: Type of provider to c...
-5) app/core/llm/factory.py:105 — app.core.llm.factory.LLMFactory.get_available_providers (score 0.31)
-   Evidence: Score 0.31, Get all available configured providers.
-
-Returns:
-    List of available provider...
+    ...
+3) failure-recovery-system/decision_tree_engine.py:207 — failure-recovery-system.decision_tree_engine.RecoveryStrategy.__post_init__ (score 0.20)
+   Evidence: Score 0.20, method: __post_init__
+4) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.19)
+   Evidence: Score 0.19, Convert internal SearchResponse to API model.
+5) app/api/v1/data_export.py:69 — app.api.v1.data_export.CreateExportRequest.validate_future_dates (score 0.19)
+   Evidence: Score 0.19, method: validate_future_dates
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for RouteStrategy
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

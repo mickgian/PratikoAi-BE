@@ -36,26 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: ❌  |  Confidence: 0.21
 
 Top candidates:
-1) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.27)
-   Evidence: Score 0.27, Initialize the LLM provider.
+1) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.21)
+   Evidence: Score 0.21, Initialize the LLM provider.
 
 Args:
     api_key: API key for the provider
     mo...
-2) app/core/llm/base.py:75 — app.core.llm.base.LLMProvider.provider_type (score 0.27)
-   Evidence: Score 0.27, Get the provider type.
-3) app/core/llm/base.py:81 — app.core.llm.base.LLMProvider.supported_models (score 0.27)
-   Evidence: Score 0.27, Get supported models and their cost information.
-4) app/core/llm/base.py:132 — app.core.llm.base.LLMProvider.estimate_tokens (score 0.27)
-   Evidence: Score 0.27, Estimate token count for a list of messages.
+2) app/core/llm/base.py:75 — app.core.llm.base.LLMProvider.provider_type (score 0.21)
+   Evidence: Score 0.21, Get the provider type.
+3) app/core/llm/base.py:81 — app.core.llm.base.LLMProvider.supported_models (score 0.21)
+   Evidence: Score 0.21, Get supported models and their cost information.
+4) app/core/llm/base.py:132 — app.core.llm.base.LLMProvider.estimate_tokens (score 0.21)
+   Evidence: Score 0.21, Estimate token count for a list of messages.
 
 Args:
     messages: List of conver...
-5) app/core/llm/base.py:144 — app.core.llm.base.LLMProvider.estimate_cost (score 0.27)
-   Evidence: Score 0.27, Estimate cost for given token counts.
+5) app/core/llm/base.py:144 — app.core.llm.base.LLMProvider.estimate_cost (score 0.21)
+   Evidence: Score 0.21, Estimate cost for given token counts.
 
 Args:
     input_tokens: Number of input t...

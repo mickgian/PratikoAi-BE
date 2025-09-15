@@ -36,30 +36,27 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.30
+Status: ❌  |  Confidence: 0.23
 
 Top candidates:
-1) app/services/atomic_facts_extractor.py:421 — app.services.atomic_facts_extractor.AtomicFactsExtractor.extract (score 0.30)
-   Evidence: Score 0.30, Extract atomic facts from an Italian professional query.
-
-Args:
-    query: The u...
-2) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
-   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
-3) app/services/italian_document_collector.py:451 — app.services.italian_document_collector.ItalianDocumentCollector._extract_keywords (score 0.27)
-   Evidence: Score 0.27, Extract relevant keywords from document content.
-4) app/services/italian_document_collector.py:440 — app.services.italian_document_collector.ItalianDocumentCollector._extract_tax_types (score 0.27)
-   Evidence: Score 0.27, Extract relevant tax types from document content.
-5) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
-   Evidence: Score 0.27, Check if document has expired
+1) app/services/italian_document_collector.py:451 — app.services.italian_document_collector.ItalianDocumentCollector._extract_keywords (score 0.23)
+   Evidence: Score 0.23, Extract relevant keywords from document content.
+2) app/services/italian_document_collector.py:440 — app.services.italian_document_collector.ItalianDocumentCollector._extract_tax_types (score 0.22)
+   Evidence: Score 0.22, Extract relevant tax types from document content.
+3) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.22)
+   Evidence: Score 0.22, Check if document has expired
+4) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.22)
+   Evidence: Score 0.22, Convert document to dictionary for API responses
+5) app/services/legal_document_analyzer.py:950 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_key_clauses (score 0.22)
+   Evidence: Score 0.22, Extract important contract clauses
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for ParseDocs
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 - Test document parsing and validation
 <!-- AUTO-AUDIT:END -->

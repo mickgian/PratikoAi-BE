@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.18
 
 Top candidates:
-1) failure-recovery-system/decision_tree_engine.py:207 — failure-recovery-system.decision_tree_engine.RecoveryStrategy.__post_init__ (score 0.24)
-   Evidence: Score 0.24, method: __post_init__
-2) app/models/cassazione_data.py:367 — app.models.cassazione_data.ScrapingError.category (score 0.23)
-   Evidence: Score 0.23, Categorize the error.
-3) app/services/export_file_generator.py:792 — app.services.export_file_generator.ExportFileGenerator._translate_query_type (score 0.23)
-   Evidence: Score 0.23, Translate query type to Italian
-4) failure-recovery-system/recovery_orchestrator.py:879 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._get_strategy_by_id (score 0.23)
-   Evidence: Score 0.23, Get a strategy by its ID from all available strategies.
-5) app/models/cassazione_data.py:319 — app.models.cassazione_data.ScrapingStatistics.save_rate (score 0.23)
-   Evidence: Score 0.23, Calculate decision save rate.
+1) failure-recovery-system/decision_tree_engine.py:207 — failure-recovery-system.decision_tree_engine.RecoveryStrategy.__post_init__ (score 0.18)
+   Evidence: Score 0.18, method: __post_init__
+2) app/models/cassazione_data.py:367 — app.models.cassazione_data.ScrapingError.category (score 0.18)
+   Evidence: Score 0.18, Categorize the error.
+3) app/services/export_file_generator.py:792 — app.services.export_file_generator.ExportFileGenerator._translate_query_type (score 0.18)
+   Evidence: Score 0.18, Translate query type to Italian
+4) failure-recovery-system/recovery_orchestrator.py:879 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._get_strategy_by_id (score 0.17)
+   Evidence: Score 0.17, Get a strategy by its ID from all available strategies.
+5) app/models/cassazione_data.py:319 — app.models.cassazione_data.ScrapingStatistics.save_rate (score 0.17)
+   Evidence: Score 0.17, Calculate decision save rate.
 
 Notes:
 - Weak or missing implementation

@@ -36,23 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.18
 
 Top candidates:
-1) app/services/llm_retry_service.py:217 — app.services.llm_retry_service.RetryHandler.__init__ (score 0.24)
-   Evidence: Score 0.24, Initialize retry handler.
+1) app/services/llm_retry_service.py:217 — app.services.llm_retry_service.RetryHandler.__init__ (score 0.18)
+   Evidence: Score 0.18, Initialize retry handler.
 
 Args:
     config: Retry configuration
     circuit_bre...
-2) app/services/llm_retry_service.py:336 — app.services.llm_retry_service.RetryHandler._is_retryable_http_error (score 0.24)
-   Evidence: Score 0.24, Check if HTTP error is retryable.
-3) app/services/llm_retry_service.py:342 — app.services.llm_retry_service.RetryHandler._is_retryable_error (score 0.24)
-   Evidence: Score 0.24, Check if error is generally retryable.
-4) app/services/llm_retry_service.py:377 — app.services.llm_retry_service.RetryHandler._calculate_backoff_delay (score 0.24)
-   Evidence: Score 0.24, Calculate exponential backoff delay with jitter.
-5) app/services/llm_retry_service.py:395 — app.services.llm_retry_service.RetryHandler._generate_request_id (score 0.24)
-   Evidence: Score 0.24, Generate unique request ID for tracking.
+2) app/services/llm_retry_service.py:336 — app.services.llm_retry_service.RetryHandler._is_retryable_http_error (score 0.18)
+   Evidence: Score 0.18, Check if HTTP error is retryable.
+3) app/services/llm_retry_service.py:342 — app.services.llm_retry_service.RetryHandler._is_retryable_error (score 0.18)
+   Evidence: Score 0.18, Check if error is generally retryable.
+4) app/services/llm_retry_service.py:377 — app.services.llm_retry_service.RetryHandler._calculate_backoff_delay (score 0.18)
+   Evidence: Score 0.18, Calculate exponential backoff delay with jitter.
+5) app/services/llm_retry_service.py:395 — app.services.llm_retry_service.RetryHandler._generate_request_id (score 0.18)
+   Evidence: Score 0.18, Generate unique request ID for tracking.
 
 Notes:
 - Weak or missing implementation

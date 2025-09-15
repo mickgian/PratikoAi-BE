@@ -36,23 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.16
+Status: ❌  |  Confidence: 0.14
 
 Top candidates:
-1) app/core/langgraph/tools/__init__.py:1 — app.core.langgraph.tools.__init__ (score 0.16)
-   Evidence: Score 0.16, LangGraph tools for enhanced language model capabilities.
+1) app/core/langgraph/tools/__init__.py:1 — app.core.langgraph.tools.__init__ (score 0.14)
+   Evidence: Score 0.14, LangGraph tools for enhanced language model capabilities.
 
 This package contains...
-2) app/core/langgraph/tools/ccnl_tool.py:1 — app.core.langgraph.tools.ccnl_tool (score 0.16)
-   Evidence: Score 0.16, CCNL Integration Tool for LangGraph.
+2) app/core/langgraph/tools/duckduckgo_search.py:1 — app.core.langgraph.tools.duckduckgo_search (score 0.14)
+   Evidence: Score 0.14, DuckDuckGo search tool for LangGraph.
 
-This tool enables the LLM to access Italia...
-3) app/core/langgraph/tools/ccnl_tool.py:29 — app.core.langgraph.tools.ccnl_tool.CCNLQueryInput (score 0.16)
-   Evidence: Score 0.16, Input schema for CCNL queries.
-4) app/core/langgraph/tools/ccnl_tool.py:64 — app.core.langgraph.tools.ccnl_tool.CCNLTool (score 0.16)
-   Evidence: Score 0.16, LangGraph tool for accessing CCNL (Italian Collective Labor Agreements) data.
-5) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.16)
-   Evidence: Score 0.16, method: __init__
+This module provides a DuckDuckGo search ...
+3) app/services/location_service.py:17 — app.services.location_service.InvalidCAP (score 0.13)
+   Evidence: Score 0.13, Raised when CAP format is invalid
+4) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.13)
+   Evidence: Score 0.13, Validate the citation.
+5) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.13)
+   Evidence: Score 0.13, Validate the result.
 
 Notes:
 - Weak or missing implementation

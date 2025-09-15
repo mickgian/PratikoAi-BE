@@ -36,23 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.38
+Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) app/services/automatic_improvement_engine.py:662 — app.services.automatic_improvement_engine.AutomaticImprovementEngine._initialize_improvement_strategies (score 0.38)
-   Evidence: Score 0.38, Initialize improvement strategies for different pattern types
-2) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.38)
-   Evidence: Score 0.38, Validate feedback data structure and content
-3) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.38)
-   Evidence: Score 0.38, Automatic Improvement Engine for Quality Analysis System.
+1) app/services/failure_pattern_analyzer.py:1 — app.services.failure_pattern_analyzer (score 0.35)
+   Evidence: Score 0.35, Failure Pattern Analyzer for Quality Analysis System.
 
-Automatically generat...
-4) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.36)
-   Evidence: Score 0.36, Service for collecting and processing expert feedback on AI responses.
+Identifies and analyzes p...
+2) app/models/quality_analysis.py:1 — app.models.quality_analysis (score 0.35)
+   Evidence: Score 0.35, Database Models for Quality Analysis System with Expert Feedback Loop.
 
-Features...
-5) app/services/automatic_improvement_engine.py:645 — app.services.automatic_improvement_engine.AutomaticImprovementEngine._generate_improvement_summary (score 0.33)
-   Evidence: Score 0.33, Generate human-readable improvement summary
+Defines ...
+3) app/services/failure_pattern_analyzer.py:39 — app.services.failure_pattern_analyzer.FailurePatternAnalyzer (score 0.31)
+   Evidence: Score 0.31, Advanced failure pattern analyzer for quality improvement.
+
+Features:
+- DBSCAN c...
+4) app/services/expert_validation_workflow.py:613 — app.services.expert_validation_workflow.ExpertValidationWorkflow._identify_disagreement_areas (score 0.30)
+   Evidence: Score 0.30, Identify areas of disagreement between expert answers
+5) app/services/expert_validation_workflow.py:644 — app.services.expert_validation_workflow.ExpertValidationWorkflow._assess_correction_quality (score 0.30)
+   Evidence: Score 0.30, Assess the quality of an expert correction
 
 Notes:
 - Implementation exists but may not be wired correctly

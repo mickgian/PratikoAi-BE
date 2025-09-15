@@ -36,19 +36,21 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.45
+Status: 🔌  |  Confidence: 0.48
 
 Top candidates:
-1) app/models/faq.py:486 — app.models.faq.generate_faq_cache_key (score 0.45)
-   Evidence: Score 0.45, Generate cache key for FAQ variations.
-2) app/models/faq.py:495 — app.models.faq.calculate_cost_savings (score 0.45)
-   Evidence: Score 0.45, Calculate cost savings from FAQ system usage.
-3) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.40)
-   Evidence: Score 0.40, Request model for FAQ queries.
-4) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.40)
-   Evidence: Score 0.40, Response model for FAQ queries.
-5) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.40)
-   Evidence: Score 0.40, Request model for creating FAQ entries.
+1) app/api/v1/faq.py:1 — app.api.v1.faq (score 0.48)
+   Evidence: Score 0.48, FAQ API endpoints for the Intelligent FAQ System.
+
+This module provides REST API...
+2) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.46)
+   Evidence: Score 0.46, Request model for FAQ queries.
+3) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.46)
+   Evidence: Score 0.46, Response model for FAQ queries.
+4) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.46)
+   Evidence: Score 0.46, Request model for creating FAQ entries.
+5) app/api/v1/faq.py:69 — app.api.v1.faq.FAQUpdateRequest (score 0.46)
+   Evidence: Score 0.46, Request model for updating FAQ entries.
 
 Notes:
 - Implementation exists but may not be wired correctly

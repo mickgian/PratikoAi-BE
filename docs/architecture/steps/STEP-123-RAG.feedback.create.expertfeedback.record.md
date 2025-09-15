@@ -36,23 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.41
+Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.41)
-   Evidence: Score 0.41, Service for collecting and processing expert feedback on AI responses.
+1) app/models/quality_analysis.py:105 — app.models.quality_analysis.ExpertFeedback (score 0.35)
+   Evidence: Score 0.35, Expert feedback on AI-generated answers
+2) app/services/failure_pattern_analyzer.py:1 — app.services.failure_pattern_analyzer (score 0.33)
+   Evidence: Score 0.33, Failure Pattern Analyzer for Quality Analysis System.
 
-Features...
-2) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.40)
-   Evidence: Score 0.40, Validate feedback data structure and content
-3) app/services/automatic_improvement_engine.py:662 — app.services.automatic_improvement_engine.AutomaticImprovementEngine._initialize_improvement_strategies (score 0.38)
-   Evidence: Score 0.38, Initialize improvement strategies for different pattern types
-4) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.37)
-   Evidence: Score 0.37, Automatic Improvement Engine for Quality Analysis System.
+Identifies and analyzes p...
+3) app/models/quality_analysis.py:1 — app.models.quality_analysis (score 0.32)
+   Evidence: Score 0.32, Database Models for Quality Analysis System with Expert Feedback Loop.
 
-Automatically generat...
-5) app/models/quality_analysis.py:105 — app.models.quality_analysis.ExpertFeedback (score 0.37)
-   Evidence: Score 0.37, Expert feedback on AI-generated answers
+Defines ...
+4) app/services/failure_pattern_analyzer.py:39 — app.services.failure_pattern_analyzer.FailurePatternAnalyzer (score 0.31)
+   Evidence: Score 0.31, Advanced failure pattern analyzer for quality improvement.
+
+Features:
+- DBSCAN c...
+5) app/services/failure_pattern_analyzer.py:273 — app.services.failure_pattern_analyzer.FailurePatternAnalyzer._categorize_feedback (score 0.30)
+   Evidence: Score 0.30, Categorize feedback by Italian categories
 
 Notes:
 - Implementation exists but may not be wired correctly

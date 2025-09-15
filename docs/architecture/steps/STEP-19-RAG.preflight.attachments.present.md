@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.20
 
 Top candidates:
-1) app/models/cassazione_data.py:345 — app.models.cassazione_data.ScrapingStatistics.reset (score 0.26)
-   Evidence: Score 0.26, Reset all statistics.
-2) app/services/vector_provider_factory.py:20 — app.services.vector_provider_factory.VectorSearchProvider.upsert (score 0.23)
-   Evidence: Score 0.23, Upsert vectors into the provider.
-3) app/services/vector_providers/local_provider.py:55 — app.services.vector_providers.local_provider.LocalVectorProvider.upsert (score 0.23)
-   Evidence: Score 0.23, Upsert vectors into local storage.
-4) app/services/vector_providers/pinecone_provider.py:113 — app.services.vector_providers.pinecone_provider.PineconeProvider.upsert (score 0.23)
-   Evidence: Score 0.23, Upsert vectors into Pinecone index.
-5) app/core/performance/response_compressor.py:140 — app.core.performance.response_compressor.ResponseCompressor.compress_content (score 0.23)
-   Evidence: Score 0.23, Compress content using specified algorithm.
+1) app/models/cassazione_data.py:345 — app.models.cassazione_data.ScrapingStatistics.reset (score 0.20)
+   Evidence: Score 0.20, Reset all statistics.
+2) app/services/vector_provider_factory.py:20 — app.services.vector_provider_factory.VectorSearchProvider.upsert (score 0.18)
+   Evidence: Score 0.18, Upsert vectors into the provider.
+3) app/services/vector_providers/local_provider.py:55 — app.services.vector_providers.local_provider.LocalVectorProvider.upsert (score 0.18)
+   Evidence: Score 0.18, Upsert vectors into local storage.
+4) app/core/performance/response_compressor.py:140 — app.core.performance.response_compressor.ResponseCompressor.compress_content (score 0.18)
+   Evidence: Score 0.18, Compress content using specified algorithm.
 
 Args:
     content: Content to compr...
+5) feature-flags/ci_cd/github_actions.py:500 — feature-flags.ci_cd.github_actions.restore (score 0.17)
+   Evidence: Score 0.17, Restore flags from backup.
 
 Notes:
 - Weak or missing implementation

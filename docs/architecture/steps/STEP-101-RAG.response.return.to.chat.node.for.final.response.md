@@ -36,38 +36,37 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.31)
-   Evidence: Score 0.31, Validate the message content.
+1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.25)
+   Evidence: Score 0.25, Validate the message content.
 
-Args:
-    v: The content to validate
+    Args:
+        v: The content to validate
 
-Returns:
-  ...
-2) app/schemas/chat.py:19 — app.schemas.chat.Message (score 0.27)
-   Evidence: Score 0.27, Message model for chat endpoint.
+   ...
+2) app/schemas/chat.py:19 — app.schemas.chat.Message (score 0.23)
+   Evidence: Score 0.23, Message model for chat endpoint.
 
 Attributes:
     role: The role of the message ...
-3) app/schemas/chat.py:57 — app.schemas.chat.QueryClassificationMetadata (score 0.27)
-   Evidence: Score 0.27, Metadata about query classification for debugging and monitoring.
-4) app/schemas/chat.py:70 — app.schemas.chat.ResponseMetadata (score 0.27)
-   Evidence: Score 0.27, Response metadata for debugging and monitoring.
-5) app/schemas/chat.py:81 — app.schemas.chat.ChatRequest (score 0.27)
-   Evidence: Score 0.27, Request model for chat endpoint.
+3) app/schemas/chat.py:81 — app.schemas.chat.QueryClassificationMetadata (score 0.23)
+   Evidence: Score 0.23, Metadata about query classification for debugging and monitoring.
+4) app/schemas/chat.py:94 — app.schemas.chat.ResponseMetadata (score 0.23)
+   Evidence: Score 0.23, Response metadata for debugging and monitoring.
+5) app/schemas/chat.py:105 — app.schemas.chat.ChatRequest (score 0.23)
+   Evidence: Score 0.23, Request model for chat endpoint.
 
 Attributes:
     messages: List of messages in ...
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for FinalResponse
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

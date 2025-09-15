@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Status: ❌  |  Confidence: 0.18
 
 Top candidates:
-1) app/core/startup.py:45 — app.core.startup.setup_startup_handlers (score 0.24)
-   Evidence: Score 0.24, Setup startup and shutdown handlers for the FastAPI application.
-2) failure-recovery-system/cicd_integration.py:118 — failure-recovery-system.cicd_integration.CICDEvent.__post_init__ (score 0.24)
-   Evidence: Score 0.24, method: __post_init__
-3) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.24)
-   Evidence: Score 0.24, method: __post_init__
-4) failure-recovery-system/cicd_integration.py:170 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.__init__ (score 0.24)
-   Evidence: Score 0.24, method: __init__
-5) failure-recovery-system/cicd_integration.py:173 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.validate_github_signature (score 0.24)
-   Evidence: Score 0.24, Validate GitHub webhook signature.
+1) app/core/startup.py:45 — app.core.startup.setup_startup_handlers (score 0.18)
+   Evidence: Score 0.18, Setup startup and shutdown handlers for the FastAPI application.
+2) failure-recovery-system/cicd_integration.py:118 — failure-recovery-system.cicd_integration.CICDEvent.__post_init__ (score 0.18)
+   Evidence: Score 0.18, method: __post_init__
+3) failure-recovery-system/cicd_integration.py:158 — failure-recovery-system.cicd_integration.RecoveryResponse.__post_init__ (score 0.18)
+   Evidence: Score 0.18, method: __post_init__
+4) failure-recovery-system/cicd_integration.py:170 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.__init__ (score 0.18)
+   Evidence: Score 0.18, method: __init__
+5) failure-recovery-system/cicd_integration.py:173 — failure-recovery-system.cicd_integration.WebhookSecurityValidator.validate_github_signature (score 0.18)
+   Evidence: Score 0.18, Validate GitHub webhook signature.
 
 Notes:
 - Weak or missing implementation

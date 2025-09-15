@@ -42,6 +42,8 @@ from app.services.cache import cache_service
 from app.services.domain_action_classifier import DomainActionClassifier, DomainActionClassification, Action
 from app.services.domain_prompt_templates import PromptTemplateManager
 from app.services.golden_fast_path import GoldenFastPathService, EligibilityDecision
+from app.services.knowledge_search_service import KnowledgeSearchService
+from app.core.database import database_service
 from app.services.usage_tracker import usage_tracker
 from app.utils import (
     dump_messages,
@@ -67,8 +69,10 @@ class LangGraphAgent:
         self._domain_classifier = DomainActionClassifier()
         self._prompt_template_manager = PromptTemplateManager()
         self._golden_fast_path_service = GoldenFastPathService()
+        self._knowledge_search_service = None  # Will be initialized when needed (requires DB session)
         self._current_classification = None  # Store current query classification
         self._response_metadata = None  # Store response metadata
+        self._kb_context = None  # Store retrieved knowledge context
 
         logger.info("llm_agent_initialized", environment=settings.ENVIRONMENT.value)
 
@@ -167,6 +171,93 @@ class LangGraphAgent:
         
         # Check eligibility using golden fast-path service
         return await self._golden_fast_path_service.is_eligible_for_fast_path(query_data)
+
+    async def _retrieve_knowledge_context(self, messages: List[Message], session_id: str, user_id: Optional[str]) -> List[dict]:
+        """
+        Retrieve relevant knowledge context using hybrid search (BM25 + Vector + Recency).
+        
+        This implements RAG STEP 39 — KBPreFetch.
+        
+        Args:
+            messages: List of conversation messages
+            session_id: Session identifier
+            user_id: User identifier
+            
+        Returns:
+            List of relevant knowledge items
+        """
+        # Find the latest user message
+        user_message = None
+        for message in reversed(messages):
+            if message.role == "user":
+                user_message = message.content
+                break
+        
+        if not user_message:
+            return []
+        
+        try:
+            # Create DB session for knowledge retrieval
+            with database_service.get_session_maker() as db_session:
+                # Try to get vector service (graceful degradation if unavailable)
+                vector_service = None
+                try:
+                    from app.services.vector_service_enhanced import EnhancedVectorService
+                    vector_service = EnhancedVectorService()
+                except Exception as e:
+                    logger.warning("vector_service_init_failed", error=str(e))
+                    
+                # Create knowledge search service for this request
+                knowledge_search_service = KnowledgeSearchService(
+                    db_session=db_session,
+                    vector_service=vector_service
+                )
+                
+                # Prepare query data for knowledge search
+                query_data = {
+                    "query": user_message,
+                    "canonical_facts": [],  # TODO: Extract from atomic facts extraction
+                    "user_id": user_id or "anonymous",
+                    "session_id": session_id,
+                    "trace_id": f"trace_{session_id}_{hash(user_message)}",
+                    "context": {
+                        "domain": self._current_classification.domain.value if self._current_classification else "general",
+                        "language": "it"  # Default to Italian for Italian tax system
+                    }
+                }
+                
+                # Retrieve top-k knowledge items
+                search_results = await knowledge_search_service.retrieve_topk(query_data)
+                
+                # Convert SearchResult objects to dict format for easier handling
+                knowledge_items = []
+                for result in search_results:
+                    knowledge_items.append({
+                        "id": result.id,
+                        "title": result.title,
+                        "content": result.content,
+                        "category": result.category,
+                        "source": result.source,
+                        "score": result.score,
+                        "updated_at": result.updated_at.isoformat() if result.updated_at else None
+                    })
+                
+                # Store context for potential use in prompts
+                self._kb_context = knowledge_items
+                
+                logger.info(
+                    "knowledge_context_retrieved",
+                    session_id=session_id,
+                    results_count=len(knowledge_items),
+                    avg_score=sum(item["score"] for item in knowledge_items) / len(knowledge_items) if knowledge_items else 0.0,
+                    top_categories=[item["category"] for item in knowledge_items[:3]]
+                )
+                
+                return knowledge_items
+                
+        except Exception as e:
+            logger.error("knowledge_retrieval_failed", error=str(e), session_id=session_id, exc_info=True)
+            return []
 
     async def _get_cached_llm_response(self, provider: LLMProvider, messages: List[Message], tools: list, temperature: float, max_tokens: int):
         """Get LLM response with caching support.
@@ -550,6 +641,11 @@ class LangGraphAgent:
         # Classify user query
         self._current_classification = await self._classify_user_query(conversation_messages)
 
+        # RAG STEP 39 — KBPreFetch: Retrieve knowledge context 
+        session_id = state.session_id if hasattr(state, 'session_id') else "unknown_session"
+        user_id = state.user_id if hasattr(state, 'user_id') else None
+        await self._retrieve_knowledge_context(conversation_messages, session_id, user_id)
+
         # Get domain-specific system prompt or default
         system_prompt = self._get_system_prompt(conversation_messages, self._current_classification)
         
@@ -835,6 +931,9 @@ class LangGraphAgent:
             
             # RAG STEP 20: Check golden fast-path eligibility
             golden_eligibility = await self._check_golden_fast_path_eligibility(messages, session_id, user_id)
+            
+            # RAG STEP 39 — KBPreFetch: Retrieve knowledge context for streaming
+            await self._retrieve_knowledge_context(messages, session_id, user_id)
             
             # Decide streaming approach based on classification and golden fast-path eligibility
             if golden_eligibility.decision == EligibilityDecision.ELIGIBLE and golden_eligibility.allows_golden_lookup:

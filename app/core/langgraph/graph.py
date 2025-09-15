@@ -789,6 +789,89 @@ class LangGraphAgent:
 
         raise Exception(f"Failed to get a response from the LLM after {max_retries} attempts")
 
+    def _detect_tool_type(self, tool_name: str) -> str:
+        """Detect the type of tool based on its name.
+        
+        RAG STEP 79 — Tool type? (RAG.routing.tool.type)
+        
+        Args:
+            tool_name: The name of the tool being called
+            
+        Returns:
+            The tool type: "Knowledge", "CCNL", "Document", "FAQ", or "Unknown"
+        """
+        if not tool_name:
+            return "Unknown"
+            
+        # Normalize tool name for comparison
+        tool_lower = tool_name.lower()
+        
+        # Map tool names to types
+        if "knowledge" in tool_lower or tool_lower == "knowledgesearchtool":
+            return "Knowledge"
+        elif "ccnl" in tool_lower or tool_lower == "ccnltool":
+            return "CCNL"
+        elif "document" in tool_lower or tool_lower == "documentingesttool":
+            return "Document"
+        elif "faq" in tool_lower or tool_lower == "faqtool":
+            return "FAQ"
+        else:
+            return "Unknown"
+    
+    def _get_routing_decision(self, tool_type: str) -> str:
+        """Get the routing decision based on tool type.
+        
+        Args:
+            tool_type: The detected tool type
+            
+        Returns:
+            The routing decision string
+        """
+        routing_map = {
+            "Knowledge": "route_to_knowledge",
+            "CCNL": "route_to_ccnl",
+            "Document": "route_to_document",
+            "FAQ": "route_to_faq",
+            "Unknown": "route_to_unknown"
+        }
+        return routing_map.get(tool_type, "route_to_unknown")
+    
+    def _log_tool_type_decision(self, tool_name: str, tool_type: str, error: str = None):
+        """Log the tool type routing decision.
+        
+        Args:
+            tool_name: The name of the tool
+            tool_type: The detected tool type
+            error: Optional error message
+        """
+        decision = self._get_routing_decision(tool_type)
+        
+        rag_step_log(
+            79,
+            "RAG.routing.tool.type",
+            "ToolType",
+            tool_name=tool_name or "None",
+            tool_type=tool_type,
+            decision=decision,
+            error=error
+        )
+    
+    def _tool_type_timer(self, tool_name: str):
+        """Create a timer context for tool type detection.
+        
+        Args:
+            tool_name: The name of the tool
+            
+        Returns:
+            Timer context manager
+        """
+        return rag_step_timer(
+            79,
+            "RAG.routing.tool.type",
+            "ToolType",
+            tool_name=tool_name
+        )
+
     # Define our tool node
     async def _tool_call(self, state: GraphState) -> GraphState:
         """Process tool calls from the last message.
@@ -801,11 +884,19 @@ class LangGraphAgent:
         """
         outputs = []
         for tool_call in state.messages[-1].tool_calls:
-            tool_result = await self.tools_by_name[tool_call["name"]].ainvoke(tool_call["args"])
+            tool_name = tool_call["name"]
+            
+            # RAG STEP 79: Detect and log tool type for routing
+            with self._tool_type_timer(tool_name):
+                tool_type = self._detect_tool_type(tool_name)
+                self._log_tool_type_decision(tool_name, tool_type)
+            
+            # Execute the tool (actual routing happens here based on tool type)
+            tool_result = await self.tools_by_name[tool_name].ainvoke(tool_call["args"])
             outputs.append(
                 ToolMessage(
                     content=tool_result,
-                    name=tool_call["name"],
+                    name=tool_name,
                     tool_call_id=tool_call["id"],
                 )
             )

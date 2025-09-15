@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ToolType` (Tool type?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/core/langgraph/graph.py:LangGraphAgent._detect_tool_type`, `app/core/langgraph/graph.py:LangGraphAgent._log_tool_type_decision`, `app/core/langgraph/graph.py:LangGraphAgent._get_routing_decision`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Tool type detection is fully implemented with structured logging. Detects Knowledge, CCNL, Document, FAQ, and Unknown tool types. Integrated into _tool_call method with proper timing and logging.
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,11 +19,11 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 79 (RAG.routing.tool.type): Tool type? | attrs={...}`
+- [x] Unit tests (tool type detection, routing decisions, error handling)
+- [x] Integration tests (end-to-end tool routing flow)
+- [x] Implementation changes (tool type detection methods added to LangGraphAgent)
+- [x] Observability: add structured log line  
+  `RAG STEP 79 (RAG.routing.tool.type): Tool type? | attrs={tool_name, tool_type, decision}`
 - [ ] Feature flag / config if needed
 - [ ] Rollout plan
 
@@ -39,16 +39,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.27)
+1) app/ragsteps/routing/step_79_rag_routing_tool_type.py:64 — app.ragsteps.routing.step_79_rag_routing_tool_type.step_79_rag_routing_tool_type (score 0.27)
+   Evidence: Score 0.27, Canonical symbol for auditor: STEP 79 — Tool type? (RAG.routing.tool.type)
+
+Dele...
+2) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.27)
    Evidence: Score 0.27, method: __init__
-2) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.27)
+3) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.27)
    Evidence: Score 0.27, Execute CCNL query (synchronous version).
-3) app/core/langgraph/tools/ccnl_tool.py:90 — app.core.langgraph.tools.ccnl_tool.CCNLTool.search_service (score 0.27)
-   Evidence: Score 0.27, method: search_service
-4) app/core/langgraph/tools/ccnl_tool.py:96 — app.core.langgraph.tools.ccnl_tool.CCNLTool.calculator_engine (score 0.27)
-   Evidence: Score 0.27, method: calculator_engine
-5) app/core/langgraph/tools/ccnl_tool.py:535 — app.core.langgraph.tools.ccnl_tool.CCNLTool._parse_sector (score 0.27)
-   Evidence: Score 0.27, Parse sector string to enum.
+4) app/ragsteps/routing/step_79_rag_routing_tool_type.py:35 — app.ragsteps.routing.step_79_rag_routing_tool_type.run (score 0.27)
+   Evidence: Score 0.27, Adapter for RAG STEP 79: Tool type?
+
+Expected behavior is defined in:
+docs/archi...
+5) app/core/langgraph/graph.py:792 — app.core.langgraph.graph.LangGraphAgent._detect_tool_type (score 0.27)
+   Evidence: Score 0.27, Detect the type of tool based on its name.
+
+RAG STEP 79 — Tool type? (RAG.routin...
 
 Notes:
 - Weak or missing implementation

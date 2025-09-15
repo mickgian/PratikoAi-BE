@@ -44,6 +44,7 @@ from app.services.domain_prompt_templates import PromptTemplateManager
 from app.services.golden_fast_path import GoldenFastPathService, EligibilityDecision
 from app.services.knowledge_search_service import KnowledgeSearchService
 from app.core.database import database_service
+from app.observability.rag_logging import rag_step_log, rag_step_timer
 from app.services.usage_tracker import usage_tracker
 from app.utils import (
     dump_messages,
@@ -262,6 +263,8 @@ class LangGraphAgent:
     async def _get_cached_llm_response(self, provider: LLMProvider, messages: List[Message], tools: list, temperature: float, max_tokens: int):
         """Get LLM response with caching support.
         
+        This implements RAG STEP 59 — CheckCache.
+        
         Args:
             provider: The LLM provider to use
             messages: List of conversation messages
@@ -272,137 +275,185 @@ class LangGraphAgent:
         Returns:
             LLMResponse: The response from the LLM (cached or fresh)
         """
-        # Try to get cached response first
-        try:
-            cached_response = await cache_service.get_cached_response(
-                messages=messages,
-                model=provider.model,
-                temperature=temperature
-            )
-            if cached_response:
-                logger.info(
-                    "llm_cache_hit",
-                    model=provider.model,
-                    provider=provider.provider_type.value,
-                    message_count=len(messages)
-                )
-                
-                # Track cache hit usage
-                if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):
-                    try:
-                        await usage_tracker.track_llm_usage(
-                            user_id=self._current_user_id,
-                            session_id=self._current_session_id,
-                            provider=provider.provider_type.value,
-                            model=provider.model,
-                            llm_response=cached_response,
-                            response_time_ms=10,  # Minimal time for cache hit
-                            cache_hit=True,
-                            pii_detected=getattr(self, '_pii_detected', False),
-                            pii_types=getattr(self, '_pii_types', None)
-                        )
-                    except Exception as e:
-                        logger.error(
-                            "cache_hit_tracking_failed",
-                            error=str(e),
-                            provider=provider.provider_type.value,
-                            model=provider.model
-                        )
-                
-                return cached_response
-        except Exception as e:
-            logger.error(
-                "llm_cache_get_failed",
-                error=str(e),
-                model=provider.model
-            )
-        
-        # Get fresh response from provider
-        import time
-        start_time = time.time()
-        
-        response = await provider.chat_completion(
-            messages=messages,
-            tools=tools,
+        # RAG STEP 59 — CheckCache: Use timer for performance tracking
+        with rag_step_timer(
+            step=59,
+            step_id="RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response",
+            node_label="CheckCache",
+            model=provider.model,
+            provider=provider.provider_type.value,
             temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        
-        response_time_ms = int((time.time() - start_time) * 1000)
-        
-        # Track Prometheus metrics for this LLM call
-        try:
-            user_id = getattr(self, '_current_user_id', 'unknown')
-            
-            # Track API call success/failure
-            status = "success" if response else "error"
-            track_api_call(
-                provider=provider.provider_type.value,
-                model=provider.model,
-                status=status
-            )
-            
-            # Track cost if response contains cost information
-            if response and hasattr(response, 'cost_eur') and response.cost_eur:
-                track_llm_cost(
-                    provider=provider.provider_type.value,
+            message_count=len(messages)
+        ) as timer_context:
+            # Try to get cached response first
+            try:
+                cached_response = await cache_service.get_cached_response(
+                    messages=messages,
                     model=provider.model,
-                    user_id=user_id,
-                    cost_eur=response.cost_eur
+                    temperature=temperature
+                )
+                if cached_response:
+                    # Log cache hit immediately with structured logging
+                    rag_step_log(
+                        step=59,
+                        step_id="RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response",
+                        node_label="CheckCache",
+                        cache_result="hit",
+                        model=provider.model,
+                        provider=provider.provider_type.value,
+                        message_count=len(messages),
+                        temperature=temperature
+                    )
+                    
+                    logger.info(
+                        "llm_cache_hit",
+                        model=provider.model,
+                        provider=provider.provider_type.value,
+                        message_count=len(messages)
+                    )
+                    
+                    # Track cache hit usage
+                    if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):
+                        try:
+                            await usage_tracker.track_llm_usage(
+                                user_id=self._current_user_id,
+                                session_id=self._current_session_id,
+                                provider=provider.provider_type.value,
+                                model=provider.model,
+                                llm_response=cached_response,
+                                response_time_ms=10,  # Minimal time for cache hit
+                                cache_hit=True,
+                                pii_detected=getattr(self, '_pii_detected', False),
+                                pii_types=getattr(self, '_pii_types', None)
+                            )
+                        except Exception as e:
+                            logger.error(
+                                "cache_hit_tracking_failed",
+                                error=str(e),
+                                provider=provider.provider_type.value,
+                                model=provider.model
+                            )
+                    
+                    return cached_response
+                else:
+                    # Log cache miss immediately with structured logging  
+                    rag_step_log(
+                        step=59,
+                        step_id="RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response",
+                        node_label="CheckCache",
+                        cache_result="miss",
+                        model=provider.model,
+                        provider=provider.provider_type.value,
+                        message_count=len(messages),
+                        temperature=temperature
+                    )
+                
+            except Exception as e:
+                # Log cache error immediately with structured logging
+                rag_step_log(
+                    step=59,
+                    step_id="RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response",
+                    node_label="CheckCache",
+                    cache_result="error",
+                    error=str(e),
+                    model=provider.model,
+                    provider=provider.provider_type.value,
+                    message_count=len(messages),
+                    temperature=temperature
                 )
                 
-        except Exception as e:
-            logger.error(
-                "prometheus_metrics_tracking_failed",
-                error=str(e),
-                provider=provider.provider_type.value,
-                model=provider.model
+                logger.error(
+                    "llm_cache_get_failed",
+                    error=str(e),
+                    model=provider.model
+                )
+            
+            # Get fresh response from provider
+            import time
+            start_time = time.time()
+            
+            response = await provider.chat_completion(
+                messages=messages,
+                tools=tools,
+                temperature=temperature,
+                max_tokens=max_tokens,
             )
-        
-        # Track usage (only for non-cached responses)
-        if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):
+            
+            response_time_ms = int((time.time() - start_time) * 1000)
+            
+            # Track Prometheus metrics for this LLM call
             try:
-                await usage_tracker.track_llm_usage(
-                    user_id=self._current_user_id,
-                    session_id=self._current_session_id,
+                user_id = getattr(self, '_current_user_id', 'unknown')
+                
+                # Track API call success/failure
+                status = "success" if response else "error"
+                track_api_call(
                     provider=provider.provider_type.value,
                     model=provider.model,
-                    llm_response=response,
-                    response_time_ms=response_time_ms,
-                    cache_hit=False,
-                    pii_detected=getattr(self, '_pii_detected', False),
-                    pii_types=getattr(self, '_pii_types', None)
+                    status=status
                 )
+                
+                # Track cost if response contains cost information
+                if response and hasattr(response, 'cost_eur') and response.cost_eur:
+                    track_llm_cost(
+                        provider=provider.provider_type.value,
+                        model=provider.model,
+                        user_id=user_id,
+                        cost_eur=response.cost_eur
+                    )
+                    
             except Exception as e:
                 logger.error(
-                    "usage_tracking_failed",
+                    "prometheus_metrics_tracking_failed",
                     error=str(e),
                     provider=provider.provider_type.value,
                     model=provider.model
                 )
-        
-        # Cache the response for future use
-        try:
-            await cache_service.cache_response(
-                messages=messages,
-                model=provider.model,
-                response=response,
-                temperature=temperature
-            )
-            logger.info(
-                "llm_response_cached",
-                model=provider.model,
-                provider=provider.provider_type.value,
-                response_length=len(response.content)
-            )
-        except Exception as e:
-            logger.error(
-                "llm_cache_set_failed",
-                error=str(e),
-                model=provider.model
-            )
-        
-        return response
+            
+            # Track usage (only for non-cached responses)
+            if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):
+                try:
+                    await usage_tracker.track_llm_usage(
+                        user_id=self._current_user_id,
+                        session_id=self._current_session_id,
+                        provider=provider.provider_type.value,
+                        model=provider.model,
+                        llm_response=response,
+                        response_time_ms=response_time_ms,
+                        cache_hit=False,
+                        pii_detected=getattr(self, '_pii_detected', False),
+                        pii_types=getattr(self, '_pii_types', None)
+                    )
+                except Exception as e:
+                    logger.error(
+                        "usage_tracking_failed",
+                        error=str(e),
+                        provider=provider.provider_type.value,
+                        model=provider.model
+                    )
+            
+            # Cache the response for future use
+            try:
+                await cache_service.cache_response(
+                    messages=messages,
+                    model=provider.model,
+                    response=response,
+                    temperature=temperature
+                )
+                logger.info(
+                    "llm_response_cached",
+                    model=provider.model,
+                    provider=provider.provider_type.value,
+                    response_length=len(response.content)
+                )
+            except Exception as e:
+                logger.error(
+                    "llm_cache_set_failed",
+                    error=str(e),
+                    model=provider.model
+                )
+            
+            return response
 
     def _get_routing_strategy(self) -> RoutingStrategy:
         """Get the LLM routing strategy from configuration.

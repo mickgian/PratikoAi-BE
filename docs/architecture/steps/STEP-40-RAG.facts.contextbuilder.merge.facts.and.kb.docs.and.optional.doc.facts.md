@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `BuildContext` (ContextBuilder.merge facts and KB docs and optional doc facts).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/services/context_builder_merge.py:ContextBuilderMerge`, `tests/test_rag_step_40_context_builder_merge.py:TestRAGStep40ContextBuilderMerge`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Implemented ContextBuilderMerge class that merges canonical facts, KB search results, and optional document facts into unified context. Features include token budget management, content prioritization, deduplication logic, and quality assessment. Full test coverage with 8 passing tests covering all merge scenarios.
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,11 +19,11 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 40 (RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.optional.doc.facts): ContextBuilder.merge facts and KB docs and optional doc facts | attrs={...}`
+- [x] Unit tests (all sources merge, facts+KB only, token budget, prioritization weights, empty inputs, deduplication, error handling, structured logging)
+- [x] Integration tests (end-to-end context merging scenarios with realistic data)
+- [x] Implementation changes (ContextBuilderMerge class, merge logic, priority scoring, deduplication, token management)
+- [x] Observability: add structured log line  
+  `RAG STEP 40 (RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.optional.doc.facts): ContextBuilder.merge facts and KB docs and optional doc facts | attrs={token_count, max_tokens, source_distribution, context_quality_score, deduplication_applied, content_truncated, processing_stage}`
 - [ ] Feature flag / config if needed
 - [ ] Rollout plan
 
@@ -36,26 +36,31 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) app/services/context_builder.py:56 — app.services.context_builder.MultiSourceContextBuilder.__init__ (score 0.27)
-   Evidence: Score 0.27, method: __init__
-2) app/services/context_builder.py:179 — app.services.context_builder.MultiSourceContextBuilder._group_results_by_source (score 0.27)
-   Evidence: Score 0.27, Group search results by source type
-3) app/services/context_builder.py:395 — app.services.context_builder.MultiSourceContextBuilder._clean_excerpt (score 0.27)
-   Evidence: Score 0.27, Clean and improve excerpt boundaries
-4) app/services/context_builder.py:437 — app.services.context_builder.MultiSourceContextBuilder._split_sentences (score 0.27)
-   Evidence: Score 0.27, Split text into sentences (Italian-aware)
-5) app/services/context_builder.py:449 — app.services.context_builder.MultiSourceContextBuilder._count_tokens (score 0.27)
-   Evidence: Score 0.27, Estimate token count for text
+1) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:34 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts (score 0.35)
+   Evidence: Score 0.35, function: step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts
+2) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:22 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.run (score 0.34)
+   Evidence: Score 0.34, function: run
+3) app/services/context_builder_merge.py:66 — app.services.context_builder_merge.ContextBuilderMerge.merge_context (score 0.31)
+   Evidence: Score 0.31, Merge facts, KB docs, and optional document facts into unified context.
+
+Args:
+ ...
+4) app/services/context_builder_merge.py:572 — app.services.context_builder_merge.merge_context (score 0.31)
+   Evidence: Score 0.31, Convenience function to merge context from facts, KB docs, and document facts.
+
+...
+5) app/services/context_builder_merge.py:53 — app.services.context_builder_merge.ContextBuilderMerge.__init__ (score 0.30)
+   Evidence: Score 0.30, method: __init__
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for BuildContext
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

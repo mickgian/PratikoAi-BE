@@ -50,10 +50,8 @@ Top candidates:
 
 Args:
     feed_url: RSS fe...
-5) app/ragsteps/golden/step_20_rag_golden_golden_fast_path_eligible_no_doc_or_quick_check_safe.py:18 — app.ragsteps.golden.step_20_rag_golden_golden_fast_path_eligible_no_doc_or_quick_check_safe.step_20_rag_golden_golden_fast_path_eligible_no_doc_or_quick_check_safe (score 0.26)
-   Evidence: Score 0.26, RAG STEP 20 — Golden fast-path eligible? no doc or quick check safe
-
-Node: Golde...
+5) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:34 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts (score 0.26)
+   Evidence: Score 0.26, function: step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts
 
 Notes:
 - Weak or missing implementation

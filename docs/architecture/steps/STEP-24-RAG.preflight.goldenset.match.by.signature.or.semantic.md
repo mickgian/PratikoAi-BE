@@ -39,18 +39,21 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.25
 
 Top candidates:
-1) failure-recovery-system/failure_categorizer.py:955 — failure-recovery-system.failure_categorizer.FailureCategorizer._generate_failure_signature (score 0.25)
+1) app/services/kb_delta_decision.py:358 — app.services.kb_delta_decision.evaluate_kb_vs_golden (score 0.25)
+   Evidence: Score 0.25, Convenience function to evaluate KB vs Golden Set.
+
+Args:
+    decision_data: Dec...
+2) failure-recovery-system/failure_categorizer.py:955 — failure-recovery-system.failure_categorizer.FailureCategorizer._generate_failure_signature (score 0.25)
    Evidence: Score 0.25, Generate a signature for this specific failure pattern.
-2) rollback-system/health_monitor.py:486 — rollback-system.health_monitor.HealthMonitor.set_rollback_orchestrator (score 0.25)
+3) rollback-system/health_monitor.py:486 — rollback-system.health_monitor.HealthMonitor.set_rollback_orchestrator (score 0.25)
    Evidence: Score 0.25, Set the rollback orchestrator for automatic rollbacks.
-3) version-management/core/version_schema.py:149 — version-management.core.version_schema.ServiceVersion.is_semantic_version (score 0.25)
+4) version-management/core/version_schema.py:149 — version-management.core.version_schema.ServiceVersion.is_semantic_version (score 0.25)
    Evidence: Score 0.25, Check if this version uses semantic versioning.
-4) app/models/user.py:60 — app.models.user.User.set_refresh_token_hash (score 0.25)
+5) app/models/user.py:60 — app.models.user.User.set_refresh_token_hash (score 0.25)
    Evidence: Score 0.25, Set the hash of the refresh token.
 
 Stores a bcrypt hash of the refresh token fo...
-5) app/services/deletion_verifier.py:632 — app.services.deletion_verifier.DeletionVerifier._generate_certificate_signature (score 0.25)
-   Evidence: Score 0.25, Generate digital signature for certificate.
 
 Notes:
 - Weak or missing implementation

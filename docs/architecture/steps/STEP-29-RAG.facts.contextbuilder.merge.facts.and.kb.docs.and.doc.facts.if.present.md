@@ -36,26 +36,31 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/services/context_builder.py:459 — app.services.context_builder.MultiSourceContextBuilder._estimate_length_from_tokens (score 0.27)
-   Evidence: Score 0.27, Estimate character length from token count
-2) app/services/context_builder.py:56 — app.services.context_builder.MultiSourceContextBuilder.__init__ (score 0.26)
-   Evidence: Score 0.26, method: __init__
-3) app/services/context_builder.py:179 — app.services.context_builder.MultiSourceContextBuilder._group_results_by_source (score 0.26)
-   Evidence: Score 0.26, Group search results by source type
-4) app/services/context_builder.py:395 — app.services.context_builder.MultiSourceContextBuilder._clean_excerpt (score 0.26)
-   Evidence: Score 0.26, Clean and improve excerpt boundaries
-5) app/services/context_builder.py:437 — app.services.context_builder.MultiSourceContextBuilder._split_sentences (score 0.26)
-   Evidence: Score 0.26, Split text into sentences (Italian-aware)
+1) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:34 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts (score 0.31)
+   Evidence: Score 0.31, function: step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts
+2) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:22 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.run (score 0.31)
+   Evidence: Score 0.31, function: run
+3) app/services/context_builder_merge.py:66 — app.services.context_builder_merge.ContextBuilderMerge.merge_context (score 0.29)
+   Evidence: Score 0.29, Merge facts, KB docs, and optional document facts into unified context.
+
+Args:
+ ...
+4) app/services/context_builder_merge.py:572 — app.services.context_builder_merge.merge_context (score 0.29)
+   Evidence: Score 0.29, Convenience function to merge context from facts, KB docs, and document facts.
+
+...
+5) app/services/context_builder_merge.py:53 — app.services.context_builder_merge.ContextBuilderMerge.__init__ (score 0.29)
+   Evidence: Score 0.29, method: __init__
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for PreContextFromGolden
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

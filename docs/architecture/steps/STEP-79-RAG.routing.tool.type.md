@@ -47,15 +47,10 @@ Dele...
    Evidence: Score 0.27, method: __init__
 3) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.27)
    Evidence: Score 0.27, Execute CCNL query (synchronous version).
-4) app/ragsteps/routing/step_79_rag_routing_tool_type.py:35 — app.ragsteps.routing.step_79_rag_routing_tool_type.run (score 0.27)
-   Evidence: Score 0.27, Adapter for RAG STEP 79: Tool type?
-
-Expected behavior is defined in:
-docs/archi...
-5) app/core/langgraph/graph.py:792 — app.core.langgraph.graph.LangGraphAgent._detect_tool_type (score 0.27)
-   Evidence: Score 0.27, Detect the type of tool based on its name.
-
-RAG STEP 79 — Tool type? (RAG.routin...
+4) app/core/langgraph/tools/document_ingest_tool.py:81 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.27)
+   Evidence: Score 0.27, Initialize the document ingest tool.
+5) app/core/langgraph/tools/document_ingest_tool.py:375 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.27)
+   Evidence: Score 0.27, Synchronous wrapper (not recommended, use async version).
 
 Notes:
 - Weak or missing implementation

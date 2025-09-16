@@ -8,11 +8,15 @@ Each step should be audited and its documentation filled during the conformance 
 
 **Implementation Status Overview:**
 - ✅ Implemented: 0 steps
-- 🟡 Partial: 0 steps
-- 🔌 Not wired: 0 steps
+- 🟡 Partial: 1 steps
+- 🔌 Not wired: 4 steps
 - ❌ Missing: 1 steps
 
 **By Category:**
+- **cache**: 0/1 implemented
+- **golden**: 0/1 implemented
+- **preflight**: 0/2 implemented
+- **providers**: 0/1 implemented
 - **routing**: 0/1 implemented
 ## Step Registry
 

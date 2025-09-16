@@ -477,6 +477,258 @@ class KnowledgeSearchService:
             result.rank_position = i + 1
         
         return filtered_results[:max_results]
+    
+    async def fetch_recent_kb_for_changes(self, query_data: Dict[str, Any]) -> List[SearchResult]:
+        """
+        RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes.
+        
+        This method specifically fetches recent KB changes when a Golden Set hit occurs,
+        to determine if KB has newer or conflicting information that should be merged
+        with the Golden Set response.
+        
+        Args:
+            query_data: Dictionary containing:
+                - query: The user's query text
+                - canonical_facts: List of extracted canonical facts (optional)
+                - user_id: User identifier
+                - session_id: Session identifier
+                - trace_id: Trace identifier for logging
+                - golden_timestamp: Timestamp of the Golden Set entry
+                - context_check: Flag indicating this is for context checking
+                - recency_threshold_days: Days threshold for considering "recent" (default: 14)
+                - golden_metadata: Golden Set metadata for conflict detection (optional)
+        
+        Returns:
+            List of SearchResult objects with recent KB changes that might conflict
+            or provide newer information than the Golden Set
+        """
+        start_time = time.perf_counter()
+        
+        # Extract parameters
+        query = query_data.get("query", "").strip()
+        trace_id = query_data.get("trace_id")
+        golden_timestamp = query_data.get("golden_timestamp")
+        recency_threshold_days = query_data.get("recency_threshold_days", 14)
+        golden_metadata = query_data.get("golden_metadata", {})
+        
+        # RAG STEP 26 constants
+        STEP_NUM = 26
+        STEP_ID = "RAG.kb.knowledgesearch.context.topk.fetch.recent.kb.for.changes"
+        NODE_LABEL = "KBContextCheck"
+        
+        try:
+            # Use timer context manager for performance tracking
+            with rag_step_timer(
+                STEP_NUM,
+                STEP_ID,
+                NODE_LABEL,
+                query=query,
+                trace_id=trace_id
+            ):
+                # Initial logging
+                rag_step_log(
+                    step=STEP_NUM,
+                    step_id=STEP_ID,
+                    node_label=NODE_LABEL,
+                    query=query,
+                    trace_id=trace_id,
+                    golden_timestamp=golden_timestamp.isoformat() if golden_timestamp else None,
+                    recency_threshold_days=recency_threshold_days,
+                    processing_stage="started"
+                )
+                
+                if not query:
+                    rag_step_log(
+                        step=STEP_NUM,
+                        step_id=STEP_ID,
+                        node_label=NODE_LABEL,
+                        trace_id=trace_id,
+                        processing_stage="empty_query",
+                        recent_changes_count=0
+                    )
+                    return []
+                
+                # Perform hybrid search to get potential recent changes
+                canonical_facts = query_data.get("canonical_facts", [])
+                filters = query_data.get("filters", {})
+                max_results = query_data.get("max_results", self.config.max_results * 2)  # Get more for filtering
+                
+                # Search for recent knowledge items
+                all_results = await self._perform_hybrid_search(query, canonical_facts, filters, max_results)
+                
+                # Filter for recent changes
+                recent_results = self._filter_recent_changes(
+                    all_results, 
+                    golden_timestamp, 
+                    recency_threshold_days
+                )
+                
+                # Detect potential conflicts with Golden Set
+                conflict_results = self._detect_conflicts_with_golden(recent_results, golden_metadata)
+                
+                # Final filtering and ranking for context
+                context_results = self._rank_for_context_check(conflict_results)
+                
+                # Log results
+                rag_step_log(
+                    step=STEP_NUM,
+                    step_id=STEP_ID,
+                    node_label=NODE_LABEL,
+                    query=query,
+                    trace_id=trace_id,
+                    recent_changes_count=len(context_results),
+                    potential_conflicts=len([r for r in context_results if r.metadata.get("conflict_detected")]),
+                    golden_timestamp=golden_timestamp.isoformat() if golden_timestamp else None,
+                    processing_stage="completed"
+                )
+                
+                if len(context_results) == 0:
+                    rag_step_log(
+                        step=STEP_NUM,
+                        step_id=STEP_ID,
+                        node_label=NODE_LABEL,
+                        query=query,
+                        trace_id=trace_id,
+                        processing_stage="no_recent_changes",
+                        message="No recent KB changes found newer than Golden Set"
+                    )
+                
+                return context_results
+                
+        except Exception as exc:
+            # Calculate latency even on error
+            end_time = time.perf_counter()
+            latency_ms = round((end_time - start_time) * 1000.0, 2)
+            
+            # Log error
+            rag_step_log(
+                step=STEP_NUM,
+                step_id=STEP_ID,
+                node_label=NODE_LABEL,
+                level="ERROR",
+                query=query,
+                error=str(exc),
+                latency_ms=latency_ms,
+                trace_id=trace_id,
+                processing_stage="error"
+            )
+            
+            # Return empty results on error (graceful degradation)
+            logger.error("kb_context_check_error", error=str(exc), trace_id=trace_id)
+            return []
+    
+    def _filter_recent_changes(
+        self, 
+        results: List[SearchResult], 
+        golden_timestamp: Optional[datetime], 
+        recency_threshold_days: int
+    ) -> List[SearchResult]:
+        """Filter results to only include recent changes."""
+        
+        if not results:
+            return []
+        
+        now = datetime.now(timezone.utc)
+        
+        # Calculate cutoff time - use the more recent of golden_timestamp or recency_threshold
+        cutoff_time = now - timedelta(days=recency_threshold_days)
+        if golden_timestamp:
+            # Ensure timezone-aware comparison
+            if golden_timestamp.tzinfo is None:
+                golden_timestamp = golden_timestamp.replace(tzinfo=timezone.utc)
+            cutoff_time = max(cutoff_time, golden_timestamp)
+        
+        # Filter for recent results
+        recent_results = []
+        for result in results:
+            if result.updated_at:
+                # Ensure timezone-aware comparison
+                updated_at = result.updated_at
+                if updated_at.tzinfo is None:
+                    updated_at = updated_at.replace(tzinfo=timezone.utc)
+                
+                if updated_at > cutoff_time:
+                    recent_results.append(result)
+        
+        return recent_results
+    
+    def _detect_conflicts_with_golden(
+        self, 
+        results: List[SearchResult], 
+        golden_metadata: Dict[str, Any]
+    ) -> List[SearchResult]:
+        """Detect potential conflicts between KB results and Golden Set."""
+        
+        if not results or not golden_metadata:
+            return results
+        
+        golden_category = golden_metadata.get("category", "")
+        golden_tags = set(golden_metadata.get("tags", []))
+        
+        for result in results:
+            conflict_detected = False
+            conflict_reasons = []
+            
+            # Check category conflicts
+            if golden_category and result.category == golden_category:
+                # Same category might indicate conflicting information
+                conflict_detected = True
+                conflict_reasons.append("same_category")
+            
+            # Check for conflict tags in metadata
+            result_tags = set(result.metadata.get("conflict_tags", []))
+            if result_tags.intersection({"supersedes_previous", "rate_change", "law_change"}):
+                conflict_detected = True
+                conflict_reasons.append("explicit_conflict_tags")
+            
+            # Check for overlapping content indicators
+            if golden_tags and result.metadata.get("tags"):
+                result_tag_set = set(result.metadata.get("tags", []))
+                if golden_tags.intersection(result_tag_set):
+                    conflict_detected = True
+                    conflict_reasons.append("overlapping_tags")
+            
+            # Store conflict information in metadata
+            if conflict_detected:
+                result.metadata["conflict_detected"] = True
+                result.metadata["conflict_reasons"] = conflict_reasons
+                
+                # Log potential conflict
+                logger.info(
+                    "potential_conflict_detected",
+                    kb_result_id=result.id,
+                    kb_title=result.title,
+                    conflict_reasons=conflict_reasons,
+                    golden_category=golden_category
+                )
+        
+        return results
+    
+    def _rank_for_context_check(self, results: List[SearchResult]) -> List[SearchResult]:
+        """Apply specialized ranking for context checking."""
+        
+        if not results:
+            return []
+        
+        # Sort by combination of recency and conflict importance
+        def context_score(result: SearchResult) -> float:
+            base_score = result.score
+            
+            # Boost for recent updates
+            recency_boost = result.recency_score or 0.0
+            
+            # Boost for potential conflicts
+            conflict_boost = 0.2 if result.metadata.get("conflict_detected") else 0.0
+            
+            return base_score + (0.3 * recency_boost) + conflict_boost
+        
+        # Sort by context score
+        results.sort(key=context_score, reverse=True)
+        
+        # Apply final filtering - limit to most relevant for context
+        max_context_results = min(5, len(results))  # At most 5 context items
+        
+        return results[:max_context_results]
 
 
 # Convenience function for direct usage

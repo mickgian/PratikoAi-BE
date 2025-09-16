@@ -188,17 +188,18 @@ class TestRAGStep42ClassificationConfidenceCheck:
         from app.core.prompts import SYSTEM_PROMPT
         assert result == SYSTEM_PROMPT
         
-        # Find the log call that shows no classification available
-        no_classification_logs = [
+        # Find the STEP 42 log call that shows no classification available
+        step_42_logs = [
             call for call in mock_log.call_args_list
             if (len(call[1]) > 3 and 
-                call[1].get('classification_available') is False)
+                call[1].get('step') == 42 and
+                call[1].get('classification_exists') is False)
         ]
         
-        assert len(no_classification_logs) > 0
-        log_call = no_classification_logs[0]
-        assert log_call[1]['prompt_type'] == 'default'
-        assert log_call[1]['reason'] == 'no_classification'
+        assert len(step_42_logs) > 0
+        log_call = step_42_logs[0]
+        assert log_call[1]['decision_outcome'] == 'use_default_prompt'
+        assert log_call[1]['reason'] == 'classification_not_available'
 
     @pytest.mark.asyncio
     @patch('app.core.langgraph.graph.rag_step_log')

@@ -10,6 +10,15 @@ from enum import Enum
 
 from app.services.domain_action_classifier import Domain, Action
 
+try:
+    from app.observability.rag_logging import rag_step_log, rag_step_timer
+except ImportError:
+    # Fallback if logging not available
+    def rag_step_log(*args, **kwargs):
+        pass
+    def rag_step_timer(*args, **kwargs):
+        return type('MockContext', (), {'__enter__': lambda x: x, '__exit__': lambda *args: None})()
+
 
 class PromptTemplateManager:
     """Manages domain-action specific prompt templates for Italian professionals"""
@@ -354,6 +363,8 @@ NON chiedere mai informazioni mancanti. Genera sempre il documento completo usan
         """
         Get the appropriate prompt for domain-action combination.
         
+        RAG STEP 43 — PromptTemplateManager.get_prompt Get domain-specific prompt
+        
         Args:
             domain: Professional domain
             action: User action/intent
@@ -364,45 +375,83 @@ NON chiedere mai informazioni mancanti. Genera sempre il documento completo usan
         Returns:
             Formatted prompt template
         """
-        # Get base domain prompt
-        base_prompt = self.domain_base_prompts.get(domain, self.domain_base_prompts[Domain.TAX])
+        # RAG STEP 43 constants
+        STEP_NUM = 43
+        STEP_ID = "RAG.classify.prompttemplatemanager.get.prompt.get.domain.specific.prompt"
+        NODE_LABEL = "DomainPrompt"
         
-        # Get action template
-        action_template_data = self.action_templates.get(action, self.action_templates[Action.INFORMATION_REQUEST])
-        action_template = action_template_data["template"]
+        # Use timer context manager for performance tracking
+        timer_attrs = {
+            "domain": domain.value,
+            "action": action.value
+        }
         
-        # Get domain-action specific instructions
-        specific_key = (domain, action)
-        specific_instructions = ""
-        
-        if specific_key in self.domain_action_specifics:
-            specifics = self.domain_action_specifics[specific_key]
-            specific_instructions = specifics["instructions"]
+        with rag_step_timer(STEP_NUM, STEP_ID, NODE_LABEL, **timer_attrs):
             
-        # Handle document generation specifics
-        document_specific_instructions = ""
-        if action == Action.DOCUMENT_GENERATION and document_type:
-            document_specific_instructions = f"\n**DOCUMENTO RICHIESTO: {document_type.upper()}**\n{specific_instructions}"
-        elif action == Action.CALCULATION_REQUEST:
-            document_specific_instructions = f"\n**ISTRUZIONI CALCOLO:**\n{specific_instructions}"
-        elif specific_instructions:
-            document_specific_instructions = f"\n**ISTRUZIONI SPECIFICHE:**\n{specific_instructions}"
-        
-        # Format the complete prompt
-        formatted_prompt = action_template.format(
-            base_prompt=base_prompt,
-            query=query,
-            document_specific_instructions=document_specific_instructions,
-            calculation_specific_instructions=document_specific_instructions,
-            strategic_specific_instructions=document_specific_instructions
-        )
-        
-        # Add context if provided
-        if context:
-            context_section = self._format_context(context)
-            formatted_prompt += f"\n\n**CONTESTO AGGIUNTIVO:**\n{context_section}"
-        
-        return formatted_prompt
+            # Get base domain prompt
+            base_prompt = self.domain_base_prompts.get(domain, self.domain_base_prompts[Domain.TAX])
+            
+            # Get action template
+            action_template_data = self.action_templates.get(action, self.action_templates[Action.INFORMATION_REQUEST])
+            action_template = action_template_data["template"]
+            
+            # Determine template source for logging
+            template_source = "domain_specific" if domain in self.domain_base_prompts else "fallback_tax"
+            if action not in self.action_templates:
+                template_source = "fallback_information_request"
+            
+            # Get domain-action specific instructions
+            specific_key = (domain, action)
+            specific_instructions = ""
+            has_specific_combination = specific_key in self.domain_action_specifics
+            
+            if has_specific_combination:
+                specifics = self.domain_action_specifics[specific_key]
+                specific_instructions = specifics["instructions"]
+                
+            # Handle document generation specifics
+            document_specific_instructions = ""
+            if action == Action.DOCUMENT_GENERATION and document_type:
+                document_specific_instructions = f"\n**DOCUMENTO RICHIESTO: {document_type.upper()}**\n{specific_instructions}"
+            elif action == Action.CALCULATION_REQUEST:
+                document_specific_instructions = f"\n**ISTRUZIONI CALCOLO:**\n{specific_instructions}"
+            elif specific_instructions:
+                document_specific_instructions = f"\n**ISTRUZIONI SPECIFICHE:**\n{specific_instructions}"
+            
+            # Format the complete prompt
+            formatted_prompt = action_template.format(
+                base_prompt=base_prompt,
+                query=query,
+                document_specific_instructions=document_specific_instructions,
+                calculation_specific_instructions=document_specific_instructions,
+                strategic_specific_instructions=document_specific_instructions
+            )
+            
+            # Add context if provided
+            context_keys = []
+            if context:
+                context_keys = list(context.keys())
+                context_section = self._format_context(context)
+                formatted_prompt += f"\n\n**CONTESTO AGGIUNTIVO:**\n{context_section}"
+            
+            # RAG STEP 43 structured logging
+            rag_step_log(
+                step=STEP_NUM,
+                step_id=STEP_ID,
+                node_label=NODE_LABEL,
+                domain=domain.value,
+                action=action.value,
+                user_query=query,
+                document_type=document_type,
+                has_context=bool(context),
+                context_keys=context_keys,
+                has_specific_combination=has_specific_combination,
+                template_source=template_source,
+                prompt_length=len(formatted_prompt),
+                processing_stage="completed"
+            )
+            
+            return formatted_prompt
         
     def _format_context(self, context: Dict[str, Any]) -> str:
         """Format additional context for inclusion in prompt"""

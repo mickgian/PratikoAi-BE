@@ -45,13 +45,12 @@ Top candidates:
    Evidence: Score 0.42, Calculate confidence scores for each action
 3) app/services/domain_action_classifier.py:530 — app.services.domain_action_classifier.DomainActionClassifier._extract_document_type (score 0.41)
    Evidence: Score 0.41, Extract document type for document generation actions
-4) app/services/domain_prompt_templates.py:20 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
+4) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
    Evidence: Score 0.37, Load all domain-action prompt template combinations
-5) app/services/domain_prompt_templates.py:346 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.37)
+5) app/services/domain_prompt_templates.py:355 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.37)
    Evidence: Score 0.37, Get the appropriate prompt for domain-action combination.
 
-Args:
-    domain: Pro...
+RAG STEP 43 — PromptT...
 
 Notes:
 - Implementation exists but may not be wired correctly

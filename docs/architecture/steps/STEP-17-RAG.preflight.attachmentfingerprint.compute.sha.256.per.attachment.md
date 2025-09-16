@@ -41,14 +41,18 @@ Status: ❌  |  Confidence: 0.25
 Top candidates:
 1) app/models/query.py:193 — app.models.query.QueryMetrics.average_cost_per_query (score 0.25)
    Evidence: Score 0.25, Calculate average cost per query.
-2) app/services/database_encryption_service.py:425 — app.services.database_encryption_service.DatabaseEncryptionService._encrypt_aes_256_cbc (score 0.25)
+2) app/core/langgraph/tools/document_ingest_tool.py:91 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._validate_attachment (score 0.25)
+   Evidence: Score 0.25, Validate a single attachment.
+
+Args:
+    attachment: Attachment data dictionary
+...
+3) app/services/database_encryption_service.py:425 — app.services.database_encryption_service.DatabaseEncryptionService._encrypt_aes_256_cbc (score 0.25)
    Evidence: Score 0.25, Encrypt using AES-256-CBC.
-3) app/services/database_encryption_service.py:447 — app.services.database_encryption_service.DatabaseEncryptionService._decrypt_aes_256_cbc (score 0.25)
+4) app/services/database_encryption_service.py:447 — app.services.database_encryption_service.DatabaseEncryptionService._decrypt_aes_256_cbc (score 0.25)
    Evidence: Score 0.25, Decrypt using AES-256-CBC.
-4) app/api/v1/regional_taxes.py:87 — app.api.v1.regional_taxes.CompleteTaxCalculationRequest.validate_business_type (score 0.20)
-   Evidence: Score 0.20, method: validate_business_type
-5) app/services/validators/italian_tax_calculator.py:334 — app.services.validators.italian_tax_calculator.ItalianTaxCalculator.calculate_complete_individual_taxes (score 0.20)
-   Evidence: Score 0.20, Calculate complete individual tax burden.
+5) app/core/langgraph/tools/document_ingest_tool.py:50 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestInput.validate_attachments (score 0.22)
+   Evidence: Score 0.22, method: validate_attachments
 
 Notes:
 - Weak or missing implementation

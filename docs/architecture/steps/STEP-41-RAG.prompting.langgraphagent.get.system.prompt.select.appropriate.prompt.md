@@ -54,12 +54,15 @@ Returns:
 
 Args:
     messages: List o...
-4) app/core/langgraph/graph.py:474 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
+4) app/core/langgraph/graph.py:821 — app.core.langgraph.graph.LangGraphAgent._get_routing_decision (score 0.32)
+   Evidence: Score 0.32, Get the routing decision based on tool type.
+
+Args:
+    tool_type: The detected ...
+5) app/core/langgraph/graph.py:474 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
    Evidence: Score 0.31, Get routing strategy and cost limit based on domain-action classification.
 
 Args...
-5) app/core/langgraph/graph.py:61 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
-   Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
 
 Notes:
 - Implementation exists but may not be wired correctly

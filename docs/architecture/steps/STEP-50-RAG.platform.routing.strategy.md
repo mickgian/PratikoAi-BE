@@ -36,27 +36,27 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/core/langgraph/graph.py:458 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
+1) app/ragsteps/routing/step_79_rag_routing_tool_type.py:64 — app.ragsteps.routing.step_79_rag_routing_tool_type.step_79_rag_routing_tool_type (score 0.30)
+   Evidence: Score 0.30, Canonical symbol for auditor: STEP 79 — Tool type? (RAG.routing.tool.type)
+
+Dele...
+2) app/ragsteps/routing/step_79_rag_routing_tool_type.py:35 — app.ragsteps.routing.step_79_rag_routing_tool_type.run (score 0.29)
+   Evidence: Score 0.29, Adapter for RAG STEP 79: Tool type?
+
+Expected behavior is defined in:
+docs/archi...
+3) app/core/langgraph/graph.py:458 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
    Evidence: Score 0.28, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-2) app/schemas/privacy.py:191 — app.schemas.privacy.validate_consent_type (score 0.26)
+4) app/schemas/privacy.py:191 — app.schemas.privacy.validate_consent_type (score 0.26)
    Evidence: Score 0.26, Validate consent type string.
-3) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.26)
+5) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.26)
    Evidence: Score 0.26, Validate PII type string.
-4) app/services/document_processor.py:501 — app.services.document_processor.DocumentProcessor._determine_document_type (score 0.26)
-   Evidence: Score 0.26, Determine document type from URL.
-
-Args:
-    document_url: Document URL
-    
-Ret...
-5) failure-recovery-system/failure_categorizer.py:655 — failure-recovery-system.failure_categorizer.FailureCategorizer._identify_failure_type (score 0.26)
-   Evidence: Score 0.26, Identify the primary failure type using pattern matching.
 
 Notes:
 - Weak or missing implementation

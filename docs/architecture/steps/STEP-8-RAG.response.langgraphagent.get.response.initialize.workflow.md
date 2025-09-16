@@ -56,11 +56,11 @@ Args:
 
 Args:
     messages: List o...
-5) app/core/langgraph/graph.py:930 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.32)
-   Evidence: Score 0.32, Determine if query needs tools/complex workflow based on classification.
+5) app/core/langgraph/graph.py:821 — app.core.langgraph.graph.LangGraphAgent._get_routing_decision (score 0.32)
+   Evidence: Score 0.32, Get the routing decision based on tool type.
 
 Args:
-...
+    tool_type: The detected ...
 
 Notes:
 - Implementation exists but may not be wired correctly

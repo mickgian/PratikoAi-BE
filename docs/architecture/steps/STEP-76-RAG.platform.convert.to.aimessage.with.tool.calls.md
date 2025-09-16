@@ -43,12 +43,14 @@ Top candidates:
    Evidence: Score 0.25, Convert internal SearchResponse to API model.
 2) app/models/subscription.py:127 — app.models.subscription.SubscriptionPlan.price_with_iva (score 0.25)
    Evidence: Score 0.25, Total price including 22% IVA
-3) app/services/ccnl_service.py:334 — app.services.ccnl_service.CCNLService._convert_to_db_model (score 0.25)
+3) app/ragsteps/routing/step_79_rag_routing_tool_type.py:64 — app.ragsteps.routing.step_79_rag_routing_tool_type.step_79_rag_routing_tool_type (score 0.25)
+   Evidence: Score 0.25, Canonical symbol for auditor: STEP 79 — Tool type? (RAG.routing.tool.type)
+
+Dele...
+4) app/services/ccnl_service.py:334 — app.services.ccnl_service.CCNLService._convert_to_db_model (score 0.25)
    Evidence: Score 0.25, Convert domain CCNL model to database model.
-4) version-management/core/version_schema.py:168 — version-management.core.version_schema.ServiceVersion.is_compatible_with (score 0.25)
+5) version-management/core/version_schema.py:168 — version-management.core.version_schema.ServiceVersion.is_compatible_with (score 0.25)
    Evidence: Score 0.25, Check compatibility with another service version.
-5) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.25)
-   Evidence: Score 0.25, method: __init__
 
 Notes:
 - Weak or missing implementation

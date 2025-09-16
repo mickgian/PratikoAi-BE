@@ -39,16 +39,15 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.47
 
 Top candidates:
-1) app/services/domain_prompt_templates.py:346 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.47)
+1) app/services/domain_prompt_templates.py:355 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.47)
    Evidence: Score 0.47, Get the appropriate prompt for domain-action combination.
 
-Args:
-    domain: Pro...
-2) app/services/domain_prompt_templates.py:430 — app.services.domain_prompt_templates.PromptTemplateManager.get_available_combinations (score 0.46)
+RAG STEP 43 — PromptT...
+2) app/services/domain_prompt_templates.py:479 — app.services.domain_prompt_templates.PromptTemplateManager.get_available_combinations (score 0.46)
    Evidence: Score 0.46, Get all available domain-action combinations
-3) app/services/domain_prompt_templates.py:20 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.44)
+3) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.44)
    Evidence: Score 0.44, Load all domain-action prompt template combinations
-4) app/services/domain_prompt_templates.py:14 — app.services.domain_prompt_templates.PromptTemplateManager (score 0.42)
+4) app/services/domain_prompt_templates.py:23 — app.services.domain_prompt_templates.PromptTemplateManager (score 0.42)
    Evidence: Score 0.42, Manages domain-action specific prompt templates for Italian professionals
 5) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
    Evidence: Score 0.39, Calculate confidence scores for each domain

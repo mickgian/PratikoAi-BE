@@ -36,25 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.39
+Status: 🔌  |  Confidence: 0.42
 
 Top candidates:
-1) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
+1) app/ragsteps/classify/step_42_rag_classify_classification_exists_and_confidence_at_least_0_6.py:1 — app.ragsteps.classify.step_42_rag_classify_classification_exists_and_confidence_at_least_0_6 (score 0.42)
+   Evidence: Score 0.42, RAG STEP 42 — Classification exists and confidence at least 0.6?
+ID: RAG.classif...
+2) app/ragsteps/classify/step_42_rag_classify_classification_exists_and_confidence_at_least_0_6.py:30 — app.ragsteps.classify.step_42_rag_classify_classification_exists_and_confidence_at_least_0_6.run (score 0.41)
+   Evidence: Score 0.41, Adapter shim for STEP 42 — ClassConfidence.
+3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
    Evidence: Score 0.39, Calculate confidence scores for each domain
-2) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.39)
+4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.39)
    Evidence: Score 0.39, Calculate confidence scores for each action
-3) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.37)
+5) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.37)
    Evidence: Score 0.37, Track domain-action classification usage and metrics.
 
 Args:
     domain: The cla...
-4) app/services/domain_prompt_templates.py:20 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
-   Evidence: Score 0.37, Load all domain-action prompt template combinations
-5) app/services/domain_prompt_templates.py:346 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.37)
-   Evidence: Score 0.37, Get the appropriate prompt for domain-action combination.
-
-Args:
-    domain: Pro...
 
 Notes:
 - Implementation exists but may not be wired correctly

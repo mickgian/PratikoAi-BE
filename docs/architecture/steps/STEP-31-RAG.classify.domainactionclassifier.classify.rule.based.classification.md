@@ -50,7 +50,7 @@ Top candidates:
 
 Args:
     domain: The cla...
-5) app/services/domain_prompt_templates.py:20 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
+5) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
    Evidence: Score 0.37, Load all domain-action prompt template combinations
 
 Notes:

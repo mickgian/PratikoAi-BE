@@ -48,8 +48,7 @@ Top candidates:
 4) app/core/langgraph/graph.py:529 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.27)
    Evidence: Score 0.27, Get the appropriate system prompt based on classification.
 
-Args:
-    messages: ...
+RAG STEP 41 — LangGr...
 5) app/services/italian_document_analyzer.py:239 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._build_comparison_system_prompt (score 0.27)
    Evidence: Score 0.27, Build system prompt for document comparison
 

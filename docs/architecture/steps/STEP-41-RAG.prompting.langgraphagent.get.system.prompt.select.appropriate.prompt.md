@@ -42,27 +42,21 @@ Top candidates:
 1) app/core/langgraph/graph.py:529 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.39)
    Evidence: Score 0.39, Get the appropriate system prompt based on classification.
 
-Args:
-    messages: ...
-2) app/core/langgraph/graph.py:458 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
+RAG STEP 41 — LangGr...
+2) app/ragsteps/prompting/step_41_rag_prompting_langgraphagent_get_system_prompt_select_appropriate_prompt.py:47 — app.ragsteps.prompting.step_41_rag_prompting_langgraphagent_get_system_prompt_select_appropriate_prompt.step_41_rag_prompting_langgraphagent_get_system_prompt_select_appropriate_prompt (score 0.33)
+   Evidence: Score 0.33, Canonical symbol name the auditor might search for.
+3) app/ragsteps/prompting/step_41_rag_prompting_langgraphagent_get_system_prompt_select_appropriate_prompt.py:30 — app.ragsteps.prompting.step_41_rag_prompting_langgraphagent_get_system_prompt_select_appropriate_prompt.run (score 0.32)
+   Evidence: Score 0.32, Adapter sentinel for auditor mapping.
+4) app/core/langgraph/graph.py:458 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
    Evidence: Score 0.32, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-3) app/core/langgraph/graph.py:591 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.32)
+5) app/core/langgraph/graph.py:666 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.32)
    Evidence: Score 0.32, Get the optimal LLM provider for the given messages.
 
 Args:
     messages: List o...
-4) app/core/langgraph/graph.py:821 — app.core.langgraph.graph.LangGraphAgent._get_routing_decision (score 0.32)
-   Evidence: Score 0.32, Get the routing decision based on tool type.
-
-Args:
-    tool_type: The detected ...
-5) app/core/langgraph/graph.py:474 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
-   Evidence: Score 0.31, Get routing strategy and cost limit based on domain-action classification.
-
-Args...
 
 Notes:
 - Implementation exists but may not be wired correctly

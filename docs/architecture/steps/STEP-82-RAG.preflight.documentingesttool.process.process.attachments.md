@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DocIngest` (DocumentIngestTool.process Process attachments).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/core/langgraph/tools/document_ingest_tool.py:DocumentIngestTool`, `app/core/langgraph/tools/__init__.py:tools`
+- **Status:** ✅ Implemented
+- **Behavior notes:** DocumentIngestTool processes file attachments with text extraction, document classification, and structured logging. Supports PDF, Excel, CSV, and image files. Integrated into LangGraph tools pipeline with proper validation and error handling.
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,11 +19,11 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 82 (RAG.preflight.documentingesttool.process.process.attachments): DocumentIngestTool.process Process attachments | attrs={...}`
+- [x] Unit tests (tool validation, single/multiple attachment processing, error handling, file size limits, unsupported file types)
+- [x] Integration tests (LangChain tool compatibility, performance timing, full flow scenarios)
+- [x] Implementation changes (DocumentIngestTool class with async processing, validation, and structured logging)
+- [x] Observability: add structured log line  
+  `RAG STEP 82 (RAG.preflight.documentingesttool.process.process.attachments): DocumentIngestTool.process Process attachments | attrs={attachment_id, filename, processing_stage, user_id, session_id, status, error}`
 - [ ] Feature flag / config if needed
 - [ ] Rollout plan
 
@@ -36,26 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/services/italian_document_analyzer.py:338 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._post_process_analysis (score 0.27)
-   Evidence: Score 0.27, Post-process and validate analysis results
-2) app/models/document.py:112 — app.models.document.Document.__init__ (score 0.26)
-   Evidence: Score 0.26, method: __init__
-3) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.26)
-   Evidence: Score 0.26, Check if document has expired
-4) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.26)
-   Evidence: Score 0.26, Convert document to dictionary
-5) app/models/document.py:130 — app.models.document.Document.file_size_mb (score 0.26)
-   Evidence: Score 0.26, File size in megabytes
+1) app/core/langgraph/tools/document_ingest_tool.py:51 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestInput.validate_attachments (score 0.32)
+   Evidence: Score 0.32, method: validate_attachments
+2) app/core/langgraph/tools/document_ingest_tool.py:81 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.31)
+   Evidence: Score 0.31, Initialize the document ingest tool.
+3) app/core/langgraph/tools/document_ingest_tool.py:375 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.31)
+   Evidence: Score 0.31, Synchronous wrapper (not recommended, use async version).
+4) app/core/langgraph/tools/document_ingest_tool.py:86 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._get_processor (score 0.30)
+   Evidence: Score 0.30, Get or create document processor instance.
+5) app/core/langgraph/tools/document_ingest_tool.py:92 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._validate_attachment (score 0.30)
+   Evidence: Score 0.30, Validate a single attachment.
+
+Args:
+    attachment: Attachment data dictionary
+...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for DocIngest
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

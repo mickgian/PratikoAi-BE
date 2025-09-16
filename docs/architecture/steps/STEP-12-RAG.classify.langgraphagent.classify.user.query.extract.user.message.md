@@ -36,27 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.40
+Status: 🔌  |  Confidence: 0.39
 
 Top candidates:
-1) app/core/langgraph/graph.py:1162 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
-   Evidence: Score 0.40, Determine if query needs tools/complex workflow based on classification.
-
-Args:
-...
-2) app/core/langgraph/graph.py:474 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.40)
-   Evidence: Score 0.40, Get routing strategy and cost limit based on domain-action classification.
-
-Args...
-3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
+1) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
    Evidence: Score 0.39, Calculate confidence scores for each domain
-4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.39)
+2) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.39)
    Evidence: Score 0.39, Calculate confidence scores for each action
-5) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.37)
+3) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.37)
    Evidence: Score 0.37, Extract parameters for CCNL tool from user query and classification.
 
 Args:
     ...
+4) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
+   Evidence: Score 0.37, Load all domain-action prompt template combinations
+5) app/services/domain_prompt_templates.py:355 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.37)
+   Evidence: Score 0.37, Get the appropriate prompt for domain-action combination.
+
+RAG STEP 43 — PromptT...
 
 Notes:
 - Implementation exists but may not be wired correctly

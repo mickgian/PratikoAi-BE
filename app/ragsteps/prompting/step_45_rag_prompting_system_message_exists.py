@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 from typing import Any, Dict
+
 try:
     from app.observability.rag_logging import rag_step_log
 except Exception:  # pragma: no cover
-    def rag_step_log(*args, **kwargs): return None
+    def rag_step_log(*args, **kwargs):
+        return None
 
 STEP = 45
 STEP_ID = "RAG.prompting.system.message.exists"
@@ -12,6 +14,7 @@ CATEGORY = "prompting"
 TYPE = "decision"
 
 __all__ = ["run", "step_45_rag_prompting_system_message_exists"]
+
 
 def run(payload: Dict[str, Any]) -> Dict[str, Any]:
     try:
@@ -27,6 +30,7 @@ def run(payload: Dict[str, Any]) -> Dict[str, Any]:
     except Exception:
         pass
     return {"step": STEP, "step_id": STEP_ID, "node": NODE_LABEL, "ok": True}
+
 
 def step_45_rag_prompting_system_message_exists(payload: Dict[str, Any]) -> Dict[str, Any]:
     return run(payload)

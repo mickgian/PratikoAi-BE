@@ -36,19 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.28)
+1) app/core/langgraph/graph.py:31 — app.core.langgraph.graph.step_45_rag_prompting_system_message_exists (score 0.29)
+   Evidence: Score 0.29, function: step_45_rag_prompting_system_message_exists
+2) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.28)
    Evidence: Score 0.28, Check if a file exists and return status.
-2) validate_payment_implementation.py:8 — validate_payment_implementation.check_file_exists (score 0.28)
+3) validate_payment_implementation.py:8 — validate_payment_implementation.check_file_exists (score 0.28)
    Evidence: Score 0.28, Check if a file exists and return status.
-3) deployment-orchestration/notification_system.py:764 — deployment-orchestration.notification_system.NotificationManager._create_notification_message (score 0.28)
+4) deployment-orchestration/notification_system.py:764 — deployment-orchestration.notification_system.NotificationManager._create_notification_message (score 0.28)
    Evidence: Score 0.28, Create a formatted notification message.
-4) deployment-orchestration/notification_system.py:924 — deployment-orchestration.notification_system.NotificationManager._check_conditions (score 0.28)
+5) deployment-orchestration/notification_system.py:924 — deployment-orchestration.notification_system.NotificationManager._check_conditions (score 0.28)
    Evidence: Score 0.28, Check if context matches the rule conditions.
-5) failure-recovery-system/recovery_orchestrator.py:865 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._add_status_message (score 0.28)
-   Evidence: Score 0.28, Add a status message to the execution log.
 
 Notes:
 - Weak or missing implementation

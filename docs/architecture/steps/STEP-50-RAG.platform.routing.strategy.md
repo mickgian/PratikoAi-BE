@@ -48,15 +48,17 @@ Dele...
 
 Expected behavior is defined in:
 docs/archi...
-3) app/core/langgraph/graph.py:458 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
-   Evidence: Score 0.28, Get the LLM routing strategy from configuration.
-
-Returns:
-    RoutingStrategy: ...
-4) app/schemas/privacy.py:191 — app.schemas.privacy.validate_consent_type (score 0.26)
+3) app/schemas/privacy.py:191 — app.schemas.privacy.validate_consent_type (score 0.26)
    Evidence: Score 0.26, Validate consent type string.
-5) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.26)
+4) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.26)
    Evidence: Score 0.26, Validate PII type string.
+5) app/services/document_processor.py:501 — app.services.document_processor.DocumentProcessor._determine_document_type (score 0.26)
+   Evidence: Score 0.26, Determine document type from URL.
+
+Args:
+    document_url: Document URL
+    
+Ret...
 
 Notes:
 - Weak or missing implementation

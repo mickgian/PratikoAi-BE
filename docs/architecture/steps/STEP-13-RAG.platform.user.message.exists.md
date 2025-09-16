@@ -36,22 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/models/user.py:50 — app.models.user.User.verify_password (score 0.27)
+1) app/core/langgraph/graph.py:31 — app.core.langgraph.graph.step_45_rag_prompting_system_message_exists (score 0.28)
+   Evidence: Score 0.28, function: step_45_rag_prompting_system_message_exists
+2) app/models/user.py:50 — app.models.user.User.verify_password (score 0.27)
    Evidence: Score 0.27, Verify if the provided password matches the hash.
-2) app/models/user.py:55 — app.models.user.User.hash_password (score 0.27)
+3) app/models/user.py:55 — app.models.user.User.hash_password (score 0.27)
    Evidence: Score 0.27, Hash a password using bcrypt.
-3) evals/main.py:82 — evals.main.get_user_input (score 0.27)
+4) evals/main.py:82 — evals.main.get_user_input (score 0.27)
    Evidence: Score 0.27, Get user input with a colored prompt.
 
 Args:
     prompt: The prompt to display
  ...
-4) validate_security_implementation.py:7 — validate_security_implementation.validate_file_exists (score 0.27)
-   Evidence: Score 0.27, Validate that a file exists.
-5) validate_vector_implementation.py:7 — validate_vector_implementation.validate_file_exists (score 0.27)
+5) validate_security_implementation.py:7 — validate_security_implementation.validate_file_exists (score 0.27)
    Evidence: Score 0.27, Validate that a file exists.
 
 Notes:

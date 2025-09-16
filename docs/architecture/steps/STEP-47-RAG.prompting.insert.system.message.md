@@ -47,8 +47,8 @@ Top candidates:
    Evidence: Score 0.28, Generate title and body for notification.
 4) deployment-orchestration/notification_system.py:109 — deployment-orchestration.notification_system.NotificationMessage (score 0.28)
    Evidence: Score 0.28, A formatted notification message.
-5) rollback-system/rollback_orchestrator.py:816 — rollback-system.rollback_orchestrator.RollbackOrchestrator.__init__ (score 0.27)
-   Evidence: Score 0.27, method: __init__
+5) app/core/langgraph/graph.py:31 — app.core.langgraph.graph.step_45_rag_prompting_system_message_exists (score 0.27)
+   Evidence: Score 0.27, function: step_45_rag_prompting_system_message_exists
 
 Notes:
 - Weak or missing implementation

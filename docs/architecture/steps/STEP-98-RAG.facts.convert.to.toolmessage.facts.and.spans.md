@@ -41,24 +41,18 @@ Status: ❌  |  Confidence: 0.27
 Top candidates:
 1) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.27)
    Evidence: Score 0.27, Combine results from BM25 and vector search, removing duplicates.
-2) evals/helpers.py:129 — evals.helpers.process_trace_results (score 0.25)
+2) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:34 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts (score 0.26)
+   Evidence: Score 0.26, function: step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts
+3) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:22 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.run (score 0.26)
+   Evidence: Score 0.26, function: run
+4) evals/helpers.py:129 — evals.helpers.process_trace_results (score 0.25)
    Evidence: Score 0.25, Process results for a single trace.
 
 Args:
     report: The report dictionary.
   ...
-3) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
+5) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
    Evidence: Score 0.25, Convert internal SearchResponse to API model.
-4) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.25)
-   Evidence: Score 0.25, Validate the message content.
-
-Args:
-    v: The content to validate
-
-Returns:
-  ...
-5) app/services/atomic_facts_extractor.py:145 — app.services.atomic_facts_extractor.AtomicFacts.is_empty (score 0.25)
-   Evidence: Score 0.25, Check if no facts were extracted.
 
 Notes:
 - Weak or missing implementation

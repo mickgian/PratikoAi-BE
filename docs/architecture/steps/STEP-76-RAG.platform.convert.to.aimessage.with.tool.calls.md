@@ -49,8 +49,8 @@ Top candidates:
 Dele...
 4) app/services/ccnl_service.py:334 — app.services.ccnl_service.CCNLService._convert_to_db_model (score 0.25)
    Evidence: Score 0.25, Convert domain CCNL model to database model.
-5) version-management/core/version_schema.py:168 — version-management.core.version_schema.ServiceVersion.is_compatible_with (score 0.25)
-   Evidence: Score 0.25, Check compatibility with another service version.
+5) app/services/context_builder_merge.py:557 — app.services.context_builder_merge.ContextBuilderMerge._convert_to_dict (score 0.25)
+   Evidence: Score 0.25, Convert MergedContext to dictionary.
 
 Notes:
 - Weak or missing implementation

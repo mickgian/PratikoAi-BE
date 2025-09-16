@@ -36,38 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/core/langgraph/graph.py:933 — app.core.langgraph.graph.LangGraphAgent._detect_tool_type (score 0.32)
-   Evidence: Score 0.32, Detect the type of tool based on its name.
-
-RAG STEP 79 — Tool type? (RAG.routin...
-2) app/core/langgraph/graph.py:1000 — app.core.langgraph.graph.LangGraphAgent._tool_type_timer (score 0.32)
-   Evidence: Score 0.32, Create a timer context for tool type detection.
-
-Args:
-    tool_name: The name o...
-3) app/core/langgraph/graph.py:980 — app.core.langgraph.graph.LangGraphAgent._log_tool_type_decision (score 0.32)
-   Evidence: Score 0.32, Log the tool type routing decision.
-
-Args:
-    tool_name: The name of the tool
- ...
-4) app/core/langgraph/graph.py:61 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.31)
-   Evidence: Score 0.31, Initialize the LangGraph Agent with necessary components.
-5) app/core/langgraph/graph.py:1046 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.30)
-   Evidence: Score 0.30, Determine if the agent should continue or end based on the last message.
-
-Args:
-...
+1) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.27)
+   Evidence: Score 0.27, method: __init__
+2) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.27)
+   Evidence: Score 0.27, Execute CCNL query (synchronous version).
+3) app/core/langgraph/tools/document_ingest_tool.py:80 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.27)
+   Evidence: Score 0.27, Initialize the document ingest tool.
+4) app/core/langgraph/tools/document_ingest_tool.py:374 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.27)
+   Evidence: Score 0.27, Synchronous wrapper (not recommended, use async version).
+5) app/core/langgraph/tools/ccnl_tool.py:90 — app.core.langgraph.tools.ccnl_tool.CCNLTool.search_service (score 0.27)
+   Evidence: Score 0.27, method: search_service
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for ExecuteTools
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

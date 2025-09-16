@@ -36,37 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/core/langgraph/graph.py:61 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.33)
-   Evidence: Score 0.33, Initialize the LangGraph Agent with necessary components.
-2) app/core/langgraph/graph.py:458 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
-   Evidence: Score 0.32, Get the LLM routing strategy from configuration.
-
-Returns:
-    RoutingStrategy: ...
-3) app/core/langgraph/graph.py:529 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.32)
-   Evidence: Score 0.32, Get the appropriate system prompt based on classification.
-
-RAG STEP 41 — LangGr...
-4) app/core/langgraph/graph.py:732 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.32)
-   Evidence: Score 0.32, Get the optimal LLM provider for the given messages.
-
-Args:
-    messages: List o...
-5) app/core/langgraph/graph.py:962 — app.core.langgraph.graph.LangGraphAgent._get_routing_decision (score 0.32)
-   Evidence: Score 0.32, Get the routing decision based on tool type.
-
-Args:
-    tool_type: The detected ...
+1) app/core/performance/response_compressor.py:46 — app.core.performance.response_compressor.ResponseCompressor.__init__ (score 0.27)
+   Evidence: Score 0.27, Initialize response compressor.
+2) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.27)
+   Evidence: Score 0.27, method: __post_init__
+3) app/services/expert_validation_workflow.py:44 — app.services.expert_validation_workflow.ExpertValidationWorkflow.__init__ (score 0.27)
+   Evidence: Score 0.27, method: __init__
+4) app/core/middleware/performance_middleware.py:104 — app.core.middleware.performance_middleware.PerformanceMiddleware._get_response_size (score 0.27)
+   Evidence: Score 0.27, Get response size in bytes.
+5) app/services/ccnl_response_formatter.py:20 — app.services.ccnl_response_formatter.CCNLResponseFormatter.__init__ (score 0.27)
+   Evidence: Score 0.27, method: __init__
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for InitAgent
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

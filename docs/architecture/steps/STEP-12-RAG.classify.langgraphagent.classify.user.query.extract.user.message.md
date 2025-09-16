@@ -39,24 +39,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.40
 
 Top candidates:
-1) app/core/langgraph/graph.py:529 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.40)
-   Evidence: Score 0.40, Get the appropriate system prompt based on classification.
-
-Args:
-    messages: ...
-2) app/core/langgraph/graph.py:1021 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
+1) app/core/langgraph/graph.py:1096 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
    Evidence: Score 0.40, Determine if query needs tools/complex workflow based on classification.
 
 Args:
 ...
-3) app/core/langgraph/graph.py:474 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.40)
+2) app/core/langgraph/graph.py:474 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.40)
    Evidence: Score 0.40, Get routing strategy and cost limit based on domain-action classification.
 
 Args...
-4) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
+3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
    Evidence: Score 0.39, Calculate confidence scores for each domain
-5) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.39)
+4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.39)
    Evidence: Score 0.39, Calculate confidence scores for each action
+5) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.37)
+   Evidence: Score 0.37, Extract parameters for CCNL tool from user query and classification.
+
+Args:
+    ...
 
 Notes:
 - Implementation exists but may not be wired correctly

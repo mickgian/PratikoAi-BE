@@ -529,6 +529,8 @@ class LangGraphAgent:
     def _get_system_prompt(self, messages: List[Message], classification: Optional[DomainActionClassification]) -> str:
         """Get the appropriate system prompt based on classification.
         
+        RAG STEP 41 — LangGraphAgent._get_system_prompt Select appropriate prompt
+        
         Args:
             messages: List of conversation messages
             classification: Domain-action classification result
@@ -536,57 +538,130 @@ class LangGraphAgent:
         Returns:
             str: The system prompt to use
         """
-        if not classification:
-            # Fallback to default system prompt
-            return SYSTEM_PROMPT
+        # RAG STEP 41 constants
+        STEP_NUM = 41
+        STEP_ID = "RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt"
+        NODE_LABEL = "SelectPrompt"
+        
+        # Extract user query for context
+        user_query = ""
+        for message in reversed(messages):
+            if message.role == "user":
+                user_query = message.content
+                break
+        
+        # Use timer context manager for performance tracking
+        timer_attrs = {}
+        if classification:
+            timer_attrs.update({
+                "classification_confidence": classification.confidence,
+                "domain": classification.domain.value
+            })
+        
+        with rag_step_timer(STEP_NUM, STEP_ID, NODE_LABEL, **timer_attrs):
             
-        # Only use domain-specific prompts for high confidence classifications
-        if classification.confidence < settings.CLASSIFICATION_CONFIDENCE_THRESHOLD:
-            logger.info(
-                "classification_confidence_too_low",
-                confidence=classification.confidence,
-                threshold=settings.CLASSIFICATION_CONFIDENCE_THRESHOLD,
-                using_default_prompt=True
-            )
-            return SYSTEM_PROMPT
-            
-        try:
-            # Get the latest user message for context
-            user_query = ""
-            for message in reversed(messages):
-                if message.role == "user":
-                    user_query = message.content
-                    break
-            
-            # Generate domain-specific prompt
-            domain_prompt = self._prompt_template_manager.get_prompt(
-                domain=classification.domain,
-                action=classification.action,
-                query=user_query,
-                context=None,  # Could be enhanced later with conversation context
-                document_type=classification.document_type
-            )
-            
-            logger.info(
-                "domain_specific_prompt_selected",
-                domain=classification.domain.value,
-                action=classification.action.value,
-                confidence=classification.confidence
-            )
-            
-            # Track domain-specific prompt usage
-            track_classification_usage(
-                domain=classification.domain.value,
-                action=classification.action.value,
-                confidence=classification.confidence,
-                prompt_used=True
-            )
-            
-            return domain_prompt
-            
-        except Exception as e:
-            logger.error("domain_prompt_generation_failed", error=str(e), exc_info=True)
-            return SYSTEM_PROMPT
+            if not classification:
+                # Fallback to default system prompt - no classification available
+                rag_step_log(
+                    step=STEP_NUM,
+                    step_id=STEP_ID,
+                    node_label=NODE_LABEL,
+                    prompt_type="default",
+                    classification_available=False,
+                    user_query=user_query,
+                    reason="no_classification"
+                )
+                return SYSTEM_PROMPT
+                
+            # Only use domain-specific prompts for high confidence classifications
+            if classification.confidence < settings.CLASSIFICATION_CONFIDENCE_THRESHOLD:
+                rag_step_log(
+                    step=STEP_NUM,
+                    step_id=STEP_ID,
+                    node_label=NODE_LABEL,
+                    prompt_type="default",
+                    classification_available=True,
+                    classification_confidence=classification.confidence,
+                    confidence_threshold=settings.CLASSIFICATION_CONFIDENCE_THRESHOLD,
+                    confidence_below_threshold=True,
+                    domain=classification.domain.value,
+                    action=classification.action.value,
+                    user_query=user_query,
+                    reason="low_confidence"
+                )
+                
+                logger.info(
+                    "classification_confidence_too_low",
+                    confidence=classification.confidence,
+                    threshold=settings.CLASSIFICATION_CONFIDENCE_THRESHOLD,
+                    using_default_prompt=True
+                )
+                return SYSTEM_PROMPT
+                
+            try:
+                # Generate domain-specific prompt
+                domain_prompt = self._prompt_template_manager.get_prompt(
+                    domain=classification.domain,
+                    action=classification.action,
+                    query=user_query,
+                    context=None,  # Could be enhanced later with conversation context
+                    document_type=classification.document_type
+                )
+                
+                # Log successful domain prompt selection
+                rag_step_log(
+                    step=STEP_NUM,
+                    step_id=STEP_ID,
+                    node_label=NODE_LABEL,
+                    prompt_type="domain_specific",
+                    classification_available=True,
+                    classification_confidence=classification.confidence,
+                    confidence_threshold=settings.CLASSIFICATION_CONFIDENCE_THRESHOLD,
+                    confidence_below_threshold=False,
+                    domain=classification.domain.value,
+                    action=classification.action.value,
+                    document_type=classification.document_type.value if classification.document_type else None,
+                    user_query=user_query,
+                    reason="high_confidence_classification"
+                )
+                
+                logger.info(
+                    "domain_specific_prompt_selected",
+                    domain=classification.domain.value,
+                    action=classification.action.value,
+                    confidence=classification.confidence
+                )
+                
+                # Track domain-specific prompt usage
+                track_classification_usage(
+                    domain=classification.domain.value,
+                    action=classification.action.value,
+                    confidence=classification.confidence,
+                    prompt_used=True
+                )
+                
+                return domain_prompt
+                
+            except Exception as e:
+                # Log error and fallback to default
+                rag_step_log(
+                    step=STEP_NUM,
+                    step_id=STEP_ID,
+                    node_label=NODE_LABEL,
+                    level="ERROR",
+                    prompt_type="default",
+                    classification_available=True,
+                    classification_confidence=classification.confidence,
+                    domain=classification.domain.value,
+                    action=classification.action.value,
+                    user_query=user_query,
+                    error=str(e),
+                    error_fallback=True,
+                    reason="domain_prompt_error"
+                )
+                
+                logger.error("domain_prompt_generation_failed", error=str(e), exc_info=True)
+                return SYSTEM_PROMPT
 
     def _get_optimal_provider(self, messages: List[Message]) -> LLMProvider:
         """Get the optimal LLM provider for the given messages.

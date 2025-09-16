@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `KBDelta` (KB newer than Golden as of or conflicting tags?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/services/kb_delta_decision.py:KBDeltaDecision`, `tests/test_rag_step_27_kb_delta.py:TestRAGStep27KBDelta`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Implemented KBDeltaDecision class that compares KB results from STEP 26 with Golden Set metadata to determine if KB has newer or conflicting information. Includes timestamp comparison, sophisticated conflict detection logic, and structured logging. Full test coverage with 8 passing tests covering all decision scenarios.
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,11 +19,11 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 27 (RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags): KB newer than Golden as of or conflicting tags? | attrs={...}`
+- [x] Unit tests (newer KB decision, older KB decision, conflicting tags, empty results, missing metadata, mixed results, structured logging, edge cases)
+- [x] Integration tests (full decision flow scenarios, error handling)
+- [x] Implementation changes (KBDeltaDecision class, comparison logic, conflict detection, decision making)
+- [x] Observability: add structured log line  
+  `RAG STEP 27 (RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags): KB newer than Golden as of or conflicting tags? | attrs={decision, should_merge_context, newer_count, conflict_count, reason, processing_stage, golden_age_days, kb_newest_age_days, conflict_types}`
 - [ ] Feature flag / config if needed
 - [ ] Rollout plan
 

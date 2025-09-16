@@ -575,6 +575,21 @@ class LangGraphAgent:
                     reason="classification_not_available"
                 )
                 
+                # RAG STEP 44 — Use default SYSTEM_PROMPT (no classification scenario)
+                rag_step_log(
+                    step=44,
+                    step_id="RAG.prompting.use.default.system.prompt",
+                    node_label="DefaultSysPrompt",
+                    prompt_type="default",
+                    trigger_reason="no_classification",
+                    classification_available=False,
+                    classification_confidence=None,
+                    confidence_threshold=settings.CLASSIFICATION_CONFIDENCE_THRESHOLD,
+                    user_query=user_query,
+                    prompt_length=len(SYSTEM_PROMPT),
+                    processing_stage="completed"
+                )
+                
                 # Fallback to default system prompt - no classification available
                 rag_step_log(
                     step=STEP_NUM,
@@ -609,6 +624,23 @@ class LangGraphAgent:
                 
             # Only use domain-specific prompts for high confidence classifications
             if classification.confidence < settings.CLASSIFICATION_CONFIDENCE_THRESHOLD:
+                # RAG STEP 44 — Use default SYSTEM_PROMPT (low confidence scenario)
+                rag_step_log(
+                    step=44,
+                    step_id="RAG.prompting.use.default.system.prompt",
+                    node_label="DefaultSysPrompt",
+                    prompt_type="default",
+                    trigger_reason="low_confidence",
+                    classification_available=True,
+                    classification_confidence=classification.confidence,
+                    confidence_threshold=settings.CLASSIFICATION_CONFIDENCE_THRESHOLD,
+                    domain=classification.domain.value,
+                    action=classification.action.value,
+                    user_query=user_query,
+                    prompt_length=len(SYSTEM_PROMPT),
+                    processing_stage="completed"
+                )
+                
                 rag_step_log(
                     step=STEP_NUM,
                     step_id=STEP_ID,

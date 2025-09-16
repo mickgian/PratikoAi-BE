@@ -36,28 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/core/prompts/__init__.py:9 — app.core.prompts.__init__.load_system_prompt (score 0.28)
+1) app/ragsteps/prompting/step_44_rag_prompting_use_default_system_prompt.py:44 — app.ragsteps.prompting.step_44_rag_prompting_use_default_system_prompt.step_44_rag_prompting_use_default_system_prompt (score 0.34)
+   Evidence: Score 0.34, function: step_44_rag_prompting_use_default_system_prompt
+2) app/ragsteps/prompting/step_44_rag_prompting_use_default_system_prompt.py:26 — app.ragsteps.prompting.step_44_rag_prompting_use_default_system_prompt.run (score 0.33)
+   Evidence: Score 0.33, function: run
+3) app/core/prompts/__init__.py:9 — app.core.prompts.__init__.load_system_prompt (score 0.28)
    Evidence: Score 0.28, Load the system prompt from the file.
-2) app/services/italian_document_analyzer.py:189 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._build_system_prompt (score 0.28)
+4) app/services/italian_document_analyzer.py:189 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._build_system_prompt (score 0.28)
    Evidence: Score 0.28, Build system prompt based on analysis type
-3) deployment-orchestration/notification_system.py:674 — deployment-orchestration.notification_system.NotificationManager.setup_default_rules (score 0.28)
+5) deployment-orchestration/notification_system.py:674 — deployment-orchestration.notification_system.NotificationManager.setup_default_rules (score 0.28)
    Evidence: Score 0.28, Setup default notification rules.
-4) app/core/langgraph/graph.py:529 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.27)
-   Evidence: Score 0.27, Get the appropriate system prompt based on classification.
-
-RAG STEP 41 — LangGr...
-5) app/services/italian_document_analyzer.py:239 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._build_comparison_system_prompt (score 0.27)
-   Evidence: Score 0.27, Build system prompt for document comparison
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for DefaultSysPrompt
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

@@ -44,7 +44,7 @@ Top candidates:
 
 Args:
     messages: ...
-2) app/core/langgraph/graph.py:930 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
+2) app/core/langgraph/graph.py:1021 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
    Evidence: Score 0.40, Determine if query needs tools/complex workflow based on classification.
 
 Args:

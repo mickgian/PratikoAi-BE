@@ -47,9 +47,9 @@ Dele...
    Evidence: Score 0.27, method: __init__
 3) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.27)
    Evidence: Score 0.27, Execute CCNL query (synchronous version).
-4) app/core/langgraph/tools/document_ingest_tool.py:81 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.27)
+4) app/core/langgraph/tools/document_ingest_tool.py:80 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.27)
    Evidence: Score 0.27, Initialize the document ingest tool.
-5) app/core/langgraph/tools/document_ingest_tool.py:375 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.27)
+5) app/core/langgraph/tools/document_ingest_tool.py:374 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.27)
    Evidence: Score 0.27, Synchronous wrapper (not recommended, use async version).
 
 Notes:

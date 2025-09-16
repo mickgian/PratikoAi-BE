@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `KBContextCheck` (KnowledgeSearch.context_topk fetch recent KB for changes).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/services/knowledge_search_service.py:KnowledgeSearchService.fetch_recent_kb_for_changes`, `tests/test_rag_step_26_kb_context_check.py:TestRAGStep26KBContextCheck`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Implemented fetch_recent_kb_for_changes method that specifically checks for recent KB changes when a Golden Set hit occurs. Includes filtering by recency thresholds, conflict detection with Golden Set metadata, and specialized ranking for context checking. Full test coverage with 7 passing tests.
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,11 +19,11 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 26 (RAG.kb.knowledgesearch.context.topk.fetch.recent.kb.for.changes): KnowledgeSearch.context_topk fetch recent KB for changes | attrs={...}`
+- [x] Unit tests (basic functionality, no recent changes, golden timestamp comparison, conflict detection, error handling, graph state integration, structured logging format)
+- [x] Integration tests (GraphState compatibility, end-to-end flow simulation)
+- [x] Implementation changes (fetch_recent_kb_for_changes method, helper methods for filtering/ranking/conflict detection)
+- [x] Observability: add structured log line  
+  `RAG STEP 26 (RAG.kb.knowledgesearch.context.topk.fetch.recent.kb.for.changes): KnowledgeSearch.context_topk fetch recent KB for changes | attrs={query, trace_id, recent_changes_count, potential_conflicts, golden_timestamp, processing_stage}`
 - [ ] Feature flag / config if needed
 - [ ] Rollout plan
 
@@ -36,21 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.43
+Status: 🔌  |  Confidence: 0.49
 
 Top candidates:
-1) app/services/knowledge_search_service.py:1 — app.services.knowledge_search_service (score 0.43)
+1) app/ragsteps/kb/step_26_rag_kb_knowledgesearch_context_topk_fetch_recent_kb_for_changes.py:1 — app.ragsteps.kb.step_26_rag_kb_knowledgesearch_context_topk_fetch_recent_kb_for_changes (score 0.49)
+   Evidence: Score 0.49, RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes
+(ID: RAG....
+2) app/services/knowledge_search_service.py:1 — app.services.knowledge_search_service (score 0.43)
    Evidence: Score 0.43, Knowledge Search Service - RAG STEP 39 Implementation.
 
 Implements RAG STEP 39 —...
-2) app/services/knowledge_search_service.py:97 — app.services.knowledge_search_service.KnowledgeSearchService (score 0.43)
+3) app/ragsteps/kb/step_26_rag_kb_knowledgesearch_context_topk_fetch_recent_kb_for_changes.py:44 — app.ragsteps.kb.step_26_rag_kb_knowledgesearch_context_topk_fetch_recent_kb_for_changes.step_26_rag_kb_knowledgesearch_context_topk_fetch_recent_kb_for_changes (score 0.43)
+   Evidence: Score 0.43, Canonical symbol for auditor; delegates to run().
+4) app/services/knowledge_search_service.py:97 — app.services.knowledge_search_service.KnowledgeSearchService (score 0.43)
    Evidence: Score 0.43, Service for hybrid knowledge search with BM25, vector search and recency boost.
-3) app/services/knowledge_search_service.py:32 — app.services.knowledge_search_service.SearchMode (score 0.43)
+5) app/services/knowledge_search_service.py:32 — app.services.knowledge_search_service.SearchMode (score 0.43)
    Evidence: Score 0.43, Search mode for knowledge retrieval.
-4) app/services/vector_providers/pinecone_provider.py:21 — app.services.vector_providers.pinecone_provider.PineconeProvider (score 0.43)
-   Evidence: Score 0.43, Pinecone vector search provider.
-5) app/services/knowledge_search_service.py:100 — app.services.knowledge_search_service.KnowledgeSearchService.__init__ (score 0.42)
-   Evidence: Score 0.42, Initialize knowledge search service.
 
 Notes:
 - Implementation exists but may not be wired correctly

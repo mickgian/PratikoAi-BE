@@ -39,15 +39,15 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/langgraph/tools/document_ingest_tool.py:51 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestInput.validate_attachments (score 0.32)
+1) app/core/langgraph/tools/document_ingest_tool.py:50 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestInput.validate_attachments (score 0.32)
    Evidence: Score 0.32, method: validate_attachments
-2) app/core/langgraph/tools/document_ingest_tool.py:81 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.31)
+2) app/core/langgraph/tools/document_ingest_tool.py:80 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.31)
    Evidence: Score 0.31, Initialize the document ingest tool.
-3) app/core/langgraph/tools/document_ingest_tool.py:375 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.31)
+3) app/core/langgraph/tools/document_ingest_tool.py:374 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.31)
    Evidence: Score 0.31, Synchronous wrapper (not recommended, use async version).
-4) app/core/langgraph/tools/document_ingest_tool.py:86 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._get_processor (score 0.30)
+4) app/core/langgraph/tools/document_ingest_tool.py:85 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._get_processor (score 0.30)
    Evidence: Score 0.30, Get or create document processor instance.
-5) app/core/langgraph/tools/document_ingest_tool.py:92 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._validate_attachment (score 0.30)
+5) app/core/langgraph/tools/document_ingest_tool.py:91 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._validate_attachment (score 0.30)
    Evidence: Score 0.30, Validate a single attachment.
 
 Args:

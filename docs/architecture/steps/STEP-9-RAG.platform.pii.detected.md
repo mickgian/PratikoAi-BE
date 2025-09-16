@@ -47,11 +47,10 @@ Top candidates:
    Evidence: Score 0.26, Detect PII in text and return matches.
 4) app/models/encrypted_user.py:174 — app.models.encrypted_user.EncryptedUser.update_pii_timestamp (score 0.26)
    Evidence: Score 0.26, Update the PII last updated timestamp for audit compliance.
-5) app/core/middleware/security_middleware.py:233 — app.core.middleware.security_middleware.SecurityMiddleware._detect_bot_behavior (score 0.21)
-   Evidence: Score 0.21, Detect potential bot/automated behavior.
+5) app/core/langgraph/graph.py:792 — app.core.langgraph.graph.LangGraphAgent._detect_tool_type (score 0.21)
+   Evidence: Score 0.21, Detect the type of tool based on its name.
 
-Args:
-    user_agent: User agent strin...
+RAG STEP 79 — Tool type? (RAG.routin...
 
 Notes:
 - Weak or missing implementation

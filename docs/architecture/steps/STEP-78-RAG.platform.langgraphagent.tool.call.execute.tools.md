@@ -36,28 +36,31 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/langgraph/graph.py:61 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.31)
+1) app/core/langgraph/graph.py:792 — app.core.langgraph.graph.LangGraphAgent._detect_tool_type (score 0.32)
+   Evidence: Score 0.32, Detect the type of tool based on its name.
+
+RAG STEP 79 — Tool type? (RAG.routin...
+2) app/core/langgraph/graph.py:859 — app.core.langgraph.graph.LangGraphAgent._tool_type_timer (score 0.32)
+   Evidence: Score 0.32, Create a timer context for tool type detection.
+
+Args:
+    tool_name: The name o...
+3) app/core/langgraph/graph.py:839 — app.core.langgraph.graph.LangGraphAgent._log_tool_type_decision (score 0.32)
+   Evidence: Score 0.32, Log the tool type routing decision.
+
+Args:
+    tool_name: The name of the tool
+ ...
+4) app/core/langgraph/graph.py:61 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.31)
    Evidence: Score 0.31, Initialize the LangGraph Agent with necessary components.
-2) app/core/langgraph/graph.py:814 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.30)
+5) app/core/langgraph/graph.py:905 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.30)
    Evidence: Score 0.30, Determine if the agent should continue or end based on the last message.
 
 Args:
 ...
-3) app/core/langgraph/graph.py:1213 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.30)
-   Evidence: Score 0.30, method: __process_messages
-4) app/core/langgraph/graph.py:458 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
-   Evidence: Score 0.29, Get the LLM routing strategy from configuration.
-
-Returns:
-    RoutingStrategy: ...
-5) app/core/langgraph/graph.py:529 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.29)
-   Evidence: Score 0.29, Get the appropriate system prompt based on classification.
-
-Args:
-    messages: ...
 
 Notes:
 - Implementation exists but may not be wired correctly

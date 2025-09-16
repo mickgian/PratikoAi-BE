@@ -45,14 +45,16 @@ Top candidates:
 Args:
     report: The report dictionary.
   ...
-2) app/services/hybrid_search_engine.py:406 — app.services.hybrid_search_engine.HybridSearchEngine._merge_results (score 0.26)
+2) app/ragsteps/routing/step_79_rag_routing_tool_type.py:64 — app.ragsteps.routing.step_79_rag_routing_tool_type.step_79_rag_routing_tool_type (score 0.26)
+   Evidence: Score 0.26, Canonical symbol for auditor: STEP 79 — Tool type? (RAG.routing.tool.type)
+
+Dele...
+3) app/services/hybrid_search_engine.py:406 — app.services.hybrid_search_engine.HybridSearchEngine._merge_results (score 0.26)
    Evidence: Score 0.26, Merge and deduplicate keyword and vector results
-3) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.25)
+4) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.25)
    Evidence: Score 0.25, method: __init__
-4) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.25)
+5) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.25)
    Evidence: Score 0.25, Execute CCNL query (synchronous version).
-5) app/services/ccnl_service.py:115 — app.services.ccnl_service.CCNLSearchResult.has_results (score 0.25)
-   Evidence: Score 0.25, Check if search returned any results.
 
 Notes:
 - Weak or missing implementation

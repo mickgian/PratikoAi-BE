@@ -561,6 +561,20 @@ class LangGraphAgent:
         with rag_step_timer(STEP_NUM, STEP_ID, NODE_LABEL, **timer_attrs):
             
             if not classification:
+                # RAG STEP 42 — Classification exists and confidence at least 0.6? -> NO (no classification)
+                rag_step_log(
+                    step=42,
+                    step_id="RAG.classify.classification.exists.and.confidence.at.least.0.6",
+                    node_label="ClassConfidence",
+                    decision="no_classification_exists",
+                    classification_exists=False,
+                    classification_confidence=None,
+                    confidence_threshold=settings.CLASSIFICATION_CONFIDENCE_THRESHOLD,
+                    decision_outcome="use_default_prompt",
+                    user_query=user_query,
+                    reason="classification_not_available"
+                )
+                
                 # Fallback to default system prompt - no classification available
                 rag_step_log(
                     step=STEP_NUM,
@@ -572,6 +586,26 @@ class LangGraphAgent:
                     reason="no_classification"
                 )
                 return SYSTEM_PROMPT
+                
+            # RAG STEP 42 — Classification exists and confidence at least 0.6? -> Check threshold
+            confidence_meets_threshold = classification.confidence >= settings.CLASSIFICATION_CONFIDENCE_THRESHOLD
+            
+            # Log the STEP 42 decision
+            rag_step_log(
+                step=42,
+                step_id="RAG.classify.classification.exists.and.confidence.at.least.0.6",
+                node_label="ClassConfidence",
+                decision="confidence_threshold_check",
+                classification_exists=True,
+                classification_confidence=classification.confidence,
+                confidence_threshold=settings.CLASSIFICATION_CONFIDENCE_THRESHOLD,
+                confidence_meets_threshold=confidence_meets_threshold,
+                decision_outcome="use_domain_prompt" if confidence_meets_threshold else "use_default_prompt",
+                domain=classification.domain.value,
+                action=classification.action.value,
+                user_query=user_query,
+                reasoning=classification.reasoning
+            )
                 
             # Only use domain-specific prompts for high confidence classifications
             if classification.confidence < settings.CLASSIFICATION_CONFIDENCE_THRESHOLD:

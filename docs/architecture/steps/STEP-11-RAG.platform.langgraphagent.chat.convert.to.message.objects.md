@@ -39,11 +39,11 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/langgraph/graph.py:1379 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.32)
+1) app/core/langgraph/graph.py:1413 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.32)
    Evidence: Score 0.32, method: __process_messages
 2) app/core/langgraph/graph.py:61 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
    Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
-3) app/core/langgraph/graph.py:980 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.29)
+3) app/core/langgraph/graph.py:1014 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.29)
    Evidence: Score 0.29, Determine if the agent should continue or end based on the last message.
 
 Args:

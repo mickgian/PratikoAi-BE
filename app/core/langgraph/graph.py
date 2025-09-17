@@ -757,11 +757,41 @@ class LangGraphAgent:
                 preferred_provider = getattr(settings, 'LLM_PREFERRED_PROVIDER', None)
                 settings_max_cost = getattr(settings, 'LLM_MAX_COST_EUR', 0.020)
 
+                # RAG STEP 49 — Apply routing strategy
+                rag_step_log(
+                    step=49,
+                    step_id="RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy",
+                    node_label="RouteStrategy",
+                    decision="applying_routing_strategy",
+                    routing_strategy=strategy.value,
+                    max_cost_eur=max_cost,
+                    preferred_provider=preferred_provider,
+                    messages_count=len(messages),
+                    messages_empty=len(messages) == 0,
+                    processing_stage="started",
+                )
+
                 provider = get_llm_provider(
                     messages=messages,
                     strategy=strategy,
                     max_cost_eur=max_cost,
                     preferred_provider=preferred_provider or None,
+                )
+
+                # RAG STEP 49 — Strategy applied successfully
+                rag_step_log(
+                    step=49,
+                    step_id="RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy",
+                    node_label="RouteStrategy",
+                    decision="routing_strategy_applied",
+                    routing_strategy=strategy.value,
+                    max_cost_eur=max_cost,
+                    preferred_provider=preferred_provider,
+                    provider_type=provider.provider_type.value,
+                    model=provider.model,
+                    messages_count=len(messages),
+                    messages_empty=len(messages) == 0,
+                    processing_stage="completed",
                 )
 
                 # RAG STEP 48 — Select LLM provider
@@ -799,6 +829,17 @@ class LangGraphAgent:
                 return provider
 
             except Exception as e:
+                # RAG STEP 49 — Error during routing strategy
+                rag_step_log(
+                    step=49,
+                    step_id="RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy",
+                    node_label="RouteStrategy",
+                    decision="routing_strategy_failed",
+                    error=str(e),
+                    routing_strategy=getattr(strategy, 'value', None) if 'strategy' in locals() else None,
+                    processing_stage="error",
+                )
+
                 # RAG STEP 48 — Error fallback
                 rag_step_log(
                     step=48,

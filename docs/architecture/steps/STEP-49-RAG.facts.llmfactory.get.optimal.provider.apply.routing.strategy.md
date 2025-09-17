@@ -36,31 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: 🔌  |  Confidence: 0.38
 
 Top candidates:
-1) app/core/llm/factory.py:127 — app.core.llm.factory.LLMFactory.get_optimal_provider (score 0.32)
+1) app/ragsteps/facts/step_49_rag_facts_llmfactory_get_optimal_provider_apply_routing_strategy.py:48 — app.ragsteps.facts.step_49_rag_facts_llmfactory_get_optimal_provider_apply_routing_strategy.apply_routing_strategy (score 0.38)
+   Evidence: Score 0.38, Apply routing strategy to get optimal LLM provider.
+
+This function implements RA...
+2) app/ragsteps/facts/step_49_rag_facts_llmfactory_get_optimal_provider_apply_routing_strategy.py:30 — app.ragsteps.facts.step_49_rag_facts_llmfactory_get_optimal_provider_apply_routing_strategy.run (score 0.37)
+   Evidence: Score 0.37, Adapter for RAG STEP 49: Apply routing strategy.
+3) app/core/llm/factory.py:127 — app.core.llm.factory.LLMFactory.get_optimal_provider (score 0.32)
    Evidence: Score 0.32, Get the optimal provider based on routing strategy.
 
 Args:
     messages: List of...
-2) app/core/llm/factory.py:33 — app.core.llm.factory.LLMFactory._get_provider_configs (score 0.29)
+4) app/core/llm/factory.py:33 — app.core.llm.factory.LLMFactory._get_provider_configs (score 0.29)
    Evidence: Score 0.29, Get provider configurations from settings.
 
 Returns:
     Dictionary of provider ...
-3) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
+5) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
    Evidence: Score 0.29, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-4) app/core/langgraph/graph.py:734 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
-   Evidence: Score 0.29, Get the optimal LLM provider for the given messages.
-
-Args:
-    messages: List o...
-5) app/ragsteps/providers/step_48_rag_providers_langgraphagent_get_optimal_provider_select_llm_provider.py:54 — app.ragsteps.providers.step_48_rag_providers_langgraphagent_get_optimal_provider_select_llm_provider.select_optimal_provider (score 0.28)
-   Evidence: Score 0.28, Select optimal LLM provider based on context and constraints (STEP 48).
 
 Notes:
 - Implementation exists but may not be wired correctly

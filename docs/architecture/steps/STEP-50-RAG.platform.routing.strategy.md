@@ -43,20 +43,22 @@ Top candidates:
    Evidence: Score 0.30, Canonical symbol for auditor: STEP 79 — Tool type? (RAG.routing.tool.type)
 
 Dele...
-2) app/ragsteps/routing/step_79_rag_routing_tool_type.py:35 — app.ragsteps.routing.step_79_rag_routing_tool_type.run (score 0.29)
+2) app/ragsteps/platform/step_50_rag_platform_routing_strategy.py:29 — app.ragsteps.platform.step_50_rag_platform_routing_strategy.run (score 0.29)
+   Evidence: Score 0.29, Adapter for RAG STEP 50: Routing strategy? decision.
+3) app/ragsteps/routing/step_79_rag_routing_tool_type.py:35 — app.ragsteps.routing.step_79_rag_routing_tool_type.run (score 0.29)
    Evidence: Score 0.29, Adapter for RAG STEP 79: Tool type?
 
 Expected behavior is defined in:
 docs/archi...
-3) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
+4) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
    Evidence: Score 0.28, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-4) app/schemas/privacy.py:191 — app.schemas.privacy.validate_consent_type (score 0.26)
-   Evidence: Score 0.26, Validate consent type string.
-5) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.26)
-   Evidence: Score 0.26, Validate PII type string.
+5) app/ragsteps/platform/step_50_rag_platform_routing_strategy.py:47 — app.ragsteps.platform.step_50_rag_platform_routing_strategy.determine_routing_strategy_path (score 0.28)
+   Evidence: Score 0.28, Determine the next step based on routing strategy.
+
+This function implements RAG...
 
 Notes:
 - Weak or missing implementation

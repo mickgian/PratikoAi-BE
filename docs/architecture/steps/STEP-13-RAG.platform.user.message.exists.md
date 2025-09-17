@@ -36,23 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/core/langgraph/graph.py:31 — app.core.langgraph.graph.step_45_rag_prompting_system_message_exists (score 0.28)
-   Evidence: Score 0.28, function: step_45_rag_prompting_system_message_exists
-2) app/models/user.py:50 — app.models.user.User.verify_password (score 0.27)
+1) app/ragsteps/prompting/step_45_rag_prompting_system_message_exists.py:35 — app.ragsteps.prompting.step_45_rag_prompting_system_message_exists.step_45_rag_prompting_system_message_exists (score 0.29)
+   Evidence: Score 0.29, function: step_45_rag_prompting_system_message_exists
+2) app/ragsteps/prompting/step_45_rag_prompting_system_message_exists.py:19 — app.ragsteps.prompting.step_45_rag_prompting_system_message_exists.run (score 0.28)
+   Evidence: Score 0.28, function: run
+3) app/models/user.py:50 — app.models.user.User.verify_password (score 0.27)
    Evidence: Score 0.27, Verify if the provided password matches the hash.
-3) app/models/user.py:55 — app.models.user.User.hash_password (score 0.27)
+4) app/models/user.py:55 — app.models.user.User.hash_password (score 0.27)
    Evidence: Score 0.27, Hash a password using bcrypt.
-4) evals/main.py:82 — evals.main.get_user_input (score 0.27)
+5) evals/main.py:82 — evals.main.get_user_input (score 0.27)
    Evidence: Score 0.27, Get user input with a colored prompt.
 
 Args:
     prompt: The prompt to display
  ...
-5) validate_security_implementation.py:7 — validate_security_implementation.validate_file_exists (score 0.27)
-   Evidence: Score 0.27, Validate that a file exists.
 
 Notes:
 - Weak or missing implementation

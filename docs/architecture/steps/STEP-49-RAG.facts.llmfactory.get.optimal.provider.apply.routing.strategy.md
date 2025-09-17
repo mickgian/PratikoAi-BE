@@ -49,15 +49,21 @@ Args:
 
 Returns:
     Dictionary of provider ...
-3) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.27)
+3) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
+   Evidence: Score 0.29, Get the LLM routing strategy from configuration.
+
+Returns:
+    RoutingStrategy: ...
+4) app/core/langgraph/graph.py:708 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
+   Evidence: Score 0.29, Get the optimal LLM provider for the given messages.
+
+Args:
+    messages: List o...
+5) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.27)
    Evidence: Score 0.27, Convenience function to get an optimal LLM provider.
 
 Args:
     messages: List o...
-4) app/services/vector_provider_factory.py:56 — app.services.vector_provider_factory.VectorProviderFactory.get_provider (score 0.27)
-   Evidence: Score 0.27, Get vector provider with fallback logic.
-5) failure-recovery-system/recovery_orchestrator.py:879 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._get_strategy_by_id (score 0.27)
-   Evidence: Score 0.27, Get a strategy by its ID from all available strategies.
 
 Notes:
 - Implementation exists but may not be wired correctly

@@ -49,16 +49,16 @@ Args:
 3) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
    Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
 context enri...
-4) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.43)
+4) app/core/langgraph/graph.py:708 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.45)
+   Evidence: Score 0.45, Get the optimal LLM provider for the given messages.
+
+Args:
+    messages: List o...
+5) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.43)
    Evidence: Score 0.43, Convenience function to get an optimal LLM provider.
 
 Args:
     messages: List o...
-5) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.41)
-   Evidence: Score 0.41, Create an LLM provider instance.
-
-Args:
-    provider_type: Type of provider to c...
 
 Notes:
 - Implementation exists but may not be wired correctly

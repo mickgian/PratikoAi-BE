@@ -54,16 +54,13 @@ Returns:
 
 Returns:
     RoutingStrategy: ...
-4) app/core/langgraph/graph.py:742 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
+4) app/core/langgraph/graph.py:734 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
    Evidence: Score 0.29, Get the optimal LLM provider for the given messages.
 
 Args:
     messages: List o...
-5) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.27)
-   Evidence: Score 0.27, Convenience function to get an optimal LLM provider.
-
-Args:
-    messages: List o...
+5) app/ragsteps/providers/step_48_rag_providers_langgraphagent_get_optimal_provider_select_llm_provider.py:54 — app.ragsteps.providers.step_48_rag_providers_langgraphagent_get_optimal_provider_select_llm_provider.select_optimal_provider (score 0.28)
+   Evidence: Score 0.28, Select optimal LLM provider based on context and constraints (STEP 48).
 
 Notes:
 - Implementation exists but may not be wired correctly

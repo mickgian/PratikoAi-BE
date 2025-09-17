@@ -36,24 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.41
+Status: 🔌  |  Confidence: 0.43
 
 Top candidates:
-1) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.41)
+1) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
+   Evidence: Score 0.43, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
+-...
+2) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.41)
    Evidence: Score 0.41, Calculate confidence scores for each domain
-2) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.41)
+3) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.41)
    Evidence: Score 0.41, Calculate confidence scores for each action
-3) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.37)
+4) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.37)
    Evidence: Score 0.37, Track domain-action classification usage and metrics.
 
 Args:
     domain: The cla...
-4) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
+5) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
    Evidence: Score 0.37, Load all domain-action prompt template combinations
-5) app/services/domain_prompt_templates.py:355 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.37)
-   Evidence: Score 0.37, Get the appropriate prompt for domain-action combination.
-
-RAG STEP 43 — PromptT...
 
 Notes:
 - Implementation exists but may not be wired correctly

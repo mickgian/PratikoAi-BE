@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.40
 
 Top candidates:
-1) app/core/langgraph/graph.py:1052 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
+1) app/core/langgraph/graph.py:1071 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
    Evidence: Score 0.40, Determine if query needs tools/complex workflow based on classification.
 
 Args:

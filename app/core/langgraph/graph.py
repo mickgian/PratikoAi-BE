@@ -661,6 +661,25 @@ class LangGraphAgent:
                     action=action,
                     processing_stage="completed",
                 )
+                # RAG STEP 47 — Insert system message
+                rag_step_log(
+                    step=47,
+                    step_id="RAG.prompting.insert.system.message",
+                    node_label="InsertMsg",
+                    decision="system_message_inserted",
+                    action_taken="insert",
+                    system_message_exists=False,
+                    messages_empty=messages_empty,
+                    original_messages_count=original_count,
+                    messages_count=len(msgs),
+                    insert_position=0,
+                    has_classification=has_classification,
+                    classification_confidence=conf,
+                    domain=domain,
+                    action=action,
+                    system_content_length=len(system_prompt),
+                    processing_stage="completed",
+                )
                 return msgs
 
             # System exists: replace if classification provided, else keep

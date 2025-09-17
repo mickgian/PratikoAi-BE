@@ -45,10 +45,12 @@ Top candidates:
    Evidence: Score 0.29, Add a status message to the execution log.
 3) app/ragsteps/prompting/step_45_rag_prompting_system_message_exists.py:35 — app.ragsteps.prompting.step_45_rag_prompting_system_message_exists.step_45_rag_prompting_system_message_exists (score 0.28)
    Evidence: Score 0.28, function: step_45_rag_prompting_system_message_exists
-4) deployment-orchestration/notification_system.py:785 — deployment-orchestration.notification_system.NotificationManager._generate_message_content (score 0.28)
+4) app/ragsteps/prompting/step_46_rag_prompting_replace_system_message.py:60 — app.ragsteps.prompting.step_46_rag_prompting_replace_system_message.replace_system_message (score 0.28)
+   Evidence: Score 0.28, Replace existing system message with new domain-specific prompt.
+
+This function ...
+5) deployment-orchestration/notification_system.py:785 — deployment-orchestration.notification_system.NotificationManager._generate_message_content (score 0.28)
    Evidence: Score 0.28, Generate title and body for notification.
-5) deployment-orchestration/notification_system.py:109 — deployment-orchestration.notification_system.NotificationMessage (score 0.28)
-   Evidence: Score 0.28, A formatted notification message.
 
 Notes:
 - Weak or missing implementation

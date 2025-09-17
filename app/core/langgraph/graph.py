@@ -683,6 +683,21 @@ class LangGraphAgent:
                     action=action,
                     processing_stage="completed",
                 )
+                # RAG STEP 46 — Replace system message
+                rag_step_log(
+                    step=46,
+                    step_id="RAG.prompting.replace.system.message",
+                    node_label="ReplaceMsg",
+                    decision="system_message_replaced",
+                    action_taken="replace",
+                    original_system_content_length=len(getattr(msgs[0], 'content', '')) if original_count > 0 and hasattr(msgs[0], 'content') else None,
+                    new_system_content_length=len(system_prompt),
+                    has_classification=True,
+                    classification_confidence=conf,
+                    domain=domain,
+                    action=action,
+                    processing_stage="completed",
+                )
                 return msgs
 
             # Keep existing

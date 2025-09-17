@@ -36,26 +36,31 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) deployment-orchestration/notification_system.py:764 — deployment-orchestration.notification_system.NotificationManager._create_notification_message (score 0.29)
+1) app/ragsteps/prompting/step_46_rag_prompting_replace_system_message.py:60 — app.ragsteps.prompting.step_46_rag_prompting_replace_system_message.replace_system_message (score 0.32)
+   Evidence: Score 0.32, Replace existing system message with new domain-specific prompt.
+
+This function ...
+2) app/ragsteps/prompting/step_46_rag_prompting_replace_system_message.py:34 — app.ragsteps.prompting.step_46_rag_prompting_replace_system_message.run (score 0.31)
+   Evidence: Score 0.31, Adapter for RAG STEP 46: Replace system message
+
+This step is triggered when:
+1....
+3) deployment-orchestration/notification_system.py:764 — deployment-orchestration.notification_system.NotificationManager._create_notification_message (score 0.29)
    Evidence: Score 0.29, Create a formatted notification message.
-2) failure-recovery-system/recovery_orchestrator.py:865 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._add_status_message (score 0.29)
+4) failure-recovery-system/recovery_orchestrator.py:865 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._add_status_message (score 0.29)
    Evidence: Score 0.29, Add a status message to the execution log.
-3) app/ragsteps/prompting/step_45_rag_prompting_system_message_exists.py:35 — app.ragsteps.prompting.step_45_rag_prompting_system_message_exists.step_45_rag_prompting_system_message_exists (score 0.28)
+5) app/ragsteps/prompting/step_45_rag_prompting_system_message_exists.py:35 — app.ragsteps.prompting.step_45_rag_prompting_system_message_exists.step_45_rag_prompting_system_message_exists (score 0.28)
    Evidence: Score 0.28, function: step_45_rag_prompting_system_message_exists
-4) deployment-orchestration/notification_system.py:785 — deployment-orchestration.notification_system.NotificationManager._generate_message_content (score 0.28)
-   Evidence: Score 0.28, Generate title and body for notification.
-5) deployment-orchestration/notification_system.py:109 — deployment-orchestration.notification_system.NotificationMessage (score 0.28)
-   Evidence: Score 0.28, A formatted notification message.
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for ReplaceMsg
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

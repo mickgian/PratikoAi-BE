@@ -36,18 +36,17 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.40
+Status: 🔌  |  Confidence: 0.46
 
 Top candidates:
-1) app/core/langgraph/graph.py:1071 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
+1) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.46)
+   Evidence: Score 0.46, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
+-...
+2) app/core/langgraph/graph.py:1103 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
    Evidence: Score 0.40, Determine if query needs tools/complex workflow based on classification.
 
 Args:
 ...
-2) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.40)
-   Evidence: Score 0.40, Get routing strategy and cost limit based on domain-action classification.
-
-Args...
 3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
    Evidence: Score 0.39, Calculate confidence scores for each domain
 4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.39)

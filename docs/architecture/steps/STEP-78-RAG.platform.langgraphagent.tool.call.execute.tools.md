@@ -36,26 +36,32 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.27)
-   Evidence: Score 0.27, method: __init__
-2) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.27)
-   Evidence: Score 0.27, Execute CCNL query (synchronous version).
-3) app/core/langgraph/tools/document_ingest_tool.py:80 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.27)
-   Evidence: Score 0.27, Initialize the document ingest tool.
-4) app/core/langgraph/tools/document_ingest_tool.py:374 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.27)
-   Evidence: Score 0.27, Synchronous wrapper (not recommended, use async version).
-5) app/core/langgraph/tools/ccnl_tool.py:90 — app.core.langgraph.tools.ccnl_tool.CCNLTool.search_service (score 0.27)
-   Evidence: Score 0.27, method: search_service
+1) app/core/langgraph/graph.py:81 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.31)
+   Evidence: Score 0.31, Initialize the LangGraph Agent with necessary components.
+2) app/core/langgraph/graph.py:936 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.30)
+   Evidence: Score 0.30, Determine if the agent should continue or end based on the last message.
+
+Args:
+...
+3) app/core/langgraph/graph.py:1326 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.30)
+   Evidence: Score 0.30, method: __process_messages
+4) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
+   Evidence: Score 0.29, Get the LLM routing strategy from configuration.
+
+Returns:
+    RoutingStrategy: ...
+5) app/core/langgraph/graph.py:414 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.29)
+   Evidence: Score 0.29, Select the appropriate system prompt (RAG STEPs 41/42/44) with full test-require...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for ExecuteTools
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

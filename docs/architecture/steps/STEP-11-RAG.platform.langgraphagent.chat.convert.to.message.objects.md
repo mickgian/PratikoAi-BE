@@ -36,41 +36,32 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/utils/graph.py:10 — app.utils.graph.dump_messages (score 0.28)
-   Evidence: Score 0.28, Dump the messages to a list of dictionaries.
+1) app/core/langgraph/graph.py:1326 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.32)
+   Evidence: Score 0.32, method: __process_messages
+2) app/core/langgraph/graph.py:607 — app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt (score 0.30)
+   Evidence: Score 0.30, Ensure system message presence (RAG STEP 45 — CheckSysMsg) with backward-compati...
+3) app/core/langgraph/graph.py:81 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
+   Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
+4) app/core/langgraph/graph.py:936 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.29)
+   Evidence: Score 0.29, Determine if the agent should continue or end based on the last message.
 
 Args:
-    messages (list[Message])...
-2) app/utils/graph.py:22 — app.utils.graph.prepare_messages (score 0.28)
-   Evidence: Score 0.28, Prepare the messages for the LLM.
-
-Args:
-    messages (list[Message]): The messa...
-3) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.27)
-   Evidence: Score 0.27, Validate the message content.
-
-Args:
-    v: The content to validate
+...
+5) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
+   Evidence: Score 0.29, Get the LLM routing strategy from configuration.
 
 Returns:
-  ...
-4) app/core/llm/providers/anthropic_provider.py:86 — app.core.llm.providers.anthropic_provider.AnthropicProvider._convert_messages_to_anthropic (score 0.27)
-   Evidence: Score 0.27, Convert messages to Anthropic format.
-
-Args:
-    messages: List of Message objec...
-5) app/core/langgraph/graph.py:31 — app.core.langgraph.graph.step_45_rag_prompting_system_message_exists (score 0.26)
-   Evidence: Score 0.26, function: step_45_rag_prompting_system_message_exists
+    RoutingStrategy: ...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for ConvertMessages
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

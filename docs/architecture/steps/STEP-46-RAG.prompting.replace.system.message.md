@@ -39,15 +39,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/ragsteps/prompting/step_46_rag_prompting_replace_system_message.py:60 — app.ragsteps.prompting.step_46_rag_prompting_replace_system_message.replace_system_message (score 0.32)
-   Evidence: Score 0.32, Replace existing system message with new domain-specific prompt.
-
-This function ...
-2) app/ragsteps/prompting/step_46_rag_prompting_replace_system_message.py:34 — app.ragsteps.prompting.step_46_rag_prompting_replace_system_message.run (score 0.31)
-   Evidence: Score 0.31, Adapter for RAG STEP 46: Replace system message
-
-This step is triggered when:
-1....
+1) app/ragsteps/prompting/step_46_rag_prompting_replace_system_message.py:31 — app.ragsteps.prompting.step_46_rag_prompting_replace_system_message.step_46_rag_prompting_replace_system_message (score 0.32)
+   Evidence: Score 0.32, function: step_46_rag_prompting_replace_system_message
+2) app/ragsteps/prompting/step_46_rag_prompting_replace_system_message.py:17 — app.ragsteps.prompting.step_46_rag_prompting_replace_system_message.run (score 0.31)
+   Evidence: Score 0.31, function: run
 3) deployment-orchestration/notification_system.py:764 — deployment-orchestration.notification_system.NotificationManager._create_notification_message (score 0.29)
    Evidence: Score 0.29, Create a formatted notification message.
 4) failure-recovery-system/recovery_orchestrator.py:865 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._add_status_message (score 0.29)

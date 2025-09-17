@@ -42,7 +42,7 @@ Top candidates:
 1) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.46)
    Evidence: Score 0.46, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
 -...
-2) app/core/langgraph/graph.py:1103 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
+2) app/core/langgraph/graph.py:1180 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
    Evidence: Score 0.40, Determine if query needs tools/complex workflow based on classification.
 
 Args:

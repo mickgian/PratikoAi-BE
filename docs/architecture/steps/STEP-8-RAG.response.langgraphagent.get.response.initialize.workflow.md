@@ -53,7 +53,7 @@ Returns:
 
 Args:
     messages: List o...
-5) app/core/langgraph/graph.py:1103 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.32)
+5) app/core/langgraph/graph.py:1180 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.32)
    Evidence: Score 0.32, Determine if query needs tools/complex workflow based on classification.
 
 Args:

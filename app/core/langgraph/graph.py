@@ -794,6 +794,31 @@ class LangGraphAgent:
                     processing_stage="completed",
                 )
 
+                # RAG STEP 50 — Routing strategy decision
+                strategy_to_next_step = {
+                    RoutingStrategy.COST_OPTIMIZED: ("CheapProvider", "routing_to_cost_optimized"),
+                    RoutingStrategy.QUALITY_FIRST: ("BestProvider", "routing_to_quality_first"),
+                    RoutingStrategy.BALANCED: ("BalanceProvider", "routing_to_balanced"),
+                    RoutingStrategy.FAILOVER: ("PrimaryProvider", "routing_to_failover"),
+                }
+                next_step, decision = strategy_to_next_step.get(strategy, ("BalanceProvider", "routing_fallback_to_balanced"))
+
+                rag_step_log(
+                    step=50,
+                    step_id="RAG.platform.routing.strategy",
+                    node_label="StrategyType",
+                    decision=decision,
+                    routing_strategy=strategy.value,
+                    next_step=next_step,
+                    max_cost_eur=max_cost,
+                    preferred_provider=preferred_provider,
+                    provider_type=provider.provider_type.value,
+                    model=provider.model,
+                    messages_count=len(messages),
+                    messages_empty=len(messages) == 0,
+                    processing_stage="completed",
+                )
+
                 # RAG STEP 48 — Select LLM provider
                 rag_step_log(
                     step=48,
@@ -835,6 +860,17 @@ class LangGraphAgent:
                     step_id="RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy",
                     node_label="RouteStrategy",
                     decision="routing_strategy_failed",
+                    error=str(e),
+                    routing_strategy=getattr(strategy, 'value', None) if 'strategy' in locals() else None,
+                    processing_stage="error",
+                )
+
+                # RAG STEP 50 — Error during routing decision
+                rag_step_log(
+                    step=50,
+                    step_id="RAG.platform.routing.strategy",
+                    node_label="StrategyType",
+                    decision="routing_decision_failed",
                     error=str(e),
                     routing_strategy=getattr(strategy, 'value', None) if 'strategy' in locals() else None,
                     processing_stage="error",

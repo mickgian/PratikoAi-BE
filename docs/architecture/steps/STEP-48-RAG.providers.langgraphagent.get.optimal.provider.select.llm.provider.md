@@ -50,9 +50,10 @@ Top candidates:
 
 Args:
     provider...
-5) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
-   Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
-context enri...
+5) app/ragsteps/facts/step_49_rag_facts_llmfactory_get_optimal_provider_apply_routing_strategy.py:48 — app.ragsteps.facts.step_49_rag_facts_llmfactory_get_optimal_provider_apply_routing_strategy.apply_routing_strategy (score 0.46)
+   Evidence: Score 0.46, Apply routing strategy to get optimal LLM provider.
+
+This function implements RA...
 
 Notes:
 - Implementation exists but may not be wired correctly

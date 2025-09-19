@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ReplaceMsg` (Replace system message).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app.orchestrators.prompting.step_46__replace_msg`, `app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Orchestrator function replaces existing system message with domain-specific prompt when classification is available
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,13 +19,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests (`tests/test_rag_step_46_replace_system_message.py`)
+- [x] Integration tests (parity tests proving identical behavior)
+- [x] Implementation changes (orchestrator function implemented and wired)
+- [x] Observability: add structured log line
   `RAG STEP 46 (RAG.prompting.replace.system.message): Replace system message | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config if needed (none required)
+- [x] Rollout plan (direct deployment - no breaking changes)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

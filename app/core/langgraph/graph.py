@@ -441,25 +441,15 @@ class LangGraphAgent:
                     domain=None,
                     action=None,
                 )
-                # STEP 44: default (no classification)
-                prompt = SYSTEM_PROMPT
-                rag_step_log(
-                    step=44,
-                    step_id="RAG.prompting.use.default.system.prompt",
-                    node_label="DefaultSysPrompt",
-                    trigger_reason="no_classification",
-                    prompt_type="default",
-                    classification_available=False,
-                    classification_confidence=None,
-                    confidence_threshold=threshold,
-                    domain=None,
-                    action=None,
-                    user_query=user_query,
-                    prompt_length=len(prompt) if prompt else 0,
-                    processing_stage="completed",
-                    reasons=["no_classification_available"],
-                    confidence=1.0,
-                    decision="no_classification",
+                # STEP 44: Use orchestrator for default (no classification)
+                from app.orchestrators.prompting import step_44__default_sys_prompt
+                prompt = step_44__default_sys_prompt(
+                    messages=messages,
+                    ctx={
+                        'classification': None,
+                        'user_query': user_query,
+                        'trigger_reason': 'no_classification'
+                    }
                 )
                 # STEP 41: final selection log (add required flags)
                 rag_step_log(
@@ -494,25 +484,15 @@ class LangGraphAgent:
             )
 
             if not meets:
-                # STEP 44: default (low confidence)
-                prompt = SYSTEM_PROMPT
-                rag_step_log(
-                    step=44,
-                    step_id="RAG.prompting.use.default.system.prompt",
-                    node_label="DefaultSysPrompt",
-                    trigger_reason="low_confidence",
-                    prompt_type="default",
-                    classification_available=True,
-                    classification_confidence=conf,
-                    confidence_threshold=threshold,
-                    domain=domain,
-                    action=action,
-                    user_query=user_query,
-                    prompt_length=len(prompt) if prompt else 0,
-                    processing_stage="completed",
-                    reasons=[f"confidence_{conf}_below_threshold_{threshold}"],
-                    confidence=conf,
-                    decision="low_confidence",
+                # STEP 44: Use orchestrator for default (low confidence)
+                from app.orchestrators.prompting import step_44__default_sys_prompt
+                prompt = step_44__default_sys_prompt(
+                    messages=messages,
+                    ctx={
+                        'classification': classification,
+                        'user_query': user_query,
+                        'trigger_reason': 'low_confidence'
+                    }
                 )
                 # STEP 41: final selection log (include expected flags)
                 rag_step_log(
@@ -626,109 +606,46 @@ class LangGraphAgent:
         messages_empty = (original_count == 0)
         system_exists = bool(msgs and getattr(msgs[0], "role", None) == "system")
 
-        # STEP 45 timer — **positional only** (no kwargs)
-        with rag_step_timer(
-            45,
-            "RAG.prompting.system.message.exists",
-            "CheckSysMsg",
-        ):
-            if not system_exists:
-                # Insert at position 0
-                from app.schemas import Message as _Msg
-                msgs.insert(0, _Msg(role="system", content=system_prompt))
-                rag_step_log(
-                    step=45,
-                    step_id="RAG.prompting.system.message.exists",
-                    node_label="CheckSysMsg",
-                    decision="system_message_not_exists",
-                    action_taken="insert",
-                    system_message_exists=False,
-                    messages_empty=messages_empty,                 # <-- added
-                    original_messages_count=original_count,
-                    messages_count=len(msgs),
-                    insert_position=0,
-                    has_classification=has_classification,
-                    classification_confidence=conf,
-                    domain=domain,
-                    action=action,
-                    processing_stage="completed",
-                )
-                # RAG STEP 47 — Insert system message
-                rag_step_log(
-                    step=47,
-                    step_id="RAG.prompting.insert.system.message",
-                    node_label="InsertMsg",
-                    decision="system_message_inserted",
-                    action_taken="insert",
-                    system_message_exists=False,
-                    messages_empty=messages_empty,
-                    original_messages_count=original_count,
-                    messages_count=len(msgs),
-                    insert_position=0,
-                    has_classification=has_classification,
-                    classification_confidence=conf,
-                    domain=domain,
-                    action=action,
-                    system_content_length=len(system_prompt),
-                    processing_stage="completed",
-                )
-                return msgs
+        # Use RAG STEP 45 orchestrator for system message existence decision
+        from app.orchestrators.prompting import step_45__check_sys_msg
 
-            # System exists: replace if classification provided, else keep
-            if has_classification:
-                msgs[0] = type(msgs[0])(role="system", content=system_prompt)
-                rag_step_log(
-                    step=45,
-                    step_id="RAG.prompting.system.message.exists",
-                    node_label="CheckSysMsg",
-                    decision="system_message_exists",
-                    action_taken="replace",
-                    system_message_exists=True,
-                    messages_empty=messages_empty,                 # <-- added
-                    original_messages_count=original_count,
-                    messages_count=len(msgs),
-                    insert_position=None,
-                    has_classification=True,
-                    classification_confidence=conf,
-                    domain=domain,
-                    action=action,
-                    processing_stage="completed",
-                )
-                # RAG STEP 46 — Replace system message
-                rag_step_log(
-                    step=46,
-                    step_id="RAG.prompting.replace.system.message",
-                    node_label="ReplaceMsg",
-                    decision="system_message_replaced",
-                    action_taken="replace",
-                    original_system_content_length=len(getattr(msgs[0], 'content', '')) if original_count > 0 and hasattr(msgs[0], 'content') else None,
-                    new_system_content_length=len(system_prompt),
-                    has_classification=True,
-                    classification_confidence=conf,
-                    domain=domain,
-                    action=action,
-                    processing_stage="completed",
-                )
-                return msgs
+        step_45_decision = step_45__check_sys_msg(
+            messages=msgs,
+            ctx={
+                'classification': resolved_class,
+                'system_prompt': system_prompt
+            }
+        )
 
-            # Keep existing
-            rag_step_log(
-                step=45,
-                step_id="RAG.prompting.system.message.exists",
-                node_label="CheckSysMsg",
-                decision="keep",
-                action_taken="keep",
-                system_message_exists=True,
-                messages_empty=messages_empty,                     # <-- added
-                original_messages_count=original_count,
-                messages_count=len(msgs),
-                insert_position=None,
-                has_classification=False,
-                classification_confidence=None,
-                domain=None,
-                action=None,
-                processing_stage="completed",
+        # Route based on Step 45 decision
+        if step_45_decision['next_step'] == 47:
+            # Route to Step 47 (InsertMsg)
+            from app.orchestrators.prompting import step_47__insert_msg
+
+            msgs = step_47__insert_msg(
+                messages=msgs,
+                ctx={
+                    'system_prompt': system_prompt,
+                    'classification': resolved_class
+                }
             )
+            return msgs
+
+        elif step_45_decision['next_step'] == 46:
+            # Route to Step 46 (ReplaceMsg)
+            from app.orchestrators.prompting import step_46__replace_msg
+
+            msgs = step_46__replace_msg(
+                messages=msgs,
+                ctx={
+                    'new_system_prompt': system_prompt,
+                    'classification': resolved_class
+                }
+            )
+            return msgs
+
+        else:
+            # Keep existing system message (action == "keep")
             return msgs
 
     def _get_optimal_provider(self, messages: List[Message]) -> LLMProvider:

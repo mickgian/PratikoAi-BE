@@ -8,29 +8,12 @@ Each step should be audited and its documentation filled during the conformance 
 
 **Implementation Status Overview:**
 - ✅ Implemented: 0 steps
-- 🟡 Partial: 2 steps
-- 🔌 Not wired: 82 steps
-- ❌ Missing: 51 steps
+- 🟡 Partial: 0 steps
+- 🔌 Not wired: 1 steps
+- ❌ Missing: 0 steps
 
 **By Category:**
-- **cache**: 0/8 implemented
-- **ccnl**: 0/2 implemented
-- **classify**: 0/9 implemented
-- **docs**: 0/11 implemented
-- **facts**: 0/8 implemented
-- **feedback**: 0/6 implemented
-- **golden**: 0/13 implemented
-- **kb**: 0/4 implemented
-- **llm**: 0/3 implemented
-- **metrics**: 0/5 implemented
-- **platform**: 0/24 implemented
-- **preflight**: 0/10 implemented
-- **privacy**: 0/3 implemented
-- **prompting**: 0/6 implemented
-- **providers**: 0/12 implemented
-- **response**: 0/6 implemented
-- **routing**: 0/1 implemented
-- **streaming**: 0/4 implemented
+- **prompting**: 0/1 implemented
 ## Step Registry
 
 | Step | ID | Node | Type | Category | Owner | Doc |

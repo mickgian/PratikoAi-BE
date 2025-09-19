@@ -53,17 +53,92 @@ def step_3__valid_check(*, messages: Optional[List[Any]] = None, ctx: Optional[D
     ID: RAG.platform.request.valid
     Type: decision | Category: platform | Node: ValidCheck
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Validates if the incoming request meets basic requirements for RAG processing.
+    This orchestrator coordinates request validation checking all required fields.
     """
+    from app.core.logging import logger
+    from datetime import datetime
+
     with rag_step_timer(3, 'RAG.platform.request.valid', 'ValidCheck', stage="start"):
-        rag_step_log(step=3, step_id='RAG.platform.request.valid', node_label='ValidCheck',
-                     category='platform', type='decision', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=3, step_id='RAG.platform.request.valid', node_label='ValidCheck',
-                     processing_stage="completed")
-        return result
+        # Extract context parameters
+        request_body = kwargs.get('request_body') or (ctx or {}).get('request_body')
+        content_type = kwargs.get('content_type') or (ctx or {}).get('content_type', '')
+        method = kwargs.get('method') or (ctx or {}).get('method', '')
+        authenticated = kwargs.get('authenticated') or (ctx or {}).get('authenticated', False)
+
+        # Initialize validation data
+        validation_errors = []
+        is_valid = True
+        request_type = 'unknown'
+
+        # Validate request body exists and is not empty
+        if not request_body or not isinstance(request_body, dict):
+            validation_errors.append('Missing or invalid request body')
+            is_valid = False
+        else:
+            # Validate required fields in request body
+            if 'query' not in request_body or not request_body.get('query'):
+                validation_errors.append('Missing required field: query')
+                is_valid = False
+            else:
+                request_type = 'chat_query'
+
+        # Validate content type
+        if content_type.lower() not in ['application/json', '']:
+            validation_errors.append(f'Invalid content type: {content_type}')
+            is_valid = False
+
+        # Validate HTTP method
+        if method.upper() not in ['POST', '']:
+            validation_errors.append(f'Invalid HTTP method: {method}')
+            is_valid = False
+
+        # Validate authentication
+        if not authenticated:
+            validation_errors.append('Request not authenticated')
+            is_valid = False
+
+        # Create validation result
+        validation_data = {
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'is_valid': is_valid,
+            'validation_errors': validation_errors,
+            'request_type': request_type
+        }
+
+        # Log validation result
+        log_level = "info" if is_valid else "warning"
+        log_message = f"Request validation {'completed' if is_valid else 'failed'}"
+
+        extra_data = {
+            'validation_event': 'request_validated',
+            'is_valid': is_valid,
+            'validation_errors': validation_errors,
+            'request_type': request_type,
+            'error_count': len(validation_errors)
+        }
+
+        if log_level == "info":
+            logger.info(log_message, extra=extra_data)
+        else:
+            logger.warning(log_message, extra=extra_data)
+
+        # RAG step logging
+        rag_step_log(
+            step=3,
+            step_id='RAG.platform.request.valid',
+            node_label='ValidCheck',
+            category='platform',
+            type='decision',
+            validation_event='request_validated',
+            is_valid=is_valid,
+            validation_errors=validation_errors,
+            request_type=request_type,
+            error_count=len(validation_errors),
+            processing_stage="completed"
+        )
+
+        return validation_data
 
 def step_5__error400(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
@@ -89,17 +164,97 @@ def step_9__piicheck(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict
     ID: RAG.platform.pii.detected
     Type: decision | Category: platform | Node: PIICheck
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Detects if personally identifiable information is present in the request.
+    This orchestrator coordinates PII detection analysis and confidence scoring.
     """
+    from app.core.logging import logger
+    from datetime import datetime
+
     with rag_step_timer(9, 'RAG.platform.pii.detected', 'PIICheck', stage="start"):
-        rag_step_log(step=9, step_id='RAG.platform.pii.detected', node_label='PIICheck',
-                     category='platform', type='decision', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=9, step_id='RAG.platform.pii.detected', node_label='PIICheck',
-                     processing_stage="completed")
-        return result
+        # Extract context parameters
+        user_query = kwargs.get('user_query') or (ctx or {}).get('user_query', '')
+        pii_analysis_result = kwargs.get('pii_analysis_result') or (ctx or {}).get('pii_analysis_result', {})
+        pii_threshold = kwargs.get('pii_threshold') or (ctx or {}).get('pii_threshold', 0.8)
+
+        # For backward compatibility, check if PII was pre-detected
+        pre_detected = kwargs.get('pii_detected') or (ctx or {}).get('pii_detected')
+        pre_types = kwargs.get('pii_types') or (ctx or {}).get('pii_types', [])
+
+        # Initialize PII detection data
+        pii_detected = False
+        pii_count = 0
+        pii_types = []
+        detection_confidence = 0.0
+
+        if pre_detected is not None:
+            # Use pre-computed detection results
+            pii_detected = bool(pre_detected)
+            pii_types = list(pre_types)
+            pii_count = len(pii_types)
+            detection_confidence = 1.0 if pii_detected else 0.0
+        elif pii_analysis_result:
+            # Analyze PII detection results
+            matches = pii_analysis_result.get('matches', [])
+
+            # Filter matches by confidence threshold
+            high_confidence_matches = [
+                match for match in matches
+                if match.get('confidence', 0) >= pii_threshold
+            ]
+
+            if high_confidence_matches:
+                pii_detected = True
+                pii_count = len(high_confidence_matches)
+                pii_types = [match.get('type') for match in high_confidence_matches]
+                detection_confidence = max(match.get('confidence', 0) for match in high_confidence_matches)
+            else:
+                # Still report highest confidence even if below threshold
+                if matches:
+                    detection_confidence = max(match.get('confidence', 0) for match in matches)
+
+        # Create PII detection result
+        pii_data = {
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'pii_detected': pii_detected,
+            'pii_count': pii_count,
+            'pii_types': pii_types,
+            'detection_confidence': detection_confidence,
+            'query_length': len(user_query) if user_query else 0
+        }
+
+        # Log PII detection result
+        log_message = f"PII detection completed: {'detected' if pii_detected else 'not detected'}"
+
+        extra_data = {
+            'pii_event': 'pii_detected',
+            'pii_detected': pii_detected,
+            'pii_count': pii_count,
+            'pii_types': pii_types,
+            'detection_confidence': detection_confidence,
+            'threshold_used': pii_threshold,
+            'query_length': len(user_query) if user_query else 0
+        }
+
+        logger.info(log_message, extra=extra_data)
+
+        # RAG step logging
+        rag_step_log(
+            step=9,
+            step_id='RAG.platform.pii.detected',
+            node_label='PIICheck',
+            category='platform',
+            type='decision',
+            pii_event='pii_detected',
+            pii_detected=pii_detected,
+            pii_count=pii_count,
+            pii_types=pii_types,
+            detection_confidence=detection_confidence,
+            threshold_used=pii_threshold,
+            query_length=len(user_query) if user_query else 0,
+            processing_stage="completed"
+        )
+
+        return pii_data
 
 def step_10__log_pii(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
@@ -209,17 +364,90 @@ def step_13__message_exists(*, messages: Optional[List[Any]] = None, ctx: Option
     ID: RAG.platform.user.message.exists
     Type: decision | Category: platform | Node: MessageExists
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Checks if a user message exists in the request for processing.
+    This orchestrator coordinates message analysis and user content detection.
     """
+    from app.core.logging import logger
+    from datetime import datetime
+
     with rag_step_timer(13, 'RAG.platform.user.message.exists', 'MessageExists', stage="start"):
-        rag_step_log(step=13, step_id='RAG.platform.user.message.exists', node_label='MessageExists',
-                     category='platform', type='decision', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=13, step_id='RAG.platform.user.message.exists', node_label='MessageExists',
-                     processing_stage="completed")
-        return result
+        # Extract context parameters
+        message_list = messages or kwargs.get('messages') or (ctx or {}).get('messages', [])
+        user_query = kwargs.get('user_query') or (ctx or {}).get('user_query', '')
+
+        # Initialize message analysis data
+        message_exists = False
+        user_message_count = 0
+        total_message_count = 0
+        user_message_content = ''
+
+        if message_list:
+            # Analyze message list
+            total_message_count = len(message_list)
+            user_messages = []
+
+            for msg in message_list:
+                if isinstance(msg, dict) and msg.get('role', '').lower() == 'user' and msg.get('content'):
+                    user_messages.append(msg['content'])
+                    user_message_count += 1
+
+            if user_messages:
+                message_exists = True
+                user_message_content = user_messages[-1]  # Most recent user message
+
+        elif user_query:
+            # Fallback to user_query if no messages
+            message_exists = True
+            user_message_count = 1  # Fallback count
+            user_message_content = user_query
+
+        # Create message existence result
+        message_data = {
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'message_exists': message_exists,
+            'user_message_count': user_message_count,
+            'total_message_count': total_message_count,
+            'user_message_content': user_message_content
+        }
+
+        # Log message analysis result
+        log_level = "info" if message_exists else "warning"
+        log_message = f"User message check completed: {'found' if message_exists else 'not found'}"
+
+        if not message_exists:
+            log_message = "No user message found in request"
+
+        extra_data = {
+            'message_event': 'user_message_found' if message_exists else 'user_message_missing',
+            'message_exists': message_exists,
+            'user_message_count': user_message_count,
+            'total_message_count': total_message_count,
+            'has_user_query_fallback': bool(user_query),
+            'content_length': len(user_message_content)
+        }
+
+        if log_level == "info":
+            logger.info(log_message, extra=extra_data)
+        else:
+            logger.warning(log_message, extra=extra_data)
+
+        # RAG step logging
+        rag_step_log(
+            step=13,
+            step_id='RAG.platform.user.message.exists',
+            node_label='MessageExists',
+            category='platform',
+            type='decision',
+            message_event='user_message_found' if message_exists else 'user_message_missing',
+            message_exists=message_exists,
+            user_message_count=user_message_count,
+            total_message_count=total_message_count,
+            has_user_query_fallback=bool(user_query),
+            content_length=len(user_message_content),
+            processing_stage="completed"
+        )
+
+        return message_data
 
 def step_38__use_rule_based(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

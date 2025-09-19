@@ -51,7 +51,7 @@ class TestRAGStep44DefaultSystemPrompt:
         )
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch('app.orchestrators.prompting.rag_step_log')
     @patch('app.core.config.settings.CLASSIFICATION_CONFIDENCE_THRESHOLD', 0.6)
     async def test_step_44_no_classification_uses_default_prompt(
         self,
@@ -70,12 +70,12 @@ class TestRAGStep44DefaultSystemPrompt:
         # Verify STEP 44 structured logging was called
         mock_log.assert_called()
         
-        # Find STEP 44 log calls
+        # Find STEP 44 completed log calls (the ones with detailed fields)
         step_44_logs = [
             call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 44
+            if len(call[1]) > 3 and call[1].get('step') == 44 and call[1].get('processing_stage') == 'completed'
         ]
-        
+
         assert len(step_44_logs) > 0
         log_call = step_44_logs[0]
         assert log_call[1]['step'] == 44
@@ -86,7 +86,7 @@ class TestRAGStep44DefaultSystemPrompt:
         assert log_call[1]['classification_available'] is False
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch('app.orchestrators.prompting.rag_step_log')
     @patch('app.core.config.settings.CLASSIFICATION_CONFIDENCE_THRESHOLD', 0.6)
     async def test_step_44_low_confidence_uses_default_prompt(
         self,
@@ -105,7 +105,7 @@ class TestRAGStep44DefaultSystemPrompt:
         # Verify STEP 44 structured logging was called
         step_44_logs = [
             call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 44
+            if len(call[1]) > 3 and call[1].get('step') == 44 and call[1].get('processing_stage') == 'completed'
         ]
         
         assert len(step_44_logs) > 0
@@ -121,7 +121,7 @@ class TestRAGStep44DefaultSystemPrompt:
         assert log_call[1]['domain'] == Domain.TAX.value
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch('app.orchestrators.prompting.rag_step_log')
     @patch('app.core.config.settings.CLASSIFICATION_CONFIDENCE_THRESHOLD', 0.8)  # Higher threshold
     async def test_step_44_different_threshold_configuration(
         self,
@@ -148,7 +148,7 @@ class TestRAGStep44DefaultSystemPrompt:
         # Verify STEP 44 logging shows correct threshold comparison
         step_44_logs = [
             call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 44
+            if len(call[1]) > 3 and call[1].get('step') == 44 and call[1].get('processing_stage') == 'completed'
         ]
         
         assert len(step_44_logs) > 0
@@ -158,7 +158,7 @@ class TestRAGStep44DefaultSystemPrompt:
         assert log_call[1]['trigger_reason'] == "low_confidence"
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch('app.orchestrators.prompting.rag_step_log')
     async def test_step_44_prompt_content_validation(
         self,
         mock_log,
@@ -178,7 +178,7 @@ class TestRAGStep44DefaultSystemPrompt:
         # Verify STEP 44 logging includes prompt characteristics
         step_44_logs = [
             call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 44
+            if len(call[1]) > 3 and call[1].get('step') == 44 and call[1].get('processing_stage') == 'completed'
         ]
         
         assert len(step_44_logs) > 0
@@ -188,7 +188,7 @@ class TestRAGStep44DefaultSystemPrompt:
         assert isinstance(log_call[1]['prompt_length'], int)
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch('app.orchestrators.prompting.rag_step_log')
     async def test_step_44_edge_case_exactly_at_threshold(
         self,
         mock_log,
@@ -215,15 +215,15 @@ class TestRAGStep44DefaultSystemPrompt:
         # Should NOT have STEP 44 logging (should have STEP 43 instead)
         step_44_logs = [
             call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 44
+            if len(call[1]) > 3 and call[1].get('step') == 44 and call[1].get('processing_stage') == 'completed'
         ]
         
         # No STEP 44 logs because we used domain prompt
         assert len(step_44_logs) == 0
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
-    @patch('app.core.langgraph.graph.rag_step_timer')
+    @patch('app.orchestrators.prompting.rag_step_log')
+    @patch('app.orchestrators.prompting.rag_step_timer')
     async def test_step_44_performance_tracking_with_timer(
         self,
         mock_timer,
@@ -246,7 +246,7 @@ class TestRAGStep44DefaultSystemPrompt:
         # Verify STEP 44 timer was used
         step_44_logs = [
             call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 44
+            if len(call[1]) > 3 and call[1].get('step') == 44 and call[1].get('processing_stage') == 'completed'
         ]
         
         assert len(step_44_logs) > 0
@@ -256,7 +256,7 @@ class TestRAGStep44DefaultSystemPrompt:
         assert log_call[1]['processing_stage'] == "completed"
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch('app.orchestrators.prompting.rag_step_log')
     async def test_step_44_comprehensive_logging_format(
         self,
         mock_log,
@@ -271,7 +271,7 @@ class TestRAGStep44DefaultSystemPrompt:
         # Verify all required STEP 44 logging fields
         step_44_logs = [
             call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 44
+            if len(call[1]) > 3 and call[1].get('step') == 44 and call[1].get('processing_stage') == 'completed'
         ]
         
         assert len(step_44_logs) > 0
@@ -294,7 +294,7 @@ class TestRAGStep44DefaultSystemPrompt:
         assert log_call[1]['user_query'] == "Can you help me with general questions?"
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch('app.orchestrators.prompting.rag_step_log')
     async def test_step_44_different_trigger_scenarios(
         self,
         mock_log,
@@ -335,7 +335,7 @@ class TestRAGStep44DefaultSystemPrompt:
             # Verify STEP 44 logging with correct reason
             step_44_logs = [
                 call for call in mock_log.call_args_list
-                if len(call[1]) > 3 and call[1].get('step') == 44
+                if len(call[1]) > 3 and call[1].get('step') == 44 and call[1].get('processing_stage') == 'completed'
             ]
             
             assert len(step_44_logs) > 0, f"No STEP 44 logging for scenario {expected_reason}"
@@ -343,7 +343,7 @@ class TestRAGStep44DefaultSystemPrompt:
             assert log_call[1]['trigger_reason'] == expected_reason
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch('app.orchestrators.prompting.rag_step_log')
     async def test_step_44_empty_messages_handled(
         self,
         mock_log,
@@ -359,7 +359,7 @@ class TestRAGStep44DefaultSystemPrompt:
         # Verify STEP 44 logging handles empty messages
         step_44_logs = [
             call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 44
+            if len(call[1]) > 3 and call[1].get('step') == 44 and call[1].get('processing_stage') == 'completed'
         ]
         
         assert len(step_44_logs) > 0
@@ -367,7 +367,7 @@ class TestRAGStep44DefaultSystemPrompt:
         assert log_call[1]['user_query'] == ""  # Should handle empty query gracefully
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch('app.orchestrators.prompting.rag_step_log')
     async def test_step_44_various_domains_with_low_confidence(
         self,
         mock_log,
@@ -402,7 +402,7 @@ class TestRAGStep44DefaultSystemPrompt:
             # Verify STEP 44 logging includes domain info
             step_44_logs = [
                 call for call in mock_log.call_args_list
-                if len(call[1]) > 3 and call[1].get('step') == 44
+                if len(call[1]) > 3 and call[1].get('step') == 44 and call[1].get('processing_stage') == 'completed'
             ]
             
             assert len(step_44_logs) > 0, f"No STEP 44 logging for domain {domain.value}"

@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `InsertMsg` (Insert system message).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app.orchestrators.prompting.step_47__insert_msg`, `app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Orchestrator function inserts system message at position 0 when no system message exists and system prompt is provided
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,13 +19,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests (`tests/test_rag_step_47_insert_system_message.py`)
+- [x] Integration tests (parity tests proving identical behavior)
+- [x] Implementation changes (orchestrator function implemented and wired)
+- [x] Observability: add structured log line
   `RAG STEP 47 (RAG.prompting.insert.system.message): Insert system message | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config if needed (none required)
+- [x] Rollout plan (direct deployment - no breaking changes)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

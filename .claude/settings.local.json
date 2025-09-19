@@ -20,7 +20,9 @@
       "Bash(rm:*)",
       "Bash(pytest:*)",
       "Bash(uv run:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)"
     ],
     "deny": []
   }

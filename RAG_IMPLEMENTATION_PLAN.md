@@ -25,11 +25,11 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 ## Phase 2: Classification & Metrics (Days 3-4)
 **Medium complexity - Service integration**
 
-### Batch 4: Classification Flow (31, 32, 33, 42)
-- **Step 31**: Rule-based classification - Call DomainActionClassifier
-- **Step 32**: Calculate scores - Keyword matching
-- **Step 33**: Confidence check - Threshold comparison
-- **Step 42**: Classification confidence - Check existence & threshold
+### Batch 4: Classification Flow (31, 32, 33, 42) ✅ COMPLETED
+- **Step 31**: Rule-based classification - Call DomainActionClassifier ✅
+- **Step 32**: Calculate scores - Italian keyword matching ✅
+- **Step 33**: Confidence check - Threshold comparison ✅
+- **Step 42**: Classification confidence - Check existence & threshold ✅
 
 ### Batch 5: Metrics & Tracking (34, 74, 111)
 - **Step 34**: Track classification metrics - Metrics service call
@@ -118,12 +118,18 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 - Batch 1: Prompting Steps (46, 47, 44, 45) - Full TDD implementation with comprehensive tests
 - Batch 2: Basic Platform Steps (10, 103, 110) - Real orchestrator logic with audit trails
 - Batch 3: Simple Decisions (3, 9, 13) - Advanced decision logic with validation, PII detection, and message analysis
+- Batch 4: Classification Flow (31, 32, 33, 42) - Complete classification pipeline with Italian domain/action detection
+  - ✅ **Step 31**: Async rule-based classification with DomainActionClassifier integration (10 tests)
+  - ✅ **Step 32**: Italian keyword scoring with confidence detection (10 tests)
+  - ✅ **Step 33**: Configurable confidence threshold validation (11 tests)
+  - ✅ **Step 42**: Classification existence + 0.6 confidence check (11 tests)
+  - ✅ **Total**: 42 comprehensive tests, 100% pass rate, full async orchestration
 
-**Next Target:** Batch 4: Classification Flow (31, 32, 33, 42)
-1. Pick GitHub issues for Steps 31, 32, 33, 42
-2. Implement domain/action classification orchestrators
-3. Integrate with DomainActionClassifier service
-4. Build confidence scoring and threshold logic
+**Next Target:** Batch 5: Metrics & Tracking (34, 74, 111)
+1. Pick GitHub issues for Steps 34, 74, 111
+2. Implement metrics collection orchestrators
+3. Integrate with usage tracking services
+4. Build comprehensive analytics and monitoring
 
 ## GitHub Issues Reference
 
@@ -152,9 +158,9 @@ Each issue contains:
   - ✅ **Batch 1**: Steps 44, 45, 46, 47 (Prompting)
   - ✅ **Batch 2**: Steps 10, 103, 110 (Platform)
   - ✅ **Batch 3**: Steps 3, 9, 13 (Simple Decisions)
-- [⏳] Phase 2: Classification (Steps 31, 32, 33, 34, 42, 74, 111) - **NEXT**
-  - ⏳ **Batch 4**: Steps 31, 32, 33, 42 (Classification Flow) - NEXT
-  - [ ] **Batch 5**: Steps 34, 74, 111 (Metrics & Tracking)
+- [⏳] Phase 2: Classification (Steps 31, 32, 33, 34, 42, 74, 111) - **IN PROGRESS**
+  - ✅ **Batch 4**: Steps 31, 32, 33, 42 (Classification Flow) - **COMPLETED**
+  - ⏳ **Batch 5**: Steps 34, 74, 111 (Metrics & Tracking) - **NEXT**
 - [ ] Phase 3: Caching (Steps 59, 61, 62, 63, 65, 66, 68)
 - [ ] Phase 4: Providers (Steps 48-58)
 - [ ] Phase 5: Documents (Steps 87-97)

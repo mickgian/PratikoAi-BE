@@ -11,23 +11,199 @@ except Exception:  # pragma: no cover
     def rag_step_log(**kwargs): return None
     def rag_step_timer(*args, **kwargs): return nullcontext()
 
-def step_12__extract_query(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_12__extract_query(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 12 — LangGraphAgent._classify_user_query Extract user message
     ID: RAG.classify.langgraphagent.classify.user.query.extract.user.message
     Type: process | Category: classify | Node: ExtractQuery
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Extracts the latest user message from a conversation for classification.
+    This orchestrator coordinates user query extraction for domain/action classification.
     """
+    from app.core.logging import logger
+    from app.schemas.chat import Message
+    from datetime import datetime, timezone
+
     with rag_step_timer(12, 'RAG.classify.langgraphagent.classify.user.query.extract.user.message', 'ExtractQuery', stage="start"):
         rag_step_log(step=12, step_id='RAG.classify.langgraphagent.classify.user.query.extract.user.message', node_label='ExtractQuery',
-                     category='classify', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=12, step_id='RAG.classify.langgraphagent.classify.user.query.extract.user.message', node_label='ExtractQuery',
-                     processing_stage="completed")
-        return result
+                     category='classify', type='process', processing_stage="started")
+
+        # Extract context parameters
+        context = ctx or {}
+        converted_messages = messages or kwargs.get('converted_messages') or context.get('converted_messages', [])
+        request_id = kwargs.get('request_id') or context.get('request_id', 'unknown')
+
+        # Initialize result structure
+        result = {
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'extraction_successful': False,
+            'user_message_found': False,
+            'extracted_query': None,
+            'latest_user_message': None,
+            'user_message_count': 0,
+            'message_position': None,
+            'query_length': 0,
+            'query_complexity': 'simple',
+            'original_query': None,
+            'preprocessing_applied': False,
+            'next_step': 'DefaultPrompt',  # Default when no user message
+            'ready_for_classification': False,
+            'error': None
+        }
+
+        try:
+            # Step 1: Handle missing context
+            if ctx is None:
+                result['error'] = 'Missing context for query extraction'
+                logger.error("Query extraction failed: Missing context", request_id=request_id)
+                rag_step_log(step=12, step_id='RAG.classify.langgraphagent.classify.user.query.extract.user.message',
+                           node_label='ExtractQuery', processing_stage="completed", error="missing_context",
+                           extraction_successful=False, request_id=request_id)
+                return result
+
+            # Step 2: Handle empty message list
+            if not converted_messages:
+                logger.warning("No messages provided for query extraction", request_id=request_id)
+                result['extraction_successful'] = True  # Not an error, just no messages
+                rag_step_log(step=12, step_id='RAG.classify.langgraphagent.classify.user.query.extract.user.message',
+                           node_label='ExtractQuery', processing_stage="completed",
+                           extraction_successful=True, user_message_found=False, user_message_count=0,
+                           next_step='DefaultPrompt', request_id=request_id)
+                return result
+
+            # Step 3: Find all user messages and extract the latest one
+            user_messages = []
+            latest_user_message = None
+            latest_position = None
+
+            for i, message in enumerate(converted_messages):
+                if isinstance(message, Message) and message.role == "user":
+                    user_messages.append((i, message))
+                    latest_user_message = message
+                    latest_position = i
+
+            # Step 4: Analyze extraction result
+            user_message_count = len(user_messages)
+
+            if not user_messages:
+                # No user messages found
+                logger.warning("No user messages found in conversation",
+                             total_messages=len(converted_messages), request_id=request_id)
+                result['extraction_successful'] = True
+                result['user_message_found'] = False
+                result['next_step'] = 'DefaultPrompt'
+
+                rag_step_log(step=12, step_id='RAG.classify.langgraphagent.classify.user.query.extract.user.message',
+                           node_label='ExtractQuery', processing_stage="completed",
+                           extraction_successful=True, user_message_found=False, user_message_count=0,
+                           next_step='DefaultPrompt', request_id=request_id)
+                return result
+
+            # Step 5: Process the extracted user message
+            original_content = latest_user_message.content
+            processed_content = await _preprocess_query(original_content)
+            preprocessing_applied = original_content != processed_content
+
+            # Step 6: Analyze query characteristics
+            query_length = len(processed_content)
+            query_complexity = _analyze_query_complexity(processed_content)
+
+            # Step 7: Build successful result
+            result.update({
+                'extraction_successful': True,
+                'user_message_found': True,
+                'extracted_query': processed_content,
+                'latest_user_message': latest_user_message,
+                'user_message_count': user_message_count,
+                'message_position': latest_position,
+                'query_length': query_length,
+                'query_complexity': query_complexity,
+                'original_query': original_content,
+                'preprocessing_applied': preprocessing_applied,
+                'next_step': 'ClassifyDomain',
+                'ready_for_classification': True
+            })
+
+            logger.info(
+                "User query extraction completed successfully",
+                user_message_count=user_message_count,
+                query_length=query_length,
+                query_complexity=query_complexity,
+                preprocessing_applied=preprocessing_applied,
+                request_id=request_id,
+                extra={
+                    'extraction_event': 'query_extracted',
+                    'user_message_count': user_message_count,
+                    'query_length': query_length,
+                    'complexity': query_complexity
+                }
+            )
+
+            rag_step_log(
+                step=12,
+                step_id='RAG.classify.langgraphagent.classify.user.query.extract.user.message',
+                node_label='ExtractQuery',
+                processing_stage="completed",
+                extraction_successful=True,
+                user_message_found=True,
+                user_message_count=user_message_count,
+                query_length=query_length,
+                query_complexity=query_complexity,
+                next_step='ClassifyDomain',
+                ready_for_classification=True,
+                request_id=request_id
+            )
+
+            return result
+
+        except Exception as e:
+            # Handle extraction errors
+            result['error'] = f'Query extraction error: {str(e)}'
+
+            logger.error(
+                "User query extraction failed",
+                error=str(e),
+                request_id=request_id,
+                exc_info=True
+            )
+
+            rag_step_log(
+                step=12,
+                step_id='RAG.classify.langgraphagent.classify.user.query.extract.user.message',
+                node_label='ExtractQuery',
+                processing_stage="completed",
+                error=str(e),
+                extraction_successful=False,
+                request_id=request_id
+            )
+
+            return result
+
+
+async def _preprocess_query(query_text: str) -> str:
+    """Preprocess and normalize query text."""
+    if not query_text:
+        return ""
+
+    # Remove leading/trailing whitespace and normalize internal whitespace
+    processed = ' '.join(query_text.strip().split())
+
+    return processed
+
+
+def _analyze_query_complexity(query_text: str) -> str:
+    """Analyze query complexity based on length and content."""
+    if not query_text:
+        return 'simple'
+
+    length = len(query_text)
+
+    if length < 50:
+        return 'simple'
+    elif length < 150:
+        return 'medium'
+    else:
+        return 'complex'
 
 async def step_31__classify_domain(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

@@ -101,23 +101,166 @@ def step_40__build_context(*, messages: Optional[List[Any]] = None, ctx: Optiona
                      processing_stage="completed")
         return result
 
-def step_49__route_strategy(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+def step_49__route_strategy(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
     """
     RAG STEP 49 — LLMFactory.get_optimal_provider Apply routing strategy
     ID: RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy
     Type: process | Category: facts | Node: RouteStrategy
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Applies the routing strategy using LLMFactory to select the optimal provider.
+    Receives context from Step 48 (SelectProvider) and prepares for Step 50 (StrategyType).
+
+    Incoming: SelectProvider (Step 48)
+    Outgoing: StrategyType (Step 50)
     """
+    from app.core.llm.factory import get_llm_factory, RoutingStrategy
+    from app.core.logging import logger
+    from datetime import datetime
+
     with rag_step_timer(49, 'RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy', 'RouteStrategy', stage="start"):
-        rag_step_log(step=49, step_id='RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy', node_label='RouteStrategy',
-                     category='facts', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=49, step_id='RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy', node_label='RouteStrategy',
-                     processing_stage="completed")
-        return result
+        # Merge ctx and kwargs for parameter extraction
+        params = {}
+        if ctx:
+            params.update(ctx)
+        params.update(kwargs)
+
+        # Extract required parameters
+        messages = params.get('messages', messages)
+        if not messages:
+            error_msg = 'Missing required parameter: messages'
+            logger.error(f"STEP 49: {error_msg}")
+            rag_step_log(
+                step=49,
+                step_id='RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy',
+                node_label='RouteStrategy',
+                category='facts',
+                type='process',
+                error=error_msg,
+                routing_applied=False,
+                processing_stage="failed"
+            )
+            return {
+                'routing_applied': False,
+                'error': error_msg,
+                'provider': None,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+
+        # Extract routing parameters
+        routing_strategy = params.get('routing_strategy', RoutingStrategy.COST_OPTIMIZED)
+        max_cost_eur = params.get('max_cost_eur')
+        preferred_provider = params.get('preferred_provider')
+        fallback_provider = params.get('fallback_provider')
+
+        # Additional context
+        user_id = params.get('user_id')
+        session_id = params.get('session_id')
+
+        try:
+            # Get the LLM factory and apply routing strategy
+            factory = get_llm_factory()
+            provider = factory.get_optimal_provider(
+                messages=messages,
+                strategy=routing_strategy,
+                max_cost_eur=max_cost_eur,
+                preferred_provider=preferred_provider
+            )
+
+            # Extract provider details
+            provider_type = provider.provider_type.value if hasattr(provider.provider_type, 'value') else str(provider.provider_type)
+            model = getattr(provider, 'model', 'unknown')
+
+            logger.info(
+                f"STEP 49: Routing strategy applied successfully",
+                extra={
+                    'step': 49,
+                    'routing_strategy': routing_strategy.value if hasattr(routing_strategy, 'value') else str(routing_strategy),
+                    'provider_type': provider_type,
+                    'model': model,
+                    'max_cost_eur': max_cost_eur
+                }
+            )
+
+            rag_step_log(
+                step=49,
+                step_id='RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy',
+                node_label='RouteStrategy',
+                category='facts',
+                type='process',
+                routing_applied=True,
+                routing_strategy=routing_strategy.value if hasattr(routing_strategy, 'value') else str(routing_strategy),
+                provider_type=provider_type,
+                model=model,
+                max_cost_eur=max_cost_eur,
+                preferred_provider=preferred_provider,
+                user_id=user_id,
+                session_id=session_id,
+                processing_stage="started"
+            )
+
+            # Prepare result for Step 50 (StrategyType decision)
+            result = {
+                'routing_applied': True,
+                'ready_for_decision': True,
+                'provider': provider,
+                'routing_strategy': routing_strategy,
+                'provider_type': provider_type,
+                'model': model,
+                'max_cost_eur': max_cost_eur,
+                'preferred_provider': preferred_provider,
+                'fallback_provider': fallback_provider,
+                'messages': messages,
+                'user_id': user_id,
+                'session_id': session_id,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+
+            rag_step_log(
+                step=49,
+                step_id='RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy',
+                node_label='RouteStrategy',
+                category='facts',
+                type='process',
+                routing_applied=True,
+                ready_for_decision=True,
+                routing_strategy=routing_strategy.value if hasattr(routing_strategy, 'value') else str(routing_strategy),
+                provider_type=provider_type,
+                model=model,
+                processing_stage="completed"
+            )
+
+            return result
+
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(
+                f"STEP 49: Failed to apply routing strategy",
+                extra={
+                    'step': 49,
+                    'error': error_msg,
+                    'routing_strategy': routing_strategy.value if hasattr(routing_strategy, 'value') else str(routing_strategy)
+                }
+            )
+
+            rag_step_log(
+                step=49,
+                step_id='RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy',
+                node_label='RouteStrategy',
+                category='facts',
+                type='process',
+                error=error_msg,
+                routing_applied=False,
+                processing_stage="failed"
+            )
+
+            return {
+                'routing_applied': False,
+                'error': error_msg,
+                'provider': None,
+                'routing_strategy': routing_strategy,
+                'messages': messages,
+                'timestamp': datetime.utcnow().isoformat()
+            }
 
 def step_95__extract_doc_facts(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

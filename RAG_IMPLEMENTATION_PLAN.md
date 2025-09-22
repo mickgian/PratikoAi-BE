@@ -51,36 +51,170 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 ## Phase 4: Provider Routing (Days 7-9)
 **Most complex - Factory pattern extraction**
 
-### Batch 7: Provider Selection (48-58)
-- **Step 48**: Select LLM provider - Entry point
-- **Step 49**: Apply routing strategy - Strategy pattern
-- **Step 50**: Routing strategy? - Decision node
-- **Steps 51-54**: Provider strategies - Different selection logic
-- **Step 55**: Estimate cost - Cost calculation
-- **Step 56**: Cost check - Budget validation
-- **Step 57**: Create provider - Instantiation
-- **Step 58**: Cheaper provider fallback - Error recovery
+### Batch 7: Provider Selection (48-58) ✅ COMPLETED
+- **Step 48**: Select LLM provider - Entry point ✅
+- **Step 49**: Apply routing strategy - Strategy pattern ✅
+- **Step 50**: Routing strategy? - Decision node ✅
+- **Step 51**: Select cheapest provider - Cost optimization ✅
+- **Step 52**: Select best provider - Quality optimization ✅
+- **Step 53**: Balance cost and quality - Hybrid strategy ✅
+- **Step 54**: Use primary provider - Default strategy ✅
+- **Step 55**: Estimate cost - Cost calculation ✅
+- **Step 56**: Cost check - Budget validation ✅
+- **Step 57**: Create provider - Instantiation ✅
+- **Step 58**: Cheaper provider fallback - Error recovery ✅
 
-## Phase 5: Document Processing (Days 10-12)
+## Phase 5: Platform & Request Handling (Days 10-12)
+**Core platform operations**
+
+### Batch 8: Request Processing (1-2, 4-8)
+- **Step 1**: Validate request and authenticate - Entry point security
+- **Step 2**: User submits query via POST /api/v1/chat - Request handling
+- **Step 4**: Record processing log - GDPR compliance
+- **Step 5**: Return 400 bad request - Error handling
+- **Step 6**: Privacy anonymize requests enabled - Privacy check
+- **Step 7**: Anonymize PII - Text anonymization
+- **Step 8**: Get response initialize workflow - LangGraph setup
+
+### Batch 9: Message Processing (11-12, 15)
+- **Step 11**: Convert to message objects - Format standardization
+- **Step 12**: Extract user message - Message parsing
+- **Step 15**: Continue without classification - Workflow bypass
+
+## Phase 6: Classification & LLM Operations (Days 13-15)
+**Advanced classification and LLM handling**
+
+### Batch 10: Classification Logic (35-41, 43)
+- **Step 35**: LLM fallback - Use LLM classification
+- **Step 36**: LLM better than rule-based - Quality check
+- **Step 37**: Use LLM classification - Apply LLM results
+- **Step 38**: Use rule-based classification - Apply rule results
+- **Step 39**: Another attempt allowed - Retry logic
+- **Step 40**: Prod environment and last retry - Environment check
+- **Step 41**: Return 500 error - Error handling
+- **Step 43**: Get domain-specific prompt - Prompt selection
+
+### Batch 11: LLM Processing (67, 69-73, 75-78)
+- **Step 67**: LLM call successful - Success validation
+- **Step 69**: Another attempt allowed - Retry check
+- **Step 70**: Prod environment and last retry - Final attempt
+- **Step 71**: Return 500 error - Critical error
+- **Step 72**: Get failover provider - Provider fallback
+- **Step 73**: Retry same provider - Retry logic
+- **Step 75**: Response has tool calls - Tool detection
+- **Step 76**: Convert to AI message with tool calls - Format conversion
+- **Step 77**: Convert to simple AI message - Simple format
+- **Step 78**: Execute tools - Tool execution
+
+## Phase 7: Document Processing (Days 16-18)
 **Domain-specific parsers**
 
-### Batch 8: Document Flow (87-97)
-- **Step 87**: Sanitize documents - Security
-- **Step 88**: Classify document - Type detection
-- **Step 89**: Document type? - Router
-- **Steps 90-94**: Specific parsers - Type handlers
-- **Step 95**: Extract facts - Structured extraction
-- **Step 96**: Store blob - Encrypted storage
-- **Step 97**: Provenance logging - Audit trail
+### Batch 12: Document Validation (17, 19, 21-22, 84-86)
+- **Step 17**: Compute SHA-256 per attachment - File fingerprinting
+- **Step 19**: Attachments present - Document check
+- **Step 21**: Quick extract type sniff and key fields - Pre-processing
+- **Step 22**: Doc dependent or refers to doc - Document relationship
+- **Step 84**: Check files and limits - Validation
+- **Step 85**: Valid attachments - Validation result
+- **Step 86**: Return tool error invalid file - Error handling
 
-## Phase 6: Integration & Polish (Days 13-15)
-**Wire everything together**
+### Batch 13: Document Processing Pipeline (87-97)
+- **Step 87**: Strip macros and JS - Security sanitization
+- **Step 88**: Detect document type - Type classification
+- **Step 89**: Document type decision - Routing
+- **Step 90**: XSD validation - Fattura processing
+- **Step 91**: Layout-aware OCR - F24 processing
+- **Step 92**: Contract parsing - Contract processing
+- **Step 93**: Payslip parsing - Payslip processing
+- **Step 94**: Parse with layout - Generic OCR
+- **Step 95**: Extract structured fields - Field extraction
+- **Step 96**: Encrypted TTL storage - Blob storage
+- **Step 97**: Ledger entry - Provenance logging
 
-### Batch 9: End-to-end Flow
-- Wire orchestrators into LangGraph
-- Integration tests
-- Performance optimization
-- Error handling refinement
+## Phase 8: Facts & Knowledge Management (Days 19-21)
+**Knowledge extraction and management**
+
+### Batch 14: Facts Processing (14, 16, 18, 29, 98)
+- **Step 14**: Extract atomic facts - Fact extraction
+- **Step 16**: Normalize dates amounts rates - Fact canonicalization
+- **Step 18**: Hash from canonical facts - Query signature
+- **Step 29**: Merge facts and KB docs - Context building
+- **Step 98**: Convert to tool message facts and spans - Format conversion
+
+### Batch 15: Knowledge Operations (80-83)
+- **Step 80**: Search KB on demand - Knowledge search
+- **Step 81**: Query labor agreements - CCNL queries
+- **Step 82**: Query golden set - FAQ search
+- **Step 83**: Query FAQ - FAQ retrieval
+
+## Phase 9: Golden Set & FAQ Management (Days 22-24)
+**FAQ and golden answer management**
+
+### Batch 16: Golden Set Matching (23-28, 60)
+- **Step 23**: Require doc ingest first - Planning hint
+- **Step 24**: Match by signature or semantic - Golden matching
+- **Step 25**: Score at least 0.90 - High confidence match
+- **Step 26**: Serve golden answer with citations - Golden response
+- **Step 27**: Return chat response - Response delivery
+- **Step 28**: Return to chat node for final response - Workflow return
+- **Step 60**: Resolve epochs - Timestamp resolution
+
+### Batch 17: Golden Set Updates (117, 127-131, 135)
+- **Step 117**: Post API v1 FAQ feedback - Feedback endpoint
+- **Step 127**: Propose candidate from expert feedback - Golden candidate
+- **Step 128**: Auto threshold met or manual approval - Approval logic
+- **Step 129**: Publish or update versioned entry - Golden publishing
+- **Step 130**: Invalidate FAQ by ID or signature - Cache invalidation
+- **Step 131**: Update embeddings - Vector index update
+- **Step 135**: Auto rule eval new or obsolete candidates - Rule evaluation
+
+## Phase 10: Streaming & Response Handling (Days 25-26)
+**Real-time response delivery**
+
+### Batch 18: Streaming Operations (101-102, 104-109, 112)
+- **Step 101**: Return to chat node for final response - Response routing
+- **Step 102**: Convert to dict - Format conversion
+- **Step 104**: Streaming requested - Stream detection
+- **Step 105**: Setup SSE - Server-sent events
+- **Step 106**: Create async generator - Stream generator
+- **Step 107**: Prevent double iteration - Stream protection
+- **Step 108**: Write SSE format chunks - Chunk formatting
+- **Step 109**: Send chunks - Stream delivery
+- **Step 112**: Return response to user - Final response
+
+### Batch 19: Cache Management (64, 125)
+- **Step 64**: Cache miss - Cache miss handling
+- **Step 125**: Cache feedback 1h TTL - Feedback caching
+
+## Phase 11: Feedback & Learning System (Days 27-28)
+**Expert feedback and continuous learning**
+
+### Batch 20: Feedback Collection (113-116, 118-124)
+- **Step 113**: Show options correct incomplete wrong - Feedback UI
+- **Step 114**: User provides feedback - Feedback input
+- **Step 115**: No feedback - Feedback timeout
+- **Step 116**: Feedback type selected - Feedback classification
+- **Step 118**: Post API v1 knowledge feedback - Knowledge feedback
+- **Step 119**: Collect feedback - Feedback aggregation
+- **Step 120**: Validate expert credentials - Expert validation
+- **Step 121**: Trust score at least 0.7 - Quality threshold
+- **Step 122**: Feedback rejected - Rejection handling
+- **Step 123**: Create expert feedback record - Record creation
+- **Step 124**: Update expert metrics - Metrics update
+
+## Phase 12: Platform Integration & Advanced Features (Days 29-30)
+**Final integration and advanced capabilities**
+
+### Batch 21: Advanced Processing (20, 30, 79, 99-100, 126, 132-134)
+- **Step 20**: Continue processing - Workflow continuation
+- **Step 30**: Return ChatResponse - Response formatting
+- **Step 79**: Return to tool caller - Tool response
+- **Step 99**: Return to tool caller - Tool completion
+- **Step 100**: Perform calculations - CCNL calculations
+- **Step 126**: Determine action - Action routing
+- **Step 132**: RSS monitor - Content monitoring
+- **Step 133**: Fetch and parse sources - Source processing
+- **Step 134**: Extract text and metadata - Content extraction
 
 ## Implementation Process per Step
 
@@ -138,12 +272,25 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
   - ✅ **Step 66**: Cached response formatting and return with metadata preservation (10 tests)
   - ✅ **Step 68**: LLM response storage in Redis with TTL, compression, and encryption support (10 tests)
   - ✅ **Total**: 70 comprehensive tests, 100% pass rate, full Redis cache infrastructure with cost optimization
+- Batch 7: Provider Selection (48-58) - Complete LLM provider routing and cost optimization workflow
+  - ✅ **Step 48**: Provider selection initiation with routing context preparation (7 tests)
+  - ✅ **Step 49**: Routing strategy application using LLMFactory integration (10 tests)
+  - ✅ **Step 50**: Strategy-based decision routing to provider selection steps (10 tests)
+  - ✅ **Step 51**: Cost-optimized provider selection with budget constraints (7 tests)
+  - ✅ **Step 52**: Quality-first provider selection for complex queries (3 tests)
+  - ✅ **Step 53**: Balanced provider selection optimizing cost and quality (3 tests)
+  - ✅ **Step 54**: Primary provider selection with failover capability (3 tests)
+  - ✅ **Step 55**: Token-based cost estimation with provider pricing (8 tests)
+  - ✅ **Step 56**: Budget validation and routing decision logic (8 tests)
+  - ✅ **Step 57**: Final provider instance creation for processing (8 tests)
+  - ✅ **Step 58**: Cheaper provider fallback with cost re-evaluation (8 tests)
+  - ✅ **Total**: 85 comprehensive tests, 100% pass rate, full provider routing infrastructure
 
-**Next Target:** Batch 7: Provider Selection (48-58)
-1. Pick GitHub issues for provider routing steps
-2. Implement LLM provider selection and routing strategies
-3. Build cost estimation and budget validation
-4. Create provider factory pattern and failover logic
+**Next Target:** Batch 8: Request Processing (1-2, 4-8)
+1. Pick GitHub issues for request handling steps
+2. Implement authentication and validation pipeline
+3. Build privacy and anonymization workflow
+4. Create LangGraph workflow initialization
 
 ## GitHub Issues Reference
 
@@ -177,9 +324,30 @@ Each issue contains:
   - ✅ **Batch 5**: Steps 34, 74, 111 (Metrics & Tracking) - **COMPLETED**
 - [✅] Phase 3: Caching (Steps 59, 61, 62, 63, 65, 66, 68) - **COMPLETED**
   - ✅ **Batch 6**: Steps 59, 61, 62, 63, 65, 66, 68 (Cache Operations) - **COMPLETED**
-- [ ] Phase 4: Providers (Steps 48-58)
-- [ ] Phase 5: Documents (Steps 87-97)
-- [ ] Phase 6: Integration
+- [✅] Phase 4: Provider Routing (Steps 48-58) - **COMPLETED**
+  - ✅ **Batch 7**: Steps 48-58 (Provider Selection) - **COMPLETED**
+- [ ] Phase 5: Platform & Request Handling (Steps 1-2, 4-8, 11-12, 15)
+  - [ ] **Batch 8**: Steps 1-2, 4-8 (Request Processing)
+  - [ ] **Batch 9**: Steps 11-12, 15 (Message Processing)
+- [ ] Phase 6: Classification & LLM Operations (Steps 35-41, 43, 67, 69-73, 75-78)
+  - [ ] **Batch 10**: Steps 35-41, 43 (Classification Logic)
+  - [ ] **Batch 11**: Steps 67, 69-73, 75-78 (LLM Processing)
+- [ ] Phase 7: Document Processing (Steps 17, 19, 21-22, 84-97)
+  - [ ] **Batch 12**: Steps 17, 19, 21-22, 84-86 (Document Validation)
+  - [ ] **Batch 13**: Steps 87-97 (Document Processing Pipeline)
+- [ ] Phase 8: Facts & Knowledge Management (Steps 14, 16, 18, 29, 80-83, 98)
+  - [ ] **Batch 14**: Steps 14, 16, 18, 29, 98 (Facts Processing)
+  - [ ] **Batch 15**: Steps 80-83 (Knowledge Operations)
+- [ ] Phase 9: Golden Set & FAQ Management (Steps 23-28, 60, 117, 127-131, 135)
+  - [ ] **Batch 16**: Steps 23-28, 60 (Golden Set Matching)
+  - [ ] **Batch 17**: Steps 117, 127-131, 135 (Golden Set Updates)
+- [ ] Phase 10: Streaming & Response Handling (Steps 64, 101-102, 104-109, 112, 125)
+  - [ ] **Batch 18**: Steps 101-102, 104-109, 112 (Streaming Operations)
+  - [ ] **Batch 19**: Steps 64, 125 (Cache Management)
+- [ ] Phase 11: Feedback & Learning System (Steps 113-116, 118-124)
+  - [ ] **Batch 20**: Steps 113-116, 118-124 (Feedback Collection)
+- [ ] Phase 12: Platform Integration & Advanced Features (Steps 20, 30, 79, 99-100, 126, 132-134)
+  - [ ] **Batch 21**: Steps 20, 30, 79, 99-100, 126, 132-134 (Advanced Processing)
 
 ## Tools & Scripts
 

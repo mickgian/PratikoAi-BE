@@ -11,23 +11,168 @@ except Exception:  # pragma: no cover
     def rag_step_log(**kwargs): return None
     def rag_step_timer(*args, **kwargs): return nullcontext()
 
-def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 1 — ChatbotController.chat Validate request and authenticate
     ID: RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate
     Type: process | Category: platform | Node: ValidateRequest
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Validates incoming requests and performs authentication as per ChatbotController.chat.
+    This orchestrator coordinates request validation and authentication checking.
     """
+    from app.core.logging import logger
+    from datetime import datetime, timezone
+
     with rag_step_timer(1, 'RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate', 'ValidateRequest', stage="start"):
         rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate', node_label='ValidateRequest',
-                     category='platform', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate', node_label='ValidateRequest',
-                     processing_stage="completed")
-        return result
+                     category='platform', type='process', processing_stage="started")
+
+        # Extract context parameters
+        context = ctx or {}
+        request_body = kwargs.get('request_body') or context.get('request_body')
+        content_type = kwargs.get('content_type') or context.get('content_type', '')
+        method = kwargs.get('method') or context.get('method', '')
+        authorization_header = kwargs.get('authorization_header') or context.get('authorization_header')
+        request_id = kwargs.get('request_id') or context.get('request_id', 'unknown')
+
+        # Initialize result structure
+        result = {
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'validation_successful': False,
+            'authentication_successful': False,
+            'request_valid': False,
+            'session': None,
+            'user': None,
+            'validated_request': None,
+            'error': None,
+            'next_step': 'Error400',
+            'ready_for_validation': False
+        }
+
+        try:
+            # Step 1: Critical request validation (must happen before auth)
+            if not context and not any([request_body, content_type, method, authorization_header]):
+                result['error'] = 'Missing request context'
+                logger.error("Request validation failed: Missing context", request_id=request_id)
+                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                           node_label='ValidateRequest', processing_stage="completed", error="missing_context",
+                           validation_successful=False, authentication_successful=False, request_id=request_id)
+                return result
+
+            # Validate request body structure (critical for security)
+            if not request_body or not isinstance(request_body, dict):
+                result['error'] = 'Invalid request body'
+                logger.error("Request validation failed: Invalid request body", request_id=request_id)
+                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                           node_label='ValidateRequest', processing_stage="completed", error="invalid_request_body",
+                           validation_successful=False, authentication_successful=False, request_id=request_id)
+                return result
+
+            # Validate HTTP method (critical)
+            if method and method.upper() not in ['POST']:
+                result['error'] = f'Invalid HTTP method: {method}'
+                logger.error("Request validation failed: Invalid method", method=method, request_id=request_id)
+                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                           node_label='ValidateRequest', processing_stage="completed", error="invalid_method",
+                           validation_successful=False, authentication_successful=False, request_id=request_id)
+                return result
+
+            # Step 2: Authentication
+            if not authorization_header:
+                result['error'] = 'Missing authorization header'
+                logger.error("Authentication failed: Missing authorization header", request_id=request_id)
+                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                           node_label='ValidateRequest', processing_stage="completed", error="missing_auth_header",
+                           validation_successful=False, authentication_successful=False, request_id=request_id)
+                return result
+
+            try:
+                # Import auth functions
+                from app.api.v1.auth import get_current_session, get_current_user
+                from fastapi.security import HTTPAuthorizationCredentials
+
+                # Create credentials object for auth validation
+                token = authorization_header.replace('Bearer ', '') if authorization_header.startswith('Bearer ') else authorization_header
+                credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+
+                # Get session and user (simulating auth dependency injection)
+                session = await get_current_session(credentials)
+                user = await get_current_user(credentials)
+
+                result['session'] = session
+                result['user'] = user
+                result['authentication_successful'] = True
+
+            except Exception as auth_error:
+                result['error'] = f'Authentication failed: {str(auth_error)}'
+                logger.error("Authentication failed", error=str(auth_error), request_id=request_id)
+                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                           node_label='ValidateRequest', processing_stage="completed", error="authentication_failed",
+                           validation_successful=False, authentication_successful=False, request_id=request_id)
+                return result
+
+            # Step 3: Additional request validation (after authentication succeeds)
+            validation_errors = []
+
+            # Validate content type
+            if content_type and content_type.lower() not in ['application/json', '']:
+                validation_errors.append(f'Invalid content type: {content_type}')
+
+            # Validate required fields
+            if 'messages' not in request_body or not request_body.get('messages'):
+                validation_errors.append('Missing required field: messages')
+
+            # Check if validation passed
+            if validation_errors:
+                result['error'] = '; '.join(validation_errors)
+                logger.error("Request validation failed", errors=validation_errors, request_id=request_id)
+                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                           node_label='ValidateRequest', processing_stage="completed", error=result['error'],
+                           validation_successful=False, authentication_successful=True, request_id=request_id,
+                           session_id=result['session'].id if result['session'] else 'unknown',
+                           user_id=result['user'].id if result['user'] else 'unknown')
+                return result
+
+            # Step 4: Final validation and success
+            result['validation_successful'] = True
+            result['request_valid'] = True
+            result['validated_request'] = request_body.copy()
+            result['next_step'] = 'ValidCheck'
+            result['ready_for_validation'] = True
+            result['error'] = None
+
+            session_id = result['session'].id if result['session'] else 'unknown'
+            user_id = result['user'].id if result['user'] else 'unknown'
+
+            logger.info(
+                "Request validation and authentication completed successfully",
+                request_id=request_id,
+                session_id=session_id,
+                user_id=user_id,
+                message_count=len(request_body.get('messages', [])),
+                extra={
+                    'validation_event': 'request_validated_and_authenticated',
+                    'validation_successful': True,
+                    'authentication_successful': True,
+                    'request_id': request_id
+                }
+            )
+
+            rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                        node_label='ValidateRequest', processing_stage="completed",
+                        validation_successful=True, authentication_successful=True,
+                        session_id=session_id, user_id=user_id, request_id=request_id,
+                        next_step='ValidCheck', ready_for_validation=True)
+
+            return result
+
+        except Exception as e:
+            result['error'] = f'Validation error: {str(e)}'
+            logger.error("Request validation failed with exception", error=str(e), request_id=request_id, exc_info=True)
+            rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                        node_label='ValidateRequest', processing_stage="completed", error=str(e),
+                        validation_successful=False, authentication_successful=False, request_id=request_id)
+            return result
 
 def step_2__start(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
@@ -35,17 +180,139 @@ def step_2__start(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[st
     ID: RAG.platform.user.submits.query.via.post.api.v1.chat
     Type: startEnd | Category: platform | Node: Start
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Entry point for RAG workflow when users submit queries via the chat API.
+    This orchestrator initializes the workflow and prepares context for validation.
     """
+    from app.core.logging import logger
+    from datetime import datetime, timezone
+    import uuid
+
     with rag_step_timer(2, 'RAG.platform.user.submits.query.via.post.api.v1.chat', 'Start', stage="start"):
         rag_step_log(step=2, step_id='RAG.platform.user.submits.query.via.post.api.v1.chat', node_label='Start',
-                     category='platform', type='startEnd', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=2, step_id='RAG.platform.user.submits.query.via.post.api.v1.chat', node_label='Start',
-                     processing_stage="completed")
-        return result
+                     category='platform', type='startEnd', processing_stage="started")
+
+        # Extract context parameters
+        context = ctx or {}
+        request_body = kwargs.get('request_body') or context.get('request_body')
+        request_context = kwargs.get('request_context') or context.get('request_context', {})
+        session_id = kwargs.get('session_id') or context.get('session_id')
+        user_id = kwargs.get('user_id') or context.get('user_id')
+
+        # Initialize workflow result
+        result = {
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'workflow_started': True,
+            'request_received': bool(request_body),
+            'entry_point': 'chat_api',
+            'next_step': 'ValidateRequest',
+            'ready_for_validation': True,
+            'workflow_context': {},
+            'request_metadata': {},
+            'warning': None
+        }
+
+        try:
+            # Build request metadata with defaults
+            result['request_metadata'] = {
+                'method': request_context.get('method', 'POST'),
+                'url': request_context.get('url', '/api/v1/chat'),
+                'content_type': request_context.get('content_type', 'application/json'),
+                'user_agent': request_context.get('user_agent', 'unknown'),
+                'request_id': request_context.get('request_id', f'req_{str(uuid.uuid4())[:8]}'),
+                'timestamp': request_context.get('timestamp', result['timestamp'])
+            }
+
+            # Build workflow context
+            if request_body:
+                result['workflow_context'] = {
+                    'initialized': True,
+                    'messages': request_body.get('messages', []),
+                    'message_count': len(request_body.get('messages', [])),
+                    'user_id': user_id or request_body.get('user_id'),
+                    'session_id': session_id,
+                    'stream': request_body.get('stream', False),
+                    'attachments': request_body.get('attachments', []),
+                    'metadata': request_body.get('metadata', {})
+                }
+            else:
+                # Handle case with no request body
+                result['workflow_context'] = {
+                    'initialized': True,
+                    'messages': [],
+                    'message_count': 0,
+                    'user_id': user_id,
+                    'session_id': session_id,
+                    'stream': False,
+                    'attachments': [],
+                    'metadata': {}
+                }
+                result['request_received'] = False
+                result['warning'] = 'No request body provided'
+                logger.warning(
+                    "RAG workflow started without request body",
+                    session_id=session_id,
+                    user_id=user_id,
+                    request_id=result['request_metadata']['request_id']
+                )
+
+            # Log successful start
+            logger.info(
+                "RAG workflow started successfully",
+                session_id=result['workflow_context']['session_id'],
+                user_id=result['workflow_context']['user_id'],
+                message_count=result['workflow_context']['message_count'],
+                request_id=result['request_metadata']['request_id'],
+                stream=result['workflow_context']['stream'],
+                extra={
+                    'workflow_event': 'started',
+                    'entry_point': result['entry_point'],
+                    'request_received': result['request_received']
+                }
+            )
+
+            # Log completion
+            rag_step_log(
+                step=2,
+                step_id='RAG.platform.user.submits.query.via.post.api.v1.chat',
+                node_label='Start',
+                processing_stage="completed",
+                workflow_started=True,
+                request_received=result['request_received'],
+                entry_point=result['entry_point'],
+                next_step=result['next_step'],
+                ready_for_validation=True,
+                message_count=result['workflow_context']['message_count'],
+                session_id=result['workflow_context']['session_id'],
+                user_id=result['workflow_context']['user_id'],
+                request_id=result['request_metadata']['request_id']
+            )
+
+            return result
+
+        except Exception as e:
+            # Handle any unexpected errors
+            error_msg = f'Workflow start error: {str(e)}'
+            result['workflow_started'] = False
+            result['error'] = error_msg
+
+            logger.error(
+                "RAG workflow start failed",
+                error=str(e),
+                request_id=result['request_metadata'].get('request_id', 'unknown'),
+                exc_info=True
+            )
+
+            rag_step_log(
+                step=2,
+                step_id='RAG.platform.user.submits.query.via.post.api.v1.chat',
+                node_label='Start',
+                processing_stage="completed",
+                error=str(e),
+                workflow_started=False,
+                request_received=result['request_received']
+            )
+
+            return result
 
 def step_3__valid_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
@@ -146,16 +413,151 @@ def step_5__error400(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict
     ID: RAG.platform.return.400.bad.request
     Type: error | Category: platform | Node: Error400
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Handles invalid requests by returning appropriate HTTP error responses.
+    This orchestrator terminates the workflow and returns structured error data.
     """
+    from app.core.logging import logger
+    from datetime import datetime, timezone
+
     with rag_step_timer(5, 'RAG.platform.return.400.bad.request', 'Error400', stage="start"):
         rag_step_log(step=5, step_id='RAG.platform.return.400.bad.request', node_label='Error400',
-                     category='platform', type='error', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=5, step_id='RAG.platform.return.400.bad.request', node_label='Error400',
-                     processing_stage="completed")
+                     category='platform', type='error', processing_stage="started")
+
+        # Extract context parameters
+        context = ctx or {}
+        error_type = kwargs.get('error_type') or context.get('error_type', 'unknown_error')
+        error_message = kwargs.get('error_message') or context.get('error_message')
+        validation_errors = kwargs.get('validation_errors') or context.get('validation_errors', [])
+        request_context = kwargs.get('request_context') or context.get('request_context', {})
+        session_id = kwargs.get('session_id') or context.get('session_id')
+        user_id = kwargs.get('user_id') or context.get('user_id')
+
+        # Determine appropriate status code based on error type
+        status_code_map = {
+            'validation_failed': 400,
+            'malformed_request': 400,
+            'invalid_json': 400,
+            'missing_required_field': 400,
+            'authentication_failed': 401,
+            'invalid_token': 401,
+            'token_expired': 401,
+            'authorization_failed': 403,
+            'insufficient_permissions': 403,
+            'rate_limit_exceeded': 429,
+            'payload_too_large': 413,
+            'unsupported_media_type': 415,
+            'unknown_error': 400
+        }
+
+        status_code = status_code_map.get(error_type, 400)
+        request_id = request_context.get('request_id', 'unknown')
+
+        # Build error response based on error type
+        if error_type == 'validation_failed' and validation_errors:
+            detail = "Request validation failed"
+            error_response = {
+                'detail': detail,
+                'status_code': status_code,
+                'errors': validation_errors
+            }
+        elif error_message:
+            error_response = {
+                'detail': error_message,
+                'status_code': status_code
+            }
+        else:
+            # Default error response
+            error_response = {
+                'detail': "Bad request",
+                'status_code': status_code
+            }
+
+        # Add security headers for authentication errors
+        if status_code == 401:
+            error_response['headers'] = {
+                'WWW-Authenticate': 'Bearer'
+            }
+
+        # Build comprehensive error details for logging
+        error_details = {
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'error_type': error_type,
+            'status_code': status_code,
+            'request_id': request_id,
+            'session_id': session_id,
+            'user_id': user_id,
+            'validation_errors': validation_errors if validation_errors else None,
+            'error_message': error_message,
+            'request_context': request_context
+        }
+
+        # Initialize result structure
+        result = {
+            'timestamp': error_details['timestamp'],
+            'status_code': status_code,
+            'error_returned': True,
+            'error_type': error_type,
+            'workflow_terminated': True,
+            'terminal_step': True,
+            'next_step': None,
+            'error_response': error_response,
+            'error_details': error_details
+        }
+
+        # Log the error appropriately
+        log_level_map = {
+            401: 'warning',  # Auth errors are warnings
+            403: 'warning',  # Authorization errors are warnings
+            429: 'warning',  # Rate limit warnings
+            400: 'error',    # Bad request errors
+            413: 'warning',  # Payload size warnings
+            415: 'warning'   # Media type warnings
+        }
+
+        log_level = log_level_map.get(status_code, 'error')
+        log_message = f"400 Bad Request returned: {error_type}"
+
+        if log_level == 'error':
+            logger.error(
+                log_message,
+                status_code=status_code,
+                error_type=error_type,
+                request_id=request_id,
+                session_id=session_id,
+                user_id=user_id,
+                validation_errors=validation_errors,
+                extra={
+                    'error_event': 'bad_request_returned',
+                    'status_code': status_code,
+                    'error_type': error_type
+                }
+            )
+        else:
+            logger.warning(
+                log_message,
+                status_code=status_code,
+                error_type=error_type,
+                request_id=request_id,
+                session_id=session_id,
+                user_id=user_id
+            )
+
+        # Complete RAG step logging
+        rag_step_log(
+            step=5,
+            step_id='RAG.platform.return.400.bad.request',
+            node_label='Error400',
+            processing_stage="completed",
+            status_code=status_code,
+            error_returned=True,
+            error_type=error_type,
+            workflow_terminated=True,
+            terminal_step=True,
+            request_id=request_id,
+            session_id=session_id,
+            user_id=user_id
+        )
+
         return result
 
 def step_9__piicheck(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

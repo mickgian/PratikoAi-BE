@@ -467,23 +467,195 @@ def step_38__use_rule_based(*, messages: Optional[List[Any]] = None, ctx: Option
                      processing_stage="completed")
         return result
 
-def step_50__strategy_type(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+def step_50__strategy_type(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
     """
     RAG STEP 50 — Routing strategy?
     ID: RAG.platform.routing.strategy
     Type: decision | Category: platform | Node: StrategyType
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Determines the next step based on the routing strategy from Step 49.
+    Receives provider context from Step 49 (RouteStrategy) and routes to appropriate provider steps.
+
+    Incoming: RouteStrategy (Step 49)
+    Outgoing: CheapProvider, BestProvider, BalanceProvider, PrimaryProvider
     """
+    from app.core.llm.factory import RoutingStrategy
+    from app.core.logging import logger
+    from datetime import datetime
+
     with rag_step_timer(50, 'RAG.platform.routing.strategy', 'StrategyType', stage="start"):
-        rag_step_log(step=50, step_id='RAG.platform.routing.strategy', node_label='StrategyType',
-                     category='platform', type='decision', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=50, step_id='RAG.platform.routing.strategy', node_label='StrategyType',
-                     processing_stage="completed")
-        return result
+        # Merge ctx and kwargs for parameter extraction
+        params = {}
+        if ctx:
+            params.update(ctx)
+        params.update(kwargs)
+
+        # Extract required parameters from Step 49 output
+        routing_strategy = params.get('routing_strategy')
+        provider = params.get('provider')
+        messages = params.get('messages', messages)
+
+        # Extract additional context
+        max_cost_eur = params.get('max_cost_eur')
+        preferred_provider = params.get('preferred_provider')
+        provider_type = params.get('provider_type')
+        model = params.get('model')
+        user_id = params.get('user_id')
+        session_id = params.get('session_id')
+
+        # Validate required parameters
+        if not routing_strategy:
+            error_msg = 'Missing required parameter: routing_strategy'
+            logger.error(f"STEP 50: {error_msg}")
+            rag_step_log(
+                step=50,
+                step_id='RAG.platform.routing.strategy',
+                node_label='StrategyType',
+                category='platform',
+                type='decision',
+                error=error_msg,
+                decision='routing_strategy_missing',
+                processing_stage="failed"
+            )
+            return {
+                'decision': 'routing_strategy_missing',
+                'next_step': None,
+                'error': error_msg,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+
+        # Initialize decision data
+        decision = None
+        next_step = None
+        routing_strategy_value = routing_strategy.value if hasattr(routing_strategy, 'value') else str(routing_strategy)
+
+        try:
+            # Route based on strategy type
+            if routing_strategy == RoutingStrategy.COST_OPTIMIZED or routing_strategy_value == 'cost_optimized':
+                decision = 'routing_to_cost_optimized'
+                next_step = 'CheapProvider'
+            elif routing_strategy == RoutingStrategy.QUALITY_FIRST or routing_strategy_value == 'quality_first':
+                decision = 'routing_to_quality_first'
+                next_step = 'BestProvider'
+            elif routing_strategy == RoutingStrategy.BALANCED or routing_strategy_value == 'balanced':
+                decision = 'routing_to_balanced'
+                next_step = 'BalanceProvider'
+            elif routing_strategy == RoutingStrategy.FAILOVER or routing_strategy_value == 'failover':
+                decision = 'routing_to_failover'
+                next_step = 'PrimaryProvider'
+            else:
+                # Fallback to balanced for unsupported strategies
+                decision = 'routing_fallback_to_balanced'
+                next_step = 'BalanceProvider'
+                logger.warning(
+                    f"STEP 50: Unsupported routing strategy '{routing_strategy_value}', falling back to balanced",
+                    extra={
+                        'step': 50,
+                        'unsupported_strategy': routing_strategy_value,
+                        'fallback_strategy': 'balanced'
+                    }
+                )
+
+            logger.info(
+                f"STEP 50: Routing strategy decision completed",
+                extra={
+                    'step': 50,
+                    'decision': decision,
+                    'routing_strategy': routing_strategy_value,
+                    'next_step': next_step,
+                    'provider_type': provider_type,
+                    'model': model,
+                    'max_cost_eur': max_cost_eur
+                }
+            )
+
+            # Prepare result for the selected provider step
+            result = {
+                'decision': decision,
+                'next_step': next_step,
+                'routing_strategy': routing_strategy_value,
+                'provider': provider,
+                'provider_type': provider_type,
+                'model': model,
+                'max_cost_eur': max_cost_eur,
+                'preferred_provider': preferred_provider,
+                'messages': messages,
+                'user_id': user_id,
+                'session_id': session_id,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+
+            # Add fallback reason if applicable
+            if decision == 'routing_fallback_to_balanced':
+                result['fallback_reason'] = routing_strategy_value
+
+            # Enhanced logging attributes
+            log_attrs = {
+                'step': 50,
+                'step_id': 'RAG.platform.routing.strategy',
+                'node_label': 'StrategyType',
+                'category': 'platform',
+                'type': 'decision',
+                'decision': decision,
+                'routing_strategy': routing_strategy_value,
+                'next_step': next_step,
+                'max_cost_eur': max_cost_eur,
+                'messages_count': len(messages) if messages else 0,
+                'messages_empty': not bool(messages),
+                'processing_stage': 'completed'
+            }
+
+            # Add optional parameters if present
+            if preferred_provider:
+                log_attrs['preferred_provider'] = preferred_provider
+            if provider_type:
+                log_attrs['provider_type'] = provider_type
+            if model:
+                log_attrs['model'] = model
+            if user_id:
+                log_attrs['user_id'] = user_id
+            if session_id:
+                log_attrs['session_id'] = session_id
+
+            # Add additional context from kwargs
+            for key in ['complexity', 'fallback_reason']:
+                if key in params:
+                    log_attrs[key] = params[key]
+
+            rag_step_log(**log_attrs)
+
+            return result
+
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(
+                f"STEP 50: Failed to determine routing strategy",
+                extra={
+                    'step': 50,
+                    'error': error_msg,
+                    'routing_strategy': routing_strategy_value
+                }
+            )
+
+            rag_step_log(
+                step=50,
+                step_id='RAG.platform.routing.strategy',
+                node_label='StrategyType',
+                category='platform',
+                type='decision',
+                error=error_msg,
+                decision='routing_strategy_failed',
+                routing_strategy=routing_strategy_value,
+                processing_stage="failed"
+            )
+
+            return {
+                'decision': 'routing_strategy_failed',
+                'next_step': None,
+                'error': error_msg,
+                'routing_strategy': routing_strategy_value,
+                'timestamp': datetime.utcnow().isoformat()
+            }
 
 def step_69__retry_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

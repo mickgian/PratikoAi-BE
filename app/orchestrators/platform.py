@@ -742,23 +742,229 @@ def step_10__log_pii(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict
         # Return audit data for downstream processing
         return audit_data
 
-def step_11__convert_messages(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_11__convert_messages(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 11 — LangGraphAgent._chat Convert to Message objects
     ID: RAG.platform.langgraphagent.chat.convert.to.message.objects
     Type: process | Category: platform | Node: ConvertMessages
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Converts various message formats to standardized Message objects.
+    This orchestrator coordinates message format standardization in the RAG workflow.
     """
+    from app.core.logging import logger
+    from app.schemas.chat import Message
+    from datetime import datetime, timezone
+
     with rag_step_timer(11, 'RAG.platform.langgraphagent.chat.convert.to.message.objects', 'ConvertMessages', stage="start"):
         rag_step_log(step=11, step_id='RAG.platform.langgraphagent.chat.convert.to.message.objects', node_label='ConvertMessages',
-                     category='platform', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=11, step_id='RAG.platform.langgraphagent.chat.convert.to.message.objects', node_label='ConvertMessages',
-                     processing_stage="completed")
-        return result
+                     category='platform', type='process', processing_stage="started")
+
+        # Extract context parameters
+        context = ctx or {}
+        raw_messages = messages or kwargs.get('raw_messages') or context.get('raw_messages', [])
+        message_format = kwargs.get('message_format') or context.get('message_format', 'auto')
+        request_id = kwargs.get('request_id') or context.get('request_id', 'unknown')
+        enable_deduplication = kwargs.get('enable_deduplication') or context.get('enable_deduplication', False)
+
+        # Initialize result structure
+        result = {
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'conversion_successful': False,
+            'message_count': 0,
+            'converted_messages': [],
+            'standardized_messages': [],
+            'next_step': 'ExtractQuery',
+            'ready_for_extraction': False,
+            'conversion_errors': [],
+            'validation_errors': [],
+            'error': None
+        }
+
+        try:
+            # Step 1: Handle empty messages
+            if not raw_messages:
+                logger.warning("No messages provided for conversion", request_id=request_id)
+                result['conversion_successful'] = True
+                result['ready_for_extraction'] = True
+                rag_step_log(step=11, step_id='RAG.platform.langgraphagent.chat.convert.to.message.objects',
+                           node_label='ConvertMessages', processing_stage="completed",
+                           conversion_successful=True, message_count=0, next_step='ExtractQuery',
+                           request_id=request_id)
+                return result
+
+            # Step 2: Convert messages to standardized format
+            converted_messages = []
+            conversion_errors = []
+            validation_errors = []
+
+            for i, raw_msg in enumerate(raw_messages):
+                try:
+                    converted_msg = await _convert_single_message(raw_msg, i)
+                    if converted_msg:
+                        # Validate the converted message
+                        if await _validate_message(converted_msg):
+                            converted_messages.append(converted_msg)
+                        else:
+                            validation_errors.append(f"Message {i}: validation failed")
+                            logger.warning(f"Message validation failed", message_index=i, request_id=request_id)
+                    else:
+                        conversion_errors.append(f"Message {i}: conversion failed")
+                        logger.warning(f"Message conversion failed", message_index=i, request_id=request_id)
+
+                except Exception as e:
+                    conversion_errors.append(f"Message {i}: {str(e)}")
+                    logger.warning(f"Message conversion error", error=str(e), message_index=i, request_id=request_id)
+
+            # Step 3: Apply deduplication if enabled
+            if enable_deduplication and converted_messages:
+                original_count = len(converted_messages)
+                converted_messages = await _deduplicate_messages(converted_messages)
+                if len(converted_messages) < original_count:
+                    logger.info(f"Deduplicated {original_count - len(converted_messages)} messages",
+                              original_count=original_count, final_count=len(converted_messages), request_id=request_id)
+
+            # Step 4: Build final result
+            result['conversion_successful'] = True
+            result['message_count'] = len(converted_messages)
+            result['converted_messages'] = converted_messages
+            result['standardized_messages'] = converted_messages  # Alias for compatibility
+            result['ready_for_extraction'] = True
+            result['conversion_errors'] = conversion_errors
+            result['validation_errors'] = validation_errors
+
+            logger.info(
+                "Message conversion completed successfully",
+                message_count=len(converted_messages),
+                conversion_errors=len(conversion_errors),
+                validation_errors=len(validation_errors),
+                request_id=request_id,
+                extra={
+                    'conversion_event': 'messages_converted',
+                    'message_count': len(converted_messages),
+                    'format': message_format,
+                    'deduplication_enabled': enable_deduplication
+                }
+            )
+
+            rag_step_log(
+                step=11,
+                step_id='RAG.platform.langgraphagent.chat.convert.to.message.objects',
+                node_label='ConvertMessages',
+                processing_stage="completed",
+                conversion_successful=True,
+                message_count=len(converted_messages),
+                next_step='ExtractQuery',
+                ready_for_extraction=True,
+                conversion_errors=len(conversion_errors),
+                validation_errors=len(validation_errors),
+                request_id=request_id
+            )
+
+            return result
+
+        except Exception as e:
+            # Handle conversion errors
+            result['error'] = f'Message conversion error: {str(e)}'
+
+            logger.error(
+                "Message conversion failed",
+                error=str(e),
+                request_id=request_id,
+                exc_info=True
+            )
+
+            rag_step_log(
+                step=11,
+                step_id='RAG.platform.langgraphagent.chat.convert.to.message.objects',
+                node_label='ConvertMessages',
+                processing_stage="completed",
+                error=str(e),
+                conversion_successful=False,
+                request_id=request_id
+            )
+
+            return result
+
+
+async def _convert_single_message(raw_msg: Any, index: int) -> Optional['Message']:
+    """Convert a single message from any format to Message object."""
+    from app.schemas.chat import Message
+    from app.core.logging import logger
+
+    try:
+        # Handle dict format (most common)
+        if isinstance(raw_msg, dict):
+            role = raw_msg.get('role', 'user')
+            content = raw_msg.get('content', '')
+
+            # Validate role
+            if role not in ['user', 'assistant', 'system']:
+                role = 'user'  # Default fallback
+
+            return Message(role=role, content=content)
+
+        # Handle existing Message objects
+        elif isinstance(raw_msg, Message):
+            return raw_msg
+
+        # Handle LangChain BaseMessage objects
+        elif hasattr(raw_msg, 'role') and hasattr(raw_msg, 'content'):
+            role = getattr(raw_msg, 'role', 'user')
+            content = getattr(raw_msg, 'content', '')
+
+            # Validate role
+            if role not in ['user', 'assistant', 'system']:
+                role = 'user'  # Default fallback
+
+            return Message(role=role, content=str(content))
+
+        # Handle string messages (default to user role)
+        elif isinstance(raw_msg, str):
+            return Message(role='user', content=raw_msg)
+
+        # Handle other types by converting to string
+        else:
+            return Message(role='user', content=str(raw_msg))
+
+    except Exception as e:
+        logger.warning(f"Failed to convert message at index {index}: {str(e)}")
+        return None
+
+
+async def _validate_message(message: 'Message') -> bool:
+    """Validate a converted Message object."""
+    try:
+        # Check content length
+        if not message.content or len(message.content.strip()) == 0:
+            return False
+
+        # Check maximum length (using the same limit as schema)
+        if len(message.content) > 3000:
+            return False
+
+        # Check for valid role
+        if message.role not in ['user', 'assistant', 'system']:
+            return False
+
+        return True
+    except Exception:
+        return False
+
+
+async def _deduplicate_messages(messages: List['Message']) -> List['Message']:
+    """Remove duplicate consecutive messages with same role and content."""
+    if not messages:
+        return messages
+
+    deduplicated = [messages[0]]  # Always keep first message
+
+    for message in messages[1:]:
+        # Only deduplicate if role and content are exactly the same as previous
+        if (message.role != deduplicated[-1].role or
+            message.content != deduplicated[-1].content):
+            deduplicated.append(message)
+
+    return deduplicated
 
 def step_13__message_exists(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

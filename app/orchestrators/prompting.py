@@ -11,23 +11,202 @@ except Exception:  # pragma: no cover
     def rag_step_log(**kwargs): return None
     def rag_step_timer(*args, **kwargs): return nullcontext()
 
-def step_15__default_prompt(*, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_15__default_prompt(*, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 15 — Continue without classification
     ID: RAG.prompting.continue.without.classification
     Type: process | Category: prompting | Node: DefaultPrompt
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Bypasses classification and sets up default prompting strategy.
+    This orchestrator coordinates default prompt setup when classification fails or is skipped.
     """
+    from app.core.logging import logger
+    from app.core.prompts import SYSTEM_PROMPT
+    from datetime import datetime, timezone
+
     with rag_step_timer(15, 'RAG.prompting.continue.without.classification', 'DefaultPrompt', stage="start"):
         rag_step_log(step=15, step_id='RAG.prompting.continue.without.classification', node_label='DefaultPrompt',
-                     category='prompting', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=15, step_id='RAG.prompting.continue.without.classification', node_label='DefaultPrompt',
-                     processing_stage="completed")
-        return result
+                     category='prompting', type='process', processing_stage="started")
+
+        # Extract context parameters
+        context = ctx or {}
+        user_query = kwargs.get('user_query') or context.get('user_query', '')
+        request_id = kwargs.get('request_id') or context.get('request_id', 'unknown')
+        classification_attempted = context.get('classification_attempted', False)
+        classification_successful = context.get('classification_successful', False)
+
+        # Initialize result structure
+        result = {
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'default_prompt_applied': False,
+            'classification_bypassed': False,
+            'prompt_strategy': 'default',
+            'system_prompt': None,
+            'prompt_context': {},
+            'query_analysis': {},
+            'next_step': 'SelectPrompt',
+            'ready_for_prompt_selection': False,
+            'bypass_reason': None,
+            'routing_decision': 'default_workflow',
+            'prompt_type': 'system',
+            'prompt_source': 'default',
+            'error': None
+        }
+
+        try:
+            # Step 1: Handle missing context
+            if ctx is None:
+                result['error'] = 'Missing context for default prompt setup'
+                logger.error("Default prompt setup failed: Missing context", request_id=request_id)
+                rag_step_log(step=15, step_id='RAG.prompting.continue.without.classification',
+                           node_label='DefaultPrompt', processing_stage="completed", error="missing_context",
+                           default_prompt_applied=False, request_id=request_id)
+                return result
+
+            # Step 2: Determine bypass reason
+            if not classification_attempted:
+                bypass_reason = 'no_classification_attempted'
+            elif not classification_successful:
+                bypass_reason = 'classification_failed'
+            else:
+                bypass_reason = 'classification_bypass_requested'
+
+            # Step 3: Handle empty or minimal context
+            if not user_query and not context:
+                logger.warning("Minimal context provided for default prompt setup", request_id=request_id)
+
+            # Step 4: Analyze user query characteristics
+            query_analysis = await _analyze_user_query(user_query)
+
+            # Step 5: Select appropriate system prompt
+            system_prompt = await _get_default_system_prompt(query_analysis, context)
+
+            # Step 6: Build prompt context for downstream processing
+            prompt_context = {
+                'strategy': 'default_prompting',
+                'classification_bypassed': True,
+                'bypass_reason': bypass_reason,
+                'user_query': user_query,
+                'query_complexity': query_analysis.get('complexity', 'simple'),
+                'message_count': len(context.get('user_messages', [])),
+                'session_context': context.get('session_context', {}),
+                'workflow_mode': context.get('workflow_mode', 'standard')
+            }
+
+            # Step 7: Build successful result
+            result.update({
+                'default_prompt_applied': True,
+                'classification_bypassed': True,
+                'system_prompt': system_prompt,
+                'prompt_context': prompt_context,
+                'query_analysis': query_analysis,
+                'ready_for_prompt_selection': True,
+                'bypass_reason': bypass_reason
+            })
+
+            logger.info(
+                "Default prompt setup completed successfully",
+                bypass_reason=bypass_reason,
+                query_complexity=query_analysis.get('complexity', 'simple'),
+                query_length=query_analysis.get('length', 0),
+                request_id=request_id,
+                extra={
+                    'prompting_event': 'default_prompt_applied',
+                    'bypass_reason': bypass_reason,
+                    'strategy': 'default_prompting',
+                    'query_complexity': query_analysis.get('complexity', 'simple')
+                }
+            )
+
+            rag_step_log(
+                step=15,
+                step_id='RAG.prompting.continue.without.classification',
+                node_label='DefaultPrompt',
+                processing_stage="completed",
+                default_prompt_applied=True,
+                classification_bypassed=True,
+                prompt_strategy='default',
+                bypass_reason=bypass_reason,
+                next_step='SelectPrompt',
+                ready_for_prompt_selection=True,
+                request_id=request_id
+            )
+
+            return result
+
+        except Exception as e:
+            # Handle prompt setup errors
+            result['error'] = f'Default prompt setup error: {str(e)}'
+
+            logger.error(
+                "Default prompt setup failed",
+                error=str(e),
+                request_id=request_id,
+                exc_info=True
+            )
+
+            rag_step_log(
+                step=15,
+                step_id='RAG.prompting.continue.without.classification',
+                node_label='DefaultPrompt',
+                processing_stage="completed",
+                error=str(e),
+                default_prompt_applied=False,
+                request_id=request_id
+            )
+
+            return result
+
+
+async def _analyze_user_query(user_query: str) -> Dict[str, Any]:
+    """Analyze user query characteristics for prompt selection."""
+    if not user_query:
+        return {
+            'length': 0,
+            'complexity': 'simple',
+            'type': 'unknown',
+            'requires_context': False
+        }
+
+    length = len(user_query)
+
+    # Determine complexity based on length and content
+    if length < 50:
+        complexity = 'simple'
+    elif length < 150:
+        complexity = 'medium'
+    else:
+        complexity = 'complex'
+
+    # Basic query type detection
+    query_lower = user_query.lower()
+    if any(word in query_lower for word in ['calculate', 'compute', 'math']):
+        query_type = 'calculation'
+    elif any(word in query_lower for word in ['explain', 'what is', 'how to']):
+        query_type = 'informational'
+    elif any(word in query_lower for word in ['help', 'assist', 'support']):
+        query_type = 'assistance'
+    else:
+        query_type = 'general'
+
+    # Determine if query likely requires additional context
+    requires_context = length > 100 or any(word in query_lower for word in ['specific', 'detail', 'explain more'])
+
+    return {
+        'length': length,
+        'complexity': complexity,
+        'type': query_type,
+        'requires_context': requires_context
+    }
+
+
+async def _get_default_system_prompt(query_analysis: Dict[str, Any], context: Dict[str, Any]) -> str:
+    """Get appropriate default system prompt based on query analysis."""
+    from app.core.prompts import SYSTEM_PROMPT
+
+    # For now, use the standard system prompt
+    # Future enhancement: could select different prompts based on query characteristics
+    return SYSTEM_PROMPT
 
 def step_41__select_prompt(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

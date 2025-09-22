@@ -11,23 +11,153 @@ except Exception:  # pragma: no cover
     def rag_step_log(**kwargs): return None
     def rag_step_timer(*args, **kwargs): return nullcontext()
 
-def step_8__init_agent(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_8__init_agent(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 8 — LangGraphAgent.get_response Initialize workflow
     ID: RAG.response.langgraphagent.get.response.initialize.workflow
     Type: process | Category: response | Node: InitAgent
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Initializes the LangGraph workflow with processed messages and context.
+    This orchestrator coordinates the handoff to the main RAG processing pipeline.
     """
+    from app.core.logging import logger
+    from app.core.langgraph.graph import LangGraphAgent
+    from datetime import datetime, timezone
+
     with rag_step_timer(8, 'RAG.response.langgraphagent.get.response.initialize.workflow', 'InitAgent', stage="start"):
         rag_step_log(step=8, step_id='RAG.response.langgraphagent.get.response.initialize.workflow', node_label='InitAgent',
-                     category='response', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=8, step_id='RAG.response.langgraphagent.get.response.initialize.workflow', node_label='InitAgent',
-                     processing_stage="completed")
-        return result
+                     category='response', type='process', processing_stage="started")
+
+        # Extract context parameters
+        context = ctx or {}
+        validated_request = kwargs.get('validated_request') or context.get('validated_request')
+        session = kwargs.get('session') or context.get('session')
+        user = kwargs.get('user') or context.get('user')
+        request_metadata = kwargs.get('request_metadata') or context.get('request_metadata', {})
+        request_id = request_metadata.get('request_id', 'unknown')
+
+        # Use passed messages or extract from validated request
+        processed_messages = messages
+        if not processed_messages and validated_request:
+            processed_messages = validated_request.get('messages', [])
+
+        # Initialize result structure
+        result = {
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'workflow_initialized': False,
+            'agent_ready': False,
+            'processed_messages': processed_messages,
+            'session': session,
+            'user': user,
+            'next_step': 'ProcessMessages',
+            'ready_for_processing': False,
+            'workflow_context': {},
+            'error': None
+        }
+
+        try:
+            # Step 1: Validate required data
+            if not processed_messages:
+                result['error'] = 'Missing processed messages for workflow initialization'
+                logger.error("Workflow initialization failed: Missing messages", request_id=request_id)
+                rag_step_log(step=8, step_id='RAG.response.langgraphagent.get.response.initialize.workflow',
+                           node_label='InitAgent', processing_stage="completed", error="missing_messages",
+                           workflow_initialized=False, request_id=request_id)
+                return result
+
+            if not session:
+                result['error'] = 'Missing session for workflow initialization'
+                logger.error("Workflow initialization failed: Missing session", request_id=request_id)
+                rag_step_log(step=8, step_id='RAG.response.langgraphagent.get.response.initialize.workflow',
+                           node_label='InitAgent', processing_stage="completed", error="missing_session",
+                           workflow_initialized=False, request_id=request_id)
+                return result
+
+            # Step 2: Initialize workflow context
+            workflow_context = {
+                'session_id': session.id,
+                'user_id': session.user_id,
+                'message_count': len(processed_messages),
+                'request_id': request_id,
+                'privacy_processed': context.get('privacy_enabled', False),
+                'gdpr_logged': context.get('gdpr_logged', False),
+                'workflow_stage': 'initialized'
+            }
+
+            # Step 3: Initialize LangGraph agent
+            agent = LangGraphAgent()
+
+            # Step 4: Mark workflow as ready
+            result['workflow_initialized'] = True
+            result['agent_ready'] = True
+            result['ready_for_processing'] = True
+            result['workflow_context'] = workflow_context
+
+            session_id = session.id
+            user_id = session.user_id
+
+            logger.info(
+                "RAG workflow initialized successfully",
+                session_id=session_id,
+                user_id=user_id,
+                request_id=request_id,
+                message_count=len(processed_messages),
+                privacy_processed=workflow_context['privacy_processed'],
+                extra={
+                    'workflow_event': 'initialized',
+                    'agent_ready': True,
+                    'message_count': len(processed_messages)
+                }
+            )
+
+            rag_step_log(
+                step=8,
+                step_id='RAG.response.langgraphagent.get.response.initialize.workflow',
+                node_label='InitAgent',
+                processing_stage="completed",
+                workflow_initialized=True,
+                agent_ready=True,
+                ready_for_processing=True,
+                message_count=len(processed_messages),
+                next_step='ProcessMessages',
+                session_id=session_id,
+                user_id=user_id,
+                request_id=request_id,
+                privacy_processed=workflow_context['privacy_processed']
+            )
+
+            return result
+
+        except Exception as e:
+            # Handle workflow initialization errors
+            result['error'] = f'Workflow initialization error: {str(e)}'
+
+            session_id = session.id if session else 'unknown'
+            user_id = session.user_id if session else 'unknown'
+
+            logger.error(
+                "RAG workflow initialization failed",
+                error=str(e),
+                session_id=session_id,
+                user_id=user_id,
+                request_id=request_id,
+                exc_info=True
+            )
+
+            rag_step_log(
+                step=8,
+                step_id='RAG.response.langgraphagent.get.response.initialize.workflow',
+                node_label='InitAgent',
+                processing_stage="completed",
+                error=str(e),
+                workflow_initialized=False,
+                agent_ready=False,
+                session_id=session_id,
+                user_id=user_id,
+                request_id=request_id
+            )
+
+            return result
 
 def step_30__return_complete(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

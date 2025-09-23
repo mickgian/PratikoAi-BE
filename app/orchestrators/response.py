@@ -177,23 +177,128 @@ def step_30__return_complete(*, messages: Optional[List[Any]] = None, ctx: Optio
                      processing_stage="completed")
         return result
 
-def step_75__tool_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_75__tool_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 75 — Response has tool_calls?
     ID: RAG.response.response.has.tool.calls
     Type: process | Category: response | Node: ToolCheck
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Decision step that checks if the LLM response contains tool calls.
+    Routes to tool call conversion (Step 76) if present, or simple message conversion (Step 77) if not.
     """
-    with rag_step_timer(75, 'RAG.response.response.has.tool.calls', 'ToolCheck', stage="start"):
-        rag_step_log(step=75, step_id='RAG.response.response.has.tool.calls', node_label='ToolCheck',
-                     category='response', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=75, step_id='RAG.response.response.has.tool.calls', node_label='ToolCheck',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from datetime import datetime, timezone
+
+    ctx = ctx or {}
+
+    # Extract context parameters
+    llm_response = kwargs.get('llm_response') or ctx.get('llm_response')
+    provider = kwargs.get('provider') or ctx.get('provider')
+    model = kwargs.get('model') or ctx.get('model')
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Initialize decision variables
+    has_tool_calls = False
+    tool_calls = []
+    tool_call_count = 0
+    tool_names = []
+    next_step = None
+
+    # Log decision start
+    rag_step_log(
+        step=75,
+        step_id='RAG.response.response.has.tool.calls',
+        node_label='ToolCheck',
+        category='response',
+        type='process',
+        processing_stage='started',
+        request_id=request_id,
+        has_response=llm_response is not None
+    )
+
+    try:
+        # Core decision logic: Check if response has tool calls
+        # Matches existing logic from graph.py:742
+        # if response.tool_calls:
+        if llm_response and llm_response.tool_calls:
+            has_tool_calls = True
+            tool_calls = llm_response.tool_calls
+            tool_call_count = len(tool_calls)
+            tool_names = [tc.get('name') if isinstance(tc, dict) else tc.name for tc in tool_calls]
+            next_step = 'convert_with_tool_calls'  # Route to Step 76
+
+            logger.info(
+                f"response_has_tool_calls",
+                extra={
+                    'request_id': request_id,
+                    'step': 75,
+                    'tool_call_count': tool_call_count,
+                    'tool_names': tool_names,
+                    'next_step': next_step
+                }
+            )
+        else:
+            # No tool calls - simple message
+            has_tool_calls = False
+            tool_calls = []
+            tool_call_count = 0
+            tool_names = []
+            next_step = 'convert_simple_message'  # Route to Step 77
+
+            logger.info(
+                f"response_no_tool_calls",
+                extra={
+                    'request_id': request_id,
+                    'step': 75,
+                    'has_tool_calls': False,
+                    'next_step': next_step
+                }
+            )
+
+    except Exception as e:
+        # Error in decision logic - default to simple message
+        error_message = str(e)
+        has_tool_calls = False
+        next_step = 'convert_simple_message'
+
+        logger.error(
+            f"step_75_decision_error",
+            extra={
+                'request_id': request_id,
+                'step': 75,
+                'error': error_message
+            }
+        )
+
+    # Log decision completion
+    rag_step_log(
+        step=75,
+        step_id='RAG.response.response.has.tool.calls',
+        node_label='ToolCheck',
+        processing_stage='completed',
+        request_id=request_id,
+        has_tool_calls=has_tool_calls,
+        decision='with_tools' if has_tool_calls else 'simple_message',
+        tool_call_count=tool_call_count,
+        tool_names=tool_names,
+        next_step=next_step
+    )
+
+    # Build orchestration result
+    result = {
+        'has_tool_calls': has_tool_calls,
+        'tool_calls': tool_calls,
+        'tool_call_count': tool_call_count,
+        'tool_names': tool_names,
+        'next_step': next_step,
+        'llm_response': llm_response,
+        'provider': provider,
+        'model': model,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }
+
+    return result
 
 def step_101__final_response(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

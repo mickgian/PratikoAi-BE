@@ -36,26 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.39
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/langgraph/graph.py:406 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.39)
-   Evidence: Score 0.39, Select the appropriate system prompt (RAG STEPs 41/42/44) with full test-require...
-2) app/core/langgraph/graph.py:579 — app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt (score 0.33)
-   Evidence: Score 0.33, Ensure system message presence (RAG STEP 45 — CheckSysMsg) with backward-compati...
-3) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
+1) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
    Evidence: Score 0.32, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-4) app/core/langgraph/graph.py:651 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.32)
+2) app/core/langgraph/graph.py:495 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.32)
    Evidence: Score 0.32, Get the optimal LLM provider for the given messages.
 
 Args:
     messages: List o...
-5) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
+3) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
    Evidence: Score 0.31, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
 -...
+4) app/core/langgraph/graph.py:81 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
+   Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
+5) app/core/langgraph/graph.py:825 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.29)
+   Evidence: Score 0.29, Determine if the agent should continue or end based on the last message.
+
+Args:
+...
 
 Notes:
 - Implementation exists but may not be wired correctly

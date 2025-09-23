@@ -45,11 +45,10 @@ Top candidates:
    Evidence: Score 0.28, Get boost based on content recency
 3) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.28)
    Evidence: Score 0.28, Combine results from BM25 and vector search, removing duplicates.
-4) app/orchestrators/preflight.py:86 — app.orchestrators.preflight.step_39__kbpre_fetch (score 0.27)
-   Evidence: Score 0.27, RAG STEP 39 — KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost
-I...
-5) app/services/knowledge_search_service.py:100 — app.services.knowledge_search_service.KnowledgeSearchService.__init__ (score 0.27)
+4) app/services/knowledge_search_service.py:100 — app.services.knowledge_search_service.KnowledgeSearchService.__init__ (score 0.27)
    Evidence: Score 0.27, Initialize knowledge search service.
+5) app/services/knowledge_search_service.py:80 — app.services.knowledge_search_service.SearchResult.to_dict (score 0.26)
+   Evidence: Score 0.26, Convert to dictionary for structured logging.
 
 Notes:
 - Implementation exists but may not be wired correctly

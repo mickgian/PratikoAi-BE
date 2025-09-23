@@ -43,7 +43,7 @@ Top candidates:
    Evidence: Score 0.27, RAG STEP 19 — Attachments present?
 ID: RAG.preflight.attachments.present
 Type: p...
-2) app/orchestrators/preflight.py:122 — app.orchestrators.preflight.step_84__validate_attach (score 0.27)
+2) app/orchestrators/preflight.py:249 — app.orchestrators.preflight.step_84__validate_attach (score 0.27)
    Evidence: Score 0.27, RAG STEP 84 — AttachmentValidator.validate Check files and limits
 ID: RAG.prefli...
 3) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.27)

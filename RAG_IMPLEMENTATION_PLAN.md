@@ -84,15 +84,15 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 ## Phase 6: Classification & LLM Operations (Days 13-15)
 **Advanced classification and LLM handling**
 
-### Batch 10: Classification Logic (35-41, 43) - (somewhere here Started to use the prompt from github issues) 
-- **Step 35**: LLM fallback - Use LLM classification
-- **Step 36**: LLM better than rule-based - Quality check
-- **Step 37**: Use LLM classification - Apply LLM results
-- **Step 38**: Use rule-based classification - Apply rule results
-- **Step 39**: Another attempt allowed - Retry logic
-- **Step 40**: Prod environment and last retry - Environment check
-- **Step 41**: Return 500 error - Error handling
-- **Step 43**: Get domain-specific prompt - Prompt selection
+### Batch 10: Classification Logic (35-41, 43) ✅ COMPLETED
+- **Step 35**: LLM fallback - Use LLM classification ✅
+- **Step 36**: LLM better than rule-based - Quality check ✅
+- **Step 37**: Use LLM classification - Apply LLM results ✅
+- **Step 38**: Use rule-based classification - Apply rule results ✅
+- **Step 39**: KB pre-fetch - Knowledge base retrieval ✅
+- **Step 40**: Context builder merge - Merge facts and KB docs ✅
+- **Step 41**: Select prompt - System prompt selection based on classification ✅
+- **Step 43**: Domain-specific prompt - Generate Italian professional domain prompts ✅
 
 ### Batch 11: LLM Processing (67, 69-73, 75-78)
 - **Step 67**: LLM call successful - Success validation

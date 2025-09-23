@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/platform.py:1860 — app.orchestrators.platform.step_133__fetch_feeds (score 0.28)
+1) app/orchestrators/platform.py:2537 — app.orchestrators.platform.step_133__fetch_feeds (score 0.28)
    Evidence: Score 0.28, RAG STEP 133 — Fetch and parse sources
 ID: RAG.platform.fetch.and.parse.sources
 ...
@@ -52,11 +52,10 @@ Returns:
    Evidence: Score 0.26, RAG STEP 134 — Extract text and metadata
 ID: RAG.docs.extract.text.and.metadata
 ...
-4) app/orchestrators/preflight.py:86 — app.orchestrators.preflight.step_39__kbpre_fetch (score 0.26)
-   Evidence: Score 0.26, RAG STEP 39 — KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost
-I...
-5) app/services/data_sources_manager.py:63 — app.services.data_sources_manager.DataSourcesManager.__init__ (score 0.26)
+4) app/services/data_sources_manager.py:63 — app.services.data_sources_manager.DataSourcesManager.__init__ (score 0.26)
    Evidence: Score 0.26, method: __init__
+5) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.25)
+   Evidence: Score 0.25, Analyze distribution of precedent values in decisions.
 
 Notes:
 - Weak or missing implementation

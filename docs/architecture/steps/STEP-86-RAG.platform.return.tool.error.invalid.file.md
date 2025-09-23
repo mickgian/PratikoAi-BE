@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.21
 
 Top candidates:
-1) app/orchestrators/platform.py:1499 — app.orchestrators.platform.step_86__tool_err (score 0.21)
+1) app/orchestrators/platform.py:2176 — app.orchestrators.platform.step_86__tool_err (score 0.21)
    Evidence: Score 0.21, RAG STEP 86 — Return tool error Invalid file
 ID: RAG.platform.return.tool.error....
 2) app/services/italian_tax_calculator.py:68 — app.services.italian_tax_calculator.InvalidIncomeError (score 0.20)

@@ -36,23 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/orchestrators/platform.py:1445 — app.orchestrators.platform.step_76__convert_aimsg (score 0.28)
-   Evidence: Score 0.28, RAG STEP 76 — Convert to AIMessage with tool_calls
-ID: RAG.platform.convert.to.a...
-2) app/orchestrators/kb.py:32 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
+1) app/orchestrators/kb.py:32 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
    Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand
 ID: RAG.kb.knowledgesearch...
-3) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
+2) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
    Evidence: Score 0.25, Convert internal SearchResponse to API model.
-4) app/orchestrators/facts.py:283 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
+3) app/orchestrators/facts.py:421 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
    Evidence: Score 0.25, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-5) app/orchestrators/platform.py:1463 — app.orchestrators.platform.step_77__simple_aimsg (score 0.25)
-   Evidence: Score 0.25, RAG STEP 77 — Convert to simple AIMessage
-ID: RAG.platform.convert.to.simple.aim...
+4) app/orchestrators/platform.py:2176 — app.orchestrators.platform.step_86__tool_err (score 0.25)
+   Evidence: Score 0.25, RAG STEP 86 — Return tool error Invalid file
+ID: RAG.platform.return.tool.error....
+5) app/orchestrators/platform.py:2194 — app.orchestrators.platform.step_99__tool_results (score 0.25)
+   Evidence: Score 0.25, RAG STEP 99 — Return to tool caller
+ID: RAG.platform.return.to.tool.caller
+Type:...
 
 Notes:
 - Weak or missing implementation

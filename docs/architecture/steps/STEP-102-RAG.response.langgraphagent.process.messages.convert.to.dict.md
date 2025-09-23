@@ -39,22 +39,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.36
 
 Top candidates:
-1) app/core/langgraph/graph.py:1371 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.36)
+1) app/core/langgraph/graph.py:1215 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.36)
    Evidence: Score 0.36, method: __process_messages
-2) app/core/langgraph/graph.py:579 — app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt (score 0.30)
-   Evidence: Score 0.30, Ensure system message presence (RAG STEP 45 — CheckSysMsg) with backward-compati...
-3) app/core/langgraph/graph.py:81 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
+2) app/core/langgraph/graph.py:81 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
    Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
-4) app/core/langgraph/graph.py:981 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.29)
+3) app/core/langgraph/graph.py:825 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.29)
    Evidence: Score 0.29, Determine if the agent should continue or end based on the last message.
 
 Args:
 ...
-5) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
+4) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
    Evidence: Score 0.29, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
+5) app/core/langgraph/graph.py:495 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
+   Evidence: Score 0.29, Get the optimal LLM provider for the given messages.
+
+Args:
+    messages: List o...
 
 Notes:
 - Implementation exists but may not be wired correctly

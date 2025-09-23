@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/orchestrators/preflight.py:140 — app.orchestrators.preflight.step_85__attach_ok (score 0.27)
+1) app/orchestrators/preflight.py:267 — app.orchestrators.preflight.step_85__attach_ok (score 0.27)
    Evidence: Score 0.27, RAG STEP 85 — Valid attachments?
 ID: RAG.preflight.valid.attachments
 Type: decis...
@@ -53,7 +53,7 @@ Type: decision | Cate...
    Evidence: Score 0.26, RAG STEP 19 — Attachments present?
 ID: RAG.preflight.attachments.present
 Type: p...
-5) app/orchestrators/preflight.py:122 — app.orchestrators.preflight.step_84__validate_attach (score 0.26)
+5) app/orchestrators/preflight.py:249 — app.orchestrators.preflight.step_84__validate_attach (score 0.26)
    Evidence: Score 0.26, RAG STEP 84 — AttachmentValidator.validate Check files and limits
 ID: RAG.prefli...
 

@@ -56,7 +56,7 @@ Returns:
    Evidence: Score 0.26, RAG STEP 89 — Document type?
 ID: RAG.docs.document.type
 Type: decision | Categor...
-5) app/orchestrators/facts.py:104 — app.orchestrators.facts.step_49__route_strategy (score 0.26)
+5) app/orchestrators/facts.py:242 — app.orchestrators.facts.step_49__route_strategy (score 0.26)
    Evidence: Score 0.26, RAG STEP 49 — LLMFactory.get_optimal_provider Apply routing strategy
 ID: RAG.fac...
 

@@ -39,22 +39,20 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/prompting.py:229 — app.orchestrators.prompting.step_44__default_sys_prompt (score 0.28)
+1) app/orchestrators/prompting.py:470 — app.orchestrators.prompting.step_44__default_sys_prompt (score 0.28)
    Evidence: Score 0.28, RAG STEP 44 — Use default SYSTEM_PROMPT
 ID: RAG.prompting.use.default.system.pro...
-2) app/orchestrators/classify.py:829 — app.orchestrators.classify.step_43__domain_prompt (score 0.26)
-   Evidence: Score 0.26, RAG STEP 43 — PromptTemplateManager.get_prompt Get domain-specific prompt
-ID: RA...
-3) app/orchestrators/prompting.py:211 — app.orchestrators.prompting.step_41__select_prompt (score 0.26)
-   Evidence: Score 0.26, RAG STEP 41 — LangGraphAgent._get_system_prompt Select appropriate prompt
-ID: RA...
-4) app/services/advanced_prompt_engineer.py:46 — app.services.advanced_prompt_engineer.AdvancedPromptEngineer.__init__ (score 0.26)
+2) app/services/advanced_prompt_engineer.py:46 — app.services.advanced_prompt_engineer.AdvancedPromptEngineer.__init__ (score 0.26)
    Evidence: Score 0.26, method: __init__
-5) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.25)
+3) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.25)
    Evidence: Score 0.25, Track domain-action classification usage and metrics.
 
 Args:
     domain: The cla...
+4) app/core/prompts/__init__.py:9 — app.core.prompts.__init__.load_system_prompt (score 0.25)
+   Evidence: Score 0.25, Load the system prompt from the file.
+5) app/services/advanced_prompt_engineer.py:705 — app.services.advanced_prompt_engineer.AdvancedPromptEngineer.get_statistics (score 0.25)
+   Evidence: Score 0.25, Get current service statistics
 
 Notes:
 - Weak or missing implementation

@@ -46,14 +46,14 @@ Args:
     message: The message to print
 2) app/models/query.py:131 — app.models.query.QueryErrorResponse (score 0.19)
    Evidence: Score 0.19, Error response for failed queries.
-3) app/orchestrators/platform.py:1427 — app.orchestrators.platform.step_71__error500 (score 0.19)
-   Evidence: Score 0.19, RAG STEP 71 — Return 500 error
-ID: RAG.platform.return.500.error
-Type: error | C...
-4) version-management/cli/version_cli.py:69 — version-management.cli.version_cli.VersionCLI.print_error (score 0.19)
+3) version-management/cli/version_cli.py:69 — version-management.cli.version_cli.VersionCLI.print_error (score 0.19)
    Evidence: Score 0.19, Print error message.
-5) app/models/cassazione_data.py:355 — app.models.cassazione_data.ScrapingError (score 0.19)
+4) app/models/cassazione_data.py:355 — app.models.cassazione_data.ScrapingError (score 0.19)
    Evidence: Score 0.19, Represents a scraping error with context.
+5) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.19)
+   Evidence: Score 0.19, RAG STEP 30 — Return ChatResponse
+ID: RAG.response.return.chatresponse
+Type: pro...
 
 Notes:
 - Weak or missing implementation

@@ -42,15 +42,16 @@ Top candidates:
 1) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.44)
    Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
 ID: RA...
-2) app/orchestrators/classify.py:829 — app.orchestrators.classify.step_43__domain_prompt (score 0.40)
-   Evidence: Score 0.40, RAG STEP 43 — PromptTemplateManager.get_prompt Get domain-specific prompt
-ID: RA...
-3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.40)
+2) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.40)
    Evidence: Score 0.40, Calculate confidence scores for each domain
-4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.40)
+3) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.40)
    Evidence: Score 0.40, Calculate confidence scores for each action
-5) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
+4) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
    Evidence: Score 0.37, Load all domain-action prompt template combinations
+5) app/services/domain_prompt_templates.py:355 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.37)
+   Evidence: Score 0.37, Get the appropriate prompt for domain-action combination.
+
+RAG STEP 43 — PromptT...
 
 Notes:
 - Implementation exists but may not be wired correctly

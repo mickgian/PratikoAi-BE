@@ -49,7 +49,7 @@ Attributes:
    Evidence: Score 0.30, RAG STEP 30 — Return ChatResponse
 ID: RAG.response.return.chatresponse
 Type: pro...
-3) app/orchestrators/response.py:234 — app.orchestrators.response.step_112__end (score 0.30)
+3) app/orchestrators/response.py:339 — app.orchestrators.response.step_112__end (score 0.30)
    Evidence: Score 0.30, RAG STEP 112 — Return response to user
 ID: RAG.response.return.response.to.user
 ...

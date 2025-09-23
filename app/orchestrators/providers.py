@@ -1024,38 +1024,245 @@ def step_64__llmcall(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict
                      processing_stage="completed")
         return result
 
-def step_72__failover_provider(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_72__get_failover_provider(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 72 — Get FAILOVER provider
     ID: RAG.providers.get.failover.provider
     Type: process | Category: providers | Node: FailoverProvider
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Process step that selects a failover LLM provider when in production environment on the last retry.
+    Uses FAILOVER routing strategy with increased cost limits to ensure reliability.
     """
-    with rag_step_timer(72, 'RAG.providers.get.failover.provider', 'FailoverProvider', stage="start"):
-        rag_step_log(step=72, step_id='RAG.providers.get.failover.provider', node_label='FailoverProvider',
-                     category='providers', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=72, step_id='RAG.providers.get.failover.provider', node_label='FailoverProvider',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from app.core.config import settings
+    from app.core.llm.factory import get_llm_provider, RoutingStrategy
+    from datetime import datetime, timezone
 
-def step_73__retry_same(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    ctx = ctx or {}
+
+    # Extract context parameters
+    conversation_messages = kwargs.get('messages') or ctx.get('messages', [])
+    max_cost_eur = kwargs.get('max_cost_eur') or ctx.get('max_cost_eur') or settings.LLM_MAX_COST_EUR
+    attempt_number = kwargs.get('attempt_number') or ctx.get('attempt_number', 0)
+    max_retries = kwargs.get('max_retries') or ctx.get('max_retries', 3)
+    environment = kwargs.get('environment') or ctx.get('environment')
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Initialize result variables
+    provider_obtained = False
+    provider = None
+    strategy = RoutingStrategy.FAILOVER
+    failover_max_cost = max_cost_eur * 2  # Double cost limit for failover reliability
+    provider_type = None
+    model = None
+    error = None
+    is_failover = True
+
+    # Log process start
+    rag_step_log(
+        step=72,
+        step_id='RAG.providers.get.failover.provider',
+        node_label='FailoverProvider',
+        category='providers',
+        type='process',
+        processing_stage='started',
+        request_id=request_id,
+        strategy=strategy.value,
+        max_cost_eur=failover_max_cost,
+        attempt_number=attempt_number
+    )
+
+    try:
+        # Get failover provider using FAILOVER strategy
+        # Matches existing logic from graph.py:786-791
+        logger.warning(
+            f"attempting_fallback_provider",
+            extra={
+                'request_id': request_id,
+                'step': 72,
+                'strategy': strategy.value,
+                'max_cost_eur': failover_max_cost,
+                'original_max_cost': max_cost_eur,
+                'attempt_number': attempt_number,
+                'max_retries': max_retries
+            }
+        )
+
+        provider = get_llm_provider(
+            messages=conversation_messages,
+            strategy=strategy,
+            max_cost_eur=failover_max_cost
+        )
+
+        provider_obtained = True
+
+        # Extract provider metadata
+        if provider:
+            provider_type = provider.provider_type.value if hasattr(provider.provider_type, 'value') else str(provider.provider_type)
+            model = provider.model
+
+        logger.info(
+            f"failover_provider_selected",
+            extra={
+                'request_id': request_id,
+                'step': 72,
+                'provider_type': provider_type,
+                'model': model,
+                'strategy': strategy.value,
+                'max_cost_eur': failover_max_cost
+            }
+        )
+
+    except Exception as e:
+        # Failover provider selection failed
+        error = str(e)
+        provider_obtained = False
+        provider = None
+
+        logger.error(
+            f"failover_provider_selection_failed",
+            extra={
+                'request_id': request_id,
+                'step': 72,
+                'error': error,
+                'strategy': strategy.value,
+                'max_cost_eur': failover_max_cost
+            }
+        )
+
+    # Log process completion
+    rag_step_log(
+        step=72,
+        step_id='RAG.providers.get.failover.provider',
+        node_label='FailoverProvider',
+        processing_stage='completed',
+        request_id=request_id,
+        provider_obtained=provider_obtained,
+        strategy=strategy.value,
+        provider_type=provider_type,
+        model=model,
+        max_cost_eur=failover_max_cost,
+        is_failover=is_failover,
+        error=error
+    )
+
+    # Build orchestration result
+    result = {
+        'provider_obtained': provider_obtained,
+        'provider': provider,
+        'strategy': strategy,
+        'provider_type': provider_type,
+        'model': model,
+        'max_cost_eur': failover_max_cost,
+        'original_max_cost': max_cost_eur,
+        'is_failover': is_failover,
+        'attempt_number': attempt_number,
+        'max_retries': max_retries,
+        'environment': environment,
+        'error': error,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }
+
+    return result
+
+async def step_73__retry_same(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 73 — Retry same provider
     ID: RAG.providers.retry.same.provider
     Type: process | Category: providers | Node: RetrySame
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Process step that retries the LLM call using the same provider (or failover provider if set).
+    Increments the attempt counter and routes back to the LLM call step.
     """
-    with rag_step_timer(73, 'RAG.providers.retry.same.provider', 'RetrySame', stage="start"):
-        rag_step_log(step=73, step_id='RAG.providers.retry.same.provider', node_label='RetrySame',
-                     category='providers', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=73, step_id='RAG.providers.retry.same.provider', node_label='RetrySame',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from datetime import datetime, timezone
+
+    ctx = ctx or {}
+
+    # Extract context parameters
+    provider = kwargs.get('provider') or ctx.get('provider')
+    attempt_number = kwargs.get('attempt_number') or ctx.get('attempt_number', 0)
+    max_retries = kwargs.get('max_retries') or ctx.get('max_retries', 3)
+    conversation_messages = kwargs.get('messages') or ctx.get('messages', [])
+    previous_errors = kwargs.get('previous_errors') or ctx.get('previous_errors', [])
+    error = kwargs.get('error') or ctx.get('error')
+    is_failover = kwargs.get('is_failover') or ctx.get('is_failover', False)
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Initialize result variables
+    retry_initiated = True
+    next_attempt = attempt_number + 1  # Increment attempt number
+    next_step = 'llm_call'  # Route back to LLM call
+    provider_type = None
+    model = None
+
+    # Extract provider metadata
+    if provider:
+        provider_type = provider.provider_type.value if hasattr(provider.provider_type, 'value') else str(provider.provider_type)
+        model = provider.model
+
+    # Log process start
+    rag_step_log(
+        step=73,
+        step_id='RAG.providers.retry.same.provider',
+        node_label='RetrySame',
+        category='providers',
+        type='process',
+        processing_stage='started',
+        request_id=request_id,
+        attempt_number=attempt_number,
+        next_attempt=next_attempt,
+        provider_type=provider_type,
+        is_failover=is_failover
+    )
+
+    # Log retry initiation
+    # Matches existing logic from graph.py:799 (continue)
+    logger.info(
+        f"retry_same_provider",
+        extra={
+            'request_id': request_id,
+            'step': 73,
+            'attempt_number': attempt_number,
+            'next_attempt': next_attempt,
+            'max_retries': max_retries,
+            'provider_type': provider_type,
+            'model': model,
+            'is_failover': is_failover,
+            'error': error
+        }
+    )
+
+    # Log process completion
+    rag_step_log(
+        step=73,
+        step_id='RAG.providers.retry.same.provider',
+        node_label='RetrySame',
+        processing_stage='completed',
+        request_id=request_id,
+        retry_initiated=retry_initiated,
+        attempt_number=next_attempt,
+        next_step=next_step,
+        provider_type=provider_type,
+        model=model,
+        is_failover=is_failover
+    )
+
+    # Build orchestration result
+    result = {
+        'retry_initiated': retry_initiated,
+        'attempt_number': next_attempt,
+        'next_step': next_step,
+        'provider': provider,
+        'provider_type': provider_type,
+        'model': model,
+        'max_retries': max_retries,
+        'messages': conversation_messages,
+        'previous_errors': previous_errors,
+        'is_failover': is_failover,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }
+
+    return result

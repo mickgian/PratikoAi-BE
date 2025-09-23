@@ -36,17 +36,18 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.43
+Status: 🔌  |  Confidence: 0.44
 
 Top candidates:
-1) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
+1) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.44)
+   Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
+ID: RA...
+2) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
    Evidence: Score 0.43, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
 -...
-2) app/ragsteps/classify/step_42_rag_classify_classification_exists_and_confidence_at_least_0_6.py:1 — app.ragsteps.classify.step_42_rag_classify_classification_exists_and_confidence_at_least_0_6 (score 0.42)
-   Evidence: Score 0.42, RAG STEP 42 — Classification exists and confidence at least 0.6?
-ID: RAG.classif...
-3) app/ragsteps/classify/step_42_rag_classify_classification_exists_and_confidence_at_least_0_6.py:30 — app.ragsteps.classify.step_42_rag_classify_classification_exists_and_confidence_at_least_0_6.run (score 0.41)
-   Evidence: Score 0.41, Adapter shim for STEP 42 — ClassConfidence.
+3) app/orchestrators/classify.py:829 — app.orchestrators.classify.step_43__domain_prompt (score 0.40)
+   Evidence: Score 0.40, RAG STEP 43 — PromptTemplateManager.get_prompt Get domain-specific prompt
+ID: RA...
 4) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
    Evidence: Score 0.39, Calculate confidence scores for each domain
 5) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.39)

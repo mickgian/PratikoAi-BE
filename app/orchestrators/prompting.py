@@ -208,22 +208,263 @@ async def _get_default_system_prompt(query_analysis: Dict[str, Any], context: Di
     # Future enhancement: could select different prompts based on query characteristics
     return SYSTEM_PROMPT
 
-def step_41__select_prompt(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_41__select_prompt(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 41 — LangGraphAgent._get_system_prompt Select appropriate prompt
     ID: RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt
     Type: process | Category: prompting | Node: SelectPrompt
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Selects the appropriate system prompt based on domain-action classification confidence.
+    Routes to domain-specific prompts for high-confidence classifications or falls back
+    to default prompts. Thin orchestration that preserves existing prompt selection behavior.
     """
-    with rag_step_timer(41, 'RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt', 'SelectPrompt', stage="start"):
-        rag_step_log(step=41, step_id='RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt', node_label='SelectPrompt',
-                     category='prompting', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=41, step_id='RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt', node_label='SelectPrompt',
-                     processing_stage="completed")
+    from app.core.logging import logger
+    from app.core.config import get_settings
+    from app.core.prompts import SYSTEM_PROMPT
+    from datetime import datetime, timezone
+
+    settings = get_settings()
+
+    # Extract context parameters
+    request_id = kwargs.get('request_id') or (ctx or {}).get('request_id', 'unknown')
+    classification = kwargs.get('classification') or (ctx or {}).get('classification')
+    prompt_template_manager = kwargs.get('prompt_template_manager') or (ctx or {}).get('prompt_template_manager')
+
+    # Extract user query from messages
+    user_query = ""
+    for m in reversed(messages or []):
+        if getattr(m, "role", None) == "user":
+            user_query = getattr(m, "content", "") or ""
+            break
+
+    # Classification context
+    conf = classification.confidence if classification else None
+    domain = classification.domain.value if classification else None
+    action = classification.action.value if classification else None
+    threshold = getattr(settings, "CLASSIFICATION_CONFIDENCE_THRESHOLD", 0.6)
+
+    # Initialize result variables
+    prompt_selected = False
+    selected_prompt = ""
+    prompt_type = "default"
+    selection_reason = "unknown"
+    error = None
+    confidence_meets_threshold = False
+
+    # STEP 41 timing (positional 3 args)
+    with rag_step_timer(
+        41,
+        "RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt",
+        "SelectPrompt",
+        classification_confidence=conf,
+        domain=domain,
+    ):
+        rag_step_log(
+            step=41,
+            step_id='RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt',
+            node_label='SelectPrompt',
+            category='prompting',
+            type='process',
+            processing_stage='started',
+            request_id=request_id,
+            classification_available=classification is not None,
+            classification_confidence=conf,
+            confidence_threshold=threshold,
+            user_query=user_query[:100] if user_query else ''
+        )
+
+        try:
+            # STEP 42: classification exists & threshold decision
+            if not classification:
+                rag_step_log(
+                    step=42,
+                    step_id="RAG.classify.classification.exists.and.confidence.at.least.0.6",
+                    node_label="ClassConfidence",
+                    classification_exists=False,
+                    classification_confidence=None,
+                    confidence_threshold=threshold,
+                    decision_outcome="use_default_prompt",
+                    reason="classification_not_available",
+                    user_query=user_query,
+                    domain=None,
+                    action=None,
+                )
+
+                # STEP 44: Use orchestrator for default (no classification)
+                prompt = step_44__default_sys_prompt(
+                    messages=messages,
+                    ctx={
+                        'classification': None,
+                        'user_query': user_query,
+                        'trigger_reason': 'no_classification'
+                    }
+                )
+
+                prompt_selected = True
+                selected_prompt = prompt
+                prompt_type = "default"
+                selection_reason = "no_classification_available"
+                confidence_meets_threshold = False  # not applicable -> False
+
+            else:
+                meets = (conf or 0.0) >= threshold
+                confidence_meets_threshold = meets
+
+                rag_step_log(
+                    step=42,
+                    step_id="RAG.classify.classification.exists.and.confidence.at.least.0.6",
+                    node_label="ClassConfidence",
+                    classification_exists=True,
+                    classification_confidence=conf,
+                    confidence_threshold=threshold,
+                    decision_outcome="use_domain_prompt" if meets else "use_default_prompt",
+                    user_query=user_query,
+                    domain=domain,
+                    action=action,
+                )
+
+                if not meets:
+                    # STEP 44: Use orchestrator for default (low confidence)
+                    prompt = step_44__default_sys_prompt(
+                        messages=messages,
+                        ctx={
+                            'classification': classification,
+                            'user_query': user_query,
+                            'trigger_reason': 'low_confidence'
+                        }
+                    )
+
+                    prompt_selected = True
+                    selected_prompt = prompt
+                    prompt_type = "default"
+                    selection_reason = "low_confidence"
+
+                else:
+                    # Domain prompt path (may fail)
+                    try:
+                        # STEP 43: Get domain-specific prompt via orchestrator
+                        from app.orchestrators.classify import step_43__domain_prompt
+
+                        domain_prompt_result = await step_43__domain_prompt(
+                            messages=messages,
+                            ctx={
+                                'classification': classification,
+                                'prompt_template_manager': prompt_template_manager,
+                                'user_query': user_query,
+                                'prompt_context': None,
+                                'request_id': request_id
+                            }
+                        )
+
+                        # Extract the generated prompt
+                        if domain_prompt_result and domain_prompt_result.get('prompt_generated'):
+                            domain_prompt = domain_prompt_result.get('domain_prompt', '')
+                        else:
+                            # Step 43 failed to generate prompt
+                            raise Exception(
+                                domain_prompt_result.get('error_message', 'Domain prompt generation failed')
+                            )
+
+                        prompt_selected = True
+                        selected_prompt = domain_prompt
+                        prompt_type = "domain_specific"
+                        selection_reason = "confidence_meets_threshold"
+
+                    except Exception as e:
+                        # Fallback to default
+                        selected_prompt = SYSTEM_PROMPT
+                        prompt_selected = True
+                        prompt_type = "default"
+                        selection_reason = "domain_prompt_error_fallback"
+                        error = str(e)
+
+                        logger.error(
+                            f"Domain prompt generation failed, falling back to default: {error}",
+                            extra={
+                                'request_id': request_id,
+                                'error': error,
+                                'step': 41,
+                                'domain': domain,
+                                'action': action,
+                                'classification_confidence': conf
+                            }
+                        )
+
+                        # STEP 44: default due to error
+                        rag_step_log(
+                            step=44,
+                            step_id="RAG.prompting.use.default.system.prompt",
+                            node_label="DefaultSysPrompt",
+                            trigger_reason="error_fallback",
+                            prompt_type="default",
+                            classification_available=True,
+                            classification_confidence=conf,
+                            confidence_threshold=threshold,
+                            domain=domain,
+                            action=action,
+                            user_query=user_query,
+                            prompt_length=len(selected_prompt) if selected_prompt else 0,
+                            processing_stage="completed",
+                            reasons=["domain_prompt_generation_failed"],
+                            confidence=conf,
+                            decision="error_fallback",
+                        )
+
+        except Exception as e:
+            error = str(e)
+            prompt_selected = False
+            selected_prompt = SYSTEM_PROMPT  # Emergency fallback
+            prompt_type = "default"
+            selection_reason = "orchestrator_error_fallback"
+
+            logger.error(
+                f"Error in prompt selection orchestrator: {error}",
+                extra={
+                    'request_id': request_id,
+                    'error': error,
+                    'step': 41,
+                    'user_query': user_query[:100] if user_query else ''
+                }
+            )
+
+        # Build result preserving behavior while adding coordination metadata
+        result = {
+            'prompt_selected': prompt_selected,
+            'selected_prompt': selected_prompt,
+            'prompt_type': prompt_type,
+            'selection_reason': selection_reason,
+            'classification_available': classification is not None,
+            'classification_confidence': conf,
+            'confidence_meets_threshold': confidence_meets_threshold,
+            'confidence_threshold': threshold,
+            'domain': domain,
+            'action': action,
+            'user_query': user_query,
+            'request_id': request_id,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'error': error
+        }
+
+        # STEP 41: final selection log
+        rag_step_log(
+            step=41,
+            step_id="RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt",
+            node_label="SelectPrompt",
+            classification_confidence=conf,
+            classification_available=classification is not None,
+            confidence_below_threshold=classification is not None and not confidence_meets_threshold,
+            confidence_threshold=threshold,
+            reason=selection_reason,
+            prompt_type=prompt_type,
+            domain=domain,
+            action=action,
+            user_query=user_query,
+            processing_stage='completed',
+            request_id=request_id,
+            prompt_selected=prompt_selected,
+            error_occurred=error is not None
+        )
+
         return result
 
 def step_44__default_sys_prompt(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

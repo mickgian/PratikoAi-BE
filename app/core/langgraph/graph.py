@@ -403,180 +403,24 @@ class LangGraphAgent:
 
         return strategy, max_cost
 
-    def _get_system_prompt(self, messages: List[Message], classification: Optional['DomainActionClassification']) -> str:
-        """Select the appropriate system prompt (RAG STEPs 41/42/44) with full test-required logging."""
-        # Latest user query (may be empty)
-        user_query = ""
-        for m in reversed(messages or []):
-            if getattr(m, "role", None) == "user":
-                user_query = getattr(m, "content", "") or ""
-                break
+    async def _get_system_prompt(self, messages: List[Message], classification: Optional['DomainActionClassification']) -> str:
+        """Select the appropriate system prompt via RAG Step 41 orchestrator."""
+        from app.orchestrators.prompting import step_41__select_prompt
 
-        # Classification context
-        conf = classification.confidence if classification else None
-        domain = classification.domain.value if classification else None
-        action = classification.action.value if classification else None
-        threshold = getattr(settings, "CLASSIFICATION_CONFIDENCE_THRESHOLD", 0.6)
+        # Call the Step 41 orchestrator (thin orchestration pattern)
+        result = await step_41__select_prompt(
+            messages=messages,
+            ctx={
+                'classification': classification,
+                'prompt_template_manager': self._prompt_template_manager,
+                'request_id': getattr(self, '_current_request_id', 'unknown')
+            }
+        )
 
-        # STEP 41 timing (positional 3 args)
-        with rag_step_timer(
-            41,
-            "RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt",
-            "SelectPrompt",
-            classification_confidence=conf,
-            domain=domain,
-        ):
-            # STEP 42: classification exists & threshold decision
-            if not classification:
-                rag_step_log(
-                    step=42,
-                    step_id="RAG.classify.classification.exists.and.confidence.at.least.0.6",
-                    node_label="ClassConfidence",
-                    classification_exists=False,
-                    classification_confidence=None,
-                    confidence_threshold=threshold,
-                    decision_outcome="use_default_prompt",
-                    reason="classification_not_available",
-                    user_query=user_query,
-                    domain=None,
-                    action=None,
-                )
-                # STEP 44: Use orchestrator for default (no classification)
-                from app.orchestrators.prompting import step_44__default_sys_prompt
-                prompt = step_44__default_sys_prompt(
-                    messages=messages,
-                    ctx={
-                        'classification': None,
-                        'user_query': user_query,
-                        'trigger_reason': 'no_classification'
-                    }
-                )
-                # STEP 41: final selection log (add required flags)
-                rag_step_log(
-                    step=41,
-                    step_id="RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt",
-                    node_label="SelectPrompt",
-                    classification_confidence=None,
-                    classification_available=False,
-                    confidence_below_threshold=False,  # not applicable -> False
-                    confidence_threshold=threshold,
-                    reason="no_classification_available",
-                    prompt_type="default",
-                    domain=None,
-                    action=None,
-                    user_query=user_query,
-                )
-                return prompt
+        # Extract the selected prompt from orchestrator result
+        return result.get('selected_prompt', SYSTEM_PROMPT)
 
-            meets = (conf or 0.0) >= threshold
-
-            rag_step_log(
-                step=42,
-                step_id="RAG.classify.classification.exists.and.confidence.at.least.0.6",
-                node_label="ClassConfidence",
-                classification_exists=True,
-                classification_confidence=conf,
-                confidence_threshold=threshold,
-                decision_outcome="use_domain_prompt" if meets else "use_default_prompt",
-                user_query=user_query,
-                domain=domain,
-                action=action,
-            )
-
-            if not meets:
-                # STEP 44: Use orchestrator for default (low confidence)
-                from app.orchestrators.prompting import step_44__default_sys_prompt
-                prompt = step_44__default_sys_prompt(
-                    messages=messages,
-                    ctx={
-                        'classification': classification,
-                        'user_query': user_query,
-                        'trigger_reason': 'low_confidence'
-                    }
-                )
-                # STEP 41: final selection log (include expected flags)
-                rag_step_log(
-                    step=41,
-                    step_id="RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt",
-                    node_label="SelectPrompt",
-                    classification_available=True,
-                    classification_confidence=conf,
-                    confidence_below_threshold=True,
-                    confidence_threshold=threshold,
-                    reason="low_confidence",
-                    prompt_type="default",
-                    domain=domain,
-                    action=action,
-                    user_query=user_query,
-                )
-                return prompt
-
-            # Domain prompt path (may fail)
-            try:
-                domain_prompt = self._prompt_template_manager.get_prompt(
-                    domain=classification.domain,
-                    action=classification.action,
-                    query=user_query,
-                    context=None,
-                    document_type=classification.document_type,
-                )
-                rag_step_log(
-                    step=41,
-                    step_id="RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt",
-                    node_label="SelectPrompt",
-                    classification_available=True,
-                    classification_confidence=conf,
-                    confidence_below_threshold=False,
-                    confidence_threshold=threshold,
-                    reason="confidence_meets_threshold",
-                    prompt_type="domain_specific",
-                    domain=domain,
-                    action=action,
-                    user_query=user_query,
-                )
-                return domain_prompt
-            except Exception as e:
-                # Fallback to default
-                prompt = SYSTEM_PROMPT
-                # STEP 41: record error fallback
-                rag_step_log(
-                    step=41,
-                    step_id="RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt",
-                    node_label="SelectPrompt",
-                    classification_available=True,
-                    classification_confidence=conf,
-                    confidence_below_threshold=False,
-                    confidence_threshold=threshold,
-                    reason="domain_prompt_error_fallback",
-                    prompt_type="default",
-                    domain=domain,
-                    action=action,
-                    user_query=user_query,
-                    error=str(e),
-                    error_fallback=True,
-                )
-                # STEP 44: default due to error
-                rag_step_log(
-                    step=44,
-                    step_id="RAG.prompting.use.default.system.prompt",
-                    node_label="DefaultSysPrompt",
-                    trigger_reason="error_fallback",
-                    prompt_type="default",
-                    classification_available=True,
-                    classification_confidence=conf,
-                    confidence_threshold=threshold,
-                    domain=domain,
-                    action=action,
-                    user_query=user_query,
-                    prompt_length=len(prompt) if prompt else 0,
-                    processing_stage="completed",
-                    reasons=["domain_prompt_generation_failed"],
-                    confidence=conf,
-                    decision="error_fallback",
-                )
-                return prompt
-
-    def _prepare_messages_with_system_prompt(
+    async def _prepare_messages_with_system_prompt(
         self,
         messages: List[Message],
         system_prompt: Optional[str] = None,
@@ -598,7 +442,7 @@ class LangGraphAgent:
         # Resolve prompt if not provided
         if system_prompt is None:
             try:
-                system_prompt = self._get_system_prompt(msgs, resolved_class)
+                system_prompt = await self._get_system_prompt(msgs, resolved_class)
             except Exception:
                 from app.core.prompts import SYSTEM_PROMPT as _SP
                 system_prompt = _SP
@@ -870,10 +714,10 @@ class LangGraphAgent:
         self._current_classification = await self._classify_user_query(conversation_messages)
 
         # Get domain-specific system prompt or default
-        system_prompt = self._get_system_prompt(conversation_messages, self._current_classification)
+        system_prompt = await self._get_system_prompt(conversation_messages, self._current_classification)
         
         # Use RAG STEP 45 to prepare messages with system prompt
-        conversation_messages = self._prepare_messages_with_system_prompt(conversation_messages, system_prompt, self._current_classification)
+        conversation_messages = await self._prepare_messages_with_system_prompt(conversation_messages, system_prompt, self._current_classification)
 
         llm_calls_num = 0
         max_retries = settings.MAX_LLM_CALL_RETRIES
@@ -1201,10 +1045,10 @@ class LangGraphAgent:
         """
         try:
             # Get domain-specific system prompt or default
-            system_prompt = self._get_system_prompt(messages, self._current_classification)
-            
+            system_prompt = await self._get_system_prompt(messages, self._current_classification)
+
             # Use RAG STEP 45 to prepare messages with system prompt
-            processed_messages = self._prepare_messages_with_system_prompt(messages, system_prompt, self._current_classification)
+            processed_messages = await self._prepare_messages_with_system_prompt(messages, system_prompt, self._current_classification)
             
             # Get optimal provider (classification-aware)
             provider = self._get_optimal_provider(processed_messages)

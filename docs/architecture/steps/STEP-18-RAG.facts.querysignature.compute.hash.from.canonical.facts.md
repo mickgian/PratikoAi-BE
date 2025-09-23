@@ -36,32 +36,31 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.27)
+1) app/orchestrators/facts.py:50 — app.orchestrators.facts.step_18__query_sig (score 0.31)
+   Evidence: Score 0.31, RAG STEP 18 — QuerySignature.compute Hash from canonical facts
+ID: RAG.facts.que...
+2) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.27)
    Evidence: Score 0.27, Generate a deterministic hash for query deduplication.
 
 Args:
     messages: List...
-2) app/core/performance/database_optimizer.py:382 — app.core.performance.database_optimizer.DatabaseOptimizer._extract_table_from_query (score 0.27)
+3) app/orchestrators/facts.py:68 — app.orchestrators.facts.step_29__pre_context_from_golden (score 0.27)
+   Evidence: Score 0.27, RAG STEP 29 — ContextBuilder.merge facts and KB docs and doc facts if present
+ID...
+4) app/core/performance/database_optimizer.py:382 — app.core.performance.database_optimizer.DatabaseOptimizer._extract_table_from_query (score 0.27)
    Evidence: Score 0.27, Extract primary table name from query.
-3) app/core/hash_gate.py:21 — app.core.hash_gate.HashGate.__init__ (score 0.25)
+5) app/core/hash_gate.py:21 — app.core.hash_gate.HashGate.__init__ (score 0.25)
    Evidence: Score 0.25, method: __init__
-4) app/models/user.py:55 — app.models.user.User.hash_password (score 0.25)
-   Evidence: Score 0.25, Hash a password using bcrypt.
-5) app/services/query_service.py:67 — app.services.query_service.QueryService.__init__ (score 0.25)
-   Evidence: Score 0.25, Initialize query service.
-
-Args:
-    db_session: Optional database session for q...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for QuerySig
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

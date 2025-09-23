@@ -84,7 +84,7 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 ## Phase 6: Classification & LLM Operations (Days 13-15)
 **Advanced classification and LLM handling**
 
-### Batch 10: Classification Logic (35-41, 43)
+### Batch 10: Classification Logic (35-41, 43) - (somewhere here Started to use the prompt from github issues) 
 - **Step 35**: LLM fallback - Use LLM classification
 - **Step 36**: LLM better than rule-based - Quality check
 - **Step 37**: Use LLM classification - Apply LLM results

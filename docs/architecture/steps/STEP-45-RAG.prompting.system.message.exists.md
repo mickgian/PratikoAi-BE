@@ -39,10 +39,14 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/ragsteps/prompting/step_45_rag_prompting_system_message_exists.py:35 — app.ragsteps.prompting.step_45_rag_prompting_system_message_exists.step_45_rag_prompting_system_message_exists (score 0.31)
-   Evidence: Score 0.31, function: step_45_rag_prompting_system_message_exists
-2) app/ragsteps/prompting/step_45_rag_prompting_system_message_exists.py:19 — app.ragsteps.prompting.step_45_rag_prompting_system_message_exists.run (score 0.30)
-   Evidence: Score 0.30, function: run
+1) app/orchestrators/prompting.py:327 — app.orchestrators.prompting.step_45__check_sys_msg (score 0.31)
+   Evidence: Score 0.31, RAG STEP 45 — System message exists?
+ID: RAG.prompting.system.message.exists
+Typ...
+2) app/orchestrators/platform.py:969 — app.orchestrators.platform.step_13__message_exists (score 0.28)
+   Evidence: Score 0.28, RAG STEP 13 — User message exists?
+ID: RAG.platform.user.message.exists
+Type: de...
 3) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.28)
    Evidence: Score 0.28, Check if a file exists and return status.
 4) validate_payment_implementation.py:8 — validate_payment_implementation.check_file_exists (score 0.28)

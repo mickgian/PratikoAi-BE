@@ -45,20 +45,20 @@ Top candidates:
 Attributes:
     id: User's ID
     email: Us...
-2) app/schemas/auth.py:205 — app.schemas.auth.EnhancedUserResponse (score 0.30)
+2) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.30)
+   Evidence: Score 0.30, RAG STEP 30 — Return ChatResponse
+ID: RAG.response.return.chatresponse
+Type: pro...
+3) app/orchestrators/response.py:234 — app.orchestrators.response.step_112__end (score 0.30)
+   Evidence: Score 0.30, RAG STEP 112 — Return response to user
+ID: RAG.response.return.response.to.user
+...
+4) app/schemas/auth.py:205 — app.schemas.auth.EnhancedUserResponse (score 0.30)
    Evidence: Score 0.30, Enhanced user response model that includes OAuth provider information.
 
 This ext...
-3) app/api/v1/gdpr_cleanup.py:64 — app.api.v1.gdpr_cleanup.UserDeletionResponse (score 0.29)
+5) app/api/v1/gdpr_cleanup.py:64 — app.api.v1.gdpr_cleanup.UserDeletionResponse (score 0.29)
    Evidence: Score 0.29, User data deletion response
-4) app/models/user.py:20 — app.models.user.User (score 0.27)
-   Evidence: Score 0.27, User model for storing user accounts.
-
-Attributes:
-    id: The primary key
-    e...
-5) app/models/encrypted_user.py:28 — app.models.encrypted_user.EncryptedUser (score 0.27)
-   Evidence: Score 0.27, Enhanced User model with encrypted PII fields for Italian data protection compli...
 
 Notes:
 - Implementation exists but may not be wired correctly

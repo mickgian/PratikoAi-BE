@@ -36,22 +36,27 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
+1) app/orchestrators/platform.py:1391 — app.orchestrators.platform.step_69__retry_check (score 0.29)
+   Evidence: Score 0.29, RAG STEP 69 — Another attempt allowed?
+ID: RAG.platform.another.attempt.allowed
+...
+2) app/orchestrators/kb.py:14 — app.orchestrators.kb.step_26__kbcontext_check (score 0.26)
+   Evidence: Score 0.26, RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes
+ID: RAG.k...
+3) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
    Evidence: Score 0.26, Check compatibility for a version deployment.
-2) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
+4) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
    Evidence: Score 0.26, Check if this delta has been seen before.
 
 Args:
     delta: The delta content to...
-3) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.26)
-   Evidence: Score 0.26, Check if a file exists and return status.
-4) validate_italian_implementation.py:19 — validate_italian_implementation.check_file_content (score 0.26)
-   Evidence: Score 0.26, Check if a file contains expected content.
-5) validate_payment_implementation.py:8 — validate_payment_implementation.check_file_exists (score 0.26)
-   Evidence: Score 0.26, Check if a file exists and return status.
+5) app/orchestrators/platform.py:317 — app.orchestrators.platform.step_3__valid_check (score 0.26)
+   Evidence: Score 0.26, RAG STEP 3 — Request valid?
+ID: RAG.platform.request.valid
+Type: decision | Cate...
 
 Notes:
 - Weak or missing implementation

@@ -36,25 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) evals/helpers.py:129 — evals.helpers.process_trace_results (score 0.26)
+1) app/orchestrators/facts.py:283 — app.orchestrators.facts.step_98__to_tool_results (score 0.30)
+   Evidence: Score 0.30, RAG STEP 98 — Convert to ToolMessage facts and spans
+ID: RAG.facts.convert.to.to...
+2) app/orchestrators/platform.py:1517 — app.orchestrators.platform.step_99__tool_results (score 0.30)
+   Evidence: Score 0.30, RAG STEP 99 — Return to tool caller
+ID: RAG.platform.return.to.tool.caller
+Type:...
+3) app/orchestrators/kb.py:32 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
+   Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand
+ID: RAG.kb.knowledgesearch...
+4) evals/helpers.py:129 — evals.helpers.process_trace_results (score 0.26)
    Evidence: Score 0.26, Process results for a single trace.
 
 Args:
     report: The report dictionary.
   ...
-2) app/ragsteps/routing/step_79_rag_routing_tool_type.py:64 — app.ragsteps.routing.step_79_rag_routing_tool_type.step_79_rag_routing_tool_type (score 0.26)
-   Evidence: Score 0.26, Canonical symbol for auditor: STEP 79 — Tool type? (RAG.routing.tool.type)
-
-Dele...
-3) app/services/hybrid_search_engine.py:406 — app.services.hybrid_search_engine.HybridSearchEngine._merge_results (score 0.26)
-   Evidence: Score 0.26, Merge and deduplicate keyword and vector results
-4) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.25)
-   Evidence: Score 0.25, method: __init__
-5) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.25)
-   Evidence: Score 0.25, Execute CCNL query (synchronous version).
+5) app/orchestrators/platform.py:1499 — app.orchestrators.platform.step_86__tool_err (score 0.26)
+   Evidence: Score 0.26, RAG STEP 86 — Return tool error Invalid file
+ID: RAG.platform.return.tool.error....
 
 Notes:
 - Weak or missing implementation

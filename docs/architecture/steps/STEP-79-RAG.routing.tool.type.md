@@ -39,18 +39,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/ragsteps/routing/step_79_rag_routing_tool_type.py:64 — app.ragsteps.routing.step_79_rag_routing_tool_type.step_79_rag_routing_tool_type (score 0.27)
-   Evidence: Score 0.27, Canonical symbol for auditor: STEP 79 — Tool type? (RAG.routing.tool.type)
-
-Dele...
-2) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.27)
+1) app/orchestrators/platform.py:1481 — app.orchestrators.platform.step_78__execute_tools (score 0.27)
+   Evidence: Score 0.27, RAG STEP 78 — LangGraphAgent._tool_call Execute tools
+ID: RAG.platform.langgraph...
+2) app/orchestrators/routing.py:14 — app.orchestrators.routing.step_79__tool_type (score 0.27)
+   Evidence: Score 0.27, RAG STEP 79 — Tool type?
+ID: RAG.routing.tool.type
+Type: decision | Category: ro...
+3) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.27)
    Evidence: Score 0.27, method: __init__
-3) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.27)
+4) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.27)
    Evidence: Score 0.27, Execute CCNL query (synchronous version).
-4) app/core/langgraph/tools/document_ingest_tool.py:80 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.27)
+5) app/core/langgraph/tools/document_ingest_tool.py:80 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.27)
    Evidence: Score 0.27, Initialize the document ingest tool.
-5) app/core/langgraph/tools/document_ingest_tool.py:374 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.27)
-   Evidence: Score 0.27, Synchronous wrapper (not recommended, use async version).
 
 Notes:
 - Weak or missing implementation

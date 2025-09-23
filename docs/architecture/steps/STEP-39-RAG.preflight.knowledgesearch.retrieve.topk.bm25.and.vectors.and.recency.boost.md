@@ -36,20 +36,20 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
+Status: 🔌  |  Confidence: 0.30
 
 Top candidates:
-1) app/ragsteps/preflight/step_39_rag_preflight_knowledgesearch_retrieve_topk_bm25_and_vectors_and_recency_boost.py:39 — app.ragsteps.preflight.step_39_rag_preflight_knowledgesearch_retrieve_topk_bm25_and_vectors_and_recency_boost.step_39_rag_preflight_knowledgesearch_retrieve_topk_bm25_and_vectors_and_recency_boost (score 0.35)
-   Evidence: Score 0.35, Token-rich adapter function for STEP 39 (KBPreFetch).
-Minimal, side-effect-free;...
-2) app/ragsteps/preflight/step_39_rag_preflight_knowledgesearch_retrieve_topk_bm25_and_vectors_and_recency_boost.py:63 — app.ragsteps.preflight.step_39_rag_preflight_knowledgesearch_retrieve_topk_bm25_and_vectors_and_recency_boost.run (score 0.34)
-   Evidence: Score 0.34, Backward-compatible entrypoint that delegates to the token-rich function.
-3) app/services/knowledge_search_service.py:442 — app.services.knowledge_search_service.KnowledgeSearchService._calculate_recency_boost (score 0.30)
+1) app/services/knowledge_search_service.py:442 — app.services.knowledge_search_service.KnowledgeSearchService._calculate_recency_boost (score 0.30)
    Evidence: Score 0.30, Calculate recency boost based on document age.
-4) app/services/hybrid_search_engine.py:495 — app.services.hybrid_search_engine.HybridSearchEngine._get_recency_boost (score 0.28)
+2) app/services/hybrid_search_engine.py:495 — app.services.hybrid_search_engine.HybridSearchEngine._get_recency_boost (score 0.28)
    Evidence: Score 0.28, Get boost based on content recency
-5) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.28)
+3) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.28)
    Evidence: Score 0.28, Combine results from BM25 and vector search, removing duplicates.
+4) app/orchestrators/preflight.py:86 — app.orchestrators.preflight.step_39__kbpre_fetch (score 0.27)
+   Evidence: Score 0.27, RAG STEP 39 — KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost
+I...
+5) app/services/knowledge_search_service.py:100 — app.services.knowledge_search_service.KnowledgeSearchService.__init__ (score 0.27)
+   Evidence: Score 0.27, Initialize knowledge search service.
 
 Notes:
 - Implementation exists but may not be wired correctly

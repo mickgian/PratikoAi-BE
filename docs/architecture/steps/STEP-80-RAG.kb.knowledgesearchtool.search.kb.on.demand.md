@@ -49,8 +49,9 @@ Implements RAG STEP 39 —...
    Evidence: Score 0.44, Search mode for knowledge retrieval.
 4) app/services/vector_providers/pinecone_provider.py:21 — app.services.vector_providers.pinecone_provider.PineconeProvider (score 0.44)
    Evidence: Score 0.44, Pinecone vector search provider.
-5) app/services/knowledge_search_service.py:100 — app.services.knowledge_search_service.KnowledgeSearchService.__init__ (score 0.43)
-   Evidence: Score 0.43, Initialize knowledge search service.
+5) app/orchestrators/kb.py:32 — app.orchestrators.kb.step_80__kbquery_tool (score 0.44)
+   Evidence: Score 0.44, RAG STEP 80 — KnowledgeSearchTool.search KB on demand
+ID: RAG.kb.knowledgesearch...
 
 Notes:
 - Implementation exists but may not be wired correctly

@@ -36,29 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/models/ccnl_data.py:813 — app.models.ccnl_data.create_ccnl_id (score 0.26)
+1) app/orchestrators/platform.py:1656 — app.orchestrators.platform.step_106__async_gen (score 0.29)
+   Evidence: Score 0.29, RAG STEP 106 — Create async generator
+ID: RAG.platform.create.async.generator
+Ty...
+2) app/models/ccnl_data.py:813 — app.models.ccnl_data.create_ccnl_id (score 0.26)
    Evidence: Score 0.26, Create standardized CCNL ID.
-2) app/core/database.py:10 — app.core.database.get_async_session (score 0.26)
+3) app/core/database.py:10 — app.core.database.get_async_session (score 0.26)
    Evidence: Score 0.26, Get async database session.
-3) app/models/regulatory_documents.py:310 — app.models.regulatory_documents.create_document_id (score 0.26)
+4) app/models/regulatory_documents.py:310 — app.models.regulatory_documents.create_document_id (score 0.26)
    Evidence: Score 0.26, Create standardized document ID.
 
 Args:
     source: Source authority
     documen...
-4) app/services/export_file_generator.py:29 — app.services.export_file_generator.ExportFileGenerator.__init__ (score 0.26)
-   Evidence: Score 0.26, method: __init__
-5) app/services/vector_service.py:112 — app.services.vector_service.VectorService.create_embedding (score 0.26)
-   Evidence: Score 0.26, Create embedding vector for text.
-
-Args:
-    text: Text to embed
-    
-Returns:
- ...
+5) app/orchestrators/providers.py:810 — app.orchestrators.providers.step_57__create_provider (score 0.26)
+   Evidence: Score 0.26, RAG STEP 57 — Create provider instance
+ID: RAG.providers.create.provider.instanc...
 
 Notes:
 - Weak or missing implementation

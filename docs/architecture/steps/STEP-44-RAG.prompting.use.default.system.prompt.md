@@ -36,19 +36,20 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/ragsteps/prompting/step_44_rag_prompting_use_default_system_prompt.py:44 — app.ragsteps.prompting.step_44_rag_prompting_use_default_system_prompt.step_44_rag_prompting_use_default_system_prompt (score 0.34)
-   Evidence: Score 0.34, function: step_44_rag_prompting_use_default_system_prompt
-2) app/ragsteps/prompting/step_44_rag_prompting_use_default_system_prompt.py:26 — app.ragsteps.prompting.step_44_rag_prompting_use_default_system_prompt.run (score 0.33)
-   Evidence: Score 0.33, function: run
-3) app/core/prompts/__init__.py:9 — app.core.prompts.__init__.load_system_prompt (score 0.28)
+1) app/orchestrators/prompting.py:229 — app.orchestrators.prompting.step_44__default_sys_prompt (score 0.32)
+   Evidence: Score 0.32, RAG STEP 44 — Use default SYSTEM_PROMPT
+ID: RAG.prompting.use.default.system.pro...
+2) app/core/prompts/__init__.py:9 — app.core.prompts.__init__.load_system_prompt (score 0.28)
    Evidence: Score 0.28, Load the system prompt from the file.
-4) app/services/italian_document_analyzer.py:189 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._build_system_prompt (score 0.28)
+3) app/services/italian_document_analyzer.py:189 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._build_system_prompt (score 0.28)
    Evidence: Score 0.28, Build system prompt based on analysis type
-5) deployment-orchestration/notification_system.py:674 — deployment-orchestration.notification_system.NotificationManager.setup_default_rules (score 0.28)
+4) deployment-orchestration/notification_system.py:674 — deployment-orchestration.notification_system.NotificationManager.setup_default_rules (score 0.28)
    Evidence: Score 0.28, Setup default notification rules.
+5) app/core/langgraph/graph.py:406 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.27)
+   Evidence: Score 0.27, Select the appropriate system prompt (RAG STEPs 41/42/44) with full test-require...
 
 Notes:
 - Implementation exists but may not be wired correctly

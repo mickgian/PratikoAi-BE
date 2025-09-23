@@ -46,16 +46,13 @@ Top candidates:
 3) app/core/streaming_guard.py:13 — app.core.streaming_guard.SinglePassStream (score 0.28)
    Evidence: Score 0.28, Wraps an async generator to ensure it's only iterated once.
 Raises RuntimeError ...
-4) app/services/validators/financial_validation_engine.py:302 — app.services.validators.financial_validation_engine.FinancialValidationEngine.execute_single_task (score 0.25)
-   Evidence: Score 0.25, Execute a single validation task.
-
-Args:
-    task: The validation task to execut...
-5) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.23)
-   Evidence: Score 0.23, Response model for streaming chat endpoint.
-
-Attributes:
-    content: The conten...
+4) app/orchestrators/preflight.py:158 — app.orchestrators.preflight.step_107__single_pass (score 0.28)
+   Evidence: Score 0.28, RAG STEP 107 — SinglePassStream Prevent double iteration
+ID: RAG.preflight.singl...
+5) app/orchestrators/streaming.py:14 — app.orchestrators.streaming.step_104__stream_check (score 0.25)
+   Evidence: Score 0.25, RAG STEP 104 — Streaming requested?
+ID: RAG.streaming.streaming.requested
+Type: ...
 
 Notes:
 - Implementation exists but may not be wired correctly

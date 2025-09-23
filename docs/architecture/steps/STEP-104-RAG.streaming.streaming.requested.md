@@ -36,29 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.28)
+1) app/orchestrators/streaming.py:14 — app.orchestrators.streaming.step_104__stream_check (score 0.34)
+   Evidence: Score 0.34, RAG STEP 104 — Streaming requested?
+ID: RAG.streaming.streaming.requested
+Type: ...
+2) app/orchestrators/streaming.py:32 — app.orchestrators.streaming.step_105__stream_setup (score 0.29)
+   Evidence: Score 0.29, RAG STEP 105 — ChatbotController.chat_stream Setup SSE
+ID: RAG.streaming.chatbot...
+3) app/orchestrators/streaming.py:68 — app.orchestrators.streaming.step_109__stream_response (score 0.29)
+   Evidence: Score 0.29, RAG STEP 109 — StreamingResponse Send chunks
+ID: RAG.streaming.streamingresponse...
+4) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.28)
    Evidence: Score 0.28, method: __init__
-2) app/core/streaming_guard.py:23 — app.core.streaming_guard.SinglePassStream.__aiter__ (score 0.28)
+5) app/core/streaming_guard.py:23 — app.core.streaming_guard.SinglePassStream.__aiter__ (score 0.28)
    Evidence: Score 0.28, method: __aiter__
-3) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
-   Evidence: Score 0.26, Check compatibility for a version deployment.
-4) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
-   Evidence: Score 0.26, Check if this delta has been seen before.
-
-Args:
-    delta: The delta content to...
-5) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.26)
-   Evidence: Score 0.26, Check if a file exists and return status.
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create decision implementation for StreamCheck
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

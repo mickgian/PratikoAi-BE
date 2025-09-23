@@ -36,21 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
+1) app/orchestrators/platform.py:1445 — app.orchestrators.platform.step_76__convert_aimsg (score 0.28)
+   Evidence: Score 0.28, RAG STEP 76 — Convert to AIMessage with tool_calls
+ID: RAG.platform.convert.to.a...
+2) app/orchestrators/kb.py:32 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
+   Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand
+ID: RAG.kb.knowledgesearch...
+3) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
    Evidence: Score 0.25, Convert internal SearchResponse to API model.
-2) app/models/subscription.py:127 — app.models.subscription.SubscriptionPlan.price_with_iva (score 0.25)
-   Evidence: Score 0.25, Total price including 22% IVA
-3) app/ragsteps/routing/step_79_rag_routing_tool_type.py:64 — app.ragsteps.routing.step_79_rag_routing_tool_type.step_79_rag_routing_tool_type (score 0.25)
-   Evidence: Score 0.25, Canonical symbol for auditor: STEP 79 — Tool type? (RAG.routing.tool.type)
-
-Dele...
-4) app/services/ccnl_service.py:334 — app.services.ccnl_service.CCNLService._convert_to_db_model (score 0.25)
-   Evidence: Score 0.25, Convert domain CCNL model to database model.
-5) app/services/context_builder_merge.py:557 — app.services.context_builder_merge.ContextBuilderMerge._convert_to_dict (score 0.25)
-   Evidence: Score 0.25, Convert MergedContext to dictionary.
+4) app/orchestrators/facts.py:283 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
+   Evidence: Score 0.25, RAG STEP 98 — Convert to ToolMessage facts and spans
+ID: RAG.facts.convert.to.to...
+5) app/orchestrators/platform.py:1463 — app.orchestrators.platform.step_77__simple_aimsg (score 0.25)
+   Evidence: Score 0.25, RAG STEP 77 — Convert to simple AIMessage
+ID: RAG.platform.convert.to.simple.aim...
 
 Notes:
 - Weak or missing implementation

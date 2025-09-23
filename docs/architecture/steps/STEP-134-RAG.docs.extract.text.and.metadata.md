@@ -36,22 +36,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: 🔌  |  Confidence: 0.41
 
 Top candidates:
-1) app/services/document_processor.py:541 — app.services.document_processor.DocumentProcessor._extract_content_metadata (score 0.31)
-   Evidence: Score 0.31, Extract metadata from document content.
-
-Args:
-    content: Extracted text conte...
-2) app/services/legal_document_analyzer.py:883 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_parties (score 0.31)
-   Evidence: Score 0.31, Extract parties from contract
-3) app/services/legal_document_analyzer.py:905 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_object (score 0.31)
-   Evidence: Score 0.31, Extract contract object/purpose
-4) app/services/legal_document_analyzer.py:919 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_price (score 0.31)
-   Evidence: Score 0.31, Extract contract price
-5) app/services/legal_document_analyzer.py:933 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_duration (score 0.31)
-   Evidence: Score 0.31, Extract contract duration
+1) app/orchestrators/docs.py:86 — app.orchestrators.docs.step_91__f24_parser (score 0.41)
+   Evidence: Score 0.41, RAG STEP 91 — F24Parser.parse_ocr Layout aware OCR
+ID: RAG.docs.f24parser.parse....
+2) app/orchestrators/docs.py:68 — app.orchestrators.docs.step_90__fattura_parser (score 0.38)
+   Evidence: Score 0.38, RAG STEP 90 — FatturaParser.parse_xsd XSD validation
+ID: RAG.docs.fatturaparser....
+3) app/orchestrators/docs.py:104 — app.orchestrators.docs.step_92__contract_parser (score 0.38)
+   Evidence: Score 0.38, RAG STEP 92 — ContractParser.parse
+ID: RAG.docs.contractparser.parse
+Type: proce...
+4) app/orchestrators/docs.py:122 — app.orchestrators.docs.step_93__payslip_parser (score 0.38)
+   Evidence: Score 0.38, RAG STEP 93 — PayslipParser.parse
+ID: RAG.docs.payslipparser.parse
+Type: process...
+5) app/orchestrators/docs.py:176 — app.orchestrators.docs.step_97__provenance (score 0.34)
+   Evidence: Score 0.34, RAG STEP 97 — Provenance.log Ledger entry
+ID: RAG.docs.provenance.log.ledger.ent...
 
 Notes:
 - Implementation exists but may not be wired correctly

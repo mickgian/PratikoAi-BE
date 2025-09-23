@@ -39,13 +39,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/langgraph/graph.py:1454 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.32)
+1) app/core/langgraph/graph.py:1371 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.32)
    Evidence: Score 0.32, method: __process_messages
-2) app/core/langgraph/graph.py:599 — app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt (score 0.30)
+2) app/core/langgraph/graph.py:579 — app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt (score 0.30)
    Evidence: Score 0.30, Ensure system message presence (RAG STEP 45 — CheckSysMsg) with backward-compati...
 3) app/core/langgraph/graph.py:81 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
    Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
-4) app/core/langgraph/graph.py:1064 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.29)
+4) app/core/langgraph/graph.py:981 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.29)
    Evidence: Score 0.29, Determine if the agent should continue or end based on the last message.
 
 Args:

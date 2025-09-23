@@ -39,19 +39,20 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/services/atomic_facts_extractor.py:421 — app.services.atomic_facts_extractor.AtomicFactsExtractor.extract (score 0.32)
+1) app/orchestrators/facts.py:265 — app.orchestrators.facts.step_95__extract_doc_facts (score 0.32)
+   Evidence: Score 0.32, RAG STEP 95 — Extractor.extract Structured fields
+ID: RAG.facts.extractor.extrac...
+2) app/services/atomic_facts_extractor.py:421 — app.services.atomic_facts_extractor.AtomicFactsExtractor.extract (score 0.32)
    Evidence: Score 0.32, Extract atomic facts from an Italian professional query.
 
 Args:
     query: The u...
-2) app/services/atomic_facts_extractor.py:581 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_dates (score 0.31)
+3) app/services/atomic_facts_extractor.py:581 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_dates (score 0.31)
    Evidence: Score 0.31, Extract dates, durations, and time-related facts from the query.
-3) app/services/atomic_facts_extractor.py:461 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_monetary_amounts (score 0.31)
+4) app/services/atomic_facts_extractor.py:461 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_monetary_amounts (score 0.31)
    Evidence: Score 0.31, Extract monetary amounts and percentages from the query.
-4) app/services/atomic_facts_extractor.py:716 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_legal_entities (score 0.31)
+5) app/services/atomic_facts_extractor.py:716 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_legal_entities (score 0.31)
    Evidence: Score 0.31, Extract legal entities, tax codes, and document types.
-5) app/services/atomic_facts_extractor.py:779 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_professional_categories (score 0.31)
-   Evidence: Score 0.31, Extract professional categories, job levels, and contract types.
 
 Notes:
 - Implementation exists but may not be wired correctly

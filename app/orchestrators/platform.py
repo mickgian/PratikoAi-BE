@@ -2173,23 +2173,74 @@ async def step_78__execute_tools(*, messages: Optional[List[Any]] = None, ctx: O
 
     return result
 
-def step_86__tool_err(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_86__tool_error(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 86 — Return tool error Invalid file
     ID: RAG.platform.return.tool.error.invalid.file
     Type: error | Category: platform | Node: ToolErr
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Error handler that returns a tool error message when attachment validation fails.
+    Converts validation errors into appropriate error response format. Thin orchestration
+    that preserves existing error handling patterns.
     """
+    from langchain_core.messages import ToolMessage
+
+    ctx = ctx or {}
     with rag_step_timer(86, 'RAG.platform.return.tool.error.invalid.file', 'ToolErr', stage="start"):
-        rag_step_log(step=86, step_id='RAG.platform.return.tool.error.invalid.file', node_label='ToolErr',
-                     category='platform', type='error', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=86, step_id='RAG.platform.return.tool.error.invalid.file', node_label='ToolErr',
-                     processing_stage="completed")
+        errors = ctx.get('errors', [])
+        attachment_count = ctx.get('attachment_count', 0)
+        tool_call_id = ctx.get('tool_call_id')
+        request_id = ctx.get('request_id', 'unknown')
+
+        rag_step_log(
+            step=86,
+            step_id='RAG.platform.return.tool.error.invalid.file',
+            node_label='ToolErr',
+            category='platform',
+            type='error',
+            processing_stage="started",
+            request_id=request_id,
+            error_count=len(errors)
+        )
+
+        # Construct error message
+        if errors:
+            error_message = '\n'.join(errors)
+        else:
+            error_message = "Invalid attachment: validation failed"
+
+        result = {
+            'error_returned': True,
+            'error_type': 'invalid_attachment',
+            'error_message': error_message,
+            'error_count': len(errors),
+            'attachment_count': attachment_count,
+            'request_id': request_id
+        }
+
+        # Create ToolMessage if tool_call_id provided
+        if tool_call_id:
+            tool_message = ToolMessage(
+                content=f"Error: {error_message}",
+                tool_call_id=tool_call_id
+            )
+            result['tool_message'] = tool_message
+
+        rag_step_log(
+            step=86,
+            step_id='RAG.platform.return.tool.error.invalid.file',
+            node_label='ToolErr',
+            processing_stage="completed",
+            request_id=request_id,
+            error_returned=True,
+            error_type='invalid_attachment',
+            error_count=len(errors)
+        )
+
         return result
+
+# Alias for backward compatibility
+step_86__tool_err = step_86__tool_error
 
 def step_99__tool_results(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

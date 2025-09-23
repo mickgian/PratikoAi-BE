@@ -11,23 +11,81 @@ except Exception:  # pragma: no cover
     def rag_step_log(**kwargs): return None
     def rag_step_timer(*args, **kwargs): return nullcontext()
 
-def step_22__doc_dependent(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_22__doc_dependent_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 22 — Doc-dependent or refers to doc?
     ID: RAG.docs.doc.dependent.or.refers.to.doc
     Type: process | Category: docs | Node: DocDependent
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Decision step that checks if the user query depends on or refers to uploaded documents.
+    Routes to full document processing (Step 23/87) if yes, otherwise to golden set
+    lookup (Step 24). Thin orchestration that preserves existing dependency detection logic.
     """
+    ctx = ctx or {}
     with rag_step_timer(22, 'RAG.docs.doc.dependent.or.refers.to.doc', 'DocDependent', stage="start"):
-        rag_step_log(step=22, step_id='RAG.docs.doc.dependent.or.refers.to.doc', node_label='DocDependent',
-                     category='docs', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=22, step_id='RAG.docs.doc.dependent.or.refers.to.doc', node_label='DocDependent',
-                     processing_stage="completed")
+        user_query = ctx.get('user_query', '')
+        extracted_docs = ctx.get('extracted_docs', [])
+        document_count = ctx.get('document_count', len(extracted_docs))
+        request_id = ctx.get('request_id', 'unknown')
+
+        rag_step_log(
+            step=22,
+            step_id='RAG.docs.doc.dependent.or.refers.to.doc',
+            node_label='DocDependent',
+            category='docs',
+            type='process',
+            processing_stage="started",
+            request_id=request_id,
+            document_count=document_count
+        )
+
+        # Check if query refers to documents
+        query_lower = user_query.lower()
+
+        # Italian and English document reference keywords
+        doc_keywords = [
+            'documento', 'document', 'allegato', 'attachment', 'attached',
+            'file', 'pdf', 'fattura', 'invoice', 'contratto', 'contract',
+            'leggi', 'read', 'analizza', 'analyze', 'estrai', 'extract',
+            'questo', 'this', 'quello', 'that'
+        ]
+
+        # Check for document references in query
+        has_doc_reference = any(keyword in query_lower for keyword in doc_keywords)
+
+        # Query depends on doc if:
+        # 1. Documents are present AND
+        # 2. Query contains document references
+        query_depends_on_doc = document_count > 0 and has_doc_reference
+
+        # Determine next step based on dependency
+        next_step = 'require_doc_processing' if query_depends_on_doc else 'golden_set_lookup'
+        decision = 'dependent' if query_depends_on_doc else 'independent'
+
+        result = {
+            'query_depends_on_doc': query_depends_on_doc,
+            'document_count': document_count,
+            'has_doc_reference': has_doc_reference,
+            'next_step': next_step,
+            'decision': decision,
+            'request_id': request_id
+        }
+
+        rag_step_log(
+            step=22,
+            step_id='RAG.docs.doc.dependent.or.refers.to.doc',
+            node_label='DocDependent',
+            processing_stage="completed",
+            request_id=request_id,
+            query_depends_on_doc=query_depends_on_doc,
+            document_count=document_count,
+            decision=decision
+        )
+
         return result
+
+# Alias for backward compatibility
+step_22__doc_dependent = step_22__doc_dependent_check
 
 def step_87__doc_security(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

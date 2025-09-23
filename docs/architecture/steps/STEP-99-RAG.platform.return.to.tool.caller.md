@@ -42,7 +42,7 @@ Top candidates:
 1) app/orchestrators/facts.py:421 — app.orchestrators.facts.step_98__to_tool_results (score 0.30)
    Evidence: Score 0.30, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-2) app/orchestrators/platform.py:2194 — app.orchestrators.platform.step_99__tool_results (score 0.30)
+2) app/orchestrators/platform.py:2245 — app.orchestrators.platform.step_99__tool_results (score 0.30)
    Evidence: Score 0.30, RAG STEP 99 — Return to tool caller
 ID: RAG.platform.return.to.tool.caller
 Type:...
@@ -55,9 +55,10 @@ ID: RAG.kb.knowledgesearch...
 Args:
     report: The report dictionary.
   ...
-5) app/orchestrators/platform.py:2176 — app.orchestrators.platform.step_86__tool_err (score 0.26)
-   Evidence: Score 0.26, RAG STEP 86 — Return tool error Invalid file
-ID: RAG.platform.return.tool.error....
+5) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.26)
+   Evidence: Score 0.26, RAG STEP 30 — Return ChatResponse
+ID: RAG.response.return.chatresponse
+Type: pro...
 
 Notes:
 - Weak or missing implementation

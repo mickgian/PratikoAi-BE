@@ -36,27 +36,27 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/orchestrators/preflight.py:32 — app.orchestrators.preflight.step_19__attach_check (score 0.30)
-   Evidence: Score 0.30, RAG STEP 19 — Attachments present?
-ID: RAG.preflight.attachments.present
-Type: p...
-2) app/orchestrators/kb.py:14 — app.orchestrators.kb.step_26__kbcontext_check (score 0.26)
+1) app/orchestrators/kb.py:14 — app.orchestrators.kb.step_26__kbcontext_check (score 0.26)
    Evidence: Score 0.26, RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes
 ID: RAG.k...
-3) app/orchestrators/preflight.py:267 — app.orchestrators.preflight.step_85__attach_ok (score 0.26)
-   Evidence: Score 0.26, RAG STEP 85 — Valid attachments?
-ID: RAG.preflight.valid.attachments
-Type: decis...
-4) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
+2) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
    Evidence: Score 0.26, Check compatibility for a version deployment.
-5) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
+3) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
    Evidence: Score 0.26, Check if this delta has been seen before.
 
 Args:
     delta: The delta content to...
+4) app/orchestrators/platform.py:317 — app.orchestrators.platform.step_3__valid_check (score 0.26)
+   Evidence: Score 0.26, RAG STEP 3 — Request valid?
+ID: RAG.platform.request.valid
+Type: decision | Cate...
+5) app/orchestrators/providers.py:739 — app.orchestrators.providers.step_56__cost_check (score 0.26)
+   Evidence: Score 0.26, RAG STEP 56 — Cost within budget?
+ID: RAG.providers.cost.within.budget
+Type: dec...
 
 Notes:
 - Weak or missing implementation

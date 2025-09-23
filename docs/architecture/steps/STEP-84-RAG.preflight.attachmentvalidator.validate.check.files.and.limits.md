@@ -39,19 +39,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/orchestrators/preflight.py:32 — app.orchestrators.preflight.step_19__attach_check (score 0.27)
-   Evidence: Score 0.27, RAG STEP 19 — Attachments present?
-ID: RAG.preflight.attachments.present
-Type: p...
-2) app/orchestrators/preflight.py:249 — app.orchestrators.preflight.step_84__validate_attach (score 0.27)
-   Evidence: Score 0.27, RAG STEP 84 — AttachmentValidator.validate Check files and limits
-ID: RAG.prefli...
-3) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.27)
+1) validate_italian_implementation.py:8 — validate_italian_implementation.check_file_exists (score 0.27)
    Evidence: Score 0.27, Check if a file exists and return status.
-4) validate_italian_implementation.py:19 — validate_italian_implementation.check_file_content (score 0.27)
+2) validate_italian_implementation.py:19 — validate_italian_implementation.check_file_content (score 0.27)
    Evidence: Score 0.27, Check if a file contains expected content.
-5) validate_payment_implementation.py:8 — validate_payment_implementation.check_file_exists (score 0.27)
+3) validate_payment_implementation.py:8 — validate_payment_implementation.check_file_exists (score 0.27)
    Evidence: Score 0.27, Check if a file exists and return status.
+4) validate_payment_implementation.py:19 — validate_payment_implementation.check_file_content (score 0.27)
+   Evidence: Score 0.27, Check if a file contains expected content.
+5) app/services/document_uploader.py:661 — app.services.document_uploader.DocumentUploader.validate_upload_limits (score 0.27)
+   Evidence: Score 0.27, Validate upload limits for multiple files.
+
+Args:
+  files: List of uploaded file...
 
 Notes:
 - Weak or missing implementation

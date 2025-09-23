@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/orchestrators/platform.py:2501 — app.orchestrators.platform.step_120__validate_expert (score 0.30)
+1) app/orchestrators/platform.py:2552 — app.orchestrators.platform.step_120__validate_expert (score 0.30)
    Evidence: Score 0.30, RAG STEP 120 — Validate expert credentials
 ID: RAG.platform.validate.expert.cred...
 2) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.30)

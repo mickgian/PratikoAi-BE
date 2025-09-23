@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/platform.py:2537 — app.orchestrators.platform.step_133__fetch_feeds (score 0.28)
+1) app/orchestrators/platform.py:2588 — app.orchestrators.platform.step_133__fetch_feeds (score 0.28)
    Evidence: Score 0.28, RAG STEP 133 — Fetch and parse sources
 ID: RAG.platform.fetch.and.parse.sources
 ...
@@ -48,7 +48,7 @@ ID: RAG.platform.fetch.and.parse.sources
 
 Returns:
     List of traces...
-3) app/orchestrators/docs.py:194 — app.orchestrators.docs.step_134__parse_docs (score 0.26)
+3) app/orchestrators/docs.py:252 — app.orchestrators.docs.step_134__parse_docs (score 0.26)
    Evidence: Score 0.26, RAG STEP 134 — Extract text and metadata
 ID: RAG.docs.extract.text.and.metadata
 ...

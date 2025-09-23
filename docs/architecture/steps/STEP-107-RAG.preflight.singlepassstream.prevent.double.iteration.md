@@ -46,7 +46,7 @@ Top candidates:
 3) app/core/streaming_guard.py:13 — app.core.streaming_guard.SinglePassStream (score 0.28)
    Evidence: Score 0.28, Wraps an async generator to ensure it's only iterated once.
 Raises RuntimeError ...
-4) app/orchestrators/preflight.py:285 — app.orchestrators.preflight.step_107__single_pass (score 0.28)
+4) app/orchestrators/preflight.py:565 — app.orchestrators.preflight.step_107__single_pass (score 0.28)
    Evidence: Score 0.28, RAG STEP 107 — SinglePassStream Prevent double iteration
 ID: RAG.preflight.singl...
 5) app/orchestrators/streaming.py:14 — app.orchestrators.streaming.step_104__stream_check (score 0.25)

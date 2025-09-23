@@ -53,10 +53,10 @@ Args:
    Evidence: Score 0.26, RAG STEP 3 — Request valid?
 ID: RAG.platform.request.valid
 Type: decision | Cate...
-5) app/orchestrators/preflight.py:32 — app.orchestrators.preflight.step_19__attach_check (score 0.26)
-   Evidence: Score 0.26, RAG STEP 19 — Attachments present?
-ID: RAG.preflight.attachments.present
-Type: p...
+5) app/orchestrators/providers.py:739 — app.orchestrators.providers.step_56__cost_check (score 0.26)
+   Evidence: Score 0.26, RAG STEP 56 — Cost within budget?
+ID: RAG.providers.cost.within.budget
+Type: dec...
 
 Notes:
 - Weak or missing implementation

@@ -47,13 +47,14 @@ ID: RAG.kb.knowledgesearch...
 3) app/orchestrators/facts.py:421 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
    Evidence: Score 0.25, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-4) app/orchestrators/platform.py:2176 — app.orchestrators.platform.step_86__tool_err (score 0.25)
-   Evidence: Score 0.25, RAG STEP 86 — Return tool error Invalid file
-ID: RAG.platform.return.tool.error....
-5) app/orchestrators/platform.py:2194 — app.orchestrators.platform.step_99__tool_results (score 0.25)
+4) app/orchestrators/platform.py:2245 — app.orchestrators.platform.step_99__tool_results (score 0.25)
    Evidence: Score 0.25, RAG STEP 99 — Return to tool caller
 ID: RAG.platform.return.to.tool.caller
 Type:...
+5) app/orchestrators/routing.py:14 — app.orchestrators.routing.step_79__tool_type (score 0.25)
+   Evidence: Score 0.25, RAG STEP 79 — Tool type?
+ID: RAG.routing.tool.type
+Type: decision | Category: ro...
 
 Notes:
 - Weak or missing implementation

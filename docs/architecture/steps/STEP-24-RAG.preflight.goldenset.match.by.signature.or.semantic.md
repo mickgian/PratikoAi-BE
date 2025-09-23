@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/preflight.py:68 — app.orchestrators.preflight.step_24__golden_lookup (score 0.28)
+1) app/orchestrators/preflight.py:237 — app.orchestrators.preflight.step_24__golden_lookup (score 0.28)
    Evidence: Score 0.28, RAG STEP 24 — GoldenSet.match_by_signature_or_semantic
 ID: RAG.preflight.goldens...
 2) app/orchestrators/golden.py:50 — app.orchestrators.golden.step_25__golden_hit (score 0.26)

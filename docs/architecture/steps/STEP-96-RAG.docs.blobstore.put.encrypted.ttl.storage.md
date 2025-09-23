@@ -36,34 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.40
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/orchestrators/docs.py:144 — app.orchestrators.docs.step_91__f24_parser (score 0.40)
-   Evidence: Score 0.40, RAG STEP 91 — F24Parser.parse_ocr Layout aware OCR
-ID: RAG.docs.f24parser.parse....
-2) app/orchestrators/docs.py:126 — app.orchestrators.docs.step_90__fattura_parser (score 0.37)
-   Evidence: Score 0.37, RAG STEP 90 — FatturaParser.parse_xsd XSD validation
-ID: RAG.docs.fatturaparser....
-3) app/orchestrators/docs.py:162 — app.orchestrators.docs.step_92__contract_parser (score 0.37)
-   Evidence: Score 0.37, RAG STEP 92 — ContractParser.parse
-ID: RAG.docs.contractparser.parse
-Type: proce...
-4) app/orchestrators/docs.py:180 — app.orchestrators.docs.step_93__payslip_parser (score 0.37)
-   Evidence: Score 0.37, RAG STEP 93 — PayslipParser.parse
-ID: RAG.docs.payslipparser.parse
-Type: process...
-5) app/orchestrators/docs.py:216 — app.orchestrators.docs.step_96__store_blob (score 0.34)
-   Evidence: Score 0.34, RAG STEP 96 — BlobStore.put Encrypted TTL storage
-ID: RAG.docs.blobstore.put.enc...
+1) app/services/document_uploader.py:639 — app.services.document_uploader.DocumentUploader.get_storage_filename (score 0.29)
+   Evidence: Score 0.29, Generate secure storage filename using document ID.
+
+Args:
+  document_id: Unique...
+2) app/services/secure_document_storage.py:292 — app.services.secure_document_storage.SecureDocumentStorage._encrypt_content (score 0.29)
+   Evidence: Score 0.29, Encrypt document content
+3) app/services/secure_document_storage.py:300 — app.services.secure_document_storage.SecureDocumentStorage._decrypt_content (score 0.29)
+   Evidence: Score 0.29, Decrypt document content
+4) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.29)
+   Evidence: Score 0.29, Convert APIContract to OpenAPI specification.
+5) app/services/document_processing_service.py:612 — app.services.document_processing_service.DocumentProcessor._get_document_storage_path (score 0.29)
+   Evidence: Score 0.29, Get file system path for stored document
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for StoreBlob
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 - Test document parsing and validation
 <!-- AUTO-AUDIT:END -->

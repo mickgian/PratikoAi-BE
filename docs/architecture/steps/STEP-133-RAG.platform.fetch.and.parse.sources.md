@@ -48,7 +48,7 @@ ID: RAG.platform.fetch.and.parse.sources
 
 Returns:
     List of traces...
-3) app/orchestrators/docs.py:252 — app.orchestrators.docs.step_134__parse_docs (score 0.26)
+3) app/orchestrators/docs.py:1111 — app.orchestrators.docs.step_134__parse_docs (score 0.26)
    Evidence: Score 0.26, RAG STEP 134 — Extract text and metadata
 ID: RAG.docs.extract.text.and.metadata
 ...

@@ -193,11 +193,11 @@ class CodeGraphBuilder:
                         for call in method_calls:
                             self.call_edges.append([method_qualname, call['name']])
             
-            elif isinstance(node, ast.FunctionDef):
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 func_qualname = f"{module_path.replace('.py', '').replace('/', '.')}.{node.name}"
                 func_doc = ast.get_docstring(node) or ""
                 func_calls = self._extract_calls(node)
-                
+
                 symbols.append({
                     'kind': 'function',
                     'name': node.name,
@@ -206,7 +206,7 @@ class CodeGraphBuilder:
                     'doc': func_doc[:200],
                     'calls': func_calls
                 })
-                
+
                 # Add call edges
                 for call in func_calls:
                     self.call_edges.append([func_qualname, call['name']])

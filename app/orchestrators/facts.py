@@ -400,22 +400,91 @@ def step_49__route_strategy(*, messages: Optional[List[Any]] = None, ctx: Option
                 'timestamp': datetime.utcnow().isoformat()
             }
 
-def step_95__extract_doc_facts(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_95__extract_doc_facts(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 95 — Extractor.extract Structured fields
     ID: RAG.facts.extractor.extract.structured.fields
     Type: process | Category: facts | Node: ExtractDocFacts
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Extracts structured facts from parsed documents.
+    Converts document-specific fields into normalized atomic facts.
     """
+    ctx = ctx or {}
+    parsed_docs = ctx.get('parsed_docs', [])
+    request_id = ctx.get('request_id', 'unknown')
+
     with rag_step_timer(95, 'RAG.facts.extractor.extract.structured.fields', 'ExtractDocFacts', stage="start"):
-        rag_step_log(step=95, step_id='RAG.facts.extractor.extract.structured.fields', node_label='ExtractDocFacts',
-                     category='facts', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=95, step_id='RAG.facts.extractor.extract.structured.fields', node_label='ExtractDocFacts',
-                     processing_stage="completed")
+        rag_step_log(
+            step=95,
+            step_id='RAG.facts.extractor.extract.structured.fields',
+            node_label='ExtractDocFacts',
+            category='facts',
+            type='process',
+            processing_stage="started",
+            request_id=request_id,
+            document_count=len(parsed_docs)
+        )
+
+        all_facts = []
+
+        for doc in parsed_docs:
+            doc_facts = []
+
+            # Extract from extracted_fields (from specific parsers)
+            if 'extracted_fields' in doc and doc.get('parsed_successfully'):
+                fields = doc['extracted_fields']
+                doc_type = doc.get('document_type', 'unknown')
+
+                for key, value in fields.items():
+                    if value:
+                        fact = {
+                            'type': 'document_field',
+                            'field_name': key,
+                            'value': str(value),
+                            'document_type': doc_type,
+                            'source_file': doc.get('filename', 'unknown')
+                        }
+                        doc_facts.append(fact)
+
+            # Extract from extracted_text (from generic OCR)
+            elif 'extracted_text' in doc and doc.get('parsed_successfully'):
+                text = doc['extracted_text']
+                doc_type = doc.get('document_type', 'unknown')
+
+                # Create a fact for the full text content
+                fact = {
+                    'type': 'document_text',
+                    'value': text[:500] if len(text) > 500 else text,  # Limit length
+                    'full_text_length': len(text),
+                    'document_type': doc_type,
+                    'source_file': doc.get('filename', 'unknown')
+                }
+                doc_facts.append(fact)
+
+            all_facts.extend(doc_facts)
+
+        result = {
+            'extraction_completed': True,
+            'facts': all_facts,
+            'facts_count': len(all_facts),
+            'document_count': len(parsed_docs),
+            'request_id': request_id,
+            'next_step': 'store_blob'
+        }
+
+        rag_step_log(
+            step=95,
+            step_id='RAG.facts.extractor.extract.structured.fields',
+            node_label='ExtractDocFacts',
+            category='facts',
+            type='process',
+            processing_stage="completed",
+            request_id=request_id,
+            extraction_completed=True,
+            facts_count=len(all_facts),
+            document_count=len(parsed_docs)
+        )
+
         return result
 
 def step_98__to_tool_results(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

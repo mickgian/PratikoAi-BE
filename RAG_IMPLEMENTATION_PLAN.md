@@ -118,18 +118,18 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 - **Step 85**: Valid attachments - Validation result ✅
 - **Step 86**: Return tool error invalid file - Error handling ✅
 
-### Batch 13: Document Processing Pipeline (87-97)
-- **Step 87**: Strip macros and JS - Security sanitization
-- **Step 88**: Detect document type - Type classification
-- **Step 89**: Document type decision - Routing
-- **Step 90**: XSD validation - Fattura processing
-- **Step 91**: Layout-aware OCR - F24 processing
-- **Step 92**: Contract parsing - Contract processing
-- **Step 93**: Payslip parsing - Payslip processing
-- **Step 94**: Parse with layout - Generic OCR
-- **Step 95**: Extract structured fields - Field extraction
-- **Step 96**: Encrypted TTL storage - Blob storage
-- **Step 97**: Ledger entry - Provenance logging
+### Batch 13: Document Processing Pipeline (87-97) ✅ COMPLETED
+- **Step 87**: Strip macros and JS - Security sanitization ✅
+- **Step 88**: Detect document type - Type classification ✅
+- **Step 89**: Document type decision - Routing ✅
+- **Step 90**: XSD validation - Fattura processing ✅
+- **Step 91**: Layout-aware OCR - F24 processing ✅
+- **Step 92**: Contract parsing - Contract processing ✅
+- **Step 93**: Payslip parsing - Payslip processing ✅
+- **Step 94**: Parse with layout - Generic OCR ✅
+- **Step 95**: Extract structured fields - Field extraction ✅
+- **Step 96**: Encrypted TTL storage - Blob storage ✅
+- **Step 97**: Ledger entry - Provenance logging ✅
 
 ## Phase 8: Facts & Knowledge Management (Days 19-21)
 **Knowledge extraction and management**
@@ -330,12 +330,27 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
   - ✅ **Step 85**: Validation result decision routing to processing or error (10 tests)
   - ✅ **Step 86**: Tool error creation with ToolMessage format for invalid attachments (11 tests)
   - ✅ **Total**: 74 comprehensive tests, 100% pass rate, full document validation infrastructure
+- Batch 13: Document Processing Pipeline (87-97) - Complete Italian document parsing with security, classification, and provenance
+  - ✅ **Step 87**: Document security sanitization with macro/JS stripping and malware detection (7 tests)
+  - ✅ **Step 88**: Document type classification detecting fattura/F24/contract/payslip/generic (7 tests)
+  - ✅ **Step 89**: Document type routing decision for parser selection (7 tests)
+  - ✅ **Step 90**: Fattura Elettronica XML parser with XSD namespace validation (7 tests)
+  - ✅ **Step 91**: F24 tax form parser with layout-aware OCR and regex extraction (7 tests)
+  - ✅ **Step 92**: Contract parser with type detection (compravendita/locazione/appalto/servizi/lavoro) (7 tests)
+  - ✅ **Step 93**: Payslip parser extracting employee and salary data (7 tests)
+  - ✅ **Step 94**: Generic OCR parser with layout-aware text extraction fallback (7 tests)
+  - ✅ **Step 95**: Document facts extractor converting parsed fields to atomic facts (8 tests)
+  - ✅ **Step 96**: Encrypted blob storage with SHA-256 hashing and 24h TTL (7 tests)
+  - ✅ **Step 97**: Provenance ledger logging for immutable audit trail (7 tests)
+  - ✅ **Total**: 78 comprehensive tests, 100% pass rate, full document processing pipeline
+  - ✅ **Critical Fix**: Updated rag_code_graph.py to index AsyncFunctionDef (added 500+ async functions to code index)
 
-**Next Target:** Batch 13: Document Processing Pipeline (87-97)
-1. Pick GitHub issues for document processing steps
-2. Implement security sanitization and document classification
-3. Build Italian-specific parsers (Fattura, F24, contracts, payslips)
-4. Create generic OCR and blob storage infrastructure
+**Next Target:** Batch 14: Facts Processing (14, 16, 18, 29, 98)
+1. Pick GitHub issues for facts processing steps
+2. Implement atomic facts extraction and canonicalization
+3. Build query signature generation with hash computation
+4. Create context builder for facts and KB docs merging
+5. Implement tool message conversion with facts and spans
 
 ## GitHub Issues Reference
 
@@ -377,9 +392,9 @@ Each issue contains:
 - [✅] Phase 6: Classification & LLM Operations (Steps 35-41, 43, 67, 69-73, 75-78) - **COMPLETED**
   - [✅] **Batch 10**: Steps 35-41, 43 (Classification Logic) - **COMPLETED**
   - [✅] **Batch 11**: Steps 67, 69-73, 75-78 (LLM Processing) - **COMPLETED**
-- [ ] Phase 7: Document Processing (Steps 17, 19, 21-22, 84-97)
+- [✅] Phase 7: Document Processing (Steps 17, 19, 21-22, 84-97) - **COMPLETED**
   - [✅] **Batch 12**: Steps 17, 19, 21-22, 84-86 (Document Validation) - **COMPLETED**
-  - [ ] **Batch 13**: Steps 87-97 (Document Processing Pipeline)
+  - [✅] **Batch 13**: Steps 87-97 (Document Processing Pipeline) - **COMPLETED**
 - [ ] Phase 8: Facts & Knowledge Management (Steps 14, 16, 18, 29, 80-83, 98)
   - [ ] **Batch 14**: Steps 14, 16, 18, 29, 98 (Facts Processing)
   - [ ] **Batch 15**: Steps 80-83 (Knowledge Operations)

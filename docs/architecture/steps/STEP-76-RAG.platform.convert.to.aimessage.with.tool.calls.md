@@ -44,7 +44,7 @@ Top candidates:
 ID: RAG.kb.knowledgesearch...
 2) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
    Evidence: Score 0.25, Convert internal SearchResponse to API model.
-3) app/orchestrators/facts.py:421 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
+3) app/orchestrators/facts.py:490 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
    Evidence: Score 0.25, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
 4) app/orchestrators/platform.py:2245 — app.orchestrators.platform.step_99__tool_results (score 0.25)

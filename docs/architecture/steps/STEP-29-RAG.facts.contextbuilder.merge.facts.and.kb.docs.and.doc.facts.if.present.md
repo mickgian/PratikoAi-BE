@@ -36,24 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: 🔌  |  Confidence: 0.33
 
 Top candidates:
-1) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:34 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts (score 0.31)
-   Evidence: Score 0.31, function: step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts
-2) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:22 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.run (score 0.31)
-   Evidence: Score 0.31, function: run
-3) app/services/context_builder_merge.py:66 — app.services.context_builder_merge.ContextBuilderMerge.merge_context (score 0.29)
+1) app/orchestrators/facts.py:68 — app.orchestrators.facts.step_29__pre_context_from_golden (score 0.33)
+   Evidence: Score 0.33, RAG STEP 29 — ContextBuilder.merge facts and KB docs and doc facts if present
+ID...
+2) app/services/context_builder_merge.py:66 — app.services.context_builder_merge.ContextBuilderMerge.merge_context (score 0.29)
    Evidence: Score 0.29, Merge facts, KB docs, and optional document facts into unified context.
 
 Args:
  ...
-4) app/services/context_builder_merge.py:572 — app.services.context_builder_merge.merge_context (score 0.29)
+3) app/services/context_builder_merge.py:572 — app.services.context_builder_merge.merge_context (score 0.29)
    Evidence: Score 0.29, Convenience function to merge context from facts, KB docs, and document facts.
 
 ...
-5) app/services/context_builder_merge.py:53 — app.services.context_builder_merge.ContextBuilderMerge.__init__ (score 0.29)
+4) app/services/context_builder_merge.py:53 — app.services.context_builder_merge.ContextBuilderMerge.__init__ (score 0.29)
    Evidence: Score 0.29, method: __init__
+5) app/services/context_builder_merge.py:218 — app.services.context_builder_merge.ContextBuilderMerge._create_context_parts (score 0.28)
+   Evidence: Score 0.28, Convert inputs to ContextPart objects.
 
 Notes:
 - Implementation exists but may not be wired correctly

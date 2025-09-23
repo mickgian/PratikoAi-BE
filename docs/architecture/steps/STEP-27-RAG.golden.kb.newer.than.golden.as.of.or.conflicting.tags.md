@@ -36,11 +36,12 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.50
+Status: 🔌  |  Confidence: 0.51
 
 Top candidates:
-1) app/ragsteps/golden/step_27_rag_golden_kb_newer_than_golden_as_of_or_conflicting_tags.py:47 — app.ragsteps.golden.step_27_rag_golden_kb_newer_than_golden_as_of_or_conflicting_tags.step_27_rag_golden_kb_newer_than_golden_as_of_or_conflicting_tags (score 0.50)
-   Evidence: Score 0.50, Canonical symbol wrapper for auditor.
+1) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback
+ID: RAG.golden.post.api.v1.faq.feedback...
 2) app/api/v1/faq.py:1 — app.api.v1.faq (score 0.48)
    Evidence: Score 0.48, FAQ API endpoints for the Intelligent FAQ System.
 
@@ -49,10 +50,12 @@ This module provides REST API...
    Evidence: Score 0.47, FAQ Automation API Endpoints.
 
 Admin dashboard and management endpoints for the ...
-4) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.46)
-   Evidence: Score 0.46, Request model for FAQ queries.
-5) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.46)
-   Evidence: Score 0.46, Response model for FAQ queries.
+4) app/orchestrators/golden.py:122 — app.orchestrators.golden.step_83__faqquery (score 0.46)
+   Evidence: Score 0.46, RAG STEP 83 — FAQTool.faq_query Query Golden Set
+ID: RAG.golden.faqtool.faq.quer...
+5) app/orchestrators/golden.py:176 — app.orchestrators.golden.step_128__golden_approval (score 0.46)
+   Evidence: Score 0.46, RAG STEP 128 — Auto threshold met or manual approval?
+ID: RAG.golden.auto.thresh...
 
 Notes:
 - Implementation exists but may not be wired correctly

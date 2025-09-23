@@ -36,38 +36,36 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/models/cassazione.py:311 — app.models.cassazione.determine_related_sectors (score 0.27)
+1) app/orchestrators/platform.py:1842 — app.orchestrators.platform.step_126__determine_action (score 0.31)
+   Evidence: Score 0.31, RAG STEP 126 — Determine action
+ID: RAG.platform.determine.action
+Type: process ...
+2) app/models/cassazione.py:311 — app.models.cassazione.determine_related_sectors (score 0.27)
    Evidence: Score 0.27, Determine which CCNL sectors are related to a legal decision.
-2) app/services/document_processor.py:501 — app.services.document_processor.DocumentProcessor._determine_document_type (score 0.27)
+3) app/services/document_processor.py:501 — app.services.document_processor.DocumentProcessor._determine_document_type (score 0.27)
    Evidence: Score 0.27, Determine document type from URL.
 
 Args:
     document_url: Document URL
     
 Ret...
-3) app/services/domain_action_classifier.py:68 — app.services.domain_action_classifier.DomainActionClassifier.__init__ (score 0.27)
+4) app/services/domain_action_classifier.py:68 — app.services.domain_action_classifier.DomainActionClassifier.__init__ (score 0.27)
    Evidence: Score 0.27, method: __init__
-4) app/services/knowledge_integrator.py:519 — app.services.knowledge_integrator.KnowledgeIntegrator._determine_knowledge_category (score 0.27)
+5) app/services/knowledge_integrator.py:519 — app.services.knowledge_integrator.KnowledgeIntegrator._determine_knowledge_category (score 0.27)
    Evidence: Score 0.27, Determine knowledge category based on document data.
 
 Args:
     document_data: D...
-5) app/services/knowledge_integrator.py:556 — app.services.knowledge_integrator.KnowledgeIntegrator._determine_knowledge_subcategory (score 0.27)
-   Evidence: Score 0.27, Determine knowledge subcategory.
-
-Args:
-    document_data: Document information
-...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for DetermineAction
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

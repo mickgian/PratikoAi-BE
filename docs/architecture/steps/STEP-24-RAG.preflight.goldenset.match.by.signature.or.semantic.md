@@ -36,24 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/services/kb_delta_decision.py:358 — app.services.kb_delta_decision.evaluate_kb_vs_golden (score 0.25)
-   Evidence: Score 0.25, Convenience function to evaluate KB vs Golden Set.
-
-Args:
-    decision_data: Dec...
-2) failure-recovery-system/failure_categorizer.py:955 — failure-recovery-system.failure_categorizer.FailureCategorizer._generate_failure_signature (score 0.25)
-   Evidence: Score 0.25, Generate a signature for this specific failure pattern.
-3) rollback-system/health_monitor.py:486 — rollback-system.health_monitor.HealthMonitor.set_rollback_orchestrator (score 0.25)
-   Evidence: Score 0.25, Set the rollback orchestrator for automatic rollbacks.
-4) version-management/core/version_schema.py:149 — version-management.core.version_schema.ServiceVersion.is_semantic_version (score 0.25)
-   Evidence: Score 0.25, Check if this version uses semantic versioning.
-5) app/models/user.py:60 — app.models.user.User.set_refresh_token_hash (score 0.25)
-   Evidence: Score 0.25, Set the hash of the refresh token.
-
-Stores a bcrypt hash of the refresh token fo...
+1) app/orchestrators/preflight.py:68 — app.orchestrators.preflight.step_24__golden_lookup (score 0.28)
+   Evidence: Score 0.28, RAG STEP 24 — GoldenSet.match_by_signature_or_semantic
+ID: RAG.preflight.goldens...
+2) app/orchestrators/golden.py:50 — app.orchestrators.golden.step_25__golden_hit (score 0.26)
+   Evidence: Score 0.26, RAG STEP 25 — High confidence match? score at least 0.90
+ID: RAG.golden.high.con...
+3) app/orchestrators/golden.py:68 — app.orchestrators.golden.step_27__kbdelta (score 0.26)
+   Evidence: Score 0.26, RAG STEP 27 — KB newer than Golden as of or conflicting tags?
+ID: RAG.golden.kb....
+4) app/orchestrators/golden.py:86 — app.orchestrators.golden.step_28__serve_golden (score 0.26)
+   Evidence: Score 0.26, RAG STEP 28 — Serve Golden answer with citations
+ID: RAG.golden.serve.golden.ans...
+5) app/orchestrators/golden.py:122 — app.orchestrators.golden.step_83__faqquery (score 0.26)
+   Evidence: Score 0.26, RAG STEP 83 — FAQTool.faq_query Query Golden Set
+ID: RAG.golden.faqtool.faq.quer...
 
 Notes:
 - Weak or missing implementation

@@ -36,32 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/ragsteps/cache/step_59_rag_cache_langgraphagent_get_cached_llm_response_check_for_cached_response.py:40 — app.ragsteps.cache.step_59_rag_cache_langgraphagent_get_cached_llm_response_check_for_cached_response.run (score 0.26)
-   Evidence: Score 0.26, Adapter for RAG STEP 59.
-
-Expected behavior is defined in:
-docs/architecture/ste...
+1) app/orchestrators/response.py:180 — app.orchestrators.response.step_75__tool_check (score 0.34)
+   Evidence: Score 0.34, RAG STEP 75 — Response has tool_calls?
+ID: RAG.response.response.has.tool.calls
+...
 2) app/api/v1/italian.py:65 — app.api.v1.italian.ComplianceCheckResponse (score 0.26)
    Evidence: Score 0.26, Compliance check response.
-3) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
+3) app/orchestrators/kb.py:14 — app.orchestrators.kb.step_26__kbcontext_check (score 0.26)
+   Evidence: Score 0.26, RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes
+ID: RAG.k...
+4) app/orchestrators/kb.py:32 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
+   Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand
+ID: RAG.kb.knowledgesearch...
+5) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
    Evidence: Score 0.26, Check compatibility for a version deployment.
-4) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
-   Evidence: Score 0.26, Convert internal SearchResponse to API model.
-5) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.26)
-   Evidence: Score 0.26, Decorator to cache LLM responses based on messages and model.
-
-Args:
-    ttl: Ti...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for ToolCheck
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

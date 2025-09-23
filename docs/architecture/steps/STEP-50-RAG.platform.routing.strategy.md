@@ -36,36 +36,36 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/ragsteps/routing/step_79_rag_routing_tool_type.py:64 — app.ragsteps.routing.step_79_rag_routing_tool_type.step_79_rag_routing_tool_type (score 0.30)
-   Evidence: Score 0.30, Canonical symbol for auditor: STEP 79 — Tool type? (RAG.routing.tool.type)
-
-Dele...
-2) app/ragsteps/platform/step_50_rag_platform_routing_strategy.py:29 — app.ragsteps.platform.step_50_rag_platform_routing_strategy.run (score 0.29)
-   Evidence: Score 0.29, Adapter for RAG STEP 50: Routing strategy? decision.
-3) app/ragsteps/routing/step_79_rag_routing_tool_type.py:35 — app.ragsteps.routing.step_79_rag_routing_tool_type.run (score 0.29)
-   Evidence: Score 0.29, Adapter for RAG STEP 79: Tool type?
-
-Expected behavior is defined in:
-docs/archi...
-4) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
+1) app/orchestrators/platform.py:1201 — app.orchestrators.platform.step_50__strategy_type (score 0.31)
+   Evidence: Score 0.31, RAG STEP 50 — Routing strategy?
+ID: RAG.platform.routing.strategy
+Type: decision...
+2) app/orchestrators/routing.py:14 — app.orchestrators.routing.step_79__tool_type (score 0.31)
+   Evidence: Score 0.31, RAG STEP 79 — Tool type?
+ID: RAG.routing.tool.type
+Type: decision | Category: ro...
+3) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
    Evidence: Score 0.28, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-5) app/ragsteps/platform/step_50_rag_platform_routing_strategy.py:47 — app.ragsteps.platform.step_50_rag_platform_routing_strategy.determine_routing_strategy_path (score 0.28)
-   Evidence: Score 0.28, Determine the next step based on routing strategy.
-
-This function implements RAG...
+4) app/orchestrators/docs.py:50 — app.orchestrators.docs.step_89__doc_type (score 0.26)
+   Evidence: Score 0.26, RAG STEP 89 — Document type?
+ID: RAG.docs.document.type
+Type: decision | Categor...
+5) app/orchestrators/facts.py:104 — app.orchestrators.facts.step_49__route_strategy (score 0.26)
+   Evidence: Score 0.26, RAG STEP 49 — LLMFactory.get_optimal_provider Apply routing strategy
+ID: RAG.fac...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create decision implementation for StrategyType
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

@@ -48,16 +48,14 @@ Args:
     cache_key...
 3) app/models/faq.py:486 — app.models.faq.generate_faq_cache_key (score 0.28)
    Evidence: Score 0.28, Generate cache key for FAQ variations.
-4) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.28)
+4) app/orchestrators/preflight.py:176 — app.orchestrators.preflight.step_130__invalidate_faqcache (score 0.28)
+   Evidence: Score 0.28, RAG STEP 130 — CacheService.invalidate_faq by id or signature
+ID: RAG.preflight....
+5) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.28)
    Evidence: Score 0.28, Generate a deterministic hash for query deduplication.
 
 Args:
     messages: List...
-5) app/services/cache.py:107 — app.services.cache.CacheService._generate_conversation_key (score 0.28)
-   Evidence: Score 0.28, Generate cache key for conversation history.
-
-Args:
-    session_id: Unique sessi...
 
 Notes:
 - Weak or missing implementation

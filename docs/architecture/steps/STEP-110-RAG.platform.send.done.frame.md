@@ -36,22 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/services/ccnl_notification_service.py:248 — app.services.ccnl_notification_service.CCNLNotificationService.send_notification (score 0.26)
+1) app/orchestrators/platform.py:1674 — app.orchestrators.platform.step_110__send_done (score 0.30)
+   Evidence: Score 0.30, RAG STEP 110 — Send DONE frame
+ID: RAG.platform.send.done.frame
+Type: process | ...
+2) app/services/ccnl_notification_service.py:248 — app.services.ccnl_notification_service.CCNLNotificationService.send_notification (score 0.26)
    Evidence: Score 0.26, Send notification through specified channels.
-2) app/services/scrapers/cassazione_scheduler.py:559 — app.services.scrapers.cassazione_scheduler.CassazioneScheduler._should_send_notification (score 0.26)
+3) app/services/scrapers/cassazione_scheduler.py:559 — app.services.scrapers.cassazione_scheduler.CassazioneScheduler._should_send_notification (score 0.26)
    Evidence: Score 0.26, Check if notification should be sent (with throttling).
 
 Args:
     job: Schedule...
-3) app/services/ccnl_notification_service.py:292 — app.services.ccnl_notification_service.CCNLNotificationService._send_via_channel (score 0.25)
+4) app/services/ccnl_notification_service.py:292 — app.services.ccnl_notification_service.CCNLNotificationService._send_via_channel (score 0.25)
    Evidence: Score 0.25, Send notification via specific channel (mock implementation).
-4) failure-recovery-system/decision_tree_engine.py:1628 — failure-recovery-system.decision_tree_engine.DecisionTreeEngine._execute_send_alerts (score 0.25)
+5) failure-recovery-system/decision_tree_engine.py:1628 — failure-recovery-system.decision_tree_engine.DecisionTreeEngine._execute_send_alerts (score 0.25)
    Evidence: Score 0.25, Execute alert sending.
-5) app/services/legal_document_analyzer.py:840 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_sender (score 0.20)
-   Evidence: Score 0.20, Extract sender of diffida
 
 Notes:
 - Weak or missing implementation

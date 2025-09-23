@@ -41,17 +41,21 @@ Status: 🔌  |  Confidence: 0.39
 Top candidates:
 1) app/core/langgraph/graph.py:406 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.39)
    Evidence: Score 0.39, Select the appropriate system prompt (RAG STEPs 41/42/44) with full test-require...
-2) app/core/langgraph/graph.py:599 — app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt (score 0.33)
+2) app/core/langgraph/graph.py:579 — app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt (score 0.33)
    Evidence: Score 0.33, Ensure system message presence (RAG STEP 45 — CheckSysMsg) with backward-compati...
-3) app/ragsteps/prompting/step_41_rag_prompting_langgraphagent_get_system_prompt_select_appropriate_prompt.py:47 — app.ragsteps.prompting.step_41_rag_prompting_langgraphagent_get_system_prompt_select_appropriate_prompt.step_41_rag_prompting_langgraphagent_get_system_prompt_select_appropriate_prompt (score 0.33)
-   Evidence: Score 0.33, Canonical symbol name the auditor might search for.
-4) app/ragsteps/prompting/step_41_rag_prompting_langgraphagent_get_system_prompt_select_appropriate_prompt.py:30 — app.ragsteps.prompting.step_41_rag_prompting_langgraphagent_get_system_prompt_select_appropriate_prompt.run (score 0.32)
-   Evidence: Score 0.32, Adapter sentinel for auditor mapping.
-5) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
+3) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
    Evidence: Score 0.32, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
+4) app/core/langgraph/graph.py:651 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.32)
+   Evidence: Score 0.32, Get the optimal LLM provider for the given messages.
+
+Args:
+    messages: List o...
+5) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
+   Evidence: Score 0.31, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
+-...
 
 Notes:
 - Implementation exists but may not be wired correctly

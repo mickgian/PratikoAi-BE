@@ -1057,22 +1057,145 @@ def step_13__message_exists(*, messages: Optional[List[Any]] = None, ctx: Option
 
         return message_data
 
-def step_38__use_rule_based(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_38__use_rule_based(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 38 — Use rule-based classification
     ID: RAG.platform.use.rule.based.classification
     Type: process | Category: platform | Node: UseRuleBased
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Applies rule-based classification results as the final classification when Step 36
+    determines rule-based is better than LLM classification. Thin orchestration
+    that preserves existing behavior while adding coordination and observability.
     """
+    from app.core.logging import logger
+    from datetime import datetime, timezone
+
     with rag_step_timer(38, 'RAG.platform.use.rule.based.classification', 'UseRuleBased', stage="start"):
-        rag_step_log(step=38, step_id='RAG.platform.use.rule.based.classification', node_label='UseRuleBased',
-                     category='platform', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=38, step_id='RAG.platform.use.rule.based.classification', node_label='UseRuleBased',
-                     processing_stage="completed")
+        # Extract context parameters
+        request_id = kwargs.get('request_id') or (ctx or {}).get('request_id', 'unknown')
+        rule_based_classification = kwargs.get('rule_based_classification') or (ctx or {}).get('rule_based_classification')
+
+        # Initialize result variables
+        classification_applied = False
+        final_classification = None
+        classification_source = 'error'
+        confidence_level = None
+        error = None
+        metrics = {}
+
+        rag_step_log(
+            step=38,
+            step_id='RAG.platform.use.rule.based.classification',
+            node_label='UseRuleBased',
+            category='platform',
+            type='process',
+            processing_stage='started',
+            request_id=request_id
+        )
+
+        try:
+            # Validate rule-based classification data
+            if not rule_based_classification:
+                error = 'No rule-based classification available to apply'
+                raise ValueError(error)
+
+            # Validate required fields
+            domain = rule_based_classification.get('domain')
+            action = rule_based_classification.get('action')
+            confidence = rule_based_classification.get('confidence')
+
+            if not domain or not action or confidence is None:
+                error = f'Invalid rule-based classification data: missing domain={domain}, action={action}, confidence={confidence}'
+                raise ValueError(error)
+
+            # Apply rule-based classification as final result
+            final_classification = dict(rule_based_classification)  # Create copy to preserve original
+            classification_applied = True
+            classification_source = 'rule_based'
+
+            # Determine confidence level for monitoring
+            if confidence >= 0.8:
+                confidence_level = 'high'
+            elif confidence >= 0.6:
+                confidence_level = 'medium'
+            else:
+                confidence_level = 'low'
+                # Log warning for low confidence
+                logger.warning(
+                    f"Low confidence rule-based classification applied: {confidence:.3f}",
+                    extra={
+                        'request_id': request_id,
+                        'confidence': confidence,
+                        'domain': domain,
+                        'action': action,
+                        'confidence_level': confidence_level
+                    }
+                )
+
+            # Track metrics for monitoring
+            metrics = {
+                'classification_method': 'rule_based',
+                'confidence_score': confidence,
+                'domain': domain,
+                'action': action,
+                'confidence_level': confidence_level,
+                'application_timestamp': datetime.now(timezone.utc).isoformat()
+            }
+
+            # Log successful application
+            logger.info(
+                f"Applying rule-based classification as final result: {domain}/{action} (confidence: {confidence:.3f})",
+                extra={
+                    'request_id': request_id,
+                    'classification_source': classification_source,
+                    'domain': domain,
+                    'action': action,
+                    'confidence': confidence,
+                    'confidence_level': confidence_level,
+                    'fallback_used': rule_based_classification.get('fallback_used', False)
+                }
+            )
+
+        except Exception as e:
+            error = str(e)
+            classification_applied = False
+            final_classification = None
+            classification_source = 'error'
+
+            logger.error(
+                f"Error applying rule-based classification: {error}",
+                extra={
+                    'request_id': request_id,
+                    'error': error,
+                    'step': 38
+                }
+            )
+
+        # Build result preserving behavior while adding coordination metadata
+        result = {
+            'classification_applied': classification_applied,
+            'final_classification': final_classification,
+            'classification_source': classification_source,
+            'confidence_level': confidence_level,
+            'metrics': metrics,
+            'request_id': request_id,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'error': error
+        }
+
+        rag_step_log(
+            step=38,
+            step_id='RAG.platform.use.rule.based.classification',
+            node_label='UseRuleBased',
+            category='platform',
+            type='process',
+            processing_stage='completed',
+            request_id=request_id,
+            classification_applied=classification_applied,
+            classification_source=classification_source,
+            confidence_level=confidence_level
+        )
+
         return result
 
 def step_50__strategy_type(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:

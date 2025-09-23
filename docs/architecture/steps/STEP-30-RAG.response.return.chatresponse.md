@@ -36,35 +36,34 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) app/schemas/chat.py:95 — app.schemas.chat.ChatResponse (score 0.29)
+1) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.35)
+   Evidence: Score 0.35, RAG STEP 30 — Return ChatResponse
+ID: RAG.response.return.chatresponse
+Type: pro...
+2) app/schemas/chat.py:95 — app.schemas.chat.ChatResponse (score 0.29)
    Evidence: Score 0.29, Response model for chat endpoint.
 
 Attributes:
     messages: List of messages in...
-2) app/schemas/chat.py:70 — app.schemas.chat.ResponseMetadata (score 0.28)
+3) app/schemas/chat.py:70 — app.schemas.chat.ResponseMetadata (score 0.28)
    Evidence: Score 0.28, Response metadata for debugging and monitoring.
-3) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.28)
+4) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.28)
    Evidence: Score 0.28, Response model for streaming chat endpoint.
 
 Attributes:
     content: The conten...
-4) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
+5) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
    Evidence: Score 0.26, Convert internal SearchResponse to API model.
-5) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.26)
-   Evidence: Score 0.26, Decorator to cache LLM responses based on messages and model.
-
-Args:
-    ttl: Ti...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for ReturnComplete
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

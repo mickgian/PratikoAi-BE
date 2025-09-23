@@ -36,27 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.48
+Status: 🔌  |  Confidence: 0.51
 
 Top candidates:
-1) app/api/v1/faq.py:1 — app.api.v1.faq (score 0.48)
+1) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback
+ID: RAG.golden.post.api.v1.faq.feedback...
+2) app/orchestrators/golden.py:176 — app.orchestrators.golden.step_128__golden_approval (score 0.49)
+   Evidence: Score 0.49, RAG STEP 128 — Auto threshold met or manual approval?
+ID: RAG.golden.auto.thresh...
+3) app/api/v1/faq.py:1 — app.api.v1.faq (score 0.48)
    Evidence: Score 0.48, FAQ API endpoints for the Intelligent FAQ System.
 
 This module provides REST API...
-2) app/models/faq_automation.py:351 — app.models.faq_automation.GeneratedFAQ.should_auto_approve (score 0.48)
+4) app/models/faq_automation.py:351 — app.models.faq_automation.GeneratedFAQ.should_auto_approve (score 0.48)
    Evidence: Score 0.48, Determine if FAQ should be auto-approved based on quality
-3) app/api/v1/faq_automation.py:1 — app.api.v1.faq_automation (score 0.47)
+5) app/api/v1/faq_automation.py:1 — app.api.v1.faq_automation (score 0.47)
    Evidence: Score 0.47, FAQ Automation API Endpoints.
 
 Admin dashboard and management endpoints for the ...
-4) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.44)
-   Evidence: Score 0.44, Request model for FAQ queries.
-5) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.44)
-   Evidence: Score 0.44, Response model for FAQ queries.
 
 Notes:
 - Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

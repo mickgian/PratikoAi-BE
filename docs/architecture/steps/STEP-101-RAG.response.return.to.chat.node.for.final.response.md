@@ -36,28 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/schemas/chat.py:95 — app.schemas.chat.ChatResponse (score 0.27)
+1) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.28)
+   Evidence: Score 0.28, RAG STEP 30 — Return ChatResponse
+ID: RAG.response.return.chatresponse
+Type: pro...
+2) app/orchestrators/response.py:198 — app.orchestrators.response.step_101__final_response (score 0.28)
+   Evidence: Score 0.28, RAG STEP 101 — Return to chat node for final response
+ID: RAG.response.return.to...
+3) app/schemas/chat.py:95 — app.schemas.chat.ChatResponse (score 0.27)
    Evidence: Score 0.27, Response model for chat endpoint.
 
 Attributes:
     messages: List of messages in...
-2) app/schemas/chat.py:70 — app.schemas.chat.ResponseMetadata (score 0.26)
+4) app/schemas/chat.py:70 — app.schemas.chat.ResponseMetadata (score 0.26)
    Evidence: Score 0.26, Response metadata for debugging and monitoring.
-3) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.26)
+5) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.26)
    Evidence: Score 0.26, Response model for streaming chat endpoint.
 
 Attributes:
     content: The conten...
-4) app/ragsteps/cache/step_59_rag_cache_langgraphagent_get_cached_llm_response_check_for_cached_response.py:40 — app.ragsteps.cache.step_59_rag_cache_langgraphagent_get_cached_llm_response_check_for_cached_response.run (score 0.26)
-   Evidence: Score 0.26, Adapter for RAG STEP 59.
-
-Expected behavior is defined in:
-docs/architecture/ste...
-5) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
-   Evidence: Score 0.25, Convert internal SearchResponse to API model.
 
 Notes:
 - Weak or missing implementation

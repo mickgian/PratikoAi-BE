@@ -83,22 +83,149 @@ def step_24__golden_lookup(*, messages: Optional[List[Any]] = None, ctx: Optiona
                      processing_stage="completed")
         return result
 
-def step_39__kbpre_fetch(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_39__kbpre_fetch(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 39 — KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost
     ID: RAG.preflight.knowledgesearch.retrieve.topk.bm25.and.vectors.and.recency.boost
     Type: process | Category: preflight | Node: KBPreFetch
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Performs hybrid knowledge search using BM25, vector search, and recency boost
+    to retrieve relevant knowledge items for context building. Thin orchestration
+    that preserves existing KnowledgeSearchService behavior.
     """
+    from app.core.logging import logger
+    from app.services.knowledge_search_service import KnowledgeSearchService, SearchMode
+    from datetime import datetime, timezone
+
     with rag_step_timer(39, 'RAG.preflight.knowledgesearch.retrieve.topk.bm25.and.vectors.and.recency.boost', 'KBPreFetch', stage="start"):
-        rag_step_log(step=39, step_id='RAG.preflight.knowledgesearch.retrieve.topk.bm25.and.vectors.and.recency.boost', node_label='KBPreFetch',
-                     category='preflight', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=39, step_id='RAG.preflight.knowledgesearch.retrieve.topk.bm25.and.vectors.and.recency.boost', node_label='KBPreFetch',
-                     processing_stage="completed")
+        # Extract context parameters
+        request_id = kwargs.get('request_id') or (ctx or {}).get('request_id', 'unknown')
+        user_message = kwargs.get('user_message') or (ctx or {}).get('user_message', '')
+        canonical_facts = kwargs.get('canonical_facts') or (ctx or {}).get('canonical_facts', [])
+        user_id = kwargs.get('user_id') or (ctx or {}).get('user_id')
+        session_id = kwargs.get('session_id') or (ctx or {}).get('session_id')
+        trace_id = kwargs.get('trace_id') or (ctx or {}).get('trace_id')
+
+        # Search configuration parameters
+        search_mode = kwargs.get('search_mode') or (ctx or {}).get('search_mode', SearchMode.HYBRID.value)
+        filters = kwargs.get('filters') or (ctx or {}).get('filters', {})
+        max_results = kwargs.get('max_results') or (ctx or {}).get('max_results', 10)
+
+        # Initialize result variables
+        search_performed = False
+        knowledge_items = []
+        total_results = 0
+        error = None
+
+        rag_step_log(
+            step=39,
+            step_id='RAG.preflight.knowledgesearch.retrieve.topk.bm25.and.vectors.and.recency.boost',
+            node_label='KBPreFetch',
+            category='preflight',
+            type='process',
+            processing_stage='started',
+            request_id=request_id,
+            search_query=user_message[:100] if user_message else '',
+            search_mode=search_mode
+        )
+
+        try:
+            # TODO: In real implementation, inject KnowledgeSearchService via dependency injection
+            # For thin orchestrator pattern, we'll receive the service as a parameter
+            knowledge_service = kwargs.get('knowledge_service')
+
+            if not knowledge_service:
+                # Fallback: create service instance (for production use)
+                # This would typically be handled by a factory or dependency container
+                from app.services.knowledge_search_service import KnowledgeSearchService
+                from app.core.config import get_settings
+
+                # For now, create a minimal service instance
+                # In production, this would be properly injected
+                settings = get_settings()
+                knowledge_service = KnowledgeSearchService(
+                    db_session=None,  # Would be injected in real usage
+                    vector_service=None,
+                    config=getattr(settings, 'knowledge_search', None)
+                )
+
+            # Prepare query data for the service
+            query_data = {
+                'query': user_message,
+                'canonical_facts': canonical_facts,
+                'user_id': user_id,
+                'session_id': session_id,
+                'trace_id': trace_id,
+                'search_mode': search_mode,
+                'filters': filters,
+                'max_results': max_results
+            }
+
+            # Perform the knowledge search
+            knowledge_items = await knowledge_service.retrieve_topk(query_data)
+            search_performed = True
+            total_results = len(knowledge_items)
+
+            # Log successful search
+            logger.info(
+                f"Knowledge search completed: {total_results} items retrieved",
+                extra={
+                    'request_id': request_id,
+                    'search_query': user_message[:100] if user_message else '',
+                    'search_mode': search_mode,
+                    'total_results': total_results,
+                    'filters': filters,
+                    'max_results': max_results
+                }
+            )
+
+        except Exception as e:
+            error = str(e)
+            search_performed = False
+            knowledge_items = []
+            total_results = 0
+
+            logger.error(
+                f"Error in knowledge search: {error}",
+                extra={
+                    'request_id': request_id,
+                    'error': error,
+                    'step': 39,
+                    'search_query': user_message[:100] if user_message else ''
+                }
+            )
+
+        # Build result preserving behavior while adding coordination metadata
+        result = {
+            'search_performed': search_performed,
+            'knowledge_items': knowledge_items,
+            'total_results': total_results,
+            'search_query': user_message,
+            'search_mode': search_mode,
+            'filters': filters,
+            'max_results': max_results,
+            'canonical_facts': canonical_facts,
+            'user_id': user_id,
+            'session_id': session_id,
+            'trace_id': trace_id,
+            'request_id': request_id,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'error': error
+        }
+
+        rag_step_log(
+            step=39,
+            step_id='RAG.preflight.knowledgesearch.retrieve.topk.bm25.and.vectors.and.recency.boost',
+            node_label='KBPreFetch',
+            category='preflight',
+            type='process',
+            processing_stage='completed',
+            request_id=request_id,
+            search_performed=search_performed,
+            total_results=total_results,
+            search_mode=search_mode
+        )
+
         return result
 
 def step_82__doc_ingest(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

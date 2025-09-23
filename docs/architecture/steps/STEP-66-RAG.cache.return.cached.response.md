@@ -44,28 +44,28 @@ Top candidates:
 
 Args:
     ttl: Ti...
-2) app/ragsteps/cache/step_59_rag_cache_langgraphagent_get_cached_llm_response_check_for_cached_response.py:40 — app.ragsteps.cache.step_59_rag_cache_langgraphagent_get_cached_llm_response_check_for_cached_response.run (score 0.52)
-   Evidence: Score 0.52, Adapter for RAG STEP 59.
-
-Expected behavior is defined in:
-docs/architecture/ste...
-3) app/core/middleware/performance_middleware.py:416 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_hit (score 0.50)
+2) app/core/middleware/performance_middleware.py:416 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_hit (score 0.50)
    Evidence: Score 0.50, Record a cache hit.
 
 Args:
     cache_key: Cache key that was hit
     cache_type:...
-4) app/core/middleware/performance_middleware.py:442 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_miss (score 0.50)
+3) app/core/middleware/performance_middleware.py:442 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_miss (score 0.50)
    Evidence: Score 0.50, Record a cache miss.
 
 Args:
     cache_key: Cache key that was missed
     cache_t...
-5) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.50)
+4) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.50)
    Evidence: Score 0.50, Decorator to cache conversation history.
 
 Args:
     ttl: Time to live in seconds...
+5) app/core/decorators/cache.py:190 — app.core.decorators.cache.cache_result (score 0.50)
+   Evidence: Score 0.50, Generic caching decorator for any function result.
+
+Args:
+    key_func: Function...
 
 Notes:
 - Implementation exists but may not be wired correctly

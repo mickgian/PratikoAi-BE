@@ -672,23 +672,297 @@ async def step_42__class_confidence(*, messages: Optional[List[Any]] = None, ctx
 
         return class_confidence_data
 
-def step_43__domain_prompt(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_35__llm_fallback(*, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    """
+    RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
+    ID: RAG.classify.domainactionclassifier.llm.fallback.use.llm.classification
+    Type: process | Category: classify | Node: LLMFallback
+
+    Provides LLM fallback classification when rule-based classification has low confidence.
+    This orchestrator coordinates LLM classification fallback for improved accuracy.
+    """
+    from app.core.logging import logger
+    from app.services.domain_action_classifier import DomainActionClassifier
+    from datetime import datetime, timezone
+
+    with rag_step_timer(35, 'RAG.classify.domainactionclassifier.llm.fallback.use.llm.classification', 'LLMFallback', stage="start"):
+        rag_step_log(step=35, step_id='RAG.classify.domainactionclassifier.llm.fallback.use.llm.classification', node_label='LLMFallback',
+                     category='classify', type='process', processing_stage="started")
+
+        # Extract context parameters
+        context = ctx or {}
+        user_query = kwargs.get('user_query') or context.get('user_query')
+        rule_based_classification = kwargs.get('rule_based_classification') or context.get('rule_based_classification')
+        rule_based_confidence = kwargs.get('rule_based_confidence') or context.get('rule_based_confidence', 0.0)
+        request_id = kwargs.get('request_id') or context.get('request_id', 'unknown')
+
+        # Initialize result structure
+        result = {
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'llm_fallback_successful': False,
+            'llm_classification': None,
+            'rule_based_classification': rule_based_classification,
+            'llm_fallback_used': True,
+            'classification_method': 'llm_fallback',
+            'improved_confidence': False,
+            'fallback_to_rule_based': False,
+            'preprocessing_applied': False,
+            'original_query': None,
+            'next_step': 'LLMBetter',
+            'ready_for_comparison': False,
+            'confidence_analysis': {},
+            'service_error': None,
+            'error': None,
+            'request_id': request_id
+        }
+
+        try:
+            # Step 1: Validate context
+            if ctx is None:
+                result['error'] = 'Missing context for LLM fallback'
+                logger.error("LLM fallback failed: Missing context", request_id=request_id)
+                rag_step_log(step=35, step_id='RAG.classify.domainactionclassifier.llm.fallback.use.llm.classification',
+                           node_label='LLMFallback', processing_stage="completed", error="missing_context",
+                           llm_fallback_successful=False, request_id=request_id)
+                return result
+
+            # Step 2: Validate user query
+            if not user_query:
+                result['error'] = 'Missing user_query in context'
+                logger.warning("LLM fallback failed: No user query provided", request_id=request_id)
+                rag_step_log(step=35, step_id='RAG.classify.domainactionclassifier.llm.fallback.use.llm.classification',
+                           node_label='LLMFallback', processing_stage="completed", error="missing_query",
+                           llm_fallback_successful=False, request_id=request_id)
+                return result
+
+            # Step 3: Preprocess query if needed
+            original_query = user_query
+            processed_query = user_query.strip()
+            preprocessing_applied = processed_query != user_query
+
+            if preprocessing_applied:
+                result['preprocessing_applied'] = True
+                result['original_query'] = original_query
+                logger.debug("Query preprocessing applied",
+                           original_length=len(original_query), processed_length=len(processed_query), request_id=request_id)
+
+            # Step 4: Attempt LLM classification
+            try:
+                classifier = kwargs.get('classifier') or DomainActionClassifier()
+                llm_classification = await classifier._llm_fallback_classification(processed_query)
+
+                if llm_classification:
+                    # LLM classification successful
+                    result['llm_fallback_successful'] = True
+                    result['llm_classification'] = llm_classification
+                    result['ready_for_comparison'] = True
+
+                    # Analyze confidence improvement
+                    llm_confidence = llm_classification.confidence
+                    confidence_improvement = llm_confidence - rule_based_confidence
+                    significant_improvement = confidence_improvement >= 0.1
+
+                    result['improved_confidence'] = significant_improvement
+                    result['confidence_analysis'] = {
+                        'rule_based_confidence': rule_based_confidence,
+                        'llm_confidence': llm_confidence,
+                        'improvement': confidence_improvement,
+                        'significant_improvement': significant_improvement
+                    }
+
+                    logger.info("LLM fallback classification completed successfully",
+                              llm_domain=llm_classification.domain.value,
+                              llm_action=llm_classification.action.value,
+                              llm_confidence=llm_confidence,
+                              confidence_improvement=confidence_improvement,
+                              request_id=request_id)
+
+                else:
+                    # LLM classification failed, fall back to rule-based
+                    result['llm_fallback_successful'] = False
+                    result['fallback_to_rule_based'] = True
+                    result['classification_method'] = 'rule_based_fallback'
+                    result['llm_classification'] = rule_based_classification
+                    result['next_step'] = 'UseRuleBased'
+
+                    logger.warning("LLM classification returned None, falling back to rule-based",
+                                 request_id=request_id)
+
+            except Exception as e:
+                # Service exception, fall back to rule-based
+                result['llm_fallback_successful'] = False
+                result['fallback_to_rule_based'] = True
+                result['classification_method'] = 'rule_based_fallback'
+                result['llm_classification'] = rule_based_classification
+                result['service_error'] = str(e)
+                result['next_step'] = 'UseRuleBased'
+
+                logger.error("LLM classification service error, falling back to rule-based",
+                           error=str(e), request_id=request_id)
+
+        except Exception as e:
+            # Unexpected error
+            result['error'] = f'Unexpected error in LLM fallback: {str(e)}'
+            logger.error("Unexpected error in LLM fallback orchestrator",
+                       error=str(e), request_id=request_id, exc_info=True)
+
+        # Final logging
+        rag_step_log(
+            step=35,
+            step_id='RAG.classify.domainactionclassifier.llm.fallback.use.llm.classification',
+            node_label='LLMFallback',
+            category='classify',
+            type='process',
+            llm_fallback_successful=result['llm_fallback_successful'],
+            classification_method=result['classification_method'],
+            improved_confidence=result.get('improved_confidence', False),
+            fallback_to_rule_based=result['fallback_to_rule_based'],
+            preprocessing_applied=result['preprocessing_applied'],
+            next_step=result['next_step'],
+            ready_for_comparison=result['ready_for_comparison'],
+            request_id=request_id,
+            processing_stage="completed"
+        )
+
+        return result
+
+async def step_43__domain_prompt(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 43 — PromptTemplateManager.get_prompt Get domain-specific prompt
     ID: RAG.classify.prompttemplatemanager.get.prompt.get.domain.specific.prompt
     Type: process | Category: classify | Node: DomainPrompt
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Generates domain-specific prompts when classification confidence is high enough.
+    This thin orchestrator wraps PromptTemplateManager.get_prompt() business logic.
     """
-    with rag_step_timer(43, 'RAG.classify.prompttemplatemanager.get.prompt.get.domain.specific.prompt', 'DomainPrompt', stage="start"):
-        rag_step_log(step=43, step_id='RAG.classify.prompttemplatemanager.get.prompt.get.domain.specific.prompt', node_label='DomainPrompt',
-                     category='classify', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=43, step_id='RAG.classify.prompttemplatemanager.get.prompt.get.domain.specific.prompt', node_label='DomainPrompt',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from app.services.domain_prompt_templates import PromptTemplateManager
+    from app.services.domain_action_classifier import DomainActionClassification
+    from datetime import datetime, timezone
+
+    # Extract context parameters
+    ctx = ctx or {}
+    classification = kwargs.get('classification') or ctx.get('classification')
+    prompt_template_manager = kwargs.get('prompt_template_manager') or ctx.get('prompt_template_manager')
+    user_query = kwargs.get('user_query') or ctx.get('user_query', '')
+    prompt_context = kwargs.get('prompt_context') or ctx.get('prompt_context')
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Initialize orchestration result
+    domain_prompt = None
+    prompt_generated = False
+    error_occurred = False
+    error_message = None
+    domain = None
+    action = None
+    document_type = None
+    prompt_length = 0
+
+    try:
+        # Validate inputs
+        if not classification:
+            raise ValueError("Classification is required for domain prompt generation")
+
+        if not isinstance(classification, DomainActionClassification):
+            raise TypeError(f"Expected DomainActionClassification, got {type(classification)}")
+
+        # Create PromptTemplateManager if not provided
+        if not prompt_template_manager:
+            prompt_template_manager = PromptTemplateManager()
+
+        # Extract classification details
+        domain = classification.domain.value if classification.domain else None
+        action = classification.action.value if classification.action else None
+        document_type = classification.document_type
+
+        # Log the orchestration start (separate from internal PromptTemplateManager logging)
+        rag_step_log(
+            step=43,
+            step_id='RAG.classify.prompttemplatemanager.get.prompt.get.domain.specific.prompt',
+            node_label='DomainPrompt',
+            category='classify',
+            type='process',
+            processing_stage="started",
+            request_id=request_id,
+            domain=domain,
+            action=action,
+            user_query=user_query[:100] if user_query else '',
+            has_context=bool(prompt_context),
+            document_type=document_type
+        )
+
+        # Call the actual business logic (PromptTemplateManager.get_prompt)
+        # This will also log its own RAG Step 43 logs internally
+        domain_prompt = prompt_template_manager.get_prompt(
+            domain=classification.domain,
+            action=classification.action,
+            query=user_query,
+            context=prompt_context,
+            document_type=document_type
+        )
+
+        # Validate the generated prompt
+        if domain_prompt and isinstance(domain_prompt, str) and len(domain_prompt) > 0:
+            prompt_generated = True
+            prompt_length = len(domain_prompt)
+        else:
+            raise ValueError("Generated prompt is empty or invalid")
+
+    except Exception as e:
+        error_occurred = True
+        error_message = str(e)
+
+        logger.error(
+            f"Failed to generate domain prompt: {error_message}",
+            extra={
+                'request_id': request_id,
+                'step': 43,
+                'error': error_message,
+                'domain': domain,
+                'action': action,
+                'classification_available': classification is not None
+            }
+        )
+
+        # Provide fallback prompt (empty string to trigger downstream default handling)
+        domain_prompt = ""
+        prompt_generated = False
+
+    # Log orchestration completion
+    rag_step_log(
+        step=43,
+        step_id='RAG.classify.prompttemplatemanager.get.prompt.get.domain.specific.prompt',
+        node_label='DomainPrompt',
+        processing_stage="completed",
+        request_id=request_id,
+        prompt_generated=prompt_generated,
+        error_occurred=error_occurred,
+        error_message=error_message,
+        domain=domain,
+        action=action,
+        document_type=document_type,
+        prompt_length=prompt_length,
+        orchestration_result="success" if prompt_generated else "fallback"
+    )
+
+    # Build orchestration result (thin wrapper preserving behavior)
+    result = {
+        'domain_prompt': domain_prompt,
+        'prompt_generated': prompt_generated,
+        'domain': domain,
+        'action': action,
+        'document_type': document_type,
+        'prompt_length': prompt_length,
+        'error_occurred': error_occurred,
+        'error_message': error_message,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }
+
+    # For backward compatibility, also return the prompt directly if accessed as string
+    result['__str__'] = lambda: domain_prompt
+
+    return result
 
 def step_88__doc_classify(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

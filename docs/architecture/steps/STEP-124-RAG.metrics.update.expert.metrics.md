@@ -36,25 +36,27 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) evals/helpers.py:92 — evals.helpers.update_success_metrics (score 0.32)
+1) app/orchestrators/metrics.py:464 — app.orchestrators.metrics.step_124__update_expert_metrics (score 0.35)
+   Evidence: Score 0.35, RAG STEP 124 — Update expert metrics
+ID: RAG.metrics.update.expert.metrics
+Type:...
+2) evals/helpers.py:92 — evals.helpers.update_success_metrics (score 0.32)
    Evidence: Score 0.32, Update metrics for a successful evaluation.
 
 Args:
     report: The report dictio...
-2) evals/helpers.py:114 — evals.helpers.update_failure_metrics (score 0.32)
+3) evals/helpers.py:114 — evals.helpers.update_failure_metrics (score 0.32)
    Evidence: Score 0.32, Update metrics for a failed evaluation.
 
 Args:
     report: The report dictionary...
-3) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.31)
+4) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.31)
    Evidence: Score 0.31, Update system-level metrics like memory and CPU usage.
-4) app/core/monitoring/metrics.py:426 — app.core.monitoring.metrics.update_subscription_metrics (score 0.31)
+5) app/core/monitoring/metrics.py:426 — app.core.monitoring.metrics.update_subscription_metrics (score 0.31)
    Evidence: Score 0.31, Update subscription counts.
-5) app/core/monitoring/metrics.py:431 — app.core.monitoring.metrics.update_monthly_revenue (score 0.30)
-   Evidence: Score 0.30, Update monthly revenue.
 
 Notes:
 - Implementation exists but may not be wired correctly

@@ -44,17 +44,18 @@ Top candidates:
 
 Args:
     response: The ...
-2) evals/helpers.py:21 — evals.helpers.format_messages (score 0.27)
+2) app/orchestrators/streaming.py:50 — app.orchestrators.streaming.step_108__write_sse (score 0.29)
+   Evidence: Score 0.29, RAG STEP 108 — write_sse Format chunks
+ID: RAG.streaming.write.sse.format.chunks...
+3) evals/helpers.py:21 — evals.helpers.format_messages (score 0.27)
    Evidence: Score 0.27, Format a list of messages for evaluation.
 
 Args:
     messages: List of message d...
-3) app/services/i18n_service.py:315 — app.services.i18n_service.I18nService.format_currency (score 0.26)
+4) app/services/i18n_service.py:315 — app.services.i18n_service.I18nService.format_currency (score 0.26)
    Evidence: Score 0.26, Format currency according to language preferences.
-4) app/services/i18n_service.py:322 — app.services.i18n_service.I18nService.format_date (score 0.26)
+5) app/services/i18n_service.py:322 — app.services.i18n_service.I18nService.format_date (score 0.26)
    Evidence: Score 0.26, Format date according to language preferences.
-5) examples/ccnl_calculator_demo.py:229 — examples.ccnl_calculator_demo.format_currency (score 0.26)
-   Evidence: Score 0.26, Format currency for display.
 
 Notes:
 - Implementation exists but may not be wired correctly

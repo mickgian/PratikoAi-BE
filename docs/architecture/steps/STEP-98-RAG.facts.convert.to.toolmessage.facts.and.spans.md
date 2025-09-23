@@ -36,30 +36,31 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.27)
+1) app/orchestrators/facts.py:283 — app.orchestrators.facts.step_98__to_tool_results (score 0.31)
+   Evidence: Score 0.31, RAG STEP 98 — Convert to ToolMessage facts and spans
+ID: RAG.facts.convert.to.to...
+2) app/orchestrators/platform.py:1517 — app.orchestrators.platform.step_99__tool_results (score 0.28)
+   Evidence: Score 0.28, RAG STEP 99 — Return to tool caller
+ID: RAG.platform.return.to.tool.caller
+Type:...
+3) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.27)
    Evidence: Score 0.27, Combine results from BM25 and vector search, removing duplicates.
-2) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:34 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts (score 0.26)
-   Evidence: Score 0.26, function: step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts
-3) app/ragsteps/facts/step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.py:22 — app.ragsteps.facts.step_40_rag_facts_contextbuilder_merge_facts_and_kb_docs_and_optional_doc_facts.run (score 0.26)
-   Evidence: Score 0.26, function: run
-4) evals/helpers.py:129 — evals.helpers.process_trace_results (score 0.25)
-   Evidence: Score 0.25, Process results for a single trace.
-
-Args:
-    report: The report dictionary.
-  ...
-5) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
-   Evidence: Score 0.25, Convert internal SearchResponse to API model.
+4) app/orchestrators/facts.py:14 — app.orchestrators.facts.step_14__extract_facts (score 0.25)
+   Evidence: Score 0.25, RAG STEP 14 — AtomicFactsExtractor.extract Extract atomic facts
+ID: RAG.facts.at...
+5) app/orchestrators/facts.py:32 — app.orchestrators.facts.step_16__canonicalize_facts (score 0.25)
+   Evidence: Score 0.25, RAG STEP 16 — AtomicFactsExtractor.canonicalize Normalize dates amounts rates
+ID...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for ToToolResults
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

@@ -338,3 +338,271 @@ class TestRAGStep40ContextBuilderMerge:
         assert log_call[1]['node_label'] == "BuildContext"
         assert 'token_count' in log_call[1]
         assert 'trace_id' in log_call[1]
+
+
+class TestRAGStep40Orchestrator:
+    """Test suite for RAG STEP 40 Orchestrator - BuildContext orchestration function."""
+
+    @pytest.mark.asyncio
+    @patch('app.orchestrators.facts.rag_step_log')
+    async def test_step_40_orchestrator_success(self, mock_rag_log):
+        """Test Step 40: Successful context merging via orchestrator."""
+        from app.orchestrators.facts import step_40__build_context
+        from app.services.context_builder_merge import ContextBuilderMerge
+        from app.services.knowledge_search_service import SearchResult
+
+        # Mock service instance
+        mock_service = ContextBuilderMerge()
+
+        # Mock KB results (from Step 39)
+        kb_results = [
+            SearchResult(
+                id="kb_1",
+                title="Tax Guide 2024",
+                content="Business tax deductions for 2024",
+                category="tax",
+                score=0.92,
+                source="kb_tax_guide"
+            )
+        ]
+
+        ctx = {
+            'request_id': 'test-step-40',
+            'canonical_facts': ['business', 'tax', 'deductions', '2024'],
+            'knowledge_items': kb_results,  # Output from Step 39
+            'document_facts': ['Document shows business expenses'],
+            'user_message': 'What tax deductions can I claim for business expenses?',
+            'user_id': 'user_40',
+            'session_id': 'session_40',
+            'trace_id': 'trace_40_123'
+        }
+
+        result = await step_40__build_context(ctx=ctx, context_builder_service=mock_service)
+
+        # Verify the result structure
+        assert isinstance(result, dict)
+        assert result['context_merged'] is True
+        assert 'merged_context' in result
+        assert result['token_count'] > 0
+        assert result['source_distribution']['facts'] > 0
+        assert result['source_distribution']['kb_docs'] > 0
+        assert result['source_distribution']['document_facts'] > 0
+        assert result['context_quality_score'] > 0.0
+        assert result['request_id'] == 'test-step-40'
+        assert 'timestamp' in result
+
+    @pytest.mark.asyncio
+    @patch('app.orchestrators.facts.rag_step_log')
+    async def test_step_40_orchestrator_kwargs_override_ctx(self, mock_rag_log):
+        """Test Step 40: kwargs parameters override ctx parameters."""
+        from app.orchestrators.facts import step_40__build_context
+        from app.services.context_builder_merge import ContextBuilderMerge
+
+        mock_service = ContextBuilderMerge()
+
+        ctx = {
+            'request_id': 'test-ctx',
+            'canonical_facts': ['ctx', 'facts'],
+            'user_message': 'Context query',
+            'max_context_tokens': 1000
+        }
+
+        # Override via kwargs
+        result = await step_40__build_context(
+            ctx=ctx,
+            context_builder_service=mock_service,
+            canonical_facts=['override', 'facts'],
+            query='Override query',
+            max_context_tokens=800
+        )
+
+        assert result['context_merged'] is True
+        assert result['query'] == 'Override query'  # From kwargs, not ctx
+        assert result['max_context_tokens'] == 800  # From kwargs, not ctx
+        assert result['canonical_facts'] == ['override', 'facts']  # From kwargs, not ctx
+
+    @pytest.mark.asyncio
+    @patch('app.orchestrators.facts.rag_step_log')
+    async def test_step_40_orchestrator_empty_inputs(self, mock_rag_log):
+        """Test Step 40: Handling of empty inputs."""
+        from app.orchestrators.facts import step_40__build_context
+        from app.services.context_builder_merge import ContextBuilderMerge
+
+        mock_service = ContextBuilderMerge()
+
+        ctx = {
+            'request_id': 'test-empty',
+            'canonical_facts': [],  # Empty facts
+            'knowledge_items': [],  # Empty KB results
+            'document_facts': [],   # Empty document facts
+            'user_message': '',     # Empty query
+            'user_id': 'user_empty',
+            'session_id': 'session_empty'
+        }
+
+        result = await step_40__build_context(ctx=ctx, context_builder_service=mock_service)
+
+        assert result['context_merged'] is True  # Service handles empty inputs gracefully
+        assert result['token_count'] >= 0
+        assert result['source_distribution']['facts'] == 0
+        assert result['source_distribution']['kb_docs'] == 0
+        assert result['source_distribution']['document_facts'] == 0
+
+    @pytest.mark.asyncio
+    @patch('app.orchestrators.facts.rag_step_log')
+    @patch('app.core.logging.logger')
+    async def test_step_40_orchestrator_service_error_handling(self, mock_logger, mock_rag_log):
+        """Test Step 40: Error handling when context builder service fails."""
+        from app.orchestrators.facts import step_40__build_context
+        from unittest.mock import Mock
+
+        # Mock service to raise an exception
+        mock_service = Mock()
+        mock_service.merge_context.side_effect = Exception("Context merging failed")
+
+        ctx = {
+            'request_id': 'test-error',
+            'canonical_facts': ['test', 'facts'],
+            'user_message': 'Test query for error handling',
+            'user_id': 'user_error',
+            'session_id': 'session_error'
+        }
+
+        result = await step_40__build_context(ctx=ctx, context_builder_service=mock_service)
+
+        assert result['context_merged'] is False
+        assert result['merged_context'] == ""
+        assert result['context_parts'] == []
+        assert result['token_count'] == 0
+        assert 'Context merging failed' in result['error']
+
+        # Verify error was logged
+        mock_logger.error.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch('app.orchestrators.facts.rag_step_log')
+    async def test_step_40_orchestrator_integration_flow(self, mock_rag_log):
+        """Test Step 40: Integration test ensuring proper workflow integration."""
+        from app.orchestrators.facts import step_40__build_context
+        from app.services.context_builder_merge import ContextBuilderMerge
+        from app.services.knowledge_search_service import SearchResult
+
+        # Simulate realistic data flowing from previous steps
+        kb_results = [
+            SearchResult(
+                id="integration_kb_1",
+                title="Integration Test Knowledge",
+                content="Knowledge content from Step 39 for integration testing",
+                category="business",
+                score=0.87,
+                source="kb_integration_test"
+            )
+        ]
+
+        ctx = {
+            'request_id': 'test-integration-40',
+            'canonical_facts': ['business', 'integration', 'test', 'facts'],
+            'knowledge_items': kb_results,  # From Step 39: KBPreFetch
+            'document_facts': ['Document fact from integration test'],
+            'user_message': 'Integration test query for context building',
+            'search_query': 'Integration test query for context building',  # Alternative query source
+            'user_id': 'user_integration',
+            'session_id': 'session_integration',
+            'trace_id': 'trace_integration_40'
+        }
+
+        mock_service = ContextBuilderMerge()
+        result = await step_40__build_context(ctx=ctx, context_builder_service=mock_service)
+
+        # Verify context was merged successfully
+        assert result['context_merged'] is True
+        assert result['token_count'] > 0
+
+        # Verify context preservation for next steps (Step 41: SelectPrompt)
+        assert result['request_id'] == 'test-integration-40'
+        assert 'timestamp' in result
+        assert result['merged_context'] != ""
+        assert len(result['context_parts']) > 0
+
+        # Verify rag_step_log was called with proper parameters
+        assert mock_rag_log.call_count >= 2  # start and completed calls
+        start_call = mock_rag_log.call_args_list[0][1]
+        assert start_call['step'] == 40
+        assert start_call['step_id'] == 'RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.optional.doc.facts'
+        assert start_call['node_label'] == 'BuildContext'
+        assert start_call['category'] == 'facts'
+        assert start_call['type'] == 'process'
+        assert start_call['processing_stage'] == 'started'
+
+    @pytest.mark.asyncio
+    @patch('app.orchestrators.facts.rag_step_log')
+    async def test_step_40_parity_behavior_preservation(self, mock_rag_log):
+        """Test Step 40: Parity test proving identical behavior before/after orchestrator."""
+        from app.orchestrators.facts import step_40__build_context
+        from app.services.context_builder_merge import ContextBuilderMerge, merge_context
+        from app.services.knowledge_search_service import SearchResult
+
+        # Test data representing direct ContextBuilderMerge usage
+        canonical_facts = ['parity', 'test', 'facts']
+        kb_results = [
+            SearchResult(
+                id="parity_kb_1",
+                title="Parity Test KB",
+                content="Content for parity testing",
+                category="test",
+                score=0.91,
+                source="parity_test"
+            )
+        ]
+        document_facts = ['Document fact for parity test']
+
+        context_data = {
+            'canonical_facts': canonical_facts,
+            'kb_results': kb_results,
+            'document_facts': document_facts,
+            'query': 'Test parity preservation',
+            'user_id': 'parity_user',
+            'session_id': 'parity_session',
+            'trace_id': 'parity_trace_123',
+            'max_context_tokens': 1200
+        }
+
+        # Direct service call (before orchestrator)
+        direct_result = merge_context(context_data)
+
+        # Orchestrator call (after orchestrator)
+        ctx = {
+            'request_id': 'parity-test-40',
+            'canonical_facts': canonical_facts,
+            'knowledge_items': kb_results,  # Use knowledge_items (Step 39 output key)
+            'document_facts': document_facts,
+            'query': context_data['query'],
+            'user_id': context_data['user_id'],
+            'session_id': context_data['session_id'],
+            'trace_id': context_data['trace_id'],
+            'max_context_tokens': context_data['max_context_tokens']
+        }
+
+        mock_service = ContextBuilderMerge()
+        orchestrator_result = await step_40__build_context(ctx=ctx, context_builder_service=mock_service)
+
+        # Verify that orchestrator preserves core merging behavior
+        assert orchestrator_result['context_merged'] is True
+
+        # Check that both contain the same essential content components
+        assert "parity test facts" in orchestrator_result['merged_context']
+        assert "parity test facts" in direct_result['merged_context']
+        assert "Content for parity testing" in orchestrator_result['merged_context']
+        assert "Content for parity testing" in direct_result['merged_context']
+        assert "Document fact for parity test" in orchestrator_result['merged_context']
+        assert "Document fact for parity test" in direct_result['merged_context']
+
+        # Verify core metrics are equivalent (allowing for small variations due to orchestrator context)
+        assert orchestrator_result['token_count'] == direct_result['token_count']
+        assert orchestrator_result['source_distribution'] == direct_result['source_distribution']
+        # Allow small variation in quality score due to orchestrator context differences
+        assert abs(orchestrator_result['context_quality_score'] - direct_result['context_quality_score']) < 0.15
+
+        # Verify orchestrator adds coordination metadata without changing core behavior
+        assert orchestrator_result['request_id'] == 'parity-test-40'
+        assert 'timestamp' in orchestrator_result

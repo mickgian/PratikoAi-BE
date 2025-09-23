@@ -36,31 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/ragsteps/prompting/step_47_rag_prompting_insert_system_message.py:61 — app.ragsteps.prompting.step_47_rag_prompting_insert_system_message.insert_system_message (score 0.32)
-   Evidence: Score 0.32, Insert system message at the beginning of messages list.
-
-This function provides...
-2) app/ragsteps/prompting/step_47_rag_prompting_insert_system_message.py:35 — app.ragsteps.prompting.step_47_rag_prompting_insert_system_message.run (score 0.31)
-   Evidence: Score 0.31, Adapter for RAG STEP 47: Insert system message
-
-This step is triggered when:
-1. ...
-3) deployment-orchestration/notification_system.py:764 — deployment-orchestration.notification_system.NotificationManager._create_notification_message (score 0.29)
+1) app/orchestrators/prompting.py:527 — app.orchestrators.prompting.step_47__insert_msg (score 0.30)
+   Evidence: Score 0.30, RAG STEP 47 — Insert system message
+ID: RAG.prompting.insert.system.message
+Type...
+2) deployment-orchestration/notification_system.py:764 — deployment-orchestration.notification_system.NotificationManager._create_notification_message (score 0.29)
    Evidence: Score 0.29, Create a formatted notification message.
-4) failure-recovery-system/recovery_orchestrator.py:865 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._add_status_message (score 0.29)
+3) failure-recovery-system/recovery_orchestrator.py:865 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._add_status_message (score 0.29)
    Evidence: Score 0.29, Add a status message to the execution log.
-5) app/ragsteps/prompting/step_45_rag_prompting_system_message_exists.py:35 — app.ragsteps.prompting.step_45_rag_prompting_system_message_exists.step_45_rag_prompting_system_message_exists (score 0.28)
-   Evidence: Score 0.28, function: step_45_rag_prompting_system_message_exists
+4) deployment-orchestration/notification_system.py:785 — deployment-orchestration.notification_system.NotificationManager._generate_message_content (score 0.28)
+   Evidence: Score 0.28, Generate title and body for notification.
+5) deployment-orchestration/notification_system.py:109 — deployment-orchestration.notification_system.NotificationMessage (score 0.28)
+   Evidence: Score 0.28, A formatted notification message.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Weak or missing implementation
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Create process implementation for InsertMsg
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

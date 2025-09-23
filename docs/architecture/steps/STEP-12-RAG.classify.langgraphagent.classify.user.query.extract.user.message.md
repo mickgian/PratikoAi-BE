@@ -42,20 +42,19 @@ Top candidates:
 1) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.46)
    Evidence: Score 0.46, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
 -...
-2) app/core/langgraph/graph.py:1180 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
+2) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.43)
+   Evidence: Score 0.43, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
+ID: RA...
+3) app/core/langgraph/graph.py:1097 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.40)
    Evidence: Score 0.40, Determine if query needs tools/complex workflow based on classification.
 
 Args:
 ...
-3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
+4) app/orchestrators/classify.py:829 — app.orchestrators.classify.step_43__domain_prompt (score 0.39)
+   Evidence: Score 0.39, RAG STEP 43 — PromptTemplateManager.get_prompt Get domain-specific prompt
+ID: RA...
+5) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.39)
    Evidence: Score 0.39, Calculate confidence scores for each domain
-4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.39)
-   Evidence: Score 0.39, Calculate confidence scores for each action
-5) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.37)
-   Evidence: Score 0.37, Extract parameters for CCNL tool from user query and classification.
-
-Args:
-    ...
 
 Notes:
 - Implementation exists but may not be wired correctly

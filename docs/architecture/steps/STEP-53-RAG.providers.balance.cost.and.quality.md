@@ -49,10 +49,16 @@ Args:
 3) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
    Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
 context enri...
-4) app/ragsteps/providers/step_48_rag_providers_langgraphagent_get_optimal_provider_select_llm_provider.py:54 — app.ragsteps.providers.step_48_rag_providers_langgraphagent_get_optimal_provider_select_llm_provider.select_optimal_provider (score 0.45)
-   Evidence: Score 0.45, Select optimal LLM provider based on context and constraints (STEP 48).
-5) app/ragsteps/providers/step_48_rag_providers_langgraphagent_get_optimal_provider_select_llm_provider.py:29 — app.ragsteps.providers.step_48_rag_providers_langgraphagent_get_optimal_provider_select_llm_provider.run (score 0.45)
-   Evidence: Score 0.45, Adapter for RAG STEP 48: Select LLM provider.
+4) app/core/llm/factory.py:187 — app.core.llm.factory.LLMFactory._route_cost_optimized (score 0.43)
+   Evidence: Score 0.43, Route to the cheapest suitable provider.
+
+Args:
+    providers: Available provide...
+5) app/core/llm/factory.py:208 — app.core.llm.factory.LLMFactory._route_quality_first (score 0.43)
+   Evidence: Score 0.43, Route to the highest quality provider within budget.
+
+Args:
+    providers: Avail...
 
 Notes:
 - Implementation exists but may not be wired correctly

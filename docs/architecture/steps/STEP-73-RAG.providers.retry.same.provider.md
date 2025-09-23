@@ -54,10 +54,11 @@ context enri...
 
 Args:
     messages: List o...
-5) app/orchestrators/providers.py:1027 — app.orchestrators.providers.step_72__failover_provider (score 0.43)
-   Evidence: Score 0.43, RAG STEP 72 — Get FAILOVER provider
-ID: RAG.providers.get.failover.provider
-Type...
+5) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.42)
+   Evidence: Score 0.42, Create an LLM provider instance.
+
+Args:
+    provider_type: Type of provider to c...
 
 Notes:
 - Implementation exists but may not be wired correctly

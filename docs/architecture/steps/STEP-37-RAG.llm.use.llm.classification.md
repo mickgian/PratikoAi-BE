@@ -49,21 +49,19 @@ Args:
 
 Returns:
     LLM factory instance
-3) app/orchestrators/llm.py:320 — app.orchestrators.llm.step_67__llmsuccess (score 0.27)
-   Evidence: Score 0.27, RAG STEP 67 — LLM call successful?
-ID: RAG.llm.llm.call.successful
-Type: decisio...
-4) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.26)
+3) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.26)
    Evidence: Score 0.26, Decorator to cache LLM responses based on messages and model.
 
 Args:
     ttl: Ti...
-5) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.26)
+4) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.26)
    Evidence: Score 0.26, Initialize the LLM provider.
 
 Args:
     api_key: API key for the provider
     mo...
+5) app/core/llm/cost_calculator.py:34 — app.core.llm.cost_calculator.CostCalculator.__init__ (score 0.26)
+   Evidence: Score 0.26, Initialize cost calculator.
 
 Notes:
 - Weak or missing implementation

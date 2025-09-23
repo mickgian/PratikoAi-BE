@@ -48,9 +48,9 @@ ID: RA...
    Evidence: Score 0.42, Calculate confidence scores for each action
 4) app/services/domain_action_classifier.py:530 — app.services.domain_action_classifier.DomainActionClassifier._extract_document_type (score 0.41)
    Evidence: Score 0.41, Extract document type for document generation actions
-5) app/orchestrators/classify.py:829 — app.orchestrators.classify.step_43__domain_prompt (score 0.40)
-   Evidence: Score 0.40, RAG STEP 43 — PromptTemplateManager.get_prompt Get domain-specific prompt
-ID: RA...
+5) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.37)
+   Evidence: Score 0.37, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
+-...
 
 Notes:
 - Implementation exists but may not be wired correctly

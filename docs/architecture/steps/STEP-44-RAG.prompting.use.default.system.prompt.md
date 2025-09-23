@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/orchestrators/prompting.py:229 — app.orchestrators.prompting.step_44__default_sys_prompt (score 0.32)
+1) app/orchestrators/prompting.py:470 — app.orchestrators.prompting.step_44__default_sys_prompt (score 0.32)
    Evidence: Score 0.32, RAG STEP 44 — Use default SYSTEM_PROMPT
 ID: RAG.prompting.use.default.system.pro...
 2) app/core/prompts/__init__.py:9 — app.core.prompts.__init__.load_system_prompt (score 0.28)
@@ -48,8 +48,8 @@ ID: RAG.prompting.use.default.system.pro...
    Evidence: Score 0.28, Build system prompt based on analysis type
 4) deployment-orchestration/notification_system.py:674 — deployment-orchestration.notification_system.NotificationManager.setup_default_rules (score 0.28)
    Evidence: Score 0.28, Setup default notification rules.
-5) app/core/langgraph/graph.py:406 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.27)
-   Evidence: Score 0.27, Select the appropriate system prompt (RAG STEPs 41/42/44) with full test-require...
+5) app/services/italian_document_analyzer.py:239 — app.services.italian_document_analyzer.ItalianDocumentAnalyzer._build_comparison_system_prompt (score 0.27)
+   Evidence: Score 0.27, Build system prompt for document comparison
 
 Notes:
 - Implementation exists but may not be wired correctly

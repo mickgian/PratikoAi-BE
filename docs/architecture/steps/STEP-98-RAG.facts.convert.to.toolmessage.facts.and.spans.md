@@ -39,10 +39,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/orchestrators/facts.py:283 — app.orchestrators.facts.step_98__to_tool_results (score 0.31)
+1) app/orchestrators/facts.py:421 — app.orchestrators.facts.step_98__to_tool_results (score 0.31)
    Evidence: Score 0.31, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-2) app/orchestrators/platform.py:1517 — app.orchestrators.platform.step_99__tool_results (score 0.28)
+2) app/orchestrators/platform.py:2194 — app.orchestrators.platform.step_99__tool_results (score 0.28)
    Evidence: Score 0.28, RAG STEP 99 — Return to tool caller
 ID: RAG.platform.return.to.tool.caller
 Type:...

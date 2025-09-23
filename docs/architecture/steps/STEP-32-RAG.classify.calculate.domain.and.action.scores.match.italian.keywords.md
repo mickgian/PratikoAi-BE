@@ -46,12 +46,11 @@ Top candidates:
 3) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.43)
    Evidence: Score 0.43, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
 ID: RA...
-4) app/orchestrators/classify.py:829 — app.orchestrators.classify.step_43__domain_prompt (score 0.39)
-   Evidence: Score 0.39, RAG STEP 43 — PromptTemplateManager.get_prompt Get domain-specific prompt
-ID: RA...
-5) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.39)
+4) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.39)
    Evidence: Score 0.39, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
 -...
+5) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
+   Evidence: Score 0.37, Load all domain-action prompt template combinations
 
 Notes:
 - Implementation exists but may not be wired correctly

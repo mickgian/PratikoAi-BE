@@ -317,20 +317,168 @@ async def step_37__use_llm(*, messages: Optional[List[Any]] = None, ctx: Optiona
 
         return result
 
-def step_67__llmsuccess(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_67__llmsuccess(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 67 — LLM call successful?
     ID: RAG.llm.llm.call.successful
     Type: decision | Category: llm | Node: LLMSuccess
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Validates whether an LLM API call succeeded or failed.
+    Routes successful responses to caching (Step 68) and failed responses to retry logic (Step 69).
     """
-    with rag_step_timer(67, 'RAG.llm.llm.call.successful', 'LLMSuccess', stage="start"):
-        rag_step_log(step=67, step_id='RAG.llm.llm.call.successful', node_label='LLMSuccess',
-                     category='llm', type='decision', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=67, step_id='RAG.llm.llm.call.successful', node_label='LLMSuccess',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from datetime import datetime, timezone
+
+    # Extract context parameters
+    ctx = ctx or {}
+    llm_response = kwargs.get('llm_response') or ctx.get('llm_response')
+    error = kwargs.get('error') or ctx.get('error')
+    exception = kwargs.get('exception') or ctx.get('exception')
+    attempt_number = kwargs.get('attempt_number') or ctx.get('attempt_number', 1)
+    max_retries = kwargs.get('max_retries') or ctx.get('max_retries')
+    provider = kwargs.get('provider') or ctx.get('provider')
+    model = kwargs.get('model') or ctx.get('model')
+    response_time_ms = kwargs.get('response_time_ms') or ctx.get('response_time_ms')
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Initialize decision variables
+    llm_success = False
+    has_response = False
+    error_occurred = False
+    next_step = None
+    error_message = None
+    exception_type = None
+    has_tool_calls = False
+    cost_eur = None
+
+    # Log decision start
+    rag_step_log(
+        step=67,
+        step_id='RAG.llm.llm.call.successful',
+        node_label='LLMSuccess',
+        category='llm',
+        type='decision',
+        processing_stage='started',
+        request_id=request_id,
+        attempt_number=attempt_number,
+        has_response=llm_response is not None,
+        has_error=error is not None or exception is not None
+    )
+
+    try:
+        # Core decision logic: Check if LLM response exists and is valid
+        # This matches the existing business logic: `status = "success" if response else "error"`
+        if llm_response is not None:
+            llm_success = True
+            has_response = True
+            next_step = 'cache_response'  # Route to Step 68
+
+            # Extract response metadata
+            if hasattr(llm_response, 'tool_calls') and llm_response.tool_calls:
+                has_tool_calls = True
+
+            if hasattr(llm_response, 'cost_eur') and llm_response.cost_eur:
+                cost_eur = llm_response.cost_eur
+
+            logger.info(
+                f"llm_call_successful",
+                extra={
+                    'request_id': request_id,
+                    'step': 67,
+                    'attempt_number': attempt_number,
+                    'provider': provider,
+                    'model': model,
+                    'has_tool_calls': has_tool_calls,
+                    'cost_eur': cost_eur
+                }
+            )
+        else:
+            # LLM call failed
+            llm_success = False
+            has_response = False
+            error_occurred = True
+            next_step = 'retry_check'  # Route to Step 69
+
+            # Extract error details
+            if error:
+                error_message = str(error)
+            if exception:
+                exception_type = type(exception).__name__
+                if not error_message:
+                    error_message = str(exception)
+
+            logger.warning(
+                f"llm_call_failed",
+                extra={
+                    'request_id': request_id,
+                    'step': 67,
+                    'attempt_number': attempt_number,
+                    'provider': provider,
+                    'model': model,
+                    'error': error_message,
+                    'exception_type': exception_type
+                }
+            )
+
+    except Exception as e:
+        # Unexpected error in decision logic
+        error_occurred = True
+        error_message = str(e)
+        exception_type = type(e).__name__
+        llm_success = False
+        next_step = 'retry_check'
+
+        logger.error(
+            f"step_67_decision_error",
+            extra={
+                'request_id': request_id,
+                'step': 67,
+                'error': error_message,
+                'exception_type': exception_type
+            }
+        )
+
+    # Log decision completion
+    rag_step_log(
+        step=67,
+        step_id='RAG.llm.llm.call.successful',
+        node_label='LLMSuccess',
+        processing_stage='completed',
+        request_id=request_id,
+        llm_success=llm_success,
+        decision='success' if llm_success else 'failure',
+        has_response=has_response,
+        error_occurred=error_occurred,
+        error_message=error_message,
+        error_type=exception_type,
+        next_step=next_step,
+        attempt_number=attempt_number,
+        max_retries=max_retries,
+        provider=provider,
+        model=model,
+        response_time_ms=response_time_ms,
+        has_tool_calls=has_tool_calls,
+        cost_eur=cost_eur
+    )
+
+    # Build orchestration result
+    result = {
+        'llm_success': llm_success,
+        'has_response': has_response,
+        'error_occurred': error_occurred,
+        'next_step': next_step,
+        'llm_response': llm_response,
+        'error_message': error_message,
+        'exception_type': exception_type,
+        'attempt_number': attempt_number,
+        'max_retries': max_retries,
+        'provider': provider,
+        'model': model,
+        'response_time_ms': response_time_ms,
+        'has_tool_calls': has_tool_calls,
+        'cost_eur': cost_eur,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }
+
+    return result

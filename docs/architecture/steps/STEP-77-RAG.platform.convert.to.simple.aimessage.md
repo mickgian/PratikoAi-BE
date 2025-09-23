@@ -36,21 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Status: ❌  |  Confidence: 0.26
 
 Top candidates:
-1) app/orchestrators/platform.py:1445 — app.orchestrators.platform.step_76__convert_aimsg (score 0.30)
-   Evidence: Score 0.30, RAG STEP 76 — Convert to AIMessage with tool_calls
-ID: RAG.platform.convert.to.a...
-2) app/orchestrators/platform.py:1463 — app.orchestrators.platform.step_77__simple_aimsg (score 0.30)
-   Evidence: Score 0.30, RAG STEP 77 — Convert to simple AIMessage
-ID: RAG.platform.convert.to.simple.aim...
-3) app/models/document_simple.py:126 — app.models.document_simple.Document.__init__ (score 0.26)
+1) app/models/document_simple.py:126 — app.models.document_simple.Document.__init__ (score 0.26)
    Evidence: Score 0.26, method: __init__
-4) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.26)
+2) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.26)
    Evidence: Score 0.26, Check if document has expired
-5) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.26)
+3) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.26)
    Evidence: Score 0.26, Convert document to dictionary for API responses
+4) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
+   Evidence: Score 0.26, Convert internal SearchResponse to API model.
+5) app/models/document_simple.py:188 — app.models.document_simple.DocumentAnalysis.to_dict (score 0.26)
+   Evidence: Score 0.26, Convert analysis to dictionary for API responses
 
 Notes:
 - Weak or missing implementation

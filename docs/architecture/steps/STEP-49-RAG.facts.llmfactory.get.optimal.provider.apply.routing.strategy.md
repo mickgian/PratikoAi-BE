@@ -54,7 +54,7 @@ Returns:
 
 Returns:
     RoutingStrategy: ...
-4) app/core/langgraph/graph.py:651 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
+4) app/core/langgraph/graph.py:495 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
    Evidence: Score 0.29, Get the optimal LLM provider for the given messages.
 
 Args:

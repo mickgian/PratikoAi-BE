@@ -1388,113 +1388,790 @@ def step_50__strategy_type(*, messages: Optional[List[Any]] = None, ctx: Optiona
                 'timestamp': datetime.utcnow().isoformat()
             }
 
-def step_69__retry_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_69__retry_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 69 — Another attempt allowed?
     ID: RAG.platform.another.attempt.allowed
     Type: decision | Category: platform | Node: RetryCheck
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Decision step checking if another retry attempt is allowed based on current attempt number
+    and maximum retries configuration. Routes to retry logic (Step 70) if allowed, or error (Step 71) if exhausted.
     """
-    with rag_step_timer(69, 'RAG.platform.another.attempt.allowed', 'RetryCheck', stage="start"):
-        rag_step_log(step=69, step_id='RAG.platform.another.attempt.allowed', node_label='RetryCheck',
-                     category='platform', type='decision', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=69, step_id='RAG.platform.another.attempt.allowed', node_label='RetryCheck',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from app.core.config import settings
+    from datetime import datetime, timezone
 
-def step_70__prod_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    ctx = ctx or {}
+
+    # Extract context parameters
+    attempt_number = kwargs.get('attempt_number') or ctx.get('attempt_number', 1)
+    max_retries = kwargs.get('max_retries') or ctx.get('max_retries') or settings.MAX_LLM_CALL_RETRIES
+    error = kwargs.get('error') or ctx.get('error')
+    previous_errors = kwargs.get('previous_errors') or ctx.get('previous_errors', [])
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Initialize decision variables
+    retry_allowed = False
+    attempts_remaining = 0
+    next_step = None
+    reason = None
+    all_attempts_failed = False
+    is_last_retry = False
+
+    # Log decision start
+    rag_step_log(
+        step=69,
+        step_id='RAG.platform.another.attempt.allowed',
+        node_label='RetryCheck',
+        category='platform',
+        type='decision',
+        processing_stage='started',
+        request_id=request_id,
+        attempt_number=attempt_number,
+        max_retries=max_retries
+    )
+
+    try:
+        # Core decision logic: Check if retry is allowed
+        # Matches existing logic: for attempt in range(max_retries)
+        # Attempt is allowed if current attempt < max_retries
+        if attempt_number < max_retries:
+            retry_allowed = True
+            attempts_remaining = max_retries - attempt_number
+            next_step = 'prod_check'  # Route to Step 70
+            reason = 'retries_available'
+
+            # Check if this is the last allowed retry
+            is_last_retry = (attempts_remaining == 1)
+
+            logger.info(
+                f"retry_allowed",
+                extra={
+                    'request_id': request_id,
+                    'step': 69,
+                    'attempt_number': attempt_number,
+                    'max_retries': max_retries,
+                    'attempts_remaining': attempts_remaining,
+                    'is_last_retry': is_last_retry
+                }
+            )
+        else:
+            # Max retries exhausted
+            retry_allowed = False
+            attempts_remaining = 0
+            next_step = 'error_500'  # Route to Step 71
+            reason = 'max_retries_exceeded'
+            all_attempts_failed = True
+
+            logger.warning(
+                f"retry_exhausted",
+                extra={
+                    'request_id': request_id,
+                    'step': 69,
+                    'attempt_number': attempt_number,
+                    'max_retries': max_retries,
+                    'all_attempts_failed': True,
+                    'error_count': len(previous_errors)
+                }
+            )
+
+    except Exception as e:
+        # Unexpected error in decision logic
+        error_message = str(e)
+        retry_allowed = False
+        next_step = 'error_500'
+        reason = 'error'
+
+        logger.error(
+            f"step_69_decision_error",
+            extra={
+                'request_id': request_id,
+                'step': 69,
+                'error': error_message
+            }
+        )
+
+    # Log decision completion
+    rag_step_log(
+        step=69,
+        step_id='RAG.platform.another.attempt.allowed',
+        node_label='RetryCheck',
+        processing_stage='completed',
+        request_id=request_id,
+        retry_allowed=retry_allowed,
+        decision='retry' if retry_allowed else 'no_retry',
+        attempts_remaining=attempts_remaining,
+        next_step=next_step,
+        attempt_number=attempt_number,
+        max_retries=max_retries,
+        max_retries_exceeded=all_attempts_failed,
+        error_count=len(previous_errors)
+    )
+
+    # Build orchestration result
+    result = {
+        'retry_allowed': retry_allowed,
+        'attempts_remaining': attempts_remaining,
+        'next_step': next_step,
+        'reason': reason,
+        'attempt_number': attempt_number,
+        'max_retries': max_retries,
+        'all_attempts_failed': all_attempts_failed,
+        'is_last_retry': is_last_retry,
+        'previous_errors': previous_errors,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }
+
+    return result
+
+async def step_70__prod_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 70 — Prod environment and last retry?
     ID: RAG.platform.prod.environment.and.last.retry
     Type: decision | Category: platform | Node: ProdCheck
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Decision step checking if we're in production environment AND on the last retry attempt.
+    If both conditions are true, routes to failover provider (Step 72), otherwise retry same provider (Step 73).
     """
-    with rag_step_timer(70, 'RAG.platform.prod.environment.and.last.retry', 'ProdCheck', stage="start"):
-        rag_step_log(step=70, step_id='RAG.platform.prod.environment.and.last.retry', node_label='ProdCheck',
-                     category='platform', type='decision', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=70, step_id='RAG.platform.prod.environment.and.last.retry', node_label='ProdCheck',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from app.core.config import settings, Environment
+    from datetime import datetime, timezone
 
-def step_71__error500(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    ctx = ctx or {}
+
+    # Extract context parameters
+    environment = kwargs.get('environment') or ctx.get('environment') or settings.ENVIRONMENT
+    attempt_number = kwargs.get('attempt_number') or ctx.get('attempt_number', 1)
+    max_retries = kwargs.get('max_retries') or ctx.get('max_retries', 3)
+    is_last_retry = kwargs.get('is_last_retry') or ctx.get('is_last_retry')
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Calculate is_last_retry if not provided
+    # Original logic: attempt == max_retries - 2 (0-based)
+    # Converted to 1-based: attempt_number == max_retries - 1
+    if is_last_retry is None:
+        is_last_retry = (attempt_number == max_retries - 1)
+
+    # Initialize decision variables
+    is_production = (environment == Environment.PRODUCTION)
+    use_failover = False
+    next_step = None
+    reason = None
+
+    # Log decision start
+    rag_step_log(
+        step=70,
+        step_id='RAG.platform.prod.environment.and.last.retry',
+        node_label='ProdCheck',
+        category='platform',
+        type='decision',
+        processing_stage='started',
+        request_id=request_id,
+        environment=environment.value if isinstance(environment, Environment) else str(environment),
+        is_production=is_production,
+        attempt_number=attempt_number,
+        max_retries=max_retries,
+        is_last_retry=is_last_retry
+    )
+
+    try:
+        # Core decision logic: Failover if production AND last retry
+        # Matches existing logic from graph.py:779
+        # if settings.ENVIRONMENT == Environment.PRODUCTION and attempt == max_retries - 2:
+        if is_production and is_last_retry:
+            use_failover = True
+            next_step = 'get_failover_provider'  # Route to Step 72
+            reason = 'production_last_retry'
+
+            logger.warning(
+                f"attempting_fallback_provider",
+                extra={
+                    'request_id': request_id,
+                    'step': 70,
+                    'environment': environment.value if isinstance(environment, Environment) else str(environment),
+                    'attempt_number': attempt_number,
+                    'max_retries': max_retries,
+                    'is_last_retry': is_last_retry,
+                    'use_failover': True
+                }
+            )
+        else:
+            # Retry same provider
+            use_failover = False
+            next_step = 'retry_same_provider'  # Route to Step 73
+
+            if is_production and not is_last_retry:
+                reason = 'production_not_last_retry'
+            else:
+                reason = 'non_production'
+
+            logger.info(
+                f"retry_same_provider",
+                extra={
+                    'request_id': request_id,
+                    'step': 70,
+                    'environment': environment.value if isinstance(environment, Environment) else str(environment),
+                    'attempt_number': attempt_number,
+                    'max_retries': max_retries,
+                    'is_last_retry': is_last_retry,
+                    'is_production': is_production,
+                    'use_failover': False
+                }
+            )
+
+    except Exception as e:
+        # Unexpected error in decision logic
+        error_message = str(e)
+        use_failover = False
+        next_step = 'retry_same_provider'
+        reason = 'error'
+
+        logger.error(
+            f"step_70_decision_error",
+            extra={
+                'request_id': request_id,
+                'step': 70,
+                'error': error_message
+            }
+        )
+
+    # Log decision completion
+    rag_step_log(
+        step=70,
+        step_id='RAG.platform.prod.environment.and.last.retry',
+        node_label='ProdCheck',
+        processing_stage='completed',
+        request_id=request_id,
+        use_failover=use_failover,
+        decision='failover' if use_failover else 'retry_same',
+        is_production=is_production,
+        is_last_retry=is_last_retry,
+        next_step=next_step,
+        attempt_number=attempt_number,
+        max_retries=max_retries,
+        environment=environment.value if isinstance(environment, Environment) else str(environment)
+    )
+
+    # Build orchestration result
+    result = {
+        'use_failover': use_failover,
+        'is_production': is_production,
+        'is_last_retry': is_last_retry,
+        'next_step': next_step,
+        'reason': reason,
+        'environment': environment,
+        'attempt_number': attempt_number,
+        'max_retries': max_retries,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }
+
+    return result
+
+async def step_71__error500(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 71 — Return 500 error
     ID: RAG.platform.return.500.error
     Type: error | Category: platform | Node: Error500
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Error handler step that returns a 500 Internal Server Error when all retry attempts
+    have been exhausted. Logs the failure and provides error details to the caller.
     """
-    with rag_step_timer(71, 'RAG.platform.return.500.error', 'Error500', stage="start"):
-        rag_step_log(step=71, step_id='RAG.platform.return.500.error', node_label='Error500',
-                     category='platform', type='error', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=71, step_id='RAG.platform.return.500.error', node_label='Error500',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from datetime import datetime, timezone
 
-def step_76__convert_aimsg(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    ctx = ctx or {}
+
+    # Extract context parameters
+    attempt_number = kwargs.get('attempt_number') or ctx.get('attempt_number', 0)
+    max_retries = kwargs.get('max_retries') or ctx.get('max_retries', 3)
+    error = kwargs.get('error') or ctx.get('error', 'Unknown error')
+    exception = kwargs.get('exception') or ctx.get('exception')
+    previous_errors = kwargs.get('previous_errors') or ctx.get('previous_errors', [])
+    provider = kwargs.get('provider') or ctx.get('provider')
+    model = kwargs.get('model') or ctx.get('model')
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Initialize error response
+    error_raised = True
+    status_code = 500
+    error_type = 'max_retries_exhausted'
+    error_message = f"Failed to get a response from the LLM after {max_retries} attempts"
+    exception_type = None
+    all_attempts_failed = True
+    error_count = len(previous_errors)
+    last_error = error
+
+    # Extract exception details if available
+    if exception:
+        exception_type = type(exception).__name__
+        if str(exception) and str(exception) not in error_message:
+            error_message = f"{error_message}: {str(exception)}"
+
+    # Log error start
+    rag_step_log(
+        step=71,
+        step_id='RAG.platform.return.500.error',
+        node_label='Error500',
+        category='platform',
+        type='error',
+        processing_stage='started',
+        request_id=request_id,
+        attempt_number=attempt_number,
+        max_retries=max_retries,
+        error=error
+    )
+
+    # Log the error
+    logger.error(
+        f"max_retries_exhausted",
+        extra={
+            'request_id': request_id,
+            'step': 71,
+            'attempt_number': attempt_number,
+            'max_retries': max_retries,
+            'error': error,
+            'exception_type': exception_type,
+            'error_count': error_count,
+            'provider': provider,
+            'model': model,
+            'all_attempts_failed': all_attempts_failed
+        }
+    )
+
+    # Log error completion
+    rag_step_log(
+        step=71,
+        step_id='RAG.platform.return.500.error',
+        node_label='Error500',
+        processing_stage='completed',
+        request_id=request_id,
+        error_raised=error_raised,
+        status_code=status_code,
+        error_type=error_type,
+        error_message=error_message,
+        attempt_number=attempt_number,
+        max_retries=max_retries,
+        error_count=error_count,
+        provider=provider,
+        model=model
+    )
+
+    # Build error response
+    result = {
+        'error_raised': error_raised,
+        'status_code': status_code,
+        'error_type': error_type,
+        'error_message': error_message,
+        'exception_type': exception_type,
+        'attempt_number': attempt_number,
+        'max_retries': max_retries,
+        'all_attempts_failed': all_attempts_failed,
+        'error_count': error_count,
+        'last_error': last_error,
+        'previous_errors': previous_errors,
+        'provider': provider,
+        'model': model,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }
+
+    return result
+
+async def step_76__convert_aimsg(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 76 — Convert to AIMessage with tool_calls
     ID: RAG.platform.convert.to.aimessage.with.tool.calls
     Type: process | Category: platform | Node: ConvertAIMsg
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Converts an LLM response with tool calls into a LangChain AIMessage object.
+    This preserves the existing behavior from graph.py:743-748.
     """
-    with rag_step_timer(76, 'RAG.platform.convert.to.aimessage.with.tool.calls', 'ConvertAIMsg', stage="start"):
-        rag_step_log(step=76, step_id='RAG.platform.convert.to.aimessage.with.tool.calls', node_label='ConvertAIMsg',
-                     category='platform', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=76, step_id='RAG.platform.convert.to.aimessage.with.tool.calls', node_label='ConvertAIMsg',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from langchain_core.messages import AIMessage
+    from datetime import datetime, timezone
 
-def step_77__simple_aimsg(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    ctx = ctx or {}
+
+    # Extract context parameters
+    llm_response = kwargs.get('llm_response') or ctx.get('llm_response')
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Initialize result variables
+    conversion_successful = False
+    ai_message = None
+    message_type = None
+    has_tool_calls = False
+    tool_call_count = 0
+    next_step = None
+    error = None
+
+    # Log conversion start
+    rag_step_log(
+        step=76,
+        step_id='RAG.platform.convert.to.aimessage.with.tool.calls',
+        node_label='ConvertAIMsg',
+        category='platform',
+        type='process',
+        processing_stage='started',
+        request_id=request_id,
+        has_response=llm_response is not None
+    )
+
+    try:
+        # Validate LLM response
+        if not llm_response:
+            error = 'No LLM response to convert'
+            raise ValueError(error)
+
+        # Core conversion logic: Create AIMessage with tool_calls
+        # Preserves existing behavior from graph.py:745-748:
+        # from langchain_core.messages import AIMessage
+        # ai_message = AIMessage(
+        #     content=response.content,
+        #     tool_calls=response.tool_calls
+        # )
+        ai_message = AIMessage(
+            content=llm_response.content,
+            tool_calls=llm_response.tool_calls
+        )
+
+        # Set success flags
+        conversion_successful = True
+        message_type = 'AIMessage'
+        has_tool_calls = bool(llm_response.tool_calls)
+        tool_call_count = len(llm_response.tool_calls) if llm_response.tool_calls else 0
+        next_step = 'execute_tools'  # Route to Step 78
+
+        logger.info(
+            f"aimessage_with_tool_calls_created",
+            extra={
+                'request_id': request_id,
+                'step': 76,
+                'conversion_successful': True,
+                'message_type': message_type,
+                'has_tool_calls': has_tool_calls,
+                'tool_call_count': tool_call_count,
+                'next_step': next_step
+            }
+        )
+
+    except Exception as e:
+        # Handle conversion errors
+        error = str(e)
+        conversion_successful = False
+
+        logger.error(
+            f"step_76_conversion_error",
+            extra={
+                'request_id': request_id,
+                'step': 76,
+                'error': error
+            }
+        )
+
+    # Log conversion completion
+    rag_step_log(
+        step=76,
+        step_id='RAG.platform.convert.to.aimessage.with.tool.calls',
+        node_label='ConvertAIMsg',
+        processing_stage='completed',
+        request_id=request_id,
+        conversion_successful=conversion_successful,
+        message_type=message_type,
+        has_tool_calls=has_tool_calls,
+        tool_call_count=tool_call_count,
+        next_step=next_step,
+        error=error
+    )
+
+    # Build orchestration result
+    result = {
+        'conversion_successful': conversion_successful,
+        'ai_message': ai_message,
+        'message_type': message_type,
+        'has_tool_calls': has_tool_calls,
+        'tool_call_count': tool_call_count,
+        'next_step': next_step,
+        'llm_response': llm_response,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'error': error
+    }
+
+    return result
+
+async def step_77__simple_aimsg(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 77 — Convert to simple AIMessage
     ID: RAG.platform.convert.to.simple.aimessage
     Type: process | Category: platform | Node: SimpleAIMsg
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Converts an LLM response without tool calls into a simple LangChain AIMessage object.
+    This preserves the existing behavior from graph.py:750-752.
     """
-    with rag_step_timer(77, 'RAG.platform.convert.to.simple.aimessage', 'SimpleAIMsg', stage="start"):
-        rag_step_log(step=77, step_id='RAG.platform.convert.to.simple.aimessage', node_label='SimpleAIMsg',
-                     category='platform', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=77, step_id='RAG.platform.convert.to.simple.aimessage', node_label='SimpleAIMsg',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from langchain_core.messages import AIMessage
+    from datetime import datetime, timezone
 
-def step_78__execute_tools(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    ctx = ctx or {}
+
+    # Extract context parameters
+    llm_response = kwargs.get('llm_response') or ctx.get('llm_response')
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Initialize result variables
+    conversion_successful = False
+    ai_message = None
+    message_type = None
+    has_tool_calls = False
+    tool_call_count = 0
+    next_step = None
+    error = None
+
+    # Log conversion start
+    rag_step_log(
+        step=77,
+        step_id='RAG.platform.convert.to.simple.aimessage',
+        node_label='SimpleAIMsg',
+        category='platform',
+        type='process',
+        processing_stage='started',
+        request_id=request_id,
+        has_response=llm_response is not None
+    )
+
+    try:
+        # Validate LLM response
+        if not llm_response:
+            error = 'No LLM response to convert'
+            raise ValueError(error)
+
+        # Core conversion logic: Create simple AIMessage without tool_calls
+        # Preserves existing behavior from graph.py:750-752:
+        # else:
+        #     from langchain_core.messages import AIMessage
+        #     ai_message = AIMessage(content=response.content)
+        ai_message = AIMessage(content=llm_response.content)
+
+        # Set success flags
+        conversion_successful = True
+        message_type = 'AIMessage'
+        has_tool_calls = False
+        tool_call_count = 0
+        next_step = 'final_response'  # Route to Step 101
+
+        logger.info(
+            f"simple_aimessage_created",
+            extra={
+                'request_id': request_id,
+                'step': 77,
+                'conversion_successful': True,
+                'message_type': message_type,
+                'has_tool_calls': False,
+                'next_step': next_step
+            }
+        )
+
+    except Exception as e:
+        # Handle conversion errors
+        error = str(e)
+        conversion_successful = False
+
+        logger.error(
+            f"step_77_conversion_error",
+            extra={
+                'request_id': request_id,
+                'step': 77,
+                'error': error
+            }
+        )
+
+    # Log conversion completion
+    rag_step_log(
+        step=77,
+        step_id='RAG.platform.convert.to.simple.aimessage',
+        node_label='SimpleAIMsg',
+        processing_stage='completed',
+        request_id=request_id,
+        conversion_successful=conversion_successful,
+        message_type=message_type,
+        has_tool_calls=has_tool_calls,
+        tool_call_count=tool_call_count,
+        next_step=next_step,
+        error=error
+    )
+
+    # Build orchestration result
+    result = {
+        'conversion_successful': conversion_successful,
+        'ai_message': ai_message,
+        'message_type': message_type,
+        'has_tool_calls': has_tool_calls,
+        'tool_call_count': tool_call_count,
+        'next_step': next_step,
+        'llm_response': llm_response,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'error': error
+    }
+
+    return result
+
+async def step_78__execute_tools(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 78 — LangGraphAgent._tool_call Execute tools
     ID: RAG.platform.langgraphagent.tool.call.execute.tools
     Type: process | Category: platform | Node: ExecuteTools
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Executes tool calls from the LLM response by invoking the requested tools
+    and converting results to ToolMessage objects for the next LLM iteration.
+    This preserves the existing behavior from graph.py:804-823.
     """
-    with rag_step_timer(78, 'RAG.platform.langgraphagent.tool.call.execute.tools', 'ExecuteTools', stage="start"):
-        rag_step_log(step=78, step_id='RAG.platform.langgraphagent.tool.call.execute.tools', node_label='ExecuteTools',
-                     category='platform', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=78, step_id='RAG.platform.langgraphagent.tool.call.execute.tools', node_label='ExecuteTools',
-                     processing_stage="completed")
-        return result
+    from app.core.logging import logger
+    from langchain_core.messages import ToolMessage
+    from datetime import datetime, timezone
+
+    ctx = ctx or {}
+
+    # Extract context parameters
+    ai_message = kwargs.get('ai_message') or ctx.get('ai_message')
+    tools_by_name = kwargs.get('tools_by_name') or ctx.get('tools_by_name', {})
+    request_id = ctx.get('request_id', 'unknown')
+
+    # Initialize result variables
+    execution_successful = False
+    tool_messages = []
+    tools_executed = 0
+    next_step = None
+    error = None
+
+    # Log execution start
+    rag_step_log(
+        step=78,
+        step_id='RAG.platform.langgraphagent.tool.call.execute.tools',
+        node_label='ExecuteTools',
+        category='platform',
+        type='process',
+        processing_stage='started',
+        request_id=request_id,
+        has_ai_message=ai_message is not None,
+        tools_available=len(tools_by_name)
+    )
+
+    try:
+        # Validate AI message with tool calls
+        if not ai_message:
+            error = 'No AI message provided for tool execution'
+            raise ValueError(error)
+
+        if not hasattr(ai_message, 'tool_calls') or not ai_message.tool_calls:
+            error = 'AI message has no tool calls to execute'
+            raise ValueError(error)
+
+        # Core execution logic: Execute tools and create ToolMessages
+        # Preserves existing behavior from graph.py:814-822:
+        # outputs = []
+        # for tool_call in state.messages[-1].tool_calls:
+        #     tool_result = await self.tools_by_name[tool_call["name"]].ainvoke(tool_call["args"])
+        #     outputs.append(
+        #         ToolMessage(
+        #             content=tool_result,
+        #             name=tool_call["name"],
+        #             tool_call_id=tool_call["id"],
+        #         )
+        #     )
+        # return {"messages": outputs}
+
+        tool_messages = []
+        for tool_call in ai_message.tool_calls:
+            tool_name = tool_call.get("name") if isinstance(tool_call, dict) else tool_call.name
+            tool_args = tool_call.get("args") if isinstance(tool_call, dict) else tool_call.args
+            tool_id = tool_call.get("id") if isinstance(tool_call, dict) else tool_call.id
+
+            # Check if tool exists
+            if tool_name not in tools_by_name:
+                error_msg = f'Tool not found: {tool_name}'
+                logger.error(
+                    f"tool_not_found",
+                    extra={
+                        'request_id': request_id,
+                        'step': 78,
+                        'tool_name': tool_name,
+                        'available_tools': list(tools_by_name.keys())
+                    }
+                )
+                raise ValueError(error_msg)
+
+            # Execute tool
+            tool = tools_by_name[tool_name]
+            tool_result = await tool.ainvoke(tool_args)
+
+            # Create ToolMessage
+            tool_message = ToolMessage(
+                content=tool_result,
+                name=tool_name,
+                tool_call_id=tool_id,
+            )
+            tool_messages.append(tool_message)
+            tools_executed += 1
+
+        # Set success flags
+        execution_successful = True
+        next_step = 'chat_node'  # Route back to chat for next LLM iteration
+
+        logger.info(
+            f"tools_executed_successfully",
+            extra={
+                'request_id': request_id,
+                'step': 78,
+                'execution_successful': True,
+                'tools_executed': tools_executed,
+                'next_step': next_step
+            }
+        )
+
+    except Exception as e:
+        # Handle execution errors
+        error = str(e)
+        execution_successful = False
+
+        logger.error(
+            f"step_78_execution_error",
+            extra={
+                'request_id': request_id,
+                'step': 78,
+                'error': error
+            }
+        )
+
+    # Log execution completion
+    rag_step_log(
+        step=78,
+        step_id='RAG.platform.langgraphagent.tool.call.execute.tools',
+        node_label='ExecuteTools',
+        processing_stage='completed',
+        request_id=request_id,
+        execution_successful=execution_successful,
+        tools_executed=tools_executed,
+        next_step=next_step,
+        error=error
+    )
+
+    # Build orchestration result
+    result = {
+        'execution_successful': execution_successful,
+        'tool_messages': tool_messages,
+        'tools_executed': tools_executed,
+        'next_step': next_step,
+        'ai_message': ai_message,
+        'request_id': request_id,
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'error': error
+    }
+
+    return result
 
 def step_86__tool_err(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

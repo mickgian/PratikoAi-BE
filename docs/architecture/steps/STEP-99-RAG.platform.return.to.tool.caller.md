@@ -39,10 +39,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/orchestrators/facts.py:283 — app.orchestrators.facts.step_98__to_tool_results (score 0.30)
+1) app/orchestrators/facts.py:421 — app.orchestrators.facts.step_98__to_tool_results (score 0.30)
    Evidence: Score 0.30, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-2) app/orchestrators/platform.py:1517 — app.orchestrators.platform.step_99__tool_results (score 0.30)
+2) app/orchestrators/platform.py:2194 — app.orchestrators.platform.step_99__tool_results (score 0.30)
    Evidence: Score 0.30, RAG STEP 99 — Return to tool caller
 ID: RAG.platform.return.to.tool.caller
 Type:...
@@ -55,7 +55,7 @@ ID: RAG.kb.knowledgesearch...
 Args:
     report: The report dictionary.
   ...
-5) app/orchestrators/platform.py:1499 — app.orchestrators.platform.step_86__tool_err (score 0.26)
+5) app/orchestrators/platform.py:2176 — app.orchestrators.platform.step_86__tool_err (score 0.26)
    Evidence: Score 0.26, RAG STEP 86 — Return tool error Invalid file
 ID: RAG.platform.return.tool.error....
 

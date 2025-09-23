@@ -43,7 +43,7 @@ Top candidates:
    Evidence: Score 0.28, RAG STEP 30 — Return ChatResponse
 ID: RAG.response.return.chatresponse
 Type: pro...
-2) app/orchestrators/response.py:198 — app.orchestrators.response.step_101__final_response (score 0.28)
+2) app/orchestrators/response.py:303 — app.orchestrators.response.step_101__final_response (score 0.28)
    Evidence: Score 0.28, RAG STEP 101 — Return to chat node for final response
 ID: RAG.response.return.to...
 3) app/schemas/chat.py:95 — app.schemas.chat.ChatResponse (score 0.27)

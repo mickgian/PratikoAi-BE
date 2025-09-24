@@ -398,22 +398,96 @@ async def step_39__kbpre_fetch(*, messages: Optional[List[Any]] = None, ctx: Opt
 
         return result
 
-def step_82__doc_ingest(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_82__doc_ingest(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 82 — DocumentIngestTool.process Process attachments
     ID: RAG.preflight.documentingesttool.process.process.attachments
     Type: process | Category: preflight | Node: DocIngest
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that executes document processing when the LLM calls the DocumentIngestTool.
+    Uses DocumentIngestTool for text extraction, document classification, and preparing files for RAG pipeline.
+    Routes to Step 84 (ValidateAttachments).
     """
-    with rag_step_timer(82, 'RAG.preflight.documentingesttool.process.process.attachments', 'DocIngest', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(82, 'RAG.preflight.documentingesttool.process.process.attachments', 'DocIngest',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=82, step_id='RAG.preflight.documentingesttool.process.process.attachments', node_label='DocIngest',
-                     category='preflight', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=82, step_id='RAG.preflight.documentingesttool.process.process.attachments', node_label='DocIngest',
-                     processing_stage="completed")
+                     category='preflight', type='process', request_id=request_id, processing_stage="started")
+
+        # Extract tool arguments
+        tool_args = ctx.get('tool_args', {})
+        tool_call_id = ctx.get('tool_call_id')
+        attachments = tool_args.get('attachments', [])
+        user_id = tool_args.get('user_id', ctx.get('user_id'))
+        session_id = tool_args.get('session_id', ctx.get('session_id'))
+
+        # Execute document ingest using DocumentIngestTool
+        try:
+            from app.core.langgraph.tools.document_ingest_tool import document_ingest_tool
+
+            # Call the DocumentIngestTool
+            processing_result = await document_ingest_tool._arun(
+                attachments=attachments,
+                user_id=user_id,
+                session_id=session_id,
+                max_file_size=tool_args.get('max_file_size', 10 * 1024 * 1024),
+                supported_types=tool_args.get('supported_types')
+            )
+
+            success = processing_result.get('success', False)
+            processed_count = processing_result.get('processed_count', 0)
+            attachment_count = len(attachments)
+
+            rag_step_log(
+                step=82,
+                step_id='RAG.preflight.documentingesttool.process.process.attachments',
+                node_label='DocIngest',
+                request_id=request_id,
+                attachment_count=attachment_count,
+                processed_count=processed_count,
+                success=success,
+                processing_stage="completed"
+            )
+
+        except Exception as e:
+            rag_step_log(
+                step=82,
+                step_id='RAG.preflight.documentingesttool.process.process.attachments',
+                node_label='DocIngest',
+                request_id=request_id,
+                error=str(e),
+                processing_stage="error"
+            )
+            processing_result = {
+                'success': False,
+                'error': str(e),
+                'message': 'Si è verificato un errore durante l\'elaborazione dei documenti.'
+            }
+
+        # Build result with preserved context
+        result = {
+            **ctx,
+            'processing_results': processing_result,
+            'documents': processing_result.get('documents', []),
+            'attachments': attachments,
+            'attachment_count': len(attachments),
+            'processed_count': processing_result.get('processed_count', 0),
+            'processing_metadata': {
+                'attachment_count': len(attachments),
+                'processed_count': processing_result.get('processed_count', 0),
+                'user_id': user_id,
+                'session_id': session_id,
+                'tool_call_id': tool_call_id
+            },
+            'user_id': user_id,
+            'session_id': session_id,
+            'tool_call_id': tool_call_id,
+            'next_step': 'validate_attachments',  # Routes to Step 84 per Mermaid
+            'request_id': request_id
+        }
+
         return result
 
 async def step_84__validate_attachments(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

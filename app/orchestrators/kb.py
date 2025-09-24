@@ -29,22 +29,102 @@ def step_26__kbcontext_check(*, messages: Optional[List[Any]] = None, ctx: Optio
                      processing_stage="completed")
         return result
 
-def step_80__kbquery_tool(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_80__kbquery_tool(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 80 — KnowledgeSearchTool.search KB on demand
     ID: RAG.kb.knowledgesearchtool.search.kb.on.demand
     Type: process | Category: kb | Node: KBQueryTool
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that executes on-demand knowledge base search when the LLM calls
+    the KnowledgeSearchTool. Uses KnowledgeSearchService for hybrid BM25 + vector + recency search.
+    Routes to Step 99 (ToolResults).
     """
-    with rag_step_timer(80, 'RAG.kb.knowledgesearchtool.search.kb.on.demand', 'KBQueryTool', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(80, 'RAG.kb.knowledgesearchtool.search.kb.on.demand', 'KBQueryTool',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=80, step_id='RAG.kb.knowledgesearchtool.search.kb.on.demand', node_label='KBQueryTool',
-                     category='kb', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=80, step_id='RAG.kb.knowledgesearchtool.search.kb.on.demand', node_label='KBQueryTool',
-                     processing_stage="completed")
+                     category='kb', type='process', request_id=request_id, processing_stage="started")
+
+        # Extract query from tool arguments
+        tool_args = ctx.get('tool_args', {})
+        query = tool_args.get('query', '')
+        tool_call_id = ctx.get('tool_call_id')
+
+        # Prepare search query data
+        query_data = {
+            'query': query,
+            'canonical_facts': ctx.get('canonical_facts', []),
+            'user_id': ctx.get('user_id'),
+            'session_id': ctx.get('session_id'),
+            'trace_id': request_id,
+            'db_session': ctx.get('db_session'),
+            'vector_service': ctx.get('vector_service'),
+            'max_results': ctx.get('max_results', 10)
+        }
+
+        # Execute knowledge search using service
+        try:
+            from app.services.knowledge_search_service import retrieve_knowledge_topk
+
+            kb_results = await retrieve_knowledge_topk(query_data)
+
+            # Convert results to dict format for tool response
+            search_results = [
+                {
+                    'id': r.id,
+                    'title': r.title,
+                    'content': r.content,
+                    'score': r.score,
+                    'category': r.category,
+                    'source': r.source
+                }
+                for r in kb_results
+            ] if kb_results else []
+
+            result_count = len(search_results)
+
+            rag_step_log(
+                step=80,
+                step_id='RAG.kb.knowledgesearchtool.search.kb.on.demand',
+                node_label='KBQueryTool',
+                request_id=request_id,
+                query=query,
+                result_count=result_count,
+                processing_stage="completed"
+            )
+
+        except Exception as e:
+            rag_step_log(
+                step=80,
+                step_id='RAG.kb.knowledgesearchtool.search.kb.on.demand',
+                node_label='KBQueryTool',
+                request_id=request_id,
+                error=str(e),
+                processing_stage="error"
+            )
+            search_results = []
+            result_count = 0
+
+        # Build result with preserved context
+        result = {
+            **ctx,
+            'kb_results': search_results,
+            'search_results': search_results,  # Alias for compatibility
+            'query': query,
+            'search_query': query,
+            'result_count': result_count,
+            'search_metadata': {
+                'query': query,
+                'result_count': result_count,
+                'tool_call_id': tool_call_id
+            },
+            'tool_call_id': tool_call_id,
+            'next_step': 'tool_results',  # Routes to Step 99 per Mermaid
+            'request_id': request_id
+        }
+
         return result
 
 def step_118__knowledge_feedback(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

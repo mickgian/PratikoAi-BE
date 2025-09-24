@@ -29,22 +29,76 @@ def step_20__golden_fast_gate(*, messages: Optional[List[Any]] = None, ctx: Opti
                      processing_stage="completed")
         return result
 
-def step_23__require_doc_ingest(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_23__require_doc_ingest(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 23 — PlannerHint.require_doc_ingest_first ingest then Golden and KB
     ID: RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb
     Type: process | Category: golden | Node: RequireDocIngest
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    This step sets planning hints when documents need to be ingested before proceeding
+    with Golden Set and KB queries. It coordinates the document-first workflow by setting
+    flags that defer Golden Set lookup and KB search until document processing completes.
+    Routes to Step 31 (ClassifyDomain) to continue the workflow.
     """
-    with rag_step_timer(23, 'RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb', 'RequireDocIngest', stage="start"):
-        rag_step_log(step=23, step_id='RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb', node_label='RequireDocIngest',
-                     category='golden', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=23, step_id='RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb', node_label='RequireDocIngest',
-                     processing_stage="completed")
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(23, 'RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb', 'RequireDocIngest',
+                       request_id=request_id, stage="start"):
+        rag_step_log(
+            step=23,
+            step_id='RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb',
+            node_label='RequireDocIngest',
+            category='golden',
+            type='process',
+            request_id=request_id,
+            processing_stage="started"
+        )
+
+        # Extract context
+        user_query = ctx.get('user_query', '')
+        extracted_docs = ctx.get('extracted_docs', [])
+        document_count = ctx.get('document_count', len(extracted_docs))
+
+        # Set planning hints for document-first workflow
+        # These flags tell downstream steps to defer Golden Set and KB queries
+        # until documents are fully processed
+        requires_doc_ingest_first = True
+        defer_golden_lookup = True
+        defer_kb_search = True
+        planning_hint = 'doc_ingest_before_golden_kb'
+
+        # Build processing metadata for coordination
+        processing_metadata = {
+            'requires_doc_ingest': True,
+            'workflow': 'doc_first_then_golden_kb',
+            'document_count': document_count,
+            'planning_stage': 'pre_classification'
+        }
+
+        rag_step_log(
+            step=23,
+            step_id='RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb',
+            node_label='RequireDocIngest',
+            request_id=request_id,
+            planning_hint=planning_hint,
+            document_count=document_count,
+            requires_doc_ingest_first=requires_doc_ingest_first,
+            processing_stage="completed"
+        )
+
+        # Build result with planning hints and preserved context
+        result = {
+            **ctx,
+            'requires_doc_ingest_first': requires_doc_ingest_first,
+            'defer_golden_lookup': defer_golden_lookup,
+            'defer_kb_search': defer_kb_search,
+            'planning_hint': planning_hint,
+            'processing_metadata': processing_metadata,
+            'next_step': 'classify_domain',  # Routes to Step 31 per Mermaid
+            'request_id': request_id
+        }
+
         return result
 
 def step_25__golden_hit(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

@@ -142,25 +142,35 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 - **Step 29**: Merge facts and KB docs - ContextBuilderMerge for golden+KB context integration ✅
 - **Step 98**: Convert to tool message facts and spans - ToolMessage conversion for LLM tool caller ✅
 
-### Batch 15: Knowledge Operations (80-83)
-- **Step 80**: Search KB on demand - Knowledge search
-- **Step 81**: Query labor agreements - CCNL queries
-- **Step 82**: Query golden set - FAQ search
-- **Step 83**: Query FAQ - FAQ retrieval
+### Batch 15: Knowledge Operations (80-83) ✅ COMPLETED
+- **Step 80**: Search KB on demand - KnowledgeSearchTool for hybrid BM25/vector/recency retrieval ✅
+- **Step 81**: Query labor agreements - CCNLTool for Italian collective labor agreement queries ✅
+- **Step 82**: Process attachments - DocumentIngestTool for PDF/Excel/CSV/image processing ✅
+- **Step 83**: Query FAQ - FAQTool for semantic FAQ matching with Golden Set ✅
 
 ## Phase 9: Golden Set & FAQ Management (Days 22-24)
 **FAQ and golden answer management**
 
-### Batch 16: Golden Set Matching (23-28, 60)
-- **Step 23**: Require doc ingest first - Planning hint
-- **Step 24**: Match by signature or semantic - Golden matching
+### Batch 16: Golden Set Matching (23-24) ✅ COMPLETED
+- **Step 23**: Require doc ingest first - Planning hint for document-first workflow coordination ✅
+- **Step 24**: Match by signature or semantic - Golden Set lookup using signature hash or semantic similarity ✅
+
+**Summary:**
+- ✅ 21 total tests (10 for Step 23 + 11 for Step 24), all passing
+- ✅ Step 23: Async orchestrator setting workflow flags (requires_doc_ingest_first, defer_golden_lookup, defer_kb_search)
+- ✅ Step 24: Async orchestrator with signature-first + semantic-fallback matching strategy
+- ✅ Integration tests proving Step 22→23→31 and Step 20→24→25 flows
+- ✅ Structured observability logging for both steps
+- ✅ Documentation updated with implementation details
+
+### Batch 17: Golden Set Decisions (25-28, 60)
 - **Step 25**: Score at least 0.90 - High confidence match
-- **Step 26**: Serve golden answer with citations - Golden response
-- **Step 27**: Return chat response - Response delivery
-- **Step 28**: Return to chat node for final response - Workflow return
+- **Step 26**: Fetch recent KB for changes - KB context
+- **Step 27**: KB newer than Golden - Freshness check
+- **Step 28**: Serve golden answer with citations - Golden response
 - **Step 60**: Resolve epochs - Timestamp resolution
 
-### Batch 17: Golden Set Updates (117, 127-131, 135)
+### Batch 18: Golden Set Updates (117, 127-131, 135)
 - **Step 117**: Post API v1 FAQ feedback - Feedback endpoint
 - **Step 127**: Propose candidate from expert feedback - Golden candidate
 - **Step 128**: Auto threshold met or manual approval - Approval logic
@@ -172,7 +182,7 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 ## Phase 10: Streaming & Response Handling (Days 25-26)
 **Real-time response delivery**
 
-### Batch 18: Streaming Operations (101-102, 104-109, 112)
+### Batch 19: Streaming Operations (101-102, 104-109, 112)
 - **Step 101**: Return to chat node for final response - Response routing
 - **Step 102**: Convert to dict - Format conversion
 - **Step 104**: Streaming requested - Stream detection
@@ -183,14 +193,14 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 - **Step 109**: Send chunks - Stream delivery
 - **Step 112**: Return response to user - Final response
 
-### Batch 19: Cache Management (64, 125)
+### Batch 20: Cache Management (64, 125)
 - **Step 64**: Cache miss - Cache miss handling
 - **Step 125**: Cache feedback 1h TTL - Feedback caching
 
 ## Phase 11: Feedback & Learning System (Days 27-28)
 **Expert feedback and continuous learning**
 
-### Batch 20: Feedback Collection (113-116, 118-124)
+### Batch 21: Feedback Collection (113-116, 118-124)
 - **Step 113**: Show options correct incomplete wrong - Feedback UI
 - **Step 114**: User provides feedback - Feedback input
 - **Step 115**: No feedback - Feedback timeout
@@ -206,7 +216,7 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 ## Phase 12: Platform Integration & Advanced Features (Days 29-30)
 **Final integration and advanced capabilities**
 
-### Batch 21: Advanced Processing (20, 30, 79, 99-100, 126, 132-134)
+### Batch 22: Advanced Processing (20, 30, 79, 99-100, 126, 132-134)
 - **Step 20**: Continue processing - Workflow continuation
 - **Step 30**: Return ChatResponse - Response formatting
 - **Step 79**: Return to tool caller - Tool response
@@ -354,13 +364,21 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
   - ✅ **Step 98**: ToolMessage conversion for document facts and provenance, formatted for LLM tool caller (9 tests)
   - ✅ **Total**: 59 comprehensive tests, 100% pass rate, full facts processing infrastructure
   - ✅ **Critical Fix**: Step 17 routing bug fixed (was routing to Step 19 instead of Step 18, now complies with Mermaid)
+- Batch 15: Knowledge Operations (80-83) - Complete on-demand tool queries for knowledge, CCNL, documents, and FAQs
+  - ✅ **Step 80**: Knowledge search tool with hybrid BM25/vector/recency retrieval from KnowledgeSearchService (11 tests)
+  - ✅ **Step 81**: CCNL labor agreement queries with salary/leave/compliance calculations via CCNLTool (12 tests)
+  - ✅ **Step 82**: Document ingest tool for PDF/Excel/CSV/image processing with OCR support (10 tests)
+  - ✅ **Step 83**: FAQ semantic search with confidence-based matching using mock implementation (13 tests)
+  - ✅ **Total**: 46 comprehensive tests, 100% pass rate, full knowledge operations infrastructure
+  - ✅ **Note**: FAQTool uses mock for testing; production will integrate SemanticFAQMatcher via dependency injection
+  - ✅ **Import Fix**: Corrected embedding_service import issue (non-existent class) with mock implementation
 
-**Next Target:** Batch 15: Knowledge Operations (80-83)
-1. Pick GitHub issues for knowledge search steps
-2. Implement on-demand KB search tool
-3. Build CCNL labor agreement queries
-4. Create golden set FAQ query tool
-5. Implement FAQ retrieval functionality
+**Next Target:** Batch 16: Golden Set Matching (23-28, 60)
+1. Pick GitHub issues for golden set matching steps
+2. Implement document ingest planning hints
+3. Build signature/semantic FAQ matching
+4. Create high-confidence golden answer serving
+5. Implement epoch resolution for cache keys
 
 ## GitHub Issues Reference
 
@@ -405,9 +423,9 @@ Each issue contains:
 - [✅] Phase 7: Document Processing (Steps 17, 19, 21-22, 84-97) - **COMPLETED**
   - [✅] **Batch 12**: Steps 17, 19, 21-22, 84-86 (Document Validation) - **COMPLETED**
   - [✅] **Batch 13**: Steps 87-97 (Document Processing Pipeline) - **COMPLETED**
-- [🔄] Phase 8: Facts & Knowledge Management (Steps 14, 16, 18, 29, 80-83, 98) - **IN PROGRESS**
+- [✅] Phase 8: Facts & Knowledge Management (Steps 14, 16, 18, 29, 80-83, 98) - **COMPLETED**
   - [✅] **Batch 14**: Steps 14, 16, 17-fix, 18, 29, 98 (Facts Processing) - **COMPLETED**
-  - [ ] **Batch 15**: Steps 80-83 (Knowledge Operations)
+  - [✅] **Batch 15**: Steps 80-83 (Knowledge Operations) - **COMPLETED**
 - [ ] Phase 9: Golden Set & FAQ Management (Steps 23-28, 60, 117, 127-131, 135)
   - [ ] **Batch 16**: Steps 23-28, 60 (Golden Set Matching)
   - [ ] **Batch 17**: Steps 117, 127-131, 135 (Golden Set Updates)

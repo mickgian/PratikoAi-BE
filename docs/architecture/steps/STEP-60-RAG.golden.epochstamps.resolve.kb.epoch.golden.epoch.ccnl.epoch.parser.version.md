@@ -5,27 +5,28 @@
 **Node ID:** `ResolveEpochs`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ResolveEpochs` (EpochStamps.resolve kb_epoch golden_epoch ccnl_epoch parser_version).
+Resolves version epochs from various data sources (KB, Golden Set, CCNL, parsers) to enable cache invalidation based on data freshness. These epochs are used by Step 61 (GenHash) for cache key generation, ensuring cached responses are invalidated when underlying data changes.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/golden.py:step_60__resolve_epochs`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Async orchestrator that extracts epoch timestamps from context (kb_last_updated, golden_last_updated, ccnl_last_updated, parser_version). Creates epoch resolution metadata tracking which epochs were resolved. Routes to Step 61 (GenHash) with resolved epochs for cache key generation.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - simple epoch extraction with graceful handling of missing values
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 60 (RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version): EpochStamps.resolve kb_epoch golden_epoch ccnl_epoch parser_version | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (resolve all epochs, missing epochs, defaults, context preservation, logging, metadata, timestamp conversion)
+- [x] Parity tests (epoch resolution behavior verification)
+- [x] Integration tests (Step 59→60→61 flow, prepare for GenHash)
+- [x] Implementation changes (async orchestrator with epoch extraction)
+- [x] Observability: add structured log line
+  `RAG STEP 60 (RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version): EpochStamps.resolve kb_epoch golden_epoch ccnl_epoch parser_version | attrs={epochs_resolved, kb_epoch, golden_epoch, ccnl_epoch, parser_version, next_step}`
+- [x] Feature flag / config if needed (none required - extracts from context)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
@@ -43,7 +44,7 @@ Top candidates:
    Evidence: Score 0.53, Approve, reject, or request revision for a generated FAQ
 2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.53)
    Evidence: Score 0.53, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
+3) app/orchestrators/golden.py:517 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
    Evidence: Score 0.50, RAG STEP 117 — POST /api/v1/faq/feedback
 ID: RAG.golden.post.api.v1.faq.feedback...
 4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.48)

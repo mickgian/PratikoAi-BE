@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.33
 
 Top candidates:
-1) app/orchestrators/facts.py:132 — app.orchestrators.facts.step_29__pre_context_from_golden (score 0.33)
+1) app/orchestrators/facts.py:189 — app.orchestrators.facts.step_29__pre_context_from_golden (score 0.33)
    Evidence: Score 0.33, RAG STEP 29 — ContextBuilder.merge facts and KB docs and doc facts if present
 ID...
 2) app/services/context_builder_merge.py:66 — app.services.context_builder_merge.ContextBuilderMerge.merge_context (score 0.29)

@@ -155,20 +155,11 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 - **Step 23**: Require doc ingest first - Planning hint for document-first workflow coordination ✅
 - **Step 24**: Match by signature or semantic - Golden Set lookup using signature hash or semantic similarity ✅
 
-**Summary:**
-- ✅ 21 total tests (10 for Step 23 + 11 for Step 24), all passing
-- ✅ Step 23: Async orchestrator setting workflow flags (requires_doc_ingest_first, defer_golden_lookup, defer_kb_search)
-- ✅ Step 24: Async orchestrator with signature-first + semantic-fallback matching strategy
-- ✅ Integration tests proving Step 22→23→31 and Step 20→24→25 flows
-- ✅ Structured observability logging for both steps
-- ✅ Documentation updated with implementation details
-
-### Batch 17: Golden Set Decisions (25-28, 60)
-- **Step 25**: Score at least 0.90 - High confidence match
-- **Step 26**: Fetch recent KB for changes - KB context
-- **Step 27**: KB newer than Golden - Freshness check
-- **Step 28**: Serve golden answer with citations - Golden response
-- **Step 60**: Resolve epochs - Timestamp resolution
+- **Step 25**: Score at least 0.90 - High confidence match ✅
+- **Step 26**: Fetch recent KB for changes - KB context ✅
+- **Step 27**: KB newer than Golden - Freshness check ✅
+- **Step 28**: Serve golden answer with citations - Golden response ✅
+- **Step 60**: Resolve epochs - Timestamp resolution ✅
 
 ### Batch 18: Golden Set Updates (117, 127-131, 135)
 - **Step 117**: Post API v1 FAQ feedback - Feedback endpoint

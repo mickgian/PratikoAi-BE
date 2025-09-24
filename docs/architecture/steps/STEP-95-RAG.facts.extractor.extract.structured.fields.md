@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/orchestrators/facts.py:467 — app.orchestrators.facts.step_95__extract_doc_facts (score 0.32)
+1) app/orchestrators/facts.py:588 — app.orchestrators.facts.step_95__extract_doc_facts (score 0.32)
    Evidence: Score 0.32, RAG STEP 95 — Extractor.extract Structured fields
 ID: RAG.facts.extractor.extrac...
 2) app/services/atomic_facts_extractor.py:421 — app.services.atomic_facts_extractor.AtomicFactsExtractor.extract (score 0.32)

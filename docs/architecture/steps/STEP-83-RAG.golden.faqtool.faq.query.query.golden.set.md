@@ -36,32 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.54
 
 Top candidates:
-1) app/orchestrators/golden.py:122 — app.orchestrators.golden.step_83__faqquery (score 1.00)
-   Evidence: Score 1.00, RAG STEP 83 — FAQTool.faq_query Query Golden Set
-ID: RAG.golden.faqtool.faq.query.query.golden.set
-Type: process
-2) app/core/langgraph/tools/faq_tool.py:15 — app.core.langgraph.tools.faq_tool.FAQTool (score 0.95)
-   Evidence: Score 0.95, Tool for querying the FAQ/Golden Set with semantic search.
-3) app/services/semantic_faq_matcher.py:96 — app.services.semantic_faq_matcher.SemanticFAQMatcher.find_matching_faqs (score 0.90)
-   Evidence: Score 0.90, Find semantically matching FAQs with confidence scoring.
+1) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.54)
+   Evidence: Score 0.54, Query the FAQ system with semantic search and response variation.
+
+This endpoint...
+2) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)
+   Evidence: Score 0.54, Approve, reject, or request revision for a generated FAQ
+3) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.54)
+   Evidence: Score 0.54, Publish an approved FAQ to make it available to users
+4) app/orchestrators/golden.py:332 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback
+ID: RAG.golden.post.api.v1.faq.feedback...
+5) app/api/v1/faq_automation.py:281 — app.api.v1.faq_automation.analyze_query_patterns (score 0.51)
+   Evidence: Score 0.51, Trigger analysis of query patterns to identify new FAQ candidates
 
 Notes:
-- ✅ Implementation complete and wired correctly
-- ✅ Async orchestrator wrapping FAQTool
-- ✅ FAQTool created in LangGraph tools
-- ✅ 13/13 tests passing
-- ✅ Routes to Step 99 (ToolResults) per Mermaid
-- ✅ Uses SemanticFAQMatcher for semantic search
-- ✅ Supports confidence-based filtering (low, medium, high, exact)
+- Implementation exists but may not be wired correctly
 
-Completed TDD actions:
-- ✅ Created thin async orchestrator in app/orchestrators/golden.py
-- ✅ Created FAQTool in app/core/langgraph/tools/faq_tool.py
-- ✅ Integrated with SemanticFAQMatcher and IntelligentFAQService
-- ✅ Implemented 13 comprehensive tests (unit + parity + integration)
-- ✅ Added structured observability logging
-- ✅ Verified error handling and edge cases
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

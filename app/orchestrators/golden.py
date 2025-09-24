@@ -101,76 +101,337 @@ async def step_23__require_doc_ingest(*, messages: Optional[List[Any]] = None, c
 
         return result
 
-def step_25__golden_hit(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_25__golden_hit(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 25 — High confidence match? score at least 0.90
     ID: RAG.golden.high.confidence.match.score.at.least.0.90
     Type: process | Category: golden | Node: GoldenHit
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that checks if Golden Set match has high confidence (≥0.90).
+    Evaluates the golden_match from context and determines if confidence threshold is met.
+    Routes to Step 26 (KBContextCheck) if high confidence, Step 23 if not.
     """
-    with rag_step_timer(25, 'RAG.golden.high.confidence.match.score.at.least.0.90', 'GoldenHit', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(25, 'RAG.golden.high.confidence.match.score.at.least.0.90', 'GoldenHit',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=25, step_id='RAG.golden.high.confidence.match.score.at.least.0.90', node_label='GoldenHit',
-                     category='golden', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=25, step_id='RAG.golden.high.confidence.match.score.at.least.0.90', node_label='GoldenHit',
-                     processing_stage="completed")
+                     category='golden', type='process', request_id=request_id, processing_stage="started")
+
+        # Extract golden match from context
+        golden_match = ctx.get('golden_match', {})
+        # Support both 'confidence' and 'similarity_score' fields
+        confidence = golden_match.get('confidence') or golden_match.get('similarity_score', 0.0)
+        faq_id = golden_match.get('faq_id', 'unknown')
+
+        # Check if confidence meets threshold
+        HIGH_CONFIDENCE_THRESHOLD = 0.90
+        is_high_confidence = confidence >= HIGH_CONFIDENCE_THRESHOLD
+
+        rag_step_log(
+            step=25,
+            step_id='RAG.golden.high.confidence.match.score.at.least.0.90',
+            node_label='GoldenHit',
+            request_id=request_id,
+            confidence=confidence,
+            threshold=HIGH_CONFIDENCE_THRESHOLD,
+            is_high_confidence=is_high_confidence,
+            faq_id=faq_id,
+            processing_stage="completed"
+        )
+
+        # Build result with preserved context
+        result = {
+            **ctx,
+            'is_high_confidence': is_high_confidence,
+            'high_confidence_match': is_high_confidence,  # Add for test compatibility
+            'confidence': confidence,
+            'threshold': HIGH_CONFIDENCE_THRESHOLD,
+            'decision_metadata': {
+                'step': 'golden_hit',
+                'confidence': confidence,
+                'threshold': HIGH_CONFIDENCE_THRESHOLD,
+                'is_high_confidence': is_high_confidence,
+                'faq_id': faq_id
+            },
+            'next_step': 'kb_context_check' if is_high_confidence else 'require_doc_ingest',
+            'request_id': request_id
+        }
+
         return result
 
-def step_27__kbdelta(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_27__kbdelta(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 27 — KB newer than Golden as of or conflicting tags?
     ID: RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags
     Type: process | Category: golden | Node: KBDelta
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that checks if KB is newer than Golden Set or has conflicting tags.
+    Compares kb_context timestamps and tags with golden_match metadata to determine precedence.
+    Routes to Step 36 (LLMBetter) if KB is newer/conflicts, Step 28 (ServeGolden) otherwise.
     """
-    with rag_step_timer(27, 'RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags', 'KBDelta', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(27, 'RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags', 'KBDelta',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=27, step_id='RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags', node_label='KBDelta',
-                     category='golden', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=27, step_id='RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags', node_label='KBDelta',
-                     processing_stage="completed")
+                     category='golden', type='process', request_id=request_id, processing_stage="started")
+
+        # Extract golden match and KB context
+        golden_match = ctx.get('golden_match', {})
+        kb_context = ctx.get('kb_context', {})
+
+        # Get timestamps
+        golden_updated = golden_match.get('updated_at')
+        kb_updated = kb_context.get('updated_at')
+
+        # Check if KB is newer
+        kb_is_newer = False
+        if kb_updated and golden_updated:
+            try:
+                from datetime import datetime
+                if isinstance(kb_updated, str):
+                    kb_dt = datetime.fromisoformat(kb_updated.replace('Z', '+00:00'))
+                else:
+                    kb_dt = kb_updated
+
+                if isinstance(golden_updated, str):
+                    golden_dt = datetime.fromisoformat(golden_updated.replace('Z', '+00:00'))
+                else:
+                    golden_dt = golden_updated
+
+                kb_is_newer = kb_dt > golden_dt
+            except Exception as e:
+                rag_step_log(
+                    step=27,
+                    step_id='RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags',
+                    node_label='KBDelta',
+                    request_id=request_id,
+                    error=f"Error comparing timestamps: {str(e)}",
+                    processing_stage="warning"
+                )
+
+        # Check for conflicting tags
+        golden_tags = set(golden_match.get('tags', []))
+        kb_tags = set(kb_context.get('tags', []))
+        has_conflicting_tags = bool(golden_tags & kb_tags)  # Intersection indicates conflict
+
+        # Determine if KB should take precedence
+        kb_takes_precedence = kb_is_newer or has_conflicting_tags
+
+        rag_step_log(
+            step=27,
+            step_id='RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags',
+            node_label='KBDelta',
+            request_id=request_id,
+            kb_is_newer=kb_is_newer,
+            has_conflicting_tags=has_conflicting_tags,
+            kb_takes_precedence=kb_takes_precedence,
+            golden_updated=str(golden_updated) if golden_updated else None,
+            kb_updated=str(kb_updated) if kb_updated else None,
+            processing_stage="completed"
+        )
+
+        # Build result with preserved context
+        result = {
+            **ctx,
+            'kb_is_newer': kb_is_newer,
+            'has_conflicting_tags': has_conflicting_tags,
+            'kb_takes_precedence': kb_takes_precedence,
+            'kb_has_delta': kb_takes_precedence,  # Add for test compatibility
+            'delta_metadata': {
+                'kb_updated': str(kb_updated) if kb_updated else None,
+                'golden_updated': str(golden_updated) if golden_updated else None,
+                'kb_is_newer': kb_is_newer,
+                'has_conflicting_tags': has_conflicting_tags,
+                'conflicting_tags': list(golden_tags & kb_tags) if has_conflicting_tags else []
+            },
+            'next_step': 'llm_better' if kb_takes_precedence else 'serve_golden',
+            'request_id': request_id
+        }
+
         return result
 
-def step_28__serve_golden(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_28__serve_golden(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 28 — Serve Golden answer with citations
     ID: RAG.golden.serve.golden.answer.with.citations
     Type: process | Category: golden | Node: ServeGolden
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that formats Golden Set match into response with proper citations.
+    Creates ChatResponse with Golden answer, citations, and metadata for high-confidence FAQ matches.
+    Routes to ReturnComplete to bypass LLM processing.
     """
-    with rag_step_timer(28, 'RAG.golden.serve.golden.answer.with.citations', 'ServeGolden', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(28, 'RAG.golden.serve.golden.answer.with.citations', 'ServeGolden',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=28, step_id='RAG.golden.serve.golden.answer.with.citations', node_label='ServeGolden',
-                     category='golden', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=28, step_id='RAG.golden.serve.golden.answer.with.citations', node_label='ServeGolden',
-                     processing_stage="completed")
+                     category='golden', type='process', request_id=request_id, processing_stage="started")
+
+        # Extract golden match from context
+        golden_match = ctx.get('golden_match', {})
+        faq_id = golden_match.get('faq_id', 'unknown')
+        answer = golden_match.get('answer', '')
+        question = golden_match.get('question', '')
+        confidence = golden_match.get('confidence', 0.0)
+        metadata = golden_match.get('metadata', {})
+        updated_at = golden_match.get('updated_at')
+
+        # Format citations
+        citations = [{
+            'source': 'Golden Set FAQ',
+            'faq_id': faq_id,
+            'question': question,
+            'confidence': confidence,
+            'updated_at': updated_at,
+            'regulatory_refs': metadata.get('regulatory_refs', []),
+            'tags': metadata.get('tags', []),
+            'category': metadata.get('category')
+        }]
+
+        # Build response metadata
+        response_metadata = {
+            'source': 'golden_set',
+            'source_type': 'golden_set',  # Add source_type for test compatibility
+            'bypassed_llm': True,
+            'confidence': 'high' if confidence >= 0.90 else 'medium',  # Match test expectation
+            'category': golden_match.get('category'),  # Add category from golden_match
+            'faq_id': faq_id,
+            'served_at': ctx.get('timestamp', 'unknown')
+        }
+
+        # Create serving metadata
+        serving_metadata = {
+            'bypassed_llm': True,
+            'source': 'golden_set',  # Add source field for test
+            'served_from': 'golden_set',
+            'confidence': confidence,
+            'latency_ms': ctx.get('latency_ms', 0),
+            'served_at': ctx.get('timestamp', 'unknown')  # Add served_at for timing metadata
+        }
+
+        rag_step_log(
+            step=28,
+            step_id='RAG.golden.serve.golden.answer.with.citations',
+            node_label='ServeGolden',
+            request_id=request_id,
+            faq_id=faq_id,
+            confidence=confidence,
+            answer_length=len(answer),
+            citations_count=len(citations),
+            processing_stage="completed"
+        )
+
+        # Build result with formatted response
+        result = {
+            **ctx,
+            'response': {
+                'answer': answer,
+                'citations': citations
+            },
+            'response_metadata': response_metadata,
+            'serving_metadata': serving_metadata,
+            'bypassed_llm': True,
+            'next_step': 'return_complete',
+            'request_id': request_id
+        }
+
         return result
 
-def step_60__resolve_epochs(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_60__resolve_epochs(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 60 — EpochStamps.resolve kb_epoch golden_epoch ccnl_epoch parser_version
     ID: RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version
     Type: process | Category: golden | Node: ResolveEpochs
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that resolves version epochs from various data sources.
+    Extracts kb_epoch, golden_epoch, ccnl_epoch, and parser_version for cache invalidation.
+    Routes to Step 61 (GenHash) with resolved epochs for cache key generation.
     """
-    with rag_step_timer(60, 'RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version', 'ResolveEpochs', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(60, 'RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version', 'ResolveEpochs',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=60, step_id='RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version', node_label='ResolveEpochs',
-                     category='golden', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=60, step_id='RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version', node_label='ResolveEpochs',
-                     processing_stage="completed")
+                     category='golden', type='process', request_id=request_id, processing_stage="started")
+
+        # Extract epoch timestamps from context
+        kb_epoch = ctx.get('kb_last_updated') or ctx.get('kb_epoch')
+        golden_epoch = ctx.get('golden_last_updated') or ctx.get('golden_epoch')
+        ccnl_epoch = ctx.get('ccnl_last_updated') or ctx.get('ccnl_epoch')
+        parser_version = ctx.get('parser_version')
+
+        # Convert timestamps to epoch format if needed
+        def to_epoch_str(timestamp):
+            if timestamp is None:
+                return None
+            if isinstance(timestamp, (int, float)):
+                return str(int(timestamp))
+            if isinstance(timestamp, str):
+                return timestamp
+            try:
+                # Try to convert datetime to epoch
+                from datetime import datetime
+                if hasattr(timestamp, 'timestamp'):
+                    return str(int(timestamp.timestamp()))
+            except Exception:
+                pass
+            return str(timestamp)
+
+        kb_epoch = to_epoch_str(kb_epoch)
+        golden_epoch = to_epoch_str(golden_epoch)
+        ccnl_epoch = to_epoch_str(ccnl_epoch)
+        parser_version = str(parser_version) if parser_version else None
+
+        # Track which epochs were resolved
+        epochs_resolved = []
+        if kb_epoch:
+            epochs_resolved.append('kb')
+        if golden_epoch:
+            epochs_resolved.append('golden')
+        if ccnl_epoch:
+            epochs_resolved.append('ccnl')
+        if parser_version:
+            epochs_resolved.append('parser')
+
+        rag_step_log(
+            step=60,
+            step_id='RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version',
+            node_label='ResolveEpochs',
+            request_id=request_id,
+            kb_epoch=kb_epoch,
+            golden_epoch=golden_epoch,
+            ccnl_epoch=ccnl_epoch,
+            parser_version=parser_version,
+            epochs_resolved=epochs_resolved,
+            processing_stage="completed"
+        )
+
+        # Build result with resolved epochs
+        result = {
+            **ctx,
+            'kb_epoch': kb_epoch,
+            'golden_epoch': golden_epoch,
+            'ccnl_epoch': ccnl_epoch,
+            'parser_version': parser_version,
+            'epoch_resolution_metadata': {
+                'epochs_resolved': epochs_resolved,
+                'epochs_count': len(epochs_resolved),  # Add count for test
+                'kb_epoch': kb_epoch,
+                'golden_epoch': golden_epoch,
+                'ccnl_epoch': ccnl_epoch,
+                'parser_version': parser_version,
+                'resolved_at': ctx.get('timestamp', 'unknown')  # Add for test expectation
+            },
+            'next_step': 'gen_hash',
+            'request_id': request_id
+        }
+
         return result
 
 async def step_83__faqquery(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

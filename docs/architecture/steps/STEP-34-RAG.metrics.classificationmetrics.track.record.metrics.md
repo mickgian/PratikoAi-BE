@@ -44,14 +44,16 @@ Top candidates:
 
 Args:
     domain: The cla...
-2) app/core/monitoring/metrics.py:401 — app.core.monitoring.metrics.track_llm_cost (score 0.29)
+2) app/orchestrators/metrics.py:14 — app.orchestrators.metrics.step_34__track_metrics (score 0.31)
+   Evidence: Score 0.31, RAG STEP 34 — ClassificationMetrics.track Record metrics
+ID: RAG.metrics.classif...
+3) app/orchestrators/metrics.py:135 — app.orchestrators.metrics.step_74__track_usage (score 0.30)
+   Evidence: Score 0.30, RAG STEP 74 — UsageTracker.track Track API usage
+ID: RAG.metrics.usagetracker.tr...
+4) app/core/monitoring/metrics.py:401 — app.core.monitoring.metrics.track_llm_cost (score 0.29)
    Evidence: Score 0.29, Track LLM API cost.
-3) app/core/monitoring/metrics.py:406 — app.core.monitoring.metrics.track_api_call (score 0.29)
+5) app/core/monitoring/metrics.py:406 — app.core.monitoring.metrics.track_api_call (score 0.29)
    Evidence: Score 0.29, Track API call by provider and status.
-4) app/core/monitoring/metrics.py:416 — app.core.monitoring.metrics.track_cache_performance (score 0.29)
-   Evidence: Score 0.29, Update cache hit ratio.
-5) app/core/monitoring/metrics.py:436 — app.core.monitoring.metrics.track_trial_conversion (score 0.29)
-   Evidence: Score 0.29, Track trial conversion.
 
 Notes:
 - Implementation exists but may not be wired correctly

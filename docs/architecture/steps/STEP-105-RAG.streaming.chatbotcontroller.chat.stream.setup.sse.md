@@ -36,38 +36,39 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/orchestrators/streaming.py:32 — app.orchestrators.streaming.step_105__stream_setup (score 0.28)
+1) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.34)
+   Evidence: Score 0.34, Process a chat request using LangGraph with streaming response.
+
+Args:
+    reque...
+2) app/api/v1/chatbot.py:42 — app.api.v1.chatbot.chat (score 0.30)
+   Evidence: Score 0.30, Process a chat request using LangGraph.
+
+Args:
+    request: The FastAPI request ...
+3) app/api/v1/chatbot.py:247 — app.api.v1.chatbot.clear_chat_history (score 0.28)
+   Evidence: Score 0.28, Clear all messages for a session.
+
+Args:
+    request: The FastAPI request object...
+4) app/orchestrators/streaming.py:32 — app.orchestrators.streaming.step_105__stream_setup (score 0.28)
    Evidence: Score 0.28, RAG STEP 105 — ChatbotController.chat_stream Setup SSE
 ID: RAG.streaming.chatbot...
-2) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.26)
+5) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.26)
    Evidence: Score 0.26, Response model for streaming chat endpoint.
 
 Attributes:
     content: The conten...
-3) app/core/logging.py:174 — app.core.logging.setup_logging (score 0.26)
-   Evidence: Score 0.26, Configure structlog with different formatters based on environment.
-
-In developm...
-4) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.26)
-   Evidence: Score 0.26, Set up Prometheus metrics middleware and endpoints.
-
-Args:
-    app: FastAPI appl...
-5) app/core/sse_write.py:15 — app.core.sse_write.write_sse (score 0.26)
-   Evidence: Score 0.26, Log an SSE frame that will be written to the response.
-
-Args:
-    response: The ...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for StreamSetup
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

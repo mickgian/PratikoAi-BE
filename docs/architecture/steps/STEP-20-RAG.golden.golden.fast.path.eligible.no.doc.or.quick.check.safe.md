@@ -36,25 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.50
+Status: 🔌  |  Confidence: 0.51
 
 Top candidates:
-1) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
+1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.51)
+   Evidence: Score 0.51, Approve, reject, or request revision for a generated FAQ
+2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.51)
+   Evidence: Score 0.51, Publish an approved FAQ to make it available to users
+3) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
    Evidence: Score 0.50, RAG STEP 117 — POST /api/v1/faq/feedback
 ID: RAG.golden.post.api.v1.faq.feedback...
-2) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.47)
+4) app/api/v1/faq.py:645 — app.api.v1.faq.health_check (score 0.48)
+   Evidence: Score 0.48, FAQ system health check.
+5) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.47)
    Evidence: Score 0.47, Request model for FAQ queries.
-3) app/orchestrators/golden.py:122 — app.orchestrators.golden.step_83__faqquery (score 0.46)
-   Evidence: Score 0.46, RAG STEP 83 — FAQTool.faq_query Query Golden Set
-ID: RAG.golden.faqtool.faq.quer...
-4) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.45)
-   Evidence: Score 0.45, Response model for FAQ queries.
-5) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.45)
-   Evidence: Score 0.45, Request model for creating FAQ entries.
 
 Notes:
 - Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

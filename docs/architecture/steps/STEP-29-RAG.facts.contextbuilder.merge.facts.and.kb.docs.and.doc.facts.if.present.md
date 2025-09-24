@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `PreContextFromGolden` (ContextBuilder.merge facts and KB docs and doc facts if present).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/facts.py:step_29__pre_context_from_golden`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Thin async orchestrator that merges context when we have a golden answer but KB has newer/conflicting information. Uses ContextBuilderMerge service to combine golden answer context, KB deltas, atomic facts, and optional document facts. Routes to Step 39 (KBPreFetch) for additional KB retrieval.
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,13 +19,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests (golden+KB merge, atomic facts, optional document facts, empty KB deltas, routing, context preservation)
+- [x] Integration tests (KBDelta=Yes path, context preservation for Step 39)
+- [x] Implementation changes (thin async orchestrator wrapping ContextBuilderMerge service)
+- [x] Observability: add structured log line
   `RAG STEP 29 (RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.doc.facts.if.present): ContextBuilder.merge facts and KB docs and doc facts if present | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config if needed (uses existing ContextBuilderMerge configuration)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.33
 
 Top candidates:
-1) app/orchestrators/facts.py:68 — app.orchestrators.facts.step_29__pre_context_from_golden (score 0.33)
+1) app/orchestrators/facts.py:132 — app.orchestrators.facts.step_29__pre_context_from_golden (score 0.33)
    Evidence: Score 0.33, RAG STEP 29 — ContextBuilder.merge facts and KB docs and doc facts if present
 ID...
 2) app/services/context_builder_merge.py:66 — app.services.context_builder_merge.ContextBuilderMerge.merge_context (score 0.29)

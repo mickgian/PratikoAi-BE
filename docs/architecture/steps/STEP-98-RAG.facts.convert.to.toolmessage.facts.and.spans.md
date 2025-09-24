@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ToToolResults` (Convert to ToolMessage facts and spans).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/facts.py:step_98__to_tool_results`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Thin async orchestrator that converts extracted document facts and provenance into ToolMessage format for returning to the LLM tool caller. Formats facts into readable content, includes provenance metadata, and creates langchain ToolMessage. Routes to Step 99 (ToolResults).
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,13 +19,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests (ToolMessage conversion, facts formatting, provenance metadata, empty facts, multiple document types, routing, context preservation)
+- [x] Integration tests (Step 97→98 flow, Step 99 preparation)
+- [x] Implementation changes (thin async orchestrator creating ToolMessage from facts)
+- [x] Observability: add structured log line
   `RAG STEP 98 (RAG.facts.convert.to.toolmessage.facts.and.spans): Convert to ToolMessage facts and spans | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config if needed (none required - standard conversion)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
@@ -39,21 +39,20 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/orchestrators/facts.py:490 — app.orchestrators.facts.step_98__to_tool_results (score 0.31)
+1) app/orchestrators/facts.py:554 — app.orchestrators.facts.step_98__to_tool_results (score 0.31)
    Evidence: Score 0.31, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-2) app/orchestrators/platform.py:2245 — app.orchestrators.platform.step_99__tool_results (score 0.28)
+2) app/orchestrators/platform.py:889 — app.orchestrators.platform._convert_single_message (score 0.28)
+   Evidence: Score 0.28, Convert a single message from any format to Message object.
+3) app/orchestrators/platform.py:2245 — app.orchestrators.platform.step_99__tool_results (score 0.28)
    Evidence: Score 0.28, RAG STEP 99 — Return to tool caller
 ID: RAG.platform.return.to.tool.caller
 Type:...
-3) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.27)
+4) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.27)
    Evidence: Score 0.27, Combine results from BM25 and vector search, removing duplicates.
-4) app/orchestrators/facts.py:14 — app.orchestrators.facts.step_14__extract_facts (score 0.25)
+5) app/orchestrators/facts.py:14 — app.orchestrators.facts.step_14__extract_facts (score 0.25)
    Evidence: Score 0.25, RAG STEP 14 — AtomicFactsExtractor.extract Extract atomic facts
 ID: RAG.facts.at...
-5) app/orchestrators/facts.py:32 — app.orchestrators.facts.step_16__canonicalize_facts (score 0.25)
-   Evidence: Score 0.25, RAG STEP 16 — AtomicFactsExtractor.canonicalize Normalize dates amounts rates
-ID...
 
 Notes:
 - Implementation exists but may not be wired correctly

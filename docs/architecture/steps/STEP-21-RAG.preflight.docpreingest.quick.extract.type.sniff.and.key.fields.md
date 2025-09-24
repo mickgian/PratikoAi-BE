@@ -36,21 +36,25 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/orchestrators/preflight.py:400 — app.orchestrators.preflight.step_82__doc_ingest (score 0.27)
+1) app/orchestrators/preflight.py:145 — app.orchestrators.preflight.step_21__doc_pre_ingest (score 0.29)
+   Evidence: Score 0.29, RAG STEP 21 — DocPreIngest.quick_extract type sniff and key fields
+ID: RAG.prefl...
+2) app/orchestrators/docs.py:313 — app.orchestrators.docs.step_89__doc_type (score 0.27)
+   Evidence: Score 0.27, RAG STEP 89 — Document type?
+ID: RAG.docs.document.type
+Type: decision | Categor...
+3) app/orchestrators/facts.py:467 — app.orchestrators.facts.step_95__extract_doc_facts (score 0.27)
+   Evidence: Score 0.27, RAG STEP 95 — Extractor.extract Structured fields
+ID: RAG.facts.extractor.extrac...
+4) app/orchestrators/preflight.py:400 — app.orchestrators.preflight.step_82__doc_ingest (score 0.27)
    Evidence: Score 0.27, RAG STEP 82 — DocumentIngestTool.process Process attachments
 ID: RAG.preflight.d...
-2) app/orchestrators/golden.py:32 — app.orchestrators.golden.step_23__require_doc_ingest (score 0.27)
+5) app/orchestrators/golden.py:32 — app.orchestrators.golden.step_23__require_doc_ingest (score 0.27)
    Evidence: Score 0.27, RAG STEP 23 — PlannerHint.require_doc_ingest_first ingest then Golden and KB
 ID:...
-3) app/services/domain_action_classifier.py:530 — app.services.domain_action_classifier.DomainActionClassifier._extract_document_type (score 0.26)
-   Evidence: Score 0.26, Extract document type for document generation actions
-4) app/services/scrapers/cassazione_scraper.py:443 — app.services.scrapers.cassazione_scraper.CassazioneScraper._extract_decision_type (score 0.26)
-   Evidence: Score 0.26, Extract decision type.
-5) app/services/legal_document_analyzer.py:950 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_key_clauses (score 0.26)
-   Evidence: Score 0.26, Extract important contract clauses
 
 Notes:
 - Weak or missing implementation

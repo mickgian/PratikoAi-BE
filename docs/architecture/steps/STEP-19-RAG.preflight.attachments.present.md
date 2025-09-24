@@ -36,27 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/orchestrators/kb.py:14 — app.orchestrators.kb.step_26__kbcontext_check (score 0.26)
-   Evidence: Score 0.26, RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes
-ID: RAG.k...
-2) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
-   Evidence: Score 0.26, Check compatibility for a version deployment.
-3) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
-   Evidence: Score 0.26, Check if this delta has been seen before.
+1) app/orchestrators/preflight.py:90 — app.orchestrators.preflight.step_19__attach_check (score 0.30)
+   Evidence: Score 0.30, RAG STEP 19 — Attachments present?
+ID: RAG.preflight.attachments.present
+Type: p...
+2) app/orchestrators/preflight.py:502 — app.orchestrators.preflight.step_85__valid_attachments_check (score 0.29)
+   Evidence: Score 0.29, RAG STEP 85 — Valid attachments?
+ID: RAG.preflight.valid.attachments
+Type: decis...
+3) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.27)
+   Evidence: Score 0.27, Health check endpoint.
 
-Args:
-    delta: The delta content to...
-4) app/orchestrators/platform.py:317 — app.orchestrators.platform.step_3__valid_check (score 0.26)
-   Evidence: Score 0.26, RAG STEP 3 — Request valid?
-ID: RAG.platform.request.valid
-Type: decision | Cate...
-5) app/orchestrators/providers.py:739 — app.orchestrators.providers.step_56__cost_check (score 0.26)
-   Evidence: Score 0.26, RAG STEP 56 — Cost within budget?
-ID: RAG.providers.cost.within.budget
-Type: dec...
+Returns:
+    dict: Health status information.
+4) app/main.py:157 — app.main.health_check (score 0.27)
+   Evidence: Score 0.27, Health check endpoint with environment-specific information.
+
+Returns:
+    Dict[...
+5) demo_app.py:100 — demo_app.health_check (score 0.27)
+   Evidence: Score 0.27, Health check endpoint.
 
 Notes:
 - Weak or missing implementation

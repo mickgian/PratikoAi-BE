@@ -41,17 +41,22 @@ Status: 🔌  |  Confidence: 0.31
 Top candidates:
 1) app/services/usage_tracker.py:64 — app.services.usage_tracker.UsageTracker.__init__ (score 0.31)
    Evidence: Score 0.31, Initialize the usage tracker.
-2) app/services/usage_tracker.py:61 — app.services.usage_tracker.UsageTracker (score 0.29)
-   Evidence: Score 0.29, Tracks and manages usage for cost control.
-3) app/core/monitoring/metrics.py:406 — app.core.monitoring.metrics.track_api_call (score 0.29)
-   Evidence: Score 0.29, Track API call by provider and status.
-4) app/core/monitoring/metrics.py:525 — app.core.monitoring.metrics.track_api_error (score 0.29)
-   Evidence: Score 0.29, Track categorized API error.
-5) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.29)
-   Evidence: Score 0.29, Track domain-action classification usage and metrics.
+2) app/api/v1/analytics.py:28 — app.api.v1.analytics.get_current_usage (score 0.30)
+   Evidence: Score 0.30, Get current usage and quota information.
 
 Args:
-    domain: The cla...
+    request: FastAPI request obj...
+3) app/api/v1/analytics.py:105 — app.api.v1.analytics.get_usage_history (score 0.30)
+   Evidence: Score 0.30, Get historical usage data.
+
+Args:
+    request: FastAPI request object
+    start_...
+4) app/orchestrators/metrics.py:135 — app.orchestrators.metrics.step_74__track_usage (score 0.30)
+   Evidence: Score 0.30, RAG STEP 74 — UsageTracker.track Track API usage
+ID: RAG.metrics.usagetracker.tr...
+5) app/services/usage_tracker.py:61 — app.services.usage_tracker.UsageTracker (score 0.29)
+   Evidence: Score 0.29, Tracks and manages usage for cost control.
 
 Notes:
 - Implementation exists but may not be wired correctly

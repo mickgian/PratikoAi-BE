@@ -49,10 +49,11 @@ Raises RuntimeError ...
 4) app/orchestrators/preflight.py:565 — app.orchestrators.preflight.step_107__single_pass (score 0.28)
    Evidence: Score 0.28, RAG STEP 107 — SinglePassStream Prevent double iteration
 ID: RAG.preflight.singl...
-5) app/orchestrators/streaming.py:14 — app.orchestrators.streaming.step_104__stream_check (score 0.25)
-   Evidence: Score 0.25, RAG STEP 104 — Streaming requested?
-ID: RAG.streaming.streaming.requested
-Type: ...
+5) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.26)
+   Evidence: Score 0.26, Process a chat request using LangGraph with streaming response.
+
+Args:
+    reque...
 
 Notes:
 - Implementation exists but may not be wired correctly

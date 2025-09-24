@@ -36,23 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/core/config.py:38 — app.core.config.get_environment (score 0.26)
-   Evidence: Score 0.26, Get the current environment.
+1) app/orchestrators/platform.py:1391 — app.orchestrators.platform.step_69__retry_check (score 0.28)
+   Evidence: Score 0.28, RAG STEP 69 — Another attempt allowed?
+ID: RAG.platform.another.attempt.allowed
+...
+2) app/orchestrators/platform.py:1528 — app.orchestrators.platform.step_70__prod_check (score 0.28)
+   Evidence: Score 0.28, RAG STEP 70 — Prod environment and last retry?
+ID: RAG.platform.prod.environment...
+3) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
+   Evidence: Score 0.26, Health check endpoint.
 
 Returns:
-    Environment: The current environment ...
-2) app/orchestrators/kb.py:14 — app.orchestrators.kb.step_26__kbcontext_check (score 0.26)
-   Evidence: Score 0.26, RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes
-ID: RAG.k...
-3) load_testing/config.py:246 — load_testing.config.get_environment_config (score 0.26)
-   Evidence: Score 0.26, Get environment-specific configuration
-4) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
-   Evidence: Score 0.26, Check compatibility for a version deployment.
-5) app/core/config.py:304 — app.core.config.Settings.apply_environment_settings (score 0.25)
-   Evidence: Score 0.25, Apply environment-specific settings based on the current environment.
+    dict: Health status information.
+4) app/main.py:157 — app.main.health_check (score 0.26)
+   Evidence: Score 0.26, Health check endpoint with environment-specific information.
+
+Returns:
+    Dict[...
+5) demo_app.py:100 — demo_app.health_check (score 0.26)
+   Evidence: Score 0.26, Health check endpoint.
 
 Notes:
 - Weak or missing implementation

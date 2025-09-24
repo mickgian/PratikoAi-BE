@@ -55,8 +55,11 @@ Attributes:
 
 Attributes:
     content: The conten...
-5) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.26)
-   Evidence: Score 0.26, Convert internal SearchResponse to API model.
+5) app/api/v1/chatbot.py:42 — app.api.v1.chatbot.chat (score 0.27)
+   Evidence: Score 0.27, Process a chat request using LangGraph.
+
+Args:
+    request: The FastAPI request ...
 
 Notes:
 - Implementation exists but may not be wired correctly

@@ -36,26 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.51
+Status: 🔌  |  Confidence: 0.53
 
 Top candidates:
-1) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)
+   Evidence: Score 0.53, Approve, reject, or request revision for a generated FAQ
+2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.53)
+   Evidence: Score 0.53, Publish an approved FAQ to make it available to users
+3) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
    Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback
 ID: RAG.golden.post.api.v1.faq.feedback...
-2) app/api/v1/faq.py:1 — app.api.v1.faq (score 0.47)
-   Evidence: Score 0.47, FAQ API endpoints for the Intelligent FAQ System.
+4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.49)
+   Evidence: Score 0.49, Query the FAQ system with semantic search and response variation.
 
-This module provides REST API...
-3) app/api/v1/faq_automation.py:1 — app.api.v1.faq_automation (score 0.47)
-   Evidence: Score 0.47, FAQ Automation API Endpoints.
+This endpoint...
+5) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.49)
+   Evidence: Score 0.49, Create a new FAQ entry.
 
-Admin dashboard and management endpoints for the ...
-4) app/orchestrators/golden.py:122 — app.orchestrators.golden.step_83__faqquery (score 0.46)
-   Evidence: Score 0.46, RAG STEP 83 — FAQTool.faq_query Query Golden Set
-ID: RAG.golden.faqtool.faq.quer...
-5) app/orchestrators/golden.py:176 — app.orchestrators.golden.step_128__golden_approval (score 0.46)
-   Evidence: Score 0.46, RAG STEP 128 — Auto threshold met or manual approval?
-ID: RAG.golden.auto.thresh...
+Requires admin privileges.
 
 Notes:
 - Implementation exists but may not be wired correctly

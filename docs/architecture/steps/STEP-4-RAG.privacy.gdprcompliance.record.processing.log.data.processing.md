@@ -43,14 +43,15 @@ Top candidates:
    Evidence: Score 0.49, Anonymize PII in structured data (dictionaries).
 2) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.47)
    Evidence: Score 0.47, Anonymize PII in text while preserving structure.
-3) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.45)
+3) app/orchestrators/privacy.py:371 — app.orchestrators.privacy.step_7__anonymize_text (score 0.46)
+   Evidence: Score 0.46, RAG STEP 7 — Anonymizer.anonymize_text Anonymize PII
+ID: RAG.privacy.anonymizer....
+4) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.45)
    Evidence: Score 0.45, Anonymize user data for GDPR "right to be forgotten" compliance.
 
 Replaces PII w...
-4) app/core/privacy/gdpr.py:471 — app.core.privacy.gdpr.GDPRCompliance.handle_data_subject_request (score 0.44)
+5) app/core/privacy/gdpr.py:471 — app.core.privacy.gdpr.GDPRCompliance.handle_data_subject_request (score 0.44)
    Evidence: Score 0.44, Handle data subject requests under GDPR (Article 15-22).
-5) app/core/privacy/gdpr.py:465 — app.core.privacy.gdpr.GDPRCompliance.__init__ (score 0.43)
-   Evidence: Score 0.43, Initialize GDPR compliance system.
 
 Notes:
 - Implementation exists but may not be wired correctly

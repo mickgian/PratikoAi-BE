@@ -54,11 +54,8 @@ Args:
 -...
 4) app/core/langgraph/graph.py:81 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
    Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
-5) app/core/langgraph/graph.py:825 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.29)
-   Evidence: Score 0.29, Determine if the agent should continue or end based on the last message.
-
-Args:
-...
+5) app/orchestrators/prompting.py:203 — app.orchestrators.prompting._get_default_system_prompt (score 0.30)
+   Evidence: Score 0.30, Get appropriate default system prompt based on query analysis.
 
 Notes:
 - Implementation exists but may not be wired correctly

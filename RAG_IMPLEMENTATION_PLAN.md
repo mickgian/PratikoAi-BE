@@ -134,12 +134,13 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 ## Phase 8: Facts & Knowledge Management (Days 19-21)
 **Knowledge extraction and management**
 
-### Batch 14: Facts Processing (14, 16, 18, 29, 98)
-- **Step 14**: Extract atomic facts - Fact extraction
-- **Step 16**: Normalize dates amounts rates - Fact canonicalization
-- **Step 18**: Hash from canonical facts - Query signature
-- **Step 29**: Merge facts and KB docs - Context building
-- **Step 98**: Convert to tool message facts and spans - Format conversion
+### Batch 14: Facts Processing (14, 16, 18, 29, 98) ✅ COMPLETED
+- **Step 14**: Extract atomic facts - AtomicFactsExtractor for Italian query fact extraction ✅
+- **Step 16**: Normalize dates amounts rates - Validation orchestrator for fact canonicalization ✅
+- **Step 17**: (Batch 12 routing fix) - Fixed routing from Step 19 to Step 18 per Mermaid diagram ✅
+- **Step 18**: Hash from canonical facts - SHA256 query signature computation ✅
+- **Step 29**: Merge facts and KB docs - ContextBuilderMerge for golden+KB context integration ✅
+- **Step 98**: Convert to tool message facts and spans - ToolMessage conversion for LLM tool caller ✅
 
 ### Batch 15: Knowledge Operations (80-83)
 - **Step 80**: Search KB on demand - Knowledge search
@@ -344,13 +345,22 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
   - ✅ **Step 97**: Provenance ledger logging for immutable audit trail (7 tests)
   - ✅ **Total**: 78 comprehensive tests, 100% pass rate, full document processing pipeline
   - ✅ **Critical Fix**: Updated rag_code_graph.py to index AsyncFunctionDef (added 500+ async functions to code index)
+- Batch 14: Facts Processing (14, 16, 17-fix, 18, 29, 98) - Complete atomic facts extraction, canonicalization, query signature, and context merging
+  - ✅ **Step 14**: Atomic facts extraction for Italian queries with monetary amounts, dates, legal entities, professional categories, geographic info (11 tests)
+  - ✅ **Step 16**: Fact canonicalization validation ensuring proper normalization from Step 14 (10 tests)
+  - ✅ **Step 17**: (Routing fix from Batch 12) - Fixed routing from Step 19 to Step 18 per Mermaid diagram (11 tests)
+  - ✅ **Step 18**: Query signature generation with deterministic SHA256 hash from canonical facts for caching/deduplication (9 tests)
+  - ✅ **Step 29**: Pre-context merge orchestrator combining golden answers with KB deltas using ContextBuilderMerge (9 tests)
+  - ✅ **Step 98**: ToolMessage conversion for document facts and provenance, formatted for LLM tool caller (9 tests)
+  - ✅ **Total**: 59 comprehensive tests, 100% pass rate, full facts processing infrastructure
+  - ✅ **Critical Fix**: Step 17 routing bug fixed (was routing to Step 19 instead of Step 18, now complies with Mermaid)
 
-**Next Target:** Batch 14: Facts Processing (14, 16, 18, 29, 98)
-1. Pick GitHub issues for facts processing steps
-2. Implement atomic facts extraction and canonicalization
-3. Build query signature generation with hash computation
-4. Create context builder for facts and KB docs merging
-5. Implement tool message conversion with facts and spans
+**Next Target:** Batch 15: Knowledge Operations (80-83)
+1. Pick GitHub issues for knowledge search steps
+2. Implement on-demand KB search tool
+3. Build CCNL labor agreement queries
+4. Create golden set FAQ query tool
+5. Implement FAQ retrieval functionality
 
 ## GitHub Issues Reference
 
@@ -395,8 +405,8 @@ Each issue contains:
 - [✅] Phase 7: Document Processing (Steps 17, 19, 21-22, 84-97) - **COMPLETED**
   - [✅] **Batch 12**: Steps 17, 19, 21-22, 84-86 (Document Validation) - **COMPLETED**
   - [✅] **Batch 13**: Steps 87-97 (Document Processing Pipeline) - **COMPLETED**
-- [ ] Phase 8: Facts & Knowledge Management (Steps 14, 16, 18, 29, 80-83, 98)
-  - [ ] **Batch 14**: Steps 14, 16, 18, 29, 98 (Facts Processing)
+- [🔄] Phase 8: Facts & Knowledge Management (Steps 14, 16, 18, 29, 80-83, 98) - **IN PROGRESS**
+  - [✅] **Batch 14**: Steps 14, 16, 17-fix, 18, 29, 98 (Facts Processing) - **COMPLETED**
   - [ ] **Batch 15**: Steps 80-83 (Knowledge Operations)
 - [ ] Phase 9: Golden Set & FAQ Management (Steps 23-28, 60, 117, 127-131, 135)
   - [ ] **Batch 16**: Steps 23-28, 60 (Golden Set Matching)

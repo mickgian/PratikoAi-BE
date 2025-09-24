@@ -36,19 +36,32 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/api/v1/performance.py:25 — app.api.v1.performance.OptimizeQueryRequest (score 0.27)
-   Evidence: Score 0.27, Request to optimize a database query.
-2) app/models/encrypted_user.py:278 — app.models.encrypted_user.EncryptedQueryLog (score 0.27)
-   Evidence: Score 0.27, Query log model with encrypted query content for privacy compliance.
-3) app/schemas/chat.py:57 — app.schemas.chat.QueryClassificationMetadata (score 0.27)
-   Evidence: Score 0.27, Metadata about query classification for debugging and monitoring.
-4) app/api/v1/ccnl_calculations.py:60 — app.api.v1.ccnl_calculations.ComplexQueryRequest (score 0.27)
-   Evidence: Score 0.27, Request model for complex CCNL queries.
-5) app/api/v1/gdpr_cleanup.py:64 — app.api.v1.gdpr_cleanup.UserDeletionResponse (score 0.27)
-   Evidence: Score 0.27, User data deletion response
+1) app/api/v1/chatbot.py:42 — app.api.v1.chatbot.chat (score 0.28)
+   Evidence: Score 0.28, Process a chat request using LangGraph.
+
+Args:
+    request: The FastAPI request ...
+2) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.28)
+   Evidence: Score 0.28, Query the FAQ system with semantic search and response variation.
+
+This endpoint...
+3) app/api/v1/auth.py:157 — app.api.v1.auth.register_user (score 0.28)
+   Evidence: Score 0.28, Register a new user.
+
+Args:
+    request: The FastAPI request object for rate lim...
+4) app/api/v1/auth.py:463 — app.api.v1.auth.logout_user (score 0.28)
+   Evidence: Score 0.28, Logout a user by revoking their refresh token.
+
+This endpoint revokes the user's...
+5) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.28)
+   Evidence: Score 0.28, Process a chat request using LangGraph with streaming response.
+
+Args:
+    reque...
 
 Notes:
 - Weak or missing implementation

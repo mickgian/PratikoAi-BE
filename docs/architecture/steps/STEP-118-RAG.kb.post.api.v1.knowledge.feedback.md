@@ -36,21 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.45
+Status: 🔌  |  Confidence: 0.47
 
 Top candidates:
-1) app/services/knowledge_search_service.py:1 — app.services.knowledge_search_service (score 0.45)
+1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.47)
+   Evidence: Score 0.47, Convenience function to retrieve top-k knowledge items.
+
+Args:
+    query_data: Q...
+2) app/api/v1/search.py:772 — app.api.v1.search.reindex_knowledge_fts (score 0.46)
+   Evidence: Score 0.46, Manually reindex knowledge base search vectors.
+
+Admin endpoint for maintenance ...
+3) app/api/v1/search.py:627 — app.api.v1.search.submit_knowledge_feedback (score 0.45)
+   Evidence: Score 0.45, Submit feedback on knowledge search results.
+
+Helps improve search relevance and...
+4) app/services/knowledge_search_service.py:1 — app.services.knowledge_search_service (score 0.45)
    Evidence: Score 0.45, Knowledge Search Service - RAG STEP 39 Implementation.
 
 Implements RAG STEP 39 —...
-2) app/services/knowledge_search_service.py:97 — app.services.knowledge_search_service.KnowledgeSearchService (score 0.45)
+5) app/services/knowledge_search_service.py:97 — app.services.knowledge_search_service.KnowledgeSearchService (score 0.45)
    Evidence: Score 0.45, Service for hybrid knowledge search with BM25, vector search and recency boost.
-3) app/services/knowledge_search_service.py:32 — app.services.knowledge_search_service.SearchMode (score 0.44)
-   Evidence: Score 0.44, Search mode for knowledge retrieval.
-4) app/services/vector_providers/pinecone_provider.py:21 — app.services.vector_providers.pinecone_provider.PineconeProvider (score 0.44)
-   Evidence: Score 0.44, Pinecone vector search provider.
-5) app/services/knowledge_search_service.py:100 — app.services.knowledge_search_service.KnowledgeSearchService.__init__ (score 0.43)
-   Evidence: Score 0.43, Initialize knowledge search service.
 
 Notes:
 - Implementation exists but may not be wired correctly

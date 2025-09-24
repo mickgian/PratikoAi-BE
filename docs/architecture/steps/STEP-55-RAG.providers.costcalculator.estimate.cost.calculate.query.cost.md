@@ -54,11 +54,10 @@ Args:
 4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.48)
    Evidence: Score 0.48, Main query router that integrates classification, prompt templates,
 context enri...
-5) app/core/llm/factory.py:187 — app.core.llm.factory.LLMFactory._route_cost_optimized (score 0.43)
-   Evidence: Score 0.43, Route to the cheapest suitable provider.
-
-Args:
-    providers: Available provide...
+5) app/orchestrators/providers.py:1027 — app.orchestrators.providers.step_72__get_failover_provider (score 0.46)
+   Evidence: Score 0.46, RAG STEP 72 — Get FAILOVER provider
+ID: RAG.providers.get.failover.provider
+Type...
 
 Notes:
 - Implementation exists but may not be wired correctly

@@ -36,32 +36,32 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.30)
+1) app/orchestrators/metrics.py:135 — app.orchestrators.metrics.step_74__track_usage (score 0.31)
+   Evidence: Score 0.31, RAG STEP 74 — UsageTracker.track Track API usage
+ID: RAG.metrics.usagetracker.tr...
+2) app/orchestrators/metrics.py:294 — app.orchestrators.metrics.step_111__collect_metrics (score 0.31)
+   Evidence: Score 0.31, RAG STEP 111 — Collect usage metrics
+ID: RAG.metrics.collect.usage.metrics
+Type:...
+3) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.30)
    Evidence: Score 0.30, Track domain-action classification usage and metrics.
 
 Args:
     domain: The cla...
-2) app/services/usage_tracker.py:26 — app.services.usage_tracker.UsageMetrics (score 0.29)
+4) app/services/usage_tracker.py:26 — app.services.usage_tracker.UsageMetrics (score 0.29)
    Evidence: Score 0.29, Container for usage metrics.
-3) app/core/metrics.py:39 — app.core.metrics.setup_metrics (score 0.27)
-   Evidence: Score 0.27, Set up Prometheus metrics middleware and endpoints.
-
-Args:
-    app: FastAPI appl...
-4) app/core/monitoring/metrics.py:310 — app.core.monitoring.metrics.initialize_metrics (score 0.27)
-   Evidence: Score 0.27, Initialize metrics with system information and default values.
-5) app/services/metrics_service.py:72 — app.services.metrics_service.MetricsService.__init__ (score 0.27)
-   Evidence: Score 0.27, method: __init__
+5) app/main.py:194 — app.main.metrics (score 0.28)
+   Evidence: Score 0.28, Prometheus metrics endpoint for scraping.
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for CollectMetrics
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

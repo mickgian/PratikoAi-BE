@@ -36,27 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/orchestrators/kb.py:14 — app.orchestrators.kb.step_26__kbcontext_check (score 0.26)
-   Evidence: Score 0.26, RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes
-ID: RAG.k...
-2) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.26)
-   Evidence: Score 0.26, Check compatibility for a version deployment.
-3) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
-   Evidence: Score 0.26, Check if this delta has been seen before.
+1) app/orchestrators/platform.py:1391 — app.orchestrators.platform.step_69__retry_check (score 0.29)
+   Evidence: Score 0.29, RAG STEP 69 — Another attempt allowed?
+ID: RAG.platform.another.attempt.allowed
+...
+2) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
+   Evidence: Score 0.26, Health check endpoint.
 
-Args:
-    delta: The delta content to...
-4) app/orchestrators/platform.py:317 — app.orchestrators.platform.step_3__valid_check (score 0.26)
-   Evidence: Score 0.26, RAG STEP 3 — Request valid?
-ID: RAG.platform.request.valid
-Type: decision | Cate...
-5) app/orchestrators/providers.py:739 — app.orchestrators.providers.step_56__cost_check (score 0.26)
-   Evidence: Score 0.26, RAG STEP 56 — Cost within budget?
-ID: RAG.providers.cost.within.budget
-Type: dec...
+Returns:
+    dict: Health status information.
+3) app/main.py:157 — app.main.health_check (score 0.26)
+   Evidence: Score 0.26, Health check endpoint with environment-specific information.
+
+Returns:
+    Dict[...
+4) demo_app.py:100 — demo_app.health_check (score 0.26)
+   Evidence: Score 0.26, Health check endpoint.
+5) app/api/v1/data_export.py:705 — app.api.v1.data_export.retry_export (score 0.26)
+   Evidence: Score 0.26, Retry failed export.
+
+Allows retrying failed exports up to 3 times. The export m...
 
 Notes:
 - Weak or missing implementation

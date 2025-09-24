@@ -44,21 +44,20 @@ Top candidates:
 
 Args:
     provider...
-2) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.50)
+2) app/orchestrators/providers.py:1027 — app.orchestrators.providers.step_72__get_failover_provider (score 0.51)
+   Evidence: Score 0.51, RAG STEP 72 — Get FAILOVER provider
+ID: RAG.providers.get.failover.provider
+Type...
+3) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.50)
    Evidence: Score 0.50, Select optimal LLM provider based on domain-action requirements
-3) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.47)
+4) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.47)
    Evidence: Score 0.47, Convenience function to get an optimal LLM provider.
 
 Args:
     messages: List o...
-4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.47)
+5) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.47)
    Evidence: Score 0.47, Main query router that integrates classification, prompt templates,
 context enri...
-5) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.43)
-   Evidence: Score 0.43, Create an LLM provider instance.
-
-Args:
-    provider_type: Type of provider to c...
 
 Notes:
 - Implementation exists but may not be wired correctly

@@ -43,18 +43,19 @@ Top candidates:
    Evidence: Score 0.31, RAG STEP 13 — User message exists?
 ID: RAG.platform.user.message.exists
 Type: de...
-2) app/models/user.py:50 — app.models.user.User.verify_password (score 0.27)
-   Evidence: Score 0.27, Verify if the provided password matches the hash.
-3) app/models/user.py:55 — app.models.user.User.hash_password (score 0.27)
-   Evidence: Score 0.27, Hash a password using bcrypt.
-4) evals/main.py:82 — evals.main.get_user_input (score 0.27)
-   Evidence: Score 0.27, Get user input with a colored prompt.
+2) app/api/v1/auth.py:157 — app.api.v1.auth.register_user (score 0.27)
+   Evidence: Score 0.27, Register a new user.
 
 Args:
-    prompt: The prompt to display
- ...
-5) validate_security_implementation.py:7 — validate_security_implementation.validate_file_exists (score 0.27)
-   Evidence: Score 0.27, Validate that a file exists.
+    request: The FastAPI request object for rate lim...
+3) app/api/v1/auth.py:463 — app.api.v1.auth.logout_user (score 0.27)
+   Evidence: Score 0.27, Logout a user by revoking their refresh token.
+
+This endpoint revokes the user's...
+4) app/api/v1/documents.py:143 — app.api.v1.documents.get_user_documents (score 0.27)
+   Evidence: Score 0.27, Get user's uploaded documents with filtering options.
+5) app/models/user.py:50 — app.models.user.User.verify_password (score 0.27)
+   Evidence: Score 0.27, Verify if the provided password matches the hash.
 
 Notes:
 - Implementation exists but may not be wired correctly

@@ -41,18 +41,21 @@ Status: 🟡  |  Confidence: 0.56
 Top candidates:
 1) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.56)
    Evidence: Score 0.56, Anonymize PII in text while preserving structure.
-2) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.51)
+2) app/orchestrators/privacy.py:371 — app.orchestrators.privacy.step_7__anonymize_text (score 0.51)
+   Evidence: Score 0.51, RAG STEP 7 — Anonymizer.anonymize_text Anonymize PII
+ID: RAG.privacy.anonymizer....
+3) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.51)
    Evidence: Score 0.51, Anonymize PII in structured data (dictionaries).
-3) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.46)
+4) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.46)
    Evidence: Score 0.46, Anonymize user data for GDPR "right to be forgotten" compliance.
 
 Replaces PII w...
-4) app/core/privacy/anonymizer.py:164 — app.core.privacy.anonymizer.PIIAnonymizer.detect_pii (score 0.45)
-   Evidence: Score 0.45, Detect PII in text and return matches.
-5) app/core/privacy/anonymizer.py:1 — app.core.privacy.anonymizer (score 0.43)
-   Evidence: Score 0.43, PII detection and anonymization utilities for GDPR compliance.
+5) app/api/v1/privacy.py:38 — app.api.v1.privacy.anonymize_text (score 0.46)
+   Evidence: Score 0.46, Anonymize PII in text.
 
-This module prov...
+Args:
+    request: FastAPI request object
+    anonymizat...
 
 Notes:
 - Partial implementation identified

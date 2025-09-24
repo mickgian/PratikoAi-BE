@@ -36,29 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.26)
+1) app/orchestrators/llm.py:14 — app.orchestrators.llm.step_36__llmbetter (score 0.29)
+   Evidence: Score 0.29, RAG STEP 36 — LLM better than rule-based?
+ID: RAG.llm.llm.better.than.rule.based...
+2) app/orchestrators/platform.py:1060 — app.orchestrators.platform.step_38__use_rule_based (score 0.28)
+   Evidence: Score 0.28, RAG STEP 38 — Use rule-based classification
+ID: RAG.platform.use.rule.based.clas...
+3) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.26)
    Evidence: Score 0.26, Get the global LLM factory instance.
 
 Returns:
     LLM factory instance
-2) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.25)
-   Evidence: Score 0.25, Decorator to cache LLM responses based on messages and model.
-
-Args:
-    ttl: Ti...
-3) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.25)
-   Evidence: Score 0.25, Initialize the LLM provider.
-
-Args:
-    api_key: API key for the provider
-    mo...
-4) app/core/llm/cost_calculator.py:34 — app.core.llm.cost_calculator.CostCalculator.__init__ (score 0.25)
-   Evidence: Score 0.25, Initialize cost calculator.
-5) app/core/llm/factory.py:27 — app.core.llm.factory.LLMFactory.__init__ (score 0.25)
-   Evidence: Score 0.25, Initialize the LLM factory.
+4) app/orchestrators/llm.py:179 — app.orchestrators.llm.step_37__use_llm (score 0.26)
+   Evidence: Score 0.26, RAG STEP 37 — Use LLM classification
+ID: RAG.llm.use.llm.classification
+Type: pr...
+5) app/orchestrators/llm.py:320 — app.orchestrators.llm.step_67__llmsuccess (score 0.26)
+   Evidence: Score 0.26, RAG STEP 67 — LLM call successful?
+ID: RAG.llm.llm.call.successful
+Type: decisio...
 
 Notes:
 - Weak or missing implementation

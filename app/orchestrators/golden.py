@@ -119,22 +119,101 @@ def step_60__resolve_epochs(*, messages: Optional[List[Any]] = None, ctx: Option
                      processing_stage="completed")
         return result
 
-def step_83__faqquery(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_83__faqquery(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 83 — FAQTool.faq_query Query Golden Set
     ID: RAG.golden.faqtool.faq.query.query.golden.set
     Type: process | Category: golden | Node: FAQQuery
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that executes on-demand FAQ queries when the LLM calls the FAQTool.
+    Uses SemanticFAQMatcher and IntelligentFAQService for semantic FAQ matching with confidence
+    scoring. Routes to Step 99 (ToolResults).
     """
-    with rag_step_timer(83, 'RAG.golden.faqtool.faq.query.query.golden.set', 'FAQQuery', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(83, 'RAG.golden.faqtool.faq.query.query.golden.set', 'FAQQuery',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=83, step_id='RAG.golden.faqtool.faq.query.query.golden.set', node_label='FAQQuery',
-                     category='golden', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=83, step_id='RAG.golden.faqtool.faq.query.query.golden.set', node_label='FAQQuery',
-                     processing_stage="completed")
+                     category='golden', type='process', request_id=request_id, processing_stage="started")
+
+        # Extract tool arguments
+        tool_args = ctx.get('tool_args', {})
+        tool_call_id = ctx.get('tool_call_id')
+        query = tool_args.get('query', '')
+        max_results = tool_args.get('max_results', 3)
+        min_confidence = tool_args.get('min_confidence', 'medium')
+
+        # Execute FAQ query using FAQTool
+        try:
+            from app.core.langgraph.tools.faq_tool import faq_tool
+
+            # Call the FAQTool with the arguments
+            faq_response = await faq_tool._arun(
+                query=query,
+                max_results=max_results,
+                min_confidence=min_confidence,
+                include_outdated=tool_args.get('include_outdated', False)
+            )
+
+            # Parse the JSON response
+            import json
+            try:
+                faq_result = json.loads(faq_response) if isinstance(faq_response, str) else faq_response
+            except (json.JSONDecodeError, TypeError):
+                faq_result = {'success': False, 'error': 'Failed to parse FAQ response', 'raw_response': str(faq_response)}
+
+            success = faq_result.get('success', False)
+            match_count = faq_result.get('match_count', 0)
+
+            rag_step_log(
+                step=83,
+                step_id='RAG.golden.faqtool.faq.query.query.golden.set',
+                node_label='FAQQuery',
+                request_id=request_id,
+                query=query[:100] if query else '',
+                match_count=match_count,
+                min_confidence=min_confidence,
+                success=success,
+                processing_stage="completed"
+            )
+
+        except Exception as e:
+            rag_step_log(
+                step=83,
+                step_id='RAG.golden.faqtool.faq.query.query.golden.set',
+                node_label='FAQQuery',
+                request_id=request_id,
+                error=str(e),
+                processing_stage="error"
+            )
+            faq_result = {
+                'success': False,
+                'error': str(e),
+                'matches': [],
+                'match_count': 0,
+                'message': 'Si è verificato un errore durante la query FAQ.'
+            }
+
+        # Build result with preserved context
+        result = {
+            **ctx,
+            'faq_results': faq_result,
+            'query_result': faq_result,  # Alias for compatibility
+            'matches': faq_result.get('matches', []),
+            'match_count': faq_result.get('match_count', 0),
+            'query_metadata': {
+                'query': query,
+                'max_results': max_results,
+                'min_confidence': min_confidence,
+                'include_outdated': tool_args.get('include_outdated', False),
+                'tool_call_id': tool_call_id
+            },
+            'tool_call_id': tool_call_id,
+            'next_step': 'tool_results',  # Routes to Step 99 per Mermaid (FAQQuery → ToolResults)
+            'request_id': request_id
+        }
+
         return result
 
 def step_117__faqfeedback(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

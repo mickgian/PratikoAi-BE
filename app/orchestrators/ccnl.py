@@ -11,22 +11,89 @@ except Exception:  # pragma: no cover
     def rag_step_log(**kwargs): return None
     def rag_step_timer(*args, **kwargs): return nullcontext()
 
-def step_81__ccnlquery(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_81__ccnlquery(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 81 — CCNLTool.ccnl_query Query labor agreements
     ID: RAG.ccnl.ccnltool.ccnl.query.query.labor.agreements
     Type: process | Category: ccnl | Node: CCNLQuery
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that executes on-demand CCNL (Italian Collective Labor Agreement) queries
+    when the LLM calls the CCNLTool. Uses CCNLTool for querying labor agreements, salary calculations,
+    leave entitlements, and compliance information. Routes to Step 99 (ToolResults).
     """
-    with rag_step_timer(81, 'RAG.ccnl.ccnltool.ccnl.query.query.labor.agreements', 'CCNLQuery', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(81, 'RAG.ccnl.ccnltool.ccnl.query.query.labor.agreements', 'CCNLQuery',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=81, step_id='RAG.ccnl.ccnltool.ccnl.query.query.labor.agreements', node_label='CCNLQuery',
-                     category='ccnl', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=81, step_id='RAG.ccnl.ccnltool.ccnl.query.query.labor.agreements', node_label='CCNLQuery',
-                     processing_stage="completed")
+                     category='ccnl', type='process', request_id=request_id, processing_stage="started")
+
+        # Extract tool arguments
+        tool_args = ctx.get('tool_args', {})
+        tool_call_id = ctx.get('tool_call_id')
+        query_type = tool_args.get('query_type', 'search')
+
+        # Execute CCNL query using CCNLTool
+        try:
+            from app.core.langgraph.tools.ccnl_tool import ccnl_tool
+
+            # Call the CCNLTool with the arguments
+            ccnl_response = await ccnl_tool._arun(**tool_args)
+
+            # Parse the JSON response
+            import json
+            try:
+                ccnl_result = json.loads(ccnl_response) if isinstance(ccnl_response, str) else ccnl_response
+            except (json.JSONDecodeError, TypeError):
+                ccnl_result = {'success': False, 'error': 'Failed to parse CCNL response', 'raw_response': str(ccnl_response)}
+
+            success = ccnl_result.get('success', False)
+
+            rag_step_log(
+                step=81,
+                step_id='RAG.ccnl.ccnltool.ccnl.query.query.labor.agreements',
+                node_label='CCNLQuery',
+                request_id=request_id,
+                query_type=query_type,
+                sector=tool_args.get('sector'),
+                success=success,
+                processing_stage="completed"
+            )
+
+        except Exception as e:
+            rag_step_log(
+                step=81,
+                step_id='RAG.ccnl.ccnltool.ccnl.query.query.labor.agreements',
+                node_label='CCNLQuery',
+                request_id=request_id,
+                error=str(e),
+                processing_stage="error"
+            )
+            ccnl_result = {
+                'success': False,
+                'error': str(e),
+                'message': 'Si è verificato un errore durante la query CCNL.'
+            }
+
+        # Build result with preserved context
+        result = {
+            **ctx,
+            'ccnl_results': ccnl_result,
+            'query_result': ccnl_result,  # Alias for compatibility
+            'query_type': query_type,
+            'sector': tool_args.get('sector'),
+            'query_metadata': {
+                'query_type': query_type,
+                'sector': tool_args.get('sector'),
+                'job_category': tool_args.get('job_category'),
+                'tool_call_id': tool_call_id
+            },
+            'tool_call_id': tool_call_id,
+            'next_step': 'tool_results',  # Routes to Step 99 per Mermaid (CCNLQuery → PostgresQuery → CCNLCalc → ToolResults, but collapsed)
+            'request_id': request_id
+        }
+
         return result
 
 def step_100__ccnlcalc(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

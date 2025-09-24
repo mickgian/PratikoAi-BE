@@ -46,16 +46,15 @@ Top candidates:
 
 Args:
     provider...
-3) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
+3) app/orchestrators/providers.py:1027 — app.orchestrators.providers.step_72__get_failover_provider (score 0.48)
+   Evidence: Score 0.48, RAG STEP 72 — Get FAILOVER provider
+ID: RAG.providers.get.failover.provider
+Type...
+4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
    Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
 context enri...
-4) app/core/langgraph/graph.py:495 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.45)
+5) app/core/langgraph/graph.py:495 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.45)
    Evidence: Score 0.45, Get the optimal LLM provider for the given messages.
-
-Args:
-    messages: List o...
-5) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.43)
-   Evidence: Score 0.43, Convenience function to get an optimal LLM provider.
 
 Args:
     messages: List o...

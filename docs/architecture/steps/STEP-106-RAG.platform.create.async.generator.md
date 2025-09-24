@@ -43,19 +43,22 @@ Top candidates:
    Evidence: Score 0.29, RAG STEP 106 — Create async generator
 ID: RAG.platform.create.async.generator
 Ty...
-2) app/models/ccnl_data.py:813 — app.models.ccnl_data.create_ccnl_id (score 0.26)
-   Evidence: Score 0.26, Create standardized CCNL ID.
-3) app/core/database.py:10 — app.core.database.get_async_session (score 0.26)
-   Evidence: Score 0.26, Get async database session.
-4) app/models/regulatory_documents.py:310 — app.models.regulatory_documents.create_document_id (score 0.26)
-   Evidence: Score 0.26, Create standardized document ID.
+2) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.27)
+   Evidence: Score 0.27, Create a new FAQ entry.
+
+Requires admin privileges.
+3) app/api/v1/auth.py:265 — app.api.v1.auth.create_session (score 0.26)
+   Evidence: Score 0.26, Create a new chat session for the authenticated user.
 
 Args:
-    source: Source authority
-    documen...
-5) app/orchestrators/providers.py:810 — app.orchestrators.providers.step_57__create_provider (score 0.26)
-   Evidence: Score 0.26, RAG STEP 57 — Create provider instance
-ID: RAG.providers.create.provider.instanc...
+    user: The authe...
+4) app/api/v1/payments.py:35 — app.api.v1.payments.create_customer (score 0.26)
+   Evidence: Score 0.26, Create a Stripe customer for the user.
+
+Args:
+    request: FastAPI request objec...
+5) app/models/ccnl_data.py:813 — app.models.ccnl_data.create_ccnl_id (score 0.26)
+   Evidence: Score 0.26, Create standardized CCNL ID.
 
 Notes:
 - Weak or missing implementation

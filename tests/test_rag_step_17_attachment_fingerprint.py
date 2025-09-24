@@ -288,8 +288,8 @@ class TestRAGStep17Integration:
 
     @pytest.mark.asyncio
     @patch('app.orchestrators.preflight.rag_step_log')
-    async def test_step_17_routes_to_step_19(self, mock_rag_log):
-        """Test Step 17: Routes to Step 19 (attachments present check)."""
+    async def test_step_17_routes_to_step_18(self, mock_rag_log):
+        """Test Step 17: Routes to Step 18 (QuerySig) per Mermaid diagram."""
         from app.orchestrators.preflight import step_17__attachment_fingerprint
 
         attachments = [
@@ -303,9 +303,9 @@ class TestRAGStep17Integration:
 
         result = await step_17__attachment_fingerprint(messages=[], ctx=ctx)
 
-        # Should route to Step 19
+        # Should route to Step 18 per Mermaid: AttachmentFingerprint → QuerySig
         assert result['hashes_computed'] is True
-        assert result['next_step'] == 'attachments_present_check'  # Step 19
+        assert result['next_step'] == 'query_sig'  # Step 18
 
     @pytest.mark.asyncio
     @patch('app.orchestrators.preflight.rag_step_log')

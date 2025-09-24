@@ -36,10 +36,28 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.28)
+1) app/api/v1/chatbot.py:42 — app.api.v1.chatbot.chat (score 0.29)
+   Evidence: Score 0.29, Process a chat request using LangGraph.
+
+Args:
+    request: The FastAPI request ...
+2) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.28)
+   Evidence: Score 0.28, Process a chat request using LangGraph with streaming response.
+
+Args:
+    reque...
+3) app/api/v1/chatbot.py:247 — app.api.v1.chatbot.clear_chat_history (score 0.28)
+   Evidence: Score 0.28, Clear all messages for a session.
+
+Args:
+    request: The FastAPI request object...
+4) app/orchestrators/platform.py:14 — app.orchestrators.platform.step_1__validate_request (score 0.28)
+   Evidence: Score 0.28, RAG STEP 1 — ChatbotController.chat Validate request and authenticate
+ID: RAG.pl...
+5) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.28)
    Evidence: Score 0.28, Validate the message content.
 
 Args:
@@ -47,14 +65,6 @@ Args:
 
 Returns:
   ...
-2) feature-flags/feature_flag_service.py:179 — feature-flags.feature_flag_service.FlagRequest.validate_flag_id (score 0.28)
-   Evidence: Score 0.28, method: validate_flag_id
-3) app/api/v1/italian.py:38 — app.api.v1.italian.TaxCalculationRequest.validate_tax_year (score 0.27)
-   Evidence: Score 0.27, method: validate_tax_year
-4) app/api/v1/data_export.py:69 — app.api.v1.data_export.CreateExportRequest.validate_future_dates (score 0.27)
-   Evidence: Score 0.27, method: validate_future_dates
-5) app/api/v1/data_export.py:75 — app.api.v1.data_export.CreateExportRequest.validate_date_range (score 0.27)
-   Evidence: Score 0.27, method: validate_date_range
 
 Notes:
 - Weak or missing implementation

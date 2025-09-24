@@ -48,14 +48,12 @@ ID: RAG.platform.fetch.and.parse.sources
 
 Returns:
     List of traces...
-3) app/orchestrators/docs.py:1111 — app.orchestrators.docs.step_134__parse_docs (score 0.26)
-   Evidence: Score 0.26, RAG STEP 134 — Extract text and metadata
-ID: RAG.docs.extract.text.and.metadata
-...
-4) app/services/data_sources_manager.py:63 — app.services.data_sources_manager.DataSourcesManager.__init__ (score 0.26)
-   Evidence: Score 0.26, method: __init__
-5) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.25)
-   Evidence: Score 0.25, Analyze distribution of precedent values in decisions.
+3) test_rss_feeds.py:101 — test_rss_feeds.main (score 0.26)
+   Evidence: Score 0.26, Main testing function.
+4) app/api/v1/regulatory.py:544 — app.api.v1.regulatory.get_regulatory_sources (score 0.26)
+   Evidence: Score 0.26, Get list of available regulatory sources and statistics.
+5) test_rss_feeds.py:19 — test_rss_feeds.test_feed_parsing (score 0.26)
+   Evidence: Score 0.26, Test RSS feed parsing functionality.
 
 Notes:
 - Weak or missing implementation

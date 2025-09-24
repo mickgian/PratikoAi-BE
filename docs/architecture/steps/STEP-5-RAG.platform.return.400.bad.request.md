@@ -46,12 +46,14 @@ Top candidates:
 
 Attributes:
     messages: List of messages in ...
-3) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.19)
+3) app/api/v1/data_export.py:243 — app.api.v1.data_export.request_data_export (score 0.19)
+   Evidence: Score 0.19, Request a comprehensive data export.
+
+Creates a new data export request that wil...
+4) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.19)
    Evidence: Score 0.19, Request model for FAQ queries.
-4) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.19)
+5) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.19)
    Evidence: Score 0.19, Request model for creating FAQ entries.
-5) app/api/v1/faq.py:69 — app.api.v1.faq.FAQUpdateRequest (score 0.19)
-   Evidence: Score 0.19, Request model for updating FAQ entries.
 
 Notes:
 - Weak or missing implementation

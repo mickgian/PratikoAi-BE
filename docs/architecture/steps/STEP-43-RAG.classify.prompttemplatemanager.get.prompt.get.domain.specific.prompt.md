@@ -43,16 +43,16 @@ Top candidates:
    Evidence: Score 0.47, Get the appropriate prompt for domain-action combination.
 
 RAG STEP 43 — PromptT...
-2) app/services/domain_prompt_templates.py:479 — app.services.domain_prompt_templates.PromptTemplateManager.get_available_combinations (score 0.46)
+2) app/orchestrators/classify.py:208 — app.orchestrators.classify.step_31__classify_domain (score 0.46)
+   Evidence: Score 0.46, RAG STEP 31 — DomainActionClassifier.classify Rule-based classification
+ID: RAG....
+3) app/services/domain_prompt_templates.py:479 — app.services.domain_prompt_templates.PromptTemplateManager.get_available_combinations (score 0.46)
    Evidence: Score 0.46, Get all available domain-action combinations
-3) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.44)
+4) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.44)
    Evidence: Score 0.44, Load all domain-action prompt template combinations
-4) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.44)
+5) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.44)
    Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
 ID: RA...
-5) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
-   Evidence: Score 0.43, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
--...
 
 Notes:
 - Implementation exists but may not be wired correctly

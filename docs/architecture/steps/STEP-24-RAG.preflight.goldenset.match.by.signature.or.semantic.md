@@ -42,18 +42,20 @@ Top candidates:
 1) app/orchestrators/preflight.py:237 — app.orchestrators.preflight.step_24__golden_lookup (score 0.28)
    Evidence: Score 0.28, RAG STEP 24 — GoldenSet.match_by_signature_or_semantic
 ID: RAG.preflight.goldens...
-2) app/orchestrators/golden.py:50 — app.orchestrators.golden.step_25__golden_hit (score 0.26)
+2) app/api/v1/search.py:58 — app.api.v1.search.semantic_search (score 0.26)
+   Evidence: Score 0.26, Perform semantic search on Italian knowledge base.
+
+Args:
+    request: FastAPI r...
+3) app/orchestrators/golden.py:50 — app.orchestrators.golden.step_25__golden_hit (score 0.26)
    Evidence: Score 0.26, RAG STEP 25 — High confidence match? score at least 0.90
 ID: RAG.golden.high.con...
-3) app/orchestrators/golden.py:68 — app.orchestrators.golden.step_27__kbdelta (score 0.26)
+4) app/orchestrators/golden.py:68 — app.orchestrators.golden.step_27__kbdelta (score 0.26)
    Evidence: Score 0.26, RAG STEP 27 — KB newer than Golden as of or conflicting tags?
 ID: RAG.golden.kb....
-4) app/orchestrators/golden.py:86 — app.orchestrators.golden.step_28__serve_golden (score 0.26)
+5) app/orchestrators/golden.py:86 — app.orchestrators.golden.step_28__serve_golden (score 0.26)
    Evidence: Score 0.26, RAG STEP 28 — Serve Golden answer with citations
 ID: RAG.golden.serve.golden.ans...
-5) app/orchestrators/golden.py:122 — app.orchestrators.golden.step_83__faqquery (score 0.26)
-   Evidence: Score 0.26, RAG STEP 83 — FAQTool.faq_query Query Golden Set
-ID: RAG.golden.faqtool.faq.quer...
 
 Notes:
 - Weak or missing implementation

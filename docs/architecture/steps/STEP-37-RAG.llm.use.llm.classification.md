@@ -36,39 +36,37 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/llm/cost_calculator.py:281 — app.core.llm.cost_calculator.CostCalculator.should_use_cache (score 0.29)
+1) app/orchestrators/llm.py:179 — app.orchestrators.llm.step_37__use_llm (score 0.32)
+   Evidence: Score 0.32, RAG STEP 37 — Use LLM classification
+ID: RAG.llm.use.llm.classification
+Type: pr...
+2) app/core/llm/cost_calculator.py:281 — app.core.llm.cost_calculator.CostCalculator.should_use_cache (score 0.29)
    Evidence: Score 0.29, Determine if caching would be beneficial for this query.
 
 Args:
     cost_estimat...
-2) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.27)
+3) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.27)
    Evidence: Score 0.27, Get the global LLM factory instance.
 
 Returns:
     LLM factory instance
-3) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.26)
-   Evidence: Score 0.26, Decorator to cache LLM responses based on messages and model.
-
-Args:
-    ttl: Ti...
-4) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.26)
-   Evidence: Score 0.26, Initialize the LLM provider.
-
-Args:
-    api_key: API key for the provider
-    mo...
-5) app/core/llm/cost_calculator.py:34 — app.core.llm.cost_calculator.CostCalculator.__init__ (score 0.26)
-   Evidence: Score 0.26, Initialize cost calculator.
+4) app/orchestrators/llm.py:14 — app.orchestrators.llm.step_36__llmbetter (score 0.27)
+   Evidence: Score 0.27, RAG STEP 36 — LLM better than rule-based?
+ID: RAG.llm.llm.better.than.rule.based...
+5) app/orchestrators/llm.py:320 — app.orchestrators.llm.step_67__llmsuccess (score 0.27)
+   Evidence: Score 0.27, RAG STEP 67 — LLM call successful?
+ID: RAG.llm.llm.call.successful
+Type: decisio...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for UseLLM
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/orchestrators/facts.py:490 — app.orchestrators.facts.step_98__to_tool_results (score 0.30)
+1) app/orchestrators/facts.py:554 — app.orchestrators.facts.step_98__to_tool_results (score 0.30)
    Evidence: Score 0.30, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
 2) app/orchestrators/platform.py:2245 — app.orchestrators.platform.step_99__tool_results (score 0.30)
@@ -55,10 +55,10 @@ ID: RAG.kb.knowledgesearch...
 Args:
     report: The report dictionary.
   ...
-5) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.26)
-   Evidence: Score 0.26, RAG STEP 30 — Return ChatResponse
-ID: RAG.response.return.chatresponse
-Type: pro...
+5) app/orchestrators/cache.py:654 — app.orchestrators.cache.step_66__return_cached (score 0.26)
+   Evidence: Score 0.26, RAG STEP 66 — Return cached response
+ID: RAG.cache.return.cached.response
+Type: ...
 
 Notes:
 - Weak or missing implementation

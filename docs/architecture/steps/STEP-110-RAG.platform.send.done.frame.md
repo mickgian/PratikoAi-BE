@@ -43,17 +43,17 @@ Top candidates:
    Evidence: Score 0.30, RAG STEP 110 — Send DONE frame
 ID: RAG.platform.send.done.frame
 Type: process | ...
-2) app/services/ccnl_notification_service.py:248 — app.services.ccnl_notification_service.CCNLNotificationService.send_notification (score 0.26)
+2) app/api/v1/metrics.py:200 — app.api.v1.metrics.send_email_report (score 0.26)
+   Evidence: Score 0.26, Send metrics report via email.
+3) app/services/ccnl_notification_service.py:248 — app.services.ccnl_notification_service.CCNLNotificationService.send_notification (score 0.26)
    Evidence: Score 0.26, Send notification through specified channels.
-3) app/services/scrapers/cassazione_scheduler.py:559 — app.services.scrapers.cassazione_scheduler.CassazioneScheduler._should_send_notification (score 0.26)
+4) app/services/scheduler_service.py:249 — app.services.scheduler_service.send_metrics_report_task (score 0.26)
+   Evidence: Score 0.26, Scheduled task to send metrics reports.
+5) app/services/scrapers/cassazione_scheduler.py:559 — app.services.scrapers.cassazione_scheduler.CassazioneScheduler._should_send_notification (score 0.26)
    Evidence: Score 0.26, Check if notification should be sent (with throttling).
 
 Args:
     job: Schedule...
-4) app/services/ccnl_notification_service.py:292 — app.services.ccnl_notification_service.CCNLNotificationService._send_via_channel (score 0.25)
-   Evidence: Score 0.25, Send notification via specific channel (mock implementation).
-5) failure-recovery-system/decision_tree_engine.py:1628 — failure-recovery-system.decision_tree_engine.DecisionTreeEngine._execute_send_alerts (score 0.25)
-   Evidence: Score 0.25, Execute alert sending.
 
 Notes:
 - Weak or missing implementation

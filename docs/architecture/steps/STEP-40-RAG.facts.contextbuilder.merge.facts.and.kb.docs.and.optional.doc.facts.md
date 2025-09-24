@@ -48,12 +48,13 @@ Args:
    Evidence: Score 0.31, Convenience function to merge context from facts, KB docs, and document facts.
 
 ...
-3) app/services/context_builder_merge.py:53 — app.services.context_builder_merge.ContextBuilderMerge.__init__ (score 0.30)
+3) app/orchestrators/facts.py:150 — app.orchestrators.facts.step_40__build_context (score 0.30)
+   Evidence: Score 0.30, RAG STEP 40 — ContextBuilder.merge facts and KB docs and optional doc facts
+ID: ...
+4) app/services/context_builder_merge.py:53 — app.services.context_builder_merge.ContextBuilderMerge.__init__ (score 0.30)
    Evidence: Score 0.30, method: __init__
-4) app/services/context_builder_merge.py:218 — app.services.context_builder_merge.ContextBuilderMerge._create_context_parts (score 0.29)
+5) app/services/context_builder_merge.py:218 — app.services.context_builder_merge.ContextBuilderMerge._create_context_parts (score 0.29)
    Evidence: Score 0.29, Convert inputs to ContextPart objects.
-5) app/services/context_builder_merge.py:289 — app.services.context_builder_merge.ContextBuilderMerge._deduplicate_content (score 0.29)
-   Evidence: Score 0.29, Remove duplicate or highly similar content.
 
 Notes:
 - Implementation exists but may not be wired correctly

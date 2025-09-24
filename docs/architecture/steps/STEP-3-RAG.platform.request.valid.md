@@ -43,21 +43,25 @@ Top candidates:
    Evidence: Score 0.31, RAG STEP 3 — Request valid?
 ID: RAG.platform.request.valid
 Type: decision | Cate...
-2) app/core/security/request_signing.py:148 — app.core.security.request_signing.RequestSigner._is_timestamp_valid (score 0.29)
+2) app/orchestrators/preflight.py:502 — app.orchestrators.preflight.step_85__valid_attachments_check (score 0.30)
+   Evidence: Score 0.30, RAG STEP 85 — Valid attachments?
+ID: RAG.preflight.valid.attachments
+Type: decis...
+3) app/core/security/request_signing.py:148 — app.core.security.request_signing.RequestSigner._is_timestamp_valid (score 0.29)
    Evidence: Score 0.29, Check if timestamp is within acceptable range.
 
 Args:
     timestamp_str: Unix ti...
-3) app/orchestrators/kb.py:14 — app.orchestrators.kb.step_26__kbcontext_check (score 0.27)
-   Evidence: Score 0.27, RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes
-ID: RAG.k...
-4) version-management/cli/version_cli.py:227 — version-management.cli.version_cli.VersionCLI.check_compatibility (score 0.27)
-   Evidence: Score 0.27, Check compatibility for a version deployment.
-5) app/core/hash_gate.py:26 — app.core.hash_gate.HashGate.check_delta (score 0.26)
-   Evidence: Score 0.26, Check if this delta has been seen before.
+4) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.27)
+   Evidence: Score 0.27, Health check endpoint.
 
-Args:
-    delta: The delta content to...
+Returns:
+    dict: Health status information.
+5) app/main.py:157 — app.main.health_check (score 0.27)
+   Evidence: Score 0.27, Health check endpoint with environment-specific information.
+
+Returns:
+    Dict[...
 
 Notes:
 - Implementation exists but may not be wired correctly

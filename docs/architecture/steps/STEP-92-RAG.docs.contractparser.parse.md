@@ -36,29 +36,35 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.40
 
 Top candidates:
-1) app/orchestrators/docs.py:1111 — app.orchestrators.docs.step_134__parse_docs (score 0.30)
-   Evidence: Score 0.30, RAG STEP 134 — Extract text and metadata
-ID: RAG.docs.extract.text.and.metadata
-...
-2) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.30)
-   Evidence: Score 0.30, Convert APIContract to OpenAPI specification.
-3) app/services/legal_document_analyzer.py:883 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_parties (score 0.30)
-   Evidence: Score 0.30, Extract parties from contract
-4) app/services/legal_document_analyzer.py:905 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_object (score 0.30)
-   Evidence: Score 0.30, Extract contract object/purpose
-5) app/services/legal_document_analyzer.py:919 — app.services.legal_document_analyzer.ItalianLegalDocumentAnalyzer._extract_contract_price (score 0.30)
-   Evidence: Score 0.30, Extract contract price
+1) app/orchestrators/docs.py:498 — app.orchestrators.docs.step_91__f24_parser (score 0.40)
+   Evidence: Score 0.40, RAG STEP 91 — F24Parser.parse_ocr Layout aware OCR
+ID: RAG.docs.f24parser.parse....
+2) app/orchestrators/docs.py:385 — app.orchestrators.docs.step_90__fattura_parser (score 0.38)
+   Evidence: Score 0.38, RAG STEP 90 — FatturaParser.parse_xsd XSD validation
+ID: RAG.docs.fatturaparser....
+3) app/orchestrators/docs.py:608 — app.orchestrators.docs.step_92__contract_parser (score 0.38)
+   Evidence: Score 0.38, RAG STEP 92 — ContractParser.parse
+ID: RAG.docs.contractparser.parse
+Type: proce...
+4) app/orchestrators/docs.py:733 — app.orchestrators.docs.step_93__payslip_parser (score 0.38)
+   Evidence: Score 0.38, RAG STEP 93 — PayslipParser.parse
+ID: RAG.docs.payslipparser.parse
+Type: process...
+5) app/orchestrators/docs.py:313 — app.orchestrators.docs.step_89__doc_type (score 0.35)
+   Evidence: Score 0.35, RAG STEP 89 — Document type?
+ID: RAG.docs.document.type
+Type: decision | Categor...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for ContractParser
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 - Test document parsing and validation
 <!-- AUTO-AUDIT:END -->

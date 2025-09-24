@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CanonicalizeFacts` (AtomicFactsExtractor.canonicalize Normalize dates amounts rates).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/facts.py:step_16__canonicalize_facts`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Thin async orchestrator that validates atomic facts from Step 14 are properly canonicalized. Canonicalization happens within AtomicFactsExtractor.extract() using internal _canonicalize_* methods (numbers, dates, entities). This step validates the canonicalization result and routes to Step 17 (AttachmentFingerprint).
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,13 +19,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests (monetary amounts, dates, legal entities, empty facts, multiple fact types, Italian number formats, routing)
+- [x] Integration tests (Step 14→16→17 flow, context preservation)
+- [x] Implementation changes (thin async orchestrator in app/orchestrators/facts.py)
+- [x] Observability: add structured log line
   `RAG STEP 16 (RAG.facts.atomicfactsextractor.canonicalize.normalize.dates.amounts.rates): AtomicFactsExtractor.canonicalize Normalize dates amounts rates | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config if needed (none required - validation step)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

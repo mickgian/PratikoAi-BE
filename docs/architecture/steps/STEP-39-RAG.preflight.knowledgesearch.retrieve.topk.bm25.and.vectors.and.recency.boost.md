@@ -36,19 +36,22 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/services/knowledge_search_service.py:442 — app.services.knowledge_search_service.KnowledgeSearchService._calculate_recency_boost (score 0.30)
+1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.31)
+   Evidence: Score 0.31, Convenience function to retrieve top-k knowledge items.
+
+Args:
+    query_data: Q...
+2) app/services/knowledge_search_service.py:442 — app.services.knowledge_search_service.KnowledgeSearchService._calculate_recency_boost (score 0.30)
    Evidence: Score 0.30, Calculate recency boost based on document age.
-2) app/services/hybrid_search_engine.py:495 — app.services.hybrid_search_engine.HybridSearchEngine._get_recency_boost (score 0.28)
+3) app/services/hybrid_search_engine.py:495 — app.services.hybrid_search_engine.HybridSearchEngine._get_recency_boost (score 0.28)
    Evidence: Score 0.28, Get boost based on content recency
-3) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.28)
+4) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.28)
    Evidence: Score 0.28, Combine results from BM25 and vector search, removing duplicates.
-4) app/services/knowledge_search_service.py:100 — app.services.knowledge_search_service.KnowledgeSearchService.__init__ (score 0.27)
-   Evidence: Score 0.27, Initialize knowledge search service.
-5) app/services/knowledge_search_service.py:80 — app.services.knowledge_search_service.SearchResult.to_dict (score 0.26)
-   Evidence: Score 0.26, Convert to dictionary for structured logging.
+5) test_knowledge_search.py:58 — test_knowledge_search.test_italian_search (score 0.27)
+   Evidence: Score 0.27, Test Italian full-text search functionality.
 
 Notes:
 - Implementation exists but may not be wired correctly

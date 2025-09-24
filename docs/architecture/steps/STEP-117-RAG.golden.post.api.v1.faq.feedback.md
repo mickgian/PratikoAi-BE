@@ -36,30 +36,29 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.55
+Status: 🟡  |  Confidence: 0.55
 
 Top candidates:
-1) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.55)
+1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.55)
+   Evidence: Score 0.55, Approve, reject, or request revision for a generated FAQ
+2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.55)
+   Evidence: Score 0.55, Publish an approved FAQ to make it available to users
+3) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.55)
    Evidence: Score 0.55, RAG STEP 117 — POST /api/v1/faq/feedback
 ID: RAG.golden.post.api.v1.faq.feedback...
-2) app/api/v1/faq.py:77 — app.api.v1.faq.FAQFeedbackRequest (score 0.51)
+4) app/api/v1/faq.py:187 — app.api.v1.faq.submit_feedback (score 0.54)
+   Evidence: Score 0.54, Submit user feedback on FAQ responses.
+
+Feedback is used to improve FAQ quality ...
+5) app/api/v1/faq.py:77 — app.api.v1.faq.FAQFeedbackRequest (score 0.51)
    Evidence: Score 0.51, Request model for FAQ feedback.
-3) app/api/v1/faq.py:1 — app.api.v1.faq (score 0.50)
-   Evidence: Score 0.50, FAQ API endpoints for the Intelligent FAQ System.
-
-This module provides REST API...
-4) app/api/v1/faq_automation.py:1 — app.api.v1.faq_automation (score 0.49)
-   Evidence: Score 0.49, FAQ Automation API Endpoints.
-
-Admin dashboard and management endpoints for the ...
-5) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.47)
-   Evidence: Score 0.47, Request model for FAQ queries.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Partial implementation identified
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Complete partial implementation
+- Add missing error handling
+- Expand test coverage
+- Add performance benchmarks if needed
 <!-- AUTO-AUDIT:END -->

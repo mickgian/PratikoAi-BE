@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ExtractFacts` (AtomicFactsExtractor.extract Extract atomic facts).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/facts.py:step_14__extract_facts`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Thin async orchestrator wrapping AtomicFactsExtractor service. Extracts Italian monetary amounts, dates, legal entities, professional categories, and geographic info from user queries. Routes to Step 16 (CanonicalizeFacts).
 
 ## Differences (Blueprint vs Current)
 - _TBD_
@@ -19,13 +19,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - _TBD_
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests (monetary amounts, dates, legal entities, professional categories, geographic info, empty query, complex query, routing)
+- [x] Integration tests (Step 13→14→16 flow, context preservation)
+- [x] Implementation changes (thin async orchestrator in app/orchestrators/facts.py)
+- [x] Observability: add structured log line
   `RAG STEP 14 (RAG.facts.atomicfactsextractor.extract.extract.atomic.facts): AtomicFactsExtractor.extract Extract atomic facts | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config if needed (none required - core functionality)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

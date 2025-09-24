@@ -52,11 +52,15 @@ Type: decision | Category: ro...
 
 Returns:
     RoutingStrategy: ...
-4) app/orchestrators/facts.py:242 — app.orchestrators.facts.step_49__route_strategy (score 0.26)
-   Evidence: Score 0.26, RAG STEP 49 — LLMFactory.get_optimal_provider Apply routing strategy
-ID: RAG.fac...
-5) app/schemas/privacy.py:191 — app.schemas.privacy.validate_consent_type (score 0.26)
-   Evidence: Score 0.26, Validate consent type string.
+4) app/api/v1/data_sources.py:256 — app.api.v1.data_sources.get_sources_by_type (score 0.26)
+   Evidence: Score 0.26, Get all data sources of a specific type.
+
+Available types:
+- government: Officia...
+5) app/orchestrators/docs.py:313 — app.orchestrators.docs.step_89__doc_type (score 0.26)
+   Evidence: Score 0.26, RAG STEP 89 — Document type?
+ID: RAG.docs.document.type
+Type: decision | Categor...
 
 Notes:
 - Implementation exists but may not be wired correctly

@@ -36,21 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.44
+Status: 🔌  |  Confidence: 0.47
 
 Top candidates:
-1) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.44)
+1) app/orchestrators/classify.py:208 — app.orchestrators.classify.step_31__classify_domain (score 0.47)
+   Evidence: Score 0.47, RAG STEP 31 — DomainActionClassifier.classify Rule-based classification
+ID: RAG....
+2) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.44)
    Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
 ID: RA...
-2) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.40)
-   Evidence: Score 0.40, Calculate confidence scores for each domain
-3) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.40)
-   Evidence: Score 0.40, Calculate confidence scores for each action
-4) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.40)
-   Evidence: Score 0.40, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
--...
-5) app/services/domain_prompt_templates.py:29 — app.services.domain_prompt_templates.PromptTemplateManager._load_templates (score 0.37)
-   Evidence: Score 0.37, Load all domain-action prompt template combinations
+3) app/orchestrators/classify.py:315 — app.orchestrators.classify.step_32__calc_scores (score 0.44)
+   Evidence: Score 0.44, RAG STEP 32 — Calculate domain and action scores Match Italian keywords
+ID: RAG....
+4) app/orchestrators/classify.py:675 — app.orchestrators.classify.step_35__llm_fallback (score 0.44)
+   Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
+ID: RA...
+5) app/orchestrators/classify.py:431 — app.orchestrators.classify.step_33__confidence_check (score 0.40)
+   Evidence: Score 0.40, RAG STEP 33 — Confidence at least threshold?
+ID: RAG.classify.confidence.at.leas...
 
 Notes:
 - Implementation exists but may not be wired correctly

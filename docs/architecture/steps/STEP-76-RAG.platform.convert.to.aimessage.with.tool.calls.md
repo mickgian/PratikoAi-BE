@@ -36,25 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/kb.py:32 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
+1) app/orchestrators/platform.py:1782 — app.orchestrators.platform.step_76__convert_aimsg (score 0.28)
+   Evidence: Score 0.28, RAG STEP 76 — Convert to AIMessage with tool_calls
+ID: RAG.platform.convert.to.a...
+2) app/orchestrators/kb.py:32 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
    Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand
 ID: RAG.kb.knowledgesearch...
-2) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
+3) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
    Evidence: Score 0.25, Convert internal SearchResponse to API model.
-3) app/orchestrators/facts.py:490 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
+4) app/orchestrators/facts.py:554 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
    Evidence: Score 0.25, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-4) app/orchestrators/platform.py:2245 — app.orchestrators.platform.step_99__tool_results (score 0.25)
-   Evidence: Score 0.25, RAG STEP 99 — Return to tool caller
-ID: RAG.platform.return.to.tool.caller
-Type:...
-5) app/orchestrators/routing.py:14 — app.orchestrators.routing.step_79__tool_type (score 0.25)
-   Evidence: Score 0.25, RAG STEP 79 — Tool type?
-ID: RAG.routing.tool.type
-Type: decision | Category: ro...
+5) app/orchestrators/platform.py:745 — app.orchestrators.platform.step_11__convert_messages (score 0.25)
+   Evidence: Score 0.25, RAG STEP 11 — LangGraphAgent._chat Convert to Message objects
+ID: RAG.platform.l...
 
 Notes:
 - Weak or missing implementation

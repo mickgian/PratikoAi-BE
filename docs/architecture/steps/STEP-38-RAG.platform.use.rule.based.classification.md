@@ -36,32 +36,32 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.26)
+1) app/orchestrators/platform.py:1060 — app.orchestrators.platform.step_38__use_rule_based (score 0.34)
+   Evidence: Score 0.34, RAG STEP 38 — Use rule-based classification
+ID: RAG.platform.use.rule.based.clas...
+2) app/orchestrators/llm.py:179 — app.orchestrators.llm.step_37__use_llm (score 0.26)
+   Evidence: Score 0.26, RAG STEP 37 — Use LLM classification
+ID: RAG.llm.use.llm.classification
+Type: pr...
+3) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.26)
    Evidence: Score 0.26, Track domain-action classification usage and metrics.
 
 Args:
     domain: The cla...
-2) app/services/document_uploader.py:277 — app.services.document_uploader.DocumentUploader._signature_based_scan (score 0.26)
+4) app/services/document_uploader.py:277 — app.services.document_uploader.DocumentUploader._signature_based_scan (score 0.26)
    Evidence: Score 0.26, Signature-based malware detection
-3) rollback-system/health_monitor.py:645 — rollback-system.health_monitor.HealthMonitor._evaluate_rule_condition (score 0.26)
+5) rollback-system/health_monitor.py:645 — rollback-system.health_monitor.HealthMonitor._evaluate_rule_condition (score 0.26)
    Evidence: Score 0.26, Evaluate a monitoring rule condition.
-4) app/core/llm/cost_calculator.py:281 — app.core.llm.cost_calculator.CostCalculator.should_use_cache (score 0.25)
-   Evidence: Score 0.25, Determine if caching would be beneficial for this query.
-
-Args:
-    cost_estimat...
-5) app/services/domain_action_classifier.py:633 — app.services.domain_action_classifier.DomainActionClassifier.get_classification_stats (score 0.25)
-   Evidence: Score 0.25, Get statistics about the classification patterns
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for UseRuleBased
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

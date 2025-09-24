@@ -36,22 +36,23 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.20
+Status: ❌  |  Confidence: 0.21
 
 Top candidates:
-1) app/services/italian_tax_calculator.py:68 — app.services.italian_tax_calculator.InvalidIncomeError (score 0.20)
+1) app/orchestrators/platform.py:2176 — app.orchestrators.platform.step_86__tool_error (score 0.21)
+   Evidence: Score 0.21, RAG STEP 86 — Return tool error Invalid file
+ID: RAG.platform.return.tool.error....
+2) app/services/italian_tax_calculator.py:68 — app.services.italian_tax_calculator.InvalidIncomeError (score 0.20)
    Evidence: Score 0.20, Raised when income value is invalid.
-2) app/services/italian_tax_calculator.py:73 — app.services.italian_tax_calculator.InvalidLocationError (score 0.20)
+3) app/services/italian_tax_calculator.py:73 — app.services.italian_tax_calculator.InvalidLocationError (score 0.20)
    Evidence: Score 0.20, Raised when location cannot be found or is invalid.
-3) app/services/italian_tax_calculator.py:78 — app.services.italian_tax_calculator.InvalidTaxTypeError (score 0.20)
+4) app/services/italian_tax_calculator.py:78 — app.services.italian_tax_calculator.InvalidTaxTypeError (score 0.20)
    Evidence: Score 0.20, Raised when tax type is not supported.
-4) evals/main.py:64 — evals.main.print_error (score 0.19)
+5) evals/main.py:64 — evals.main.print_error (score 0.19)
    Evidence: Score 0.19, Print an error message with colors.
 
 Args:
     message: The message to print
-5) app/models/document.py:130 — app.models.document.Document.file_size_mb (score 0.19)
-   Evidence: Score 0.19, File size in megabytes
 
 Notes:
 - Weak or missing implementation

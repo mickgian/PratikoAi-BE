@@ -64,12 +64,13 @@ async def step_17__attachment_fingerprint(*, messages: Optional[List[Any]] = Non
         duplicate_count = len(fingerprints) - len(hash_set) if has_duplicates else 0
 
         result = {
+            **ctx,  # Preserve all context fields
             'hashes_computed': True,
             'attachment_count': len(attachments),
             'fingerprints': fingerprints,
             'has_duplicates': has_duplicates,
             'duplicate_count': duplicate_count,
-            'next_step': 'attachments_present_check',  # Routes to Step 19
+            'next_step': 'query_sig',  # Routes to Step 18 per Mermaid
             'request_id': request_id
         }
 

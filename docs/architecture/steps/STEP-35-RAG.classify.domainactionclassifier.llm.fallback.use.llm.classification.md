@@ -36,24 +36,24 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.46
+Status: 🔌  |  Confidence: 0.48
 
 Top candidates:
-1) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.46)
+1) app/orchestrators/classify.py:675 — app.orchestrators.classify.step_35__llm_fallback (score 0.48)
+   Evidence: Score 0.48, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
+ID: RA...
+2) app/orchestrators/classify.py:208 — app.orchestrators.classify.step_31__classify_domain (score 0.46)
+   Evidence: Score 0.46, RAG STEP 31 — DomainActionClassifier.classify Rule-based classification
+ID: RAG....
+3) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.46)
    Evidence: Score 0.46, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
 ID: RA...
-2) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
+4) app/orchestrators/classify.py:315 — app.orchestrators.classify.step_32__calc_scores (score 0.43)
+   Evidence: Score 0.43, RAG STEP 32 — Calculate domain and action scores Match Italian keywords
+ID: RAG....
+5) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
    Evidence: Score 0.43, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
 -...
-3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.41)
-   Evidence: Score 0.41, Calculate confidence scores for each domain
-4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.41)
-   Evidence: Score 0.41, Calculate confidence scores for each action
-5) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.37)
-   Evidence: Score 0.37, Track domain-action classification usage and metrics.
-
-Args:
-    domain: The cla...
 
 Notes:
 - Implementation exists but may not be wired correctly

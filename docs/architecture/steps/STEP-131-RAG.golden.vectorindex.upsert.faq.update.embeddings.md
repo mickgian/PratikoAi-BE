@@ -47,10 +47,10 @@ Top candidates:
    Evidence: Score 0.52, Update an existing FAQ entry with versioning.
 
 Requires admin privileges.
-4) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+4) app/orchestrators/golden.py:332 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
    Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback
 ID: RAG.golden.post.api.v1.faq.feedback...
-5) app/orchestrators/golden.py:212 — app.orchestrators.golden.step_131__vector_reindex (score 0.50)
+5) app/orchestrators/golden.py:404 — app.orchestrators.golden.step_131__vector_reindex (score 0.50)
    Evidence: Score 0.50, RAG STEP 131 — VectorIndex.upsert_faq update embeddings
 ID: RAG.golden.vectorind...
 

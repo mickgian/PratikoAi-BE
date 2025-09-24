@@ -36,26 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.52
 
 Top candidates:
-1) app/orchestrators/golden.py:32 — app.orchestrators.golden.step_23__require_doc_ingest (score 1.00)
-   Evidence: Score 1.00, RAG STEP 23 — PlannerHint.require_doc_ingest_first ingest then Golden and KB
-ID: RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb
-Type: process
+1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.52)
+   Evidence: Score 0.52, Approve, reject, or request revision for a generated FAQ
+2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.52)
+   Evidence: Score 0.52, Publish an approved FAQ to make it available to users
+3) app/orchestrators/golden.py:332 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
+   Evidence: Score 0.50, RAG STEP 117 — POST /api/v1/faq/feedback
+ID: RAG.golden.post.api.v1.faq.feedback...
+4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.48)
+   Evidence: Score 0.48, Query the FAQ system with semantic search and response variation.
+
+This endpoint...
+5) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.48)
+   Evidence: Score 0.48, Create a new FAQ entry.
+
+Requires admin privileges.
 
 Notes:
-- ✅ Implementation complete and wired correctly
-- ✅ Async orchestrator with planning coordination
-- ✅ 10/10 tests passing
-- ✅ Routes to Step 31 (ClassifyDomain) per Mermaid
-- ✅ Sets workflow flags: requires_doc_ingest_first, defer_golden_lookup, defer_kb_search
-- ✅ Pure coordination logic with no external service dependencies
+- Implementation exists but may not be wired correctly
 
-Completed TDD actions:
-- ✅ Created async orchestrator in app/orchestrators/golden.py
-- ✅ Implemented planning hint coordination with workflow flags
-- ✅ Implemented 10 comprehensive tests (unit + parity + integration)
-- ✅ Added structured observability logging
-- ✅ Verified Step 22→23→31 integration flow
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

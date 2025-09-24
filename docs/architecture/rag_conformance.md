@@ -13,7 +13,7 @@ Each step should be audited and its documentation filled during the conformance 
 - ❌ Missing: 0 steps
 
 **By Category:**
-- **facts**: 0/1 implemented
+- **golden**: 0/1 implemented
 ## Step Registry
 
 | Step | ID | Node | Type | Category | Owner | Doc |

@@ -48,7 +48,7 @@ Args:
    Evidence: Score 0.31, Convenience function to merge context from facts, KB docs, and document facts.
 
 ...
-3) app/orchestrators/facts.py:150 — app.orchestrators.facts.step_40__build_context (score 0.30)
+3) app/orchestrators/facts.py:271 — app.orchestrators.facts.step_40__build_context (score 0.30)
    Evidence: Score 0.30, RAG STEP 40 — ContextBuilder.merge facts and KB docs and optional doc facts
 ID: ...
 4) app/services/context_builder_merge.py:53 — app.services.context_builder_merge.ContextBuilderMerge.__init__ (score 0.30)

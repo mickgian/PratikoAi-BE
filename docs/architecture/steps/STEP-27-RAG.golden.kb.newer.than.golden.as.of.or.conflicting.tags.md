@@ -5,27 +5,28 @@
 **Node ID:** `KBDelta`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `KBDelta` (KB newer than Golden as of or conflicting tags?).
+Evaluates whether KB has newer content or conflicting tags compared to the Golden Set match. Routes to ServeGolden (Step 28) if no conflict, or to PreContextFromGolden (Step 29) if KB has updates that should be merged.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/services/kb_delta_decision.py:KBDeltaDecision`, `tests/test_rag_step_27_kb_delta.py:TestRAGStep27KBDelta`
+- **Paths / classes:** `app/orchestrators/golden.py:step_27__kbdelta`
 - **Status:** ✅ Implemented
-- **Behavior notes:** Implemented KBDeltaDecision class that compares KB results from STEP 26 with Golden Set metadata to determine if KB has newer or conflicting information. Includes timestamp comparison, sophisticated conflict detection logic, and structured logging. Full test coverage with 8 passing tests covering all decision scenarios.
+- **Behavior notes:** Async orchestrator that evaluates KB delta/conflict using dual-check logic: (1) timestamp comparison for newer KB content, (2) tag-based conflict detection for supersedes/obsoletes/replaces/updated indicators. Routes to Step 28 (ServeGolden) if no delta, or Step 29 (PreContextFromGolden) if conflict detected. Preserves all context from Step 26.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - graceful degradation on missing timestamps/metadata
 
 ## TDD Task List
-- [x] Unit tests (newer KB decision, older KB decision, conflicting tags, empty results, missing metadata, mixed results, structured logging, edge cases)
-- [x] Integration tests (full decision flow scenarios, error handling)
-- [x] Implementation changes (KBDeltaDecision class, comparison logic, conflict detection, decision making)
-- [x] Observability: add structured log line  
-  `RAG STEP 27 (RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags): KB newer than Golden as of or conflicting tags? | attrs={decision, should_merge_context, newer_count, conflict_count, reason, processing_stage, golden_age_days, kb_newest_age_days, conflict_types}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (no changes→serve, newer KB→merge, conflicting tags→merge, context preservation, delta metadata, logging, missing timestamps, supersedes tag)
+- [x] Parity tests (delta logic verification)
+- [x] Integration tests (Step 26→27→28/29 flow, Step 27→28 context preparation)
+- [x] Implementation changes (async orchestrator with timestamp + tag conflict checks)
+- [x] Observability: add structured log line
+  `RAG STEP 27 (RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags): KB newer than Golden as of or conflicting tags? | attrs={kb_has_delta, conflict_reason, next_step, processing_stage}`
+- [x] Feature flag / config if needed (none required - uses Step 26 output)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
@@ -43,7 +44,7 @@ Top candidates:
    Evidence: Score 0.54, Approve, reject, or request revision for a generated FAQ
 2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.54)
    Evidence: Score 0.54, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+3) app/orchestrators/golden.py:332 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
    Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback
 ID: RAG.golden.post.api.v1.faq.feedback...
 4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.49)

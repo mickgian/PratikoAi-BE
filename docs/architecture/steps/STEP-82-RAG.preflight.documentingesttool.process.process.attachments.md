@@ -36,30 +36,30 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/orchestrators/preflight.py:401 — app.orchestrators.preflight.step_82__doc_ingest (score 1.00)
-   Evidence: Score 1.00, RAG STEP 82 — DocumentIngestTool.process Process attachments
-ID: RAG.preflight.documentingesttool.process.process.attachments
-Type: process
-2) app/core/langgraph/tools/document_ingest_tool.py:63 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool (score 0.95)
-   Evidence: Score 0.95, Tool for processing document attachments in the RAG pipeline.
-3) app/core/langgraph/tools/document_ingest_tool.py:274 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._arun (score 0.90)
-   Evidence: Score 0.90, Process document attachments asynchronously.
+1) app/core/langgraph/tools/document_ingest_tool.py:50 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestInput.validate_attachments (score 0.32)
+   Evidence: Score 0.32, method: validate_attachments
+2) app/core/langgraph/tools/document_ingest_tool.py:80 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.31)
+   Evidence: Score 0.31, Initialize the document ingest tool.
+3) app/core/langgraph/tools/document_ingest_tool.py:374 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.31)
+   Evidence: Score 0.31, Synchronous wrapper (not recommended, use async version).
+4) app/core/langgraph/tools/document_ingest_tool.py:85 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._get_processor (score 0.30)
+   Evidence: Score 0.30, Get or create document processor instance.
+5) app/core/langgraph/tools/document_ingest_tool.py:91 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._validate_attachment (score 0.30)
+   Evidence: Score 0.30, Validate a single attachment.
+
+Args:
+    attachment: Attachment data dictionary
+...
 
 Notes:
-- ✅ Implementation complete and wired correctly
-- ✅ Async orchestrator wrapping DocumentIngestTool
-- ✅ DocumentIngestTool already exists in LangGraph tools
-- ✅ 10/10 tests passing
-- ✅ Routes to Step 84 (ValidateAttachments) per Mermaid
-- ✅ Supports PDF, Excel, CSV, and image files with OCR
+- Implementation exists but may not be wired correctly
+- Low confidence in symbol matching
 
-Completed TDD actions:
-- ✅ Created thin async orchestrator in app/orchestrators/preflight.py
-- ✅ Integrated with existing DocumentIngestTool
-- ✅ Implemented 10 comprehensive tests (unit + parity + integration)
-- ✅ Added structured observability logging
-- ✅ Verified error handling and edge cases
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

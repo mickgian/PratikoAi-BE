@@ -48,7 +48,7 @@ Top candidates:
 ID: RAG.ccnl.ccnltool.c...
 4) app/core/langgraph/tools/ccnl_tool.py:64 — app.core.langgraph.tools.ccnl_tool.CCNLTool (score 0.40)
    Evidence: Score 0.40, LangGraph tool for accessing CCNL (Italian Collective Labor Agreements) data.
-5) app/orchestrators/ccnl.py:32 — app.orchestrators.ccnl.step_100__ccnlcalc (score 0.40)
+5) app/orchestrators/ccnl.py:99 — app.orchestrators.ccnl.step_100__ccnlcalc (score 0.40)
    Evidence: Score 0.40, RAG STEP 100 — CCNLCalculator.calculate Perform calculations
 ID: RAG.ccnl.ccnlca...
 

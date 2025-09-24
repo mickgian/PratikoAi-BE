@@ -36,30 +36,27 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.47
 
 Top candidates:
-1) app/orchestrators/ccnl.py:14 — app.orchestrators.ccnl.step_81__ccnlquery (score 1.00)
-   Evidence: Score 1.00, RAG STEP 81 — CCNLTool.ccnl_query Query labor agreements
-ID: RAG.ccnl.ccnltool.ccnl.query.query.labor.agreements
-Type: process
-2) app/core/langgraph/tools/ccnl_tool.py:64 — app.core.langgraph.tools.ccnl_tool.CCNLTool (score 0.95)
-   Evidence: Score 0.95, LangGraph tool for accessing CCNL (Italian Collective Labor Agreements) data.
-3) app/services/ccnl_calculator_engine.py:1 — app.services.ccnl_calculator_engine (score 0.85)
-   Evidence: Score 0.85, CCNL Calculation Engine - Enhanced calculator for Italian Collective Labor Agreements.
+1) app/orchestrators/ccnl.py:14 — app.orchestrators.ccnl.step_81__ccnlquery (score 0.47)
+   Evidence: Score 0.47, RAG STEP 81 — CCNLTool.ccnl_query Query labor agreements
+ID: RAG.ccnl.ccnltool.c...
+2) app/services/ccnl_calculator_engine.py:1 — app.services.ccnl_calculator_engine (score 0.46)
+   Evidence: Score 0.46, CCNL Calculation Engine - Enhanced calculator for Italian Collective Labor Agree...
+3) app/models/ccnl_data.py:715 — app.models.ccnl_data.CCNLCalculator.__init__ (score 0.44)
+   Evidence: Score 0.44, Initialize calculator with CCNL agreement.
+4) app/core/langgraph/tools/ccnl_tool.py:64 — app.core.langgraph.tools.ccnl_tool.CCNLTool (score 0.43)
+   Evidence: Score 0.43, LangGraph tool for accessing CCNL (Italian Collective Labor Agreements) data.
+5) app/services/ccnl_service.py:806 — app.services.ccnl_service.CCNLService._convert_external_data_to_agreement (score 0.39)
+   Evidence: Score 0.39, Convert external data format to CCNLAgreement.
 
 Notes:
-- ✅ Implementation complete and wired correctly
-- ✅ Async orchestrator wrapping CCNLTool
-- ✅ CCNLTool already exists in LangGraph tools
-- ✅ 12/12 tests passing
-- ✅ Routes to Step 99 (ToolResults) per Mermaid
-- ✅ Handles PostgresQuery and CCNLCalc internally (Steps 82 and 100 collapsed into CCNLTool)
+- Implementation exists but may not be wired correctly
+- Low confidence in symbol matching
 
-Completed TDD actions:
-- ✅ Created thin async orchestrator in app/orchestrators/ccnl.py
-- ✅ Integrated with existing CCNLTool
-- ✅ Implemented 12 comprehensive tests (unit + parity + integration)
-- ✅ Added structured observability logging
-- ✅ Verified error handling and edge cases
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

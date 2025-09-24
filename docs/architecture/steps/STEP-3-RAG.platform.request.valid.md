@@ -43,7 +43,7 @@ Top candidates:
    Evidence: Score 0.31, RAG STEP 3 — Request valid?
 ID: RAG.platform.request.valid
 Type: decision | Cate...
-2) app/orchestrators/preflight.py:502 — app.orchestrators.preflight.step_85__valid_attachments_check (score 0.30)
+2) app/orchestrators/preflight.py:680 — app.orchestrators.preflight.step_85__valid_attachments_check (score 0.30)
    Evidence: Score 0.30, RAG STEP 85 — Valid attachments?
 ID: RAG.preflight.valid.attachments
 Type: decis...

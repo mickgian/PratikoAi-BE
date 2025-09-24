@@ -5,27 +5,28 @@
 **Node ID:** `ServeGolden`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ServeGolden` (Serve Golden answer with citations).
+Formats the Golden Set match into a ChatResponse with proper citations and metadata. This is the final step for high-confidence FAQ matches, bypassing LLM generation and serving pre-approved answers directly.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/golden.py:step_28__serve_golden`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Async orchestrator that formats Golden Set answer with citations, metadata, and timing information. Bypasses LLM when high-confidence FAQ match exists and KB has no conflicting updates. Routes to ReturnComplete with formatted response.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - simple response formatting with graceful handling of missing fields
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 28 (RAG.golden.serve.golden.answer.with.citations): Serve Golden answer with citations | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (serve with citations, FAQ metadata, citation formatting, context preservation, logging, missing metadata, timing)
+- [x] Parity tests (response format verification)
+- [x] Integration tests (Step 27→28→ReturnComplete flow)
+- [x] Implementation changes (async orchestrator with response formatting)
+- [x] Observability: add structured log line
+  `RAG STEP 28 (RAG.golden.serve.golden.answer.with.citations): Serve Golden answer with citations | attrs={faq_id, answer_length, next_step, processing_stage}`
+- [x] Feature flag / config if needed (none required - formats output from Step 27)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
@@ -43,7 +44,7 @@ Top candidates:
    Evidence: Score 0.54, Approve, reject, or request revision for a generated FAQ
 2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.54)
    Evidence: Score 0.54, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:140 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+3) app/orchestrators/golden.py:517 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
    Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback
 ID: RAG.golden.post.api.v1.faq.feedback...
 4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.50)

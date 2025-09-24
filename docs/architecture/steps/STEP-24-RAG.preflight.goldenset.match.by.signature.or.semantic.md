@@ -36,26 +36,33 @@ Matches user queries against the Golden Set (FAQ database) using either query si
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/preflight.py:237 — app.orchestrators.preflight.step_24__golden_lookup (score 1.00)
-   Evidence: Score 1.00, RAG STEP 24 — GoldenSet.match_by_signature_or_semantic
-ID: RAG.preflight.goldenset.match.by.signature.or.semantic
-Type: process
+1) app/orchestrators/preflight.py:238 — app.orchestrators.preflight.step_24__golden_lookup (score 0.28)
+   Evidence: Score 0.28, RAG STEP 24 — GoldenSet.match_by_signature_or_semantic
+ID: RAG.preflight.goldens...
+2) app/api/v1/search.py:58 — app.api.v1.search.semantic_search (score 0.26)
+   Evidence: Score 0.26, Perform semantic search on Italian knowledge base.
+
+Args:
+    request: FastAPI r...
+3) app/orchestrators/golden.py:104 — app.orchestrators.golden.step_25__golden_hit (score 0.26)
+   Evidence: Score 0.26, RAG STEP 25 — High confidence match? score at least 0.90
+ID: RAG.golden.high.con...
+4) app/orchestrators/golden.py:181 — app.orchestrators.golden.step_27__kbdelta (score 0.26)
+   Evidence: Score 0.26, RAG STEP 27 — KB newer than Golden as of or conflicting tags?
+ID: RAG.golden.kb....
+5) app/orchestrators/golden.py:199 — app.orchestrators.golden.step_28__serve_golden (score 0.26)
+   Evidence: Score 0.26, RAG STEP 28 — Serve Golden answer with citations
+ID: RAG.golden.serve.golden.ans...
 
 Notes:
-- ✅ Implementation complete and wired correctly
-- ✅ Async orchestrator with two-stage matching (signature-first, semantic-fallback)
-- ✅ 11/11 tests passing
-- ✅ Routes to Step 25 (GoldenHit) per Mermaid
-- ✅ Includes match metadata: match_type, similarity_score, search_method
-- ✅ Mock implementation for testing, production will use SemanticFAQMatcher
+- Weak or missing implementation
+- Low confidence in symbol matching
 
-Completed TDD actions:
-- ✅ Created async orchestrator in app/orchestrators/preflight.py
-- ✅ Implemented signature-first + semantic-fallback matching strategy
-- ✅ Implemented 11 comprehensive tests (unit + parity + integration)
-- ✅ Added structured observability logging
-- ✅ Verified Step 20→24→25 and Step 23→24→25 integration flows
+Suggested next TDD actions:
+- Create process implementation for GoldenLookup
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

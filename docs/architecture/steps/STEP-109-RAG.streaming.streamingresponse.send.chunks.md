@@ -37,49 +37,28 @@ Creates FastAPI StreamingResponse with SSE-formatted chunks for browser-compatib
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.32
 
-Implementation:
-- app/orchestrators/streaming.py:579 — step_109__stream_response (async orchestrator)
-- app/orchestrators/streaming.py:482 — _create_streaming_response (helper function)
-- app/orchestrators/streaming.py:524 — _prepare_response_configuration (helper function)
-- app/orchestrators/streaming.py:552 — _validate_response_requirements (helper function)
-- tests/test_rag_step_109_stream_response.py — 16 comprehensive tests (all passing)
+Top candidates:
+1) app/orchestrators/streaming.py:575 — app.orchestrators.streaming.step_109__stream_response (score 0.32)
+   Evidence: Score 0.32, RAG STEP 109 — StreamingResponse Send chunks.
 
-Key Features:
-- Async StreamingResponse creation orchestrator with FastAPI integration
-- Creates browser-compatible StreamingResponse with SSE-formatted chunks
-- Configures response headers (Content-Type, Cache-Control, Connection, CORS)
-- Response configuration with session data and provider settings
-- Complex SSE stream handling (JSON data, metadata, structured responses)
-- Stream requirements validation with comprehensive warning system
-- Structured logging with rag_step_log (step 109, response tracking)
-- Context preservation (user/session data, format config, processing history)
-- Response metadata addition (config, timestamps, validation results)
-- Error recovery and graceful handling of response creation errors
-
-Test Coverage:
-- Unit: StreamingResponse creation, header configuration, complex SSE streams, context preservation, response metadata, validation requirements, response options, error handling, response parameters, logging
-- Parity: StreamingResponse creation behavior verification
-- Integration: WriteSSE→StreamResponse→SendDone flow, error handling
-
-FastAPI StreamingResponse Configuration:
-- Uses FastAPI StreamingResponse class for HTTP streaming
-- Configures text/event-stream media type for SSE compatibility
-- Headers: Content-Type, Cache-Control, Connection, CORS support
-- Session and user context with provider/model settings
-- Response options (status codes, background tasks, custom headers)
-- Streaming parameters (compression, buffer size, charset)
-
-StreamingResponse Integration:
-- Takes SSE-formatted stream from Step 108 (WriteSSE)
-- Creates browser-compatible streaming HTTP response
-- Compatible with existing chatbot streaming implementation
-- Preserves response delivery and error handling patterns
+Thin async orchestrator that crea...
+2) app/orchestrators/streaming.py:478 — app.orchestrators.streaming._create_streaming_response (score 0.30)
+   Evidence: Score 0.30, Create FastAPI StreamingResponse with SSE-formatted stream.
+3) app/orchestrators/streaming.py:115 — app.orchestrators.streaming._parse_stream_value (score 0.29)
+   Evidence: Score 0.29, Parse various stream value formats to boolean.
+4) app/orchestrators/streaming.py:239 — app.orchestrators.streaming._prepare_stream_context (score 0.29)
+   Evidence: Score 0.29, Prepare streaming context for async generator creation.
+5) app/orchestrators/streaming.py:520 — app.orchestrators.streaming._prepare_response_configuration (score 0.29)
+   Evidence: Score 0.29, Prepare StreamingResponse configuration.
 
 Notes:
-- Full implementation complete following MASTER_GUARDRAILS
-- Thin orchestrator pattern (coordination only)
-- All TDD tasks completed
-- Critical bridge from SSE formatting to HTTP streaming response delivery
+- Implementation exists but may not be wired correctly
+- Low confidence in symbol matching
+
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

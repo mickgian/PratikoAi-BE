@@ -48,12 +48,12 @@ ID: RAG.platform.convert.to.a...
 ID: RAG.kb.knowledgesear...
 3) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
    Evidence: Score 0.25, Convert internal SearchResponse to API model.
-4) app/orchestrators/facts.py:675 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
+4) app/orchestrators/cache.py:909 — app.orchestrators.cache._cache_feedback_with_ttl (score 0.25)
+   Evidence: Score 0.25, Helper function to cache expert feedback with 1-hour TTL.
+Handles cache operatio...
+5) app/orchestrators/facts.py:675 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
    Evidence: Score 0.25, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-5) app/orchestrators/platform.py:746 — app.orchestrators.platform.step_11__convert_messages (score 0.25)
-   Evidence: Score 0.25, RAG STEP 11 — LangGraphAgent._chat Convert to Message objects
-ID: RAG.platform.l...
 
 Notes:
 - Weak or missing implementation

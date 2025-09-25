@@ -55,10 +55,10 @@ Args:
 
 Args:
     request: The FastAPI request object...
-4) app/orchestrators/streaming.py:151 — app.orchestrators.streaming.step_105__stream_setup (score 0.28)
-   Evidence: Score 0.28, RAG STEP 105 — ChatbotController.chat_stream Setup SSE
+4) app/orchestrators/streaming.py:149 — app.orchestrators.streaming.step_105__stream_setup (score 0.28)
+   Evidence: Score 0.28, RAG STEP 105 — ChatbotController.chat_stream Setup SSE.
 
-Thin async orchestrator ...
+Thin async orchestrator...
 5) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.26)
    Evidence: Score 0.26, Response model for streaming chat endpoint.
 

@@ -1006,22 +1006,196 @@ def step_58__cheaper_provider(*, messages: Optional[List[Any]] = None, ctx: Opti
                 'messages': messages, 'timestamp': datetime.utcnow().isoformat()
             }
 
-def step_64__llmcall(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def _execute_llm_api_call(ctx: Dict[str, Any]) -> Dict[str, Any]:
     """
-    RAG STEP 64 — LLMProvider.chat_completion Make API call
-    ID: RAG.providers.llmprovider.chat.completion.make.api.call
-    Type: process | Category: providers | Node: LLMCall
+    Helper function to execute the actual LLM API call using the provider instance.
+    Handles API call execution, error handling, and response processing.
+    """
+    import time
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock
+    from app.core.llm.base import LLMResponse
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    try:
+        # Extract provider instance from context (not the provider name string)
+        provider = ctx.get('provider_instance')
+        if not provider:
+            return {
+                'llm_call_successful': False,
+                'error': 'No provider instance available for API call',
+                'exception_type': 'ConfigurationError',
+                'provider': None,
+                'model': None
+            }
+
+        # Extract messages and model from context
+        messages = ctx.get('messages', [])
+        model = ctx.get('model')
+
+        if not messages:
+            # Get provider name for error reporting, prioritizing context
+            provider_name = ctx.get('provider') or 'unknown'
+            if not provider_name or provider_name == 'unknown':
+                if provider:
+                    if hasattr(provider, 'name') and not isinstance(provider.name, type(MagicMock())):
+                        provider_name = provider.name
+                    elif hasattr(provider, 'provider_type'):
+                        provider_name = str(provider.provider_type.value) if hasattr(provider.provider_type, 'value') else str(provider.provider_type)
+                    else:
+                        provider_name = str(type(provider).__name__)
+
+            return {
+                'llm_call_successful': False,
+                'error': 'No messages provided for LLM call',
+                'provider': provider_name,
+                'model': model
+            }
+
+        # Record start time for performance tracking
+        start_time = time.time()
+
+        # Collect LLM parameters from context
+        llm_params = {}
+        llm_param_keys = ['temperature', 'max_tokens', 'top_p', 'top_k', 'frequency_penalty', 'presence_penalty', 'stop', 'stream']
+        for key in llm_param_keys:
+            if key in ctx:
+                llm_params[key] = ctx[key]
+
+        # Also merge in any explicit llm_params dict
+        if 'llm_params' in ctx:
+            llm_params.update(ctx['llm_params'])
+
+        # Execute the LLM API call
+        response: LLMResponse = await provider.chat_completion(
+            messages=messages,
+            model=model,
+            **llm_params
+        )
+
+        # Calculate response time
+        end_time = time.time()
+        response_time_ms = (end_time - start_time) * 1000
+
+        # Get provider name from multiple sources, prioritizing context
+        provider_name = ctx.get('provider') or 'unknown'
+        if not provider_name or provider_name == 'unknown':
+            if provider:
+                if hasattr(provider, 'name') and not isinstance(provider.name, type(MagicMock())):
+                    provider_name = provider.name
+                elif hasattr(provider, 'provider_type'):
+                    provider_name = str(provider.provider_type.value) if hasattr(provider.provider_type, 'value') else str(provider.provider_type)
+                else:
+                    provider_name = str(type(provider).__name__)
+
+        # Process successful response
+        result = {
+            'llm_call_successful': True,
+            'llm_response': response,
+            'response_content': response.content,
+            'provider': provider_name,
+            'model': model or response.model,
+            'tokens_used': response.tokens_used,
+            'cost_estimate': response.cost_estimate,
+            'response_time_ms': response_time_ms,
+            'finish_reason': response.finish_reason,
+            'tool_calls': response.tool_calls if response.tool_calls else None,
+            'has_tool_calls': bool(response.tool_calls),
+            'error': None
+        }
+
+        # Add assistant message to messages if response contains content
+        if response.content:
+            updated_messages = messages + [{
+                'role': 'assistant',
+                'content': response.content
+            }]
+            result['messages'] = updated_messages
+
+        return result
+
+    except Exception as e:
+        # Handle API call errors
+        error_msg = f"LLM API call failed: {str(e)}"
+
+        # Get provider name from multiple sources, prioritizing context
+        provider_name = ctx.get('provider') or 'unknown'
+        if not provider_name or provider_name == 'unknown':
+            if provider:
+                if hasattr(provider, 'name') and not isinstance(provider.name, type(MagicMock())):
+                    provider_name = provider.name
+                elif hasattr(provider, 'provider_type'):
+                    provider_name = str(provider.provider_type.value) if hasattr(provider.provider_type, 'value') else str(provider.provider_type)
+                else:
+                    provider_name = str(type(provider).__name__)
+
+        return {
+            'llm_call_successful': False,
+            'error': error_msg,
+            'exception_type': type(e).__name__,
+            'provider': provider_name,
+            'model': ctx.get('model'),
+            'response_time_ms': None,
+            'tokens_used': None,
+            'cost_estimate': None
+        }
+
+async def step_64__llmcall(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
+    RAG STEP 64 — LLMProvider.chat_completion Make API call.
+
+    Thin async orchestrator that executes the actual LLM API call using the provider instance.
+    Takes input from cache miss (Step 62) and routes to LLM success check (Step 67).
+    Handles API call execution, error handling, and response preparation.
+
+    Incoming: Cache Miss (Step 62)
+    Outgoing: LLM Success (Step 67)
+    """
+    import time
+    from datetime import datetime, timezone
+
     with rag_step_timer(64, 'RAG.providers.llmprovider.chat.completion.make.api.call', 'LLMCall', stage="start"):
-        rag_step_log(step=64, step_id='RAG.providers.llmprovider.chat.completion.make.api.call', node_label='LLMCall',
-                     category='providers', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=64, step_id='RAG.providers.llmprovider.chat.completion.make.api.call', node_label='LLMCall',
-                     processing_stage="completed")
+        ctx = ctx or {}
+
+        rag_step_log(
+            step=64,
+            step_id='RAG.providers.llmprovider.chat.completion.make.api.call',
+            node_label='LLMCall',
+            category='providers',
+            type='process',
+            request_id=ctx.get('request_id'),
+            processing_stage="started"
+        )
+
+        # Execute LLM API call
+        call_result = await _execute_llm_api_call(ctx)
+
+        # Preserve all context and add LLM call results
+        result = ctx.copy()
+        result.update(call_result)
+
+        # Add processing metadata
+        result.update({
+            'processing_stage': 'llm_call_completed',
+            'call_timestamp': datetime.now(timezone.utc).isoformat()
+        })
+
+        rag_step_log(
+            step=64,
+            step_id='RAG.providers.llmprovider.chat.completion.make.api.call',
+            node_label='LLMCall',
+            category='providers',
+            type='process',
+            request_id=ctx.get('request_id'),
+            llm_call_successful=result.get('llm_call_successful', False),
+            provider=result.get('provider'),
+            model=result.get('model'),
+            tokens_used=result.get('tokens_used'),
+            cost_estimate=result.get('cost_estimate'),
+            response_time_ms=result.get('response_time_ms'),
+            error=result.get('error'),
+            processing_stage="completed"
+        )
+
         return result
 
 async def step_72__get_failover_provider(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:

@@ -906,20 +906,146 @@ async def step_68__cache_response(*, messages: Optional[List[Any]] = None, ctx: 
 
         return storage_data
 
-def step_125__cache_feedback(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def _cache_feedback_with_ttl(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Helper function to cache expert feedback with 1-hour TTL.
+    Handles cache operation execution, error handling, and performance tracking.
+    """
+    import time
+    import json
+    from datetime import datetime
+
+    try:
+        # Extract feedback record from context
+        feedback_record = ctx.get('feedback_record')
+        if not feedback_record:
+            return {
+                'feedback_cached': False,
+                'error': 'No feedback_record available for caching',
+                'cache_key': None,
+                'ttl_hours': 1
+            }
+
+        # Extract cache service from context
+        cache_service = ctx.get('cache_service')
+        if not cache_service:
+            return {
+                'feedback_cached': False,
+                'error': 'Cache service not available',
+                'cache_key': None,
+                'ttl_hours': 1,
+                'feedback_id': str(feedback_record.id) if hasattr(feedback_record, 'id') else None
+            }
+
+        # Prepare cache key and data
+        cache_key = f"expert_feedback:{feedback_record.query_id}"
+
+        # Build cache data structure matching ExpertFeedbackCollector format
+        feedback_data = {
+            'id': str(feedback_record.id),
+            'feedback_type': feedback_record.feedback_type.value if hasattr(feedback_record.feedback_type, 'value') else str(feedback_record.feedback_type),
+            'category': feedback_record.category.value if feedback_record.category and hasattr(feedback_record.category, 'value') else (feedback_record.category if feedback_record.category else None),
+            'expert_answer': getattr(feedback_record, 'expert_answer', None),
+            'confidence_score': getattr(feedback_record, 'confidence_score', 0.0),
+            'timestamp': feedback_record.feedback_timestamp.isoformat() if hasattr(feedback_record, 'feedback_timestamp') else datetime.utcnow().isoformat()
+        }
+
+        # Record start time for performance tracking
+        start_time = time.time()
+
+        # Execute cache operation with 1-hour TTL (3600 seconds)
+        ttl_seconds = 3600
+        await cache_service.setex(cache_key, ttl_seconds, feedback_data)
+
+        # Calculate operation time
+        end_time = time.time()
+        operation_time_ms = (end_time - start_time) * 1000
+
+        # Return successful cache result
+        return {
+            'feedback_cached': True,
+            'cache_key': cache_key,
+            'ttl_hours': 1,
+            'feedback_id': str(feedback_record.id),
+            'feedback_type': feedback_data['feedback_type'],
+            'category': feedback_data['category'],
+            'cache_operation_time_ms': operation_time_ms,
+            'action_taken': ctx.get('action_taken', 'feedback_cached'),
+            'error': None
+        }
+
+    except Exception as e:
+        # Handle cache operation errors
+        error_msg = f"Feedback caching failed: {str(e)}"
+
+        return {
+            'feedback_cached': False,
+            'error': error_msg,
+            'cache_key': cache_key if 'cache_key' in locals() else None,
+            'ttl_hours': 1,
+            'feedback_id': str(feedback_record.id) if feedback_record and hasattr(feedback_record, 'id') else None,
+            'feedback_type': ctx.get('feedback_type'),
+            'category': ctx.get('category'),
+            'cache_operation_time_ms': None
+        }
+
+async def step_125__cache_feedback(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 125 — Cache feedback 1h TTL
     ID: RAG.cache.cache.feedback.1h.ttl
     Type: process | Category: cache | Node: CacheFeedback
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that caches expert feedback with 1-hour TTL using Redis.
+    Takes input from update expert metrics (Step 124) and routes to determine action (Step 126).
+    Preserves all context while adding cache operation results.
+
+    Incoming: Update Expert Metrics (Step 124)
+    Outgoing: Determine Action (Step 126)
     """
+    import time
+    from datetime import datetime, timezone
+
     with rag_step_timer(125, 'RAG.cache.cache.feedback.1h.ttl', 'CacheFeedback', stage="start"):
-        rag_step_log(step=125, step_id='RAG.cache.cache.feedback.1h.ttl', node_label='CacheFeedback',
-                     category='cache', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=125, step_id='RAG.cache.cache.feedback.1h.ttl', node_label='CacheFeedback',
-                     processing_stage="completed")
+        ctx = ctx or {}
+
+        rag_step_log(
+            step=125,
+            step_id='RAG.cache.cache.feedback.1h.ttl',
+            node_label='CacheFeedback',
+            category='cache',
+            type='process',
+            request_id=ctx.get('request_id'),
+            processing_stage="started"
+        )
+
+        # Execute feedback caching
+        cache_result = await _cache_feedback_with_ttl(ctx)
+
+        # Preserve all context and add caching results
+        result = ctx.copy()
+        result.update(cache_result)
+
+        # Add processing metadata
+        result.update({
+            'processing_stage': 'feedback_cached' if cache_result.get('feedback_cached') else 'cache_failed',
+            'cache_timestamp': datetime.now(timezone.utc).isoformat()
+        })
+
+        rag_step_log(
+            step=125,
+            step_id='RAG.cache.cache.feedback.1h.ttl',
+            node_label='CacheFeedback',
+            category='cache',
+            type='process',
+            request_id=ctx.get('request_id'),
+            feedback_cached=result.get('feedback_cached', False),
+            cache_key=result.get('cache_key'),
+            feedback_type=result.get('feedback_type'),
+            feedback_category=result.get('category'),
+            ttl_hours=result.get('ttl_hours', 1),
+            cache_operation_time_ms=result.get('cache_operation_time_ms'),
+            error=result.get('error'),
+            processing_stage="completed"
+        )
+
         return result

@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.35
 
 Top candidates:
-1) app/orchestrators/response.py:163 — app.orchestrators.response.step_30__return_complete (score 0.35)
+1) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.35)
    Evidence: Score 0.35, RAG STEP 30 — Return ChatResponse
 ID: RAG.response.return.chatresponse
 Type: pro...

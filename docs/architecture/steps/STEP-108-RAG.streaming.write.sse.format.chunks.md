@@ -37,50 +37,34 @@ Formats streaming chunks into Server-Sent Events (SSE) format using the write_ss
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.32
 
-Implementation:
-- app/orchestrators/streaming.py:290 — step_108__write_sse (async orchestrator)
-- app/orchestrators/streaming.py:350 — _create_sse_formatted_generator (helper function)
-- app/orchestrators/streaming.py:391 — _prepare_sse_format_configuration (helper function)
-- app/orchestrators/streaming.py:450 — _validate_sse_format_requirements (helper function)
-- app/core/sse_write.py:15 — write_sse (core SSE formatting function)
-- tests/test_rag_step_108_write_sse.py — 15 comprehensive tests (all passing)
+Top candidates:
+1) app/core/sse_write.py:15 — app.core.sse_write.write_sse (score 0.32)
+   Evidence: Score 0.32, Log an SSE frame that will be written to the response.
 
-Key Features:
-- Async SSE formatting orchestrator with write_sse integration
-- Formats streaming chunks into proper Server-Sent Events format
-- Creates SSE-formatted generator with browser-compatible output
-- Formatting configuration with session data and provider settings
-- Complex chunk handling (dictionaries, strings, structured data)
-- Stream requirements validation with comprehensive warning system
-- Structured logging with rag_step_log (step 108, formatting tracking)
-- Context preservation (user/session data, protection config, processing history)
-- Formatting metadata addition (config, timestamps, validation results)
-- Error recovery and graceful handling of stream errors
+Args:
+    response: The ...
+2) app/orchestrators/streaming.py:287 — app.orchestrators.streaming.step_108__write_sse (score 0.29)
+   Evidence: Score 0.29, RAG STEP 108 — write_sse Format chunks.
 
-Test Coverage:
-- Unit: SSE formatting, configuration settings, complex chunks, context preservation, metadata addition, validation requirements, SSE options, stream errors, formatting parameters, logging
-- Parity: SSE formatting behavior verification
-- Integration: SinglePass→WriteSSE→StreamingResponse flow, error handling
+Thin async orchestrator that formats st...
+3) app/orchestrators/streaming.py:387 — app.orchestrators.streaming._prepare_sse_format_configuration (score 0.29)
+   Evidence: Score 0.29, Prepare configuration for SSE formatting.
+4) app/orchestrators/streaming.py:446 — app.orchestrators.streaming._validate_sse_format_requirements (score 0.29)
+   Evidence: Score 0.29, Validate SSE formatting requirements and return warnings.
+5) evals/helpers.py:21 — evals.helpers.format_messages (score 0.27)
+   Evidence: Score 0.27, Format a list of messages for evaluation.
 
-SSE Format Configuration:
-- Uses existing write_sse function from app/core/sse_write.py
-- Formats chunks as "data: {content}\n\n" for browser consumption
-- Handles structured data, strings, and [DONE] termination signals
-- Session and user context with provider/model settings
-- Event type, retry interval, and connection management settings
-- Formatting options (JSON, timestamps, escaping, chunk limits)
-
-write_sse Integration:
-- Leverages existing app/core/sse_write.py:write_sse function
-- Maintains SSE logging and debugging capabilities
-- Compatible with existing chatbot streaming implementation
-- Preserves SSE frame formatting and error handling
+Args:
+    messages: List of message d...
 
 Notes:
-- Full implementation complete following MASTER_GUARDRAILS
-- Thin orchestrator pattern (coordination only)
-- All TDD tasks completed
-- Critical bridge from stream protection to streaming response delivery
+- Implementation exists but may not be wired correctly
+- Low confidence in symbol matching
+
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

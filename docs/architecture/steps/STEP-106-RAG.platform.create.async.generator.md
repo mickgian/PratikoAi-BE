@@ -46,7 +46,7 @@ Top candidates:
    Evidence: Score 0.29, RAG STEP 106 — Create async generator
 
 Thin async orchestrator that creates an a...
-3) app/orchestrators/streaming.py:350 — app.orchestrators.streaming._create_sse_formatted_generator (score 0.29)
+3) app/orchestrators/streaming.py:346 — app.orchestrators.streaming._create_sse_formatted_generator (score 0.29)
    Evidence: Score 0.29, Create SSE-formatted generator using write_sse function.
 4) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.27)
    Evidence: Score 0.27, Create a new FAQ entry.

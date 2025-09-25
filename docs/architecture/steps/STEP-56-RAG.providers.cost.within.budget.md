@@ -46,7 +46,7 @@ Args:
     provider...
 2) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.48)
    Evidence: Score 0.48, Select optimal LLM provider based on domain-action requirements
-3) app/orchestrators/providers.py:1027 — app.orchestrators.providers.step_72__get_failover_provider (score 0.46)
+3) app/orchestrators/providers.py:1201 — app.orchestrators.providers.step_72__get_failover_provider (score 0.46)
    Evidence: Score 0.46, RAG STEP 72 — Get FAILOVER provider
 ID: RAG.providers.get.failover.provider
 Type...

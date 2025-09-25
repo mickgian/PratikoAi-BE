@@ -37,29 +37,26 @@ Serves as a convergence point where all response paths (ToolResults, SimpleAIMsg
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/orchestrators/response.py:163 — app.orchestrators.response.step_30__return_complete (score 0.28)
+1) app/orchestrators/response.py:445 — app.orchestrators.response._prepare_final_response (score 0.29)
+   Evidence: Score 0.29, Prepare the final response for delivery to user.
+2) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.28)
    Evidence: Score 0.28, RAG STEP 30 — Return ChatResponse
 ID: RAG.response.return.chatresponse
 Type: pro...
-2) app/orchestrators/response.py:304 — app.orchestrators.response.step_101__final_response (score 0.28)
+3) app/orchestrators/response.py:301 — app.orchestrators.response.step_101__final_response (score 0.28)
    Evidence: Score 0.28, RAG STEP 101 — Return to chat node for final response
 
 Thin async orchestrator t...
-3) app/schemas/chat.py:95 — app.schemas.chat.ChatResponse (score 0.27)
+4) app/schemas/chat.py:95 — app.schemas.chat.ChatResponse (score 0.27)
    Evidence: Score 0.27, Response model for chat endpoint.
 
 Attributes:
     messages: List of messages in...
-4) app/schemas/chat.py:70 — app.schemas.chat.ResponseMetadata (score 0.26)
+5) app/schemas/chat.py:70 — app.schemas.chat.ResponseMetadata (score 0.26)
    Evidence: Score 0.26, Response metadata for debugging and monitoring.
-5) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.26)
-   Evidence: Score 0.26, Response model for streaming chat endpoint.
-
-Attributes:
-    content: The conten...
 
 Notes:
 - Weak or missing implementation

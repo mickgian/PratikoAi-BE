@@ -51,16 +51,13 @@ Type: decision | Category: cach...
 3) app/orchestrators/cache.py:774 — app.orchestrators.cache.step_68__cache_response (score 0.63)
    Evidence: Score 0.63, RAG STEP 68 — CacheService.cache_response Store in Redis
 ID: RAG.cache.cacheserv...
-4) app/orchestrators/cache.py:909 — app.orchestrators.cache.step_125__cache_feedback (score 0.54)
+4) app/orchestrators/cache.py:909 — app.orchestrators.cache._cache_feedback_with_ttl (score 0.59)
+   Evidence: Score 0.59, Helper function to cache expert feedback with 1-hour TTL.
+Handles cache operatio...
+5) app/orchestrators/cache.py:992 — app.orchestrators.cache.step_125__cache_feedback (score 0.54)
    Evidence: Score 0.54, RAG STEP 125 — Cache feedback 1h TTL
 ID: RAG.cache.cache.feedback.1h.ttl
 Type: p...
-5) app/core/middleware/performance_middleware.py:416 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_hit (score 0.51)
-   Evidence: Score 0.51, Record a cache hit.
-
-Args:
-    cache_key: Cache key that was hit
-    cache_type:...
 
 Notes:
 - Partial implementation identified

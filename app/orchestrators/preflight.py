@@ -758,20 +758,112 @@ def step_107__single_pass(*, messages: Optional[List[Any]] = None, ctx: Optional
                      processing_stage="completed")
         return result
 
-def step_130__invalidate_faqcache(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_130__invalidate_faqcache(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 130 — CacheService.invalidate_faq by id or signature
     ID: RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature
     Type: process | Category: preflight | Node: InvalidateFAQCache
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that invalidates cached FAQ responses when an FAQ
+    is published or updated. Clears cache entries by FAQ ID and content patterns
+    to ensure users receive fresh content.
     """
-    with rag_step_timer(130, 'RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature', 'InvalidateFAQCache', stage="start"):
-        rag_step_log(step=130, step_id='RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature', node_label='InvalidateFAQCache',
-                     category='preflight', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=130, step_id='RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature', node_label='InvalidateFAQCache',
-                     processing_stage="completed")
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(130, 'RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature', 'InvalidateFAQCache',
+                       request_id=request_id, stage="start"):
+        rag_step_log(step=130, step_id='RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature',
+                     node_label='InvalidateFAQCache',
+                     category='preflight', type='process', request_id=request_id, processing_stage="started")
+
+        # Extract published FAQ data
+        published_faq = ctx.get('published_faq', {})
+        publication_metadata = ctx.get('publication_metadata', {})
+
+        faq_id = published_faq.get('id') or publication_metadata.get('faq_id')
+        operation = publication_metadata.get('operation', 'unknown')
+        content_signature = published_faq.get('content_signature')
+
+        # Invalidate cache entries
+        try:
+            from datetime import datetime, timezone
+            from app.services.cache import cache_service
+
+            total_keys_deleted = 0
+            patterns_cleared = 0
+            success = True
+
+            # Clear FAQ-specific cache entries
+            if faq_id:
+                # Pattern for FAQ variations: faq_var:*faq_id*
+                faq_pattern = f"faq_var:*{faq_id}*"
+                keys_deleted = await cache_service.clear_cache(pattern=faq_pattern)
+                total_keys_deleted += keys_deleted
+                patterns_cleared += 1
+
+                # Pattern for LLM responses containing this FAQ content
+                # This is a broader pattern to catch FAQ-related LLM cache entries
+                if keys_deleted == 0 and content_signature:
+                    # Try clearing by content signature if available
+                    sig_pattern = f"llm_response:*{content_signature}*"
+                    keys_deleted = await cache_service.clear_cache(pattern=sig_pattern)
+                    total_keys_deleted += keys_deleted
+                    patterns_cleared += 1
+
+            # Build cache invalidation metadata
+            cache_invalidation = {
+                'invalidated_at': datetime.now(timezone.utc).isoformat(),
+                'faq_id': faq_id,
+                'operation': operation,
+                'keys_deleted': total_keys_deleted,
+                'total_keys_deleted': total_keys_deleted,
+                'patterns_cleared': patterns_cleared,
+                'success': success
+            }
+
+            if content_signature:
+                cache_invalidation['content_signature'] = content_signature
+
+            rag_step_log(
+                step=130,
+                step_id='RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature',
+                node_label='InvalidateFAQCache',
+                request_id=request_id,
+                faq_id=faq_id,
+                operation=operation,
+                keys_deleted=total_keys_deleted,
+                patterns_cleared=patterns_cleared,
+                processing_stage="completed"
+            )
+
+        except Exception as e:
+            rag_step_log(
+                step=130,
+                step_id='RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature',
+                node_label='InvalidateFAQCache',
+                request_id=request_id,
+                faq_id=faq_id,
+                error=str(e),
+                processing_stage="error"
+            )
+            # On error, still continue with error context
+            cache_invalidation = {
+                'invalidated_at': datetime.now(timezone.utc).isoformat(),
+                'faq_id': faq_id,
+                'operation': operation,
+                'keys_deleted': 0,
+                'total_keys_deleted': 0,
+                'patterns_cleared': 0,
+                'success': False,
+                'error': str(e)
+            }
+
+        # Build result with preserved context
+        result = {
+            **ctx,
+            'cache_invalidation': cache_invalidation,
+            'request_id': request_id
+        }
+
         return result

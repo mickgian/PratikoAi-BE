@@ -161,14 +161,14 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 - **Step 28**: Serve golden answer with citations - Golden response ✅
 - **Step 60**: Resolve epochs - Timestamp resolution ✅
 
-### Batch 18: Golden Set Updates (117, 127-131, 135)
-- **Step 117**: Post API v1 FAQ feedback - Feedback endpoint
-- **Step 127**: Propose candidate from expert feedback - Golden candidate
-- **Step 128**: Auto threshold met or manual approval - Approval logic
-- **Step 129**: Publish or update versioned entry - Golden publishing
-- **Step 130**: Invalidate FAQ by ID or signature - Cache invalidation
-- **Step 131**: Update embeddings - Vector index update
-- **Step 135**: Auto rule eval new or obsolete candidates - Rule evaluation
+### Batch 18: Golden Set Updates (117, 127-131, 135) ✅ COMPLETED
+- **Step 117**: Post API v1 FAQ feedback - FAQ feedback collection and validation ✅
+- **Step 127**: Propose candidate from expert feedback - Golden candidate generation with confidence scoring ✅
+- **Step 128**: Auto threshold met or manual approval - Approval workflow with expert validation logic ✅
+- **Step 129**: Publish or update versioned entry - Golden set publication with metadata tracking ✅
+- **Step 130**: Invalidate FAQ by ID or signature - Cache invalidation by patterns with metadata ✅
+- **Step 131**: Update embeddings - Vector index updates with Pinecone integration ✅
+- **Step 135**: Auto rule eval new or obsolete candidates - Rule-based evaluation with priority scoring ✅
 
 ## Phase 10: Streaming & Response Handling (Days 25-26)
 **Real-time response delivery**
@@ -364,12 +364,32 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
   - ✅ **Note**: FAQTool uses mock for testing; production will integrate SemanticFAQMatcher via dependency injection
   - ✅ **Import Fix**: Corrected embedding_service import issue (non-existent class) with mock implementation
 
-**Next Target:** Batch 16: Golden Set Matching (23-28, 60)
-1. Pick GitHub issues for golden set matching steps
-2. Implement document ingest planning hints
-3. Build signature/semantic FAQ matching
-4. Create high-confidence golden answer serving
-5. Implement epoch resolution for cache keys
+**Batch 16: Golden Set Matching (23-28, 60) ✅ COMPLETED**
+- ✅ **Step 23**: Document ingest first planning hint with workflow coordination (12 tests)
+- ✅ **Step 24**: Golden Set lookup using signature hash or semantic similarity (12 tests)
+- ✅ **Step 25**: High confidence match validation with 0.90 threshold (11 tests)
+- ✅ **Step 26**: Knowledge base context fetching for changes (10 tests)
+- ✅ **Step 27**: Freshness comparison between KB and Golden Set (10 tests)
+- ✅ **Step 28**: Golden answer serving with citations and metadata (10 tests)
+- ✅ **Step 60**: Epoch resolution for timestamp normalization (10 tests)
+- ✅ **Total**: 75 comprehensive tests, 100% pass rate, full golden set matching infrastructure
+
+**Batch 17: Golden Set Updates (117, 127-131, 135) ✅ COMPLETED**
+- ✅ **Step 117**: FAQ feedback collection and validation via POST /api/v1/faq/feedback (17 tests)
+- ✅ **Step 127**: Golden candidate proposal from expert feedback with confidence scoring (18 tests)
+- ✅ **Step 128**: Approval workflow with auto-threshold and manual processes (20 tests)
+- ✅ **Step 129**: Golden set publication with versioned entries and metadata tracking (22 tests)
+- ✅ **Step 130**: FAQ cache invalidation by ID/signature patterns with Redis integration (17 tests)
+- ✅ **Step 131**: Vector index embedding updates with Pinecone upsert operations (16 tests)
+- ✅ **Step 135**: Rule-based FAQ candidate evaluation with priority scoring (9 tests)
+- ✅ **Total**: 119 comprehensive tests, 100% pass rate, full golden set update infrastructure
+
+**Next Target:** Batch 18: Streaming Operations (101-102, 104-109, 112)
+1. Pick GitHub issues for streaming response delivery
+2. Implement SSE streaming with async generators
+3. Build response formatting and chunk delivery
+4. Create stream protection and termination
+5. Add final response handling
 
 ## GitHub Issues Reference
 
@@ -417,9 +437,9 @@ Each issue contains:
 - [✅] Phase 8: Facts & Knowledge Management (Steps 14, 16, 18, 29, 80-83, 98) - **COMPLETED**
   - [✅] **Batch 14**: Steps 14, 16, 17-fix, 18, 29, 98 (Facts Processing) - **COMPLETED**
   - [✅] **Batch 15**: Steps 80-83 (Knowledge Operations) - **COMPLETED**
-- [ ] Phase 9: Golden Set & FAQ Management (Steps 23-28, 60, 117, 127-131, 135)
-  - [ ] **Batch 16**: Steps 23-28, 60 (Golden Set Matching)
-  - [ ] **Batch 17**: Steps 117, 127-131, 135 (Golden Set Updates)
+- [✅] Phase 9: Golden Set & FAQ Management (Steps 23-28, 60, 117, 127-131, 135) - **COMPLETED**
+  - [✅] **Batch 16**: Steps 23-28, 60 (Golden Set Matching) - **COMPLETED**
+  - [✅] **Batch 17**: Steps 117, 127-131, 135 (Golden Set Updates) - **COMPLETED**
 - [ ] Phase 10: Streaming & Response Handling (Steps 64, 101-102, 104-109, 112, 125)
   - [ ] **Batch 18**: Steps 101-102, 104-109, 112 (Streaming Operations)
   - [ ] **Batch 19**: Steps 64, 125 (Cache Management)

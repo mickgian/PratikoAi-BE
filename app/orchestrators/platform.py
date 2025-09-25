@@ -4,6 +4,7 @@
 
 from contextlib import nullcontext
 from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
 
 try:
     from app.observability.rag_logging import rag_step_log, rag_step_timer
@@ -2381,23 +2382,175 @@ def step_103__log_complete(*, messages: Optional[List[Any]] = None, ctx: Optiona
         # Return completion data for downstream processing
         return completion_data
 
-def step_106__async_gen(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_106__async_gen(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 106 — Create async generator
-    ID: RAG.platform.create.async.generator
-    Type: process | Category: platform | Node: AsyncGen
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that creates an async generator for streaming response delivery.
+    Takes streaming setup data from StreamSetup (Step 105) and prepares for SinglePassStream (Step 107).
+    Creates the async generator with proper configuration, session data, and streaming parameters.
+
+    Incoming: StreamSetup (Step 105) [when streaming configured]
+    Outgoing: SinglePassStream (Step 107)
     """
     with rag_step_timer(106, 'RAG.platform.create.async.generator', 'AsyncGen', stage="start"):
-        rag_step_log(step=106, step_id='RAG.platform.create.async.generator', node_label='AsyncGen',
-                     category='platform', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=106, step_id='RAG.platform.create.async.generator', node_label='AsyncGen',
-                     processing_stage="completed")
+        ctx = ctx or {}
+
+        rag_step_log(
+            step=106,
+            step_id='RAG.platform.create.async.generator',
+            node_label='AsyncGen',
+            category='platform',
+            type='process',
+            request_id=ctx.get('request_id'),
+            processing_stage="started"
+        )
+
+        # Create async generator and configure streaming settings
+        async_generator = _create_streaming_generator(ctx)
+        generator_config = _prepare_generator_configuration(ctx)
+
+        # Preserve all context and add generator metadata
+        result = ctx.copy()
+
+        # Add async generator results
+        result.update({
+            'async_generator': async_generator,
+            'generator_config': generator_config,
+            'generator_created': True,
+            'processing_stage': 'async_generator_created',
+            'next_step': 'single_pass_stream',
+            'generator_timestamp': datetime.now(timezone.utc).isoformat()
+        })
+
+        # Add validation warnings if needed
+        validation_warnings = _validate_generator_requirements(ctx)
+        if validation_warnings:
+            result['validation_warnings'] = validation_warnings
+
+        rag_step_log(
+            step=106,
+            step_id='RAG.platform.create.async.generator',
+            node_label='AsyncGen',
+            request_id=ctx.get('request_id'),
+            generator_created=True,
+            generator_configured=bool(generator_config),
+            next_step='single_pass_stream',
+            processing_stage="completed"
+        )
+
         return result
+
+
+def _create_streaming_generator(ctx: Dict[str, Any]) -> Any:
+    """Create async generator for streaming response delivery."""
+    from typing import AsyncGenerator
+
+    stream_context = ctx.get('stream_context', {})
+    processed_messages = stream_context.get('messages', ctx.get('processed_messages', []))
+    session_id = stream_context.get('session_id')
+    user_id = stream_context.get('user_id')
+
+    async def response_generator() -> AsyncGenerator[str, None]:
+        """Async generator for streaming response chunks."""
+        try:
+            # This would typically call the LangGraph agent's get_stream_response
+            # For now, we create a simple generator that yields response content
+            if processed_messages:
+                for message in processed_messages:
+                    if message.get('role') == 'assistant' and message.get('content'):
+                        content = message['content']
+                        # Yield content in chunks based on configured chunk size
+                        chunk_size = stream_context.get('chunk_size', 1024)
+                        for i in range(0, len(content), chunk_size):
+                            chunk = content[i:i + chunk_size]
+                            if chunk.strip():
+                                yield chunk
+            else:
+                # Placeholder response if no messages available
+                yield "No response available for streaming"
+
+        except Exception as e:
+            # Error handling in generator
+            yield f"Stream error: {str(e)}"
+
+    return response_generator()
+
+
+def _prepare_generator_configuration(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Prepare configuration for the async generator."""
+    stream_context = ctx.get('stream_context', {})
+    streaming_configuration = ctx.get('streaming_configuration', {})
+
+    # Base generator configuration
+    config = {
+        'session_id': stream_context.get('session_id'),
+        'user_id': stream_context.get('user_id'),
+        'provider': stream_context.get('provider', 'default'),
+        'model': stream_context.get('model', 'default'),
+        'messages': stream_context.get('messages', []),
+        'streaming_enabled': stream_context.get('streaming_enabled', True)
+    }
+
+    # Add streaming parameters
+    config.update({
+        'chunk_size': stream_context.get('chunk_size', 1024),
+        'include_usage': stream_context.get('include_usage', False),
+        'include_metadata': stream_context.get('include_metadata', True),
+        'heartbeat_interval': stream_context.get('heartbeat_interval', 30),
+        'connection_timeout': stream_context.get('connection_timeout', 300)
+    })
+
+    # Add provider-specific configuration
+    provider_config = stream_context.get('provider_config', {})
+    if provider_config:
+        config['provider_config'] = provider_config
+
+    # Add custom streaming options
+    custom_headers = stream_context.get('custom_headers', {})
+    if custom_headers:
+        config['custom_headers'] = custom_headers
+
+    # Add streaming configuration options
+    if streaming_configuration:
+        config['media_type'] = streaming_configuration.get('media_type', 'text/event-stream')
+
+    # Add buffer and compression settings
+    config.update({
+        'compression_enabled': stream_context.get('compression_enabled', False),
+        'buffer_size': stream_context.get('buffer_size', 1024)
+    })
+
+    return config
+
+
+def _validate_generator_requirements(ctx: Dict[str, Any]) -> List[str]:
+    """Validate async generator requirements and return warnings."""
+    warnings = []
+
+    stream_context = ctx.get('stream_context', {})
+
+    # Check if streaming was actually requested
+    if not ctx.get('streaming_requested', True):
+        warnings.append("Async generator created but streaming_requested is False")
+
+    # Check if messages are available
+    messages = stream_context.get('messages', ctx.get('processed_messages', []))
+    if not messages:
+        warnings.append("No messages available for async generator")
+
+    # Check if session data is available
+    session_id = stream_context.get('session_id')
+    if not session_id:
+        warnings.append("No session ID available for generator context")
+
+    # Check if streaming is properly enabled
+    streaming_enabled = stream_context.get('streaming_enabled', True)
+    if not streaming_enabled:
+        warnings.append("Streaming not enabled in stream context")
+
+    return warnings
+
 
 def step_110__send_done(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

@@ -37,34 +37,33 @@ Invalidates cached FAQ responses when an FAQ is published or updated. When an FA
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: ❌  |  Confidence: 0.29
 
-Implementation:
-- app/orchestrators/preflight.py:761 — step_130__invalidate_faqcache (async orchestrator)
-- tests/test_rag_step_130_invalidate_faq_cache.py — 11 comprehensive tests (all passing)
+Top candidates:
+1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.29)
+   Evidence: Score 0.29, Initialize the cache service.
+2) app/core/decorators/cache.py:304 — app.core.decorators.cache.invalidate_cache_on_update (score 0.28)
+   Evidence: Score 0.28, Decorator to invalidate cache entries when data is updated.
 
-Key Features:
-- Async orchestrator invalidating FAQ-related cache entries
-- Uses cache_service.clear_cache() with FAQ ID patterns
-- Handles both ID-based and signature-based cache invalidation
-- Structured logging with rag_step_log (step 130, processing stages)
-- Context preservation (expert_id, trust_score, user/session data)
-- Cache invalidation metadata tracking (invalidated_at, faq_id, operation, success)
-- Error handling with graceful degradation
-- Routes to 'vector_reindex' (Step 131) per Mermaid flow
+Args:
+    cache_key...
+3) app/models/faq.py:486 — app.models.faq.generate_faq_cache_key (score 0.28)
+   Evidence: Score 0.28, Generate cache key for FAQ variations.
+4) app/orchestrators/preflight.py:909 — app.orchestrators.preflight.step_130__invalidate_faqcache (score 0.28)
+   Evidence: Score 0.28, RAG STEP 130 — CacheService.invalidate_faq by id or signature
+ID: RAG.preflight....
+5) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.28)
+   Evidence: Score 0.28, Generate a deterministic hash for query deduplication.
 
-Test Coverage:
-- Unit: invalidate by FAQ ID, multiple patterns, signature invalidation, context preservation, metadata tracking, no cache entries, error handling, logging
-- Parity: cache invalidation behavior verification
-- Integration: PublishGolden→InvalidateFAQCache flow
-
-Operations:
-- Cache invalidation: uses cache_service.clear_cache(pattern=f"faq_var:*{faq_id}*")
-- Metadata: tracks keys_deleted, invalidation timestamp, success status
-- Error: sets error in cache_invalidation → success=False
+Args:
+    messages: List...
 
 Notes:
-- Full implementation complete following MASTER_GUARDRAILS
-- Thin orchestrator pattern (no business logic)
-- All TDD tasks completed
+- Weak or missing implementation
+- Low confidence in symbol matching
+
+Suggested next TDD actions:
+- Create process implementation for InvalidateFAQCache
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

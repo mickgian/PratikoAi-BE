@@ -39,7 +39,7 @@ Matches user queries against the Golden Set (FAQ database) using either query si
 Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/preflight.py:238 — app.orchestrators.preflight.step_24__golden_lookup (score 0.28)
+1) app/orchestrators/preflight.py:239 — app.orchestrators.preflight.step_24__golden_lookup (score 0.28)
    Evidence: Score 0.28, RAG STEP 24 — GoldenSet.match_by_signature_or_semantic
 ID: RAG.preflight.goldens...
 2) app/api/v1/search.py:58 — app.api.v1.search.semantic_search (score 0.26)
@@ -50,10 +50,10 @@ Args:
 3) app/orchestrators/golden.py:104 — app.orchestrators.golden.step_25__golden_hit (score 0.26)
    Evidence: Score 0.26, RAG STEP 25 — High confidence match? score at least 0.90
 ID: RAG.golden.high.con...
-4) app/orchestrators/golden.py:181 — app.orchestrators.golden.step_27__kbdelta (score 0.26)
+4) app/orchestrators/golden.py:164 — app.orchestrators.golden.step_27__kbdelta (score 0.26)
    Evidence: Score 0.26, RAG STEP 27 — KB newer than Golden as of or conflicting tags?
 ID: RAG.golden.kb....
-5) app/orchestrators/golden.py:199 — app.orchestrators.golden.step_28__serve_golden (score 0.26)
+5) app/orchestrators/golden.py:257 — app.orchestrators.golden.step_28__serve_golden (score 0.26)
    Evidence: Score 0.26, RAG STEP 28 — Serve Golden answer with citations
 ID: RAG.golden.serve.golden.ans...
 

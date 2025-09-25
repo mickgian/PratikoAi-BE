@@ -37,27 +37,30 @@ Processes FAQ feedback submissions when users provide feedback on FAQ responses.
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🟡  |  Confidence: 0.55
 
-Implementation:
-- app/orchestrators/golden.py:534 — step_117__faqfeedback (async orchestrator)
-- tests/test_rag_step_117_faq_feedback.py — 9 comprehensive tests (all passing)
+Top candidates:
+1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.55)
+   Evidence: Score 0.55, Approve, reject, or request revision for a generated FAQ
+2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.55)
+   Evidence: Score 0.55, Publish an approved FAQ to make it available to users
+3) app/orchestrators/golden.py:534 — app.orchestrators.golden.step_117__faqfeedback (score 0.55)
+   Evidence: Score 0.55, RAG STEP 117 — POST /api/v1/faq/feedback.
 
-Key Features:
-- Async orchestrator using IntelligentFAQService.collect_feedback
-- Structured logging with rag_step_log (step 117, processing stages)
-- Context preservation (user_data, session_data, request_id)
-- Feedback metadata tracking (submitted_at, feedback_type, was_helpful)
-- Error handling with graceful degradation
-- Routes to 'expert_feedback_collector' (Step 119) per Mermaid flow
+ID: RAG.golden.post.api.v1.faq.feedba...
+4) app/api/v1/faq.py:187 — app.api.v1.faq.submit_feedback (score 0.54)
+   Evidence: Score 0.54, Submit user feedback on FAQ responses.
 
-Test Coverage:
-- Unit: process feedback, missing usage log, context preservation, metadata, service errors, logging
-- Parity: feedback collection behavior verification
-- Integration: FeedbackTypeSel→FAQFeedback→ExpertFeedbackCollector flow
+Feedback is used to improve FAQ quality ...
+5) app/api/v1/faq.py:77 — app.api.v1.faq.FAQFeedbackRequest (score 0.51)
+   Evidence: Score 0.51, Request model for FAQ feedback.
 
 Notes:
-- Full implementation complete following MASTER_GUARDRAILS
-- Thin orchestrator pattern (no business logic)
-- All TDD tasks completed
+- Partial implementation identified
+
+Suggested next TDD actions:
+- Complete partial implementation
+- Add missing error handling
+- Expand test coverage
+- Add performance benchmarks if needed
 <!-- AUTO-AUDIT:END -->

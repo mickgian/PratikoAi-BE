@@ -39,18 +39,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/platform.py:1782 — app.orchestrators.platform.step_76__convert_aimsg (score 0.28)
+1) app/orchestrators/platform.py:1783 — app.orchestrators.platform.step_76__convert_aimsg (score 0.28)
    Evidence: Score 0.28, RAG STEP 76 — Convert to AIMessage with tool_calls
 ID: RAG.platform.convert.to.a...
-2) app/orchestrators/kb.py:32 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
-   Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand
-ID: RAG.kb.knowledgesearch...
+2) app/orchestrators/kb.py:149 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
+   Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand.
+
+ID: RAG.kb.knowledgesear...
 3) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.25)
    Evidence: Score 0.25, Convert internal SearchResponse to API model.
 4) app/orchestrators/facts.py:675 — app.orchestrators.facts.step_98__to_tool_results (score 0.25)
    Evidence: Score 0.25, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-5) app/orchestrators/platform.py:745 — app.orchestrators.platform.step_11__convert_messages (score 0.25)
+5) app/orchestrators/platform.py:746 — app.orchestrators.platform.step_11__convert_messages (score 0.25)
    Evidence: Score 0.25, RAG STEP 11 — LangGraphAgent._chat Convert to Message objects
 ID: RAG.platform.l...
 

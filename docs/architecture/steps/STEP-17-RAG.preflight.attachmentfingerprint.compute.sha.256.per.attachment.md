@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/preflight.py:14 — app.orchestrators.preflight.step_17__attachment_fingerprint (score 0.28)
+1) app/orchestrators/preflight.py:15 — app.orchestrators.preflight.step_17__attachment_fingerprint (score 0.28)
    Evidence: Score 0.28, RAG STEP 17 — AttachmentFingerprint.compute SHA-256 per attachment
 ID: RAG.prefl...
 2) app/models/query.py:193 — app.models.query.QueryMetrics.average_cost_per_query (score 0.25)

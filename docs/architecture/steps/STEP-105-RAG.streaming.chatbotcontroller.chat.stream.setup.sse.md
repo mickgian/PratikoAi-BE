@@ -5,27 +5,28 @@
 **Node ID:** `StreamSetup`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `StreamSetup` (ChatbotController.chat_stream Setup SSE).
+Sets up Server-Sent Events (SSE) streaming infrastructure for real-time response delivery. Configures SSE headers, streaming context, and prepares for async generator creation. Essential step that bridges streaming decision to actual response generation, enabling browser-compatible event streaming. Routes to AsyncGen (Step 106) for generator creation. This step is derived from the Mermaid node: `StreamSetup` (ChatbotController.chat_stream Setup SSE).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/streaming.py:step_105__stream_setup`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Async orchestrator that configures SSE headers (Content-Type, Cache-Control, CORS), prepares streaming context with session data, and validates streaming requirements. Handles custom headers, compression settings, and heartbeat configuration. Routes to AsyncGen (Step 106) with complete streaming infrastructure ready.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - thin orchestrator preserving existing SSE streaming logic
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 105 (RAG.streaming.chatbotcontroller.chat.stream.setup.sse): ChatbotController.chat_stream Setup SSE | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (SSE configuration, headers setup, stream context preparation, custom options, context preservation, metadata addition, CORS configuration, compression settings, requirements validation, heartbeat configuration, logging)
+- [x] Parity tests (SSE setup behavior verification)
+- [x] Integration tests (StreamCheck→StreamSetup→AsyncGen flow, error handling)
+- [x] Implementation changes (async SSE streaming setup orchestrator)
+- [x] Observability: add structured log line
+  `RAG STEP 105 (RAG.streaming.chatbotcontroller.chat.stream.setup.sse): ChatbotController.chat_stream Setup SSE | attrs={step, request_id, streaming_requested, streaming_setup, headers_configured, stream_context_prepared, next_step, processing_stage}`
+- [x] Feature flag / config if needed (none required - uses existing SSE infrastructure)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
@@ -54,9 +55,10 @@ Args:
 
 Args:
     request: The FastAPI request object...
-4) app/orchestrators/streaming.py:32 — app.orchestrators.streaming.step_105__stream_setup (score 0.28)
+4) app/orchestrators/streaming.py:151 — app.orchestrators.streaming.step_105__stream_setup (score 0.28)
    Evidence: Score 0.28, RAG STEP 105 — ChatbotController.chat_stream Setup SSE
-ID: RAG.streaming.chatbot...
+
+Thin async orchestrator ...
 5) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.26)
    Evidence: Score 0.26, Response model for streaming chat endpoint.
 

@@ -4,6 +4,7 @@
 
 from contextlib import nullcontext
 from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
 
 try:
     from app.observability.rag_logging import rag_step_log, rag_step_timer
@@ -740,23 +741,170 @@ async def step_85__valid_attachments_check(*, messages: Optional[List[Any]] = No
 # Alias for backward compatibility
 step_85__attach_ok = step_85__valid_attachments_check
 
-def step_107__single_pass(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_107__single_pass(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 107 — SinglePassStream Prevent double iteration
-    ID: RAG.preflight.singlepassstream.prevent.double.iteration
-    Type: process | Category: preflight | Node: SinglePass
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that wraps async generators with SinglePassStream to prevent double iteration.
+    Takes generator data from AsyncGen (Step 106) and prepares for WriteSSE (Step 108).
+    Ensures streaming safety by preventing accidental re-iteration of generators.
+
+    Incoming: AsyncGen (Step 106) [when generator created]
+    Outgoing: WriteSSE (Step 108)
     """
     with rag_step_timer(107, 'RAG.preflight.singlepassstream.prevent.double.iteration', 'SinglePass', stage="start"):
-        rag_step_log(step=107, step_id='RAG.preflight.singlepassstream.prevent.double.iteration', node_label='SinglePass',
-                     category='preflight', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=107, step_id='RAG.preflight.singlepassstream.prevent.double.iteration', node_label='SinglePass',
-                     processing_stage="completed")
+        ctx = ctx or {}
+
+        rag_step_log(
+            step=107,
+            step_id='RAG.preflight.singlepassstream.prevent.double.iteration',
+            node_label='SinglePass',
+            category='preflight',
+            type='process',
+            request_id=ctx.get('request_id'),
+            processing_stage="started"
+        )
+
+        # Wrap async generator with SinglePassStream protection
+        wrapped_stream = _wrap_with_single_pass_protection(ctx)
+        protection_config = _prepare_protection_configuration(ctx)
+
+        # Preserve all context and add protection metadata
+        result = ctx.copy()
+
+        # Add stream protection results
+        result.update({
+            'wrapped_stream': wrapped_stream,
+            'protection_config': protection_config,
+            'stream_protected': True,
+            'processing_stage': 'stream_protected',
+            'next_step': 'write_sse',
+            'protection_timestamp': datetime.now(timezone.utc).isoformat()
+        })
+
+        # Add validation warnings if needed
+        validation_warnings = _validate_stream_requirements(ctx)
+        if validation_warnings:
+            result['validation_warnings'] = validation_warnings
+
+        rag_step_log(
+            step=107,
+            step_id='RAG.preflight.singlepassstream.prevent.double.iteration',
+            node_label='SinglePass',
+            request_id=ctx.get('request_id'),
+            stream_protected=True,
+            protection_configured=bool(protection_config),
+            next_step='write_sse',
+            processing_stage="completed"
+        )
+
         return result
+
+
+def _wrap_with_single_pass_protection(ctx: Dict[str, Any]) -> Any:
+    """Wrap async generator with SinglePassStream to prevent double iteration."""
+    from app.core.streaming_guard import SinglePassStream
+
+    async_generator = ctx.get('async_generator')
+
+    if async_generator is None:
+        # Create a placeholder generator if none exists
+        async def placeholder_generator():
+            yield "No generator available for streaming"
+        async_generator = placeholder_generator()
+
+    # Wrap with SinglePassStream for protection
+    wrapped_stream = SinglePassStream(async_generator)
+
+    return wrapped_stream
+
+
+def _prepare_protection_configuration(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Prepare configuration for stream protection."""
+    generator_config = ctx.get('generator_config', {})
+    stream_protection_config = ctx.get('stream_protection_config', {})
+    streaming_options = ctx.get('streaming_options', {})
+
+    # Base protection configuration
+    config = {
+        'double_iteration_prevention': True,
+        'session_id': generator_config.get('session_id'),
+        'user_id': generator_config.get('user_id'),
+        'provider': generator_config.get('provider', 'default'),
+        'model': generator_config.get('model', 'default'),
+        'streaming_enabled': generator_config.get('streaming_enabled', True)
+    }
+
+    # Add streaming parameters
+    config.update({
+        'chunk_size': generator_config.get('chunk_size', 1024),
+        'include_usage': generator_config.get('include_usage', False),
+        'include_metadata': generator_config.get('include_metadata', True),
+        'heartbeat_interval': generator_config.get('heartbeat_interval', 30),
+        'connection_timeout': generator_config.get('connection_timeout', 300)
+    })
+
+    # Add protection-specific settings
+    config.update({
+        'error_handling': generator_config.get('error_handling', 'standard'),
+        'error_recovery': generator_config.get('error_recovery', False),
+        'iteration_limit': generator_config.get('iteration_limit', 1),
+        'protection_enabled': generator_config.get('protection_enabled', True)
+    })
+
+    # Add streaming options if available
+    if streaming_options:
+        config.update({
+            'format': streaming_options.get('format', 'sse'),
+            'compression': streaming_options.get('compression', False),
+            'keep_alive': streaming_options.get('keep_alive', True)
+        })
+
+    # Add stream protection specific config
+    if stream_protection_config:
+        config.update(stream_protection_config)
+
+    # Add buffer and timeout settings
+    config.update({
+        'buffer_size': generator_config.get('buffer_size', 1024),
+        'timeout_ms': generator_config.get('timeout_ms', 30000),
+        'heartbeat_enabled': generator_config.get('heartbeat_enabled', False)
+    })
+
+    return config
+
+
+def _validate_stream_requirements(ctx: Dict[str, Any]) -> List[str]:
+    """Validate stream protection requirements and return warnings."""
+    warnings = []
+
+    # Check if async generator is available
+    async_generator = ctx.get('async_generator')
+    if async_generator is None:
+        warnings.append("No async generator available for stream protection")
+
+    # Check if generator was created
+    generator_created = ctx.get('generator_created', False)
+    if not generator_created:
+        warnings.append("Async generator not created but stream protection requested")
+
+    # Check generator configuration
+    generator_config = ctx.get('generator_config', {})
+    if not generator_config:
+        warnings.append("No generator configuration available for protection setup")
+
+    # Check session context
+    session_id = generator_config.get('session_id')
+    if not session_id:
+        warnings.append("No session ID available for stream protection context")
+
+    # Check if streaming is properly enabled
+    streaming_enabled = generator_config.get('streaming_enabled')
+    if streaming_enabled is False:
+        warnings.append("Streaming not enabled but protection requested")
+
+    return warnings
+
 
 async def step_130__invalidate_faqcache(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

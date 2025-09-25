@@ -37,36 +37,30 @@ Updates vector embeddings for published/updated FAQ entries in the vector index.
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.53
 
-Implementation:
-- app/orchestrators/golden.py:972 — step_131__vector_reindex (async orchestrator)
-- tests/test_rag_step_131_vector_reindex.py — 11 comprehensive tests (all passing)
+Top candidates:
+1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)
+   Evidence: Score 0.53, Approve, reject, or request revision for a generated FAQ
+2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.53)
+   Evidence: Score 0.53, Publish an approved FAQ to make it available to users
+3) app/api/v1/faq.py:431 — app.api.v1.faq.update_faq (score 0.52)
+   Evidence: Score 0.52, Update an existing FAQ entry with versioning.
 
-Key Features:
-- Async orchestrator updating FAQ vector embeddings
-- Uses EmbeddingManager.update_pinecone_embeddings for vector operations
-- Combines FAQ question+answer content for embedding
-- Rich metadata inclusion (category, version, regulatory refs, quality score)
-- Structured logging with rag_step_log (step 131, processing stages)
-- Context preservation (expert_id, trust_score, user/session data)
-- Vector index metadata tracking (embeddings_updated, processing_time, success)
-- Error handling with graceful degradation
-- Runs in parallel with Step 130 from Step 129 per Mermaid flow
+Requires admin privileges.
+4) app/orchestrators/golden.py:534 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback.
 
-Test Coverage:
-- Unit: FAQ embedding updates, version handling, context preservation, metadata inclusion, error handling, indexing metadata, completion flow, logging
-- Parity: embedding update behavior verification
-- Integration: PublishGolden→VectorReindex flow, parallel execution with Step 130
-
-Operations:
-- Vector update: uses EmbeddingManager.update_pinecone_embeddings with FAQ content
-- Metadata: tracks embeddings_updated, processing_time, version, operation, success
-- Error: sets error in vector_index_metadata → success=False
+ID: RAG.golden.post.api.v1.faq.feedba...
+5) app/orchestrators/golden.py:972 — app.orchestrators.golden.step_131__vector_reindex (score 0.50)
+   Evidence: Score 0.50, RAG STEP 131 — VectorIndex.upsert_faq update embeddings
+ID: RAG.golden.vectorind...
 
 Notes:
-- Full implementation complete following MASTER_GUARDRAILS
-- Thin orchestrator pattern (no business logic)
-- All TDD tasks completed
-- Parallel execution with Step 130 as per Mermaid diagram
+- Implementation exists but may not be wired correctly
+
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

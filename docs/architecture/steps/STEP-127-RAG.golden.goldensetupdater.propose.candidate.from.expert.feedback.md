@@ -37,30 +37,29 @@ Proposes a new FAQ candidate for the Golden Set based on expert feedback. When a
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.53
 
-Implementation:
-- app/orchestrators/golden.py:629 — step_127__golden_candidate (async orchestrator)
-- tests/test_rag_step_127_golden_candidate.py — 11 comprehensive tests (all passing)
+Top candidates:
+1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)
+   Evidence: Score 0.53, Approve, reject, or request revision for a generated FAQ
+2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.53)
+   Evidence: Score 0.53, Publish an approved FAQ to make it available to users
+3) app/orchestrators/golden.py:534 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
+   Evidence: Score 0.50, RAG STEP 117 — POST /api/v1/faq/feedback.
 
-Key Features:
-- Async orchestrator transforming expert feedback into FAQ candidate
-- Priority score calculation: confidence × trust × frequency × 100
-- Quality score derived from expert confidence and trust metrics
-- Structured logging with rag_step_log (step 127, processing stages)
-- Context preservation (expert_id, trust_score, user/session data)
-- Candidate metadata tracking (proposed_at, source, candidate_id)
-- Regulatory references preservation
-- Error handling with graceful degradation
-- Routes to 'golden_approval' (Step 128) per Mermaid flow
+ID: RAG.golden.post.api.v1.faq.feedba...
+4) app/api/v1/faq.py:187 — app.api.v1.faq.submit_feedback (score 0.50)
+   Evidence: Score 0.50, Submit user feedback on FAQ responses.
 
-Test Coverage:
-- Unit: propose candidate, priority calculation, regulatory refs, context preservation, metadata, missing category, error handling, logging
-- Parity: candidate creation behavior verification
-- Integration: DetermineAction→GoldenCandidate→GoldenApproval flow, data preparation for approval
+Feedback is used to improve FAQ quality ...
+5) app/api/v1/faq_automation.py:303 — app.api.v1.faq_automation.generate_faqs_from_candidates (score 0.49)
+   Evidence: Score 0.49, Generate FAQs from selected candidates
 
 Notes:
-- Full implementation complete following MASTER_GUARDRAILS
-- Thin orchestrator pattern (no business logic)
-- All TDD tasks completed
+- Implementation exists but may not be wired correctly
+
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

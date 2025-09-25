@@ -39,19 +39,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.47
 
 Top candidates:
-1) app/orchestrators/classify.py:208 — app.orchestrators.classify.step_31__classify_domain (score 0.47)
+1) app/orchestrators/classify.py:210 — app.orchestrators.classify.step_31__classify_domain (score 0.47)
    Evidence: Score 0.47, RAG STEP 31 — DomainActionClassifier.classify Rule-based classification
 ID: RAG....
-2) app/orchestrators/classify.py:542 — app.orchestrators.classify.step_35__llmfallback (score 0.44)
+2) app/orchestrators/classify.py:544 — app.orchestrators.classify.step_35__llmfallback (score 0.44)
    Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
 ID: RA...
-3) app/orchestrators/classify.py:431 — app.orchestrators.classify.step_33__confidence_check (score 0.44)
+3) app/orchestrators/classify.py:433 — app.orchestrators.classify.step_33__confidence_check (score 0.44)
    Evidence: Score 0.44, RAG STEP 33 — Confidence at least threshold?
 ID: RAG.classify.confidence.at.leas...
-4) app/orchestrators/classify.py:315 — app.orchestrators.classify.step_32__calc_scores (score 0.44)
+4) app/orchestrators/classify.py:317 — app.orchestrators.classify.step_32__calc_scores (score 0.44)
    Evidence: Score 0.44, RAG STEP 32 — Calculate domain and action scores Match Italian keywords
 ID: RAG....
-5) app/orchestrators/classify.py:675 — app.orchestrators.classify.step_35__llm_fallback (score 0.44)
+5) app/orchestrators/classify.py:677 — app.orchestrators.classify.step_35__llm_fallback (score 0.44)
    Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
 ID: RA...
 

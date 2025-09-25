@@ -52,15 +52,15 @@ Type: decision | Category: ro...
 
 Returns:
     RoutingStrategy: ...
-4) app/api/v1/data_sources.py:256 — app.api.v1.data_sources.get_sources_by_type (score 0.26)
+4) app/orchestrators/feedback.py:466 — app.orchestrators.feedback._determine_feedback_routing (score 0.27)
+   Evidence: Score 0.27, Helper function to determine feedback routing based on context.
+
+Routes feedback...
+5) app/api/v1/data_sources.py:256 — app.api.v1.data_sources.get_sources_by_type (score 0.26)
    Evidence: Score 0.26, Get all data sources of a specific type.
 
 Available types:
 - government: Officia...
-5) app/orchestrators/docs.py:313 — app.orchestrators.docs.step_89__doc_type (score 0.26)
-   Evidence: Score 0.26, RAG STEP 89 — Document type?
-ID: RAG.docs.document.type
-Type: decision | Categor...
 
 Notes:
 - Implementation exists but may not be wired correctly

@@ -2,7 +2,9 @@
 # These functions are the functional *nodes* that mirror the Mermaid diagram.
 # Implement thin coordination here (call services/factories), not core business logic.
 
+import math
 from contextlib import nullcontext
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 try:
@@ -982,20 +984,137 @@ def step_88__doc_classify(*, messages: Optional[List[Any]] = None, ctx: Optional
                      processing_stage="completed")
         return result
 
-def step_121__trust_score_ok(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def _evaluate_trust_score_decision(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Helper function to evaluate trust score against 0.7 threshold and determine routing.
+
+    Args:
+        ctx: Context containing expert validation data with trust score
+
+    Returns:
+        Dict containing trust score decision and routing information
+    """
+    # Extract trust score from expert validation
+    expert_validation = ctx.get('expert_validation', {})
+    trust_score = expert_validation.get('trust_score')
+
+    # Initialize decision result
+    decision_result = {
+        'decision_timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+        'trust_score': trust_score,
+        'threshold': 0.7,
+        'error': None
+    }
+
+    # Validate trust score
+    if trust_score is None:
+        decision_result.update({
+            'trust_score_decision': False,
+            'next_step': 'FeedbackRejected',
+            'routing_decision': 'reject_feedback',
+            'threshold_met': False,
+            'error': 'missing_trust_score'
+        })
+        return decision_result
+
+    # Validate trust score is a valid number
+    try:
+        trust_score_float = float(trust_score)
+        if not (0 <= trust_score_float <= 1) or math.isnan(trust_score_float) or math.isinf(trust_score_float):
+            raise ValueError("Trust score out of valid range")
+    except (ValueError, TypeError):
+        decision_result.update({
+            'trust_score_decision': False,
+            'next_step': 'FeedbackRejected',
+            'routing_decision': 'reject_feedback',
+            'threshold_met': False,
+            'error': 'invalid_trust_score'
+        })
+        return decision_result
+
+    # Make trust score decision (>= 0.7 threshold per Mermaid)
+    trust_score_decision = trust_score_float >= 0.7
+
+    if trust_score_decision:
+        # Trust score meets threshold - route to CreateFeedbackRec (Step 123)
+        decision_result.update({
+            'trust_score_decision': True,
+            'next_step': 'CreateFeedbackRec',
+            'routing_decision': 'proceed_with_feedback',
+            'threshold_met': True
+        })
+    else:
+        # Trust score below threshold - route to FeedbackRejected (Step 122)
+        decision_result.update({
+            'trust_score_decision': False,
+            'next_step': 'FeedbackRejected',
+            'routing_decision': 'reject_feedback',
+            'threshold_met': False
+        })
+
+    return decision_result
+
+
+async def step_121__trust_score_ok(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 121 — Trust score at least 0.7?
     ID: RAG.classify.trust.score.at.least.0.7
     Type: decision | Category: classify | Node: TrustScoreOK
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Decision orchestrator that evaluates trust scores from Step 120 (ValidateExpert) against
+    0.7 threshold and routes to either Step 122 (FeedbackRejected) or Step 123 (CreateFeedbackRec).
+    Implements thin orchestration pattern with no business logic, focusing on decision
+    coordination and routing per Mermaid diagram.
     """
     with rag_step_timer(121, 'RAG.classify.trust.score.at.least.0.7', 'TrustScoreOK', stage="start"):
         rag_step_log(step=121, step_id='RAG.classify.trust.score.at.least.0.7', node_label='TrustScoreOK',
-                     category='classify', type='decision', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=121, step_id='RAG.classify.trust.score.at.least.0.7', node_label='TrustScoreOK',
-                     processing_stage="completed")
-        return result
+                     category='classify', type='decision', processing_stage="started")
+
+        # Extract context parameters
+        context = ctx or {}
+        request_id = kwargs.get('request_id') or context.get('request_id', 'unknown')
+
+        try:
+            # Evaluate trust score decision using helper function
+            decision_data = await _evaluate_trust_score_decision(context)
+
+            # Preserve all context data while adding decision metadata
+            result = {**context}
+            result.update(decision_data)
+            result['request_id'] = request_id
+
+            # Log decision details
+            rag_step_log(step=121, step_id='RAG.classify.trust.score.at.least.0.7', node_label='TrustScoreOK',
+                        category='classify', type='decision',
+                        trust_score=decision_data['trust_score'],
+                        trust_score_decision=decision_data['trust_score_decision'],
+                        next_step=decision_data['next_step'],
+                        threshold_met=decision_data['threshold_met'],
+                        routing_decision=decision_data['routing_decision'],
+                        request_id=request_id,
+                        processing_stage="completed")
+
+            return result
+
+        except Exception as e:
+            # Handle unexpected errors gracefully - default to rejection
+            error_result = {**context}
+            error_result.update({
+                'trust_score_decision': False,
+                'next_step': 'FeedbackRejected',
+                'routing_decision': 'reject_feedback',
+                'threshold_met': False,
+                'error': f'trust_score_evaluation_error: {str(e)}',
+                'decision_timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                'request_id': request_id
+            })
+
+            rag_step_log(step=121, step_id='RAG.classify.trust.score.at.least.0.7', node_label='TrustScoreOK',
+                        category='classify', type='decision',
+                        error=str(e),
+                        trust_score_decision=False,
+                        next_step='FeedbackRejected',
+                        request_id=request_id,
+                        processing_stage="error")
+
+            return error_result

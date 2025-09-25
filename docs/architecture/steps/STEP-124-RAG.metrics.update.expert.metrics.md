@@ -77,27 +77,27 @@ Process orchestrator that updates expert performance metrics based on feedback d
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
+Status: 🔌  |  Confidence: 0.37
 
 Top candidates:
-1) app/orchestrators/metrics.py:609 — app.orchestrators.metrics.step_124__update_expert_metrics (score 0.35)
+1) app/orchestrators/metrics.py:662 — app.orchestrators.metrics._update_expert_performance_metrics (score 0.37)
+   Evidence: Score 0.37, Helper function to update expert performance metrics using ExpertValidationWorkf...
+2) app/orchestrators/metrics.py:611 — app.orchestrators.metrics.step_124__update_expert_metrics (score 0.35)
    Evidence: Score 0.35, RAG STEP 124 — Update expert metrics
 ID: RAG.metrics.update.expert.metrics
 Type:...
-2) evals/helpers.py:92 — evals.helpers.update_success_metrics (score 0.32)
+3) evals/helpers.py:92 — evals.helpers.update_success_metrics (score 0.32)
    Evidence: Score 0.32, Update metrics for a successful evaluation.
 
 Args:
     report: The report dictio...
-3) evals/helpers.py:114 — evals.helpers.update_failure_metrics (score 0.32)
+4) evals/helpers.py:114 — evals.helpers.update_failure_metrics (score 0.32)
    Evidence: Score 0.32, Update metrics for a failed evaluation.
 
 Args:
     report: The report dictionary...
-4) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.31)
+5) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.31)
    Evidence: Score 0.31, Update system-level metrics like memory and CPU usage.
-5) app/core/monitoring/metrics.py:426 — app.core.monitoring.metrics.update_subscription_metrics (score 0.31)
-   Evidence: Score 0.31, Update subscription counts.
 
 Notes:
 - Implementation exists but may not be wired correctly

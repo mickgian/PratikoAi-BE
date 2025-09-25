@@ -40,9 +40,9 @@ Creates an async generator for streaming response delivery. Configures streaming
 Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/orchestrators/platform.py:2445 — app.orchestrators.platform._create_streaming_generator (score 0.30)
+1) app/orchestrators/platform.py:2781 — app.orchestrators.platform._create_streaming_generator (score 0.30)
    Evidence: Score 0.30, Create async generator for streaming response delivery.
-2) app/orchestrators/platform.py:2385 — app.orchestrators.platform.step_106__async_gen (score 0.29)
+2) app/orchestrators/platform.py:2721 — app.orchestrators.platform.step_106__async_gen (score 0.29)
    Evidence: Score 0.29, RAG STEP 106 — Create async generator
 
 Thin async orchestrator that creates an a...

@@ -39,28 +39,26 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
-1) app/orchestrators/platform.py:1202 — app.orchestrators.platform.step_50__strategy_type (score 0.31)
+1) app/orchestrators/platform.py:1203 — app.orchestrators.platform.step_50__strategy_type (score 0.31)
    Evidence: Score 0.31, RAG STEP 50 — Routing strategy?
 ID: RAG.platform.routing.strategy
 Type: decision...
 2) app/orchestrators/routing.py:14 — app.orchestrators.routing.step_79__tool_type (score 0.31)
    Evidence: Score 0.31, RAG STEP 79 — Tool type?
+
 ID: RAG.routing.tool.type
-Type: decision | Category: ro...
-3) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
+Type: decision | Category: r...
+3) app/orchestrators/routing.py:94 — app.orchestrators.routing._determine_tool_type_and_routing (score 0.30)
+   Evidence: Score 0.30, Determine tool type and routing destination based on tool call context.
+
+Maps to...
+4) app/orchestrators/routing.py:271 — app.orchestrators.routing._handle_tool_type_error (score 0.30)
+   Evidence: Score 0.30, Handle errors in tool type detection with graceful fallback.
+5) app/core/langgraph/graph.py:343 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
    Evidence: Score 0.28, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-4) app/orchestrators/feedback.py:466 — app.orchestrators.feedback._determine_feedback_routing (score 0.27)
-   Evidence: Score 0.27, Helper function to determine feedback routing based on context.
-
-Routes feedback...
-5) app/api/v1/data_sources.py:256 — app.api.v1.data_sources.get_sources_by_type (score 0.26)
-   Evidence: Score 0.26, Get all data sources of a specific type.
-
-Available types:
-- government: Officia...
 
 Notes:
 - Implementation exists but may not be wired correctly

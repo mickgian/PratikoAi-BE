@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/platform.py:2264 — app.orchestrators.platform.step_103__log_complete (score 0.28)
+1) app/orchestrators/platform.py:2600 — app.orchestrators.platform.step_103__log_complete (score 0.28)
    Evidence: Score 0.28, RAG STEP 103 — Logger.info Log completion
 ID: RAG.platform.logger.info.log.compl...
 2) app/core/privacy/gdpr.py:379 — app.core.privacy.gdpr.AuditLogger._log_event (score 0.28)

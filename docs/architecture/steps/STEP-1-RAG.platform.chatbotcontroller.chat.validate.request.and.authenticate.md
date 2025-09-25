@@ -54,7 +54,7 @@ Args:
 
 Args:
     request: The FastAPI request object...
-4) app/orchestrators/platform.py:15 — app.orchestrators.platform.step_1__validate_request (score 0.28)
+4) app/orchestrators/platform.py:16 — app.orchestrators.platform.step_1__validate_request (score 0.28)
    Evidence: Score 0.28, RAG STEP 1 — ChatbotController.chat Validate request and authenticate
 ID: RAG.pl...
 5) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.28)

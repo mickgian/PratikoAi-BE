@@ -42,17 +42,19 @@ Top candidates:
 1) app/orchestrators/facts.py:675 — app.orchestrators.facts.step_98__to_tool_results (score 0.31)
    Evidence: Score 0.31, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-2) app/orchestrators/platform.py:890 — app.orchestrators.platform._convert_single_message (score 0.28)
+2) app/orchestrators/platform.py:891 — app.orchestrators.platform._convert_single_message (score 0.28)
    Evidence: Score 0.28, Convert a single message from any format to Message object.
-3) app/orchestrators/platform.py:2246 — app.orchestrators.platform.step_99__tool_results (score 0.28)
-   Evidence: Score 0.28, RAG STEP 99 — Return to tool caller
+3) app/orchestrators/platform.py:2526 — app.orchestrators.platform.step_99__tool_results (score 0.28)
+   Evidence: Score 0.28, RAG STEP 99 — Return to tool caller.
+
 ID: RAG.platform.return.to.tool.caller
-Type:...
-4) app/services/knowledge_search_service.py:377 — app.services.knowledge_search_service.KnowledgeSearchService._combine_and_deduplicate_results (score 0.27)
-   Evidence: Score 0.27, Combine results from BM25 and vector search, removing duplicates.
-5) app/orchestrators/facts.py:14 — app.orchestrators.facts.step_14__extract_facts (score 0.25)
-   Evidence: Score 0.25, RAG STEP 14 — AtomicFactsExtractor.extract Extract atomic facts
-ID: RAG.facts.at...
+Typ...
+4) app/orchestrators/platform.py:2491 — app.orchestrators.platform._handle_tool_results_error (score 0.27)
+   Evidence: Score 0.27, Handle errors in tool results processing with graceful fallback.
+5) app/orchestrators/routing.py:94 — app.orchestrators.routing._determine_tool_type_and_routing (score 0.27)
+   Evidence: Score 0.27, Determine tool type and routing destination based on tool call context.
+
+Maps to...
 
 Notes:
 - Implementation exists but may not be wired correctly

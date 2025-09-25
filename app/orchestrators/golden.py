@@ -11,23 +11,179 @@ except Exception:  # pragma: no cover
     def rag_step_log(**kwargs): return None
     def rag_step_timer(*args, **kwargs): return nullcontext()
 
-def step_20__golden_fast_gate(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 20 — Golden fast-path eligible? no doc or quick check safe
+async def step_20__golden_fast_gate(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    """RAG STEP 20 — Golden fast-path eligible? no doc or quick check safe.
+
     ID: RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe
     Type: process | Category: golden | Node: GoldenFastGate
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that determines if query is eligible for golden fast-path processing.
+    Evaluates query complexity, golden eligibility scores, and context to decide routing.
+    Routes to Step 24 (GoldenLookup) if eligible, Step 31 (ClassifyDomain) if not.
+    Receives input from Step 19 (no attachments) or Step 22 (no doc dependency).
     """
-    with rag_step_timer(20, 'RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe', 'GoldenFastGate', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(20, 'RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe', 'GoldenFastGate',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=20, step_id='RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe', node_label='GoldenFastGate',
-                     category='golden', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=20, step_id='RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe', node_label='GoldenFastGate',
-                     processing_stage="completed")
-        return result
+                     category='golden', type='process', request_id=request_id, processing_stage="started")
+
+        try:
+            # Extract eligibility data from context
+            eligibility_result = await _check_golden_fast_path_eligibility(ctx)
+
+            # Build result with preserved context and eligibility decision
+            result = {
+                **ctx,
+                'golden_fast_path_eligible': eligibility_result['eligible'],
+                'eligibility_reason': eligibility_result['reason'],
+                'next_step': eligibility_result['next_step'],
+                'next_step_id': eligibility_result['next_step_id'],
+                'route_to': eligibility_result['route_to'],
+                'previous_step': ctx.get('rag_step'),
+                'request_id': request_id
+            }
+
+            # Add golden lookup params if eligible
+            if eligibility_result['eligible']:
+                result['golden_lookup_params'] = {
+                    'query_signature': ctx.get('query_signature'),
+                    'canonical_facts': ctx.get('canonical_facts', []),
+                    'confidence_scores': ctx.get('confidence_scores', {})
+                }
+            else:
+                result['classification_context'] = {
+                    'query_complexity': ctx.get('confidence_scores', {}).get('query_complexity', 0.0),
+                    'golden_eligible': ctx.get('confidence_scores', {}).get('golden_eligible', 0.0)
+                }
+                # Also add query_complexity directly for test compatibility
+                result['query_complexity'] = ctx.get('confidence_scores', {}).get('query_complexity', 0.0)
+
+            rag_step_log(
+                step=20,
+                step_id='RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe',
+                node_label='GoldenFastGate',
+                request_id=request_id,
+                golden_fast_path_eligible=eligibility_result['eligible'],
+                eligibility_reason=eligibility_result['reason'],
+                next_step=eligibility_result['next_step'],
+                route_to=eligibility_result['route_to'],
+                processing_stage="completed"
+            )
+
+            return result
+
+        except Exception as e:
+            rag_step_log(
+                step=20,
+                step_id='RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe',
+                node_label='GoldenFastGate',
+                request_id=request_id,
+                error=str(e),
+                processing_stage="error"
+            )
+            # On error, default to not eligible and route to classification
+            return await _handle_golden_fast_gate_error(ctx, str(e))
+
+
+async def _check_golden_fast_path_eligibility(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Helper function to determine golden fast-path eligibility based on query complexity and context.
+
+    Eligibility criteria:
+    1. From Step 22 with no doc dependency -> always eligible
+    2. From Step 19 with no attachments -> check confidence scores
+    3. Query complexity <= 0.7 (simple to moderately complex)
+    4. Golden eligible score >= 0.5 (reasonable golden match potential)
+    """
+    previous_step = ctx.get('rag_step')
+
+    # Special case: From Step 22 with no document dependency -> always eligible
+    if previous_step == 22 and ctx.get('doc_dependent') is False:
+        return {
+            'eligible': True,
+            'reason': 'no_document_dependency',
+            'next_step': 24,
+            'next_step_id': 'RAG.golden.goldenset.match.by.signature.or.semantic',
+            'route_to': 'GoldenLookup'
+        }
+
+    # Extract confidence scores for other cases
+    confidence_scores = ctx.get('confidence_scores', {})
+    query_complexity = confidence_scores.get('query_complexity', 1.0)  # Default to complex
+    golden_eligible = confidence_scores.get('golden_eligible', 0.0)    # Default to not eligible
+
+    # Check eligibility thresholds
+    COMPLEXITY_THRESHOLD = 0.7
+    GOLDEN_ELIGIBLE_THRESHOLD = 0.5
+
+    # Determine eligibility based on thresholds
+    complexity_ok = query_complexity <= COMPLEXITY_THRESHOLD
+    golden_score_ok = golden_eligible >= GOLDEN_ELIGIBLE_THRESHOLD
+
+    # Check context-specific eligibility reasons
+    if not confidence_scores:  # Missing eligibility data
+        return {
+            'eligible': False,
+            'reason': 'missing_eligibility_data',
+            'next_step': 31,
+            'next_step_id': 'RAG.classify.domainactionclassifier.classify.rule.based.classification',
+            'route_to': 'ClassifyDomain'
+        }
+
+    if not complexity_ok:  # Query too complex
+        return {
+            'eligible': False,
+            'reason': 'query_too_complex',
+            'next_step': 31,
+            'next_step_id': 'RAG.classify.domainactionclassifier.classify.rule.based.classification',
+            'route_to': 'ClassifyDomain'
+        }
+
+    if not golden_score_ok:  # Low golden eligibility
+        return {
+            'eligible': False,
+            'reason': 'low_golden_eligibility',
+            'next_step': 31,
+            'next_step_id': 'RAG.classify.domainactionclassifier.classify.rule.based.classification',
+            'route_to': 'ClassifyDomain'
+        }
+
+    # Determine specific eligibility reason based on path
+    if previous_step == 19:
+        # From Step 19: no attachments present
+        eligibility_reason = 'simple_query_no_attachments'
+    else:
+        # Generic case
+        eligibility_reason = 'threshold_criteria_met'
+
+    # Eligible for golden fast-path
+    return {
+        'eligible': True,
+        'reason': eligibility_reason,
+        'next_step': 24,
+        'next_step_id': 'RAG.golden.goldenset.match.by.signature.or.semantic',
+        'route_to': 'GoldenLookup'
+    }
+
+
+async def _handle_golden_fast_gate_error(ctx: Dict[str, Any], error_msg: str) -> Dict[str, Any]:
+    """Helper function to handle errors in golden fast gate processing.
+
+    Defaults to not eligible and routes to classification for safe fallback.
+    """
+    return {
+        **ctx,
+        'golden_fast_path_eligible': False,
+        'eligibility_reason': f'error_occurred: {error_msg}',
+        'next_step': 31,
+        'next_step_id': 'RAG.classify.domainactionclassifier.classify.rule.based.classification',
+        'route_to': 'ClassifyDomain',
+        'error': error_msg,
+        'previous_step': ctx.get('rag_step'),
+        'request_id': ctx.get('request_id', 'unknown')
+    }
 
 async def step_23__require_doc_ingest(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """

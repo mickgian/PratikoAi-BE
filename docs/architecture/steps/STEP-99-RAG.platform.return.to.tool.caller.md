@@ -36,37 +36,32 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
-1) app/orchestrators/facts.py:675 — app.orchestrators.facts.step_98__to_tool_results (score 0.30)
+1) app/orchestrators/platform.py:2248 — app.orchestrators.platform._format_tool_results_for_caller (score 0.32)
+   Evidence: Score 0.32, Format tool results from various tool types into ToolMessage format for LangGrap...
+2) app/orchestrators/facts.py:675 — app.orchestrators.facts.step_98__to_tool_results (score 0.30)
    Evidence: Score 0.30, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-2) app/orchestrators/platform.py:2246 — app.orchestrators.platform.step_99__tool_results (score 0.30)
-   Evidence: Score 0.30, RAG STEP 99 — Return to tool caller
+3) app/orchestrators/platform.py:2526 — app.orchestrators.platform.step_99__tool_results (score 0.30)
+   Evidence: Score 0.30, RAG STEP 99 — Return to tool caller.
+
 ID: RAG.platform.return.to.tool.caller
-Type:...
-3) app/orchestrators/kb.py:149 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
+Typ...
+4) app/orchestrators/platform.py:2491 — app.orchestrators.platform._handle_tool_results_error (score 0.29)
+   Evidence: Score 0.29, Handle errors in tool results processing with graceful fallback.
+5) app/orchestrators/kb.py:150 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
    Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand.
 
 ID: RAG.kb.knowledgesear...
-4) evals/helpers.py:129 — evals.helpers.process_trace_results (score 0.26)
-   Evidence: Score 0.26, Process results for a single trace.
-
-Args:
-    report: The report dictionary.
-  ...
-5) app/orchestrators/cache.py:654 — app.orchestrators.cache.step_66__return_cached (score 0.26)
-   Evidence: Score 0.26, RAG STEP 66 — Return cached response
-ID: RAG.cache.return.cached.response
-Type: ...
 
 Notes:
-- Weak or missing implementation
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
 
 Suggested next TDD actions:
-- Create process implementation for ToolResults
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

@@ -4,6 +4,8 @@
 
 from contextlib import nullcontext
 from typing import Any, Dict, List, Optional
+import asyncio
+from datetime import datetime, timezone
 
 try:
     from app.observability.rag_logging import rag_step_log, rag_step_timer
@@ -1108,20 +1110,282 @@ async def step_97__provenance(*, messages: Optional[List[Any]] = None, ctx: Opti
 
         return result
 
-def step_134__parse_docs(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_134__parse_docs(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 134 — Extract text and metadata
     ID: RAG.docs.extract.text.and.metadata
     Type: process | Category: docs | Node: ParseDocs
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that extracts text and metadata from parsed RSS feed documents,
+    then routes to KnowledgeStore. Coordinates between document processing services and knowledge integration.
     """
+    ctx = ctx or {}
+    parsed_feeds = ctx.get('parsed_feeds', [])
+    total_items_parsed = ctx.get('total_items_parsed', 0)
+    feed_sources = ctx.get('feed_sources', [])
+
     with rag_step_timer(134, 'RAG.docs.extract.text.and.metadata', 'ParseDocs', stage="start"):
-        rag_step_log(step=134, step_id='RAG.docs.extract.text.and.metadata', node_label='ParseDocs',
-                     category='docs', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=134, step_id='RAG.docs.extract.text.and.metadata', node_label='ParseDocs',
-                     processing_stage="completed")
-        return result
+        rag_step_log(
+            step=134,
+            step_id='RAG.docs.extract.text.and.metadata',
+            node_label='ParseDocs',
+            category='docs',
+            type='process',
+            processing_stage="started",
+            attrs={
+                'feeds_to_process': len(parsed_feeds),
+                'total_items': total_items_parsed,
+                'feed_sources': feed_sources
+            }
+        )
+
+        try:
+            # Extract text and metadata from parsed feeds
+            extraction_result = await _extract_text_and_metadata(
+                parsed_feeds=parsed_feeds,
+                feed_sources=feed_sources
+            )
+
+            # Route to KnowledgeStore if documents were successfully extracted
+            next_step_context = None
+            if extraction_result.get('successful_extractions', 0) > 0:
+                next_step_context = {
+                    'extracted_documents': extraction_result.get('documents_extracted', []),
+                    'documents_count': extraction_result.get('successful_extractions', 0),
+                    'feed_sources': feed_sources,
+                    'processing_summary': extraction_result.get('processing_summary', {})
+                }
+
+            result = {
+                'step': 134,
+                'status': 'completed',
+                'documents_processed': extraction_result.get('documents_processed', 0),
+                'successful_extractions': extraction_result.get('successful_extractions', 0),
+                'failed_extractions': extraction_result.get('failed_extractions', 0),
+                'extracted_documents': extraction_result.get('documents_extracted', []),
+                'next_step': 'KnowledgeStore' if next_step_context else None,
+                'next_step_context': next_step_context,
+                'processing_errors': extraction_result.get('errors')
+            }
+
+            rag_step_log(
+                step=134,
+                step_id='RAG.docs.extract.text.and.metadata',
+                node_label='ParseDocs',
+                processing_stage="completed",
+                attrs={
+                    'documents_processed': extraction_result.get('documents_processed', 0),
+                    'successful_extractions': extraction_result.get('successful_extractions', 0),
+                    'failed_extractions': extraction_result.get('failed_extractions', 0),
+                    'total_content_length': extraction_result.get('processing_summary', {}).get('total_content_length', 0),
+                    'next_step': result['next_step']
+                }
+            )
+
+            return result
+
+        except Exception as e:
+            rag_step_log(
+                step=134,
+                step_id='RAG.docs.extract.text.and.metadata',
+                node_label='ParseDocs',
+                processing_stage="error",
+                attrs={
+                    'error': str(e),
+                    'feeds_to_process': len(parsed_feeds),
+                    'feed_sources': feed_sources
+                }
+            )
+
+            return {
+                'step': 134,
+                'status': 'error',
+                'error': str(e),
+                'documents_processed': 0,
+                'successful_extractions': 0,
+                'failed_extractions': 0
+            }
+
+
+async def _extract_text_and_metadata(parsed_feeds: List[Dict[str, Any]], feed_sources: List[str]) -> Dict[str, Any]:
+    """Helper function to extract text and metadata from parsed RSS feeds.
+
+    Args:
+        parsed_feeds: List of parsed feed data structures from Step 133
+        feed_sources: List of feed source names
+
+    Returns:
+        Dictionary with extraction results including documents_extracted, successful_extractions, processing_summary
+    """
+    if not parsed_feeds:
+        return {
+            'status': 'completed',
+            'documents_processed': 0,
+            'successful_extractions': 0,
+            'failed_extractions': 0,
+            'documents_extracted': [],
+            'processing_summary': {
+                'total_content_length': 0,
+                'total_word_count': 0,
+                'processing_time_seconds': 0
+            }
+        }
+
+    try:
+        from app.services.document_processor import DocumentProcessor
+    except ImportError as e:
+        return {
+            'status': 'error',
+            'error': f'Failed to import document processing services: {str(e)}',
+            'documents_processed': 0,
+            'successful_extractions': 0,
+            'failed_extractions': 0,
+            'documents_extracted': [],
+            'processing_summary': {'successful_extractions': 0, 'failed_extractions': 0}
+        }
+
+    # Collect all documents from all feeds
+    all_documents = []
+    for feed in parsed_feeds:
+        items = feed.get('items', [])
+        for item in items:
+            if 'link' in item:
+                all_documents.append({
+                    'url': item['link'],
+                    'title': item.get('title', 'Unknown Document'),
+                    'feed_name': feed.get('feed_name', 'unknown_feed'),
+                    'authority': feed.get('authority', 'Unknown Authority'),
+                    'published': item.get('published'),
+                    'summary': item.get('summary'),
+                    'document_number': item.get('document_number'),
+                    'document_type': item.get('document_type')
+                })
+
+    if not all_documents:
+        return {
+            'status': 'no_documents',
+            'documents_processed': 0,
+            'successful_extractions': 0,
+            'failed_extractions': 0,
+            'documents_extracted': [],
+            'processing_summary': {'no_documents_found': True}
+        }
+
+    # Create document processing tasks
+    extraction_tasks = []
+    start_time = datetime.now(timezone.utc)
+
+    for doc in all_documents:
+        extraction_tasks.append(_extract_individual_document(doc))
+
+    # Execute extraction tasks concurrently
+    try:
+        extraction_results = await asyncio.gather(*extraction_tasks, return_exceptions=True)
+    except Exception as e:
+        return {
+            'status': 'gather_error',
+            'error': str(e),
+            'documents_processed': 0,
+            'successful_extractions': 0,
+            'failed_extractions': len(all_documents),
+            'documents_extracted': [],
+            'processing_summary': {'gather_error': True}
+        }
+
+    # Aggregate results
+    extracted_documents = []
+    successful_extractions = 0
+    failed_extractions = 0
+    total_content_length = 0
+    total_word_count = 0
+    errors = []
+
+    for i, result in enumerate(extraction_results):
+        if isinstance(result, Exception):
+            errors.append(str(result))
+            failed_extractions += 1
+            continue
+
+        if result.get('success', False):
+            extracted_documents.append(result)
+            successful_extractions += 1
+            total_content_length += result.get('processing_stats', {}).get('content_length', 0)
+            total_word_count += result.get('processing_stats', {}).get('word_count', 0)
+        else:
+            failed_extractions += 1
+            if result.get('error'):
+                errors.append(result['error'])
+
+    processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+
+    return {
+        'status': 'completed',
+        'documents_processed': len(all_documents),
+        'successful_extractions': successful_extractions,
+        'failed_extractions': failed_extractions,
+        'documents_extracted': extracted_documents,
+        'processing_summary': {
+            'total_content_length': total_content_length,
+            'total_word_count': total_word_count,
+            'processing_time_seconds': processing_time,
+            'successful_extractions': successful_extractions,
+            'failed_extractions': failed_extractions
+        },
+        'errors': errors if errors else None
+    }
+
+
+async def _extract_individual_document(document_info: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract text and metadata from an individual document.
+
+    Args:
+        document_info: Document information from RSS feed item
+
+    Returns:
+        Dictionary with extracted document data
+    """
+    try:
+        from app.services.document_processor import DocumentProcessor
+
+        document_url = document_info.get('url')
+        if not document_url:
+            return {
+                'url': document_url,
+                'title': document_info.get('title', 'Unknown Document'),
+                'success': False,
+                'error': 'Missing document URL'
+            }
+
+        # Use document processor service to extract content and metadata
+        async with DocumentProcessor() as processor:
+            processed_doc = await processor.process_document(document_url)
+
+        # Enhance metadata with RSS feed information
+        enhanced_metadata = processed_doc.get('metadata', {})
+        enhanced_metadata.update({
+            'feed_name': document_info.get('feed_name'),
+            'authority': document_info.get('authority'),
+            'published_date': document_info.get('published'),
+            'document_number': document_info.get('document_number'),
+            'document_type': document_info.get('document_type'),
+            'original_summary': document_info.get('summary')
+        })
+
+        return {
+            'url': document_url,
+            'title': document_info.get('title', processed_doc.get('title', 'Unknown Document')),
+            'content': processed_doc.get('content', ''),
+            'content_hash': processed_doc.get('content_hash'),
+            'document_type': processed_doc.get('document_type'),
+            'metadata': enhanced_metadata,
+            'processing_stats': processed_doc.get('processing_stats', {}),
+            'success': processed_doc.get('success', False)
+        }
+
+    except Exception as e:
+        return {
+            'url': document_info.get('url'),
+            'title': document_info.get('title', 'Unknown Document'),
+            'success': False,
+            'error': f'Document extraction failed: {str(e)}'
+        }

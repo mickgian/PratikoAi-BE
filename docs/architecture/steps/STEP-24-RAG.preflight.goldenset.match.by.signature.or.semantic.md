@@ -47,13 +47,13 @@ ID: RAG.preflight.goldens...
 
 Args:
     request: FastAPI r...
-3) app/orchestrators/golden.py:104 — app.orchestrators.golden.step_25__golden_hit (score 0.26)
+3) app/orchestrators/golden.py:260 — app.orchestrators.golden.step_25__golden_hit (score 0.26)
    Evidence: Score 0.26, RAG STEP 25 — High confidence match? score at least 0.90
 ID: RAG.golden.high.con...
-4) app/orchestrators/golden.py:164 — app.orchestrators.golden.step_27__kbdelta (score 0.26)
+4) app/orchestrators/golden.py:320 — app.orchestrators.golden.step_27__kbdelta (score 0.26)
    Evidence: Score 0.26, RAG STEP 27 — KB newer than Golden as of or conflicting tags?
 ID: RAG.golden.kb....
-5) app/orchestrators/golden.py:257 — app.orchestrators.golden.step_28__serve_golden (score 0.26)
+5) app/orchestrators/golden.py:413 — app.orchestrators.golden.step_28__serve_golden (score 0.26)
    Evidence: Score 0.26, RAG STEP 28 — Serve Golden answer with citations
 ID: RAG.golden.serve.golden.ans...
 

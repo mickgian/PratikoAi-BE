@@ -46,15 +46,15 @@ ID: RAG.metrics.usagetracker.tr...
    Evidence: Score 0.31, RAG STEP 111 — Collect usage metrics
 ID: RAG.metrics.collect.usage.metrics
 Type:...
-3) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.30)
+3) app/orchestrators/metrics.py:446 — app.orchestrators.metrics._collect_expert_feedback (score 0.31)
+   Evidence: Score 0.31, Helper function to collect expert feedback using ExpertFeedbackCollector service...
+4) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.30)
    Evidence: Score 0.30, Track domain-action classification usage and metrics.
 
 Args:
     domain: The cla...
-4) app/services/usage_tracker.py:26 — app.services.usage_tracker.UsageMetrics (score 0.29)
+5) app/services/usage_tracker.py:26 — app.services.usage_tracker.UsageMetrics (score 0.29)
    Evidence: Score 0.29, Container for usage metrics.
-5) app/main.py:194 — app.main.metrics (score 0.28)
-   Evidence: Score 0.28, Prometheus metrics endpoint for scraping.
 
 Notes:
 - Implementation exists but may not be wired correctly

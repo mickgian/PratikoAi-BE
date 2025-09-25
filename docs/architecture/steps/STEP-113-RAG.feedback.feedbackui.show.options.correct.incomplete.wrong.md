@@ -5,30 +5,53 @@
 **Node ID:** `FeedbackUI`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `FeedbackUI` (FeedbackUI.show_options Correct Incomplete Wrong).
+Display feedback UI options (Correct, Incomplete, Wrong) to users after presenting AI responses. This step enables users to provide quality feedback that can be used for response evaluation and model improvement. The step handles different user types (anonymous, registered, expert) with appropriate feedback option sets and supports Italian localization for tax domain feedback.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/feedback.py:129` - `step_113__feedback_ui()`
+- **Helper function:** `app/orchestrators/feedback.py:14` - `_display_feedback_ui_options()`
+- **Test suite:** `tests/test_rag_step_113_feedback_ui.py` (16 comprehensive tests)
+- **Status:** ✅ Implemented (async orchestrator with full functionality)
+- **Behavior notes:**
+  - Displays feedback options based on user type and configuration
+  - Supports Italian localized feedback categories for tax domain
+  - Handles expert user enhancements with trust scoring
+  - Preserves all context data while adding UI elements
+  - Includes comprehensive error handling and graceful degradation
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- ✅ Fully implemented as async orchestrator following thin orchestration pattern
+- ✅ Added comprehensive user type handling (anonymous, registered, expert)
+- ✅ Added Italian localization support for tax domain feedback
+- ✅ Added expert mode enhancements with confidence ratings and improvement suggestions
+- ✅ Added comprehensive observability with structured logging
+- ✅ Added error handling with graceful UI display failures
 
 ## Risks / Impact
-- _TBD_
+- **Low Risk:** Well-tested implementation with comprehensive test coverage
+- **Performance:** Minimal latency impact - UI generation is fast
+- **Error Handling:** Graceful degradation on failures, never blocks pipeline
+- **Backwards Compatibility:** Preserves all existing context data
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests: 10 comprehensive test cases covering all user types, configurations, and error scenarios
+- [x] Integration tests: 6 integration tests covering Step 111→113→114 flow and full pipeline
+- [x] Implementation changes:
+  - [x] Converted sync stub to async orchestrator
+  - [x] Added `_display_feedback_ui_options()` helper function
+  - [x] Added user type detection and option customization
+  - [x] Added Italian localization support
+  - [x] Added expert mode enhancements
+  - [x] Added comprehensive error handling
+- [x] Observability: added structured log lines
   `RAG STEP 113 (RAG.feedback.feedbackui.show.options.correct.incomplete.wrong): FeedbackUI.show_options Correct Incomplete Wrong | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config: Uses existing context flags for anonymous/expert feedback
+- [x] Rollout plan: No rollout needed - graceful enhancement to existing pipeline
 
 ## Done When
-- Tests pass; metrics/latency acceptable; feature behind flag if risky.
+- [x] Tests pass (16/16 tests passing);
+- [x] metrics/latency acceptable (minimal performance impact);
+- [x] feature behind flag if risky (uses existing context flags).
 
 ## Links
 - RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
@@ -53,9 +76,10 @@ Features...
    Evidence: Score 0.45, Expert Feedback Collection Service for Quality Analysis System.
 
 Handles collect...
-5) app/orchestrators/feedback.py:104 — app.orchestrators.feedback.step_123__create_feedback_rec (score 0.43)
-   Evidence: Score 0.43, RAG STEP 123 — Create ExpertFeedback record
-ID: RAG.feedback.create.expertfeedba...
+5) app/orchestrators/feedback.py:611 — app.orchestrators.feedback._process_feedback_rejection (score 0.43)
+   Evidence: Score 0.43, Helper function to process feedback rejection and generate rejection metadata.
+
+...
 
 Notes:
 - Implementation exists but may not be wired correctly

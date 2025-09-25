@@ -37,36 +37,32 @@ Publishes or updates an approved FAQ entry in the Golden Set database with versi
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🟡  |  Confidence: 0.57
 
-Implementation:
-- app/orchestrators/golden.py:852 — step_129__publish_golden (async orchestrator)
-- tests/test_rag_step_129_publish_golden.py — 11 comprehensive tests (all passing)
+Top candidates:
+1) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.57)
+   Evidence: Score 0.57, Publish an approved FAQ to make it available to users
+2) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)
+   Evidence: Score 0.54, Approve, reject, or request revision for a generated FAQ
+3) app/api/v1/faq.py:431 — app.api.v1.faq.update_faq (score 0.53)
+   Evidence: Score 0.53, Update an existing FAQ entry with versioning.
 
-Key Features:
-- Async orchestrator publishing/updating FAQ entries with versioning
-- Create new FAQ entry via intelligent_faq_service.create_faq_entry
-- Update existing FAQ entry via intelligent_faq_service.update_faq_entry
-- Automatic version history creation for updates
-- Structured logging with rag_step_log (step 129, processing stages)
-- Context preservation (expert_id, trust_score, user/session data)
-- Publication metadata tracking (published_at, faq_id, operation, version)
-- Regulatory references preservation
-- Error handling with graceful degradation
-- Routes to 'invalidate_faq_cache' (Step 130) per Mermaid flow
+Requires admin privileges.
+4) app/orchestrators/golden.py:534 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback.
 
-Test Coverage:
-- Unit: create new entry, update existing, preserve regulatory refs, context preservation, publication metadata, cache invalidation routing, error handling, logging
-- Parity: FAQ creation/update behavior verification
-- Integration: GoldenApproval→PublishGolden→InvalidateFAQCache flow
+ID: RAG.golden.post.api.v1.faq.feedba...
+5) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.49)
+   Evidence: Score 0.49, Query the FAQ system with semantic search and response variation.
 
-Operations:
-- New FAQ: calls create_faq_entry → operation='created'
-- Update FAQ: calls update_faq_entry with version history → operation='updated'
-- Error: sets error in published_faq → operation='error'
+This endpoint...
 
 Notes:
-- Full implementation complete following MASTER_GUARDRAILS
-- Thin orchestrator pattern (no business logic)
-- All TDD tasks completed
+- Partial implementation identified
+
+Suggested next TDD actions:
+- Complete partial implementation
+- Add missing error handling
+- Expand test coverage
+- Add performance benchmarks if needed
 <!-- AUTO-AUDIT:END -->

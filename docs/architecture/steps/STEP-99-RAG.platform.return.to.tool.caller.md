@@ -42,13 +42,14 @@ Top candidates:
 1) app/orchestrators/facts.py:675 — app.orchestrators.facts.step_98__to_tool_results (score 0.30)
    Evidence: Score 0.30, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-2) app/orchestrators/platform.py:2245 — app.orchestrators.platform.step_99__tool_results (score 0.30)
+2) app/orchestrators/platform.py:2246 — app.orchestrators.platform.step_99__tool_results (score 0.30)
    Evidence: Score 0.30, RAG STEP 99 — Return to tool caller
 ID: RAG.platform.return.to.tool.caller
 Type:...
-3) app/orchestrators/kb.py:32 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
-   Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand
-ID: RAG.kb.knowledgesearch...
+3) app/orchestrators/kb.py:149 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
+   Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand.
+
+ID: RAG.kb.knowledgesear...
 4) evals/helpers.py:129 — evals.helpers.process_trace_results (score 0.26)
    Evidence: Score 0.26, Process results for a single trace.
 

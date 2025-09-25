@@ -37,37 +37,31 @@ Decision node that determines if an FAQ candidate meets the auto-approval qualit
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.54
 
-Implementation:
-- app/orchestrators/golden.py:733 — step_128__golden_approval (async decision orchestrator)
-- tests/test_rag_step_128_golden_approval.py — 13 comprehensive tests (all passing)
+Top candidates:
+1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)
+   Evidence: Score 0.54, Approve, reject, or request revision for a generated FAQ
+2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.54)
+   Evidence: Score 0.54, Publish an approved FAQ to make it available to users
+3) app/orchestrators/golden.py:534 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback.
 
-Key Features:
-- Async decision orchestrator evaluating FAQ candidate quality
-- Threshold-based approval logic:
-  * Auto-approve: quality_score >= 0.95 → publish_golden (Step 129)
-  * Reject: quality_score < 0.85 → feedback_end (Step 115)
-  * Manual review: 0.85 <= quality_score < 0.95 → feedback_end (for now)
-- Uses FAQ_AUTOMATION_CONFIG for configurable thresholds
-- Structured logging with rag_step_log (step 128, processing stages)
-- Context preservation (expert_id, trust_score, user/session data)
-- Approval metadata tracking (decided_at, decision, quality_score, threshold_used)
-- Error handling with graceful degradation (rejects on error for safety)
-- Routes to correct next step based on decision
+ID: RAG.golden.post.api.v1.faq.feedba...
+4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.49)
+   Evidence: Score 0.49, Query the FAQ system with semantic search and response variation.
 
-Test Coverage:
-- Unit: auto-approve high quality, reject low quality, manual review borderline, trust score consideration, context preservation, approval metadata, missing score, error handling, logging
-- Parity: approval logic behavior verification
-- Integration: GoldenCandidate→GoldenApproval→PublishGolden flow, rejection routing to FeedbackEnd
+This endpoint...
+5) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.49)
+   Evidence: Score 0.49, Create a new FAQ entry.
 
-Decision Logic:
-- quality_score >= 0.95 → auto_approved → publish_golden
-- quality_score < 0.85 → rejected → feedback_end
-- 0.85 <= quality_score < 0.95 → manual_review_required → feedback_end
+Requires admin privileges.
 
 Notes:
-- Full implementation complete following MASTER_GUARDRAILS
-- Thin orchestrator pattern (no business logic)
-- All TDD tasks completed
+- Implementation exists but may not be wired correctly
+
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

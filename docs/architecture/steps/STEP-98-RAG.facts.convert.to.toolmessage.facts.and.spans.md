@@ -42,9 +42,9 @@ Top candidates:
 1) app/orchestrators/facts.py:675 — app.orchestrators.facts.step_98__to_tool_results (score 0.31)
    Evidence: Score 0.31, RAG STEP 98 — Convert to ToolMessage facts and spans
 ID: RAG.facts.convert.to.to...
-2) app/orchestrators/platform.py:889 — app.orchestrators.platform._convert_single_message (score 0.28)
+2) app/orchestrators/platform.py:890 — app.orchestrators.platform._convert_single_message (score 0.28)
    Evidence: Score 0.28, Convert a single message from any format to Message object.
-3) app/orchestrators/platform.py:2245 — app.orchestrators.platform.step_99__tool_results (score 0.28)
+3) app/orchestrators/platform.py:2246 — app.orchestrators.platform.step_99__tool_results (score 0.28)
    Evidence: Score 0.28, RAG STEP 99 — Return to tool caller
 ID: RAG.platform.return.to.tool.caller
 Type:...

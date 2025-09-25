@@ -5,27 +5,28 @@
 **Node ID:** `StreamCheck`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `StreamCheck` (Streaming requested?).
+Determines if the client requested streaming response format by checking request parameters and HTTP headers. Routes to StreamSetup (Step 105) for streaming responses or ReturnComplete (Step 112) for regular JSON responses. Critical decision point that enables real-time response streaming based on client preferences. This step is derived from the Mermaid node: `StreamCheck` (Streaming requested?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/streaming.py:step_104__stream_check`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Async decision orchestrator that checks stream parameter, HTTP Accept headers, and client preferences. Routes to StreamSetup for streaming or ReturnComplete for JSON responses. Includes streaming configuration setup and comprehensive value parsing for various stream parameter formats.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - thin orchestrator preserving existing streaming detection logic
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 104 (RAG.streaming.streaming.requested): Streaming requested? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (streaming detection, non-streaming, missing parameters, string values, HTTP headers, context preservation, decision metadata, streaming configuration, edge cases, logging)
+- [x] Parity tests (streaming decision behavior verification)
+- [x] Integration tests (LogComplete→StreamCheck→StreamSetup/ReturnComplete flow)
+- [x] Implementation changes (async streaming decision orchestrator)
+- [x] Observability: add structured log line
+  `RAG STEP 104 (RAG.streaming.streaming.requested): Streaming requested? | attrs={step, request_id, streaming_requested, decision, decision_source, next_step, processing_stage}`
+- [x] Feature flag / config if needed (none required - uses existing detection logic)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
@@ -39,20 +40,21 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
-1) app/orchestrators/streaming.py:14 — app.orchestrators.streaming.step_104__stream_check (score 0.34)
+1) app/orchestrators/streaming.py:15 — app.orchestrators.streaming.step_104__stream_check (score 0.34)
    Evidence: Score 0.34, RAG STEP 104 — Streaming requested?
-ID: RAG.streaming.streaming.requested
-Type: ...
-2) app/orchestrators/streaming.py:32 — app.orchestrators.streaming.step_105__stream_setup (score 0.29)
+
+Thin async orchestrator that determines if ...
+2) app/orchestrators/streaming.py:117 — app.orchestrators.streaming._parse_stream_value (score 0.30)
+   Evidence: Score 0.30, Parse various stream value formats to boolean.
+3) app/orchestrators/streaming.py:242 — app.orchestrators.streaming._prepare_stream_context (score 0.30)
+   Evidence: Score 0.30, Prepare streaming context for async generator creation.
+4) app/orchestrators/streaming.py:151 — app.orchestrators.streaming.step_105__stream_setup (score 0.29)
    Evidence: Score 0.29, RAG STEP 105 — ChatbotController.chat_stream Setup SSE
-ID: RAG.streaming.chatbot...
-3) app/orchestrators/streaming.py:68 — app.orchestrators.streaming.step_109__stream_response (score 0.29)
+
+Thin async orchestrator ...
+5) app/orchestrators/streaming.py:482 — app.orchestrators.streaming.step_109__stream_response (score 0.29)
    Evidence: Score 0.29, RAG STEP 109 — StreamingResponse Send chunks
 ID: RAG.streaming.streamingresponse...
-4) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.28)
-   Evidence: Score 0.28, method: __init__
-5) app/core/streaming_guard.py:23 — app.core.streaming_guard.SinglePassStream.__aiter__ (score 0.28)
-   Evidence: Score 0.28, method: __aiter__
 
 Notes:
 - Implementation exists but may not be wired correctly

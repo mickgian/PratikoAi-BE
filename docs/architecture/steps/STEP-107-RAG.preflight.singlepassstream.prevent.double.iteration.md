@@ -1,31 +1,32 @@
 # RAG STEP 107 — SinglePassStream Prevent double iteration (RAG.preflight.singlepassstream.prevent.double.iteration)
 
-**Type:** process  
-**Category:** preflight  
+**Type:** process
+**Category:** preflight
 **Node ID:** `SinglePass`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `SinglePass` (SinglePassStream Prevent double iteration).
+Wraps async generators with SinglePassStream to prevent double iteration and streaming duplication. Ensures streaming safety by protecting against accidental re-iteration of generators that could cause duplicate content delivery. Essential step that bridges async generator creation to SSE formatting, enabling secure stream consumption. Routes from AsyncGen (Step 106) to WriteSSE (Step 108). This step is derived from the Mermaid node: `SinglePass` (SinglePassStream Prevent double iteration).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/preflight.py:step_107__single_pass`
+- **Status:** ✅ Implemented
+- **Behavior notes:** Async orchestrator that wraps async generators with SinglePassStream protection to prevent double iteration. Configures stream protection settings, validates requirements, and prepares for SSE formatting. Routes to WriteSSE (Step 108) with protected stream ready for consumption.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - thin orchestrator preserving existing SinglePassStream protection logic
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 107 (RAG.preflight.singlepassstream.prevent.double.iteration): SinglePassStream Prevent double iteration | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (stream wrapping, protection configuration, complex generators, context preservation, metadata addition, validation requirements, protection settings, generator errors, streaming options, logging)
+- [x] Parity tests (stream protection behavior verification)
+- [x] Integration tests (AsyncGen→SinglePass→WriteSSE flow, error handling)
+- [x] Implementation changes (async stream protection orchestrator)
+- [x] Observability: add structured log line
+  `RAG STEP 107 (RAG.preflight.singlepassstream.prevent.double.iteration): SinglePassStream Prevent double iteration | attrs={step, request_id, stream_protected, protection_configured, next_step, processing_stage}`
+- [x] Feature flag / config if needed (none required - uses existing SinglePassStream infrastructure)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
@@ -46,14 +47,12 @@ Top candidates:
 3) app/core/streaming_guard.py:13 — app.core.streaming_guard.SinglePassStream (score 0.28)
    Evidence: Score 0.28, Wraps an async generator to ensure it's only iterated once.
 Raises RuntimeError ...
-4) app/orchestrators/preflight.py:743 — app.orchestrators.preflight.step_107__single_pass (score 0.28)
+4) app/orchestrators/preflight.py:744 — app.orchestrators.preflight.step_107__single_pass (score 0.28)
    Evidence: Score 0.28, RAG STEP 107 — SinglePassStream Prevent double iteration
-ID: RAG.preflight.singl...
-5) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.26)
-   Evidence: Score 0.26, Process a chat request using LangGraph with streaming response.
 
-Args:
-    reque...
+Thin async orchestrato...
+5) app/orchestrators/preflight.py:804 — app.orchestrators.preflight._wrap_with_single_pass_protection (score 0.27)
+   Evidence: Score 0.27, Wrap async generator with SinglePassStream to prevent double iteration.
 
 Notes:
 - Implementation exists but may not be wired correctly

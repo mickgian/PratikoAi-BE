@@ -37,37 +37,27 @@ Automatically evaluates knowledge base content to identify new FAQ candidates or
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.52
 
-Implementation:
-- app/orchestrators/golden.py:1084 — step_135__golden_rules (async orchestrator)
-- tests/test_rag_step_135_golden_rules.py — 9 comprehensive tests (all passing)
+Top candidates:
+1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.52)
+   Evidence: Score 0.52, Approve, reject, or request revision for a generated FAQ
+2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.52)
+   Evidence: Score 0.52, Publish an approved FAQ to make it available to users
+3) app/orchestrators/golden.py:534 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
+   Evidence: Score 0.50, RAG STEP 117 — POST /api/v1/faq/feedback.
 
-Key Features:
-- Async orchestrator evaluating knowledge content for FAQ candidates
-- Rule-based evaluation with 5 scoring criteria (content length, category priority, recency, keywords, minimum score)
-- Obsolete candidate identification when content supersedes existing entries
-- Priority scoring system with configurable thresholds and weights
-- Structured logging with rag_step_log (step 135, processing stages)
-- Context preservation (user/session data, metadata, original knowledge updates)
-- Candidate generation metadata tracking (candidates_generated, obsolete_identified, success)
-- Routes to 'golden_candidate' (Step 127) per Mermaid flow
-
-Test Coverage:
-- Unit: knowledge content evaluation, obsolete identification, priority rules, empty updates handling, context preservation, logging
-- Parity: evaluation behavior verification
-- Integration: KnowledgeStore→GoldenRules→GoldenCandidate flow, data preparation
-
-Evaluation Rules:
-1. Content length threshold (min 100 chars default)
-2. Priority category boost (+0.3 score for priority categories)
-3. Recency boost (+0.2 if within threshold days)
-4. Priority keyword boost (+0.1 per keyword match)
-5. Minimum priority score filter (0.6 default threshold)
+ID: RAG.golden.post.api.v1.faq.feedba...
+4) app/api/v1/faq_automation.py:229 — app.api.v1.faq_automation.get_faq_candidates (score 0.49)
+   Evidence: Score 0.49, Get FAQ candidates with filtering and pagination
+5) app/api/v1/faq_automation.py:303 — app.api.v1.faq_automation.generate_faqs_from_candidates (score 0.48)
+   Evidence: Score 0.48, Generate FAQs from selected candidates
 
 Notes:
-- Full implementation complete following MASTER_GUARDRAILS
-- Thin orchestrator pattern (coordination only, no external service dependencies)
-- All TDD tasks completed
-- Routes from KnowledgeStore to GoldenCandidate as per Mermaid diagram
+- Implementation exists but may not be wired correctly
+
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

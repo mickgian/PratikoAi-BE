@@ -36,26 +36,31 @@ Evaluates the confidence score of a Golden Set match from Step 24 to determine r
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ✅  |  Confidence: 1.00
+Status: 🔌  |  Confidence: 0.53
 
 Top candidates:
-1) app/orchestrators/golden.py:104 — app.orchestrators.golden.step_25__golden_hit (score 1.00)
-   Evidence: Score 1.00, RAG STEP 25 — High confidence match? score at least 0.90
-ID: RAG.golden.high.confidence.match.score.at.least.0.90
-Type: process
+1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)
+   Evidence: Score 0.53, Approve, reject, or request revision for a generated FAQ
+2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.53)
+   Evidence: Score 0.53, Publish an approved FAQ to make it available to users
+3) app/orchestrators/golden.py:534 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback.
+
+ID: RAG.golden.post.api.v1.faq.feedba...
+4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.49)
+   Evidence: Score 0.49, Query the FAQ system with semantic search and response variation.
+
+This endpoint...
+5) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.49)
+   Evidence: Score 0.49, Create a new FAQ entry.
+
+Requires admin privileges.
 
 Notes:
-- ✅ Implementation complete and wired correctly
-- ✅ Async orchestrator with threshold-based decision logic (>= 0.90)
-- ✅ 12/12 tests passing (unit + parity + integration)
-- ✅ Routes to Step 26 (KB context check) if high confidence, Step 30 (ClassifyDomain) if low
-- ✅ Includes decision metadata for observability
-- ✅ Preserves all context from Step 24
+- Implementation exists but may not be wired correctly
 
-Completed TDD actions:
-- ✅ Created async decision orchestrator in app/orchestrators/golden.py
-- ✅ Implemented threshold comparison logic (similarity_score >= 0.90)
-- ✅ Implemented 12 comprehensive tests (unit + parity + integration)
-- ✅ Added structured observability logging with decision details
-- ✅ Verified Step 24→25→26 (high confidence) and Step 24→25→30 (low confidence) integration flows
+Suggested next TDD actions:
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

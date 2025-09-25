@@ -39,13 +39,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/orchestrators/platform.py:563 — app.orchestrators.platform.step_9__piicheck (score 0.27)
+1) app/orchestrators/platform.py:564 — app.orchestrators.platform.step_9__piicheck (score 0.27)
    Evidence: Score 0.27, RAG STEP 9 — PII detected?
 ID: RAG.platform.pii.detected
 Type: decision | Catego...
 2) app/core/logging.py:47 — app.core.logging._anonymize_pii_processor (score 0.26)
    Evidence: Score 0.26, Structlog processor to anonymize PII in log messages.
-3) app/orchestrators/platform.py:661 — app.orchestrators.platform.step_10__log_pii (score 0.26)
+3) app/orchestrators/platform.py:662 — app.orchestrators.platform.step_10__log_pii (score 0.26)
    Evidence: Score 0.26, RAG STEP 10 — Logger.info Log PII anonymization
 ID: RAG.platform.logger.info.log...
 4) app/schemas/privacy.py:221 — app.schemas.privacy.validate_pii_type (score 0.26)

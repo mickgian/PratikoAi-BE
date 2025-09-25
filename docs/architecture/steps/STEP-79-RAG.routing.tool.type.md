@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.27
 
 Top candidates:
-1) app/orchestrators/platform.py:2022 — app.orchestrators.platform.step_78__execute_tools (score 0.27)
+1) app/orchestrators/platform.py:2023 — app.orchestrators.platform.step_78__execute_tools (score 0.27)
    Evidence: Score 0.27, RAG STEP 78 — LangGraphAgent._tool_call Execute tools
 ID: RAG.platform.langgraph...
 2) app/orchestrators/routing.py:14 — app.orchestrators.routing.step_79__tool_type (score 0.27)

@@ -42,7 +42,7 @@ Status: 🔌  |  Confidence: 0.36
 Top candidates:
 1) app/core/langgraph/graph.py:1215 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.36)
    Evidence: Score 0.36, method: __process_messages
-2) app/orchestrators/response.py:404 — app.orchestrators.response._process_messages_to_dict (score 0.31)
+2) app/orchestrators/response.py:656 — app.orchestrators.response._process_messages_to_dict (score 0.31)
    Evidence: Score 0.31, Convert LangChain BaseMessage objects to dictionary format.
 Mirrors the logic fr...
 3) app/core/langgraph/graph.py:81 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)

@@ -69,16 +69,14 @@ Automatically generat...
    Evidence: Score 0.47, Service for collecting and processing expert feedback on AI responses.
 
 Features...
-3) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.45)
+3) app/orchestrators/feedback.py:783 — app.orchestrators.feedback._create_expert_feedback_record (score 0.46)
+   Evidence: Score 0.46, Helper function to create expert feedback record using ExpertFeedbackCollector s...
+4) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.45)
    Evidence: Score 0.45, Expert Feedback Collection Service for Quality Analysis System.
 
 Handles collect...
-4) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.45)
+5) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.45)
    Evidence: Score 0.45, Validate feedback data structure and content
-5) app/orchestrators/feedback.py:611 — app.orchestrators.feedback._process_feedback_rejection (score 0.44)
-   Evidence: Score 0.44, Helper function to process feedback rejection and generate rejection metadata.
-
-...
 
 Notes:
 - Implementation exists but may not be wired correctly

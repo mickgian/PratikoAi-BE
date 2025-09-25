@@ -6,6 +6,7 @@
 
 from contextlib import nullcontext
 from typing import Any, Dict, List, Optional
+import asyncio
 
 try:
     from app.observability.rag_logging import rag_step_log, rag_step_timer
@@ -391,20 +392,223 @@ async def step_118__knowledge_feedback(*, messages: Optional[List[Any]] = None, 
 
             return error_result
 
-def step_132__rssmonitor(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_132__rssmonitor(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """RAG STEP 132 — RSS Monitor.
 
     ID: RAG.kb.rss.monitor
     Type: process | Category: kb | Node: RSSMonitor
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that initiates RSS feed monitoring and routes to Step 133 (FetchFeeds) when new items are found.
+    Coordinates between multiple RSS services (Italian regulatory feeds and CCNL-specific monitoring).
     """
+    ctx = ctx or {}
+    monitor_type = ctx.get('monitor_type', 'all')  # 'italian', 'ccnl', or 'all'
+
     with rag_step_timer(132, 'RAG.kb.rss.monitor', 'RSSMonitor', stage="start"):
-        rag_step_log(step=132, step_id='RAG.kb.rss.monitor', node_label='RSSMonitor',
-                     category='kb', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=132, step_id='RAG.kb.rss.monitor', node_label='RSSMonitor',
-                     processing_stage="completed")
-        return result
+        rag_step_log(
+            step=132,
+            step_id='RAG.kb.rss.monitor',
+            node_label='RSSMonitor',
+            category='kb',
+            type='process',
+            processing_stage="started",
+            attrs={'monitor_type': monitor_type}
+        )
+
+        try:
+            # Coordinate RSS monitoring across different services
+            monitoring_result = await _coordinate_rss_monitoring(monitor_type=monitor_type)
+
+            # Route to Step 133 (FetchFeeds) if new items found
+            next_step_context = None
+            if monitoring_result.get('has_new_items', False):
+                next_step_context = {
+                    'rss_feeds': monitoring_result.get('feeds', []),
+                    'new_item_count': monitoring_result.get('new_item_count', 0),
+                    'feed_sources': monitoring_result.get('feed_sources', [])
+                }
+
+            result = {
+                'step': 132,
+                'status': 'completed',
+                'monitoring_result': monitoring_result,
+                'next_step': 133 if next_step_context else None,
+                'next_step_context': next_step_context
+            }
+
+            rag_step_log(
+                step=132,
+                step_id='RAG.kb.rss.monitor',
+                node_label='RSSMonitor',
+                processing_stage="completed",
+                attrs={
+                    'monitor_type': monitor_type,
+                    'has_new_items': monitoring_result.get('has_new_items', False),
+                    'new_item_count': monitoring_result.get('new_item_count', 0),
+                    'next_step': result['next_step']
+                }
+            )
+
+            return result
+
+        except Exception as e:
+            rag_step_log(
+                step=132,
+                step_id='RAG.kb.rss.monitor',
+                node_label='RSSMonitor',
+                processing_stage="error",
+                attrs={'error': str(e), 'monitor_type': monitor_type}
+            )
+
+            return {
+                'step': 132,
+                'status': 'error',
+                'error': str(e),
+                'monitor_type': monitor_type
+            }
+
+
+async def _coordinate_rss_monitoring(monitor_type: str = 'all') -> Dict[str, Any]:
+    """Helper function to coordinate RSS monitoring across different services.
+
+    Args:
+        monitor_type: Type of monitoring - 'italian', 'ccnl', or 'all'
+
+    Returns:
+        Dictionary with monitoring results including has_new_items, feeds, new_item_count, feed_sources
+    """
+    try:
+        from app.services.rss_feed_monitor import RSSFeedMonitor
+        from app.services.ccnl_rss_monitor import fetch_all_updates as ccnl_fetch_all_updates
+    except ImportError as e:
+        return {
+            'status': 'error',
+            'error': f'Failed to import RSS services: {str(e)}',
+            'has_new_items': False,
+            'feeds': [],
+            'new_item_count': 0,
+            'feed_sources': []
+        }
+
+    monitoring_tasks = []
+    feed_sources = []
+
+    # Add Italian regulatory feeds monitoring
+    if monitor_type in ['italian', 'all']:
+        monitoring_tasks.append(_monitor_italian_feeds())
+        feed_sources.extend(['agenzia_entrate', 'inps', 'gazzetta_ufficiale'])
+
+    # Add CCNL-specific monitoring
+    if monitor_type in ['ccnl', 'all']:
+        monitoring_tasks.append(_monitor_ccnl_feeds())
+        feed_sources.append('ccnl')
+
+    if not monitoring_tasks:
+        return {
+            'status': 'no_monitors',
+            'has_new_items': False,
+            'feeds': [],
+            'new_item_count': 0,
+            'feed_sources': []
+        }
+
+    # Execute monitoring tasks concurrently
+    try:
+        monitoring_results = await asyncio.gather(*monitoring_tasks, return_exceptions=True)
+    except Exception as e:
+        return {
+            'status': 'gather_error',
+            'error': str(e),
+            'has_new_items': False,
+            'feeds': [],
+            'new_item_count': 0,
+            'feed_sources': feed_sources
+        }
+
+    # Aggregate results
+    all_feeds = []
+    total_new_items = 0
+    successful_sources = []
+    errors = []
+
+    for i, result in enumerate(monitoring_results):
+        if isinstance(result, Exception):
+            errors.append(str(result))
+            continue
+
+        if result.get('status') == 'success':
+            all_feeds.extend(result.get('feeds', []))
+            total_new_items += result.get('new_item_count', 0)
+            successful_sources.extend(result.get('sources', []))
+        else:
+            errors.append(result.get('error', 'Unknown error'))
+
+    return {
+        'status': 'completed',
+        'has_new_items': total_new_items > 0,
+        'feeds': all_feeds,
+        'new_item_count': total_new_items,
+        'feed_sources': successful_sources,
+        'errors': errors if errors else None
+    }
+
+
+async def _monitor_italian_feeds() -> Dict[str, Any]:
+    """Monitor Italian regulatory RSS feeds.
+
+    Returns:
+        Dictionary with monitoring results for Italian feeds
+    """
+    try:
+        from app.services.rss_feed_monitor import RSSFeedMonitor
+
+        monitor = RSSFeedMonitor()
+        feeds_data = monitor.get_all_italian_feeds()
+
+        # For now, we'll just return the feeds as "new" - in a real implementation,
+        # we would compare with previously cached state
+        new_item_count = sum(len(feed_data.get('items', [])) for feed_data in feeds_data.values())
+
+        return {
+            'status': 'success',
+            'feeds': list(feeds_data.values()),
+            'new_item_count': new_item_count,
+            'sources': list(feeds_data.keys())
+        }
+
+    except Exception as e:
+        return {
+            'status': 'error',
+            'error': f'Italian feeds monitoring failed: {str(e)}',
+            'feeds': [],
+            'new_item_count': 0,
+            'sources': []
+        }
+
+
+async def _monitor_ccnl_feeds() -> Dict[str, Any]:
+    """Monitor CCNL-specific RSS feeds.
+
+    Returns:
+        Dictionary with monitoring results for CCNL feeds
+    """
+    try:
+        from app.services.ccnl_rss_monitor import fetch_all_updates
+
+        ccnl_updates = await fetch_all_updates()
+
+        return {
+            'status': 'success',
+            'feeds': ccnl_updates,
+            'new_item_count': len(ccnl_updates),
+            'sources': ['ccnl']
+        }
+
+    except Exception as e:
+        return {
+            'status': 'error',
+            'error': f'CCNL feeds monitoring failed: {str(e)}',
+            'feeds': [],
+            'new_item_count': 0,
+            'sources': []
+        }

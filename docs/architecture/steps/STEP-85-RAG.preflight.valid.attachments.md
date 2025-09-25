@@ -45,7 +45,7 @@ ID: RAG.preflight.valid.attachments
 Type: decis...
 2) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.26)
    Evidence: Score 0.26, Validate the citation.
-3) app/orchestrators/platform.py:318 — app.orchestrators.platform.step_3__valid_check (score 0.26)
+3) app/orchestrators/platform.py:319 — app.orchestrators.platform.step_3__valid_check (score 0.26)
    Evidence: Score 0.26, RAG STEP 3 — Request valid?
 ID: RAG.platform.request.valid
 Type: decision | Cate...

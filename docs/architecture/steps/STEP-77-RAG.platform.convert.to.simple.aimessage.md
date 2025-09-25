@@ -39,10 +39,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.30
 
 Top candidates:
-1) app/orchestrators/platform.py:1783 — app.orchestrators.platform.step_76__convert_aimsg (score 0.30)
+1) app/orchestrators/platform.py:1784 — app.orchestrators.platform.step_76__convert_aimsg (score 0.30)
    Evidence: Score 0.30, RAG STEP 76 — Convert to AIMessage with tool_calls
 ID: RAG.platform.convert.to.a...
-2) app/orchestrators/platform.py:1906 — app.orchestrators.platform.step_77__simple_aimsg (score 0.30)
+2) app/orchestrators/platform.py:1907 — app.orchestrators.platform.step_77__simple_aimsg (score 0.30)
    Evidence: Score 0.30, RAG STEP 77 — Convert to simple AIMessage
 ID: RAG.platform.convert.to.simple.aim...
 3) app/models/document_simple.py:126 — app.models.document_simple.Document.__init__ (score 0.26)

@@ -40,23 +40,23 @@ Serves as a convergence point where all response paths (ToolResults, SimpleAIMsg
 Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/orchestrators/response.py:445 — app.orchestrators.response._prepare_final_response (score 0.29)
+1) app/orchestrators/response.py:235 — app.orchestrators.response._format_chat_response (score 0.29)
+   Evidence: Score 0.29, Format context data into proper ChatResponse structure.
+
+Handles various input f...
+2) app/orchestrators/response.py:697 — app.orchestrators.response._prepare_final_response (score 0.29)
    Evidence: Score 0.29, Prepare the final response for delivery to user.
-2) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.28)
-   Evidence: Score 0.28, RAG STEP 30 — Return ChatResponse
+3) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.28)
+   Evidence: Score 0.28, RAG STEP 30 — Return ChatResponse.
+
 ID: RAG.response.return.chatresponse
-Type: pro...
-3) app/orchestrators/response.py:301 — app.orchestrators.response.step_101__final_response (score 0.28)
+Type: p...
+4) app/orchestrators/response.py:553 — app.orchestrators.response.step_101__final_response (score 0.28)
    Evidence: Score 0.28, RAG STEP 101 — Return to chat node for final response
 
 Thin async orchestrator t...
-4) app/schemas/chat.py:95 — app.schemas.chat.ChatResponse (score 0.27)
-   Evidence: Score 0.27, Response model for chat endpoint.
-
-Attributes:
-    messages: List of messages in...
-5) app/schemas/chat.py:70 — app.schemas.chat.ResponseMetadata (score 0.26)
-   Evidence: Score 0.26, Response metadata for debugging and monitoring.
+5) app/orchestrators/response.py:402 — app.orchestrators.response._handle_return_complete_error (score 0.28)
+   Evidence: Score 0.28, Handle errors in ChatResponse formatting with graceful fallback.
 
 Notes:
 - Weak or missing implementation

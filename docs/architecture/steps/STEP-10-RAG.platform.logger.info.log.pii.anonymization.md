@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.29
 
 Top candidates:
-1) app/orchestrators/platform.py:662 — app.orchestrators.platform.step_10__log_pii (score 0.29)
+1) app/orchestrators/platform.py:663 — app.orchestrators.platform.step_10__log_pii (score 0.29)
    Evidence: Score 0.29, RAG STEP 10 — Logger.info Log PII anonymization
 ID: RAG.platform.logger.info.log...
 2) app/core/privacy/gdpr.py:379 — app.core.privacy.gdpr.AuditLogger._log_event (score 0.28)

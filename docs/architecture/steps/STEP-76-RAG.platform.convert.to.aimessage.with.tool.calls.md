@@ -39,10 +39,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Status: ❌  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/platform.py:1783 — app.orchestrators.platform.step_76__convert_aimsg (score 0.28)
+1) app/orchestrators/platform.py:1784 — app.orchestrators.platform.step_76__convert_aimsg (score 0.28)
    Evidence: Score 0.28, RAG STEP 76 — Convert to AIMessage with tool_calls
 ID: RAG.platform.convert.to.a...
-2) app/orchestrators/kb.py:149 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
+2) app/orchestrators/kb.py:150 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
    Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand.
 
 ID: RAG.kb.knowledgesear...

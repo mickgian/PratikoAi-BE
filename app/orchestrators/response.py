@@ -159,22 +159,274 @@ async def step_8__init_agent(*, messages: Optional[List[Any]] = None, ctx: Optio
 
             return result
 
-def step_30__return_complete(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """RAG STEP 30 — Return ChatResponse
+async def step_30__return_complete(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    """RAG STEP 30 — Return ChatResponse.
+
     ID: RAG.response.return.chatresponse
     Type: process | Category: response | Node: ReturnComplete
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that formats responses into ChatResponse structure with proper
+    messages and metadata. Handles both Golden Set responses (Step 28) and LLM responses
+    (StreamCheck→No). Routes to CollectMetrics (Step 111) per Mermaid diagram.
     """
-    with rag_step_timer(30, 'RAG.response.return.chatresponse', 'ReturnComplete', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(30, 'RAG.response.return.chatresponse', 'ReturnComplete',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=30, step_id='RAG.response.return.chatresponse', node_label='ReturnComplete',
-                     category='response', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=30, step_id='RAG.response.return.chatresponse', node_label='ReturnComplete',
-                     processing_stage="completed")
-        return result
+                     category='response', type='process', request_id=request_id, processing_stage="started")
+
+        try:
+            # Format ChatResponse using helper function
+            chat_response_result = await _format_chat_response(ctx)
+
+            # Build result with preserved context and ChatResponse
+            result = {
+                **ctx,
+                'chat_response': chat_response_result['chat_response'],
+                'chat_response_prepared': chat_response_result['success'],
+                'response_formatting_metadata': chat_response_result['formatting_metadata'],
+                'previous_step': ctx.get('rag_step'),
+                'next_step': 111,
+                'next_step_id': 'RAG.metrics.collect.usage.metrics',
+                'route_to': 'CollectMetrics',
+                'response_completion_metadata': {
+                    'completed_at': datetime.now(timezone.utc).isoformat(),
+                    'response_delivered': True,
+                    'formatted_for_delivery': True
+                },
+                'request_id': request_id
+            }
+
+            # Add error info if formatting failed
+            if not chat_response_result['success']:
+                result['error'] = chat_response_result['error']
+
+            rag_step_log(
+                step=30,
+                step_id='RAG.response.return.chatresponse',
+                node_label='ReturnComplete',
+                request_id=request_id,
+                chat_response_prepared=chat_response_result['success'],
+                message_count=len(chat_response_result['chat_response'].get('messages', [])),
+                response_type=chat_response_result['formatting_metadata'].get('response_type'),
+                source_step=ctx.get('rag_step'),
+                next_step=111,
+                route_to='CollectMetrics',
+                processing_stage="completed"
+            )
+
+            return result
+
+        except Exception as e:
+            rag_step_log(
+                step=30,
+                step_id='RAG.response.return.chatresponse',
+                node_label='ReturnComplete',
+                request_id=request_id,
+                error=str(e),
+                processing_stage="error"
+            )
+            # On error, still route to CollectMetrics with error context
+            return await _handle_return_complete_error(ctx, str(e))
+
+
+async def _format_chat_response(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Format context data into proper ChatResponse structure.
+
+    Handles various input formats from ServeGolden, StreamCheck, and other sources.
+    """
+    try:
+        # Extract messages from various possible sources
+        messages = _extract_messages_from_context(ctx)
+
+        # Build response metadata
+        response_metadata = _build_response_metadata(ctx)
+
+        # Create ChatResponse structure
+        chat_response = {
+            'messages': messages,
+            'metadata': response_metadata
+        }
+
+        # Create formatting metadata
+        formatting_metadata = {
+            'formatted_at': datetime.now(timezone.utc).isoformat(),
+            'response_type': 'chat_response',
+            'message_count': len(messages),
+            'source_step': ctx.get('rag_step'),
+            'metadata_fields': list(response_metadata.keys())
+        }
+
+        return {
+            'success': True,
+            'chat_response': chat_response,
+            'formatting_metadata': formatting_metadata
+        }
+
+    except Exception as e:
+        # Return minimal response on error
+        return {
+            'success': False,
+            'error': str(e),
+            'chat_response': {
+                'messages': [{'role': 'assistant', 'content': 'Response formatting error occurred.'}],
+                'metadata': {'source': 'error', 'formatted_at': datetime.now(timezone.utc).isoformat()}
+            },
+            'formatting_metadata': {
+                'formatted_at': datetime.now(timezone.utc).isoformat(),
+                'response_type': 'error_response',
+                'message_count': 1,
+                'error': str(e)
+            }
+        }
+
+
+def _extract_messages_from_context(ctx: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Extract and format messages from context in priority order."""
+    # Priority 1: Direct messages field
+    if ctx.get('messages'):
+        messages = ctx['messages']
+        if isinstance(messages, list) and messages:
+            return _normalize_messages(messages)
+
+    # Priority 2: Processed messages (from StreamCheck path)
+    if ctx.get('processed_messages'):
+        messages = ctx['processed_messages']
+        if isinstance(messages, list) and messages:
+            return _normalize_messages(messages)
+
+    # Priority 3: Response field (from ServeGolden path)
+    if ctx.get('response'):
+        response_data = ctx['response']
+        if isinstance(response_data, dict) and response_data.get('answer'):
+            # Create messages from golden answer
+            messages = []
+            # Add user question if available
+            if ctx.get('query') or response_data.get('question'):
+                question = ctx.get('query') or response_data.get('question')
+                messages.append({'role': 'user', 'content': question})
+            # Add assistant answer
+            messages.append({'role': 'assistant', 'content': response_data['answer']})
+            return messages
+        elif isinstance(response_data, str):
+            return [{'role': 'assistant', 'content': response_data}]
+
+    # Priority 4: Direct response string
+    if ctx.get('response') and isinstance(ctx['response'], str):
+        return [{'role': 'assistant', 'content': ctx['response']}]
+
+    # Fallback: Create minimal message structure
+    return [{'role': 'assistant', 'content': 'Response delivered successfully.'}]
+
+
+def _normalize_messages(messages: List[Any]) -> List[Dict[str, Any]]:
+    """Normalize messages to proper format with role and content."""
+    normalized = []
+
+    for msg in messages:
+        if isinstance(msg, dict):
+            # Already in dict format - ensure required fields
+            role = msg.get('role', 'assistant')
+            content = str(msg.get('content', ''))
+            if content.strip():
+                normalized.append({'role': role, 'content': content})
+        else:
+            # Handle other message types (e.g., LangChain messages)
+            if hasattr(msg, 'type') and hasattr(msg, 'content'):
+                role = 'user' if msg.type == 'human' else 'assistant'
+                content = str(msg.content)
+                if content.strip():
+                    normalized.append({'role': role, 'content': content})
+
+    return normalized if normalized else [{'role': 'assistant', 'content': 'Message normalization completed.'}]
+
+
+def _build_response_metadata(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Build response metadata from context."""
+    metadata = {}
+
+    # Add timestamp
+    metadata['formatted_at'] = datetime.now(timezone.utc).isoformat()
+
+    # Extract source information
+    if ctx.get('response_metadata'):
+        # From ServeGolden or other sources
+        source_metadata = ctx['response_metadata']
+        if isinstance(source_metadata, dict):
+            metadata.update(source_metadata)
+
+    # Extract LLM metadata
+    if ctx.get('llm_metadata'):
+        llm_metadata = ctx['llm_metadata']
+        if isinstance(llm_metadata, dict):
+            # Map LLM metadata to response metadata fields
+            if 'provider' in llm_metadata:
+                metadata['provider'] = llm_metadata['provider']
+            if 'model' in llm_metadata:
+                metadata['model_used'] = llm_metadata['model']
+            if 'cost_eur' in llm_metadata:
+                metadata['cost_eur'] = llm_metadata['cost_eur']
+            if 'processing_time_ms' in llm_metadata:
+                metadata['processing_time_ms'] = llm_metadata['processing_time_ms']
+
+    # Add routing strategy if available
+    if ctx.get('strategy'):
+        metadata['strategy'] = ctx['strategy']
+    elif ctx.get('route_strategy'):
+        metadata['strategy'] = ctx['route_strategy']
+    else:
+        metadata['strategy'] = 'standard'
+
+    # Determine source if not already set
+    if 'source' not in metadata:
+        if ctx.get('bypassed_llm') or ctx.get('response_metadata', {}).get('bypassed_llm'):
+            metadata['source'] = 'golden_set'
+        elif ctx.get('cached_response'):
+            metadata['source'] = 'cache'
+        elif ctx.get('llm_metadata'):
+            metadata['source'] = 'llm'
+        else:
+            metadata['source'] = 'processed'
+
+    # Ensure required fields have defaults
+    if 'model_used' not in metadata:
+        metadata['model_used'] = ctx.get('model', 'unknown')
+    if 'provider' not in metadata:
+        metadata['provider'] = ctx.get('provider', 'unknown')
+
+    return metadata
+
+
+async def _handle_return_complete_error(ctx: Dict[str, Any], error_msg: str) -> Dict[str, Any]:
+    """Handle errors in ChatResponse formatting with graceful fallback."""
+    return {
+        **ctx,
+        'chat_response': {
+            'messages': [{'role': 'assistant', 'content': 'An error occurred while formatting the response.'}],
+            'metadata': {
+                'source': 'error',
+                'error': error_msg,
+                'formatted_at': datetime.now(timezone.utc).isoformat(),
+                'model_used': 'unknown',
+                'provider': 'unknown',
+                'strategy': 'error_fallback'
+            }
+        },
+        'chat_response_prepared': False,
+        'error': error_msg,
+        'next_step': 111,
+        'next_step_id': 'RAG.metrics.collect.usage.metrics',
+        'route_to': 'CollectMetrics',
+        'previous_step': ctx.get('rag_step'),
+        'response_completion_metadata': {
+            'completed_at': datetime.now(timezone.utc).isoformat(),
+            'response_delivered': False,
+            'error_handled': True
+        },
+        'request_id': ctx.get('request_id', 'unknown')
+    }
 
 async def step_75__tool_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """RAG STEP 75 — Response has tool_calls?

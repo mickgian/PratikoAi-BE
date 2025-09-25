@@ -42,7 +42,7 @@ Top candidates:
 1) app/orchestrators/llm.py:14 — app.orchestrators.llm.step_36__llmbetter (score 0.29)
    Evidence: Score 0.29, RAG STEP 36 — LLM better than rule-based?
 ID: RAG.llm.llm.better.than.rule.based...
-2) app/orchestrators/platform.py:1061 — app.orchestrators.platform.step_38__use_rule_based (score 0.28)
+2) app/orchestrators/platform.py:1062 — app.orchestrators.platform.step_38__use_rule_based (score 0.28)
    Evidence: Score 0.28, RAG STEP 38 — Use rule-based classification
 ID: RAG.platform.use.rule.based.clas...
 3) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.26)

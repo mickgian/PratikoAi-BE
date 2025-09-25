@@ -43,7 +43,7 @@ Top candidates:
    Evidence: Score 0.53, Approve, reject, or request revision for a generated FAQ
 2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.53)
    Evidence: Score 0.53, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:534 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
+3) app/orchestrators/golden.py:690 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
    Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback.
 
 ID: RAG.golden.post.api.v1.faq.feedba...

@@ -47,10 +47,11 @@ Attributes:
     id: User's ID
     email: Us...
 2) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.30)
-   Evidence: Score 0.30, RAG STEP 30 — Return ChatResponse
+   Evidence: Score 0.30, RAG STEP 30 — Return ChatResponse.
+
 ID: RAG.response.return.chatresponse
-Type: pro...
-3) app/orchestrators/response.py:517 — app.orchestrators.response.step_112__end (score 0.30)
+Type: p...
+3) app/orchestrators/response.py:769 — app.orchestrators.response.step_112__end (score 0.30)
    Evidence: Score 0.30, RAG STEP 112 — Return response to user.
 
 Final step in the RAG pipeline that del...

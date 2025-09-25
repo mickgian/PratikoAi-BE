@@ -72,11 +72,11 @@ Process orchestrator that validates expert credentials and calculates trust scor
 Status: 🔌  |  Confidence: 0.37
 
 Top candidates:
-1) app/orchestrators/platform.py:2705 — app.orchestrators.platform._validate_expert_credentials (score 0.37)
+1) app/orchestrators/platform.py:3041 — app.orchestrators.platform._validate_expert_credentials (score 0.37)
    Evidence: Score 0.37, Helper function to validate expert credentials and calculate trust score.
 
 Handl...
-2) app/orchestrators/platform.py:2836 — app.orchestrators.platform.step_120__validate_expert (score 0.30)
+2) app/orchestrators/platform.py:3172 — app.orchestrators.platform.step_120__validate_expert (score 0.30)
    Evidence: Score 0.30, RAG STEP 120 — Validate expert credentials.
 
 Process orchestrator that validates...

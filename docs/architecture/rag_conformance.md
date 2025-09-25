@@ -9,8 +9,8 @@ Each step should be audited and its documentation filled during the conformance 
 **Implementation Status Overview:**
 - ✅ Implemented: 0 steps
 - 🟡 Partial: 11 steps
-- 🔌 Not wired: 95 steps
-- ❌ Missing: 29 steps
+- 🔌 Not wired: 97 steps
+- ❌ Missing: 27 steps
 
 **By Category:**
 - **cache**: 0/8 implemented

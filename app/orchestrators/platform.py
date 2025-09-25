@@ -5,6 +5,7 @@
 from contextlib import nullcontext
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
+import asyncio
 
 try:
     from app.observability.rag_logging import rag_step_log, rag_step_timer
@@ -2243,23 +2244,358 @@ async def step_86__tool_error(*, messages: Optional[List[Any]] = None, ctx: Opti
 # Alias for backward compatibility
 step_86__tool_err = step_86__tool_error
 
-def step_99__tool_results(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+
+async def _format_tool_results_for_caller(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Format tool results from various tool types into ToolMessage format for LangGraph caller.
+
+    Handles results from Knowledge, FAQ, CCNL, and Document tools and formats them
+    into string content suitable for ToolMessage creation.
     """
-    RAG STEP 99 — Return to tool caller
+    from datetime import datetime, timezone
+
+    try:
+        tool_name = ctx.get('tool_name', 'unknown')
+        tool_call_id = ctx.get('tool_call_id', 'unknown')
+        tool_result = ctx.get('tool_result')
+
+        # Check for existing error context first
+        existing_error = ctx.get('error')
+        if existing_error:
+            error_content = f'Tool execution error: {existing_error}'
+            return {
+                'success': False,
+                'error': existing_error,
+                'formatted_content': error_content,
+                'tool_message_data': {
+                    'content': error_content,
+                    'name': tool_name,
+                    'tool_call_id': tool_call_id
+                },
+                'metadata': {
+                    'tool_name': tool_name,
+                    'tool_call_id': tool_call_id,
+                    'result_type': 'error',
+                    'has_error': True,
+                    'error_type': ctx.get('error_type', 'unknown'),
+                    'formatted_at': datetime.now(timezone.utc).isoformat()
+                }
+            }
+
+        if not tool_result:
+            return {
+                'success': False,
+                'error': 'Missing tool result data',
+                'formatted_content': f'Error: No result data available from {tool_name}',
+                'tool_message_data': {
+                    'content': f'Error: No result data available from {tool_name}',
+                    'name': tool_name,
+                    'tool_call_id': tool_call_id
+                },
+                'metadata': {
+                    'tool_name': tool_name,
+                    'tool_call_id': tool_call_id,
+                    'result_type': 'error',
+                    'has_error': True,
+                    'formatted_at': datetime.now(timezone.utc).isoformat()
+                }
+            }
+
+        # Format based on tool type and result structure
+        formatted_content = _format_content_by_tool_type(tool_name, tool_result)
+        result_type = _determine_result_type(tool_name, tool_result)
+
+        # Build ToolMessage data structure
+        tool_message_data = {
+            'content': formatted_content,
+            'name': tool_name,
+            'tool_call_id': tool_call_id
+        }
+
+        # Build metadata
+        metadata = {
+            'tool_name': tool_name,
+            'tool_call_id': tool_call_id,
+            'result_type': result_type,
+            'has_error': False,
+            'formatted_at': datetime.now(timezone.utc).isoformat(),
+            'content_length': len(formatted_content)
+        }
+
+        # Add result-specific metadata
+        if result_type == 'knowledge_search' and 'results' in tool_result:
+            metadata['results_count'] = len(tool_result['results'])
+            if tool_result['results']:
+                metadata['confidence'] = tool_result['results'][0].get('confidence', 0.0)
+        elif result_type == 'faq_query' and 'faqs' in tool_result:
+            metadata['faqs_count'] = len(tool_result['faqs'])
+            if tool_result['faqs']:
+                metadata['confidence'] = tool_result['faqs'][0].get('confidence', 0.0)
+        elif result_type == 'ccnl_calculation' and 'calculation_result' in tool_result:
+            calc_result = tool_result['calculation_result']
+            metadata['calculation_type'] = 'ccnl'
+            metadata['currency'] = calc_result.get('currency', 'EUR')
+        elif result_type == 'document_processing' and 'processed_documents' in tool_result:
+            metadata['documents_count'] = len(tool_result['processed_documents'])
+
+        return {
+            'success': True,
+            'formatted_content': formatted_content,
+            'tool_message_data': tool_message_data,
+            'metadata': metadata
+        }
+
+    except Exception as e:
+        error_msg = f'Tool result formatting error: {str(e)}'
+        return {
+            'success': False,
+            'error': error_msg,
+            'formatted_content': f'Error formatting tool results: {str(e)}',
+            'tool_message_data': {
+                'content': f'Error formatting tool results: {str(e)}',
+                'name': ctx.get('tool_name', 'unknown'),
+                'tool_call_id': ctx.get('tool_call_id', 'unknown')
+            },
+            'metadata': {
+                'tool_name': ctx.get('tool_name', 'unknown'),
+                'tool_call_id': ctx.get('tool_call_id', 'unknown'),
+                'result_type': 'error',
+                'has_error': True,
+                'error': str(e),
+                'formatted_at': datetime.now(timezone.utc).isoformat()
+            }
+        }
+
+
+def _format_content_by_tool_type(tool_name: str, tool_result: Dict[str, Any]) -> str:
+    """Format tool result content based on tool type."""
+
+    try:
+        # Knowledge Search Tool
+        if tool_name == 'KnowledgeSearchTool' and 'results' in tool_result:
+            results = tool_result['results']
+            if not results:
+                return 'No knowledge base results found for the query.'
+
+            content_parts = []
+            for i, result in enumerate(results, 1):
+                content = result.get('content', '')
+                source = result.get('source', 'Unknown')
+                confidence = result.get('confidence', 0.0)
+
+                content_parts.append(f"Result {i}: {content}")
+                content_parts.append(f"  Source: {source}")
+                content_parts.append(f"  Confidence: {confidence:.2f}")
+                content_parts.append("")  # Empty line for readability
+
+            return '\n'.join(content_parts).strip()
+
+        # FAQ Tool
+        elif tool_name == 'FAQTool' and 'faqs' in tool_result:
+            faqs = tool_result['faqs']
+            if not faqs:
+                return 'No FAQ results found for the query.'
+
+            content_parts = []
+            for i, faq in enumerate(faqs, 1):
+                question = faq.get('question', 'Unknown question')
+                answer = faq.get('answer', 'No answer available')
+                confidence = faq.get('confidence', 0.0)
+
+                content_parts.append(f"FAQ {i}:")
+                content_parts.append(f"  Question: {question}")
+                content_parts.append(f"  Answer: {answer}")
+                content_parts.append(f"  Confidence: {confidence:.2f}")
+                content_parts.append("")  # Empty line for readability
+
+            return '\n'.join(content_parts).strip()
+
+        # CCNL Query Tool
+        elif tool_name == 'ccnl_query' and 'calculation_result' in tool_result:
+            calc_result = tool_result['calculation_result']
+            content_parts = ["CCNL Calculation Result:"]
+
+            # Add calculation breakdown
+            for key, value in calc_result.items():
+                if key == 'currency':
+                    continue
+                formatted_key = key.replace('_', ' ').title()
+
+                if isinstance(value, (int, float)):
+                    currency = calc_result.get('currency', 'EUR')
+                    content_parts.append(f"  {formatted_key}: {value:.2f} {currency}")
+                else:
+                    content_parts.append(f"  {formatted_key}: {value}")
+
+            # Add CCNL context if available
+            if 'ccnl_context' in tool_result:
+                ccnl_ctx = tool_result['ccnl_context']
+                content_parts.append("")
+                content_parts.append("Contract Details:")
+                content_parts.append(f"  CCNL Type: {ccnl_ctx.get('ccnl_type', 'Unknown')}")
+                content_parts.append(f"  Contract Year: {ccnl_ctx.get('contract_year', 'Unknown')}")
+
+            return '\n'.join(content_parts)
+
+        # Document Ingest Tool
+        elif tool_name == 'DocumentIngestTool' and 'processed_documents' in tool_result:
+            docs = tool_result['processed_documents']
+            if not docs:
+                return 'No documents were processed.'
+
+            content_parts = ["Document Processing Results:"]
+
+            for i, doc in enumerate(docs, 1):
+                filename = doc.get('filename', f'Document {i}')
+                doc_type = doc.get('document_type', 'unknown')
+                status = doc.get('processing_status', 'unknown')
+
+                content_parts.append(f"\nDocument {i}: {filename}")
+                content_parts.append(f"  Type: {doc_type}")
+                content_parts.append(f"  Status: {status}")
+
+                # Add extracted facts if available
+                facts = doc.get('extracted_facts', [])
+                if facts:
+                    content_parts.append("  Extracted Information:")
+                    for fact in facts:
+                        fact_type = fact.get('type', 'unknown').replace('_', ' ').title()
+                        fact_value = fact.get('value', 'N/A')
+                        confidence = fact.get('confidence', 0.0)
+                        content_parts.append(f"    {fact_type}: {fact_value} (confidence: {confidence:.2f})")
+
+            return '\n'.join(content_parts)
+
+        # Generic fallback
+        else:
+            return f"Tool result from {tool_name}: {str(tool_result)}"
+
+    except Exception as e:
+        return f"Error formatting {tool_name} result: {str(e)}"
+
+
+def _determine_result_type(tool_name: str, tool_result: Dict[str, Any]) -> str:
+    """Determine result type based on tool name and result structure."""
+
+    if tool_name == 'KnowledgeSearchTool':
+        return 'knowledge_search'
+    elif tool_name == 'FAQTool':
+        return 'faq_query'
+    elif tool_name == 'ccnl_query':
+        return 'ccnl_calculation'
+    elif tool_name == 'DocumentIngestTool':
+        return 'document_processing'
+    else:
+        return 'generic_tool'
+
+
+async def _handle_tool_results_error(ctx: Dict[str, Any], error_msg: str) -> Dict[str, Any]:
+    """Handle errors in tool results processing with graceful fallback."""
+    from datetime import datetime, timezone
+
+    return {
+        **ctx,
+        'formatted_tool_result': f'Error processing tool results: {error_msg}',
+        'tool_message_data': {
+            'content': f'Error processing tool results: {error_msg}',
+            'name': ctx.get('tool_name', 'unknown'),
+            'tool_call_id': ctx.get('tool_call_id', 'unknown')
+        },
+        'tool_message_metadata': {
+            'tool_name': ctx.get('tool_name', 'unknown'),
+            'tool_call_id': ctx.get('tool_call_id', 'unknown'),
+            'result_type': 'error',
+            'has_error': True,
+            'error': error_msg,
+            'formatted_at': datetime.now(timezone.utc).isoformat()
+        },
+        'tool_results_processed': False,
+        'error': error_msg,
+        'next_step': 101,
+        'next_step_id': 'RAG.response.return.to.chat.node.for.final.response',
+        'route_to': 'FinalResponse',
+        'previous_step': ctx.get('rag_step'),
+        'tool_results_completion_metadata': {
+            'processed_at': datetime.now(timezone.utc).isoformat(),
+            'tool_caller_ready': False,
+            'error_handled': True
+        },
+        'request_id': ctx.get('request_id', 'unknown')
+    }
+
+
+async def step_99__tool_results(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    """RAG STEP 99 — Return to tool caller.
+
     ID: RAG.platform.return.to.tool.caller
     Type: process | Category: platform | Node: ToolResults
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that acts as convergence point for all tool execution paths.
+    Formats tool results from Knowledge, FAQ, CCNL, and Document tools into proper
+    ToolMessage format for return to LangGraph tool caller. Routes to FinalResponse (Step 101).
     """
-    with rag_step_timer(99, 'RAG.platform.return.to.tool.caller', 'ToolResults', stage="start"):
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
+
+    with rag_step_timer(99, 'RAG.platform.return.to.tool.caller', 'ToolResults',
+                       request_id=request_id, stage="start"):
         rag_step_log(step=99, step_id='RAG.platform.return.to.tool.caller', node_label='ToolResults',
-                     category='platform', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=99, step_id='RAG.platform.return.to.tool.caller', node_label='ToolResults',
-                     processing_stage="completed")
-        return result
+                     category='platform', type='process', request_id=request_id, processing_stage="started")
+
+        try:
+            # Format tool results using helper function
+            tool_result_data = await _format_tool_results_for_caller(ctx)
+
+            # Build result with preserved context and formatted tool results
+            result = {
+                **ctx,
+                'formatted_tool_result': tool_result_data['formatted_content'],
+                'tool_message_data': tool_result_data['tool_message_data'],
+                'tool_message_metadata': tool_result_data['metadata'],
+                'tool_results_processed': tool_result_data['success'],
+                'previous_step': ctx.get('rag_step'),
+                'next_step': 101,
+                'next_step_id': 'RAG.response.return.to.chat.node.for.final.response',
+                'route_to': 'FinalResponse',
+                'tool_results_completion_metadata': {
+                    'processed_at': datetime.now(timezone.utc).isoformat(),
+                    'tool_caller_ready': True,
+                    'convergence_point': True
+                },
+                'request_id': request_id
+            }
+
+            # Add error context if formatting failed
+            if not tool_result_data['success']:
+                result['error'] = tool_result_data.get('error', 'Tool result formatting failed')
+
+            rag_step_log(
+                step=99,
+                step_id='RAG.platform.return.to.tool.caller',
+                node_label='ToolResults',
+                request_id=request_id,
+                tool_name=ctx.get('tool_name'),
+                tool_call_id=ctx.get('tool_call_id'),
+                tool_results_processed=tool_result_data['success'],
+                result_type=tool_result_data['metadata'].get('result_type'),
+                content_length=len(tool_result_data['formatted_content']),
+                next_step=101,
+                route_to='FinalResponse',
+                processing_stage="completed"
+            )
+
+            return result
+
+        except Exception as e:
+            rag_step_log(
+                step=99,
+                step_id='RAG.platform.return.to.tool.caller',
+                node_label='ToolResults',
+                request_id=request_id,
+                error=str(e),
+                processing_stage="error"
+            )
+            # On error, still route to FinalResponse with error context
+            return await _handle_tool_results_error(ctx, str(e))
 
 def step_103__log_complete(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
@@ -2907,38 +3243,490 @@ async def step_120__validate_expert(*, messages: Optional[List[Any]] = None, ctx
 
             return error_result
 
-def step_126__determine_action(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 126 — Determine action
+async def step_126__determine_action(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    """RAG STEP 126 — Determine action
+
     ID: RAG.platform.determine.action
     Type: process | Category: platform | Node: DetermineAction
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that analyzes cached expert feedback to determine what action
+    should be taken. Routes feedback to Golden Set candidate creation if appropriate, or
+    concludes the feedback processing flow based on feedback type and quality metrics.
+    Receives input from CacheFeedback (Step 125), routes to GoldenCandidate (Step 127).
     """
-    with rag_step_timer(126, 'RAG.platform.determine.action', 'DetermineAction', stage="start"):
-        rag_step_log(step=126, step_id='RAG.platform.determine.action', node_label='DetermineAction',
-                     category='platform', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=126, step_id='RAG.platform.determine.action', node_label='DetermineAction',
-                     processing_stage="completed")
-        return result
+    ctx = ctx or {}
+    request_id = ctx.get('request_id', 'unknown')
 
-def step_133__fetch_feeds(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    with rag_step_timer(126, 'RAG.platform.determine.action', 'DetermineAction',
+                       request_id=request_id, stage="start"):
+        rag_step_log(step=126, step_id='RAG.platform.determine.action', node_label='DetermineAction',
+                     category='platform', type='process', request_id=request_id, processing_stage="started")
+
+        try:
+            # Determine action based on expert feedback using helper function
+            action_decision = await _determine_feedback_action(ctx)
+
+            # Build result with preserved context and action decision
+            result = {
+                **ctx,
+                'action_determined': action_decision['action'],
+                'action_reasoning': action_decision['reasoning'],
+                'route_to_golden_candidate': action_decision['route_to_golden_candidate'],
+                'decision_metadata': action_decision['metadata'],
+                'golden_candidate_data': action_decision.get('golden_candidate_data', {}),
+                'quality_assessment': action_decision.get('quality_assessment'),
+                'quality_concerns': action_decision.get('quality_concerns', []),
+                'expert_trust_score': action_decision.get('expert_trust_score'),
+                'previous_step': ctx.get('rag_step'),
+                'rag_step': 126,
+                'request_id': request_id
+            }
+
+            # Set next step based on routing decision
+            if action_decision['route_to_golden_candidate']:
+                result['next_step'] = 127  # GoldenCandidate
+                result['next_step_id'] = 'RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback'
+                result['route_to'] = 'GoldenCandidate'
+            else:
+                # Complete feedback processing flow - no next step
+                result['completion_reason'] = action_decision['reasoning']
+                result['feedback_processing_complete'] = True
+                result['workflow_concluded'] = True
+
+            # Add error context if action determination failed
+            if 'error' in action_decision:
+                result['error'] = action_decision['error']
+
+            rag_step_log(
+                step=126,
+                step_id='RAG.platform.determine.action',
+                node_label='DetermineAction',
+                request_id=request_id,
+                action_determined=action_decision['action'],
+                route_to_golden_candidate=action_decision['route_to_golden_candidate'],
+                expert_trust_score=action_decision.get('expert_trust_score'),
+                feedback_type=action_decision['metadata'].get('feedback_type'),
+                processing_stage="completed"
+            )
+
+            return result
+
+        except Exception as e:
+            rag_step_log(
+                step=126,
+                step_id='RAG.platform.determine.action',
+                node_label='DetermineAction',
+                request_id=request_id,
+                error=str(e),
+                processing_stage="error"
+            )
+            # On error, return safe fallback
+            return await _handle_action_determination_error(ctx, str(e))
+
+async def step_133__fetch_feeds(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 133 — Fetch and parse sources
     ID: RAG.platform.fetch.and.parse.sources
     Type: process | Category: platform | Node: FetchFeeds
 
-    TODO: Implement orchestration so this node *changes/validates control flow/data*
-    according to Mermaid — not logs-only. Call into existing services/factories here.
+    Thin async orchestrator that fetches RSS feeds and parses their content, then routes to Step 134 (ParseDocs).
+    Coordinates between RSS feed services and document processing pipeline.
     """
+    ctx = ctx or {}
+    rss_feeds = ctx.get('rss_feeds', [])
+    new_item_count = ctx.get('new_item_count', 0)
+    feed_sources = ctx.get('feed_sources', [])
+
     with rag_step_timer(133, 'RAG.platform.fetch.and.parse.sources', 'FetchFeeds', stage="start"):
-        rag_step_log(step=133, step_id='RAG.platform.fetch.and.parse.sources', node_label='FetchFeeds',
-                     category='platform', type='process', stub=True, processing_stage="started")
-        # TODO: call real service/factory here and return its output
-        result = kwargs.get("result")  # placeholder
-        rag_step_log(step=133, step_id='RAG.platform.fetch.and.parse.sources', node_label='FetchFeeds',
-                     processing_stage="completed")
-        return result
+        rag_step_log(
+            step=133,
+            step_id='RAG.platform.fetch.and.parse.sources',
+            node_label='FetchFeeds',
+            category='platform',
+            type='process',
+            processing_stage="started",
+            attrs={
+                'feeds_to_process': len(rss_feeds),
+                'expected_items': new_item_count,
+                'feed_sources': feed_sources
+            }
+        )
+
+        try:
+            # Fetch and parse RSS feeds
+            processing_result = await _fetch_and_parse_feeds(
+                rss_feeds=rss_feeds,
+                feed_sources=feed_sources
+            )
+
+            # Route to Step 134 (ParseDocs) if items were parsed
+            next_step_context = None
+            if processing_result.get('total_items_parsed', 0) > 0:
+                next_step_context = {
+                    'parsed_feeds': processing_result.get('parsed_feeds', []),
+                    'total_items_parsed': processing_result.get('total_items_parsed', 0),
+                    'feed_sources': feed_sources,
+                    'processing_summary': processing_result.get('processing_summary', {})
+                }
+
+            result = {
+                'step': 133,
+                'status': 'completed',
+                'feeds_fetched': processing_result.get('feeds_processed', 0),
+                'total_items_parsed': processing_result.get('total_items_parsed', 0),
+                'parsed_feeds': processing_result.get('parsed_feeds', []),
+                'next_step': 134 if next_step_context else None,
+                'next_step_context': next_step_context,
+                'processing_errors': processing_result.get('errors')
+            }
+
+            rag_step_log(
+                step=133,
+                step_id='RAG.platform.fetch.and.parse.sources',
+                node_label='FetchFeeds',
+                processing_stage="completed",
+                attrs={
+                    'feeds_processed': processing_result.get('feeds_processed', 0),
+                    'items_parsed': processing_result.get('total_items_parsed', 0),
+                    'successful_feeds': processing_result.get('processing_summary', {}).get('successful_feeds', 0),
+                    'failed_feeds': processing_result.get('processing_summary', {}).get('failed_feeds', 0),
+                    'next_step': result['next_step']
+                }
+            )
+
+            return result
+
+        except Exception as e:
+            rag_step_log(
+                step=133,
+                step_id='RAG.platform.fetch.and.parse.sources',
+                node_label='FetchFeeds',
+                processing_stage="error",
+                attrs={
+                    'error': str(e),
+                    'feeds_to_process': len(rss_feeds),
+                    'feed_sources': feed_sources
+                }
+            )
+
+            return {
+                'step': 133,
+                'status': 'error',
+                'error': str(e),
+                'feeds_fetched': 0,
+                'total_items_parsed': 0
+            }
+
+
+async def _fetch_and_parse_feeds(rss_feeds: List[Dict[str, Any]], feed_sources: List[str]) -> Dict[str, Any]:
+    """Helper function to fetch and parse RSS feeds.
+
+    Args:
+        rss_feeds: List of RSS feed data structures from Step 132
+        feed_sources: List of feed source names
+
+    Returns:
+        Dictionary with processing results including parsed_feeds, total_items_parsed, processing_summary
+    """
+    if not rss_feeds:
+        return {
+            'status': 'completed',
+            'feeds_processed': 0,
+            'total_items_parsed': 0,
+            'parsed_feeds': [],
+            'processing_summary': {
+                'successful_feeds': 0,
+                'failed_feeds': 0,
+                'processing_time_seconds': 0
+            }
+        }
+
+    try:
+        from app.services.rss_feed_monitor import RSSFeedMonitor
+    except ImportError as e:
+        return {
+            'status': 'error',
+            'error': f'Failed to import RSS services: {str(e)}',
+            'feeds_processed': 0,
+            'total_items_parsed': 0,
+            'parsed_feeds': [],
+            'processing_summary': {'successful_feeds': 0, 'failed_feeds': len(rss_feeds)}
+        }
+
+    parsing_tasks = []
+    start_time = datetime.now(timezone.utc)
+
+    # Create parsing tasks for each RSS feed
+    for feed_data in rss_feeds:
+        feed_url = feed_data.get('url')
+        if feed_url:
+            parsing_tasks.append(_parse_individual_feed(feed_data))
+
+    if not parsing_tasks:
+        return {
+            'status': 'no_valid_feeds',
+            'feeds_processed': 0,
+            'total_items_parsed': 0,
+            'parsed_feeds': [],
+            'processing_summary': {'successful_feeds': 0, 'failed_feeds': len(rss_feeds)}
+        }
+
+    # Execute parsing tasks concurrently
+    try:
+        parsing_results = await asyncio.gather(*parsing_tasks, return_exceptions=True)
+    except Exception as e:
+        return {
+            'status': 'gather_error',
+            'error': str(e),
+            'feeds_processed': 0,
+            'total_items_parsed': 0,
+            'parsed_feeds': [],
+            'processing_summary': {'successful_feeds': 0, 'failed_feeds': len(rss_feeds)}
+        }
+
+    # Aggregate results
+    parsed_feeds = []
+    total_items_parsed = 0
+    successful_feeds = 0
+    failed_feeds = 0
+    errors = []
+
+    for i, result in enumerate(parsing_results):
+        if isinstance(result, Exception):
+            errors.append(str(result))
+            failed_feeds += 1
+            continue
+
+        if result.get('parsing_status') == 'success':
+            parsed_feeds.append(result)
+            total_items_parsed += result.get('items_parsed', 0)
+            successful_feeds += 1
+        else:
+            failed_feeds += 1
+            if result.get('error'):
+                errors.append(result['error'])
+
+    processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+
+    return {
+        'status': 'completed',
+        'feeds_processed': successful_feeds,
+        'total_items_parsed': total_items_parsed,
+        'parsed_feeds': parsed_feeds,
+        'processing_summary': {
+            'successful_feeds': successful_feeds,
+            'failed_feeds': failed_feeds,
+            'total_processing_time_seconds': processing_time
+        },
+        'errors': errors if errors else None
+    }
+
+
+async def _parse_individual_feed(feed_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Parse an individual RSS feed.
+
+    Args:
+        feed_data: RSS feed data structure from Step 132
+
+    Returns:
+        Dictionary with parsed feed results
+    """
+    try:
+        from app.services.rss_feed_monitor import RSSFeedMonitor
+
+        feed_url = feed_data.get('url')
+        feed_name = feed_data.get('feed_name', 'unknown_feed')
+        authority = feed_data.get('authority', 'Unknown Authority')
+
+        if not feed_url:
+            return {
+                'feed_name': feed_name,
+                'parsing_status': 'error',
+                'error': 'Missing feed URL',
+                'items_parsed': 0
+            }
+
+        # Use RSS monitor service to parse the feed
+        async with RSSFeedMonitor() as monitor:
+            parsed_items = await monitor.parse_feed_with_error_handling(feed_url)
+
+        return {
+            'feed_url': feed_url,
+            'feed_name': feed_name,
+            'authority': authority,
+            'items': parsed_items,
+            'parsing_status': 'success',
+            'items_parsed': len(parsed_items)
+        }
+
+    except Exception as e:
+        return {
+            'feed_name': feed_data.get('feed_name', 'unknown_feed'),
+            'parsing_status': 'error',
+            'error': f'Feed parsing failed: {str(e)}',
+            'items_parsed': 0
+        }
+
+
+async def _determine_feedback_action(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Determine action to take based on expert feedback analysis.
+
+    Applies business logic from ExpertFeedbackCollector._determine_action() to decide
+    whether feedback should route to Golden Set candidate creation or conclude processing.
+    """
+    try:
+        # Extract expert feedback data from context
+        expert_feedback = ctx.get('expert_feedback', {})
+        if not expert_feedback:
+            return {
+                'action': 'no_action',
+                'reasoning': 'Missing expert feedback data',
+                'route_to_golden_candidate': False,
+                'metadata': {'error': 'No expert feedback found in context'},
+                'error': 'Missing expert feedback data'
+            }
+
+        feedback_type = expert_feedback.get('feedback_type', '').upper()
+        expert_answer = expert_feedback.get('expert_answer')
+        expert_id = expert_feedback.get('expert_id')
+        query_text = expert_feedback.get('query_text', '')
+        confidence_score = expert_feedback.get('confidence_score', 0.0)
+        trust_score = expert_feedback.get('trust_score', 0.0)
+        frequency = expert_feedback.get('frequency', 1)
+
+        # Apply business logic from ExpertFeedbackCollector._determine_action
+        if feedback_type == 'CORRECT':
+            action = 'feedback_acknowledged'
+            reasoning = 'Expert confirmed answer is correct'
+            route_to_golden = False
+
+        elif feedback_type == 'INCOMPLETE':
+            if expert_answer:
+                action = 'answer_enhancement_queued'
+                reasoning = 'Expert provided enhancement for incomplete answer'
+                route_to_golden = True
+            else:
+                action = 'improvement_suggestion_logged'
+                reasoning = 'Expert flagged incomplete answer but provided no enhancement'
+                route_to_golden = False
+
+        elif feedback_type == 'INCORRECT':
+            if expert_answer:
+                action = 'correction_queued'
+                reasoning = 'Expert provided correction for incorrect answer'
+                route_to_golden = True
+            else:
+                action = 'critical_review_flagged'
+                reasoning = 'Expert flagged incorrect answer but provided no correction'
+                route_to_golden = False
+
+        else:
+            action = 'feedback_logged'
+            reasoning = 'Unknown feedback type, logging for review'
+            route_to_golden = False
+
+        # Build decision metadata
+        metadata = {
+            'feedback_type': feedback_type,
+            'has_expert_correction': bool(expert_answer),
+            'expert_id': expert_id,
+            'expert_trust_score': trust_score,  # Include in metadata for tests
+            'query_text': query_text,
+            'confidence_score': confidence_score,
+            'trust_score': trust_score,
+            'frequency': frequency,
+            'correction_importance': expert_feedback.get('correction_importance', 'medium')
+        }
+
+        # Assess expert and feedback quality
+        quality_assessment = _assess_feedback_quality(confidence_score, trust_score, frequency)
+        quality_concerns = []
+
+        if trust_score < 0.7:
+            quality_concerns.append('low_expert_trust_score')
+        if confidence_score < 0.8:
+            quality_concerns.append('low_confidence_score')
+        if frequency < 3 and route_to_golden:
+            quality_concerns.append('low_frequency_pattern')
+
+        # Prepare golden candidate data if routing
+        golden_candidate_data = {}
+        if route_to_golden:
+            golden_candidate_data = {
+                'action': action,
+                'expert_feedback': expert_feedback,
+                'should_create_candidate': True,
+                'priority_level': _determine_priority_level(confidence_score, trust_score, frequency),
+                'quality_score': (confidence_score + trust_score) / 2.0
+            }
+
+        return {
+            'action': action,
+            'reasoning': reasoning,
+            'route_to_golden_candidate': route_to_golden,
+            'metadata': metadata,
+            'golden_candidate_data': golden_candidate_data,
+            'quality_assessment': quality_assessment,
+            'quality_concerns': quality_concerns,
+            'expert_trust_score': trust_score
+        }
+
+    except Exception as e:
+        return {
+            'action': 'feedback_logged',
+            'reasoning': f'Error in action determination: {str(e)}',
+            'route_to_golden_candidate': False,
+            'metadata': {'exception': str(e)},
+            'error': f'Action determination failed: {str(e)}'
+        }
+
+
+def _assess_feedback_quality(confidence_score: float, trust_score: float, frequency: int) -> str:
+    """Assess overall feedback quality based on metrics."""
+    if trust_score >= 0.9 and confidence_score >= 0.9:
+        return 'excellent'
+    elif trust_score >= 0.8 and confidence_score >= 0.8:
+        return 'high'
+    elif trust_score >= 0.7 and confidence_score >= 0.7:
+        return 'good'
+    elif trust_score < 0.5 or confidence_score < 0.5:
+        return 'low_trust'
+    else:
+        return 'moderate'
+
+
+def _determine_priority_level(confidence_score: float, trust_score: float, frequency: int) -> str:
+    """Determine priority level for Golden Set candidate creation."""
+    combined_score = confidence_score * trust_score
+
+    if combined_score >= 0.85 and frequency >= 20:
+        return 'high'
+    elif combined_score >= 0.9 and frequency >= 10:
+        return 'high'
+    elif combined_score >= 0.8 and frequency >= 5:
+        return 'medium'
+    elif combined_score >= 0.7:
+        return 'medium'
+    else:
+        return 'low'
+
+
+async def _handle_action_determination_error(ctx: Dict[str, Any], error_msg: str) -> Dict[str, Any]:
+    """Handle errors in action determination with graceful fallback."""
+    return {
+        **ctx,
+        'action_determined': 'feedback_logged',
+        'action_reasoning': f'Error occurred during action determination: {error_msg}',
+        'route_to_golden_candidate': False,
+        'error': error_msg,
+        'decision_metadata': {
+            'error': error_msg,
+            'fallback_applied': True,
+            'action_determination_failed': True
+        },
+        'feedback_processing_complete': True,
+        'completion_reason': 'Error fallback applied',
+        'previous_step': ctx.get('rag_step'),
+        'rag_step': 126,
+        'request_id': ctx.get('request_id', 'unknown')
+    }

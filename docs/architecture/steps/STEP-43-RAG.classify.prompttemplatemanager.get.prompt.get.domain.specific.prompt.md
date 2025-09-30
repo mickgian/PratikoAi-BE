@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DomainPrompt` (PromptTemplateManager.get_prompt Get domain-specific prompt).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/classify.py:831` - `step_43__domain_prompt()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator retrieving domain-specific prompt templates using PromptTemplateManager. Selects appropriate prompt based on classified domain-action pair to enable specialized conversation handling for different domains.

@@ -9,7 +9,8 @@ Determines if the client requested streaming response format by checking request
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/streaming.py:15` - `step_104__stream_check()`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Async decision orchestrator that checks stream parameter, HTTP Accept headers, and client preferences. Routes to StreamSetup for streaming or ReturnComplete for JSON responses. Includes streaming configuration setup and comprehensive value parsing for various stream parameter formats.
 
 ## Differences (Blueprint vs Current)
@@ -37,7 +38,7 @@ Determines if the client requested streaming response format by checking request
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Status: missing  |  Confidence: 0.34
 
 Top candidates:
 1) app/orchestrators/streaming.py:15 — app.orchestrators.streaming.step_104__stream_check (score 0.34)

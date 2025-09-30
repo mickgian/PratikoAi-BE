@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/facts.py:114` - `step_18__query_sig()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator computing deterministic SHA256 hash signature from canonicalized atomic facts. Hash includes monetary amounts, dates, legal entities, professional categories, and geographic info. Used for caching, deduplication, and query matching. Routes to Step 19 (AttachCheck).
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: missing  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/facts.py:114 — app.orchestrators.facts.step_18__query_sig (score 0.31)

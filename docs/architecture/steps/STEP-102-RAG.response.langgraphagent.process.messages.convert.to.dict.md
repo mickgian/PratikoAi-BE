@@ -8,6 +8,7 @@
 Converts LangChain BaseMessage objects to dictionary format for final response processing. Applies filtering logic to keep only assistant and user messages with content, removing system messages, tool messages, and empty content. Routes processed messages to LogComplete (Step 103) for final completion logging. This step is derived from the Mermaid node: `ProcessMsg` (LangGraphAgent.__process_messages Convert to dict).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/response.py:697` - `step_102__process_msg()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that converts LangChain BaseMessage objects to dictionary format using convert_to_openai_messages. Filters to user/assistant messages with non-empty content. Preserves all context data and adds message processing metadata. Routes to LogComplete (Step 103).

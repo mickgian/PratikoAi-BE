@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/facts.py:step_29__pre_context_from_golden`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Thin async orchestrator that merges context when we have a golden answer but KB has newer/conflicting information. Uses ContextBuilderMerge service to combine golden answer context, KB deltas, atomic facts, and optional document facts. Routes to Step 39 (KBPreFetch) for additional KB retrieval.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
+Status: missing  |  Confidence: 0.33
 
 Top candidates:
 1) app/orchestrators/facts.py:189 — app.orchestrators.facts.step_29__pre_context_from_golden (score 0.33)

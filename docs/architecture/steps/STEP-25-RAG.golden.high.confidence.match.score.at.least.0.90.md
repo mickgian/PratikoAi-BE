@@ -8,9 +8,10 @@
 Evaluates the confidence score of a Golden Set match from Step 24 to determine routing. If the similarity score is >= 0.90 (high confidence), routes to Step 26 for KB freshness validation. Otherwise routes to Step 30 (ClassifyDomain) for standard RAG flow.
 
 ## Current Implementation (Repo)
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/golden.py:260` - `step_25__golden_hit()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator that performs threshold comparison (0.90) on `similarity_score` from Step 24. Routes to KB context check (Step 26) if high confidence, or ClassifyDomain (Step 30) if low confidence. Includes decision metadata for observability.
+- **Status:** missing
+- **Behavior notes:** Node orchestrator that performs threshold comparison (0.90) on `similarity_score` from Step 24. Routes to KB context check (Step 26) if high confidence, or ClassifyDomain (Step 30) if low confidence. Includes decision metadata for observability.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Evaluates the confidence score of a Golden Set match from Step 24 to determine r
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.53
+Status: missing  |  Confidence: 0.53
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)

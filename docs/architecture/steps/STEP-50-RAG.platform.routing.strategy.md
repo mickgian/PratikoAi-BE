@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `StrategyType` (Routing strategy?).
 
 ## Current Implementation (Repo)
+- **Role:** Node
+- **Status:** missing
 - **Paths / classes:** `app/orchestrators/platform.py:1203` - `step_50__strategy_type()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Orchestrator determining routing strategy type based on query classification and domain requirements. Selects appropriate strategy (cheapest, best, balanced, primary) for LLM provider selection.
+- **Behavior notes:** Runtime boundary; determines routing strategy type; routes to cheapest, best, balanced, or primary provider selection.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly

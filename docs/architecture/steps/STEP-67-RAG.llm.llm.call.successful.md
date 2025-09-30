@@ -9,7 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/llm.py:320` - `step_67__llmsuccess()`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Async orchestrator checking LLM call success status and response quality. Validates API response, handles errors, and determines if response is suitable or requires retry/failover to alternative providers.
 
 ## Differences (Blueprint vs Current)
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: missing  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/llm.py:320 — app.orchestrators.llm.step_67__llmsuccess (score 0.31)

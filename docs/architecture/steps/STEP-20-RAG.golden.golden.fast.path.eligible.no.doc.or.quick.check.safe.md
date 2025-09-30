@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `GoldenFastGate` (Golden fast-path eligible? no doc or quick check safe).
 
 ## Current Implementation (Repo)
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/golden.py:14` - `step_20__golden_fast_gate()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Process orchestrator using GoldenFastPathService to determine eligibility for golden fast-path. Checks for document-dependent queries, safe factual queries, and complexity indicators. Routes to Step 24 (GoldenLookup) if eligible or Step 31 (ClassifyDomain) if not eligible.
+- **Status:** missing
+- **Behavior notes:** Node orchestrator using GoldenFastPathService to determine eligibility for golden fast-path. Checks for document-dependent queries, safe factual queries, and complexity indicators. Routes to Step 24 (GoldenLookup) if eligible or Step 31 (ClassifyDomain) if not eligible.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.51
+Status: missing  |  Confidence: 0.51
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.51)

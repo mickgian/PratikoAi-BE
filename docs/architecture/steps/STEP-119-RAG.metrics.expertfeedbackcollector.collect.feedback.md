@@ -8,6 +8,7 @@
 Process orchestrator that collects expert feedback and routes to credential validation. Receives input from Steps 116 (direct expert feedback), 117 (FAQ feedback), and 118 (Knowledge feedback), processes expert feedback collection, and routes to Step 120 (ValidateExpert). Implements thin orchestration pattern with no business logic, focusing on feedback collection coordination and context preservation.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/metrics.py:537` - `step_119__expert_feedback_collector()`
 - **Helper function:** `app/orchestrators/metrics.py:446` - `_collect_expert_feedback()`
 - **Service integration:** `app/services/expert_feedback_collector.py` - `ExpertFeedbackCollector` service

@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CacheFeedback` (Cache feedback 1h TTL).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/cache.py:992` - `step_125__cache_feedback()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator caching feedback data with 1-hour TTL. Stores user feedback for response quality improvement.

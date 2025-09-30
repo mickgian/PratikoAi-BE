@@ -9,7 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/golden.py:step_83__faqquery`, `app/core/langgraph/tools/faq_tool.py:FAQTool`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Thin async orchestrator that executes on-demand FAQ queries when the LLM calls the FAQTool. Uses SemanticFAQMatcher and IntelligentFAQService for semantic FAQ matching with confidence-based filtering (low, medium, high, exact). Supports Italian language queries with concept matching and freshness validation. Routes to Step 99 (ToolResults).
 
 ## Differences (Blueprint vs Current)
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.54
+Status: missing  |  Confidence: 0.54
 
 Top candidates:
 1) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.54)

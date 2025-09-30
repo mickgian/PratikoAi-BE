@@ -8,9 +8,10 @@
 Evaluates whether KB has newer content or conflicting tags compared to the Golden Set match. Routes to ServeGolden (Step 28) if no conflict, or to PreContextFromGolden (Step 29) if KB has updates that should be merged.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/golden.py:step_27__kbdelta`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator that evaluates KB delta/conflict using dual-check logic: (1) timestamp comparison for newer KB content, (2) tag-based conflict detection for supersedes/obsoletes/replaces/updated indicators. Routes to Step 28 (ServeGolden) if no delta, or Step 29 (PreContextFromGolden) if conflict detected. Preserves all context from Step 26.
+- **Role:** Node
+- **Paths / classes:** `app/orchestrators/golden.py:320` - `step_27__kbdelta()`
+- **Status:** missing
+- **Behavior notes:** Node orchestrator that evaluates KB delta/conflict using dual-check logic: (1) timestamp comparison for newer KB content, (2) tag-based conflict detection for supersedes/obsoletes/replaces/updated indicators. Routes to Step 28 (ServeGolden) if no delta, or Step 29 (PreContextFromGolden) if conflict detected. Preserves all context from Step 26.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -37,7 +38,7 @@ Evaluates whether KB has newer content or conflicting tags compared to the Golde
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.54
+Status: missing  |  Confidence: 0.54
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)

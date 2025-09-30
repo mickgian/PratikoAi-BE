@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `AnonymizeText` (Anonymizer.anonymize_text Anonymize PII).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/privacy.py:371` - `step_7__anonymize_text()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Process orchestrator for PII anonymization using PIIAnonymizer service. Routes to Step 9 (PIICheck) to determine if PII was detected and anonymized.
+- **Status:** missing
+- **Behavior notes:** Internal transform within AnonymizeText node; anonymizes PII using PIIAnonymizer service.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🟡  |  Confidence: 0.56
+Status: missing  |  Confidence: 0.56
 
 Top candidates:
 1) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.56)

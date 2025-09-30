@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CCNLCalc` (CCNLCalculator.calculate Perform calculations).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/ccnl.py:99` - `step_100__ccnlcalc()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator performing CCNL (Italian labor agreement) calculations. Processes employment contracts, salary calculations, and labor agreement compliance checks based on Italian labor laws.

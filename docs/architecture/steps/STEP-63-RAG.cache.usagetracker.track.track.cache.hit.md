@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `TrackCacheHit` (UsageTracker.track Track cache hit).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/cache.py:427` - `step_63__track_cache_hit()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator tracking cache hit metrics and usage patterns. Records cache performance data for monitoring and optimization. Routes to Step 65 (LogCacheHit) for structured logging.

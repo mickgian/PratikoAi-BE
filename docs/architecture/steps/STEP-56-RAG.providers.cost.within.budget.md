@@ -9,7 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/providers.py:739` - `step_56__cost_check()`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Orchestrator checking if estimated cost is within budget constraints. Decision point for provider selection based on cost limits.
 
 ## Differences (Blueprint vs Current)
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.49
+Status: missing  |  Confidence: 0.49
 
 Top candidates:
 1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.49)

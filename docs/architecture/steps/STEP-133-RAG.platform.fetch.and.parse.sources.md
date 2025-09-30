@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `FetchFeeds` (Fetch and parse sources).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:3326` - `step_133__fetch_feeds()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator fetching and parsing RSS feeds and external content sources. Retrieves latest updates from configured sources for knowledge base ingestion. Routes to Step 134 (ParseDocs) for document processing.

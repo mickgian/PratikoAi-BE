@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/facts.py:14` - `step_14__extract_facts()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator wrapping AtomicFactsExtractor service. Extracts Italian monetary amounts, dates, legal entities, professional categories, and geographic info from user queries. Routes to Step 16 (CanonicalizeFacts).
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.42
+Status: missing  |  Confidence: 0.42
 
 Top candidates:
 1) app/services/atomic_facts_extractor.py:421 — app.services.atomic_facts_extractor.AtomicFactsExtractor.extract (score 0.42)

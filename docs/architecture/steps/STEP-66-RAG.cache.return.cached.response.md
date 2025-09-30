@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ReturnCached` (Return cached response).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/cache.py:654` - `step_66__return_cached()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator returning cached response to avoid redundant LLM calls. Optimizes performance by serving previously computed results.

@@ -8,6 +8,7 @@
 Process orchestrator that handles knowledge feedback submission and routes to expert feedback collector. Takes input from Step 116 (when feedback type is KB) and processes feedback on knowledge base items, then routes to Step 119 (ExpertFeedbackCollector). Implements thin orchestration pattern with no business logic, focusing on feedback processing coordination and context preservation.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/kb.py:322` - `step_118__knowledge_feedback()`
 - **Helper function:** `app/orchestrators/kb.py:247` - `_process_knowledge_feedback()`
 - **Test suite:** `tests/test_rag_step_118_knowledge_feedback.py` (14 comprehensive tests)

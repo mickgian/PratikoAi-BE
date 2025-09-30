@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `BuildContext` (ContextBuilder.merge facts and KB docs and optional doc facts).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/facts.py:271` - `step_40__build_context()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator merging canonical facts, KB search results, and optional document facts into unified context. Uses ContextBuilderMerge service for token budget management, content prioritization, and deduplication. Routes to Step 41 (SelectPrompt) with enriched context.

@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ToolErr` (Return tool error Invalid file).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:2178` - `step_86__tool_error()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator handling tool execution errors for invalid files. Returns structured error responses with proper error formatting.

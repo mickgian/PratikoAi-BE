@@ -8,9 +8,14 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ValidCheck` (Request valid?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/platform.py:319` - `step_3__valid_check()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Decision orchestrator evaluating request validation results from Step 1. Returns boolean decision and routes to Step 4 (GDPRLog) if valid or Step 5 (Error400) if invalid.
+- **Role:** Node
+- **Status:** missing
+- **Paths / classes:**
+  - app/orchestrators/platform.py:319 — step_3__valid_check
+  - app/orchestrators/__init__.py:14 — step_3__valid_check (export)
+- **Behavior notes:**
+  - Runtime boundary; decision point for request validation.
+  - Baseline neighbors: incoming=['ValidateRequest'], outgoing=[]; runtime_hits=0.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +41,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: missing  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/platform.py:319 — app.orchestrators.platform.step_3__valid_check (score 0.31)

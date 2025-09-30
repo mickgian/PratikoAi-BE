@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `PayslipParser` (PayslipParser.parse).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:735` - `step_93__payslip_parser()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator parsing payslip documents. Extracts salary details, deductions, and employment information from payslips.

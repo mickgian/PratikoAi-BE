@@ -9,8 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/platform.py:412` - `step_5__error400()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Error orchestrator returning HTTP 400 Bad Request response. Formats error details and terminates RAG flow with appropriate error messaging.
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within Error400 node; formats and returns HTTP 400 Bad Request.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.19
+Status: missing  |  Confidence: 0.19
 
 Top candidates:
 1) app/models/query.py:79 — app.models.query.QueryRequest (score 0.19)

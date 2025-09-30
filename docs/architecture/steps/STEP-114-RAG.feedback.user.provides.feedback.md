@@ -8,6 +8,7 @@
 Decision node that evaluates whether user provided feedback after UI display. Routes to appropriate next step based on feedback presence: Step 115 (No feedback) for users who don't provide feedback, or Step 116 (Feedback type selected) for users who provide feedback. Handles multiple feedback formats including user_feedback, expert_feedback, and feedback_data.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/feedback.py:270` - `step_114__feedback_provided()`
 - **Helper function:** `app/orchestrators/feedback.py:188` - `_evaluate_feedback_presence()`
 - **Test suite:** `tests/test_rag_step_114_feedback_provided.py` (15 comprehensive tests)

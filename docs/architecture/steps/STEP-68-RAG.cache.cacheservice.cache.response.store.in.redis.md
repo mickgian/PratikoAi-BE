@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CacheResponse` (CacheService.cache_response Store in Redis).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/cache.py:774` - `step_68__cache_response()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator storing LLM responses in Redis cache with TTL. Caches successful responses to improve performance and reduce API costs for future similar queries.

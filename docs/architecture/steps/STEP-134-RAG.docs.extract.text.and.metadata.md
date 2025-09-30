@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ParseDocs` (Extract text and metadata).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:1113` - `step_134__parse_docs()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator extracting text and metadata from documents. Handles multiple document formats with specialized parsers.

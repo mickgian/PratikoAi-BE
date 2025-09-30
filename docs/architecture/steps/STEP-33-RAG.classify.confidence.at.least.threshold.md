@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ConfidenceCheck` (Confidence at least threshold?).
 
 ## Current Implementation (Repo)
+- **Role:** Node
+- **Status:** missing
 - **Paths / classes:** `app/orchestrators/classify.py:433` - `step_33__confidence_check()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator validating classification confidence against configurable thresholds. Checks if domain/action scores meet minimum requirements for proceeding. Routes to Step 34 (TrackMetrics) or fallback classification based on confidence levels.
+- **Behavior notes:** Runtime boundary; validates classification confidence against thresholds; routes to step 34 or fallback.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.47
+Status: missing  |  Confidence: 0.47
 
 Top candidates:
 1) app/orchestrators/classify.py:210 — app.orchestrators.classify.step_31__classify_domain (score 0.47)

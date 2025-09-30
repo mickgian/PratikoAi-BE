@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `GenericOCR` (GenericOCR.parse_with_layout).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:873` - `step_94__generic_ocr()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator performing generic OCR processing with layout awareness. Processes scanned documents and images to extract text while preserving document structure and formatting context.

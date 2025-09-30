@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `KBPreFetch` (KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost).
 
 ## Current Implementation (Repo)
+- **Role:** Node
+- **Status:** missing
 - **Paths / classes:** `app/orchestrators/preflight.py:360` - `step_39__kbpre_fetch()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator retrieving top-K documents using hybrid search (BM25, vectors, recency boost). Combines multiple search strategies for optimal knowledge retrieval.
+- **Behavior notes:** Runtime boundary; retrieves top-K documents using hybrid search; routes to next steps.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: missing  |  Confidence: 0.31
 
 Top candidates:
 1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.31)

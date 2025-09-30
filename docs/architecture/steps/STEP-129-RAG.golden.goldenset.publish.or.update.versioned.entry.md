@@ -8,6 +8,7 @@
 Publishes or updates an approved FAQ entry in the Golden Set database with versioning. When a candidate is approved (from Step 128), this step persists it to the database, either creating a new FAQ entry or updating an existing one with version history. Routes to InvalidateFAQCache (Step 130) and VectorReindex (Step 131) for downstream cache invalidation and vector embedding updates. This step is derived from the Mermaid node: `PublishGolden` (GoldenSet.publish_or_update versioned entry).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_129__publish_golden`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that publishes/updates FAQ entries with versioning. Uses intelligent_faq_service.create_faq_entry for new entries or update_faq_entry for updates. Creates version history for updates. Routes to 'invalidate_faq_cache' (Step 130) for cache invalidation. Preserves regulatory references and all metadata.

@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `Error500` (Return 500 error).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:1674` - `step_71__error500()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator handling critical system errors by returning 500 status. Formats error response with appropriate logging and monitoring for production environment failures.

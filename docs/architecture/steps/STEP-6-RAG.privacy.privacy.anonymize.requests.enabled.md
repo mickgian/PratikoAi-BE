@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `PrivacyCheck` (PRIVACY_ANONYMIZE_REQUESTS enabled?).
 
 ## Current Implementation (Repo)
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/privacy.py:187` - `step_6__privacy_check()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Decision orchestrator checking PRIVACY_ANONYMIZE_REQUESTS configuration. Routes to Step 7 (AnonymizeText) if enabled or Step 8 (InitAgent) if disabled.
+- **Status:** missing
+- **Behavior notes:** Node orchestrator checking PRIVACY_ANONYMIZE_REQUESTS configuration. Routes to Step 7 (AnonymizeText) if enabled or Step 8 (InitAgent) if disabled.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.48
+Status: missing  |  Confidence: 0.48
 
 Top candidates:
 1) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.48)

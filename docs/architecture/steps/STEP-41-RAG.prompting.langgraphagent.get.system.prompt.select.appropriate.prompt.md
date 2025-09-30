@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `SelectPrompt` (LangGraphAgent._get_system_prompt Select appropriate prompt).
 
 ## Current Implementation (Repo)
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/prompting.py:211` - `step_41__select_prompt()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator selecting appropriate system prompt using PromptTemplateManager. Routes to Step 42 (ClassConfidence) to check classification confidence for domain-specific prompts.

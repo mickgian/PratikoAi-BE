@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `StoreBlob` (BlobStore.put Encrypted TTL storage).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:959` - `step_96__store_blob()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator storing documents in encrypted blob storage with TTL. Provides secure document storage with automatic expiration.

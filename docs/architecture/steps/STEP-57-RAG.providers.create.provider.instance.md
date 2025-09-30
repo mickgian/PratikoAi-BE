@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CreateProvider` (Create provider instance).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/providers.py:810` - `step_57__create_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator creating LLM provider instance with selected configuration. Initializes provider with API keys and settings.

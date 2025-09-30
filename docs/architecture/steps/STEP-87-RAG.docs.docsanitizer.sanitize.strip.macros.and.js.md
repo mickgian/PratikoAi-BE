@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DocSecurity` (DocSanitizer.sanitize Strip macros and JS).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:92` - `step_87__doc_security()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator sanitizing documents by stripping macros and JavaScript. Security measure preventing malicious code execution.

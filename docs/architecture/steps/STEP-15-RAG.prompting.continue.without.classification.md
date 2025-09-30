@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/prompting.py:14` - `step_15__default_prompt()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator for continuing without classification when no user message found. Routes to Step 41 (SelectPrompt) to use default system prompt.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: missing  |  Confidence: 0.29
 
 Top candidates:
 1) app/orchestrators/prompting.py:14 — app.orchestrators.prompting.step_15__default_prompt (score 0.29)

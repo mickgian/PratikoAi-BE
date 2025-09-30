@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `RSSMonitor` (RSS Monitor).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/kb.py:395` - `step_132__rssmonitor()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator monitoring RSS feeds for content updates. Periodically checks configured RSS sources for new content and triggers knowledge base updates when changes are detected.

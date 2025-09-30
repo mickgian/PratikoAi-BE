@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/preflight.py:15` - `step_17__attachment_fingerprint()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator computing SHA-256 fingerprints for each attachment to enable secure caching and deduplication. Routes to Step 18 (QuerySig) for query signature computation.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: missing  |  Confidence: 0.28
 
 Top candidates:
 1) app/orchestrators/preflight.py:15 — app.orchestrators.preflight.step_17__attachment_fingerprint (score 0.28)

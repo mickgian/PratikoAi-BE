@@ -9,7 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/response.py:431` - `step_75__tool_check()`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Async orchestrator checking if response contains tool calls. Decision point routing to tool execution or simple message response.
 
 ## Differences (Blueprint vs Current)
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Status: missing  |  Confidence: 0.34
 
 Top candidates:
 1) app/orchestrators/response.py:431 — app.orchestrators.response.step_75__tool_check (score 0.34)

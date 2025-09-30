@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `MessageExists` (User message exists?).
 
 ## Current Implementation (Repo)
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/platform.py:971` - `step_13__message_exists()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Decision orchestrator checking if user message was successfully extracted. Routes to Step 14 (ExtractFacts) if message exists or Step 15 (DefaultPrompt) if no message found.
+- **Status:** missing
+- **Behavior notes:** Node orchestrator checking if user message was successfully extracted. Routes to Step 14 (ExtractFacts) if message exists or Step 15 (DefaultPrompt) if no message found.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Status: missing  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/platform.py:971 — app.orchestrators.platform.step_13__message_exists (score 0.31)

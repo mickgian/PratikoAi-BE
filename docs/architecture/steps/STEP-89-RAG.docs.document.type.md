@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DocType` (Document type?).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:315` - `step_89__doc_type()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator determining document type decision point. Routes to specialized parsers based on document classification results.

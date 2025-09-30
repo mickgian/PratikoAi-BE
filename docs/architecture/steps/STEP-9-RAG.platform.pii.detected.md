@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `PIICheck` (PII detected?).
 
 ## Current Implementation (Repo)
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/platform.py:565` - `step_9__piicheck()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator detecting personally identifiable information in user requests. Coordinates PII detection analysis and confidence scoring for privacy compliance.
+- **Status:** missing
+- **Behavior notes:** Node orchestrator detecting personally identifiable information in user requests. Coordinates PII detection analysis and confidence scoring for privacy compliance.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: missing  |  Confidence: 0.27
 
 Top candidates:
 1) app/orchestrators/platform.py:565 — app.orchestrators.platform.step_9__piicheck (score 0.27)

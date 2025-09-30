@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ExecuteTools` (LangGraphAgent._tool_call Execute tools).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:2024` - `step_78__execute_tools()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator executing tool calls from LLM responses. Handles knowledge search, FAQ queries, document processing, and CCNL calculation tools with proper error handling and response formatting.

@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `Start` (User submits query via POST /api/v1/chat).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:179` - `step_2__start()`, `app/api/v1/chatbot.py:40` - `@router.post("/chat")`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Entry point orchestrator for RAG flow. Extracts chat request from POST /api/v1/chat endpoint. Routes to Step 1 (ValidateRequest) to begin validation flow.
+- **Status:** missing
+- **Behavior notes:** Internal transform within Start node; extracts chat request from POST endpoint.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: missing  |  Confidence: 0.28
 
 Top candidates:
 1) app/api/v1/chatbot.py:42 — app.api.v1.chatbot.chat (score 0.28)

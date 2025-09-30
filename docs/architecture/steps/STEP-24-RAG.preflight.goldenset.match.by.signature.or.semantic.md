@@ -8,9 +8,10 @@
 Matches user queries against the Golden Set (FAQ database) using either query signature (exact hash match) or semantic similarity search. This is the primary FAQ lookup mechanism in the RAG pipeline.
 
 ## Current Implementation (Repo)
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/preflight.py:239` - `step_24__golden_lookup()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator that performs two-stage matching: (1) Try exact signature match first using query_signature hash from Step 18, (2) Fallback to semantic similarity search using SemanticFAQMatcher. Returns match result with metadata (match_type, similarity_score, search_method) and routes to Step 25 (GoldenHit) for confidence evaluation.
+- **Status:** missing
+- **Behavior notes:** Node orchestrator that performs two-stage matching: (1) Try exact signature match first using query_signature hash from Step 18, (2) Fallback to semantic similarity search using SemanticFAQMatcher. Returns match result with metadata (match_type, similarity_score, search_method) and routes to Step 25 (GoldenHit) for confidence evaluation.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Matches user queries against the Golden Set (FAQ database) using either query si
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Status: missing  |  Confidence: 0.28
 
 Top candidates:
 1) app/orchestrators/preflight.py:239 — app.orchestrators.preflight.step_24__golden_lookup (score 0.28)

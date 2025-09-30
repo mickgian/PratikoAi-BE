@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `SelectProvider` (LangGraphAgent._get_optimal_provider Select LLM provider).
 
 ## Current Implementation (Repo)
+- **Role:** Node
+- **Status:** missing
 - **Paths / classes:** `app/orchestrators/providers.py:14` - `step_48__select_provider()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Orchestrator selecting optimal LLM provider based on query requirements, cost constraints, and performance metrics. Uses enhanced query routing to match providers with domain-action classifications and budget considerations.
+- **Behavior notes:** Runtime boundary; selects optimal LLM provider based on routing strategy; routes to next provider steps.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly

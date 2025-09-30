@@ -8,6 +8,7 @@
 Updates vector embeddings for published/updated FAQ entries in the vector index. When an FAQ is created or modified (from Step 129), this step processes FAQ content and metadata to create/update vector embeddings using EmbeddingManager. Runs in parallel with InvalidateFAQCache (Step 130) to complete the FAQ publication flow. This step is derived from the Mermaid node: `VectorReindex` (VectorIndex.upsert_faq update embeddings).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_131__vector_reindex`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that updates vector embeddings for FAQ entries. Uses EmbeddingManager.update_pinecone_embeddings to upsert FAQ content and metadata into Pinecone vector index. Creates vector indexing metadata for observability. Preserves all context data. Runs in parallel with Step 130 from Step 129 per Mermaid flow.

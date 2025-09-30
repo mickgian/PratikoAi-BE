@@ -8,6 +8,7 @@
 Process orchestrator that updates expert performance metrics based on feedback data. Receives input from Step 123 (CreateFeedbackRec) with expert feedback metadata, coordinates metrics updates using ExpertValidationWorkflow service, and routes to Step 125 (CacheFeedback). Implements thin orchestration pattern with no business logic, focusing on service coordination and context preservation per Mermaid diagram.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/metrics.py:614` - `step_124__update_expert_metrics()`
 - **Helper function:** `app/orchestrators/metrics.py:666` - `_update_expert_performance_metrics()`
 - **Error handling:** `app/orchestrators/metrics.py:876` - `_handle_metrics_update_error()`

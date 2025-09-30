@@ -8,6 +8,7 @@
 Decision orchestrator that evaluates trust scores from Step 120 (ValidateExpert) against 0.7 threshold and routes to appropriate next steps. Receives trust score validation data, makes binary decision based on 0.7 threshold per Mermaid, and routes to either Step 122 (FeedbackRejected) or Step 123 (CreateFeedbackRec). Implements thin orchestration pattern with no business logic, focusing on decision coordination and routing control flow per Mermaid diagram.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/classify.py:1056` - `step_121__trust_score_ok()`
 - **Helper function:** `app/orchestrators/classify.py:985` - `_evaluate_trust_score_decision()`
 - **Test suite:** `tests/test_rag_step_121_trust_score_ok.py` (15 comprehensive tests)

@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ContractParser` (ContractParser.parse).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:610` - `step_92__contract_parser()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator parsing legal contracts and employment documents. Extracts key terms, dates, parties, and obligations from Italian legal documents with domain-specific parsing logic.

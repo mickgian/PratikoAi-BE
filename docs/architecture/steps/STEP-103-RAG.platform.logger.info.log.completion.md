@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `LogComplete` (Logger.info Log completion).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:2600` - `step_103__log_complete()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator logging completion of RAG processing for monitoring and metrics. Called after message processing, before streaming decision.

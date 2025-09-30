@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ClassifyDomain` (DomainActionClassifier.classify Rule-based classification).
 
 ## Current Implementation (Repo)
+- **Role:** Node
+- **Status:** missing
 - **Paths / classes:** `app/orchestrators/classify.py:210` - `step_31__classify_domain()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator performing rule-based classification using DomainActionClassifier. Analyzes Italian keywords and context to determine domain and action. Routes to Step 32 (CalcScores) for score calculation.
+- **Behavior notes:** Runtime boundary; performs rule-based classification using DomainActionClassifier; routes to step 32.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.47
+Status: missing  |  Confidence: 0.47
 
 Top candidates:
 1) app/orchestrators/classify.py:210 — app.orchestrators.classify.step_31__classify_domain (score 0.47)

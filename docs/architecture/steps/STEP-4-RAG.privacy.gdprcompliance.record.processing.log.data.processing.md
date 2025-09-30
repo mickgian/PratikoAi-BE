@@ -9,8 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/privacy.py:14` - `step_4__gdprlog()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Process orchestrator for GDPR compliance logging. Records data processing activities for audit and legal compliance. Routes to Step 6 (privacy check).
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within GDPRLog node; records data processing activities for compliance.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.49
+Status: missing  |  Confidence: 0.49
 
 Top candidates:
 1) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.49)

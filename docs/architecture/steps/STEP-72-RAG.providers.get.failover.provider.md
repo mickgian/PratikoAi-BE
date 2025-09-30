@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `FailoverProvider` (Get FAILOVER provider).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/providers.py:1201` - `step_72__get_failover_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator selecting failover provider when primary fails. Implements provider redundancy for high availability.

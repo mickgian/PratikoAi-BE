@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CheapProvider` (Select cheapest provider).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/providers.py:128` - `step_51__cheap_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator selecting the cheapest available LLM provider based on cost analysis. Optimizes for minimal API costs while maintaining acceptable quality thresholds.

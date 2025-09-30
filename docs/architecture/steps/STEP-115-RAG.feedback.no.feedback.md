@@ -8,6 +8,7 @@
 Terminal process node that finalizes the feedback pipeline when no feedback is provided or when feedback processing is rejected. Handles graceful completion of the feedback flow, performs cleanup operations, and collects final metrics. Serves as the end point for two paths: users who don't provide feedback (from Step 114) and expert feedback that gets rejected during Golden approval process.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/feedback.py:407` - `step_115__feedback_end()`
 - **Helper function:** `app/orchestrators/feedback.py:332` - `_finalize_feedback_pipeline()`
 - **Test suite:** `tests/test_rag_step_115_feedback_end.py` (15 comprehensive tests)

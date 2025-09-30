@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `UseRuleBased` (Use rule-based classification).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:1062` - `step_38__use_rule_based()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator proceeding with rule-based classification result. Routes to context building when classification confidence is sufficient.

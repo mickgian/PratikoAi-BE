@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `PrimaryProvider` (Use primary provider).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/providers.py:533` - `step_54__primary_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator selecting primary/preferred LLM provider based on configuration. Routes to the default provider for the given domain-action classification.

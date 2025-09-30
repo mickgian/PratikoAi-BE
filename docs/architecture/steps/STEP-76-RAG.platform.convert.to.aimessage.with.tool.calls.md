@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ConvertAIMsg` (Convert to AIMessage with tool_calls).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:1784` - `step_76__convert_aimsg()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator converting responses to AIMessage format with tool calls. Handles LLM responses with tool invocations for multi-step interactions.

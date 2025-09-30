@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `GoldenFastGate` (Golden fast-path eligible? no doc or quick check safe).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/golden.py:14` - `step_20__golden_fast_gate()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Process orchestrator using GoldenFastPathService to determine eligibility for golden fast-path. Checks for document-dependent queries, safe factual queries, and complexity indicators. Routes to Step 24 (GoldenLookup) if eligible or Step 31 (ClassifyDomain) if not eligible.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing Golden Set infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 20 (RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe): Golden fast-path eligible? no doc or quick check safe | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (Golden Set operations, FAQ management, confidence matching)
+- [x] Integration tests (Golden Set matching and FAQ retrieval flow)
+- [x] Implementation changes (async orchestrator with Golden Set operations, FAQ management, confidence matching)
+- [x] Observability: add structured log line
+  `RAG STEP 20 (...): ... | attrs={match_confidence, golden_set_id, faq_version}`
+- [x] Feature flag / config if needed (Golden Set thresholds and matching parameters)
+- [x] Rollout plan (implemented with Golden Set accuracy and cache performance safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

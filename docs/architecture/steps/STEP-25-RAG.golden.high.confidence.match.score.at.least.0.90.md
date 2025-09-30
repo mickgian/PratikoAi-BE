@@ -8,7 +8,7 @@
 Evaluates the confidence score of a Golden Set match from Step 24 to determine routing. If the similarity score is >= 0.90 (high confidence), routes to Step 26 for KB freshness validation. Otherwise routes to Step 30 (ClassifyDomain) for standard RAG flow.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/golden.py:step_25__golden_hit`
+- **Paths / classes:** `app/orchestrators/golden.py:260` - `step_25__golden_hit()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that performs threshold comparison (0.90) on `similarity_score` from Step 24. Routes to KB context check (Step 26) if high confidence, or ClassifyDomain (Step 30) if low confidence. Includes decision metadata for observability.
 

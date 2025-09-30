@@ -8,7 +8,7 @@
 Creates FastAPI StreamingResponse with SSE-formatted chunks for browser-compatible streaming delivery. Takes SSE-formatted stream from WriteSSE (Step 108) and creates complete streaming response with proper headers and configuration. Essential step that bridges SSE formatting to actual HTTP streaming response delivery, enabling real-time response streaming to clients. Routes from WriteSSE (Step 108) to SendDone (Step 110). This step is derived from the Mermaid node: `StreamResponse` (StreamingResponse Send chunks).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/streaming.py:step_109__stream_response`
+- **Paths / classes:** `app/orchestrators/streaming.py:575` - `step_109__stream_response()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that creates FastAPI StreamingResponse with SSE-formatted chunks from Step 108. Configures response headers (Content-Type, Cache-Control, CORS), validates streaming requirements, and prepares complete streaming response. Routes to SendDone (Step 110) with browser-compatible StreamingResponse ready for client delivery.
 

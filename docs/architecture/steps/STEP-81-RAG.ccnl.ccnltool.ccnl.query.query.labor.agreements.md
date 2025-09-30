@@ -8,7 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CCNLQuery` (CCNLTool.ccnl_query Query labor agreements).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/ccnl.py:step_81__ccnlquery`, `app/core/langgraph/tools/ccnl_tool.py:CCNLTool`
+- **Paths / classes:** `app/orchestrators/ccnl.py:14` - `step_81__ccnlquery()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Thin async orchestrator that executes on-demand CCNL (Italian Collective Labor Agreement) queries when the LLM calls the CCNLTool. Uses CCNLTool for querying labor agreements, salary calculations, leave entitlements, and compliance information. Routes to Step 99 (ToolResults). Note: Mermaid shows CCNLQuery → PostgresQuery → CCNLCalc → ToolResults, but implementation collapses internal steps as CCNLTool handles PostgreSQL queries and calculations internally.
 

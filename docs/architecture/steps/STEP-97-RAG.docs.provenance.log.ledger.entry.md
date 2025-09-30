@@ -13,10 +13,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - **Behavior notes:** Thin orchestrator logs provenance ledger entries with immutable metadata for document processing audit trail. Creates ledger entries with timestamp, blob_id, encryption status, TTL. Routes to Step 98 (ToToolResults).
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing document processing infrastructure
 
 ## TDD Task List
 - [x] Unit tests (provenance logging, ledger metadata, immutable characteristics, routing)

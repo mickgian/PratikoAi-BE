@@ -8,7 +8,7 @@
 Determines if the client requested streaming response format by checking request parameters and HTTP headers. Routes to StreamSetup (Step 105) for streaming responses or ReturnComplete (Step 112) for regular JSON responses. Critical decision point that enables real-time response streaming based on client preferences. This step is derived from the Mermaid node: `StreamCheck` (Streaming requested?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/streaming.py:step_104__stream_check`
+- **Paths / classes:** `app/orchestrators/streaming.py:15` - `step_104__stream_check()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async decision orchestrator that checks stream parameter, HTTP Accept headers, and client preferences. Routes to StreamSetup for streaming or ReturnComplete for JSON responses. Includes streaming configuration setup and comprehensive value parsing for various stream parameter formats.
 

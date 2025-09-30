@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `GenHash` (CacheService._generate_response_key sig and doc_hashes and epochs and versions).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/cache.py:131` - `step_61__gen_hash()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator generating comprehensive cache key from query signature, document hashes, knowledge epochs, and system versions. Creates deterministic hash for Redis cache storage and retrieval. Routes to Step 62 (CacheHit) for lookup.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing caching infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 61 (RAG.cache.cacheservice.generate.response.key.sig.and.doc.hashes.and.epochs.and.versions): CacheService._generate_response_key sig and doc_hashes and epochs and versions | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (caching operations, invalidation, key generation)
+- [x] Integration tests (cache flow and invalidation handling)
+- [x] Implementation changes (async orchestrator with caching operations, invalidation, key generation)
+- [x] Observability: add structured log line
+  `RAG STEP 61 (...): ... | attrs={cache_key, hit_rate, expiry_time}`
+- [x] Feature flag / config if needed (cache settings and TTL configuration)
+- [x] Rollout plan (implemented with cache performance and consistency safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

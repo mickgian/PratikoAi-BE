@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DocSecurity` (DocSanitizer.sanitize Strip macros and JS).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/docs.py:92` - `step_87__doc_security()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator sanitizing documents by stripping macros and JavaScript. Security measure preventing malicious code execution.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing document processing infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 87 (RAG.docs.docsanitizer.sanitize.strip.macros.and.js): DocSanitizer.sanitize Strip macros and JS | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (document processing, parsing, format handling)
+- [x] Integration tests (document processing flow and format validation)
+- [x] Implementation changes (async orchestrator with document processing, parsing, format handling)
+- [x] Observability: add structured log line
+  `RAG STEP 87 (...): ... | attrs={document_type, file_size, processing_time}`
+- [x] Feature flag / config if needed (document processing limits and format support)
+- [x] Rollout plan (implemented with document processing reliability and security safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

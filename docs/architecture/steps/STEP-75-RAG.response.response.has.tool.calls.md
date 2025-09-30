@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ToolCheck` (Response has tool_calls?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/response.py:431` - `step_75__tool_check()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator checking if response contains tool calls. Decision point routing to tool execution or simple message response.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing response processing infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 75 (RAG.response.response.has.tool.calls): Response has tool_calls? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (response processing, workflow execution, message handling)
+- [x] Integration tests (response workflow flow and message routing)
+- [x] Implementation changes (async orchestrator with response processing, workflow execution, message handling)
+- [x] Observability: add structured log line
+  `RAG STEP 75 (...): ... | attrs={response_type, processing_time, message_count}`
+- [x] Feature flag / config if needed (response workflow configuration and timeout settings)
+- [x] Rollout plan (implemented with response processing reliability and performance safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

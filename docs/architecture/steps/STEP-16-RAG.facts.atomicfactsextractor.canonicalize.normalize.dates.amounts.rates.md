@@ -13,10 +13,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - **Behavior notes:** Thin async orchestrator that validates atomic facts from Step 14 are properly canonicalized. Canonicalization happens within AtomicFactsExtractor.extract() using internal _canonicalize_* methods (numbers, dates, entities). This step validates the canonicalization result and routes to Step 17 (AttachmentFingerprint).
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
 - [x] Unit tests (monetary amounts, dates, legal entities, empty facts, multiple fact types, Italian number formats, routing)

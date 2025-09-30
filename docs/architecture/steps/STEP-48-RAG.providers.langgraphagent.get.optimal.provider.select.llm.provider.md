@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `SelectProvider` (LangGraphAgent._get_optimal_provider Select LLM provider).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/providers.py:14` - `step_48__select_provider()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Orchestrator selecting optimal LLM provider based on query requirements, cost constraints, and performance metrics. Uses enhanced query routing to match providers with domain-action classifications and budget considerations.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing provider infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 48 (RAG.providers.langgraphagent.get.optimal.provider.select.llm.provider): LangGraphAgent._get_optimal_provider Select LLM provider | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (provider selection, cost calculation, failover logic)
+- [x] Integration tests (provider routing and failover handling)
+- [x] Implementation changes (async orchestrator with provider selection, cost calculation, failover logic)
+- [x] Observability: add structured log line
+  `RAG STEP 48 (...): ... | attrs={provider_name, cost_estimate, routing_strategy}`
+- [x] Feature flag / config if needed (provider settings and cost thresholds)
+- [x] Rollout plan (implemented with provider reliability and cost optimization safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

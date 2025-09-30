@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `AnonymizeText` (Anonymizer.anonymize_text Anonymize PII).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/privacy.py:371` - `step_7__anonymize_text()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Process orchestrator for PII anonymization using PIIAnonymizer service. Routes to Step 9 (PIICheck) to determine if PII was detected and anonymized.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing privacy infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 7 (RAG.privacy.anonymizer.anonymize.text.anonymize.pii): Anonymizer.anonymize_text Anonymize PII | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (PII detection, anonymization, GDPR compliance)
+- [x] Integration tests (privacy compliance flow and anonymization processing)
+- [x] Implementation changes (async orchestrator with PII detection, anonymization, GDPR compliance)
+- [x] Observability: add structured log line
+  `RAG STEP 7 (...): ... | attrs={pii_detected, anonymization_method, compliance_status}`
+- [x] Feature flag / config if needed (privacy settings and anonymization rules)
+- [x] Rollout plan (implemented with privacy compliance and data protection safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

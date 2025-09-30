@@ -8,15 +8,15 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `BuildContext` (ContextBuilder.merge facts and KB docs and optional doc facts).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/services/context_builder_merge.py:ContextBuilderMerge`, `tests/test_rag_step_40_context_builder_merge.py:TestRAGStep40ContextBuilderMerge`
+- **Paths / classes:** `app/orchestrators/facts.py:271` - `step_40__build_context()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** Implemented ContextBuilderMerge class that merges canonical facts, KB search results, and optional document facts into unified context. Features include token budget management, content prioritization, deduplication logic, and quality assessment. Full test coverage with 8 passing tests covering all merge scenarios.
+- **Behavior notes:** Async orchestrator merging canonical facts, KB search results, and optional document facts into unified context. Uses ContextBuilderMerge service for token budget management, content prioritization, and deduplication. Routes to Step 41 (SelectPrompt) with enriched context.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
 - [x] Unit tests (all sources merge, facts+KB only, token budget, prioritization weights, empty inputs, deduplication, error handling, structured logging)

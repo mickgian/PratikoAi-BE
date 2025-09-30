@@ -8,7 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `KBQueryTool` (KnowledgeSearchTool.search KB on demand).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/kb.py:step_80__kbquery_tool`, `app/core/langgraph/tools/knowledge_search_tool.py:KnowledgeSearchTool`
+- **Paths / classes:** `app/orchestrators/kb.py:150` - `step_80__kbquery_tool()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Thin async orchestrator that executes on-demand knowledge base search when the LLM calls the KnowledgeSearchTool. Uses KnowledgeSearchService for hybrid BM25 + vector + recency search. Routes to Step 99 (ToolResults).
 

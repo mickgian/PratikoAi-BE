@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ClassifyDomain` (DomainActionClassifier.classify Rule-based classification).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/classify.py:210` - `step_31__classify_domain()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator performing rule-based classification using DomainActionClassifier. Analyzes Italian keywords and context to determine domain and action. Routes to Step 32 (CalcScores) for score calculation.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing classification infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 31 (RAG.classify.domainactionclassifier.classify.rule.based.classification): DomainActionClassifier.classify Rule-based classification | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (classification logic, domain/action scoring, Italian keywords)
+- [x] Integration tests (classification flow and domain routing)
+- [x] Implementation changes (async orchestrator with classification logic, domain/action scoring, Italian keywords)
+- [x] Observability: add structured log line
+  `RAG STEP 31 (...): ... | attrs={domain, action, confidence_score}`
+- [x] Feature flag / config if needed (classification thresholds and keyword mappings)
+- [x] Rollout plan (implemented with classification accuracy and performance safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

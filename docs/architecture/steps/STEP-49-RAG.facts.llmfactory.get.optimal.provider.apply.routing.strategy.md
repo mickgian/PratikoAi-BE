@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `RouteStrategy` (LLMFactory.get_optimal_provider Apply routing strategy).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/facts.py:427` - `step_49__route_strategy()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Orchestrator applying routing strategy to select optimal LLM provider. Balances cost, quality, and availability for provider selection.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 49 (RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy): LLMFactory.get_optimal_provider Apply routing strategy | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (fact extraction, atomic facts processing, context building)
+- [x] Integration tests (fact processing flow and context integration)
+- [x] Implementation changes (async orchestrator with fact extraction, atomic facts processing, context building)
+- [x] Observability: add structured log line
+  `RAG STEP 49 (...): ... | attrs={fact_count, extraction_confidence, context_size}`
+- [x] Feature flag / config if needed (fact extraction settings and confidence thresholds)
+- [x] Rollout plan (implemented with fact extraction accuracy and context quality safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

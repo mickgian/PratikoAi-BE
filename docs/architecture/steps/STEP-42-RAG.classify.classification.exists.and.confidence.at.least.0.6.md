@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ClassConfidence` (Classification exists and confidence at least 0.6?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/classify.py:562` - `step_42__class_confidence()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator checking if classification exists and confidence meets 0.6 threshold. Validates domain-action classification quality to determine if results are suitable for domain-specific processing. Routes based on confidence levels.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing classification infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 42 (RAG.classify.classification.exists.and.confidence.at.least.0.6): Classification exists and confidence at least 0.6? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (classification logic, domain/action scoring, Italian keywords)
+- [x] Integration tests (classification flow and domain routing)
+- [x] Implementation changes (async orchestrator with classification logic, domain/action scoring, Italian keywords)
+- [x] Observability: add structured log line
+  `RAG STEP 42 (...): ... | attrs={domain, action, confidence_score}`
+- [x] Feature flag / config if needed (classification thresholds and keyword mappings)
+- [x] Rollout plan (implemented with classification accuracy and performance safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

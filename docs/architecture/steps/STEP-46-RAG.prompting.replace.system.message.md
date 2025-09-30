@@ -8,15 +8,15 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ReplaceMsg` (Replace system message).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app.orchestrators.prompting.step_46__replace_msg`, `app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt`
+- **Paths / classes:** `app/orchestrators/prompting.py:669` - `step_46__replace_msg()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator function replaces existing system message with domain-specific prompt when classification is available
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing prompting infrastructure
 
 ## TDD Task List
 - [x] Unit tests (`tests/test_rag_step_46_replace_system_message.py`)

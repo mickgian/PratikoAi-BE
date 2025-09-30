@@ -8,6 +8,7 @@
 Display feedback UI options (Correct, Incomplete, Wrong) to users after presenting AI responses. This step enables users to provide quality feedback that can be used for response evaluation and model improvement. The step handles different user types (anonymous, registered, expert) with appropriate feedback option sets and supports Italian localization for tax domain feedback.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/feedback.py:129` - `step_113__feedback_ui()`
 - **Helper function:** `app/orchestrators/feedback.py:14` - `_display_feedback_ui_options()`
 - **Test suite:** `tests/test_rag_step_113_feedback_ui.py` (16 comprehensive tests)

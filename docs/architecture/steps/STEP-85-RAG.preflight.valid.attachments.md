@@ -9,7 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/preflight.py:681` - `step_85__valid_attachments_check()`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Async orchestrator verifying attachments passed validation checks. Decision point routing to document processing or error handling.
 
 ## Differences (Blueprint vs Current)
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Status: missing  |  Confidence: 0.30
 
 Top candidates:
 1) app/orchestrators/preflight.py:681 — app.orchestrators.preflight.step_85__valid_attachments_check (score 0.30)

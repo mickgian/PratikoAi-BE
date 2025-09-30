@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `AttachCheck` (Attachments present?).
 
 ## Current Implementation (Repo)
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/preflight.py:92` - `step_19__attach_check()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator checking if attachments are present in user request. Decision point routing to document processing or golden set lookup.
+- **Status:** missing
+- **Behavior notes:** Node orchestrator checking if attachments are present in user request. Decision point routing to document processing or golden set lookup.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Status: missing  |  Confidence: 0.30
 
 Top candidates:
 1) app/orchestrators/preflight.py:92 — app.orchestrators.preflight.step_19__attach_check (score 0.30)

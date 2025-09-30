@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CollectMetrics` (Collect usage metrics).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/metrics.py:297` - `step_111__collect_metrics()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator collecting usage metrics for analytics and monitoring. Tracks request counts, response times, and resource utilization.

@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `SendDone` (Send DONE frame).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:2891` - `step_110__send_done()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator sending DONE frame to complete streaming response. Signals end of response stream and finalizes connection.

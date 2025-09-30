@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ValidateAttach` (AttachmentValidator.validate Check files and limits).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/preflight.py:597` - `step_84__validate_attachments()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator validating attachments against file size limits and supported types. Checks file formats, sizes, and security constraints.

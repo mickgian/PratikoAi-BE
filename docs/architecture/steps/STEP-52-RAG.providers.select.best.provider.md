@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `BestProvider` (Select best provider).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/providers.py:329` - `step_52__best_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator selecting the best quality LLM provider based on performance metrics and capabilities. Prioritizes response quality and accuracy over cost considerations.

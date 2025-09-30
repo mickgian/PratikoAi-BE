@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/response.py:162` - `step_30__return_complete()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator returning completed ChatResponse to user. Final step in non-streaming response flow.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
+Status: missing  |  Confidence: 0.35
 
 Top candidates:
 1) app/orchestrators/response.py:162 — app.orchestrators.response.step_30__return_complete (score 0.35)

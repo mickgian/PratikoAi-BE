@@ -9,7 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/kb.py:150` - `step_80__kbquery_tool()`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Thin async orchestrator that executes on-demand knowledge base search when the LLM calls the KnowledgeSearchTool. Uses KnowledgeSearchService for hybrid BM25 + vector + recency search. Routes to Step 99 (ToolResults).
 
 ## Differences (Blueprint vs Current)
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.47
+Status: missing  |  Confidence: 0.47
 
 Top candidates:
 1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.47)

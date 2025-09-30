@@ -9,7 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/preflight.py:step_82__doc_ingest`, `app/core/langgraph/tools/document_ingest_tool.py:DocumentIngestTool`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Thin async orchestrator that executes document processing when the LLM calls the DocumentIngestTool. Uses DocumentIngestTool for text extraction, document classification, and preparing files for RAG pipeline. Supports PDF, Excel, CSV, and image files with OCR. Routes to Step 84 (ValidateAttachments).
 
 ## Differences (Blueprint vs Current)
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: missing  |  Confidence: 0.32
 
 Top candidates:
 1) app/core/langgraph/tools/document_ingest_tool.py:50 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestInput.validate_attachments (score 0.32)

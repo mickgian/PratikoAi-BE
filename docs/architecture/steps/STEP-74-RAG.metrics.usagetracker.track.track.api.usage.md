@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `TrackUsage` (UsageTracker.track Track API usage).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/metrics.py:139` - `step_74__track_usage()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator tracking API usage metrics including LLM costs, token consumption, response times, and provider performance. Records data for monitoring, billing, and optimization purposes.

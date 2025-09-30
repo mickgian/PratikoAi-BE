@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `UseLLM` (Use LLM classification).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/llm.py:179` - `step_37__use_llm()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator using LLM-based classification when rule-based methods are insufficient. Employs advanced language models to analyze user queries and determine appropriate domain-action classifications with higher accuracy than rule-based approaches.

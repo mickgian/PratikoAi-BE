@@ -8,6 +8,7 @@
 Process orchestrator that validates expert credentials and calculates trust scores for expert feedback routing. Receives input from Step 119 (ExpertFeedbackCollector), validates expert credentials and professional qualifications, calculates trust scores based on credentials/experience/track record, and routes to Step 121 (TrustScoreOK decision). Implements thin orchestration pattern with no business logic, focusing on credential validation coordination and trust score preparation.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:2705` - `step_120__validate_expert()`
 - **Helper function:** `app/orchestrators/platform.py:2610` - `_validate_expert_credentials()`
 - **Trust scoring:** `app/orchestrators/platform.py:2656` - `_calculate_trust_score()`

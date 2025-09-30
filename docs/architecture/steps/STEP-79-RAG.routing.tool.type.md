@@ -9,7 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/routing.py:14` - `step_79__tool_type()`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Tool type detection is fully implemented with structured logging. Detects Knowledge, CCNL, Document, FAQ, and Unknown tool types. Integrated into _tool_call method with proper timing and logging.
 
 ## Differences (Blueprint vs Current)
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Status: missing  |  Confidence: 0.27
 
 Top candidates:
 1) app/orchestrators/platform.py:2024 — app.orchestrators.platform.step_78__execute_tools (score 0.27)

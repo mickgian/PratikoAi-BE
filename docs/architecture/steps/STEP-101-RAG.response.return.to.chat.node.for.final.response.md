@@ -8,6 +8,7 @@
 Serves as a convergence point where all response paths (ToolResults, SimpleAIMsg, ToolErr) merge before final message processing. Routes all incoming responses to ProcessMessages (Step 102) for formatting and delivery. This critical orchestration node ensures consistent flow control regardless of response source. This step is derived from the Mermaid node: `FinalResponse` (Return to chat node for final response).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/response.py:553` - `step_101__final_response()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that serves as convergence point for all response paths. Preserves all context data, adds final response metadata, and routes to ProcessMessages (Step 102). Handles ToolResults, SimpleAIMsg, and ToolErr inputs with unified processing flow.

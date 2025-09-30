@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `InsertMsg` (Insert system message).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/prompting.py:768` - `step_47__insert_msg()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator function inserts system message at position 0 when no system message exists and system prompt is provided

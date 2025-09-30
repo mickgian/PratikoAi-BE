@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `LLMBetter` (LLM better than rule-based?).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/llm.py:14` - `step_36__llmbetter()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator comparing LLM vs rule-based classification performance and confidence scores. Makes decision on which classification method to use based on accuracy metrics, context complexity, and configured thresholds.

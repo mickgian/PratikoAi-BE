@@ -8,6 +8,7 @@
 Resolves version epochs from various data sources (KB, Golden Set, CCNL, parsers) to enable cache invalidation based on data freshness. These epochs are used by Step 61 (GenHash) for cache key generation, ensuring cached responses are invalidated when underlying data changes.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_60__resolve_epochs`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that extracts epoch timestamps from context (kb_last_updated, golden_last_updated, ccnl_last_updated, parser_version). Creates epoch resolution metadata tracking which epochs were resolved. Routes to Step 61 (GenHash) with resolved epochs for cache key generation.

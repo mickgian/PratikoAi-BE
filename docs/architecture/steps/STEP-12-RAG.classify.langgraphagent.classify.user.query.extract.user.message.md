@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/classify.py:16` - `step_12__extract_query()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator extracting user message from conversation messages for classification. Routes to Step 13 (MessageExists) to verify message extraction success.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.46
+Status: missing  |  Confidence: 0.46
 
 Top candidates:
 1) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.46)

@@ -8,6 +8,7 @@
 Processes FAQ feedback submissions when users provide feedback on FAQ responses. Collects user feedback (helpful/not helpful, comments, followup needed) and routes to ExpertFeedbackCollector for further processing. This step is derived from the Mermaid node: `FAQFeedback` (POST /api/v1/faq/feedback).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_117__faqfeedback`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that uses IntelligentFAQService to collect feedback on FAQ responses. Extracts feedback data from context (usage_log_id, was_helpful, followup_needed, comments), calls service to record feedback, and routes to ExpertFeedbackCollector (Step 119) with feedback metadata.

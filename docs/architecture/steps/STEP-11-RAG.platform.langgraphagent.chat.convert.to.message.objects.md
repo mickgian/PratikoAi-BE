@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/platform.py:747` - `step_11__convert_messages()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator converting chat request messages to Message objects for LangGraph processing. Routes to Step 12 (ExtractQuery) for user message extraction and classification.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Status: missing  |  Confidence: 0.32
 
 Top candidates:
 1) app/core/langgraph/graph.py:1215 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.32)

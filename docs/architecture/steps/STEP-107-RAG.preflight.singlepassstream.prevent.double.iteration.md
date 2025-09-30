@@ -8,6 +8,7 @@
 Wraps async generators with SinglePassStream to prevent double iteration and streaming duplication. Ensures streaming safety by protecting against accidental re-iteration of generators that could cause duplicate content delivery. Essential step that bridges async generator creation to SSE formatting, enabling secure stream consumption. Routes from AsyncGen (Step 106) to WriteSSE (Step 108). This step is derived from the Mermaid node: `SinglePass` (SinglePassStream Prevent double iteration).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/preflight.py:744` - `step_107__single_pass()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that wraps async generators with SinglePassStream protection to prevent double iteration. Configures stream protection settings, validates requirements, and prepares for SSE formatting. Routes to WriteSSE (Step 108) with protected stream ready for consumption.

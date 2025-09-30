@@ -8,6 +8,7 @@
 Decision node that determines if an FAQ candidate meets the auto-approval quality threshold or requires manual review. Evaluates candidate quality score against configured thresholds (auto_approve_threshold: 0.95, quality_threshold: 0.85). Routes approved candidates to PublishGolden (Step 129) for immediate publication, and rejected/manual review candidates to FeedbackEnd (Step 115). This step is derived from the Mermaid node: `GoldenApproval` (Auto threshold met or manual approval?).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_128__golden_approval`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async decision orchestrator that evaluates FAQ candidate quality score. Auto-approves if quality_score >= 0.95, rejects if < 0.85, requires manual review if between thresholds. Uses FAQ_AUTOMATION_CONFIG for threshold values. Routes to 'publish_golden' (Step 129) if approved, or 'feedback_end' (Step 115) if rejected/manual review needed.

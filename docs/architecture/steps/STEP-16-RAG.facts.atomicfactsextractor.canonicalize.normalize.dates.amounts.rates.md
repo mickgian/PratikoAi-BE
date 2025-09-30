@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/facts.py:step_16__canonicalize_facts`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Thin async orchestrator that validates atomic facts from Step 14 are properly canonicalized. Canonicalization happens within AtomicFactsExtractor.extract() using internal _canonicalize_* methods (numbers, dates, entities). This step validates the canonicalization result and routes to Step 17 (AttachmentFingerprint).
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
+Status: missing  |  Confidence: 0.33
 
 Top candidates:
 1) app/services/atomic_facts_extractor.py:581 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_dates (score 0.33)

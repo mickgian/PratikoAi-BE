@@ -8,6 +8,7 @@
 Proposes a new FAQ candidate for the Golden Set based on expert feedback. When an expert provides improved answers and corrections, this step transforms that feedback into a structured FAQ candidate with priority scoring, quality metrics, and regulatory references. The candidate is then routed to GoldenApproval (Step 128) for approval decision. This step is derived from the Mermaid node: `GoldenCandidate` (GoldenSetUpdater.propose_candidate from expert feedback).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_127__golden_candidate`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that transforms expert feedback into FAQ candidate. Extracts expert feedback data (query, answer, category, regulatory refs, confidence), calculates priority score based on confidence × trust × frequency, derives quality score from expert metrics, and routes to GoldenApproval (Step 128) with candidate metadata.

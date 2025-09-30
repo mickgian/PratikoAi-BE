@@ -8,6 +8,7 @@
 Process orchestrator that routes feedback to appropriate processing endpoints based on feedback type and context. Takes input from Step 114 (when user provides feedback) and routes to Step 117 (FAQ feedback), Step 118 (KB feedback), or Step 119 (Expert feedback collector) based on priority-based logic. Implements thin orchestration pattern with no business logic, focusing on routing decisions and context preservation.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/feedback.py:466` - `step_116__feedback_type_sel()`
 - **Helper function:** `app/orchestrators/feedback.py:445` - `_determine_feedback_routing()`
 - **Test suite:** `tests/test_rag_step_116_feedback_type_sel.py` (17 comprehensive tests)

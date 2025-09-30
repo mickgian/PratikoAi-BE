@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `LogCacheHit` (Logger.info Log cache hit).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/cache.py:581` - `step_65__log_cache_hit()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator logging cache hit events with structured logging for observability. Records cache key, hit time, and performance metrics. Routes to Step 66 (ReturnCached) to serve cached response.

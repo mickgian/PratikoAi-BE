@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `SimpleAIMsg` (Convert to simple AIMessage).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:1907` - `step_77__simple_aimsg()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator converting responses to simple AIMessage format without tool calls. Handles standard LLM responses for direct user interaction.

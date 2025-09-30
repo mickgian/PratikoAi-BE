@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DocClassify` (DocClassifier.classify Detect document type).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:218` - `step_88__doc_classify()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator detecting document type for specialized processing. Classifies documents (invoices, contracts, payslips, etc.) for appropriate parser selection.

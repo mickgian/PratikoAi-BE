@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `RouteStrategy` (LLMFactory.get_optimal_provider Apply routing strategy).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/facts.py:427` - `step_49__route_strategy()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator applying routing strategy to select optimal LLM provider. Balances cost, quality, and availability for provider selection.

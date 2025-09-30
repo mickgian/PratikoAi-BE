@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `FatturaParser` (FatturaParser.parse_xsd XSD validation).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:387` - `step_90__fattura_parser()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator parsing Italian electronic invoices (Fattura Elettronica) using XSD validation. Processes XML invoices according to Italian tax authority specifications, extracts structured data, and validates against schema requirements.

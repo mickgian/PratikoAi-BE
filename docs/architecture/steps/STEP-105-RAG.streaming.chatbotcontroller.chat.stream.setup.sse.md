@@ -9,7 +9,8 @@ Sets up Server-Sent Events (SSE) streaming infrastructure for real-time response
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/streaming.py:149` - `step_105__stream_setup()`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Async orchestrator that configures SSE headers (Content-Type, Cache-Control, CORS), prepares streaming context with session data, and validates streaming requirements. Handles custom headers, compression settings, and heartbeat configuration. Routes to AsyncGen (Step 106) with complete streaming infrastructure ready.
 
 ## Differences (Blueprint vs Current)
@@ -37,7 +38,7 @@ Sets up Server-Sent Events (SSE) streaming infrastructure for real-time response
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Status: missing  |  Confidence: 0.34
 
 Top candidates:
 1) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.34)

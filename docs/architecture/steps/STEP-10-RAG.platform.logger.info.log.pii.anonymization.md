@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/platform.py:663` - `step_10__log_pii()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator logging PII anonymization events for audit trail and GDPR compliance. Creates audit records after PII detection/anonymization processes.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: missing  |  Confidence: 0.29
 
 Top candidates:
 1) app/orchestrators/platform.py:663 — app.orchestrators.platform.step_10__log_pii (score 0.29)

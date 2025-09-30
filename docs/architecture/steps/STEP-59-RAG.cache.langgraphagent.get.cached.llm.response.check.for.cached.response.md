@@ -9,7 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/cache.py:14` - `step_59__check_cache()`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Async orchestrator checking for cached LLM responses using Redis. Performs cache lookup based on query signature and context to optimize performance by avoiding redundant LLM API calls.
 
 ## Differences (Blueprint vs Current)
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🟡  |  Confidence: 0.65
+Status: missing  |  Confidence: 0.65
 
 Top candidates:
 1) app/services/cache.py:567 — app.services.cache.get_redis_client (score 0.65)

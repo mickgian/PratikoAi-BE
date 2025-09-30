@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CheckSysMsg` (System message exists?).
 
 ## Current Implementation (Repo)
+- **Role:** Node
+- **Status:** missing
 - **Paths / classes:** `app/orchestrators/prompting.py:568` - `step_45__check_sys_msg()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Orchestrator checking if system message exists in the message chain. Validates message structure to determine if system prompt replacement or insertion is needed for proper conversation flow.
+- **Behavior notes:** Runtime boundary; checks if system message exists; routes to replacement or insertion steps.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly

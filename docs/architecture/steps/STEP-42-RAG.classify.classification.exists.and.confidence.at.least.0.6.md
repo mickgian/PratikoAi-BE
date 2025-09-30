@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ClassConfidence` (Classification exists and confidence at least 0.6?).
 
 ## Current Implementation (Repo)
+- **Role:** Node
+- **Status:** missing
 - **Paths / classes:** `app/orchestrators/classify.py:562` - `step_42__class_confidence()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator checking if classification exists and confidence meets 0.6 threshold. Validates domain-action classification quality to determine if results are suitable for domain-specific processing. Routes based on confidence levels.
+- **Behavior notes:** Runtime boundary; checks classification confidence at 0.6 threshold; routes based on confidence levels.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.46
+Status: missing  |  Confidence: 0.46
 
 Top candidates:
 1) app/orchestrators/classify.py:210 — app.orchestrators.classify.step_31__classify_domain (score 0.46)

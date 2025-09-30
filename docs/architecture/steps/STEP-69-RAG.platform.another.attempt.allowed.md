@@ -9,7 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/platform.py:1393` - `step_69__retry_check()`
-- **Status:** ✅ Implemented
+- **Role:** Node
+- **Status:** missing
 - **Behavior notes:** Async orchestrator checking if another retry attempt is allowed based on retry limits and error types. Manages retry logic for failed LLM calls and system errors.
 
 ## Differences (Blueprint vs Current)
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: missing  |  Confidence: 0.29
 
 Top candidates:
 1) app/orchestrators/platform.py:1393 — app.orchestrators.platform.step_69__retry_check (score 0.29)

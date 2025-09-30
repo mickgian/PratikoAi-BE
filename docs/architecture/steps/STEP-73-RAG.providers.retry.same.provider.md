@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `RetrySame` (Retry same provider).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/providers.py:1343` - `step_73__retry_same()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator retrying with the same provider after transient failure. Implements retry logic with backoff for resilience.

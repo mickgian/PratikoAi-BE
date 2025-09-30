@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/metrics.py:19` - `step_34__track_metrics()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator recording classification metrics for domain-action analysis, confidence scores, and performance tracking. Integrates with monitoring system to capture usage patterns and classification accuracy.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Status: missing  |  Confidence: 0.34
 
 Top candidates:
 1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)

@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CheaperProvider` (Select cheaper provider or fail).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/providers.py:890` - `step_58__cheaper_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator selecting cheaper provider or failing if none available. Fallback mechanism for cost-optimized provider selection.

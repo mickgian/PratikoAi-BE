@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/classify.py:317` - `step_32__calc_scores()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator calculating domain and action scores by matching Italian keywords from canonicalized facts. Uses scoring algorithms to determine classification confidence. Routes to Step 33 (ConfidenceCheck) for threshold validation.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.48
+Status: missing  |  Confidence: 0.48
 
 Top candidates:
 1) app/orchestrators/classify.py:317 — app.orchestrators.classify.step_32__calc_scores (score 0.48)

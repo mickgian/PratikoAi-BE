@@ -8,6 +8,7 @@
 Creates an async generator for streaming response delivery. Configures streaming parameters, session data, and provider settings to enable real-time response streaming. Essential step that bridges streaming setup to actual response generation, enabling browser-compatible async iteration. Routes from StreamSetup (Step 105) to SinglePassStream (Step 107). This step is derived from the Mermaid node: `AsyncGen` (Create async generator).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:2721` - `step_106__async_gen()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that creates async generator with proper streaming configuration, session data, and provider settings. Handles generator configuration, validation, and metadata preparation. Routes to SinglePassStream (Step 107) with complete async generator ready for consumption.

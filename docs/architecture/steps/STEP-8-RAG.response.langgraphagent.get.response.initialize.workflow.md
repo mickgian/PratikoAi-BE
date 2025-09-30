@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/response.py:15` - `step_8__init_agent()`, `app/core/langgraph/graph.py:894` - `get_response()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Process orchestrator initializing LangGraph workflow. Creates agent instance and routes to Step 11 (ConvertMessages) to begin message processing.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
+Status: missing  |  Confidence: 0.33
 
 Top candidates:
 1) app/core/langgraph/graph.py:81 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.33)

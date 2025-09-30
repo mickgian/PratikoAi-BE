@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `Provenance` (Provenance.log Ledger entry).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:step_97__provenance`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Thin orchestrator logs provenance ledger entries with immutable metadata for document processing audit trail. Creates ledger entries with timestamp, blob_id, encryption status, TTL. Routes to Step 98 (ToToolResults).

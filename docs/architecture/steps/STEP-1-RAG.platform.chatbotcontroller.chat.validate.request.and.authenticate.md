@@ -8,9 +8,15 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ValidateRequest` (ChatbotController.chat Validate request and authenticate).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/platform.py:16` - `step_1__validate_request()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator validating request structure and authentication. Checks request body, content type, method, and auth header. Routes to Step 3 (ValidCheck) on success or Step 5 (Error400) on failure.
+- **Role:** Node
+- **Status:** missing
+- **Paths / classes:**
+  - app/orchestrators/platform.py:16 — step_1__validate_request
+  - app/orchestrators/__init__.py:14 — step_1__validate_request (export)
+  - app/api/v1/chatbot.py:42 — app.api.v1.chatbot.chat (low confidence)
+- **Behavior notes:**
+  - Runtime boundary; validates and authenticates; routes to ValidCheck.
+  - Baseline neighbors: incoming=[], outgoing=['ValidCheck']; runtime_hits=0.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +42,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: missing  |  Confidence: 0.29
 
 Top candidates:
 1) app/api/v1/chatbot.py:42 — app.api.v1.chatbot.chat (score 0.29)

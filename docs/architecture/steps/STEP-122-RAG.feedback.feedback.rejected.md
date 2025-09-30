@@ -8,6 +8,7 @@
 Error orchestrator that handles rejection of expert feedback due to insufficient trust scores from Step 121 (TrustScoreOK). Receives input when trust score < 0.7, processes feedback rejection with comprehensive logging, and terminates the feedback pipeline. Implements thin orchestration pattern with no business logic, focusing on rejection coordination, outcome tracking, and pipeline termination per Mermaid diagram.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/feedback.py:668` - `step_122__feedback_rejected()`
 - **Helper function:** `app/orchestrators/feedback.py:611` - `_process_feedback_rejection()`
 - **Test suite:** `tests/test_rag_step_122_feedback_rejected.py` (13 comprehensive tests)

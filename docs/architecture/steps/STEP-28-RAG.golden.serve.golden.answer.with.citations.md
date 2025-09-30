@@ -8,9 +8,10 @@
 Formats the Golden Set match into a ChatResponse with proper citations and metadata. This is the final step for high-confidence FAQ matches, bypassing LLM generation and serving pre-approved answers directly.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/golden.py:step_28__serve_golden`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator that formats Golden Set answer with citations, metadata, and timing information. Bypasses LLM when high-confidence FAQ match exists and KB has no conflicting updates. Routes to ReturnComplete with formatted response.
+- **Role:** Node
+- **Paths / classes:** `app/orchestrators/golden.py:413` - `step_28__serve_golden()`
+- **Status:** missing
+- **Behavior notes:** Node orchestrator that formats Golden Set answer with citations, metadata, and timing information. Bypasses LLM when high-confidence FAQ match exists and KB has no conflicting updates. Routes to ReturnComplete with formatted response.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -37,7 +38,7 @@ Formats the Golden Set match into a ChatResponse with proper citations and metad
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.54
+Status: missing  |  Confidence: 0.54
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)

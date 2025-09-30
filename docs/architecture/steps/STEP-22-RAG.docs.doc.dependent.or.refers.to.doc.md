@@ -8,9 +8,10 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DocDependent` (Doc-dependent or refers to doc?).
 
 ## Current Implementation (Repo)
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/docs.py:16` - `step_22__doc_dependent_check()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator checking if query is document-dependent or refers to documents. Decision point for document processing requirements.
+- **Status:** missing
+- **Behavior notes:** Node orchestrator checking if query is document-dependent or refers to documents. Decision point for document processing requirements.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.40
+Status: missing  |  Confidence: 0.40
 
 Top candidates:
 1) app/orchestrators/docs.py:500 — app.orchestrators.docs.step_91__f24_parser (score 0.40)

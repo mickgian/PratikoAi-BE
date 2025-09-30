@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `BalanceProvider` (Balance cost and quality).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/providers.py:431` - `step_53__balance_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator selecting balanced LLM provider that optimizes both cost and quality metrics. Applies weighted scoring to find optimal trade-off between price and performance.

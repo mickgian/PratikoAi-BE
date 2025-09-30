@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `GenHash` (CacheService._generate_response_key sig and doc_hashes and epochs and versions).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/cache.py:131` - `step_61__gen_hash()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator generating comprehensive cache key from query signature, document hashes, knowledge epochs, and system versions. Creates deterministic hash for Redis cache storage and retrieval. Routes to Step 62 (CacheHit) for lookup.

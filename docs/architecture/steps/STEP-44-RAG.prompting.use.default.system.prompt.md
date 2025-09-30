@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DefaultSysPrompt` (Use default SYSTEM_PROMPT).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/prompting.py:470` - `step_44__default_sys_prompt()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator using default system prompt when domain-specific prompts are not available. Provides fallback prompt template for general conversation handling across all domains.

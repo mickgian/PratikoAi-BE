@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/preflight.py:147` - `step_21__doc_pre_ingest()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator performing quick document type detection and key field extraction. Analyzes MIME type and metadata for document preparation before deeper processing.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Status: missing  |  Confidence: 0.29
 
 Top candidates:
 1) app/orchestrators/preflight.py:147 — app.orchestrators.preflight.step_21__doc_pre_ingest (score 0.29)

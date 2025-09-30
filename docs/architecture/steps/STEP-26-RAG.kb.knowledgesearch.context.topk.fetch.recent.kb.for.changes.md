@@ -8,9 +8,10 @@
 Fetches recent Knowledge Base changes when a high-confidence Golden Set match occurs. This step validates whether the KB has newer or conflicting information that should be merged with or override the Golden Set answer. Routes to Step 27 for freshness/conflict evaluation.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/kb.py:step_26__kbcontext_check`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator that fetches recent KB changes using KnowledgeSearchService. Parses Golden Set timestamp for recency comparison, filters KB results to last 14 days, converts results to dicts for context preservation. Routes to Step 27 (KBDelta) for conflict evaluation.
+- **Role:** Node
+- **Paths / classes:** `app/orchestrators/kb.py:21` - `step_26__kbcontext_check()`
+- **Status:** missing
+- **Behavior notes:** Node orchestrator that fetches recent KB changes using KnowledgeSearchService. Parses Golden Set timestamp for recency comparison, filters KB results to last 14 days, converts results to dicts for context preservation. Routes to Step 27 (KBDelta) for conflict evaluation.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -37,7 +38,7 @@ Fetches recent Knowledge Base changes when a high-confidence Golden Set match oc
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.48
+Status: missing  |  Confidence: 0.48
 
 Top candidates:
 1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.48)

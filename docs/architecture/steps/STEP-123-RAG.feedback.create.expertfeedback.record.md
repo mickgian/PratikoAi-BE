@@ -8,6 +8,7 @@
 Process orchestrator that creates ExpertFeedback records for validated experts. Receives input from Step 121 (TrustScoreOK) when trust score >= 0.7, coordinates feedback record creation using ExpertFeedbackCollector service, and routes to Step 124 (UpdateExpertMetrics). Implements thin orchestration pattern with no business logic, focusing on service coordination and context preservation per Mermaid diagram.
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/feedback.py:734` - `step_123__create_feedback_rec()`
 - **Helper function:** `app/orchestrators/feedback.py:785` - `_create_expert_feedback_record()`
 - **Error handling:** `app/orchestrators/feedback.py:934` - `_handle_feedback_creation_error()`

@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `F24Parser` (F24Parser.parse_ocr Layout aware OCR).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/docs.py:500` - `step_91__f24_parser()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator processing F24 tax forms using layout-aware OCR. Extracts structured data from Italian F24 payment forms with field recognition and validation. Routes to Step 95 (ExtractDocFacts) for fact extraction.

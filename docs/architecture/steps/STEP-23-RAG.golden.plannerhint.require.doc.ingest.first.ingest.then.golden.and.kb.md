@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/golden.py:step_23__require_doc_ingest`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator that sets planning hints when documents need to be ingested before proceeding with Golden Set and KB queries. Sets workflow flags (requires_doc_ingest_first, defer_golden_lookup, defer_kb_search) to coordinate document-first processing. Routes to Step 31 (ClassifyDomain) to continue the workflow.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.52
+Status: missing  |  Confidence: 0.52
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.52)

@@ -9,9 +9,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/classify.py:677` - `step_35__llm_fallback()`
-- **Status:** ✅ Implemented
-- **Behavior notes:** Async orchestrator using LLM-based classification when rule-based classification confidence is insufficient. Employs advanced language models to analyze Italian text and determine appropriate domain-action pairs with higher accuracy.
-
+- **Role:** Internal
+- **Status:** missing
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
 
@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.48
+Status: missing  |  Confidence: 0.48
 
 Top candidates:
 1) app/orchestrators/classify.py:677 — app.orchestrators.classify.step_35__llm_fallback (score 0.48)

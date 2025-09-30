@@ -8,6 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DetermineAction` (Determine action).
 
 ## Current Implementation (Repo)
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:3246` - `step_126__determine_action()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator determining next action based on feedback type and validation results. Routes to appropriate feedback handling path.

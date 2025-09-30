@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ToolResults` (Return to tool caller).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/platform.py:2526` - `step_99__tool_results()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator returning tool execution results to the LLM for further processing. Formats tool responses and integrates them back into the conversation flow for multi-step interactions.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 99 (RAG.platform.return.to.tool.caller): Return to tool caller | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 99 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

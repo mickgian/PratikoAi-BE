@@ -13,10 +13,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - **Behavior notes:** Thin async orchestrator that converts extracted document facts and provenance into ToolMessage format for returning to the LLM tool caller. Formats facts into readable content, includes provenance metadata, and creates langchain ToolMessage. Routes to Step 99 (ToolResults).
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
 - [x] Unit tests (ToolMessage conversion, facts formatting, provenance metadata, empty facts, multiple document types, routing, context preservation)

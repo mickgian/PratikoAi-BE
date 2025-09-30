@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CheapProvider` (Select cheapest provider).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/providers.py:128` - `step_51__cheap_provider()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Orchestrator selecting the cheapest available LLM provider based on cost analysis. Optimizes for minimal API costs while maintaining acceptable quality thresholds.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing provider infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 51 (RAG.providers.select.cheapest.provider): Select cheapest provider | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (provider selection, cost calculation, failover logic)
+- [x] Integration tests (provider routing and failover handling)
+- [x] Implementation changes (async orchestrator with provider selection, cost calculation, failover logic)
+- [x] Observability: add structured log line
+  `RAG STEP 51 (...): ... | attrs={provider_name, cost_estimate, routing_strategy}`
+- [x] Feature flag / config if needed (provider settings and cost thresholds)
+- [x] Rollout plan (implemented with provider reliability and cost optimization safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

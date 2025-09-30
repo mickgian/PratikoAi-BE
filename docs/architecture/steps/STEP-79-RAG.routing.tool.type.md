@@ -8,15 +8,15 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ToolType` (Tool type?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/core/langgraph/graph.py:LangGraphAgent._detect_tool_type`, `app/core/langgraph/graph.py:LangGraphAgent._log_tool_type_decision`, `app/core/langgraph/graph.py:LangGraphAgent._get_routing_decision`
+- **Paths / classes:** `app/orchestrators/routing.py:14` - `step_79__tool_type()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Tool type detection is fully implemented with structured logging. Detects Knowledge, CCNL, Document, FAQ, and Unknown tool types. Integrated into _tool_call method with proper timing and logging.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - graceful degradation with existing error handling
 
 ## TDD Task List
 - [x] Unit tests (tool type detection, routing decisions, error handling)

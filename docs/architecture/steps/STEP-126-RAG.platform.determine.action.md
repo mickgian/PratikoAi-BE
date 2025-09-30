@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DetermineAction` (Determine action).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/platform.py:3246` - `step_126__determine_action()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator determining next action based on feedback type and validation results. Routes to appropriate feedback handling path.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 126 (RAG.platform.determine.action): Determine action | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 126 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

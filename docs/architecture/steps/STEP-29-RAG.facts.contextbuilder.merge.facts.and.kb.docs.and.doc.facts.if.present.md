@@ -13,10 +13,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - **Behavior notes:** Thin async orchestrator that merges context when we have a golden answer but KB has newer/conflicting information. Uses ContextBuilderMerge service to combine golden answer context, KB deltas, atomic facts, and optional document facts. Routes to Step 39 (KBPreFetch) for additional KB retrieval.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
 - [x] Unit tests (golden+KB merge, atomic facts, optional document facts, empty KB deltas, routing, context preservation)

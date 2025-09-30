@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ExtractQuery` (LangGraphAgent._classify_user_query Extract user message).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/classify.py:16` - `step_12__extract_query()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator extracting user message from conversation messages for classification. Routes to Step 13 (MessageExists) to verify message extraction success.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing classification infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 12 (RAG.classify.langgraphagent.classify.user.query.extract.user.message): LangGraphAgent._classify_user_query Extract user message | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (classification logic, domain/action scoring, Italian keywords)
+- [x] Integration tests (classification flow and domain routing)
+- [x] Implementation changes (async orchestrator with classification logic, domain/action scoring, Italian keywords)
+- [x] Observability: add structured log line
+  `RAG STEP 12 (...): ... | attrs={domain, action, confidence_score}`
+- [x] Feature flag / config if needed (classification thresholds and keyword mappings)
+- [x] Rollout plan (implemented with classification accuracy and performance safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

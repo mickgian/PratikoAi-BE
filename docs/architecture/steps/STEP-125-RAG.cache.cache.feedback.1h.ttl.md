@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CacheFeedback` (Cache feedback 1h TTL).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/cache.py:992` - `step_125__cache_feedback()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator caching feedback data with 1-hour TTL. Stores user feedback for response quality improvement.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing caching infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 125 (RAG.cache.cache.feedback.1h.ttl): Cache feedback 1h TTL | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (caching operations, invalidation, key generation)
+- [x] Integration tests (cache flow and invalidation handling)
+- [x] Implementation changes (async orchestrator with caching operations, invalidation, key generation)
+- [x] Observability: add structured log line
+  `RAG STEP 125 (...): ... | attrs={cache_key, hit_rate, expiry_time}`
+- [x] Feature flag / config if needed (cache settings and TTL configuration)
+- [x] Rollout plan (implemented with cache performance and consistency safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

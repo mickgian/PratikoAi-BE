@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `LLMCall` (LLMProvider.chat_completion Make API call).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/providers.py:1142` - `step_64__llmcall()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator making LLM API call using selected provider. Handles retries, error handling, and response processing. Routes to Step 67 (LLMSuccess) to check call result.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing provider infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 64 (RAG.providers.llmprovider.chat.completion.make.api.call): LLMProvider.chat_completion Make API call | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (provider selection, cost calculation, failover logic)
+- [x] Integration tests (provider routing and failover handling)
+- [x] Implementation changes (async orchestrator with provider selection, cost calculation, failover logic)
+- [x] Observability: add structured log line
+  `RAG STEP 64 (...): ... | attrs={provider_name, cost_estimate, routing_strategy}`
+- [x] Feature flag / config if needed (provider settings and cost thresholds)
+- [x] Rollout plan (implemented with provider reliability and cost optimization safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

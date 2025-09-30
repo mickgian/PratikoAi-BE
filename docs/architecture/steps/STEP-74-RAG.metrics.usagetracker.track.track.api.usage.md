@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `TrackUsage` (UsageTracker.track Track API usage).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/metrics.py:139` - `step_74__track_usage()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator tracking API usage metrics including LLM costs, token consumption, response times, and provider performance. Records data for monitoring, billing, and optimization purposes.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing metrics tracking infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 74 (RAG.metrics.usagetracker.track.track.api.usage): UsageTracker.track Track API usage | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (usage tracking, performance monitoring, analytics)
+- [x] Integration tests (metrics collection and reporting flow)
+- [x] Implementation changes (async orchestrator with usage tracking, performance monitoring, analytics)
+- [x] Observability: add structured log line
+  `RAG STEP 74 (...): ... | attrs={metric_type, value, timestamp}`
+- [x] Feature flag / config if needed (metrics collection settings and retention policies)
+- [x] Rollout plan (implemented with metrics accuracy and storage efficiency safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

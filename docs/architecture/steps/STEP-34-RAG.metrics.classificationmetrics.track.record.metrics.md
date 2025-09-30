@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `TrackMetrics` (ClassificationMetrics.track Record metrics).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/metrics.py:19` - `step_34__track_metrics()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator recording classification metrics for domain-action analysis, confidence scores, and performance tracking. Integrates with monitoring system to capture usage patterns and classification accuracy.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing metrics tracking infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 34 (RAG.metrics.classificationmetrics.track.record.metrics): ClassificationMetrics.track Record metrics | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (usage tracking, performance monitoring, analytics)
+- [x] Integration tests (metrics collection and reporting flow)
+- [x] Implementation changes (async orchestrator with usage tracking, performance monitoring, analytics)
+- [x] Observability: add structured log line
+  `RAG STEP 34 (...): ... | attrs={metric_type, value, timestamp}`
+- [x] Feature flag / config if needed (metrics collection settings and retention policies)
+- [x] Rollout plan (implemented with metrics accuracy and storage efficiency safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

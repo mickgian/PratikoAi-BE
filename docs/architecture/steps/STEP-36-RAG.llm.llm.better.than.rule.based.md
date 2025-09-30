@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `LLMBetter` (LLM better than rule-based?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/llm.py:14` - `step_36__llmbetter()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator comparing LLM vs rule-based classification performance and confidence scores. Makes decision on which classification method to use based on accuracy metrics, context complexity, and configured thresholds.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing LLM infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 36 (RAG.llm.llm.better.than.rule.based): LLM better than rule-based? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 36 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

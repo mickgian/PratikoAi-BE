@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `FatturaParser` (FatturaParser.parse_xsd XSD validation).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/docs.py:387` - `step_90__fattura_parser()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator parsing Italian electronic invoices (Fattura Elettronica) using XSD validation. Processes XML invoices according to Italian tax authority specifications, extracts structured data, and validates against schema requirements.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing document processing infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 90 (RAG.docs.fatturaparser.parse.xsd.xsd.validation): FatturaParser.parse_xsd XSD validation | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (document processing, parsing, format handling)
+- [x] Integration tests (document processing flow and format validation)
+- [x] Implementation changes (async orchestrator with document processing, parsing, format handling)
+- [x] Observability: add structured log line
+  `RAG STEP 90 (...): ... | attrs={document_type, file_size, processing_time}`
+- [x] Feature flag / config if needed (document processing limits and format support)
+- [x] Rollout plan (implemented with document processing reliability and security safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

@@ -8,15 +8,15 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `QuerySig` (QuerySignature.compute Hash from canonical facts).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/facts.py:step_18__query_sig`
+- **Paths / classes:** `app/orchestrators/facts.py:114` - `step_18__query_sig()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** Thin async orchestrator that computes deterministic SHA256 hash signature from canonicalized atomic facts. Hash includes monetary amounts, dates, legal entities, professional categories, and geographic info. Used for caching, deduplication, and query matching. Routes to Step 19 (AttachCheck).
+- **Behavior notes:** Async orchestrator computing deterministic SHA256 hash signature from canonicalized atomic facts. Hash includes monetary amounts, dates, legal entities, professional categories, and geographic info. Used for caching, deduplication, and query matching. Routes to Step 19 (AttachCheck).
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
 - [x] Unit tests (signature computation, identical facts, different facts, empty facts, deterministic hashing, all fact types, routing)

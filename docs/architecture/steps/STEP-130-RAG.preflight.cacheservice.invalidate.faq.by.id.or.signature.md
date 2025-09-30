@@ -8,7 +8,7 @@
 Invalidates cached FAQ responses when an FAQ is published or updated. When an FAQ entry is created or modified (from Step 129), this step clears related cache entries by FAQ ID and content signature to ensure fresh data is served. This step is derived from the Mermaid node: `InvalidateFAQCache` (CacheService.invalidate_faq by id or signature).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/preflight.py:step_130__invalidate_faqcache`
+- **Paths / classes:** `app/orchestrators/preflight.py:909` - `step_130__invalidate_faqcache()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that invalidates cached FAQ entries. Uses cache_service.clear_cache() to remove cached responses by FAQ ID patterns. Creates cache invalidation metadata for tracking. Preserves all context data. Routes to 'vector_reindex' (Step 131) per Mermaid flow.
 

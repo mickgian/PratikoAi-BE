@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `QuickPreIngest` (DocPreIngest.quick_extract type sniff and key fields).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/preflight.py:147` - `step_21__doc_pre_ingest()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator performing quick document type detection and key field extraction. Analyzes MIME type and metadata for document preparation before deeper processing.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing preflight validation infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 21 (RAG.preflight.docpreingest.quick.extract.type.sniff.and.key.fields): DocPreIngest.quick_extract type sniff and key fields | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 21 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

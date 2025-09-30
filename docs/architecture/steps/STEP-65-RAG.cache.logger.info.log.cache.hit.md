@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `LogCacheHit` (Logger.info Log cache hit).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/cache.py:581` - `step_65__log_cache_hit()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator logging cache hit events with structured logging for observability. Records cache key, hit time, and performance metrics. Routes to Step 66 (ReturnCached) to serve cached response.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing caching infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 65 (RAG.cache.logger.info.log.cache.hit): Logger.info Log cache hit | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (caching operations, invalidation, key generation)
+- [x] Integration tests (cache flow and invalidation handling)
+- [x] Implementation changes (async orchestrator with caching operations, invalidation, key generation)
+- [x] Observability: add structured log line
+  `RAG STEP 65 (...): ... | attrs={cache_key, hit_rate, expiry_time}`
+- [x] Feature flag / config if needed (cache settings and TTL configuration)
+- [x] Rollout plan (implemented with cache performance and consistency safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

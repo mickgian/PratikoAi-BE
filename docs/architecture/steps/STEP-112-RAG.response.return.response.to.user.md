@@ -8,7 +8,7 @@
 Final step in the RAG pipeline that delivers the complete response to the user. Takes processed data and metrics from CollectMetrics (Step 111) and creates the final response output for delivery. Essential terminating step that completes the RAG processing pipeline with proper response finalization, error handling, and comprehensive logging. Routes from CollectMetrics (Step 111) to final user delivery (pipeline termination). This step is derived from the Mermaid node: `End` (Return response to user).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/response.py:step_112__end`
+- **Paths / classes:** `app/orchestrators/response.py:769` - `step_112__end()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that finalizes response delivery to the user. Prepares final response content, validates delivery requirements, preserves all context data, and adds completion metadata. Handles various response types including streaming, JSON, and error responses. Routes to user with complete RAG processing results.
 

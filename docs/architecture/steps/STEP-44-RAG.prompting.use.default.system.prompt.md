@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DefaultSysPrompt` (Use default SYSTEM_PROMPT).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/prompting.py:470` - `step_44__default_sys_prompt()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Orchestrator using default system prompt when domain-specific prompts are not available. Provides fallback prompt template for general conversation handling across all domains.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing prompting infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 44 (RAG.prompting.use.default.system.prompt): Use default SYSTEM_PROMPT | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 44 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

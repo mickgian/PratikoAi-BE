@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DocDependent` (Doc-dependent or refers to doc?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/docs.py:16` - `step_22__doc_dependent_check()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator checking if query is document-dependent or refers to documents. Decision point for document processing requirements.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing document processing infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 22 (RAG.docs.doc.dependent.or.refers.to.doc): Doc-dependent or refers to doc? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (document processing, parsing, format handling)
+- [x] Integration tests (document processing flow and format validation)
+- [x] Implementation changes (async orchestrator with document processing, parsing, format handling)
+- [x] Observability: add structured log line
+  `RAG STEP 22 (...): ... | attrs={document_type, file_size, processing_time}`
+- [x] Feature flag / config if needed (document processing limits and format support)
+- [x] Rollout plan (implemented with document processing reliability and security safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

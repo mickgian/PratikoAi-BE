@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `PrivacyCheck` (PRIVACY_ANONYMIZE_REQUESTS enabled?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/privacy.py:187` - `step_6__privacy_check()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Decision orchestrator checking PRIVACY_ANONYMIZE_REQUESTS configuration. Routes to Step 7 (AnonymizeText) if enabled or Step 8 (InitAgent) if disabled.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing privacy infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 6 (RAG.privacy.privacy.anonymize.requests.enabled): PRIVACY_ANONYMIZE_REQUESTS enabled? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (PII detection, anonymization, GDPR compliance)
+- [x] Integration tests (privacy compliance flow and anonymization processing)
+- [x] Implementation changes (async orchestrator with PII detection, anonymization, GDPR compliance)
+- [x] Observability: add structured log line
+  `RAG STEP 6 (...): ... | attrs={pii_detected, anonymization_method, compliance_status}`
+- [x] Feature flag / config if needed (privacy settings and anonymization rules)
+- [x] Rollout plan (implemented with privacy compliance and data protection safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

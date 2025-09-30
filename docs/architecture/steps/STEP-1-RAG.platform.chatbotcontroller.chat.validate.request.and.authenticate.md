@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ValidateRequest` (ChatbotController.chat Validate request and authenticate).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/platform.py:16` - `step_1__validate_request()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator validating request structure and authentication. Checks request body, content type, method, and auth header. Routes to Step 3 (ValidCheck) on success or Step 5 (Error400) on failure.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 1 (RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate): ChatbotController.chat Validate request and authenticate | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, error cases, routing logic)
+- [x] Integration tests (Step 1→3→5 flows, authentication integration, validation error handling)
+- [x] Implementation changes (async orchestrator with request validation and authentication)
+- [x] Observability: add structured log line
+  `RAG STEP 1 (RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate): ChatbotController.chat Validate request and authenticate | attrs={validation_successful, authentication_successful, request_valid, processing_stage}`
+- [x] Feature flag / config if needed (uses existing authentication configuration)
+- [x] Rollout plan (implemented with comprehensive validation and error handling)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

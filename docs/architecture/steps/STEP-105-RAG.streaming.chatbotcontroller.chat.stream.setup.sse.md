@@ -8,7 +8,7 @@
 Sets up Server-Sent Events (SSE) streaming infrastructure for real-time response delivery. Configures SSE headers, streaming context, and prepares for async generator creation. Essential step that bridges streaming decision to actual response generation, enabling browser-compatible event streaming. Routes to AsyncGen (Step 106) for generator creation. This step is derived from the Mermaid node: `StreamSetup` (ChatbotController.chat_stream Setup SSE).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/streaming.py:step_105__stream_setup`
+- **Paths / classes:** `app/orchestrators/streaming.py:149` - `step_105__stream_setup()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that configures SSE headers (Content-Type, Cache-Control, CORS), prepares streaming context with session data, and validates streaming requirements. Handles custom headers, compression settings, and heartbeat configuration. Routes to AsyncGen (Step 106) with complete streaming infrastructure ready.
 

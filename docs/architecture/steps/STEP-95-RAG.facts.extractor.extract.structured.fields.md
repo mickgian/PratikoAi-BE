@@ -8,24 +8,24 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ExtractDocFacts` (Extractor.extract Structured fields).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
+- **Paths / classes:** `app/orchestrators/facts.py:588` - `step_95__extract_doc_facts()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** _TBD_
+- **Behavior notes:** Async orchestrator extracting structured facts from parsed documents using AtomicFactsExtractor. Identifies monetary amounts, dates, legal entities, and domain-specific fields. Routes to Step 98 (ToToolResults) for result formatting.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 95 (RAG.facts.extractor.extract.structured.fields): Extractor.extract Structured fields | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (fact extraction, atomic facts processing, context building)
+- [x] Integration tests (fact processing flow and context integration)
+- [x] Implementation changes (async orchestrator with fact extraction, atomic facts processing, context building)
+- [x] Observability: add structured log line
+  `RAG STEP 95 (...): ... | attrs={fact_count, extraction_confidence, context_size}`
+- [x] Feature flag / config if needed (fact extraction settings and confidence thresholds)
+- [x] Rollout plan (implemented with fact extraction accuracy and context quality safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.

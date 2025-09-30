@@ -8,15 +8,15 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ExtractFacts` (AtomicFactsExtractor.extract Extract atomic facts).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/facts.py:step_14__extract_facts`
+- **Paths / classes:** `app/orchestrators/facts.py:14` - `step_14__extract_facts()`
 - **Status:** ✅ Implemented
-- **Behavior notes:** Thin async orchestrator wrapping AtomicFactsExtractor service. Extracts Italian monetary amounts, dates, legal entities, professional categories, and geographic info from user queries. Routes to Step 16 (CanonicalizeFacts).
+- **Behavior notes:** Async orchestrator wrapping AtomicFactsExtractor service. Extracts Italian monetary amounts, dates, legal entities, professional categories, and geographic info from user queries. Routes to Step 16 (CanonicalizeFacts).
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
 - [x] Unit tests (monetary amounts, dates, legal entities, professional categories, geographic info, empty query, complex query, routing)

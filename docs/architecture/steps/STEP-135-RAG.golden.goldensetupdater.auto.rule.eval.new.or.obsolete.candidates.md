@@ -8,7 +8,7 @@
 Automatically evaluates knowledge base content to identify new FAQ candidates or obsolete ones needing updates. When new knowledge content is ingested (from KnowledgeStore), this step applies rule-based evaluation to generate FAQ candidates with priority scoring. Routes successful evaluations to GoldenCandidate (Step 127) for further processing. This step is derived from the Mermaid node: `GoldenRules` (GoldenSetUpdater.auto_rule_eval new or obsolete candidates).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/golden.py:step_135__golden_rules`
+- **Paths / classes:** `app/orchestrators/golden.py:1240` - `step_135__golden_rules()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that evaluates knowledge content using rule-based scoring. Applies 5 evaluation rules: content length threshold, priority category boost, recency boost, keyword boost, and minimum score filter. Creates FAQ candidates with proposed questions, confidence scores, and priority rankings. Identifies obsolete candidates when content supersedes existing entries. Preserves all context data and routes to 'golden_candidate' step.
 

@@ -8,15 +8,15 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `InsertMsg` (Insert system message).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app.orchestrators.prompting.step_47__insert_msg`, `app.core.langgraph.graph.LangGraphAgent._prepare_messages_with_system_prompt`
+- **Paths / classes:** `app/orchestrators/prompting.py:768` - `step_47__insert_msg()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator function inserts system message at position 0 when no system message exists and system prompt is provided
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing prompting infrastructure
 
 ## TDD Task List
 - [x] Unit tests (`tests/test_rag_step_47_insert_system_message.py`)

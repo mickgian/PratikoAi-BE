@@ -102,11 +102,14 @@ class RAGAuditor:
         with open(self.steps_file, 'r') as f:
             data = yaml.safe_load(f)
             self.steps = data.get('steps', [])
-        
+
+        # Enrich steps with Role information from individual docs
+        self._enrich_steps_with_roles()
+
         # Load code graph
         with open(self.code_index_file, 'r') as f:
             self.code_graph = json.load(f)
-        
+
         # Build symbol index
         for file_data in self.code_graph['files']:
             for symbol in file_data['symbols']:
@@ -114,7 +117,83 @@ class RAGAuditor:
                     **symbol,
                     'file_path': file_data['path']
                 }
-    
+
+    def _enrich_steps_with_roles(self):
+        """Extract Role information from individual step documentation files."""
+        base_dir = Path(__file__).parent.parent
+        steps_dir = base_dir / 'docs/architecture/steps'
+
+        for step in self.steps:
+            step_num = step['step']
+            step_id = step['id']
+            doc_path = steps_dir / f"STEP-{step_num}-{step_id}.md"
+
+            # Default to Internal if we can't determine
+            step['role'] = 'Internal'
+
+            if doc_path.exists():
+                try:
+                    with open(doc_path, 'r') as f:
+                        content = f.read()
+
+                    # Look for Role: Node or Role: Internal pattern
+                    role_match = re.search(r'- \*\*Role:\*\* (Node|Internal)', content)
+                    if role_match:
+                        step['role'] = role_match.group(1)
+                    elif '**Role:** Node' in content:
+                        step['role'] = 'Node'
+                    elif '**Role:** Internal' in content:
+                        step['role'] = 'Internal'
+
+                    if self.verbose:
+                        print(f"Step {step_num}: Role={step['role']}")
+
+                except Exception as e:
+                    if self.verbose:
+                        print(f"Warning: Could not extract role for step {step_num}: {e}")
+
+    def _check_langgraph_wiring(self, step: Dict) -> bool:
+        """Check if a step is wired in the LangGraph implementation."""
+        # Look for the step in LangGraph node files
+        base_dir = Path(__file__).parent.parent
+        nodes_dir = base_dir / 'app/core/langgraph/nodes'
+
+        step_num = step['step']
+        node_patterns = [
+            f"node_step_{step_num}",
+            f"step_{step_num:03d}__",
+            f"step_{step_num}__"
+        ]
+
+        # Check if there's a corresponding node file
+        for pattern in node_patterns:
+            node_files = list(nodes_dir.glob(f"*{pattern}*"))
+            if node_files:
+                return True
+
+        # Also check in the main graph.py for node registration
+        graph_file = base_dir / 'app/core/langgraph/graph.py'
+        if graph_file.exists():
+            try:
+                with open(graph_file, 'r') as f:
+                    graph_content = f.read()
+
+                # Look for node references in graph building
+                for pattern in node_patterns:
+                    if pattern in graph_content:
+                        return True
+
+                # Look for the step's node_id in graph wiring
+                node_id = step.get('node_id', '')
+                if node_id and f'"{node_id}"' in graph_content:
+                    return True
+
+            except Exception as e:
+                if self.verbose:
+                    print(f"Warning: Could not check graph wiring for step {step_num}: {e}")
+
+        return False
+
     def audit_all_steps(self) -> Dict[str, Any]:
         """Audit all RAG steps."""
         results = {
@@ -368,12 +447,13 @@ class RAGAuditor:
             candidate['score'] = min(candidate['score'] + boost, 1.0)
     
     def _determine_status(self, candidates: List[Dict], step: Dict) -> str:
-        """Determine implementation status."""
+        """Determine implementation status based on Role (Node vs Internal)."""
         if not candidates:
             return '❌'
-        
+
         top_score = candidates[0]['score']
-        
+        step_role = step.get('role', 'Internal')
+
         # Count corroborating signals
         signals = 0
         if top_score >= 0.5:
@@ -382,24 +462,42 @@ class RAGAuditor:
             signals += 1
         if any('test' in c['path'].lower() for c in candidates[:3]):
             signals += 1
-        
+
         # Use thresholds from config
         thresholds = self.config.get('thresholds', {
             'implemented': 0.80, 'partial': 0.50, 'not_wired_callers_min': 1
         })
-        
-        # Determine status
+
         implemented_threshold = thresholds.get('implemented', 0.80)
         partial_threshold = thresholds.get('partial', 0.50)
-        
-        if top_score >= implemented_threshold or (top_score >= implemented_threshold - 0.05 and signals >= 2):
-            return '✅'
-        elif top_score >= partial_threshold:
-            return '🟡'
-        elif top_score >= 0.30:
-            return '🔌'
-        else:
-            return '❌'
+
+        if step_role == 'Node':
+            # Node steps: Must be wired in LangGraph to pass
+            is_wired = self._check_langgraph_wiring(step)
+
+            if top_score >= implemented_threshold and is_wired:
+                return '✅'  # Implemented and wired
+            elif top_score >= implemented_threshold and not is_wired:
+                return '🔌'  # Implemented but not wired
+            elif top_score >= partial_threshold and is_wired:
+                return '✅'  # Partially implemented but wired (good enough for Node)
+            elif top_score >= partial_threshold:
+                return '🔌'  # Partially implemented but not wired
+            elif top_score >= 0.30:
+                return '🔌'  # Some implementation but not wired
+            else:
+                return '❌'  # Missing
+
+        else:  # Internal steps
+            # Internal steps: Only need implementation + reference from Node path
+            if top_score >= implemented_threshold or (top_score >= implemented_threshold - 0.05 and signals >= 2):
+                return '🔌'  # Use 🔌 for "Implemented (internal)"
+            elif top_score >= partial_threshold:
+                return '🔌'  # Still considered implemented for Internal
+            elif top_score >= 0.30:
+                return '🔌'  # Basic implementation is enough for Internal
+            else:
+                return '❌'  # Missing
     
     def _make_snippet(self, symbol: Dict) -> str:
         """Create a short snippet for display."""
@@ -517,14 +615,38 @@ class RAGAuditor:
         candidates = audit_result['candidates']
         suggestions = audit_result['suggestions']
         notes = audit_result['notes']
-        
+
+        # Find the step to get role information
+        step_role = 'Unknown'
+        step_num = None
+        for step in self.steps:
+            if step['step'] in self.audit_results and self.audit_results[step['step']] == audit_result:
+                step_role = step.get('role', 'Unknown')
+                step_num = step['step']
+                break
+
+        # Status interpretation based on role
+        status_explanation = ""
+        if step_role == 'Node':
+            if status == '✅':
+                status_explanation = " (Implemented & Wired)"
+            elif status == '🔌':
+                status_explanation = " (Implemented but Not Wired)"
+            elif status == '❌':
+                status_explanation = " (Missing)"
+        elif step_role == 'Internal':
+            if status == '🔌':
+                status_explanation = " (Implemented - internal)"
+            elif status == '❌':
+                status_explanation = " (Missing)"
+
         lines = [
             '<!-- AUTO-AUDIT:BEGIN -->',
-            f'Status: {status}  |  Confidence: {confidence:.2f}',
+            f'Role: {step_role}  |  Status: {status}{status_explanation}  |  Confidence: {confidence:.2f}',
             '',
             'Top candidates:'
         ]
-        
+
         if candidates:
             for i, candidate in enumerate(candidates, 1):
                 evidence = f"Score {candidate['score']:.2f}, {candidate['snippet']}"
@@ -532,17 +654,23 @@ class RAGAuditor:
                 lines.append(f'   Evidence: {evidence}')
         else:
             lines.append('No candidates found')
-        
+
         lines.extend(['', 'Notes:'])
         for note in notes:
             lines.append(f'- {note}')
-        
+
+        # Add role-specific notes
+        if step_role == 'Node' and status == '🔌':
+            lines.append('- Node step requires LangGraph wiring to be considered fully implemented')
+        elif step_role == 'Internal' and status == '🔌':
+            lines.append('- Internal step is correctly implemented (no wiring required)')
+
         lines.extend(['', 'Suggested next TDD actions:'])
         for suggestion in suggestions:
             lines.append(f'- {suggestion}')
-        
+
         lines.append('<!-- AUTO-AUDIT:END -->')
-        
+
         return '\n'.join(lines)
     
     def update_conformance_dashboard(self, base_dir: Path):
@@ -617,24 +745,55 @@ class RAGAuditor:
     def _generate_dashboard_summary(self) -> List[str]:
         """Generate dashboard summary section."""
         summary = self.audit_all_steps()
-        
+
+        # Calculate role-based statistics
+        node_stats = {'✅': 0, '🔌': 0, '❌': 0, 'total': 0}
+        internal_stats = {'🔌': 0, '❌': 0, 'total': 0}
+
+        for step in self.steps:
+            step_num = step['step']
+            if step_num in self.audit_results:
+                status = self.audit_results[step_num]['status']
+                role = step.get('role', 'Internal')
+
+                if role == 'Node':
+                    node_stats[status] = node_stats.get(status, 0) + 1
+                    node_stats['total'] += 1
+                else:  # Internal
+                    internal_stats[status] = internal_stats.get(status, 0) + 1
+                    internal_stats['total'] += 1
+
         lines = [
             '## Audit Summary',
             '',
-            f'**Implementation Status Overview:**',
-            f'- ✅ Implemented: {summary["by_status"]["✅"]} steps',
-            f'- 🟡 Partial: {summary["by_status"]["🟡"]} steps',
-            f'- 🔌 Not wired: {summary["by_status"]["🔌"]} steps',
+            f'**Implementation Status Overview (Tiered Graph Hybrid):**',
+            '',
+            f'**Node Steps** (Runtime boundaries - must be wired):',
+            f'- ✅ Implemented & Wired: {node_stats["✅"]} steps',
+            f'- 🔌 Not Wired: {node_stats["🔌"]} steps',
+            f'- ❌ Missing: {node_stats["❌"]} steps',
+            f'- Total Node steps: {node_stats["total"]}',
+            '',
+            f'**Internal Steps** (Pure transforms - implementation only):',
+            f'- 🔌 Implemented: {internal_stats["🔌"]} steps',
+            f'- ❌ Missing: {internal_stats["❌"]} steps',
+            f'- Total Internal steps: {internal_stats["total"]}',
+            '',
+            f'**Overall Statistics:**',
+            f'- ✅ Fully Functional: {summary["by_status"]["✅"]} steps',
+            f'- 🔌 Implemented (internal) or Not Wired: {summary["by_status"]["🔌"]} steps',
             f'- ❌ Missing: {summary["by_status"]["❌"]} steps',
+            f'- Total steps: {summary["total_steps"]}',
             '',
             '**By Category:**'
         ]
-        
+
         for category, statuses in sorted(summary['by_category'].items()):
             total = sum(statuses.values())
             impl = statuses.get('✅', 0)
-            lines.append(f'- **{category}**: {impl}/{total} implemented')
-        
+            internal_impl = statuses.get('🔌', 0)
+            lines.append(f'- **{category}**: {impl} wired + {internal_impl} internal / {total} total')
+
         return lines
 
 

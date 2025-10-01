@@ -38,7 +38,7 @@ Creates FastAPI StreamingResponse with SSE-formatted chunks for browser-compatib
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.32
+Status: 🔌  |  Confidence: 0.32
 
 Top candidates:
 1) app/orchestrators/streaming.py:575 — app.orchestrators.streaming.step_109__stream_response (score 0.32)

@@ -38,7 +38,7 @@ Final step in the RAG pipeline that delivers the complete response to the user. 
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.31
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
 1) app/schemas/auth.py:102 — app.schemas.auth.UserResponse (score 0.31)

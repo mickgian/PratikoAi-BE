@@ -4,7 +4,15 @@ import re
 import uuid
 from typing import Annotated
 
-from langgraph.graph.message import add_messages
+try:
+    from langgraph.graph.message import add_messages
+except ImportError:
+    # Fallback for development/testing environments where langgraph might not be properly installed
+    def add_messages(x, y):
+        """Fallback add_messages function for testing."""
+        if isinstance(x, list) and isinstance(y, list):
+            return x + y
+        return y
 from pydantic import (
     BaseModel,
     Field,

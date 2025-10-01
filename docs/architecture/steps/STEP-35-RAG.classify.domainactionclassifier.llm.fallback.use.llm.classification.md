@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.48
+Status: 🔌  |  Confidence: 0.48
 
 Top candidates:
 1) app/orchestrators/classify.py:677 — app.orchestrators.classify.step_35__llm_fallback (score 0.48)
@@ -51,7 +51,7 @@ ID: RA...
 4) app/orchestrators/classify.py:317 — app.orchestrators.classify.step_32__calc_scores (score 0.43)
    Evidence: Score 0.43, RAG STEP 32 — Calculate domain and action scores Match Italian keywords
 ID: RAG....
-5) app/core/langgraph/graph.py:359 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
+5) app/core/langgraph/graph.py:377 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
    Evidence: Score 0.43, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
 -...
 

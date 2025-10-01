@@ -38,7 +38,7 @@ Fetches recent Knowledge Base changes when a high-confidence Golden Set match oc
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.48
+Status: 🔌  |  Confidence: 0.48
 
 Top candidates:
 1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.48)

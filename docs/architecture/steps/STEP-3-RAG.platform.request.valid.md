@@ -41,7 +41,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.31
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/platform.py:319 — app.orchestrators.platform.step_3__valid_check (score 0.31)
@@ -57,16 +57,12 @@ Type: decis...
 
 Args:
     timestamp_str: Unix ti...
-4) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.27)
-   Evidence: Score 0.27, Health check endpoint.
+4) app/core/langgraph/nodes/step_003__valid_check.py:10 — app.core.langgraph.nodes.step_003__valid_check.node_step_3 (score 0.28)
+   Evidence: Score 0.28, Node implementation for Step 3: ValidCheck.
 
-Returns:
-    dict: Health status information.
-5) app/main.py:157 — app.main.health_check (score 0.27)
-   Evidence: Score 0.27, Health check endpoint with environment-specific information.
-
-Returns:
-    Dict[...
+Decision node that determines if re...
+5) app/core/langgraph/graph.py:861 — app.core.langgraph.graph.LangGraphAgent._route_from_valid_check (score 0.28)
+   Evidence: Score 0.28, Route from ValidCheck node based on request validity.
 
 Notes:
 - Implementation exists but may not be wired correctly

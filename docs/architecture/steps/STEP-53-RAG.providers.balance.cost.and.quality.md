@@ -54,11 +54,10 @@ Type...
 4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
    Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
 context enri...
-5) app/core/llm/factory.py:187 — app.core.llm.factory.LLMFactory._route_cost_optimized (score 0.43)
-   Evidence: Score 0.43, Route to the cheapest suitable provider.
+5) app/core/langgraph/nodes/step_064__llm_call.py:10 — app.core.langgraph.nodes.step_064__llm_call.node_step_64 (score 0.44)
+   Evidence: Score 0.44, Node implementation for Step 64: LLMCall.
 
-Args:
-    providers: Available provide...
+Makes LLM API call using selected pro...
 
 Notes:
 - Implementation exists but may not be wired correctly

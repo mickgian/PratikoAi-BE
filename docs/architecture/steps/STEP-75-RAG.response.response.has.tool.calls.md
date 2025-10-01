@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.34
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
 1) app/orchestrators/response.py:431 — app.orchestrators.response.step_75__tool_check (score 0.34)

@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.69
+Status: 🟡  |  Confidence: 0.69
 
 Top candidates:
 1) app/orchestrators/cache.py:283 — app.orchestrators.cache.step_62__cache_hit (score 0.69)

@@ -37,7 +37,7 @@ Evaluates the confidence score of a Golden Set match from Step 24 to determine r
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.53
+Status: 🔌  |  Confidence: 0.53
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)

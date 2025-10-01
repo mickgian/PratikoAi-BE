@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.47
+Status: 🔌  |  Confidence: 0.47
 
 Top candidates:
 1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.47)

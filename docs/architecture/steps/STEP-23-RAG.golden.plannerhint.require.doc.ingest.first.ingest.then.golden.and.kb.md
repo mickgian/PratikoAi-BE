@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.52
+Status: 🔌  |  Confidence: 0.52
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.52)

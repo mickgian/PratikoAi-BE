@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.19
+Status: ❌  |  Confidence: 0.19
 
 Top candidates:
 1) app/models/query.py:79 — app.models.query.QueryRequest (score 0.19)

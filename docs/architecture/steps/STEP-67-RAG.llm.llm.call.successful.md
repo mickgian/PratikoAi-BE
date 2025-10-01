@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.31
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/llm.py:320 — app.orchestrators.llm.step_67__llmsuccess (score 0.31)
@@ -47,18 +47,18 @@ Type: decisio...
 2) app/orchestrators/providers.py:1009 — app.orchestrators.providers._execute_llm_api_call (score 0.29)
    Evidence: Score 0.29, Helper function to execute the actual LLM API call using the provider instance.
 ...
-3) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.26)
+3) app/core/langgraph/nodes/step_064__llm_call.py:10 — app.core.langgraph.nodes.step_064__llm_call.node_step_64 (score 0.28)
+   Evidence: Score 0.28, Node implementation for Step 64: LLMCall.
+
+Makes LLM API call using selected pro...
+4) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.26)
    Evidence: Score 0.26, Get the global LLM factory instance.
 
 Returns:
     LLM factory instance
-4) app/orchestrators/llm.py:14 — app.orchestrators.llm.step_36__llmbetter (score 0.26)
+5) app/orchestrators/llm.py:14 — app.orchestrators.llm.step_36__llmbetter (score 0.26)
    Evidence: Score 0.26, RAG STEP 36 — LLM better than rule-based?
 ID: RAG.llm.llm.better.than.rule.based...
-5) app/orchestrators/llm.py:179 — app.orchestrators.llm.step_37__use_llm (score 0.26)
-   Evidence: Score 0.26, RAG STEP 37 — Use LLM classification
-ID: RAG.llm.use.llm.classification
-Type: pr...
 
 Notes:
 - Implementation exists but may not be wired correctly

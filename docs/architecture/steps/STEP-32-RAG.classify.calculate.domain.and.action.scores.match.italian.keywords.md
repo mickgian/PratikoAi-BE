@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.48
+Status: 🔌  |  Confidence: 0.48
 
 Top candidates:
 1) app/orchestrators/classify.py:317 — app.orchestrators.classify.step_32__calc_scores (score 0.48)

@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.31
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/facts.py:114 — app.orchestrators.facts.step_18__query_sig (score 0.31)

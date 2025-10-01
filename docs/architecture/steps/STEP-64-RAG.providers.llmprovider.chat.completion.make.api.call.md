@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.48
+Status: 🔌  |  Confidence: 0.48
 
 Top candidates:
 1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.48)
@@ -54,10 +54,10 @@ Type...
 4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
    Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
 context enri...
-5) app/orchestrators/providers.py:1142 — app.orchestrators.providers.step_64__llmcall (score 0.44)
-   Evidence: Score 0.44, RAG STEP 64 — LLMProvider.chat_completion Make API call.
+5) app/core/langgraph/nodes/step_064__llm_call.py:10 — app.core.langgraph.nodes.step_064__llm_call.node_step_64 (score 0.45)
+   Evidence: Score 0.45, Node implementation for Step 64: LLMCall.
 
-Thin async orchestrato...
+Makes LLM API call using selected pro...
 
 Notes:
 - Implementation exists but may not be wired correctly

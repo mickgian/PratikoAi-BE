@@ -38,7 +38,7 @@ Determines if the client requested streaming response format by checking request
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.34
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
 1) app/orchestrators/streaming.py:15 — app.orchestrators.streaming.step_104__stream_check (score 0.34)

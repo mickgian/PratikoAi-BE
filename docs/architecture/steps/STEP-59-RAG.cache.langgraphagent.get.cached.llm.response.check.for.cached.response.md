@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.65
+Status: 🟡  |  Confidence: 0.65
 
 Top candidates:
 1) app/services/cache.py:567 — app.services.cache.get_redis_client (score 0.65)

@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.27
+Status: ❌  |  Confidence: 0.27
 
 Top candidates:
 1) app/orchestrators/platform.py:565 — app.orchestrators.platform.step_9__piicheck (score 0.27)

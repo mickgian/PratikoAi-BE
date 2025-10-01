@@ -38,7 +38,7 @@ Evaluates whether KB has newer content or conflicting tags compared to the Golde
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.54
+Status: 🔌  |  Confidence: 0.54
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)

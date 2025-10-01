@@ -38,7 +38,7 @@ Sets up Server-Sent Events (SSE) streaming infrastructure for real-time response
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.34
+Status: 🔌  |  Confidence: 0.34
 
 Top candidates:
 1) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.34)

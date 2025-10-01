@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: missing  |  Confidence: 0.31
+Status: 🔌  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/platform.py:971 — app.orchestrators.platform.step_13__message_exists (score 0.31)

@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.54
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.54
 
 Top candidates:
 1) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.54)
@@ -57,6 +57,7 @@ ID: RAG.golden.post.api.v1.faq.feedba...
 
 Notes:
 - Implementation exists but may not be wired correctly
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

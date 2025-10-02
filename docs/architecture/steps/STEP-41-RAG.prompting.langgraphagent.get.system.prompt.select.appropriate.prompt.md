@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.32
 
 Top candidates:
 1) app/core/langgraph/graph.py:361 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
@@ -61,6 +61,7 @@ Args:
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

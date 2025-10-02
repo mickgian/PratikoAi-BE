@@ -37,7 +37,7 @@ Matches user queries against the Golden Set (FAQ database) using either query si
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
+Role: Node  |  Status: ❌ (Missing)  |  Confidence: 0.28
 
 Top candidates:
 1) app/orchestrators/preflight.py:239 — app.orchestrators.preflight.step_24__golden_lookup (score 0.28)

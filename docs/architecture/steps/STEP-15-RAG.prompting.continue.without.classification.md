@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.29
 
 Top candidates:
 1) app/orchestrators/prompting.py:14 — app.orchestrators.prompting.step_15__default_prompt (score 0.29)

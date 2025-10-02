@@ -59,7 +59,7 @@ Terminal process node that finalizes the feedback pipeline when no feedback is p
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.51
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.51
 
 Top candidates:
 1) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.51)
@@ -81,6 +81,7 @@ Handles collect...
 
 Notes:
 - Implementation exists but may not be wired correctly
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

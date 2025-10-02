@@ -38,7 +38,7 @@ Final step in the RAG pipeline that delivers the complete response to the user. 
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.31
 
 Top candidates:
 1) app/schemas/auth.py:102 — app.schemas.auth.UserResponse (score 0.31)
@@ -66,6 +66,7 @@ This ext...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

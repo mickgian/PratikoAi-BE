@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.47
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.47
 
 Top candidates:
 1) app/orchestrators/ccnl.py:14 — app.orchestrators.ccnl.step_81__ccnlquery (score 0.47)
@@ -55,6 +55,7 @@ ID: RAG.ccnl.ccnltool.c...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

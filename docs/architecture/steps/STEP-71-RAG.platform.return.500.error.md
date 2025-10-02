@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.22
+Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.22
 
 Top candidates:
 1) app/orchestrators/response.py:402 — app.orchestrators.response._handle_return_complete_error (score 0.22)

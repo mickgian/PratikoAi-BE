@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.50
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.50
 
 Top candidates:
 1) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.50)
@@ -63,6 +63,7 @@ Args:
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

@@ -38,7 +38,7 @@ Processes FAQ feedback submissions when users provide feedback on FAQ responses.
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🟡  |  Confidence: 0.55
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.55
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.55)
@@ -57,11 +57,11 @@ Feedback is used to improve FAQ quality ...
    Evidence: Score 0.51, Request model for FAQ feedback.
 
 Notes:
-- Partial implementation identified
+- Implementation exists but may not be wired correctly
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
-- Complete partial implementation
-- Add missing error handling
-- Expand test coverage
-- Add performance benchmarks if needed
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.42
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.42
 
 Top candidates:
 1) app/services/atomic_facts_extractor.py:421 — app.services.atomic_facts_extractor.AtomicFactsExtractor.extract (score 0.42)
@@ -56,6 +56,7 @@ Args:
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

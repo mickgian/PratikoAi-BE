@@ -38,7 +38,7 @@ Determines if the client requested streaming response format by checking request
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.34
 
 Top candidates:
 1) app/orchestrators/streaming.py:15 — app.orchestrators.streaming.step_104__stream_check (score 0.34)
@@ -61,6 +61,7 @@ Thin async orchestrator that crea...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

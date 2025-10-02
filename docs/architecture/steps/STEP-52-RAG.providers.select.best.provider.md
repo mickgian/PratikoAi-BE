@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.52
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.52
 
 Top candidates:
 1) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.52)
@@ -61,6 +61,7 @@ Makes LLM API call using selected pro...
 
 Notes:
 - Implementation exists but may not be wired correctly
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

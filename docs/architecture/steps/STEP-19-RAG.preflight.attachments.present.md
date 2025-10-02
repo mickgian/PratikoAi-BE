@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Role: Node  |  Status: ❌ (Missing)  |  Confidence: 0.30
 
 Top candidates:
 1) app/orchestrators/preflight.py:92 — app.orchestrators.preflight.step_19__attach_check (score 0.30)

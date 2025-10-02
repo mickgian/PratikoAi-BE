@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/platform.py:971 — app.orchestrators.platform.step_13__message_exists (score 0.31)
@@ -61,6 +61,7 @@ This endpoint revokes the user's...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

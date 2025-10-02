@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.29
 
 Top candidates:
 1) app/orchestrators/llm.py:14 — app.orchestrators.llm.step_36__llmbetter (score 0.29)

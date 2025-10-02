@@ -1,63 +1,30 @@
-"""RAG STEP 1 — ValidateRequest node implementation."""
+"""Node wrapper for Step 1: Validate Request."""
 
-from typing import Any, Dict
-
-from app.observability.rag_logging import rag_step_log, rag_step_timer
+from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
 from app.orchestrators.platform import step_1__validate_request
-from app.core.langgraph.types import RAGState
+
+STEP = 1
 
 
-async def node_step_1(state: RAGState) -> Dict[str, Any]:
-    """Node implementation for Step 1: ValidateRequest.
+async def node_step_1(state: RAGState) -> RAGState:
+    """Node wrapper for Step 1: Validate request and authenticate."""
+    with rag_step_timer(STEP):
+        rag_step_log(STEP, "enter", keys=list(state.keys()))
 
-    Thin wrapper around existing orchestrator function.
+        # Delegate to existing orchestrator function
+        # Convert RAGState to the format expected by orchestrator
+        messages = state.get("messages", [])
+        ctx = dict(state)  # Pass full state as context
 
-    Args:
-        state: Current RAG state
+        # Call orchestrator
+        result = await step_1__validate_request(messages=messages, ctx=ctx)
 
-    Returns:
-        Updated state dict
-    """
-    rag_step_log(
-        step=1,
-        step_id="RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate",
-        node_label="ValidateRequest",
-        msg="enter",
-        processing_stage="node_entry"
-    )
-
-    with rag_step_timer(
-        step=1,
-        step_id="RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate",
-        node_label="ValidateRequest"
-    ):
-        # Convert state to dict for orchestrator compatibility
-        state_dict = state.model_dump() if hasattr(state, 'model_dump') else dict(state)
-
-        # Call existing orchestrator function
-        result = await step_1__validate_request(
-            messages=state_dict.get('messages'),
-            ctx=state_dict,
-        )
-
-        # Update state with results
+        # Merge result back into state
+        new_state = state.copy()
         if isinstance(result, dict):
-            state_dict.update(result)
+            new_state.update(result)
 
-        # Track processing
-        state_dict['processing_stage'] = 'validated'
-        node_history = state_dict.get('node_history', [])
-        node_history.append('ValidateRequest')
-        state_dict['node_history'] = node_history
-
-    rag_step_log(
-        step=1,
-        step_id="RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate",
-        node_label="ValidateRequest",
-        msg="exit",
-        processing_stage="node_exit",
-        request_valid=state_dict.get('request_valid'),
-        user_authenticated=state_dict.get('user_authenticated')
-    )
-
-    return state_dict
+        rag_step_log(STEP, "exit",
+                    changed_keys=[k for k in new_state.keys()
+                                if new_state.get(k) != state.get(k)])
+        return new_state

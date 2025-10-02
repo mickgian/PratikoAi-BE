@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.34
 
 Top candidates:
 1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)
@@ -58,6 +58,7 @@ ID: RAG.metrics.usagetracker.tr...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

@@ -2,6 +2,46 @@
 
 **Mode: Tiered Graph Hybrid**
 
+This project uses two layers by design. They are not duplicates—they have different responsibilities:
+
+## 1. Orchestrators (source of business logic)
+
+Orchestrators = UseCases (or Repository methods): where the business rules live
+
+**Where:** `app/orchestrators/…` (e.g., `platform.py`, `providers.py`, …)
+
+**What:** Real business logic for each step (`step_<N>__*` functions).
+
+**Keep:** Validation, branching, parsing, provider selection, cost calc, etc.
+
+**Do not:** Depend on LangGraph types; keep them framework-agnostic.
+
+## 2. Node Wrappers (graph integration shims)
+
+Node Wrappers = the glue you'd put in a ViewModel to call a UseCase and update UI state
+
+**Where:** `app/core/langgraph/nodes/step_<NNN>__*.py`
+
+**What:** Thin functions that:
+
+- Accept/return RAGState
+- Call the corresponding orchestrator(s)
+- Add `rag_step_log(...)` and `rag_step_timer(...)`
+- Optionally copy results into RAGState under stable keys
+
+**Do not:** Add business logic, retries, or new branching
+
+Team Rule: “Never move or rewrite orchestrator logic; Node wrappers in nodes/ always delegate to orchestrators in app/orchestrators/.”
+
+| Concern                        | Orchestrator (`app/orchestrators`) | Node Wrapper (`app/core/langgraph/nodes`) |
+| ------------------------------ | ---------------------------------- | ----------------------------------------- |
+| Business logic                 | ✅                                  | ❌ (delegate only)                         |
+| LangGraph state (`RAGState`)   | ❌                                  | ✅ read/write                              |
+| Logging/timing standardization | light (as needed)                  | ✅ `rag_step_log` / `rag_step_timer`       |
+| Retries/fallbacks              | where explicitly required by step  | ❌ (never here)                            |
+| Public interfaces              | unchanged                          | unchanged                                 |
+
+
 ## Definitions
 
 ### Node (runtime boundary)
@@ -73,7 +113,7 @@ Everything not listed here remains **Internal**.
 Update every `docs/architecture/steps/STEP-*.md`:
 
 - **Role:** Node | Internal
-- **Status:** 
+- **Status:**
   - Node → ✅ Implemented / 🔌 Not wired / ❌ Missing
   - Internal → 🔌 Implemented (internal) / ❌ Missing
 - **Paths / classes:** 1–3 file:line — symbol entries
@@ -128,7 +168,9 @@ python scripts/rag_audit.py --write
 
 **Gate:** Rerun audit shows green for Internal steps that used to read ❌/🔌.
 
-## Phase 3 — Implementation Scaffolding (1–2 days, no behavior change)
+## Phase 3 — Implementation Scaffolding (complete)
+
+**Status:** ✅ Implemented
 
 **Goal:** Prepare safe wrappers & state.
 
@@ -139,6 +181,15 @@ python scripts/rag_audit.py --write
 - Parity tests: snapshot real conversations; assert identical outputs with/without wrappers
 
 **Gate:** All parity tests pass.
+
+**Implementation notes:**
+- RAGState TypedDict finalized with all required fields in `app/core/langgraph/types.py`
+- 14 node wrappers created following thin delegation pattern:
+  - Original 9: steps 1, 3, 6, 9, 59, 62, 64, 67, 112
+  - Additional 5: steps 2, 11, 12, 13, 48
+- `rag_step_log()` and `rag_step_timer()` helpers implemented and integrated
+- Parity test suite created in `tests/langgraph/phase3_parity/` - all 16 tests passing
+- No behavior changes - full backward compatibility maintained
 
 ## Phase 4 — Cache → LLM → Tools Lane (2–3 days)
 

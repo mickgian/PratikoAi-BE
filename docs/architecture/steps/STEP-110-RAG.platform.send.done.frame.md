@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.30
 
 Top candidates:
 1) app/orchestrators/platform.py:2891 — app.orchestrators.platform.step_110__send_done (score 0.30)

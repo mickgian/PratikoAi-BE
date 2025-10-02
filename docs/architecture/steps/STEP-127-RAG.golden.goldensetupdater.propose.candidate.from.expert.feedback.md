@@ -38,7 +38,7 @@ Proposes a new FAQ candidate for the Golden Set based on expert feedback. When a
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.53
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.53
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)
@@ -58,6 +58,7 @@ Feedback is used to improve FAQ quality ...
 
 Notes:
 - Implementation exists but may not be wired correctly
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

@@ -70,7 +70,7 @@ Process orchestrator that collects expert feedback and routes to credential vali
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.35
 
 Top candidates:
 1) app/orchestrators/metrics.py:448 — app.orchestrators.metrics._collect_expert_feedback (score 0.35)
@@ -89,6 +89,7 @@ Features...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

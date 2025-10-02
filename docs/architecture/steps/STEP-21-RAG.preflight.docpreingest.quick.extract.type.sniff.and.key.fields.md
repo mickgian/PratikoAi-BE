@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.29
 
 Top candidates:
 1) app/orchestrators/preflight.py:147 — app.orchestrators.preflight.step_21__doc_pre_ingest (score 0.29)

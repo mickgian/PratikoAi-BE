@@ -36,7 +36,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.32
 
 Top candidates:
 1) app/core/langgraph/graph.py:1349 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.32)
@@ -62,6 +62,7 @@ Args:
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

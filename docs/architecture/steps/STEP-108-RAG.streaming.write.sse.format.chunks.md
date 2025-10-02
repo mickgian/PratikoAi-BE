@@ -38,7 +38,7 @@ Formats streaming chunks into Server-Sent Events (SSE) format using the write_ss
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.32
 
 Top candidates:
 1) app/core/sse_write.py:15 — app.core.sse_write.write_sse (score 0.32)
@@ -63,6 +63,7 @@ Args:
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

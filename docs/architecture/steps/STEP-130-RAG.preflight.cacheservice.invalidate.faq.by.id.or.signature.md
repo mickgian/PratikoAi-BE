@@ -38,7 +38,7 @@ Invalidates cached FAQ responses when an FAQ is published or updated. When an FA
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.29
 
 Top candidates:
 1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.29)

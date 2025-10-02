@@ -78,7 +78,7 @@ Process orchestrator that updates expert performance metrics based on feedback d
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.37
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.37
 
 Top candidates:
 1) app/orchestrators/metrics.py:662 — app.orchestrators.metrics._update_expert_performance_metrics (score 0.37)
@@ -103,6 +103,7 @@ Args:
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

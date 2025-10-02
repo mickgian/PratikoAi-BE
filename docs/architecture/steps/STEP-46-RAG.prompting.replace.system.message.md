@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.30
 
 Top candidates:
 1) app/orchestrators/prompting.py:669 — app.orchestrators.prompting.step_46__replace_msg (score 0.30)

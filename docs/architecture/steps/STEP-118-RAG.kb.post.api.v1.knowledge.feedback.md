@@ -64,7 +64,7 @@ Process orchestrator that handles knowledge feedback submission and routes to ex
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.47
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.47
 
 Top candidates:
 1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.47)
@@ -90,6 +90,7 @@ Implements RAG STEP 39 —...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

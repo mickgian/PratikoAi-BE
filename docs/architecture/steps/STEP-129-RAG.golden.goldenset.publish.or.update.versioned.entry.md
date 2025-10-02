@@ -38,7 +38,7 @@ Publishes or updates an approved FAQ entry in the Golden Set database with versi
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🟡  |  Confidence: 0.57
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.57
 
 Top candidates:
 1) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.57)
@@ -59,11 +59,11 @@ ID: RAG.golden.post.api.v1.faq.feedba...
 This endpoint...
 
 Notes:
-- Partial implementation identified
+- Implementation exists but may not be wired correctly
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
-- Complete partial implementation
-- Add missing error handling
-- Expand test coverage
-- Add performance benchmarks if needed
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

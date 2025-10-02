@@ -38,7 +38,7 @@ Sets up Server-Sent Events (SSE) streaming infrastructure for real-time response
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.34
 
 Top candidates:
 1) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.34)
@@ -69,6 +69,7 @@ Attributes:
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

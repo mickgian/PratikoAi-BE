@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/llm.py:320 — app.orchestrators.llm.step_67__llmsuccess (score 0.31)
@@ -63,6 +63,7 @@ ID: RAG.llm.llm.better.than.rule.based...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

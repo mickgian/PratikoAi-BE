@@ -1,80 +1,30 @@
-"""RAG STEP 67 — LLMSuccess node implementation."""
+"""Node wrapper for Step 67: LLM Success."""
 
-from typing import Any, Dict
-
-from app.observability.rag_logging import rag_step_log, rag_step_timer
+from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
 from app.orchestrators.llm import step_67__llmsuccess
-from app.core.langgraph.types import RAGState
+
+STEP = 67
 
 
-async def node_step_67(state: RAGState) -> Dict[str, Any]:
-    """Node implementation for Step 67: LLMSuccess.
+async def node_step_67(state: RAGState) -> RAGState:
+    """Node wrapper for Step 67: LLM success decision node."""
+    with rag_step_timer(STEP):
+        rag_step_log(STEP, "enter", keys=list(state.keys()))
 
-    Decision node that checks if LLM call was successful.
-    Also handles Internal steps 68 (cache response), 74 (track usage) internally.
-    For Phase 1A, simplifies retry logic and routes to End.
+        # Delegate to existing orchestrator function
+        # Convert RAGState to the format expected by orchestrator
+        messages = state.get("messages", [])
+        ctx = dict(state)  # Pass full state as context
 
-    Args:
-        state: Current RAG state
+        # Call orchestrator
+        result = await step_67__llmsuccess(messages=messages, ctx=ctx)
 
-    Returns:
-        Updated state dict
-    """
-    rag_step_log(
-        step=67,
-        step_id="RAG.llm.llm.call.successful",
-        node_label="LLMSuccess",
-        msg="enter",
-        processing_stage="node_entry"
-    )
-
-    with rag_step_timer(
-        step=67,
-        step_id="RAG.llm.llm.call.successful",
-        node_label="LLMSuccess"
-    ):
-        # Convert state to dict for orchestrator compatibility
-        state_dict = state.model_dump() if hasattr(state, 'model_dump') else dict(state)
-
-        # Call existing orchestrator function
-        result = await step_67__llmsuccess(
-            messages=state_dict.get('messages'),
-            ctx=state_dict,
-        )
-
-        # Update state with results
+        # Merge result back into state
+        new_state = state.copy()
         if isinstance(result, dict):
-            state_dict.update(result)
+            new_state.update(result)
 
-        # Check LLM success status
-        llm_success = state_dict.get('llm_success', True)  # Default to success for Phase 1A
-
-        if llm_success:
-            # Internal steps 68, 74: Cache response, track usage
-            state_dict['response_cached'] = True
-            state_dict['usage_tracked'] = True
-            # For Phase 1A: proceed to response pipeline (simplified to End)
-            state_dict['next_node'] = 'End'  # Route to Step 112
-        else:
-            # For Phase 1A: simplified retry handling - just route to End
-            # (In full implementation, would handle Steps 69-73: retry/failover)
-            state_dict['error_message'] = 'LLM call failed'
-            state_dict['next_node'] = 'End'  # Route to Step 112
-
-        # Track processing
-        state_dict['processing_stage'] = 'llm_success_checked'
-        node_history = state_dict.get('node_history', [])
-        node_history.append('LLMSuccess')
-        state_dict['node_history'] = node_history
-
-    rag_step_log(
-        step=67,
-        step_id="RAG.llm.llm.call.successful",
-        node_label="LLMSuccess",
-        msg="exit",
-        processing_stage="node_exit",
-        llm_success=llm_success,
-        next_node=state_dict.get('next_node')
-    )
-
-    return state_dict
+        rag_step_log(STEP, "exit",
+                    changed_keys=[k for k in new_state.keys()
+                                if new_state.get(k) != state.get(k)])
+        return new_state

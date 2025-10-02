@@ -59,7 +59,7 @@ Decision node that evaluates whether user provided feedback after UI display. Ro
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.49
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.49
 
 Top candidates:
 1) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.49)
@@ -82,6 +82,7 @@ Handles collect...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

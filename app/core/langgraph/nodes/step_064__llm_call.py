@@ -1,67 +1,30 @@
-"""RAG STEP 64 — LLMCall node implementation."""
+"""Node wrapper for Step 64: LLM Call."""
 
-from typing import Any, Dict
-
-from app.observability.rag_logging import rag_step_log, rag_step_timer
+from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
 from app.orchestrators.providers import step_64__llmcall
-from app.core.langgraph.types import RAGState
+
+STEP = 64
 
 
-async def node_step_64(state: RAGState) -> Dict[str, Any]:
-    """Node implementation for Step 64: LLMCall.
+async def node_step_64(state: RAGState) -> RAGState:
+    """Node wrapper for Step 64: Make LLM API call."""
+    with rag_step_timer(STEP):
+        rag_step_log(STEP, "enter", keys=list(state.keys()))
 
-    Makes LLM API call using selected provider.
-    Routes to Step 67 (LLMSuccess) to check call result.
+        # Delegate to existing orchestrator function
+        # Convert RAGState to the format expected by orchestrator
+        messages = state.get("messages", [])
+        ctx = dict(state)  # Pass full state as context
 
-    Args:
-        state: Current RAG state
+        # Call orchestrator
+        result = await step_64__llmcall(messages=messages, ctx=ctx)
 
-    Returns:
-        Updated state dict
-    """
-    rag_step_log(
-        step=64,
-        step_id="RAG.providers.llmprovider.chat.completion.make.api.call",
-        node_label="LLMCall",
-        msg="enter",
-        processing_stage="node_entry"
-    )
-
-    with rag_step_timer(
-        step=64,
-        step_id="RAG.providers.llmprovider.chat.completion.make.api.call",
-        node_label="LLMCall"
-    ):
-        # Convert state to dict for orchestrator compatibility
-        state_dict = state.model_dump() if hasattr(state, 'model_dump') else dict(state)
-
-        # Call existing orchestrator function
-        result = await step_64__llmcall(
-            messages=state_dict.get('messages'),
-            ctx=state_dict,
-        )
-
-        # Update state with results
+        # Merge result back into state
+        new_state = state.copy()
         if isinstance(result, dict):
-            state_dict.update(result)
+            new_state.update(result)
 
-        # Always route to Step 67 (LLMSuccess check)
-        state_dict['next_node'] = 'LLMSuccess'
-
-        # Track processing
-        state_dict['processing_stage'] = 'llm_called'
-        node_history = state_dict.get('node_history', [])
-        node_history.append('LLMCall')
-        state_dict['node_history'] = node_history
-
-    rag_step_log(
-        step=64,
-        step_id="RAG.providers.llmprovider.chat.completion.make.api.call",
-        node_label="LLMCall",
-        msg="exit",
-        processing_stage="node_exit",
-        llm_response_present=bool(state_dict.get('llm_response')),
-        next_node=state_dict.get('next_node')
-    )
-
-    return state_dict
+        rag_step_log(STEP, "exit",
+                    changed_keys=[k for k in new_state.keys()
+                                if new_state.get(k) != state.get(k)])
+        return new_state

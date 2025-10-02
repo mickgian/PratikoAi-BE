@@ -69,7 +69,7 @@ Decision orchestrator that evaluates trust scores from Step 120 (ValidateExpert)
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.47
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.47
 
 Top candidates:
 1) app/orchestrators/classify.py:210 — app.orchestrators.classify.step_31__classify_domain (score 0.47)
@@ -91,6 +91,7 @@ ID: RAG.classify.confidence.at.leas...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

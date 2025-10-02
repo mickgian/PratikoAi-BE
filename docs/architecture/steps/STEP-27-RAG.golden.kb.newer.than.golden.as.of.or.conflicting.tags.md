@@ -38,7 +38,7 @@ Evaluates whether KB has newer content or conflicting tags compared to the Golde
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.54
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.54
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)
@@ -60,6 +60,7 @@ Requires admin privileges.
 
 Notes:
 - Implementation exists but may not be wired correctly
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

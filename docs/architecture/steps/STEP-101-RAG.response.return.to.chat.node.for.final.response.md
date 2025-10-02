@@ -38,7 +38,7 @@ Serves as a convergence point where all response paths (ToolResults, SimpleAIMsg
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.29
+Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.29
 
 Top candidates:
 1) app/orchestrators/response.py:235 — app.orchestrators.response._format_chat_response (score 0.29)

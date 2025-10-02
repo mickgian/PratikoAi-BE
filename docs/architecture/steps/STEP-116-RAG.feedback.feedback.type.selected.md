@@ -62,7 +62,7 @@ Process orchestrator that routes feedback to appropriate processing endpoints ba
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.49
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.49
 
 Top candidates:
 1) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.49)
@@ -85,6 +85,7 @@ Handles collect...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

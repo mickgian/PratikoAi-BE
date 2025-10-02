@@ -70,7 +70,7 @@ Process orchestrator that validates expert credentials and calculates trust scor
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.37
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.37
 
 Top candidates:
 1) app/orchestrators/platform.py:3041 — app.orchestrators.platform._validate_expert_credentials (score 0.37)
@@ -91,6 +91,7 @@ Process orchestrator that validates...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

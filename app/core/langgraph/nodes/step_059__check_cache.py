@@ -1,73 +1,30 @@
-"""RAG STEP 59 — CheckCache node implementation."""
+"""Node wrapper for Step 59: Check Cache."""
 
-from typing import Any, Dict
-
-from app.observability.rag_logging import rag_step_log, rag_step_timer
+from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
 from app.orchestrators.cache import step_59__check_cache
-from app.core.langgraph.types import RAGState
+
+STEP = 59
 
 
-async def node_step_59(state: RAGState) -> Dict[str, Any]:
-    """Node implementation for Step 59: CheckCache.
+async def node_step_59(state: RAGState) -> RAGState:
+    """Node wrapper for Step 59: Check cache for cached LLM response."""
+    with rag_step_timer(STEP):
+        rag_step_log(STEP, "enter", keys=list(state.keys()))
 
-    Checks for cached LLM response.
-    Also handles Internal steps 60-61 (resolve epochs, generate hash) internally.
+        # Delegate to existing orchestrator function
+        # Convert RAGState to the format expected by orchestrator
+        messages = state.get("messages", [])
+        ctx = dict(state)  # Pass full state as context
 
-    Args:
-        state: Current RAG state
+        # Call orchestrator
+        result = await step_59__check_cache(messages=messages, ctx=ctx)
 
-    Returns:
-        Updated state dict
-    """
-    rag_step_log(
-        step=59,
-        step_id="RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response",
-        node_label="CheckCache",
-        msg="enter",
-        processing_stage="node_entry"
-    )
-
-    with rag_step_timer(
-        step=59,
-        step_id="RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response",
-        node_label="CheckCache"
-    ):
-        # Convert state to dict for orchestrator compatibility
-        state_dict = state.model_dump() if hasattr(state, 'model_dump') else dict(state)
-
-        # Call existing orchestrator function
-        result = await step_59__check_cache(
-            messages=state_dict.get('messages'),
-            ctx=state_dict,
-        )
-
-        # Update state with results
+        # Merge result back into state
+        new_state = state.copy()
         if isinstance(result, dict):
-            state_dict.update(result)
+            new_state.update(result)
 
-        # Handle Internal steps 60-61 internally
-        # Step 60: Resolve epochs (would be called here)
-        state_dict['epochs_resolved'] = True
-        # Step 61: Generate hash (would be called here)
-        state_dict['cache_key'] = f"cache_key_{hash(str(state_dict.get('messages', [])))}"
-
-        # Always route to Step 62 (CacheHit check)
-        state_dict['next_node'] = 'CacheHit'
-
-        # Track processing
-        state_dict['processing_stage'] = 'cache_checked'
-        node_history = state_dict.get('node_history', [])
-        node_history.append('CheckCache')
-        state_dict['node_history'] = node_history
-
-    rag_step_log(
-        step=59,
-        step_id="RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response",
-        node_label="CheckCache",
-        msg="exit",
-        processing_stage="node_exit",
-        cache_key=state_dict.get('cache_key'),
-        next_node=state_dict.get('next_node')
-    )
-
-    return state_dict
+        rag_step_log(STEP, "exit",
+                    changed_keys=[k for k in new_state.keys()
+                                if new_state.get(k) != state.get(k)])
+        return new_state

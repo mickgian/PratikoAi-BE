@@ -73,7 +73,7 @@ Process orchestrator that creates ExpertFeedback records for validated experts. 
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.54
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.54
 
 Top candidates:
 1) app/orchestrators/feedback.py:783 — app.orchestrators.feedback._create_expert_feedback_record (score 0.54)
@@ -96,6 +96,7 @@ Handles collect...
 
 Notes:
 - Implementation exists but may not be wired correctly
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

@@ -38,7 +38,7 @@ Creates an async generator for streaming response delivery. Configures streaming
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.30
+Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.30
 
 Top candidates:
 1) app/orchestrators/platform.py:2781 — app.orchestrators.platform._create_streaming_generator (score 0.30)

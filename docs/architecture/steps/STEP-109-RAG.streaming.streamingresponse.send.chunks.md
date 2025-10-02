@@ -38,7 +38,7 @@ Creates FastAPI StreamingResponse with SSE-formatted chunks for browser-compatib
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.32
 
 Top candidates:
 1) app/orchestrators/streaming.py:575 — app.orchestrators.streaming.step_109__stream_response (score 0.32)
@@ -57,6 +57,7 @@ Thin async orchestrator that crea...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
+- Node step requires LangGraph wiring to be considered fully implemented
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

@@ -38,7 +38,7 @@ Automatically evaluates knowledge base content to identify new FAQ candidates or
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.52
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.52
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.52)
@@ -56,6 +56,7 @@ ID: RAG.golden.post.api.v1.faq.feedba...
 
 Notes:
 - Implementation exists but may not be wired correctly
+- Internal step is correctly implemented (no wiring required)
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

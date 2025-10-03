@@ -37,33 +37,27 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.31
+Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/langgraph/graph.py:99 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.31)
+1) app/core/langgraph/graph.py:1012 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_check (score 0.32)
+   Evidence: Score 0.32, Route from ToolCheck node.
+2) app/core/langgraph/graph.py:1019 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_type (score 0.32)
+   Evidence: Score 0.32, Route from ToolType node based on tool type.
+3) app/core/langgraph/graph.py:195 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.31)
    Evidence: Score 0.31, Initialize the LangGraph Agent with necessary components.
-2) app/core/langgraph/graph.py:843 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.30)
+4) app/core/langgraph/graph.py:939 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.30)
    Evidence: Score 0.30, Determine if the agent should continue or end based on the last message.
 
 Args:
 ...
-3) app/core/langgraph/graph.py:1349 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.30)
+5) app/core/langgraph/graph.py:1652 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.30)
    Evidence: Score 0.30, method: __process_messages
-4) app/core/langgraph/graph.py:361 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
-   Evidence: Score 0.29, Get the LLM routing strategy from configuration.
-
-Returns:
-    RoutingStrategy: ...
-5) app/core/langgraph/graph.py:513 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
-   Evidence: Score 0.29, Get the optimal LLM provider for the given messages.
-
-Args:
-    messages: List o...
 
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Internal step is correctly implemented (no wiring required)
+- Implemented (internal) - no wiring required
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

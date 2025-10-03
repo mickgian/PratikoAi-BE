@@ -54,15 +54,12 @@ Type...
 4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
    Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
 context enri...
-5) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.45)
-   Evidence: Score 0.45, Create an LLM provider instance.
-
-Args:
-    provider_type: Type of provider to c...
+5) app/core/langgraph/nodes/step_072__failover_provider.py:9 — app.core.langgraph.nodes.step_072__failover_provider.node_step_72 (score 0.46)
+   Evidence: Score 0.46, Node wrapper for Step 72: Get failover provider.
 
 Notes:
 - Implementation exists but may not be wired correctly
-- Internal step is correctly implemented (no wiring required)
+- Implemented (internal) - no wiring required
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

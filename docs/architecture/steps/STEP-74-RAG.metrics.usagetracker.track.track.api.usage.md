@@ -8,7 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `TrackUsage` (UsageTracker.track Track API usage).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/metrics.py:139` - `step_74__track_usage()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator tracking API usage metrics including LLM costs, token consumption, response times, and provider performance. Records data for monitoring, billing, and optimization purposes.
@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.31
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.31
 
 Top candidates:
 1) app/services/usage_tracker.py:64 — app.services.usage_tracker.UsageTracker.__init__ (score 0.31)
@@ -60,12 +60,13 @@ ID: RAG.metrics.usagetracker.tr...
    Evidence: Score 0.29, Tracks and manages usage for cost control.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Internal step is correctly implemented (no wiring required)
+- Wired via graph registry ✅
+- Incoming: [68], Outgoing: [75]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

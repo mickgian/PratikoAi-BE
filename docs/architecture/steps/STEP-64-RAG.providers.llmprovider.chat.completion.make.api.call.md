@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.48
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.48
 
 Top candidates:
 1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.48)
@@ -54,19 +54,18 @@ Type...
 4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
    Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
 context enri...
-5) app/core/langgraph/nodes/step_064__llm_call.py:10 — app.core.langgraph.nodes.step_064__llm_call.node_step_64 (score 0.45)
-   Evidence: Score 0.45, Node implementation for Step 64: LLMCall.
-
-Makes LLM API call using selected pro...
+5) app/core/langgraph/nodes/step_072__failover_provider.py:9 — app.core.langgraph.nodes.step_072__failover_provider.node_step_72 (score 0.45)
+   Evidence: Score 0.45, Node wrapper for Step 72: Get failover provider.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Node step requires LangGraph wiring to be considered fully implemented
+- Wired via graph registry ✅
+- Incoming: [62, 72, 73], Outgoing: [67]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 - Test failover and retry mechanisms
 <!-- AUTO-AUDIT:END -->

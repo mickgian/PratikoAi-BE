@@ -37,35 +37,36 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.34
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.34
 
 Top candidates:
 1) app/orchestrators/response.py:431 — app.orchestrators.response.step_75__tool_check (score 0.34)
    Evidence: Score 0.34, RAG STEP 75 — Response has tool_calls?
 ID: RAG.response.response.has.tool.calls
 ...
-2) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
+2) app/core/langgraph/nodes/step_075__tool_check.py:9 — app.core.langgraph.nodes.step_075__tool_check.node_step_75 (score 0.27)
+   Evidence: Score 0.27, Node wrapper for Step 75: Check if tools are needed.
+3) app/core/langgraph/graph.py:1012 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_check (score 0.27)
+   Evidence: Score 0.27, Route from ToolCheck node.
+4) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
    Evidence: Score 0.26, Health check endpoint.
 
 Returns:
     dict: Health status information.
-3) app/main.py:157 — app.main.health_check (score 0.26)
+5) app/main.py:157 — app.main.health_check (score 0.26)
    Evidence: Score 0.26, Health check endpoint with environment-specific information.
 
 Returns:
     Dict[...
-4) demo_app.py:100 — demo_app.health_check (score 0.26)
-   Evidence: Score 0.26, Health check endpoint.
-5) app/api/v1/italian.py:65 — app.api.v1.italian.ComplianceCheckResponse (score 0.26)
-   Evidence: Score 0.26, Compliance check response.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Node step requires LangGraph wiring to be considered fully implemented
+- Wired via graph registry ✅
+- Incoming: [74], Outgoing: [79]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

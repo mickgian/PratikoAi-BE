@@ -8,7 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `RetrySame` (Retry same provider).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/providers.py:1343` - `step_73__retry_same()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator retrying with the same provider after transient failure. Implements retry logic with backoff for resilience.
@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.50
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.50
 
 Top candidates:
 1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.50)
@@ -54,18 +54,17 @@ Type...
 4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
    Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
 context enri...
-5) app/core/langgraph/nodes/step_064__llm_call.py:10 — app.core.langgraph.nodes.step_064__llm_call.node_step_64 (score 0.44)
-   Evidence: Score 0.44, Node implementation for Step 64: LLMCall.
-
-Makes LLM API call using selected pro...
+5) app/core/langgraph/nodes/step_072__failover_provider.py:9 — app.core.langgraph.nodes.step_072__failover_provider.node_step_72 (score 0.46)
+   Evidence: Score 0.46, Node wrapper for Step 72: Get failover provider.
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Internal step is correctly implemented (no wiring required)
+- Strong implementation match found
+- Wired via graph registry ✅
+- Incoming: [70], Outgoing: [64]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 - Test failover and retry mechanisms
 <!-- AUTO-AUDIT:END -->

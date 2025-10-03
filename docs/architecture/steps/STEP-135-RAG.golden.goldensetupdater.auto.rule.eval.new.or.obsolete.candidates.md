@@ -56,7 +56,7 @@ ID: RAG.golden.post.api.v1.faq.feedba...
 
 Notes:
 - Implementation exists but may not be wired correctly
-- Internal step is correctly implemented (no wiring required)
+- Implemented (internal) - no wiring required
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

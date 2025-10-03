@@ -40,20 +40,20 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.32
 
 Top candidates:
-1) app/core/langgraph/graph.py:361 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
+1) app/core/langgraph/graph.py:457 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
    Evidence: Score 0.32, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-2) app/core/langgraph/graph.py:513 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.32)
+2) app/core/langgraph/graph.py:609 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.32)
    Evidence: Score 0.32, Get the optimal LLM provider for the given messages.
 
 Args:
     messages: List o...
-3) app/core/langgraph/graph.py:377 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
+3) app/core/langgraph/graph.py:473 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
    Evidence: Score 0.31, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
 -...
-4) app/core/langgraph/graph.py:99 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
+4) app/core/langgraph/graph.py:195 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
    Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
 5) app/orchestrators/prompting.py:203 — app.orchestrators.prompting._get_default_system_prompt (score 0.30)
    Evidence: Score 0.30, Get appropriate default system prompt based on query analysis.
@@ -61,7 +61,7 @@ Args:
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Node step requires LangGraph wiring to be considered fully implemented
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

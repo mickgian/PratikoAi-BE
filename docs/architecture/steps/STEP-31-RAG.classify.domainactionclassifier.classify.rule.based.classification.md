@@ -52,14 +52,14 @@ ID: RAG....
 4) app/orchestrators/classify.py:677 — app.orchestrators.classify.step_35__llm_fallback (score 0.44)
    Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
 ID: RA...
-5) app/core/langgraph/graph.py:377 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
+5) app/core/langgraph/graph.py:473 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
    Evidence: Score 0.43, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
 -...
 
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Node step requires LangGraph wiring to be considered fully implemented
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

@@ -44,24 +44,24 @@ Top candidates:
    Evidence: Score 0.31, RAG STEP 13 — User message exists?
 ID: RAG.platform.user.message.exists
 Type: de...
-2) app/api/v1/auth.py:157 — app.api.v1.auth.register_user (score 0.27)
+2) app/core/langgraph/nodes/step_013__message_exists.py:9 — app.core.langgraph.nodes.step_013__message_exists.node_step_13 (score 0.28)
+   Evidence: Score 0.28, Node wrapper for Step 13: Check if user message exists.
+3) app/api/v1/auth.py:157 — app.api.v1.auth.register_user (score 0.27)
    Evidence: Score 0.27, Register a new user.
 
 Args:
     request: The FastAPI request object for rate lim...
-3) app/api/v1/auth.py:463 — app.api.v1.auth.logout_user (score 0.27)
+4) app/api/v1/auth.py:463 — app.api.v1.auth.logout_user (score 0.27)
    Evidence: Score 0.27, Logout a user by revoking their refresh token.
 
 This endpoint revokes the user's...
-4) app/api/v1/documents.py:143 — app.api.v1.documents.get_user_documents (score 0.27)
+5) app/api/v1/documents.py:143 — app.api.v1.documents.get_user_documents (score 0.27)
    Evidence: Score 0.27, Get user's uploaded documents with filtering options.
-5) app/models/user.py:50 — app.models.user.User.verify_password (score 0.27)
-   Evidence: Score 0.27, Verify if the provided password matches the hash.
 
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Node step requires LangGraph wiring to be considered fully implemented
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

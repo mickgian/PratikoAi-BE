@@ -120,10 +120,69 @@ from app.core.langgraph.nodes import (
     node_step_112,
 )
 
+# Phase 4 Node imports
+from app.core.langgraph.nodes.step_066__return_cached import node_step_66
+from app.core.langgraph.nodes.step_068__cache_response import node_step_68
+from app.core.langgraph.nodes.step_069__retry_check import node_step_69
+from app.core.langgraph.nodes.step_070__prod_check import node_step_70
+from app.core.langgraph.nodes.step_072__failover_provider import node_step_72
+from app.core.langgraph.nodes.step_073__retry_same import node_step_73
+from app.core.langgraph.nodes.step_074__track_usage import node_step_74
+from app.core.langgraph.nodes.step_075__tool_check import node_step_75
+from app.core.langgraph.nodes.step_079__tool_type import node_step_79
+from app.core.langgraph.nodes.step_080__kb_tool import node_step_80
+from app.core.langgraph.nodes.step_081__ccnl_tool import node_step_81
+from app.core.langgraph.nodes.step_082__doc_ingest_tool import node_step_82
+from app.core.langgraph.nodes.step_083__faq_tool import node_step_83
+from app.core.langgraph.nodes.step_099__tool_results import node_step_99
+
 # Phase 1A nodes are now the default implementation
 
+# Wiring registry for audit visibility - tracks which nodes are wired in the graph
+WIRED_NODES: dict[int, dict] = {}   # { step: {"id": "RAG.*", "name": "node_step_<n>", "incoming": [steps], "outgoing": [steps]} }
+
+# Pre-populate Phase 4 nodes statically for audit visibility
+# This ensures the audit can detect wiring without requiring graph creation
+def _initialize_phase4_registry():
+    """Initialize Phase 4 nodes in the wiring registry."""
+    nodes = {
+        59: {"id": "RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response", "name": "node_step_59", "incoming": [], "outgoing": [62]},
+        62: {"id": "RAG.cache.cache.hit", "name": "node_step_62", "incoming": [59], "outgoing": [64, 66]},
+        64: {"id": "RAG.providers.llmprovider.chat.completion.make.api.call", "name": "node_step_64", "incoming": [62, 72, 73], "outgoing": [67]},
+        66: {"id": "RAG.cache.return.cached.response", "name": "node_step_66", "incoming": [62], "outgoing": []},
+        67: {"id": "RAG.llm.llm.call.successful", "name": "node_step_67", "incoming": [64], "outgoing": [68, 69]},
+        68: {"id": "RAG.cache.cacheservice.cache.response.store.in.redis", "name": "node_step_68", "incoming": [67], "outgoing": [74]},
+        69: {"id": "RAG.platform.another.attempt.allowed", "name": "node_step_69", "incoming": [67], "outgoing": [70]},
+        70: {"id": "RAG.platform.prod.environment.and.last.retry", "name": "node_step_70", "incoming": [69], "outgoing": [72, 73]},
+        72: {"id": "RAG.providers.get.failover.provider", "name": "node_step_72", "incoming": [70], "outgoing": [64]},
+        73: {"id": "RAG.providers.retry.same.provider", "name": "node_step_73", "incoming": [70], "outgoing": [64]},
+        74: {"id": "RAG.metrics.usagetracker.track.track.api.usage", "name": "node_step_74", "incoming": [68], "outgoing": [75]},
+        75: {"id": "RAG.platform.tool.check", "name": "node_step_75", "incoming": [74], "outgoing": [79]},
+        79: {"id": "RAG.routing.tool.type", "name": "node_step_79", "incoming": [75], "outgoing": [80, 81, 82, 83]},
+        80: {"id": "RAG.kb.query.tool", "name": "node_step_80", "incoming": [79], "outgoing": [99]},
+        81: {"id": "RAG.ccnl.query.tool", "name": "node_step_81", "incoming": [79], "outgoing": [99]},
+        82: {"id": "RAG.docs.ingest.tool", "name": "node_step_82", "incoming": [79], "outgoing": [99]},
+        83: {"id": "RAG.faq.query.tool", "name": "node_step_83", "incoming": [79], "outgoing": [99]},
+        99: {"id": "RAG.platform.return.to.tool.caller", "name": "node_step_99", "incoming": [80, 81, 82, 83], "outgoing": []},
+    }
+    WIRED_NODES.update(nodes)
+
+# Initialize Phase 4 registry at module load time
+_initialize_phase4_registry()
+
+def get_wired_nodes_snapshot() -> dict[int, dict]:
+    """Return a shallow copy of wired nodes registry to avoid mutation."""
+    return {k: dict(v) for k, v in WIRED_NODES.items()}
+
+def _track_edge(from_step: int, to_step: int):
+    """Track an edge between two steps in the wiring registry."""
+    if from_step in WIRED_NODES:
+        WIRED_NODES[from_step]["outgoing"] = sorted(set(WIRED_NODES[from_step]["outgoing"] + [to_step]))
+    if to_step in WIRED_NODES:
+        WIRED_NODES[to_step]["incoming"] = sorted(set(WIRED_NODES[to_step]["incoming"] + [from_step]))
+
 # Explicit exports for stable API
-__all__ = ["LangGraphAgent", "GraphState", "RAGState"]
+__all__ = ["LangGraphAgent", "GraphState", "RAGState", "get_wired_nodes_snapshot"]
 
 
 class LangGraphAgent:
@@ -921,6 +980,53 @@ class LangGraphAgent:
         """Route from LLMSuccess node - simplified for Phase 1A."""
         return "End"
 
+    # Phase 4 routing functions
+    def _route_from_cache_hit_phase4(self, state: Dict[str, Any]) -> str:
+        """Route from CacheHit node in Phase 4 based on cache status."""
+        if state.get("cache_hit_decision", False):
+            return "ReturnCached"
+        else:
+            return "LLMCall"
+
+    def _route_from_llm_success_phase4(self, state: Dict[str, Any]) -> str:
+        """Route from LLMSuccess node in Phase 4."""
+        if state.get("llm_success_decision", True):
+            return "CacheResponse"
+        else:
+            return "RetryCheck"
+
+    def _route_from_retry_check(self, state: Dict[str, Any]) -> str:
+        """Route from RetryCheck node."""
+        if state.get("llm", {}).get("retry_allowed", False):
+            return "ProdCheck"
+        else:
+            return "End"
+
+    def _route_from_prod_check(self, state: Dict[str, Any]) -> str:
+        """Route from ProdCheck node."""
+        if state.get("llm", {}).get("should_failover", False):
+            return "FailoverProvider"
+        else:
+            return "RetrySame"
+
+    def _route_from_tool_check(self, state: Dict[str, Any]) -> str:
+        """Route from ToolCheck node."""
+        if state.get("tools", {}).get("requested", False):
+            return "ToolType"
+        else:
+            return "End"
+
+    def _route_from_tool_type(self, state: Dict[str, Any]) -> str:
+        """Route from ToolType node based on tool type."""
+        tool_type = state.get("tools", {}).get("type", "kb")
+        mapping = {
+            "kb": "KBTool",
+            "ccnl": "CCNLTool",
+            "doc": "DocIngestTool",
+            "faq": "FAQTool"
+        }
+        return mapping.get(tool_type, "KBTool")
+
     async def create_graph_phase1a(self) -> Optional[CompiledStateGraph]:
         """Create Phase 1A graph with explicit RAG nodes.
 
@@ -1003,6 +1109,209 @@ class LangGraphAgent:
             logger.error("phase1a_graph_creation_failed", error=str(e), environment=settings.ENVIRONMENT.value)
             if settings.ENVIRONMENT == Environment.PRODUCTION:
                 logger.warning("continuing_without_phase1a_graph")
+                return None
+            raise e
+
+    async def create_graph_phase4_lane(self) -> Optional[CompiledStateGraph]:
+        """Create Phase 4 graph with Cache → LLM → Tools lane.
+
+        Returns:
+            Optional[CompiledStateGraph]: The Phase 4 graph or None if init fails
+        """
+        try:
+            graph_builder = StateGraph(GraphState)
+
+            # Add all Phase 1A nodes
+            graph_builder.add_node("ValidateRequest", node_step_1)
+            graph_builder.add_node("ValidCheck", node_step_3)
+            graph_builder.add_node("PrivacyCheck", node_step_6)
+            graph_builder.add_node("PIICheck", node_step_9)
+            graph_builder.add_node("CheckCache", node_step_59)
+            graph_builder.add_node("CacheHit", node_step_62)
+            graph_builder.add_node("LLMCall", node_step_64)
+            graph_builder.add_node("LLMSuccess", node_step_67)
+            graph_builder.add_node("End", node_step_112)
+
+            # Add Phase 4 nodes
+            graph_builder.add_node("ReturnCached", node_step_66)
+            graph_builder.add_node("CacheResponse", node_step_68)
+            graph_builder.add_node("RetryCheck", node_step_69)
+            graph_builder.add_node("ProdCheck", node_step_70)
+            graph_builder.add_node("FailoverProvider", node_step_72)
+            graph_builder.add_node("RetrySame", node_step_73)
+            graph_builder.add_node("TrackUsage", node_step_74)
+            graph_builder.add_node("ToolCheck", node_step_75)
+            graph_builder.add_node("ToolType", node_step_79)
+            graph_builder.add_node("KBTool", node_step_80)
+            graph_builder.add_node("CCNLTool", node_step_81)
+            graph_builder.add_node("DocIngestTool", node_step_82)
+            graph_builder.add_node("FAQTool", node_step_83)
+            graph_builder.add_node("ToolResults", node_step_99)
+
+            # Register Phase 4 nodes in wiring registry for audit visibility
+            WIRED_NODES.setdefault(59, {"id": "RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response", "name": "node_step_59", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(62, {"id": "RAG.cache.cache.hit", "name": "node_step_62", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(64, {"id": "RAG.providers.llmprovider.chat.completion.make.api.call", "name": "node_step_64", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(66, {"id": "RAG.cache.return.cached.response", "name": "node_step_66", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(67, {"id": "RAG.llm.llm.call.successful", "name": "node_step_67", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(68, {"id": "RAG.cache.cacheservice.cache.response.store.in.redis", "name": "node_step_68", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(69, {"id": "RAG.platform.another.attempt.allowed", "name": "node_step_69", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(70, {"id": "RAG.platform.prod.environment.and.last.retry", "name": "node_step_70", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(72, {"id": "RAG.providers.get.failover.provider", "name": "node_step_72", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(73, {"id": "RAG.providers.retry.same.provider", "name": "node_step_73", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(74, {"id": "RAG.metrics.usagetracker.track.track.api.usage", "name": "node_step_74", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(75, {"id": "RAG.platform.tool.check", "name": "node_step_75", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(79, {"id": "RAG.routing.tool.type", "name": "node_step_79", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(80, {"id": "RAG.kb.query.tool", "name": "node_step_80", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(81, {"id": "RAG.ccnl.query.tool", "name": "node_step_81", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(82, {"id": "RAG.docs.ingest.tool", "name": "node_step_82", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(83, {"id": "RAG.faq.query.tool", "name": "node_step_83", "incoming": [], "outgoing": []})
+            WIRED_NODES.setdefault(99, {"id": "RAG.platform.return.to.tool.caller", "name": "node_step_99", "incoming": [], "outgoing": []})
+
+            # Add Phase 1A edges up to cache
+            graph_builder.add_edge("ValidateRequest", "ValidCheck")
+            graph_builder.add_conditional_edges(
+                "ValidCheck",
+                self._route_from_valid_check,
+                {"PrivacyCheck": "PrivacyCheck", "End": "End"}
+            )
+            graph_builder.add_conditional_edges(
+                "PrivacyCheck",
+                self._route_from_privacy_check,
+                {"PIICheck": "PIICheck"}
+            )
+            graph_builder.add_conditional_edges(
+                "PIICheck",
+                self._route_from_pii_check,
+                {"CheckCache": "CheckCache"}
+            )
+
+            # Phase 4 cache lane edges
+            graph_builder.add_edge("CheckCache", "CacheHit")
+            _track_edge(59, 62)  # CheckCache → CacheHit
+
+            graph_builder.add_conditional_edges(
+                "CacheHit",
+                self._route_from_cache_hit_phase4,
+                {"ReturnCached": "ReturnCached", "LLMCall": "LLMCall"}
+            )
+            _track_edge(62, 66)  # CacheHit → ReturnCached (cache hit path)
+            _track_edge(62, 64)  # CacheHit → LLMCall (cache miss path)
+
+            graph_builder.add_edge("ReturnCached", "End")
+
+            # Phase 4 LLM lane edges
+            graph_builder.add_edge("LLMCall", "LLMSuccess")
+            _track_edge(64, 67)  # LLMCall → LLMSuccess
+
+            graph_builder.add_conditional_edges(
+                "LLMSuccess",
+                self._route_from_llm_success_phase4,
+                {"CacheResponse": "CacheResponse", "RetryCheck": "RetryCheck"}
+            )
+            _track_edge(67, 68)  # LLMSuccess → CacheResponse (success path)
+            _track_edge(67, 69)  # LLMSuccess → RetryCheck (failure path)
+
+            # Success path: cache → track → tools
+            graph_builder.add_edge("CacheResponse", "TrackUsage")
+            _track_edge(68, 74)  # CacheResponse → TrackUsage
+
+            graph_builder.add_edge("TrackUsage", "ToolCheck")
+            _track_edge(74, 75)  # TrackUsage → ToolCheck
+
+            # Retry path
+            graph_builder.add_conditional_edges(
+                "RetryCheck",
+                self._route_from_retry_check,
+                {"ProdCheck": "ProdCheck", "End": "End"}
+            )
+            _track_edge(69, 70)  # RetryCheck → ProdCheck (retry allowed)
+
+            graph_builder.add_conditional_edges(
+                "ProdCheck",
+                self._route_from_prod_check,
+                {"FailoverProvider": "FailoverProvider", "RetrySame": "RetrySame"}
+            )
+            _track_edge(70, 72)  # ProdCheck → FailoverProvider (failover path)
+            _track_edge(70, 73)  # ProdCheck → RetrySame (retry same path)
+
+            # Both retry strategies route back to LLMCall
+            graph_builder.add_edge("FailoverProvider", "LLMCall")
+            _track_edge(72, 64)  # FailoverProvider → LLMCall
+
+            graph_builder.add_edge("RetrySame", "LLMCall")
+            _track_edge(73, 64)  # RetrySame → LLMCall
+
+            # Phase 4 tools lane edges
+            graph_builder.add_conditional_edges(
+                "ToolCheck",
+                self._route_from_tool_check,
+                {"ToolType": "ToolType", "End": "End"}
+            )
+            _track_edge(75, 79)  # ToolCheck → ToolType (tools needed)
+
+            graph_builder.add_conditional_edges(
+                "ToolType",
+                self._route_from_tool_type,
+                {
+                    "KBTool": "KBTool",
+                    "CCNLTool": "CCNLTool",
+                    "DocIngestTool": "DocIngestTool",
+                    "FAQTool": "FAQTool"
+                }
+            )
+            _track_edge(79, 80)  # ToolType → KBTool
+            _track_edge(79, 81)  # ToolType → CCNLTool
+            _track_edge(79, 82)  # ToolType → DocIngestTool
+            _track_edge(79, 83)  # ToolType → FAQTool
+
+            # All tools route to ToolResults → End
+            graph_builder.add_edge("KBTool", "ToolResults")
+            _track_edge(80, 99)  # KBTool → ToolResults
+
+            graph_builder.add_edge("CCNLTool", "ToolResults")
+            _track_edge(81, 99)  # CCNLTool → ToolResults
+
+            graph_builder.add_edge("DocIngestTool", "ToolResults")
+            _track_edge(82, 99)  # DocIngestTool → ToolResults
+
+            graph_builder.add_edge("FAQTool", "ToolResults")
+            _track_edge(83, 99)  # FAQTool → ToolResults
+
+            graph_builder.add_edge("ToolResults", "End")
+
+            # Set entry and exit points
+            graph_builder.set_entry_point("ValidateRequest")
+            graph_builder.set_finish_point("End")
+
+            # Get connection pool and checkpointer
+            connection_pool = await self._get_connection_pool()
+            if connection_pool and AsyncPostgresSaver is not None:
+                checkpointer = AsyncPostgresSaver(connection_pool)
+                await checkpointer.setup()
+            else:
+                checkpointer = None
+                if settings.ENVIRONMENT != Environment.PRODUCTION and AsyncPostgresSaver is not None:
+                    raise Exception("Connection pool initialization failed")
+
+            compiled_graph = graph_builder.compile(
+                checkpointer=checkpointer,
+                name=f"{settings.PROJECT_NAME} Agent Phase4 ({settings.ENVIRONMENT.value})"
+            )
+
+            logger.info(
+                "phase4_graph_created",
+                graph_name=f"{settings.PROJECT_NAME} Agent Phase4",
+                environment=settings.ENVIRONMENT.value,
+                has_checkpointer=checkpointer is not None,
+            )
+
+            return compiled_graph
+
+        except Exception as e:
+            logger.error("phase4_graph_creation_failed", error=str(e), environment=settings.ENVIRONMENT.value)
+            if settings.ENVIRONMENT == Environment.PRODUCTION:
+                logger.warning("continuing_without_phase4_graph")
                 return None
             raise e
 

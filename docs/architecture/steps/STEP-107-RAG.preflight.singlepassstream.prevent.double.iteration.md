@@ -58,7 +58,7 @@ Thin async orchestrato...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Internal step is correctly implemented (no wiring required)
+- Implemented (internal) - no wiring required
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

@@ -50,12 +50,12 @@ Args:
 
 Returns:
     Dictionary of provider ...
-3) app/core/langgraph/graph.py:361 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
+3) app/core/langgraph/graph.py:457 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
    Evidence: Score 0.29, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-4) app/core/langgraph/graph.py:513 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
+4) app/core/langgraph/graph.py:609 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
    Evidence: Score 0.29, Get the optimal LLM provider for the given messages.
 
 Args:
@@ -69,7 +69,7 @@ Args:
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Internal step is correctly implemented (no wiring required)
+- Implemented (internal) - no wiring required
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

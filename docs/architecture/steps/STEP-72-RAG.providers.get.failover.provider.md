@@ -8,7 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `FailoverProvider` (Get FAILOVER provider).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/providers.py:1201` - `step_72__get_failover_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator selecting failover provider when primary fails. Implements provider redundancy for high availability.
@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.51
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.51
 
 Top candidates:
 1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.51)
@@ -61,12 +61,13 @@ Args:
 context enri...
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Internal step is correctly implemented (no wiring required)
+- Strong implementation match found
+- Wired via graph registry ✅
+- Incoming: [70], Outgoing: [64]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 - Test failover and retry mechanisms
 <!-- AUTO-AUDIT:END -->

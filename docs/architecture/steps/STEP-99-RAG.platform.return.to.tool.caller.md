@@ -8,7 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ToolResults` (Return to tool caller).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/platform.py:2526` - `step_99__tool_results()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator returning tool execution results to the LLM for further processing. Formats tool responses and integrates them back into the conversation flow for multi-step interactions.
@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.32
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.32
 
 Top candidates:
 1) app/orchestrators/platform.py:2248 — app.orchestrators.platform._format_tool_results_for_caller (score 0.32)
@@ -52,18 +52,17 @@ ID: RAG.platform.return.to.tool.caller
 Typ...
 4) app/orchestrators/platform.py:2491 — app.orchestrators.platform._handle_tool_results_error (score 0.29)
    Evidence: Score 0.29, Handle errors in tool results processing with graceful fallback.
-5) app/orchestrators/kb.py:150 — app.orchestrators.kb.step_80__kbquery_tool (score 0.26)
-   Evidence: Score 0.26, RAG STEP 80 — KnowledgeSearchTool.search KB on demand.
-
-ID: RAG.kb.knowledgesear...
+5) app/core/langgraph/nodes/step_099__tool_results.py:9 — app.core.langgraph.nodes.step_099__tool_results.node_step_99 (score 0.28)
+   Evidence: Score 0.28, Node wrapper for Step 99: Process and aggregate tool results.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Internal step is correctly implemented (no wiring required)
+- Wired via graph registry ✅
+- Incoming: [80, 81, 82, 83], Outgoing: []
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

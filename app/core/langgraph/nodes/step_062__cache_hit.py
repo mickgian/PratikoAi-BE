@@ -24,6 +24,12 @@ async def node_step_62(state: RAGState) -> RAGState:
         if isinstance(result, dict):
             new_state.update(result)
 
+        # This is a decision node - read cache state from previous step
+        cache_hit = new_state.get("cache", {}).get("hit", False)
+
+        # Store decision result for routing
+        new_state["cache_hit_decision"] = cache_hit
+
         rag_step_log(STEP, "exit",
                     changed_keys=[k for k in new_state.keys()
                                 if new_state.get(k) != state.get(k)])

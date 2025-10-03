@@ -37,32 +37,34 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ❌ (Missing)  |  Confidence: 0.27
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.28
 
 Top candidates:
-1) app/orchestrators/platform.py:2024 — app.orchestrators.platform.step_78__execute_tools (score 0.27)
+1) app/core/langgraph/graph.py:1019 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_type (score 0.28)
+   Evidence: Score 0.28, Route from ToolType node based on tool type.
+2) app/orchestrators/platform.py:2024 — app.orchestrators.platform.step_78__execute_tools (score 0.27)
    Evidence: Score 0.27, RAG STEP 78 — LangGraphAgent._tool_call Execute tools
 ID: RAG.platform.langgraph...
-2) app/orchestrators/routing.py:14 — app.orchestrators.routing.step_79__tool_type (score 0.27)
+3) app/orchestrators/routing.py:14 — app.orchestrators.routing.step_79__tool_type (score 0.27)
    Evidence: Score 0.27, RAG STEP 79 — Tool type?
 
 ID: RAG.routing.tool.type
 Type: decision | Category: r...
-3) app/orchestrators/platform.py:2369 — app.orchestrators.platform._format_content_by_tool_type (score 0.27)
+4) app/orchestrators/platform.py:2369 — app.orchestrators.platform._format_content_by_tool_type (score 0.27)
    Evidence: Score 0.27, Format tool result content based on tool type.
-4) app/orchestrators/routing.py:94 — app.orchestrators.routing._determine_tool_type_and_routing (score 0.27)
+5) app/orchestrators/routing.py:94 — app.orchestrators.routing._determine_tool_type_and_routing (score 0.27)
    Evidence: Score 0.27, Determine tool type and routing destination based on tool call context.
 
 Maps to...
-5) app/orchestrators/routing.py:271 — app.orchestrators.routing._handle_tool_type_error (score 0.27)
-   Evidence: Score 0.27, Handle errors in tool type detection with graceful fallback.
 
 Notes:
-- Weak or missing implementation
+- Strong implementation match found
 - Low confidence in symbol matching
+- Wired via graph registry ✅
+- Incoming: [75], Outgoing: [80, 81, 82, 83]
 
 Suggested next TDD actions:
-- Create decision implementation for ToolType
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

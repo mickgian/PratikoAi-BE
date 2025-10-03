@@ -62,6 +62,8 @@ ID: RAG.cache.logger.info.log.cache.hit
 
 Notes:
 - Strong implementation match found
+- Wired via graph registry ✅
+- Incoming: [59], Outgoing: [64, 66]
 
 Suggested next TDD actions:
 - Verify complete test coverage

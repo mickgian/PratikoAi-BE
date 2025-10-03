@@ -24,6 +24,18 @@ async def node_step_64(state: RAGState) -> RAGState:
         if isinstance(result, dict):
             new_state.update(result)
 
+        # Populate consistent LLM state keys
+        llm_request = new_state.get("llm_request")
+        llm_response = new_state.get("llm_response")
+
+        # Initialize LLM state structure
+        if "llm" not in new_state:
+            new_state["llm"] = {}
+
+        new_state["llm"]["request"] = llm_request
+        new_state["llm"]["response"] = llm_response
+        new_state["llm"]["success"] = llm_response is not None
+
         rag_step_log(STEP, "exit",
                     changed_keys=[k for k in new_state.keys()
                                 if new_state.get(k) != state.get(k)])

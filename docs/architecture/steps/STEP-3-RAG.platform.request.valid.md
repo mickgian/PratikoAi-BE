@@ -57,17 +57,15 @@ Type: decis...
 
 Args:
     timestamp_str: Unix ti...
-4) app/core/langgraph/nodes/step_003__valid_check.py:10 — app.core.langgraph.nodes.step_003__valid_check.node_step_3 (score 0.28)
-   Evidence: Score 0.28, Node implementation for Step 3: ValidCheck.
-
-Decision node that determines if re...
-5) app/core/langgraph/graph.py:861 — app.core.langgraph.graph.LangGraphAgent._route_from_valid_check (score 0.28)
+4) app/core/langgraph/nodes/step_003__valid_check.py:9 — app.core.langgraph.nodes.step_003__valid_check.node_step_3 (score 0.28)
+   Evidence: Score 0.28, Node wrapper for Step 3: Valid check decision node.
+5) app/core/langgraph/graph.py:957 — app.core.langgraph.graph.LangGraphAgent._route_from_valid_check (score 0.28)
    Evidence: Score 0.28, Route from ValidCheck node based on request validity.
 
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Node step requires LangGraph wiring to be considered fully implemented
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

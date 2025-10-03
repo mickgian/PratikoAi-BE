@@ -24,6 +24,12 @@ async def node_step_67(state: RAGState) -> RAGState:
         if isinstance(result, dict):
             new_state.update(result)
 
+        # This is a decision node - read LLM success from previous step
+        llm_success = new_state.get("llm", {}).get("success", True)
+
+        # Store decision result for routing
+        new_state["llm_success_decision"] = llm_success
+
         rag_step_log(STEP, "exit",
                     changed_keys=[k for k in new_state.keys()
                                 if new_state.get(k) != state.get(k)])

@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.31
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/llm.py:320 — app.orchestrators.llm.step_67__llmsuccess (score 0.31)
@@ -47,10 +47,8 @@ Type: decisio...
 2) app/orchestrators/providers.py:1009 — app.orchestrators.providers._execute_llm_api_call (score 0.29)
    Evidence: Score 0.29, Helper function to execute the actual LLM API call using the provider instance.
 ...
-3) app/core/langgraph/nodes/step_064__llm_call.py:10 — app.core.langgraph.nodes.step_064__llm_call.node_step_64 (score 0.28)
-   Evidence: Score 0.28, Node implementation for Step 64: LLMCall.
-
-Makes LLM API call using selected pro...
+3) app/core/langgraph/nodes/step_064__llm_call.py:9 — app.core.langgraph.nodes.step_064__llm_call.node_step_64 (score 0.28)
+   Evidence: Score 0.28, Node wrapper for Step 64: Make LLM API call.
 4) app/core/llm/factory.py:355 — app.core.llm.factory.get_llm_factory (score 0.26)
    Evidence: Score 0.26, Get the global LLM factory instance.
 
@@ -61,12 +59,13 @@ Returns:
 ID: RAG.llm.llm.better.than.rule.based...
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Node step requires LangGraph wiring to be considered fully implemented
+- Wired via graph registry ✅
+- Incoming: [64], Outgoing: [68, 69]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

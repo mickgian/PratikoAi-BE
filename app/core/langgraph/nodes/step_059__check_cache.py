@@ -24,6 +24,18 @@ async def node_step_59(state: RAGState) -> RAGState:
         if isinstance(result, dict):
             new_state.update(result)
 
+        # Populate consistent cache state keys
+        cache_key = new_state.get("cache_key")
+        cache_value = new_state.get("cached_response")
+
+        # Initialize cache state structure
+        if "cache" not in new_state:
+            new_state["cache"] = {}
+
+        new_state["cache"]["key"] = cache_key
+        new_state["cache"]["hit"] = cache_value is not None
+        new_state["cache"]["value"] = cache_value
+
         rag_step_log(STEP, "exit",
                     changed_keys=[k for k in new_state.keys()
                                 if new_state.get(k) != state.get(k)])

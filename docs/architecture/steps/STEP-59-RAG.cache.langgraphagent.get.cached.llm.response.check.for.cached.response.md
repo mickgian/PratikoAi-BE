@@ -63,6 +63,8 @@ Args:
 
 Notes:
 - Strong implementation match found
+- Wired via graph registry ✅
+- Incoming: [], Outgoing: [62]
 
 Suggested next TDD actions:
 - Verify complete test coverage

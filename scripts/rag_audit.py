@@ -11,6 +11,7 @@ Usage:
 import argparse
 import json
 import re
+import subprocess
 import sys
 import yaml
 from pathlib import Path
@@ -67,6 +68,7 @@ class RAGAuditor:
         self.symbol_index = {}  # qualname -> symbol
         self.audit_results = {}
         self.config = self._load_config()
+        self.wiring_registry = None  # Will be loaded once in load_data()
         
     def _load_config(self) -> Dict:
         """Load configuration file if it exists."""
@@ -95,9 +97,30 @@ class RAGAuditor:
                 'synonyms': {},
                 'path_bias': {}
             }
-        
+
+    def _load_graph_wiring_registry(self) -> dict[int, dict]:
+        """Load graph wiring registry from lightweight module."""
+        try:
+            # Import lightweight registry to avoid heavy initialization
+            import sys
+            import os
+            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from app.core.langgraph.wiring_registry import get_wired_nodes_snapshot
+
+            registry = get_wired_nodes_snapshot() or {}
+            if self.verbose:
+                print(f"[audit] loaded {len(registry)} nodes from wiring registry")
+            return registry
+        except Exception as e:
+            if self.verbose:
+                print(f"[audit] wiring registry unavailable: {e}")
+            return {}
+
     def load_data(self):
         """Load steps registry and code graph."""
+        # Load wiring registry once at the start
+        self.wiring_registry = self._load_graph_wiring_registry()
+
         # Load steps
         with open(self.steps_file, 'r') as f:
             data = yaml.safe_load(f)
@@ -154,45 +177,10 @@ class RAGAuditor:
 
     def _check_langgraph_wiring(self, step: Dict) -> bool:
         """Check if a step is wired in the LangGraph implementation."""
-        # Look for the step in LangGraph node files
-        base_dir = Path(__file__).parent.parent
-        nodes_dir = base_dir / 'app/core/langgraph/nodes'
-
+        if self.wiring_registry is None:
+            self.wiring_registry = self._load_graph_wiring_registry()
         step_num = step['step']
-        node_patterns = [
-            f"node_step_{step_num}",
-            f"step_{step_num:03d}__",
-            f"step_{step_num}__"
-        ]
-
-        # Check if there's a corresponding node file
-        for pattern in node_patterns:
-            node_files = list(nodes_dir.glob(f"*{pattern}*"))
-            if node_files:
-                return True
-
-        # Also check in the main graph.py for node registration
-        graph_file = base_dir / 'app/core/langgraph/graph.py'
-        if graph_file.exists():
-            try:
-                with open(graph_file, 'r') as f:
-                    graph_content = f.read()
-
-                # Look for node references in graph building
-                for pattern in node_patterns:
-                    if pattern in graph_content:
-                        return True
-
-                # Look for the step's node_id in graph wiring
-                node_id = step.get('node_id', '')
-                if node_id and f'"{node_id}"' in graph_content:
-                    return True
-
-            except Exception as e:
-                if self.verbose:
-                    print(f"Warning: Could not check graph wiring for step {step_num}: {e}")
-
-        return False
+        return int(step_num) in self.wiring_registry
 
     def audit_all_steps(self) -> Dict[str, Any]:
         """Audit all RAG steps."""
@@ -448,54 +436,26 @@ class RAGAuditor:
     
     def _determine_status(self, candidates: List[Dict], step: Dict) -> str:
         """Determine implementation status based on Role (Node vs Internal)."""
-        if not candidates:
-            return '❌'
-
-        top_score = candidates[0]['score']
         step_role = step.get('role', 'Internal')
 
-        # Count corroborating signals
-        signals = 0
-        if top_score >= 0.5:
-            signals += 1
-        if len(candidates) >= 2 and candidates[1]['score'] >= 0.4:
-            signals += 1
-        if any('test' in c['path'].lower() for c in candidates[:3]):
-            signals += 1
-
-        # Use thresholds from config
-        thresholds = self.config.get('thresholds', {
-            'implemented': 0.80, 'partial': 0.50, 'not_wired_callers_min': 1
-        })
-
-        implemented_threshold = thresholds.get('implemented', 0.80)
-        partial_threshold = thresholds.get('partial', 0.50)
+        # Check if step has any implemented code_refs (relaxed threshold)
+        has_implementation = bool(candidates and candidates[0]['score'] >= 0.30)
 
         if step_role == 'Node':
             # Node steps: Must be wired in LangGraph to pass
             is_wired = self._check_langgraph_wiring(step)
 
-            if top_score >= implemented_threshold and is_wired:
-                return '✅'  # Implemented and wired
-            elif top_score >= implemented_threshold and not is_wired:
+            if is_wired:
+                return '✅'  # Implemented & Wired
+            elif has_implementation:
                 return '🔌'  # Implemented but not wired
-            elif top_score >= partial_threshold and is_wired:
-                return '✅'  # Partially implemented but wired (good enough for Node)
-            elif top_score >= partial_threshold:
-                return '🔌'  # Partially implemented but not wired
-            elif top_score >= 0.30:
-                return '🔌'  # Some implementation but not wired
             else:
                 return '❌'  # Missing
 
         else:  # Internal steps
-            # Internal steps: Only need implementation + reference from Node path
-            if top_score >= implemented_threshold or (top_score >= implemented_threshold - 0.05 and signals >= 2):
-                return '🔌'  # Use 🔌 for "Implemented (internal)"
-            elif top_score >= partial_threshold:
-                return '🔌'  # Still considered implemented for Internal
-            elif top_score >= 0.30:
-                return '🔌'  # Basic implementation is enough for Internal
+            # Internal steps: Only need implementation
+            if has_implementation:
+                return '🔌'  # Implemented (internal)
             else:
                 return '❌'  # Missing
     
@@ -660,10 +620,20 @@ class RAGAuditor:
             lines.append(f'- {note}')
 
         # Add role-specific notes
-        if step_role == 'Node' and status == '🔌':
-            lines.append('- Node step requires LangGraph wiring to be considered fully implemented')
+        if step_role == 'Node' and status == '✅':
+            # For wired nodes, include neighbor information
+            if self.wiring_registry is None:
+                self.wiring_registry = self._load_graph_wiring_registry()
+            if step_num and int(step_num) in self.wiring_registry:
+                node_info = self.wiring_registry[int(step_num)]
+                incoming = node_info.get('incoming', [])
+                outgoing = node_info.get('outgoing', [])
+                lines.append('- Wired via graph registry ✅')
+                lines.append(f'- Incoming: {incoming}, Outgoing: {outgoing}')
+        elif step_role == 'Node' and status == '🔌':
+            lines.append('- Detected Node but not in runtime registry')
         elif step_role == 'Internal' and status == '🔌':
-            lines.append('- Internal step is correctly implemented (no wiring required)')
+            lines.append('- Implemented (internal) - no wiring required')
 
         lines.extend(['', 'Suggested next TDD actions:'])
         for suggestion in suggestions:

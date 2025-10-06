@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.66
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.66
 
 Top candidates:
 1) app/orchestrators/cache.py:774 — app.orchestrators.cache.step_68__cache_response (score 0.66)
@@ -61,13 +61,12 @@ Args:
     ttl: Ti...
 
 Notes:
-- Strong implementation match found
-- Wired via graph registry ✅
-- Incoming: [67], Outgoing: [74]
+- Implementation exists but may not be wired correctly
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 - Add cache invalidation and TTL tests
 <!-- AUTO-AUDIT:END -->

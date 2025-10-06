@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.47
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.47
 
 Top candidates:
 1) app/orchestrators/ccnl.py:14 — app.orchestrators.ccnl.step_81__ccnlquery (score 0.47)
@@ -53,13 +53,12 @@ ID: RAG.ccnl.ccnltool.c...
    Evidence: Score 0.39, Convert external data format to CCNLAgreement.
 
 Notes:
-- Strong implementation match found
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [79], Outgoing: [99]
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

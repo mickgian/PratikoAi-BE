@@ -8,7 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `BalanceProvider` (Balance cost and quality).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/providers.py:431` - `step_53__balance_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator selecting balanced LLM provider that optimizes both cost and quality metrics. Applies weighted scoring to find optimal trade-off between price and performance.
@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.49
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.49
 
 Top candidates:
 1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.49)
@@ -60,7 +60,7 @@ context enri...
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Implemented (internal) - no wiring required
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

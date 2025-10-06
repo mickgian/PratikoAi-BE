@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.54
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.54
 
 Top candidates:
 1) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.54)
@@ -56,12 +56,11 @@ ID: RAG.golden.post.api.v1.faq.feedba...
    Evidence: Score 0.51, Trigger analysis of query patterns to identify new FAQ candidates
 
 Notes:
-- Strong implementation match found
-- Wired via graph registry ✅
-- Incoming: [79], Outgoing: [99]
+- Implementation exists but may not be wired correctly
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

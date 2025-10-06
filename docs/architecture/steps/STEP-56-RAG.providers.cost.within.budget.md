@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CostCheck` (Cost within budget?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/providers.py:739` - `step_56__cost_check()`
 - **Role:** Node
-- **Status:** missing
+- **Paths / classes:** `app/orchestrators/providers.py:739` - `step_56__cost_check()`
+- **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator checking if estimated cost is within budget constraints. Decision point for provider selection based on cost limits.
 
 ## Differences (Blueprint vs Current)

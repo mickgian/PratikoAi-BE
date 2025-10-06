@@ -24,11 +24,35 @@ from .step_083__faq_tool import node_step_83
 from .step_099__tool_results import node_step_99
 from .step_112__end import node_step_112
 
+# Phase 5 Provider Governance Lane imports
+from .step_048__select_provider import node_step_48
+from .step_049__route_strategy import node_step_49
+from .step_050__strategy_type import node_step_50
+from .step_051__cheap_provider import node_step_51
+from .step_052__best_provider import node_step_52
+from .step_053__balance_provider import node_step_53
+from .step_054__primary_provider import node_step_54
+from .step_055__estimate_cost import node_step_55
+from .step_056__cost_check import node_step_56
+from .step_057__create_provider import node_step_57
+from .step_058__cheaper_provider import node_step_58
+
 __all__ = [
     "node_step_1",
     "node_step_3",
     "node_step_6",
     "node_step_9",
+    "node_step_48",
+    "node_step_49",
+    "node_step_50",
+    "node_step_51",
+    "node_step_52",
+    "node_step_53",
+    "node_step_54",
+    "node_step_55",
+    "node_step_56",
+    "node_step_57",
+    "node_step_58",
     "node_step_59",
     "node_step_62",
     "node_step_64",

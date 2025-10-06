@@ -9,8 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Status:** missing
 - **Paths / classes:** `app/orchestrators/providers.py:14` - `step_48__select_provider()`
+- **Status:** ✅ Implemented
 - **Behavior notes:** Runtime boundary; selects optimal LLM provider based on routing strategy; routes to next provider steps.
 
 ## Differences (Blueprint vs Current)
@@ -54,7 +54,7 @@ Type...
 4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
    Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
 context enri...
-5) app/core/langgraph/graph.py:609 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.45)
+5) app/core/langgraph/graph.py:640 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.45)
    Evidence: Score 0.45, Get the optimal LLM provider for the given messages.
 
 Args:

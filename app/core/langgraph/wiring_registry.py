@@ -27,6 +27,39 @@ PHASE4_WIRED_NODES = {
     99: {"id": "RAG.platform.return.to.tool.caller", "name": "node_step_99", "incoming": [80, 81, 82, 83], "outgoing": []},
 }
 
+# Phase 5 wiring registry - Provider Governance Lane
+PHASE5_WIRED_NODES = {
+    48: {"id": "RAG.providers.langgraphagent.get.optimal.provider.select.llm.provider", "name": "node_step_48", "incoming": [], "outgoing": [49]},
+    49: {"id": "RAG.platform.routing.strategy", "name": "node_step_49", "incoming": [48], "outgoing": [50]},
+    50: {"id": "RAG.platform.routing.strategy.type", "name": "node_step_50", "incoming": [49], "outgoing": [51, 52, 53, 54]},
+    51: {"id": "RAG.providers.select.cheapest.provider", "name": "node_step_51", "incoming": [50], "outgoing": [55]},
+    52: {"id": "RAG.providers.select.best.provider", "name": "node_step_52", "incoming": [50], "outgoing": [55]},
+    53: {"id": "RAG.providers.balance.cost.and.quality", "name": "node_step_53", "incoming": [50], "outgoing": [55]},
+    54: {"id": "RAG.providers.use.primary.provider", "name": "node_step_54", "incoming": [50], "outgoing": [55]},
+    55: {"id": "RAG.providers.costcalculator.estimate.cost.calculate.query.cost", "name": "node_step_55", "incoming": [51, 52, 53, 54, 58], "outgoing": [56]},
+    56: {"id": "RAG.providers.cost.check", "name": "node_step_56", "incoming": [55], "outgoing": [57, 58]},
+    57: {"id": "RAG.providers.create.provider.instance", "name": "node_step_57", "incoming": [56], "outgoing": [59]},
+    58: {"id": "RAG.providers.find.cheaper.provider", "name": "node_step_58", "incoming": [56], "outgoing": [55]},
+}
+
+# Global wiring registry (combined view)
+WIRED_NODES: dict[int, dict] = {}
+
+def initialize_phase4_registry() -> None:
+    """Initialize Phase 4 nodes in the wiring registry."""
+    WIRED_NODES.update(PHASE4_WIRED_NODES)
+
+def initialize_phase5_registry() -> None:
+    """Initialize Phase 5 nodes in the wiring registry."""
+    WIRED_NODES.update(PHASE5_WIRED_NODES)
+
+def track_edge(from_step: int, to_step: int) -> None:
+    """Track an edge between two steps in the wiring registry."""
+    if from_step in WIRED_NODES:
+        WIRED_NODES[from_step]["outgoing"] = sorted(set(WIRED_NODES[from_step]["outgoing"] + [to_step]))
+    if to_step in WIRED_NODES:
+        WIRED_NODES[to_step]["incoming"] = sorted(set(WIRED_NODES[to_step]["incoming"] + [from_step]))
+
 def get_wired_nodes_snapshot() -> dict[int, dict]:
     """Return a shallow copy of wired nodes registry to avoid mutation."""
-    return {k: dict(v) for k, v in PHASE4_WIRED_NODES.items()}
+    return {k: dict(v) for k, v in WIRED_NODES.items()}

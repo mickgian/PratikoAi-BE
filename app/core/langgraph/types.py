@@ -39,10 +39,14 @@ class RAGState(TypedDict, total=False):
     golden_answer: Optional[dict]
     kb_docs: Optional[List[dict]]
 
-    # provider & cost
+    # provider & cost (legacy fields - kept for compatibility)
     route_strategy: Optional[str]
     provider_choice: Optional[str]
     estimated_cost: Optional[float]
+
+    # provider governance (Phase 5)
+    provider: Optional[dict]  # {"strategy": str|None, "selected": str|None, "estimate": float|None, "budget_ok": bool|None}
+    decisions: Optional[dict]  # {"strategy_type": "CHEAP|BEST|BALANCED|PRIMARY", "cost_ok": bool, ...}
 
     # cache
     cache_key: Optional[str]

@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.32
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.32
 
 Top candidates:
 1) app/orchestrators/platform.py:2248 — app.orchestrators.platform._format_tool_results_for_caller (score 0.32)
@@ -56,13 +56,12 @@ Typ...
    Evidence: Score 0.28, Node wrapper for Step 99: Process and aggregate tool results.
 
 Notes:
-- Strong implementation match found
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [80, 81, 82, 83], Outgoing: []
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

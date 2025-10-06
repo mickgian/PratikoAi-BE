@@ -1,3 +1,4 @@
+
 # RAG STEP 49 — LLMFactory.get_optimal_provider Apply routing strategy (RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy)
 
 **Type:** process  
@@ -8,7 +9,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `RouteStrategy` (LLMFactory.get_optimal_provider Apply routing strategy).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/facts.py:427` - `step_49__route_strategy()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator applying routing strategy to select optimal LLM provider. Balances cost, quality, and availability for provider selection.
@@ -37,7 +38,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.32
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.32
 
 Top candidates:
 1) app/core/llm/factory.py:127 — app.core.llm.factory.LLMFactory.get_optimal_provider (score 0.32)
@@ -50,12 +51,12 @@ Args:
 
 Returns:
     Dictionary of provider ...
-3) app/core/langgraph/graph.py:457 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
+3) app/core/langgraph/graph.py:488 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
    Evidence: Score 0.29, Get the LLM routing strategy from configuration.
 
 Returns:
     RoutingStrategy: ...
-4) app/core/langgraph/graph.py:609 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
+4) app/core/langgraph/graph.py:640 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
    Evidence: Score 0.29, Get the optimal LLM provider for the given messages.
 
 Args:
@@ -69,7 +70,7 @@ Args:
 Notes:
 - Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Implemented (internal) - no wiring required
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.48
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.48
 
 Top candidates:
 1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.48)
@@ -58,14 +58,13 @@ context enri...
    Evidence: Score 0.45, Node wrapper for Step 72: Get failover provider.
 
 Notes:
-- Strong implementation match found
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [62, 72, 73], Outgoing: [67]
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 - Test failover and retry mechanisms
 <!-- AUTO-AUDIT:END -->

@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.31
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.31
 
 Top candidates:
 1) app/services/usage_tracker.py:64 — app.services.usage_tracker.UsageTracker.__init__ (score 0.31)
@@ -60,13 +60,12 @@ ID: RAG.metrics.usagetracker.tr...
    Evidence: Score 0.29, Tracks and manages usage for cost control.
 
 Notes:
-- Strong implementation match found
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [68], Outgoing: [75]
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

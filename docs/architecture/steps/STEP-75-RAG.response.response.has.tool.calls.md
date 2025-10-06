@@ -37,36 +37,32 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.34
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.34
 
 Top candidates:
 1) app/orchestrators/response.py:431 — app.orchestrators.response.step_75__tool_check (score 0.34)
    Evidence: Score 0.34, RAG STEP 75 — Response has tool_calls?
 ID: RAG.response.response.has.tool.calls
 ...
-2) app/core/langgraph/nodes/step_075__tool_check.py:9 — app.core.langgraph.nodes.step_075__tool_check.node_step_75 (score 0.27)
-   Evidence: Score 0.27, Node wrapper for Step 75: Check if tools are needed.
-3) app/core/langgraph/graph.py:1012 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_check (score 0.27)
+2) app/core/langgraph/graph.py:1014 — app.core.langgraph.graph.LangGraphAgent._route_tool_check (score 0.27)
    Evidence: Score 0.27, Route from ToolCheck node.
-4) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
+3) app/core/langgraph/nodes/step_075__tool_check.py:9 — app.core.langgraph.nodes.step_075__tool_check.node_step_75 (score 0.27)
+   Evidence: Score 0.27, Node wrapper for Step 75: Check if tools are needed.
+4) app/core/langgraph/graph.py:1094 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_check (score 0.27)
+   Evidence: Score 0.27, Route from ToolCheck node.
+5) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
    Evidence: Score 0.26, Health check endpoint.
 
 Returns:
     dict: Health status information.
-5) app/main.py:157 — app.main.health_check (score 0.26)
-   Evidence: Score 0.26, Health check endpoint with environment-specific information.
-
-Returns:
-    Dict[...
 
 Notes:
-- Strong implementation match found
+- Implementation exists but may not be wired correctly
 - Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [74], Outgoing: [79]
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 <!-- AUTO-AUDIT:END -->

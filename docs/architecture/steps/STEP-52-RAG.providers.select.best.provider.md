@@ -8,7 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `BestProvider` (Select best provider).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/providers.py:329` - `step_52__best_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator selecting the best quality LLM provider based on performance metrics and capabilities. Prioritizes response quality and accuracy over cost considerations.
@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.52
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.52
 
 Top candidates:
 1) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.52)
@@ -59,7 +59,7 @@ context enri...
 
 Notes:
 - Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

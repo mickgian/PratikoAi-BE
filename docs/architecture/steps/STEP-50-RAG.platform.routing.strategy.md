@@ -9,8 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Status:** missing
 - **Paths / classes:** `app/orchestrators/platform.py:1203` - `step_50__strategy_type()`
+- **Status:** ✅ Implemented
 - **Behavior notes:** Runtime boundary; determines routing strategy type; routes to cheapest, best, balanced, or primary provider selection.
 
 ## Differences (Blueprint vs Current)
@@ -55,7 +55,7 @@ Type: decision | Category: r...
 Maps to...
 4) app/orchestrators/routing.py:271 — app.orchestrators.routing._handle_tool_type_error (score 0.30)
    Evidence: Score 0.30, Handle errors in tool type detection with graceful fallback.
-5) app/core/langgraph/graph.py:457 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
+5) app/core/langgraph/graph.py:488 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
    Evidence: Score 0.28, Get the LLM routing strategy from configuration.
 
 Returns:

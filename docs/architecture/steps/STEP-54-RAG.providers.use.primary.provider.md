@@ -8,7 +8,7 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `PrimaryProvider` (Use primary provider).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/providers.py:533` - `step_54__primary_provider()`
 - **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator selecting primary/preferred LLM provider based on configuration. Routes to the default provider for the given domain-action classification.
@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.50
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.50
 
 Top candidates:
 1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.50)
@@ -59,7 +59,7 @@ context enri...
 
 Notes:
 - Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
 - Connect existing implementation to RAG workflow

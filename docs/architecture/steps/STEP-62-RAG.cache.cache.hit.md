@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.69
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.69
 
 Top candidates:
 1) app/orchestrators/cache.py:283 — app.orchestrators.cache.step_62__cache_hit (score 0.69)
@@ -61,13 +61,12 @@ ID: RAG.cache.logger.info.log.cache.hit
 ...
 
 Notes:
-- Strong implementation match found
-- Wired via graph registry ✅
-- Incoming: [59], Outgoing: [64, 66]
+- Implementation exists but may not be wired correctly
+- Detected Node but not in runtime registry
 
 Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- Connect existing implementation to RAG workflow
+- Add integration tests for end-to-end flow
+- Verify error handling and edge cases
 - Add cache invalidation and TTL tests
 <!-- AUTO-AUDIT:END -->

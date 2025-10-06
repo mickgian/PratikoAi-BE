@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.29
+Role: Node  |  Status: ❌ (Missing)  |  Confidence: 0.29
 
 Top candidates:
 1) app/orchestrators/platform.py:1393 — app.orchestrators.platform.step_69__retry_check (score 0.29)
@@ -46,7 +46,7 @@ ID: RAG.platform.another.attempt.allowed
 ...
 2) app/core/langgraph/nodes/step_069__retry_check.py:9 — app.core.langgraph.nodes.step_069__retry_check.node_step_69 (score 0.27)
    Evidence: Score 0.27, Node wrapper for Step 69: Retry check decision node.
-3) app/core/langgraph/graph.py:998 — app.core.langgraph.graph.LangGraphAgent._route_from_retry_check (score 0.27)
+3) app/core/langgraph/graph.py:1080 — app.core.langgraph.graph.LangGraphAgent._route_from_retry_check (score 0.27)
    Evidence: Score 0.27, Route from RetryCheck node.
 4) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
    Evidence: Score 0.26, Health check endpoint.
@@ -60,13 +60,11 @@ Returns:
     Dict[...
 
 Notes:
-- Strong implementation match found
+- Weak or missing implementation
 - Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [67], Outgoing: [70]
 
 Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- Create decision implementation for RetryCheck
+- Add unit tests covering happy path and edge cases
+- Wire into the RAG pipeline flow
 <!-- AUTO-AUDIT:END -->

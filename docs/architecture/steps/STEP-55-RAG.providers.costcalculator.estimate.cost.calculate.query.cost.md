@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `EstimateCost` (CostCalculator.estimate_cost Calculate query cost).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/providers.py:635` - `step_55__estimate_cost()`
 - **Role:** Node
-- **Status:** missing
+- **Paths / classes:** `app/orchestrators/providers.py:635` - `step_55__estimate_cost()`
+- **Status:** ✅ Implemented
 - **Behavior notes:** Orchestrator calculating estimated query costs for LLM providers. Analyzes token counts, provider pricing, and query complexity to provide cost estimates before execution.
 
 ## Differences (Blueprint vs Current)

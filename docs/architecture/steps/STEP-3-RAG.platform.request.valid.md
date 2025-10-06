@@ -59,7 +59,7 @@ Args:
     timestamp_str: Unix ti...
 4) app/core/langgraph/nodes/step_003__valid_check.py:9 — app.core.langgraph.nodes.step_003__valid_check.node_step_3 (score 0.28)
    Evidence: Score 0.28, Node wrapper for Step 3: Valid check decision node.
-5) app/core/langgraph/graph.py:957 — app.core.langgraph.graph.LangGraphAgent._route_from_valid_check (score 0.28)
+5) app/core/langgraph/graph.py:1039 — app.core.langgraph.graph.LangGraphAgent._route_from_valid_check (score 0.28)
    Evidence: Score 0.28, Route from ValidCheck node based on request validity.
 
 Notes:

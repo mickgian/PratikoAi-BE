@@ -1,10 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(for step in 26 27 28)",
-      "Bash(do file=\"STEP-$step\"*.md)",
-      "Bash(then echo \"=== Updating STEP-$step ===\")",
-      "Bash(head:*)"
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

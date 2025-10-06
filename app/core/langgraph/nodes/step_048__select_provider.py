@@ -1,30 +1,40 @@
 """Node wrapper for Step 48: Select Provider."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
-from app.orchestrators.providers import step_48__select_provider
+from app.core.langgraph import types as rag_types
+
+# Aliases for test introspection
+rag_step_log = rag_types.rag_step_log
+rag_step_timer = rag_types.rag_step_timer
+from app.orchestrators import providers as orchestrators
 
 STEP = 48
 
 
-def node_step_48(state: RAGState) -> RAGState:
-    """Node wrapper for Step 48: Select optimal LLM provider."""
-    with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+def node_step_48(state: rag_types.RAGState) -> rag_types.RAGState:
+    """Node wrapper for Step 48: Select Provider.
 
-        # Delegate to existing orchestrator function
-        # Convert RAGState to the format expected by orchestrator
-        messages = state.get("messages", [])
-        ctx = dict(state)  # Pass full state as context
+    Delegates to the orchestrator and updates state with provider selection results.
+    """
+    provider = state.setdefault("provider", {})
+    decisions = state.setdefault("decisions", {})
+    # Initialize route_strategy if not present (for enter log keys)
+    state.setdefault("route_strategy", None)
 
-        # Call orchestrator
-        result = step_48__select_provider(messages=messages, ctx=ctx)
+    with rag_types.rag_step_timer(STEP):
+        rag_types.rag_step_log(STEP, "enter", keys=list(state.keys()))
 
-        # Merge result back into state
-        new_state = state.copy()
+        # Delegate to the orchestrator
+        result = orchestrators.step_48__select_provider(ctx=state)
+
+        # Merge result fields into provider dict (preserving existing data)
         if isinstance(result, dict):
-            new_state.update(result)
+            if "strategy" in result:
+                provider["strategy"] = result["strategy"]
+                state["route_strategy"] = result["strategy"]  # Update legacy field
+            if "provider" in result:
+                provider["selected"] = result["provider"]
+                state["provider_choice"] = result["provider"]  # Update legacy field
 
-        rag_step_log(STEP, "exit",
-                    changed_keys=[k for k in new_state.keys()
-                                if new_state.get(k) != state.get(k)])
-        return new_state
+        rag_types.rag_step_log(STEP, "exit", provider=provider)
+
+    return state

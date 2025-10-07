@@ -20,11 +20,11 @@ async def node_step_112(state: RAGState) -> RAGState:
         result = await step_112__end(messages=messages, ctx=ctx)
 
         # Merge result back into state
-        new_state = state.copy()
+        # Mutate state in place
         if isinstance(result, dict):
-            new_state.update(result)
+            for key, value in result.items():
+                if key in state or key in RAGState.__annotations__:
+                    state[key] = value  # type: ignore[literal-required]
 
-        rag_step_log(STEP, "exit",
-                    changed_keys=[k for k in new_state.keys()
-                                if new_state.get(k) != state.get(k)])
-        return new_state
+        rag_step_log(STEP, "exit", keys=list(state.keys()))
+        return state

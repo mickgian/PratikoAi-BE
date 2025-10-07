@@ -9,9 +9,9 @@ Each step should be audited and its documentation filled during the conformance 
 **Implementation Status Overview (Tiered Graph Hybrid):**
 
 **Node Steps** (Runtime boundaries - must be wired):
-- ✅ Implemented & Wired: 29 steps
-- 🔌 Not Wired: 19 steps
-- ❌ Missing: 5 steps
+- ✅ Implemented & Wired: 0 steps
+- 🔌 Not Wired: 45 steps
+- ❌ Missing: 8 steps
 - Total Node steps: 53
 
 **Internal Steps** (Pure transforms - implementation only):
@@ -20,29 +20,29 @@ Each step should be audited and its documentation filled during the conformance 
 - Total Internal steps: 82
 
 **Overall Statistics:**
-- ✅ Fully Functional: 29 steps
-- 🔌 Implemented (internal) or Not Wired: 82 steps
-- ❌ Missing: 24 steps
+- ✅ Fully Functional: 0 steps
+- 🔌 Implemented (internal) or Not Wired: 108 steps
+- ❌ Missing: 27 steps
 - Total steps: 135
 
 **By Category:**
-- **cache**: 4 wired + 4 internal / 8 total
-- **ccnl**: 1 wired + 1 internal / 2 total
+- **cache**: 0 wired + 8 internal / 8 total
+- **ccnl**: 0 wired + 2 internal / 2 total
 - **classify**: 0 wired + 9 internal / 9 total
 - **docs**: 0 wired + 11 internal / 11 total
-- **facts**: 1 wired + 7 internal / 8 total
+- **facts**: 0 wired + 8 internal / 8 total
 - **feedback**: 0 wired + 6 internal / 6 total
-- **golden**: 1 wired + 12 internal / 13 total
-- **kb**: 1 wired + 3 internal / 4 total
-- **llm**: 1 wired + 1 internal / 3 total
-- **metrics**: 1 wired + 4 internal / 5 total
-- **platform**: 4 wired + 8 internal / 24 total
-- **preflight**: 1 wired + 2 internal / 10 total
+- **golden**: 0 wired + 13 internal / 13 total
+- **kb**: 0 wired + 4 internal / 4 total
+- **llm**: 0 wired + 2 internal / 3 total
+- **metrics**: 0 wired + 5 internal / 5 total
+- **platform**: 0 wired + 10 internal / 24 total
+- **preflight**: 0 wired + 3 internal / 10 total
 - **privacy**: 0 wired + 3 internal / 3 total
 - **prompting**: 0 wired + 3 internal / 6 total
-- **providers**: 12 wired + 0 internal / 12 total
-- **response**: 1 wired + 4 internal / 6 total
-- **routing**: 1 wired + 0 internal / 1 total
+- **providers**: 0 wired + 12 internal / 12 total
+- **response**: 0 wired + 5 internal / 6 total
+- **routing**: 0 wired + 0 internal / 1 total
 - **streaming**: 0 wired + 4 internal / 4 total
 ## Step Registry
 

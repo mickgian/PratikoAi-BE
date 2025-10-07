@@ -193,6 +193,8 @@ python scripts/rag_audit.py --write
 
 ## Phase 4 — Cache → LLM → Tools Lane (2–3 days)
 
+**Status:** ✅ Implemented
+
 **Goal:** Wire the hot path; keep pure transforms internal.
 
 **Nodes & edges:**
@@ -209,7 +211,15 @@ python scripts/rag_audit.py --write
 
 **Gates:** Parity green; latency & cost stable in canary; audit marks these Nodes as wired ✅.
 
+**Implementation notes:**
+- 17 nodes wired in Phase 4 lane (steps 59, 62, 64, 66-70, 72-75, 79-83, 99)
+- Full cache → LLM → retry → tools flow operational
+- Tests: 41/41 passing in `tests/langgraph/phase4_lane`
+- Wiring registered in `app/core/langgraph/wiring_registry.py`
+
 ## Phase 5 — Provider Governance Lane (2–3 days)
+
+**Status:** ✅ Implemented
 
 **Goal:** Make routing & cost explicit and observable.
 
@@ -222,7 +232,17 @@ python scripts/rag_audit.py --write
 **Metrics:** route distribution, cost/turn, cost rejections.
 **Gate:** Cost regression tests pass; decisions observable in logs/dashboards.
 
+**Implementation notes:**
+- 11 nodes wired in Phase 5 lane (steps 48-58)
+- Provider selection with routing strategies (CHEAP, BEST, BALANCED, PRIMARY)
+- Cost estimation and budget enforcement with cheaper provider fallback loop
+- Tests: 33/33 passing in `tests/langgraph/phase5_provider_lane`
+- Wiring centralized in `app/core/langgraph/wiring_registry.py` (single source of truth)
+- Step 50 ID disambiguated: `RAG.platform.routing.strategy.type`
+
 ## Phase 6 — Request / Privacy Lane (1–2 days)
+
+**Status:** ✅ Implemented
 
 **Goal:** Enforce compliance gates.
 
@@ -233,6 +253,12 @@ python scripts/rag_audit.py --write
 
 **Policies:** hard reject invalid requests; GDPR evidence logs.
 **Gate:** Negative tests pass (bad request, privacy disabled, etc.); audit logs present.
+
+**Implementation notes:**
+- 8 nodes wired in Phase 6 lane (steps 1, 3, 4, 6, 7, 8, 9, 10)
+- Full request validation and privacy compliance flow operational
+- Tests: 9/9 passing in `tests/langgraph/phase6_request_privacy`
+- Wiring registered in `app/core/langgraph/wiring_registry.py`
 
 ## Phase 7 — Streaming / Response Lane (1–2 days)
 

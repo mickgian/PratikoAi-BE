@@ -2,8 +2,12 @@
 
 from .step_001__validate_request import node_step_1
 from .step_003__valid_check import node_step_3
+from .step_004__gdpr_log import node_step_4
 from .step_006__privacy_check import node_step_6
+from .step_007__anonymize_text import node_step_7
+from .step_008__init_agent import node_step_8
 from .step_009__pii_check import node_step_9
+from .step_010__log_pii import node_step_10
 from .step_059__check_cache import node_step_59
 from .step_062__cache_hit import node_step_62
 from .step_064__llm_call import node_step_64
@@ -40,8 +44,12 @@ from .step_058__cheaper_provider import node_step_58
 __all__ = [
     "node_step_1",
     "node_step_3",
+    "node_step_4",
     "node_step_6",
+    "node_step_7",
+    "node_step_8",
     "node_step_9",
+    "node_step_10",
     "node_step_48",
     "node_step_49",
     "node_step_50",

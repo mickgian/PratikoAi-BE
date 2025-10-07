@@ -9,8 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/privacy.py:14` - `step_4__gdprlog()`
-- **Role:** Internal
-- **Status:** missing
+- **Role:** Node
+- **Status:** ✅ (Implemented & Wired)
 - **Behavior notes:** Internal transform within GDPRLog node; records data processing activities for compliance.
 
 ## Differences (Blueprint vs Current)
@@ -37,31 +37,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.49
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 1.00
 
 Top candidates:
-1) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.49)
-   Evidence: Score 0.49, Anonymize PII in structured data (dictionaries).
-2) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.47)
-   Evidence: Score 0.47, Anonymize PII in text while preserving structure.
-3) app/orchestrators/privacy.py:371 — app.orchestrators.privacy.step_7__anonymize_text (score 0.46)
-   Evidence: Score 0.46, RAG STEP 7 — Anonymizer.anonymize_text Anonymize PII
-ID: RAG.privacy.anonymizer....
-4) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.45)
-   Evidence: Score 0.45, Anonymize user data for GDPR "right to be forgotten" compliance.
-
-Replaces PII w...
-5) app/core/privacy/gdpr.py:471 — app.core.privacy.gdpr.GDPRCompliance.handle_data_subject_request (score 0.44)
-   Evidence: Score 0.44, Handle data subject requests under GDPR (Article 15-22).
+1) app/core/langgraph/nodes/step_004__gdpr_log.py:13 — node_step_4 (score 1.00)
+   Evidence: Node wrapper delegating to orchestrator with rag_step_log and rag_step_timer
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
+- Wired via graph registry ✅
+- Incoming: [3], Outgoing: [6]
+- Phase 6 Request/Privacy lane implemented
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Test PII detection and anonymization
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

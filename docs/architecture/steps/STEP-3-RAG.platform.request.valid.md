@@ -9,10 +9,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Status:** missing
+- **Status:** ✅ (Implemented & Wired)
 - **Paths / classes:**
-  - app/orchestrators/platform.py:319 — step_3__valid_check
-  - app/orchestrators/__init__.py:14 — step_3__valid_check (export)
+  - app/core/langgraph/nodes/step_003__valid_check.py:13 — node_step_3 (wrapper)
+  - app/orchestrators/platform.py:319 (orchestrator)
 - **Behavior notes:**
   - Runtime boundary; decision point for request validation.
   - Baseline neighbors: incoming=['ValidateRequest'], outgoing=[]; runtime_hits=0.
@@ -41,34 +41,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.31
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 1.00
 
 Top candidates:
-1) app/orchestrators/platform.py:319 — app.orchestrators.platform.step_3__valid_check (score 0.31)
-   Evidence: Score 0.31, RAG STEP 3 — Request valid?
-ID: RAG.platform.request.valid
-Type: decision | Cate...
-2) app/orchestrators/preflight.py:681 — app.orchestrators.preflight.step_85__valid_attachments_check (score 0.30)
-   Evidence: Score 0.30, RAG STEP 85 — Valid attachments?
-ID: RAG.preflight.valid.attachments
-Type: decis...
-3) app/core/security/request_signing.py:148 — app.core.security.request_signing.RequestSigner._is_timestamp_valid (score 0.29)
-   Evidence: Score 0.29, Check if timestamp is within acceptable range.
-
-Args:
-    timestamp_str: Unix ti...
-4) app/core/langgraph/nodes/step_003__valid_check.py:9 — app.core.langgraph.nodes.step_003__valid_check.node_step_3 (score 0.28)
-   Evidence: Score 0.28, Node wrapper for Step 3: Valid check decision node.
-5) app/core/langgraph/graph.py:1039 — app.core.langgraph.graph.LangGraphAgent._route_from_valid_check (score 0.28)
-   Evidence: Score 0.28, Route from ValidCheck node based on request validity.
+1) app/core/langgraph/nodes/step_003__valid_check.py:13 — node_step_3 (score 1.00)
+   Evidence: Node wrapper delegating to orchestrator with rag_step_log and rag_step_timer
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Detected Node but not in runtime registry
+- Wired via graph registry ✅
+- Incoming: [1], Outgoing: [4]
+- Phase 6 Request/Privacy lane implemented
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

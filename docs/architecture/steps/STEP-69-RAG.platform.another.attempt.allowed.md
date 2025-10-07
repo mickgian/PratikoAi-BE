@@ -46,7 +46,7 @@ ID: RAG.platform.another.attempt.allowed
 ...
 2) app/core/langgraph/nodes/step_069__retry_check.py:9 — app.core.langgraph.nodes.step_069__retry_check.node_step_69 (score 0.27)
    Evidence: Score 0.27, Node wrapper for Step 69: Retry check decision node.
-3) app/core/langgraph/graph.py:1080 — app.core.langgraph.graph.LangGraphAgent._route_from_retry_check (score 0.27)
+3) app/core/langgraph/graph.py:1039 — app.core.langgraph.graph.LangGraphAgent._route_from_retry_check (score 0.27)
    Evidence: Score 0.27, Route from RetryCheck node.
 4) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
    Evidence: Score 0.26, Health check endpoint.

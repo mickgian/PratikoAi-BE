@@ -47,7 +47,7 @@ ID: RAG.platform.another.attempt.allowed
 2) app/orchestrators/platform.py:1530 — app.orchestrators.platform.step_70__prod_check (score 0.28)
    Evidence: Score 0.28, RAG STEP 70 — Prod environment and last retry?
 ID: RAG.platform.prod.environment...
-3) app/core/langgraph/graph.py:1032 — app.core.langgraph.graph.LangGraphAgent._route_prod_check (score 0.27)
+3) app/core/langgraph/graph.py:991 — app.core.langgraph.graph.LangGraphAgent._route_prod_check (score 0.27)
    Evidence: Score 0.27, Route from ProdCheck node.
 4) app/core/langgraph/nodes/step_069__retry_check.py:9 — app.core.langgraph.nodes.step_069__retry_check.node_step_69 (score 0.27)
    Evidence: Score 0.27, Node wrapper for Step 69: Retry check decision node.

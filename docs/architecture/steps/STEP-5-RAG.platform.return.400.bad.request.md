@@ -8,10 +8,15 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `Error400` (Return 400 Bad Request).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/platform.py:412` - `step_5__error400()`
 - **Role:** Internal
-- **Status:** missing
-- **Behavior notes:** Internal transform within Error400 node; formats and returns HTTP 400 Bad Request.
+- **Paths / classes:**
+  - `app/orchestrators/platform.py:412` - `step_5__error400()` (orchestrator)
+- **Status:** ✅ Implemented (Internal - NOT wired by design)
+- **Behavior notes:**
+  - **Why Internal?** This is an error termination handler, not a workflow node. It's invoked by Step 3 (ValidCheck) when validation fails, formats the error response, and terminates the request.
+  - **Why NOT wired?** Error handlers are infrastructure boundaries. The graph handles errors through exception handling and orchestrator return values, not explicit error nodes in the graph topology.
+  - **Canonical Node Set:** Per `docs/architecture/RAG-architecture-mode.md`, error nodes remain Internal. Phase 6 Request/Privacy lane only wires the success path (1→3→4→6→7→9→10→8).
+  - **Flow:** Step 3 (ValidCheck) decision node routes invalid requests to `step_5__error400()` which returns structured error data to the API layer for HTTP 400 response.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -37,31 +42,33 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.19
+Role: Internal  |  Status: ✅ Implemented (NOT wired by design)  |  Confidence: 1.00
 
 Top candidates:
-1) app/models/query.py:79 — app.models.query.QueryRequest (score 0.19)
-   Evidence: Score 0.19, Pydantic model for incoming query requests.
-2) app/schemas/chat.py:81 — app.schemas.chat.ChatRequest (score 0.19)
-   Evidence: Score 0.19, Request model for chat endpoint.
-
-Attributes:
-    messages: List of messages in ...
-3) app/api/v1/data_export.py:243 — app.api.v1.data_export.request_data_export (score 0.19)
-   Evidence: Score 0.19, Request a comprehensive data export.
-
-Creates a new data export request that wil...
-4) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.19)
-   Evidence: Score 0.19, Request model for FAQ queries.
-5) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.19)
-   Evidence: Score 0.19, Request model for creating FAQ entries.
+1. app/orchestrators/platform.py:412 — step_5__error400() (score 1.00)
+   Evidence: Error handler orchestrator - formats and returns HTTP 400 Bad Request
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
+- **Intentionally NOT wired:** Step 5 is an error termination handler, not a graph node
+- **Architecture decision:** Error handlers remain Internal per canonical node set
+- **Flow:** Step 3 (ValidCheck) → on validation failure → calls step_5__error400() → terminates with HTTP 400
+- **Phase 6 scope:** Only success path wired (1→3→4→6→7→9→10→8), error branches stay Internal
+- Step 5 represents infrastructure (error formatting), not workflow logic
+
+Why NOT wired:
+- Error termination nodes end the workflow and return HTTP responses
+- LangGraph handles errors through orchestrator return values and exception handling, not explicit error nodes
+- Wiring error handlers would complicate graph topology without adding observability value
+- Error metrics captured at decision points (Step 3) and API layer, not in separate nodes
+- Per RAG-architecture-mode.md: "Everything not listed [in canonical node set] remains Internal"
+
+Error handling pattern:
+- Step 3 (ValidCheck) decision: valid=True → Step 4 (GDPRLog), valid=False → step_5__error400() → return error to API
+- Orchestrator exists and works correctly; no node wrapper needed
+- HTTP layer translates orchestrator error result into FastAPI HTTPException with 400 status
 
 Suggested next TDD actions:
-- Create error implementation for Error400
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Verify Step 3 error path unit tests exist
+- Confirm HTTP 400 integration tests cover validation failure scenarios
+- Validate error response format matches API contract
 <!-- AUTO-AUDIT:END -->

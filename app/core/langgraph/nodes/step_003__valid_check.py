@@ -1,30 +1,36 @@
 """Node wrapper for Step 3: Valid Check."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
-from app.orchestrators.platform import step_3__valid_check
+from app.core.langgraph import types as rag_types
+
+# Aliases for test introspection
+rag_step_log = rag_types.rag_step_log
+rag_step_timer = rag_types.rag_step_timer
+from app.orchestrators import platform as orchestrators
 
 STEP = 3
 
 
-def node_step_3(state: RAGState) -> RAGState:
-    """Node wrapper for Step 3: Valid check decision node."""
-    with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+async def node_step_3(state: rag_types.RAGState) -> rag_types.RAGState:
+    """Node wrapper for Step 3: Valid Check (Decision).
 
-        # Delegate to existing orchestrator function
-        # Convert RAGState to the format expected by orchestrator
-        messages = state.get("messages", [])
-        ctx = dict(state)  # Pass full state as context
+    Delegates to the orchestrator and updates state with validity check results.
+    """
+    decisions = state.setdefault("decisions", {})
 
-        # Call orchestrator
-        result = step_3__valid_check(messages=messages, ctx=ctx)
+    with rag_types.rag_step_timer(STEP):
+        rag_types.rag_step_log(STEP, "enter", keys=list(state.keys()))
 
-        # Merge result back into state
-        new_state = state.copy()
+        # Delegate to the orchestrator (cast to dict for type compatibility)
+        result = await orchestrators.step_3__valid_check(ctx=dict(state), messages=state.get("messages"))
+
+        # Merge result fields into state (preserving existing data)
         if isinstance(result, dict):
-            new_state.update(result)
+            if "is_valid" in result:
+                decisions["is_valid"] = bool(result["is_valid"])
+                decisions["request_valid"] = bool(result["is_valid"])  # Legacy compatibility
+            if "validation_result" in result:
+                state["validation_result"] = result["validation_result"]
 
-        rag_step_log(STEP, "exit",
-                    changed_keys=[k for k in new_state.keys()
-                                if new_state.get(k) != state.get(k)])
-        return new_state
+        rag_types.rag_step_log(STEP, "exit", decisions=decisions, is_valid=decisions.get("is_valid"))
+
+    return state

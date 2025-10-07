@@ -1,30 +1,46 @@
 """Node wrapper for Step 1: Validate Request."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
-from app.orchestrators.platform import step_1__validate_request
+from app.core.langgraph import types as rag_types
+
+# Aliases for test introspection
+rag_step_log = rag_types.rag_step_log
+rag_step_timer = rag_types.rag_step_timer
+from app.orchestrators import platform as orchestrators
 
 STEP = 1
 
 
-async def node_step_1(state: RAGState) -> RAGState:
-    """Node wrapper for Step 1: Validate request and authenticate."""
-    with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+async def node_step_1(state: rag_types.RAGState) -> rag_types.RAGState:
+    """Node wrapper for Step 1: Validate request and authenticate.
 
-        # Delegate to existing orchestrator function
-        # Convert RAGState to the format expected by orchestrator
-        messages = state.get("messages", [])
-        ctx = dict(state)  # Pass full state as context
+    Delegates to the orchestrator and updates state with validation results.
+    """
+    decisions = state.setdefault("decisions", {})
 
-        # Call orchestrator
-        result = await step_1__validate_request(messages=messages, ctx=ctx)
+    with rag_types.rag_step_timer(STEP):
+        rag_types.rag_step_log(STEP, "enter", keys=list(state.keys()))
 
-        # Merge result back into state
-        new_state = state.copy()
+        # Delegate to the orchestrator (cast to dict for type compatibility)
+        result = await orchestrators.step_1__validate_request(ctx=dict(state), messages=state.get("messages"))
+
+        # Merge result fields into state (preserving existing data)
         if isinstance(result, dict):
-            new_state.update(result)
+            # Copy validation results into decisions
+            if "request_valid" in result:
+                decisions["request_valid"] = bool(result["request_valid"])
+            if "validation_successful" in result:
+                decisions["validation_successful"] = bool(result["validation_successful"])
+            if "authentication_successful" in result:
+                decisions["authentication_successful"] = bool(result["authentication_successful"])
 
-        rag_step_log(STEP, "exit",
-                    changed_keys=[k for k in new_state.keys()
-                                if new_state.get(k) != state.get(k)])
-        return new_state
+            # Copy session and user info if present
+            if "session" in result:
+                state["session"] = result["session"]
+            if "user" in result:
+                state["user"] = result["user"]
+            if "validated_request" in result:
+                state["validated_request"] = result["validated_request"]
+
+        rag_types.rag_step_log(STEP, "exit", decisions=decisions, request_valid=decisions.get("request_valid"))
+
+    return state

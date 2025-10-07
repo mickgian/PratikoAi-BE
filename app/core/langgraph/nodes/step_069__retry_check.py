@@ -13,30 +13,30 @@ async def node_step_69(state: RAGState) -> RAGState:
 
         # Delegate to existing orchestrator function
         messages = state.get("messages", [])
-        ctx = dict(state)  # Pass full state as context
-
         # Call orchestrator
-        result = await step_69__retry_check(messages=messages, ctx=ctx)
+        result = await step_69__retry_check(messages=messages, ctx=dict(state))
 
         # Merge result back into state
-        new_state = state.copy()
+        # Mutate state in place
         if isinstance(result, dict):
-            new_state.update(result)
+            for key, value in result.items():
+                if key in state or key in RAGState.__annotations__:
+                    state[key] = value  # type: ignore[literal-required]
 
         # Decision logic based on orchestrator result
         # The orchestrator should set retry_allowed flag
-        retry_allowed = new_state.get("retry_allowed", False)
+        retry_allowed = state.get("retry_allowed", False)
 
         # Update llm state for retry tracking
-        if "llm" not in new_state:
-            new_state["llm"] = {}
-        new_state["llm"]["retry_allowed"] = retry_allowed
+        if "llm" not in state:
+            state["llm"] = {}
+        state["llm"]["retry_allowed"] = retry_allowed
 
         # Set retry count
-        retry_count = new_state.get("llm", {}).get("retry_count", 0)
-        new_state["llm"]["retry_count"] = retry_count + 1
+        retry_count = state.get("llm", {}).get("retry_count", 0)
+        state["llm"]["retry_count"] = retry_count + 1
 
         rag_step_log(STEP, "exit",
-                    changed_keys=[k for k in new_state.keys()
-                                if new_state.get(k) != state.get(k)])
-        return new_state
+                    keys=list(state.keys())
+                                )
+        return state

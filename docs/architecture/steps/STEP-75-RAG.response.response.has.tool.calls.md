@@ -44,11 +44,11 @@ Top candidates:
    Evidence: Score 0.34, RAG STEP 75 — Response has tool_calls?
 ID: RAG.response.response.has.tool.calls
 ...
-2) app/core/langgraph/graph.py:1014 — app.core.langgraph.graph.LangGraphAgent._route_tool_check (score 0.27)
+2) app/core/langgraph/graph.py:973 — app.core.langgraph.graph.LangGraphAgent._route_tool_check (score 0.27)
    Evidence: Score 0.27, Route from ToolCheck node.
 3) app/core/langgraph/nodes/step_075__tool_check.py:9 — app.core.langgraph.nodes.step_075__tool_check.node_step_75 (score 0.27)
    Evidence: Score 0.27, Node wrapper for Step 75: Check if tools are needed.
-4) app/core/langgraph/graph.py:1094 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_check (score 0.27)
+4) app/core/langgraph/graph.py:1053 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_check (score 0.27)
    Evidence: Score 0.27, Route from ToolCheck node.
 5) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
    Evidence: Score 0.26, Health check endpoint.

@@ -23,7 +23,14 @@ class RAGState(TypedDict, total=False):
     messages: List[dict]  # original request messages (as dicts)
     streaming: bool
 
-    # privacy
+    # Phase 6 Request/Privacy fields
+    session: Optional[dict]  # Session data from validation
+    user: Optional[dict]  # User data from authentication
+    validated_request: Optional[dict]  # Validated request data
+    validation_result: Optional[dict]  # Validation result details from Step 3
+    privacy: Optional[dict]  # Privacy tracking: {gdpr_logged, pii_detected, anonymized_input, pii_entities, ...}
+
+    # privacy (legacy fields - kept for compatibility)
     privacy_enabled: bool
     pii_detected: bool
     anonymized_input: Optional[str]
@@ -49,18 +56,23 @@ class RAGState(TypedDict, total=False):
     decisions: Optional[dict]  # {"strategy_type": "CHEAP|BEST|BALANCED|PRIMARY", "cost_ok": bool, ...}
 
     # cache
-    cache_key: Optional[str]
-    cache_hit: Optional[bool]
-    cached_response: Optional[dict]
+    cache: Optional[dict]  # Cache state: {key, hit, value}
+    cache_key: Optional[str]  # Legacy field
+    cache_hit: Optional[bool]  # Legacy field
+    cached_response: Optional[dict]  # Legacy field
 
     # llm/tool results
-    llm_request: Optional[dict]
-    llm_response: Optional[dict]
+    llm: Optional[dict]  # LLM state: {request, response, success, retry_count, retry_strategy, ...}
+    tools: Optional[dict]  # Tools state: {requested, type, executed, kb_results, ccnl_results, ...}
+    llm_request: Optional[dict]  # Legacy field
+    llm_response: Optional[dict]  # Legacy field
     tool_calls: Optional[List[dict]]
     tool_results: Optional[List[dict]]
 
     # response/stream
     final_response: Optional[dict]
+    agent_initialized: Optional[bool]  # Step 8: Agent workflow initialized
+    workflow_ready: Optional[bool]  # Step 8: Workflow ready to process
 
     # metrics/epochs (always present)
     metrics: dict  # counters/timers; always present (can be {})
@@ -71,6 +83,14 @@ class RAGState(TypedDict, total=False):
     user_authenticated: Optional[bool]
     anonymized_messages: Optional[List[Any]]
     llm_success: Optional[bool]
+    llm_success_decision: Optional[bool]  # Step 67 decision
+    cache_hit_decision: Optional[bool]  # Step 62 decision
+    tools_requested: Optional[bool]  # Step 75
+    tool_type: Optional[str]  # Step 79
+    returning_cached: Optional[bool]  # Step 66
+    retry_allowed: Optional[bool]  # Step 69
+    is_production: Optional[bool]  # Step 70
+    should_failover: Optional[bool]  # Step 70
     error_message: Optional[str]
     error_code: Optional[int]
     processing_stage: str

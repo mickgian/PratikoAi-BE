@@ -12,19 +12,18 @@ def node_step_2(state: RAGState) -> RAGState:
         rag_step_log(STEP, "enter", keys=list(state.keys()))
 
         # Delegate to existing orchestrator function
-        # Convert RAGState to the format expected by orchestrator
         messages = state.get("messages", [])
-        ctx = dict(state)  # Pass full state as context
 
-        # Call orchestrator
-        result = step_2__start(messages=messages, ctx=ctx)
+        # Call orchestrator (cast to dict for type compatibility)
+        result = step_2__start(messages=messages, ctx=dict(state))
 
-        # Merge result back into state
-        new_state = state.copy()
+        # Merge result fields into state (preserving existing data)
         if isinstance(result, dict):
-            new_state.update(result)
+            # Selectively update state with known fields from result
+            for key, value in result.items():
+                if key in state or key in RAGState.__annotations__:
+                    state[key] = value  # type: ignore[literal-required]
 
-        rag_step_log(STEP, "exit",
-                    changed_keys=[k for k in new_state.keys()
-                                if new_state.get(k) != state.get(k)])
-        return new_state
+        rag_step_log(STEP, "exit", keys=list(state.keys()))
+
+        return state

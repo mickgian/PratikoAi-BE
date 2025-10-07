@@ -22,8 +22,8 @@ def node_step_51(state: rag_types.RAGState) -> rag_types.RAGState:
     with rag_types.rag_step_timer(STEP):
         rag_types.rag_step_log(STEP, "enter", keys=list(state.keys()))
 
-        # Delegate to the orchestrator
-        result = orchestrators.step_51__cheap_provider(ctx=state)
+        # Delegate to the orchestrator (cast to dict for type compatibility)
+        result = orchestrators.step_51__cheap_provider(ctx=dict(state))
 
         # Merge result fields into provider dict (preserving existing data)
         if isinstance(result, dict):

@@ -42,6 +42,18 @@ PHASE5_WIRED_NODES = {
     58: {"id": "RAG.providers.find.cheaper.provider", "name": "node_step_58", "incoming": [56], "outgoing": [55]},
 }
 
+# Phase 6 wiring registry - Request/Privacy Lane
+PHASE6_WIRED_NODES = {
+    1: {"id": "RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate", "name": "node_step_1", "incoming": [], "outgoing": [3]},
+    3: {"id": "RAG.platform.request.valid", "name": "node_step_3", "incoming": [1], "outgoing": [4]},
+    4: {"id": "RAG.privacy.gdprcompliance.record.processing.log.data.processing", "name": "node_step_4", "incoming": [3], "outgoing": [6]},
+    6: {"id": "RAG.privacy.privacy.anonymize.requests.enabled", "name": "node_step_6", "incoming": [4], "outgoing": [7]},
+    7: {"id": "RAG.privacy.anonymizer.anonymize.text.anonymize.pii", "name": "node_step_7", "incoming": [6], "outgoing": [9]},
+    9: {"id": "RAG.platform.pii.detected", "name": "node_step_9", "incoming": [7], "outgoing": [10]},
+    10: {"id": "RAG.platform.logger.info.log.pii.anonymization", "name": "node_step_10", "incoming": [9], "outgoing": [8]},
+    8: {"id": "RAG.response.langgraphagent.get.response.initialize.workflow", "name": "node_step_8", "incoming": [10], "outgoing": []},
+}
+
 # Global wiring registry (combined view)
 WIRED_NODES: dict[int, dict] = {}
 
@@ -52,6 +64,10 @@ def initialize_phase4_registry() -> None:
 def initialize_phase5_registry() -> None:
     """Initialize Phase 5 nodes in the wiring registry."""
     WIRED_NODES.update(PHASE5_WIRED_NODES)
+
+def initialize_phase6_registry() -> None:
+    """Initialize Phase 6 nodes in the wiring registry."""
+    WIRED_NODES.update(PHASE6_WIRED_NODES)
 
 def track_edge(from_step: int, to_step: int) -> None:
     """Track an edge between two steps in the wiring registry."""

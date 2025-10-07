@@ -262,6 +262,8 @@ python scripts/rag_audit.py --write
 
 ## Phase 7 — Streaming / Response Lane (1–2 days)
 
+**Status:** ✅ Implemented
+
 **Goal:** Isolate streaming from compute.
 
 **Nodes:**
@@ -270,6 +272,14 @@ python scripts/rag_audit.py --write
 ```
 
 **Gate:** Streaming stability & metrics visible; non-stream path unaffected.
+
+**Implementation notes:**
+- 9 nodes wired in Phase 7 lane (steps 104-111, plus 112 End)
+- Streaming branch: 104 → 105 → 106 → 107 → 108 → 109 → 110 → 111 → 112
+- Non-streaming path: 104 → 111 → 112 (skips SSE nodes 105-110)
+- Tests: 6 test files with comprehensive coverage in `tests/langgraph/phase7_streaming`
+- Wiring registered in `app/core/langgraph/wiring_registry.py`
+- Graph function: `create_graph_phase7_streaming()` in `app/core/langgraph/graph.py`
 
 ## Phase 8 — Golden / KB Gates (2–3 days)
 

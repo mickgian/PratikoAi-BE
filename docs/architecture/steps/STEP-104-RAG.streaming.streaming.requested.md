@@ -8,9 +8,9 @@
 Determines if the client requested streaming response format by checking request parameters and HTTP headers. Routes to StreamSetup (Step 105) for streaming responses or ReturnComplete (Step 112) for regular JSON responses. Critical decision point that enables real-time response streaming based on client preferences. This step is derived from the Mermaid node: `StreamCheck` (Streaming requested?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/streaming.py:15` - `step_104__stream_check()`
+- **Paths / classes:** `app/core/langgraph/nodes/step_104__stream_check.py` - `node_step_104`, `app/orchestrators/streaming.py:15` - `step_104__stream_check()`
 - **Role:** Node
-- **Status:** missing
+- **Status:** ✅ Implemented
 - **Behavior notes:** Async decision orchestrator that checks stream parameter, HTTP Accept headers, and client preferences. Routes to StreamSetup for streaming or ReturnComplete for JSON responses. Includes streaming configuration setup and comprehensive value parsing for various stream parameter formats.
 
 ## Differences (Blueprint vs Current)
@@ -38,7 +38,7 @@ Determines if the client requested streaming response format by checking request
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.34
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.34
 
 Top candidates:
 1) app/orchestrators/streaming.py:15 — app.orchestrators.streaming.step_104__stream_check (score 0.34)
@@ -59,12 +59,13 @@ Thin async orchestrator...
 Thin async orchestrator that crea...
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Detected Node but not in runtime registry
+- Wired via graph registry ✅
+- Incoming: [], Outgoing: [105, 111]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

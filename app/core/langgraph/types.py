@@ -1,9 +1,9 @@
 """Types and utilities for LangGraph RAG implementation."""
 
-from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, TypedDict
-import time
 import logging
+import time
+from contextlib import contextmanager
+from typing import Any, List, Optional, TypedDict
 
 # Get logger for rag_step_log
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class RAGState(TypedDict, total=False):
     session_id: str
     user_id: Optional[str]
     messages: List[dict]  # original request messages (as dicts)
-    streaming: bool
+    streaming: Optional[dict]  # Phase 7: {requested, setup, mode, channel, chunks_sent, done, ...}
 
     # Phase 6 Request/Privacy fields
     session: Optional[dict]  # Session data from validation

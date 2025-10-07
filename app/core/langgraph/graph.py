@@ -155,6 +155,16 @@ from app.core.langgraph.nodes.step_056__cost_check import node_step_56
 from app.core.langgraph.nodes.step_057__create_provider import node_step_57
 from app.core.langgraph.nodes.step_058__cheaper_provider import node_step_58
 
+# Phase 7 Node imports - Streaming/Response Lane
+from app.core.langgraph.nodes.step_104__stream_check import node_step_104
+from app.core.langgraph.nodes.step_105__stream_setup import node_step_105
+from app.core.langgraph.nodes.step_106__async_gen import node_step_106
+from app.core.langgraph.nodes.step_107__single_pass import node_step_107
+from app.core.langgraph.nodes.step_108__write_sse import node_step_108
+from app.core.langgraph.nodes.step_109__stream_response import node_step_109
+from app.core.langgraph.nodes.step_110__send_done import node_step_110
+from app.core.langgraph.nodes.step_111__collect_metrics import node_step_111
+
 # Phase 1A nodes are now the default implementation
 
 # Import wiring registry functions from centralized module
@@ -163,13 +173,15 @@ from app.core.langgraph.wiring_registry import (
     initialize_phase4_registry,
     initialize_phase5_registry,
     initialize_phase6_registry,
+    initialize_phase7_registry,
     track_edge,
 )
 
-# Initialize Phase 4, 5, and 6 registries at module load time
+# Initialize Phase 4, 5, 6, and 7 registries at module load time
 initialize_phase4_registry()
 initialize_phase5_registry()
 initialize_phase6_registry()
+initialize_phase7_registry()
 
 # Explicit exports for stable API
 __all__ = ["LangGraphAgent", "GraphState", "RAGState", "get_wired_nodes_snapshot"]
@@ -1508,6 +1520,102 @@ class LangGraphAgent:
             logger.error("phase5_graph_creation_failed", error=str(e))
             if settings.ENVIRONMENT == Environment.PRODUCTION:
                 logger.warning("continuing_without_phase5_graph")
+                return None
+            raise e
+
+    async def create_graph_phase7_streaming(self) -> Optional[CompiledStateGraph]:
+        """Create Phase 7 graph with Streaming/Response lane.
+
+        This graph includes all lanes (1-7) with the streaming/response lane wired.
+
+        Flow:
+        - Phase 6 (Request/Privacy): Steps 1 → 3 → 4 → 6 → 7 → 9 → 10 → 8
+        - Phase 5 (Provider): Steps 48 → 49 → 50 → (51|52|53|54) → 55 → 56 → (57|58)
+        - Phase 4 (Cache/LLM/Tools): Steps 59 → 62 → (64|66) → 67 → 68 → 74 → 75 → 79 → (80|81|82|83) → 99
+        - Phase 7 (Streaming/Response): Steps 104 → (105→106→107→108→109→110|111) → 111 → 112
+
+        Returns:
+            Optional[CompiledStateGraph]: The Phase 7 graph or None if init fails
+        """
+        try:
+            graph_builder = StateGraph(RAGState)
+
+            # Phase 7 Streaming/Response Lane nodes
+            graph_builder.add_node("StreamCheck", node_step_104)
+            graph_builder.add_node("StreamSetup", node_step_105)
+            graph_builder.add_node("AsyncGen", node_step_106)
+            graph_builder.add_node("SinglePass", node_step_107)
+            graph_builder.add_node("WriteSSE", node_step_108)
+            graph_builder.add_node("StreamResponse", node_step_109)
+            graph_builder.add_node("SendDone", node_step_110)
+            graph_builder.add_node("CollectMetrics", node_step_111)
+            graph_builder.add_node("End", node_step_112)
+
+            # Phase 7 edges - Streaming lane
+            # StreamCheck branches: stream=True → StreamSetup, stream=False → CollectMetrics
+            graph_builder.add_conditional_edges(
+                "StreamCheck",
+                lambda state: "StreamSetup" if state.get("streaming", {}).get("requested", False) else "CollectMetrics",
+                {
+                    "StreamSetup": "StreamSetup",
+                    "CollectMetrics": "CollectMetrics"
+                }
+            )
+
+            # Streaming path (linear):
+            graph_builder.add_edge("StreamSetup", "AsyncGen")
+            graph_builder.add_edge("AsyncGen", "SinglePass")
+            graph_builder.add_edge("SinglePass", "WriteSSE")
+            graph_builder.add_edge("WriteSSE", "StreamResponse")
+            graph_builder.add_edge("StreamResponse", "SendDone")
+            graph_builder.add_edge("SendDone", "CollectMetrics")
+
+            # Both paths converge at CollectMetrics
+            graph_builder.add_edge("CollectMetrics", "End")
+
+            # Set entry and exit points
+            graph_builder.set_entry_point("StreamCheck")
+            graph_builder.set_finish_point("End")
+
+            # Track all Phase 7 edges in wiring registry
+            track_edge(104, 105)  # stream=True path
+            track_edge(104, 111)  # stream=False path
+            track_edge(105, 106)
+            track_edge(106, 107)
+            track_edge(107, 108)
+            track_edge(108, 109)
+            track_edge(109, 110)
+            track_edge(110, 111)
+            track_edge(111, 112)
+
+            # Get connection pool
+            connection_pool = await self._get_connection_pool()
+            if connection_pool and AsyncPostgresSaver is not None:
+                checkpointer = AsyncPostgresSaver(connection_pool)
+                await checkpointer.setup()
+            else:
+                checkpointer = None
+                if settings.ENVIRONMENT != Environment.PRODUCTION and AsyncPostgresSaver is not None:
+                    raise Exception("Connection pool initialization failed")
+
+            compiled_graph = graph_builder.compile(
+                checkpointer=checkpointer,
+                name=f"{settings.PROJECT_NAME} Agent Phase7 Streaming ({settings.ENVIRONMENT.value})"
+            )
+
+            logger.info(
+                "phase7_streaming_graph_created",
+                graph_name=f"{settings.PROJECT_NAME} Agent Phase7 Streaming",
+                environment=settings.ENVIRONMENT.value,
+                has_checkpointer=checkpointer is not None,
+            )
+
+            return compiled_graph
+
+        except Exception as e:
+            logger.error("phase7_streaming_graph_creation_failed", error=str(e), environment=settings.ENVIRONMENT.value)
+            if settings.ENVIRONMENT == Environment.PRODUCTION:
+                logger.warning("continuing_without_phase7_streaming_graph")
                 return None
             raise e
 

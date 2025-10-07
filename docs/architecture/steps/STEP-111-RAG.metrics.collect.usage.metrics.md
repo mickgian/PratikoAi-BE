@@ -8,8 +8,8 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CollectMetrics` (Collect usage metrics).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
-- **Paths / classes:** `app/orchestrators/metrics.py:297` - `step_111__collect_metrics()`
+- **Paths / classes:** `app/core/langgraph/nodes/step_111__collect_metrics.py` - `node_step_111`, `app/orchestrators/metrics.py:297` - `step_111__collect_metrics()`
+- **Role:** Node
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator collecting usage metrics for analytics and monitoring. Tracks request counts, response times, and resource utilization.
 
@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.31
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.31
 
 Top candidates:
 1) app/orchestrators/metrics.py:139 — app.orchestrators.metrics.step_74__track_usage (score 0.31)
@@ -58,12 +58,13 @@ Args:
    Evidence: Score 0.29, Container for usage metrics.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Implemented (internal) - no wiring required
+- Wired via graph registry ✅
+- Incoming: [104, 110], Outgoing: [112]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

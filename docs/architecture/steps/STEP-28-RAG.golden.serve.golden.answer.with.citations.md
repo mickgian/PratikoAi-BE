@@ -9,8 +9,8 @@ Formats the Golden Set match into a ChatResponse with proper citations and metad
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Paths / classes:** `app/orchestrators/golden.py:413` - `step_28__serve_golden()`
-- **Status:** missing
+- **Paths / classes:** `app/core/langgraph/nodes/step_028__serve_golden.py` - `node_step_28`, `app/orchestrators/golden.py:413` - `step_28__serve_golden()`
+- **Status:** ✅ Implemented
 - **Behavior notes:** Node orchestrator that formats Golden Set answer with citations, metadata, and timing information. Bypasses LLM when high-confidence FAQ match exists and KB has no conflicting updates. Routes to ReturnComplete with formatted response.
 
 ## Differences (Blueprint vs Current)
@@ -38,7 +38,7 @@ Formats the Golden Set match into a ChatResponse with proper citations and metad
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.54
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.54
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)
@@ -59,11 +59,12 @@ This endpoint...
 Requires admin privileges.
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Detected Node but not in runtime registry
+- Strong implementation match found
+- Wired via graph registry ✅
+- Incoming: [27], Outgoing: [30]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

@@ -9,8 +9,8 @@ Evaluates the confidence score of a Golden Set match from Step 24 to determine r
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Paths / classes:** `app/orchestrators/golden.py:260` - `step_25__golden_hit()`
-- **Status:** missing
+- **Paths / classes:** `app/core/langgraph/nodes/step_025__golden_hit.py` - `node_step_25`, `app/orchestrators/golden.py:260` - `step_25__golden_hit()`
+- **Status:** ✅ Implemented
 - **Behavior notes:** Node orchestrator that performs threshold comparison (0.90) on `similarity_score` from Step 24. Routes to KB context check (Step 26) if high confidence, or ClassifyDomain (Step 30) if low confidence. Includes decision metadata for observability.
 
 ## Differences (Blueprint vs Current)
@@ -37,7 +37,7 @@ Evaluates the confidence score of a Golden Set match from Step 24 to determine r
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.53
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.53
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)
@@ -58,11 +58,12 @@ This endpoint...
 Requires admin privileges.
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Detected Node but not in runtime registry
+- Strong implementation match found
+- Wired via graph registry ✅
+- Incoming: [24], Outgoing: [26]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

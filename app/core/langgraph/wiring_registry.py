@@ -67,6 +67,17 @@ PHASE7_WIRED_NODES = {
     112: {"id": "RAG.response.chatbotcontroller.chat.return.response", "name": "node_step_112", "incoming": [111], "outgoing": []},
 }
 
+# Phase 8 wiring registry - Golden/KB Gates
+PHASE8_WIRED_NODES = {
+    20: {"id": "RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe", "name": "node_step_20", "incoming": [], "outgoing": [24]},
+    24: {"id": "RAG.preflight.goldenset.match.by.signature.or.semantic", "name": "node_step_24", "incoming": [20], "outgoing": [25]},
+    25: {"id": "RAG.golden.high.confidence.match.score.at.least.0.90", "name": "node_step_25", "incoming": [24], "outgoing": [26]},
+    26: {"id": "RAG.kb.knowledgesearch.context.topk.fetch.recent.kb.for.changes", "name": "node_step_26", "incoming": [25], "outgoing": [27]},
+    27: {"id": "RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags", "name": "node_step_27", "incoming": [26], "outgoing": [28]},
+    28: {"id": "RAG.golden.serve.golden.answer.with.citations", "name": "node_step_28", "incoming": [27], "outgoing": [30]},
+    30: {"id": "RAG.response.return.chatresponse", "name": "node_step_30", "incoming": [28], "outgoing": []},
+}
+
 # Global wiring registry (combined view)
 WIRED_NODES: dict[int, dict] = {}
 
@@ -85,6 +96,10 @@ def initialize_phase6_registry() -> None:
 def initialize_phase7_registry() -> None:
     """Initialize Phase 7 nodes in the wiring registry."""
     WIRED_NODES.update(PHASE7_WIRED_NODES)
+
+def initialize_phase8_registry() -> None:
+    """Initialize Phase 8 nodes in the wiring registry."""
+    WIRED_NODES.update(PHASE8_WIRED_NODES)
 
 def track_edge(from_step: int, to_step: int) -> None:
     """Track an edge between two steps in the wiring registry."""

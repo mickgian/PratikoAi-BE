@@ -9,8 +9,8 @@ Evaluates whether KB has newer content or conflicting tags compared to the Golde
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Paths / classes:** `app/orchestrators/golden.py:320` - `step_27__kbdelta()`
-- **Status:** missing
+- **Paths / classes:** `app/core/langgraph/nodes/step_027__kb_delta.py` - `node_step_27`, `app/orchestrators/golden.py:320` - `step_27__kbdelta()`
+- **Status:** ✅ Implemented
 - **Behavior notes:** Node orchestrator that evaluates KB delta/conflict using dual-check logic: (1) timestamp comparison for newer KB content, (2) tag-based conflict detection for supersedes/obsoletes/replaces/updated indicators. Routes to Step 28 (ServeGolden) if no delta, or Step 29 (PreContextFromGolden) if conflict detected. Preserves all context from Step 26.
 
 ## Differences (Blueprint vs Current)
@@ -38,7 +38,7 @@ Evaluates whether KB has newer content or conflicting tags compared to the Golde
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.54
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.54
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)
@@ -59,11 +59,12 @@ This endpoint...
 Requires admin privileges.
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Detected Node but not in runtime registry
+- Strong implementation match found
+- Wired via graph registry ✅
+- Incoming: [26], Outgoing: [28]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

@@ -8,8 +8,8 @@
 Formats streaming chunks into Server-Sent Events (SSE) format using the write_sse function. Transforms protected async generator streams into proper SSE format for browser consumption. Essential step that bridges stream protection to streaming response delivery, enabling proper SSE formatting with logging and error handling. Routes from SinglePass (Step 107) to StreamingResponse (Step 109). This step is derived from the Mermaid node: `WriteSSE` (write_sse Format chunks).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
-- **Paths / classes:** `app/orchestrators/streaming.py:287` - `step_108__write_sse()`
+- **Paths / classes:** `app/core/langgraph/nodes/step_108__write_sse.py` - `node_step_108`, `app/orchestrators/streaming.py:287` - `step_108__write_sse()`
+- **Role:** Node
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that formats streaming chunks into SSE format using the existing write_sse function. Creates SSE-formatted generator, configures formatting options, and validates requirements. Routes to StreamingResponse (Step 109) with properly formatted SSE stream ready for delivery.
 
@@ -38,7 +38,7 @@ Formats streaming chunks into Server-Sent Events (SSE) format using the write_ss
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.32
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.32
 
 Top candidates:
 1) app/core/sse_write.py:15 — app.core.sse_write.write_sse (score 0.32)
@@ -54,19 +54,17 @@ Thin async orchestrator that formats st...
    Evidence: Score 0.29, Prepare configuration for SSE formatting.
 4) app/orchestrators/streaming.py:446 — app.orchestrators.streaming._validate_sse_format_requirements (score 0.29)
    Evidence: Score 0.29, Validate SSE formatting requirements and return warnings.
-5) evals/helpers.py:21 — evals.helpers.format_messages (score 0.27)
-   Evidence: Score 0.27, Format a list of messages for evaluation.
-
-Args:
-    messages: List of message d...
+5) app/core/langgraph/nodes/step_108__write_sse.py:9 — app.core.langgraph.nodes.step_108__write_sse.node_step_108 (score 0.28)
+   Evidence: Score 0.28, Node wrapper for Step 108: Format chunks into SSE format.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Implemented (internal) - no wiring required
+- Wired via graph registry ✅
+- Incoming: [107], Outgoing: [109]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

@@ -8,8 +8,8 @@
 Creates an async generator for streaming response delivery. Configures streaming parameters, session data, and provider settings to enable real-time response streaming. Essential step that bridges streaming setup to actual response generation, enabling browser-compatible async iteration. Routes from StreamSetup (Step 105) to SinglePassStream (Step 107). This step is derived from the Mermaid node: `AsyncGen` (Create async generator).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
-- **Paths / classes:** `app/orchestrators/platform.py:2721` - `step_106__async_gen()`
+- **Paths / classes:** `app/core/langgraph/nodes/step_106__async_gen.py` - `node_step_106`, `app/orchestrators/platform.py:2721` - `step_106__async_gen()`
+- **Role:** Node
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that creates async generator with proper streaming configuration, session data, and provider settings. Handles generator configuration, validation, and metadata preparation. Routes to SinglePassStream (Step 107) with complete async generator ready for consumption.
 
@@ -38,7 +38,7 @@ Creates an async generator for streaming response delivery. Configures streaming
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.30
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.30
 
 Top candidates:
 1) app/orchestrators/platform.py:2781 — app.orchestrators.platform._create_streaming_generator (score 0.30)
@@ -49,22 +49,21 @@ Top candidates:
 Thin async orchestrator that creates an a...
 3) app/orchestrators/streaming.py:346 — app.orchestrators.streaming._create_sse_formatted_generator (score 0.29)
    Evidence: Score 0.29, Create SSE-formatted generator using write_sse function.
-4) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.27)
+4) app/core/langgraph/nodes/step_106__async_gen.py:9 — app.core.langgraph.nodes.step_106__async_gen.node_step_106 (score 0.28)
+   Evidence: Score 0.28, Node wrapper for Step 106: Create async generator for streaming.
+5) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.27)
    Evidence: Score 0.27, Create a new FAQ entry.
 
 Requires admin privileges.
-5) app/api/v1/auth.py:265 — app.api.v1.auth.create_session (score 0.26)
-   Evidence: Score 0.26, Create a new chat session for the authenticated user.
-
-Args:
-    user: The authe...
 
 Notes:
-- Weak or missing implementation
+- Strong implementation match found
 - Low confidence in symbol matching
+- Wired via graph registry ✅
+- Incoming: [105], Outgoing: [107]
 
 Suggested next TDD actions:
-- Create process implementation for AsyncGen
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

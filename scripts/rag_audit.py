@@ -101,10 +101,11 @@ class RAGAuditor:
     def _load_graph_wiring_registry(self) -> dict[int, dict]:
         """Load graph wiring registry from lightweight module."""
         try:
-            # Import lightweight registry to avoid heavy initialization
+            # Import graph module first to trigger wiring registry initialization
             import sys
             import os
             sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            import app.core.langgraph.graph  # This triggers initialize_phase*_registry() calls
             from app.core.langgraph.wiring_registry import get_wired_nodes_snapshot
 
             registry = get_wired_nodes_snapshot() or {}

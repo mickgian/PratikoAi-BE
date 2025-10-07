@@ -54,6 +54,19 @@ PHASE6_WIRED_NODES = {
     8: {"id": "RAG.response.langgraphagent.get.response.initialize.workflow", "name": "node_step_8", "incoming": [10], "outgoing": []},
 }
 
+# Phase 7 wiring registry - Streaming/Response Lane
+PHASE7_WIRED_NODES = {
+    104: {"id": "RAG.streaming.streaming.requested", "name": "node_step_104", "incoming": [], "outgoing": [105, 111]},
+    105: {"id": "RAG.streaming.chatbotcontroller.chat.stream.setup.sse", "name": "node_step_105", "incoming": [104], "outgoing": [106]},
+    106: {"id": "RAG.platform.create.async.generator", "name": "node_step_106", "incoming": [105], "outgoing": [107]},
+    107: {"id": "RAG.preflight.singlepassstream.prevent.double.iteration", "name": "node_step_107", "incoming": [106], "outgoing": [108]},
+    108: {"id": "RAG.streaming.write.sse.format.chunks", "name": "node_step_108", "incoming": [107], "outgoing": [109]},
+    109: {"id": "RAG.streaming.streamingresponse.send.chunks", "name": "node_step_109", "incoming": [108], "outgoing": [110]},
+    110: {"id": "RAG.platform.send.done.frame", "name": "node_step_110", "incoming": [109], "outgoing": [111]},
+    111: {"id": "RAG.metrics.collect.usage.metrics", "name": "node_step_111", "incoming": [104, 110], "outgoing": [112]},
+    112: {"id": "RAG.response.chatbotcontroller.chat.return.response", "name": "node_step_112", "incoming": [111], "outgoing": []},
+}
+
 # Global wiring registry (combined view)
 WIRED_NODES: dict[int, dict] = {}
 
@@ -68,6 +81,10 @@ def initialize_phase5_registry() -> None:
 def initialize_phase6_registry() -> None:
     """Initialize Phase 6 nodes in the wiring registry."""
     WIRED_NODES.update(PHASE6_WIRED_NODES)
+
+def initialize_phase7_registry() -> None:
+    """Initialize Phase 7 nodes in the wiring registry."""
+    WIRED_NODES.update(PHASE7_WIRED_NODES)
 
 def track_edge(from_step: int, to_step: int) -> None:
     """Track an edge between two steps in the wiring registry."""

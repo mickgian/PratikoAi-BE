@@ -8,8 +8,8 @@
 Wraps async generators with SinglePassStream to prevent double iteration and streaming duplication. Ensures streaming safety by protecting against accidental re-iteration of generators that could cause duplicate content delivery. Essential step that bridges async generator creation to SSE formatting, enabling secure stream consumption. Routes from AsyncGen (Step 106) to WriteSSE (Step 108). This step is derived from the Mermaid node: `SinglePass` (SinglePassStream Prevent double iteration).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
-- **Paths / classes:** `app/orchestrators/preflight.py:744` - `step_107__single_pass()`
+- **Paths / classes:** `app/core/langgraph/nodes/step_107__single_pass.py` - `node_step_107`, `app/orchestrators/preflight.py:744` - `step_107__single_pass()`
+- **Role:** Node
 - **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that wraps async generators with SinglePassStream protection to prevent double iteration. Configures stream protection settings, validates requirements, and prepares for SSE formatting. Routes to WriteSSE (Step 108) with protected stream ready for consumption.
 
@@ -38,7 +38,7 @@ Wraps async generators with SinglePassStream to prevent double iteration and str
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.31
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.31
 
 Top candidates:
 1) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.31)
@@ -56,12 +56,13 @@ Thin async orchestrato...
    Evidence: Score 0.27, Wrap async generator with SinglePassStream to prevent double iteration.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Implemented (internal) - no wiring required
+- Wired via graph registry ✅
+- Incoming: [106], Outgoing: [108]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

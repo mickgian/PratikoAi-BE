@@ -8,9 +8,9 @@
 Sets up Server-Sent Events (SSE) streaming infrastructure for real-time response delivery. Configures SSE headers, streaming context, and prepares for async generator creation. Essential step that bridges streaming decision to actual response generation, enabling browser-compatible event streaming. Routes to AsyncGen (Step 106) for generator creation. This step is derived from the Mermaid node: `StreamSetup` (ChatbotController.chat_stream Setup SSE).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** `app/orchestrators/streaming.py:149` - `step_105__stream_setup()`
+- **Paths / classes:** `app/core/langgraph/nodes/step_105__stream_setup.py` - `node_step_105`, `app/orchestrators/streaming.py:149` - `step_105__stream_setup()`
 - **Role:** Node
-- **Status:** missing
+- **Status:** ✅ Implemented
 - **Behavior notes:** Async orchestrator that configures SSE headers (Content-Type, Cache-Control, CORS), prepares streaming context with session data, and validates streaming requirements. Handles custom headers, compression settings, and heartbeat configuration. Routes to AsyncGen (Step 106) with complete streaming infrastructure ready.
 
 ## Differences (Blueprint vs Current)
@@ -38,7 +38,7 @@ Sets up Server-Sent Events (SSE) streaming infrastructure for real-time response
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.34
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.34
 
 Top candidates:
 1) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.34)
@@ -60,19 +60,17 @@ Args:
    Evidence: Score 0.28, RAG STEP 105 — ChatbotController.chat_stream Setup SSE.
 
 Thin async orchestrator...
-5) app/schemas/chat.py:107 — app.schemas.chat.StreamResponse (score 0.26)
-   Evidence: Score 0.26, Response model for streaming chat endpoint.
-
-Attributes:
-    content: The conten...
+5) app/core/langgraph/nodes/step_105__stream_setup.py:9 — app.core.langgraph.nodes.step_105__stream_setup.node_step_105 (score 0.27)
+   Evidence: Score 0.27, Node wrapper for Step 105: Setup SSE streaming infrastructure.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Detected Node but not in runtime registry
+- Wired via graph registry ✅
+- Incoming: [104], Outgoing: [106]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

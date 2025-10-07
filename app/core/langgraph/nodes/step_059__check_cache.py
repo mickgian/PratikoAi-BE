@@ -8,35 +8,32 @@ STEP = 59
 
 async def node_step_59(state: RAGState) -> RAGState:
     """Node wrapper for Step 59: Check cache for cached LLM response."""
+    cache = state.setdefault("cache", {})
+
     with rag_step_timer(STEP):
         rag_step_log(STEP, "enter", keys=list(state.keys()))
 
         # Delegate to existing orchestrator function
-        # Convert RAGState to the format expected by orchestrator
         messages = state.get("messages", [])
-        ctx = dict(state)  # Pass full state as context
 
-        # Call orchestrator
-        result = await step_59__check_cache(messages=messages, ctx=ctx)
+        # Call orchestrator (cast to dict for type compatibility)
+        result = await step_59__check_cache(messages=messages, ctx=dict(state))
 
-        # Merge result back into state
-        new_state = state.copy()
+        # Merge result fields into state (preserving existing data)
         if isinstance(result, dict):
-            new_state.update(result)
+            # Selectively update state with known fields from result
+            for key, value in result.items():
+                if key in state or key in RAGState.__annotations__:
+                    state[key] = value  # type: ignore[literal-required]
 
         # Populate consistent cache state keys
-        cache_key = new_state.get("cache_key")
-        cache_value = new_state.get("cached_response")
+        cache_key = state.get("cache_key")
+        cache_value = state.get("cached_response")
 
-        # Initialize cache state structure
-        if "cache" not in new_state:
-            new_state["cache"] = {}
+        cache["key"] = cache_key
+        cache["hit"] = cache_value is not None
+        cache["value"] = cache_value
 
-        new_state["cache"]["key"] = cache_key
-        new_state["cache"]["hit"] = cache_value is not None
-        new_state["cache"]["value"] = cache_value
+        rag_step_log(STEP, "exit", cache=cache, cache_hit=cache.get("hit"))
 
-        rag_step_log(STEP, "exit",
-                    changed_keys=[k for k in new_state.keys()
-                                if new_state.get(k) != state.get(k)])
-        return new_state
+        return state

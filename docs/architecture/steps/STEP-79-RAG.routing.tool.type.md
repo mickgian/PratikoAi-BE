@@ -40,9 +40,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Role: Node  |  Status: ❌ (Missing)  |  Confidence: 0.29
 
 Top candidates:
-1) app/core/langgraph/graph.py:1021 — app.core.langgraph.graph.LangGraphAgent._route_tool_type (score 0.29)
+1) app/core/langgraph/graph.py:980 — app.core.langgraph.graph.LangGraphAgent._route_tool_type (score 0.29)
    Evidence: Score 0.29, Route from ToolType node based on tool type.
-2) app/core/langgraph/graph.py:1101 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_type (score 0.28)
+2) app/core/langgraph/graph.py:1060 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_type (score 0.28)
    Evidence: Score 0.28, Route from ToolType node based on tool type.
 3) app/orchestrators/platform.py:2024 — app.orchestrators.platform.step_78__execute_tools (score 0.27)
    Evidence: Score 0.27, RAG STEP 78 — LangGraphAgent._tool_call Execute tools

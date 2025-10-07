@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `AnonymizeText` (Anonymizer.anonymize_text Anonymize PII).
 
 ## Current Implementation (Repo)
-- **Role:** Internal
+- **Role:** Node
 - **Paths / classes:** `app/orchestrators/privacy.py:371` - `step_7__anonymize_text()`
-- **Status:** missing
+- **Status:** ✅ (Implemented & Wired)
 - **Behavior notes:** Internal transform within AnonymizeText node; anonymizes PII using PIIAnonymizer service.
 
 ## Differences (Blueprint vs Current)
@@ -37,34 +37,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.56
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 1.00
 
 Top candidates:
-1) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.56)
-   Evidence: Score 0.56, Anonymize PII in text while preserving structure.
-2) app/orchestrators/privacy.py:371 — app.orchestrators.privacy.step_7__anonymize_text (score 0.51)
-   Evidence: Score 0.51, RAG STEP 7 — Anonymizer.anonymize_text Anonymize PII
-ID: RAG.privacy.anonymizer....
-3) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.51)
-   Evidence: Score 0.51, Anonymize PII in structured data (dictionaries).
-4) app/models/encrypted_user.py:246 — app.models.encrypted_user.EncryptedUser.anonymize_for_gdpr_deletion (score 0.46)
-   Evidence: Score 0.46, Anonymize user data for GDPR "right to be forgotten" compliance.
-
-Replaces PII w...
-5) app/api/v1/privacy.py:38 — app.api.v1.privacy.anonymize_text (score 0.46)
-   Evidence: Score 0.46, Anonymize PII in text.
-
-Args:
-    request: FastAPI request object
-    anonymizat...
+1) app/core/langgraph/nodes/step_007__anonymize_text.py:13 — node_step_7 (score 1.00)
+   Evidence: Node wrapper delegating to orchestrator with rag_step_log and rag_step_timer
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
+- Wired via graph registry ✅
+- Incoming: [6], Outgoing: [9]
+- Phase 6 Request/Privacy lane implemented
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Test PII detection and anonymization
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

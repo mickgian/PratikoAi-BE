@@ -9,8 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/response.py:15` - `step_8__init_agent()`, `app/core/langgraph/graph.py:894` - `get_response()`
-- **Role:** Internal
-- **Status:** missing
+- **Role:** Node
+- **Status:** ✅ (Implemented & Wired)
 - **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,37 +36,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.33
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 1.00
 
 Top candidates:
-1) app/core/langgraph/graph.py:226 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.33)
-   Evidence: Score 0.33, Initialize the LangGraph Agent with necessary components.
-2) app/core/langgraph/graph.py:488 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.32)
-   Evidence: Score 0.32, Get the LLM routing strategy from configuration.
-
-Returns:
-    RoutingStrategy: ...
-3) app/core/langgraph/graph.py:640 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.32)
-   Evidence: Score 0.32, Get the optimal LLM provider for the given messages.
-
-Args:
-    messages: List o...
-4) app/core/langgraph/graph.py:1633 — app.core.langgraph.graph.LangGraphAgent._needs_complex_workflow (score 0.32)
-   Evidence: Score 0.32, Determine if query needs tools/complex workflow based on classification.
-
-Args:
-...
-5) app/core/langgraph/graph.py:504 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
-   Evidence: Score 0.31, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
--...
+1) app/core/langgraph/nodes/step_008__init_agent.py:13 — node_step_8 (score 1.00)
+   Evidence: Node wrapper delegating to orchestrator with rag_step_log and rag_step_timer
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
+- Wired via graph registry ✅
+- Incoming: [10], Outgoing: []
+- Phase 6 Request/Privacy lane implemented
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

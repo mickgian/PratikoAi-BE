@@ -120,6 +120,12 @@ from app.core.langgraph.nodes import (
     node_step_112,
 )
 
+# Phase 6 Node imports (additional to Phase 1A)
+from app.core.langgraph.nodes.step_004__gdpr_log import node_step_4
+from app.core.langgraph.nodes.step_007__anonymize_text import node_step_7
+from app.core.langgraph.nodes.step_008__init_agent import node_step_8
+from app.core.langgraph.nodes.step_010__log_pii import node_step_10
+
 # Phase 4 Node imports
 from app.core.langgraph.nodes.step_066__return_cached import node_step_66
 from app.core.langgraph.nodes.step_068__cache_response import node_step_68
@@ -156,12 +162,14 @@ from app.core.langgraph.wiring_registry import (
     get_wired_nodes_snapshot,
     initialize_phase4_registry,
     initialize_phase5_registry,
+    initialize_phase6_registry,
     track_edge,
 )
 
-# Initialize Phase 4 and Phase 5 registries at module load time
+# Initialize Phase 4, 5, and 6 registries at module load time
 initialize_phase4_registry()
 initialize_phase5_registry()
+initialize_phase6_registry()
 
 # Explicit exports for stable API
 __all__ = ["LangGraphAgent", "GraphState", "RAGState", "get_wired_nodes_snapshot"]

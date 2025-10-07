@@ -13,22 +13,22 @@ async def node_step_68(state: RAGState) -> RAGState:
 
         # Delegate to existing orchestrator function
         messages = state.get("messages", [])
-        ctx = dict(state)  # Pass full state as context
-
         # Call orchestrator
-        result = await step_68__cache_response(messages=messages, ctx=ctx)
+        result = await step_68__cache_response(messages=messages, ctx=dict(state))
 
         # Merge result back into state
-        new_state = state.copy()
+        # Mutate state in place
         if isinstance(result, dict):
-            new_state.update(result)
+            for key, value in result.items():
+                if key in state or key in RAGState.__annotations__:
+                    state[key] = value  # type: ignore[literal-required]
 
         # Mark that response has been cached
-        if "cache" not in new_state:
-            new_state["cache"] = {}
-        new_state["cache"]["response_cached"] = True
+        if "cache" not in state:
+            state["cache"] = {}
+        state["cache"]["response_cached"] = True
 
         rag_step_log(STEP, "exit",
-                    changed_keys=[k for k in new_state.keys()
-                                if new_state.get(k) != state.get(k)])
-        return new_state
+                    keys=list(state.keys())
+                                )
+        return state

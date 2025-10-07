@@ -9,11 +9,10 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Status:** missing
+- **Status:** ✅ (Implemented & Wired)
 - **Paths / classes:**
-  - app/orchestrators/platform.py:16 — step_1__validate_request
-  - app/orchestrators/__init__.py:14 — step_1__validate_request (export)
-  - app/api/v1/chatbot.py:42 — app.api.v1.chatbot.chat (low confidence)
+  - app/core/langgraph/nodes/step_001__validate_request.py:13 — node_step_1 (wrapper)
+  - app/orchestrators/platform.py:16 (orchestrator)
 - **Behavior notes:**
   - Runtime boundary; validates and authenticates; routes to ValidCheck.
   - Baseline neighbors: incoming=[], outgoing=['ValidCheck']; runtime_hits=0.
@@ -42,42 +41,19 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ❌ (Missing)  |  Confidence: 0.29
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 1.00
 
 Top candidates:
-1) app/api/v1/chatbot.py:42 — app.api.v1.chatbot.chat (score 0.29)
-   Evidence: Score 0.29, Process a chat request using LangGraph.
-
-Args:
-    request: The FastAPI request ...
-2) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.28)
-   Evidence: Score 0.28, Process a chat request using LangGraph with streaming response.
-
-Args:
-    reque...
-3) app/api/v1/chatbot.py:247 — app.api.v1.chatbot.clear_chat_history (score 0.28)
-   Evidence: Score 0.28, Clear all messages for a session.
-
-Args:
-    request: The FastAPI request object...
-4) app/orchestrators/platform.py:16 — app.orchestrators.platform.step_1__validate_request (score 0.28)
-   Evidence: Score 0.28, RAG STEP 1 — ChatbotController.chat Validate request and authenticate
-ID: RAG.pl...
-5) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.28)
-   Evidence: Score 0.28, Validate the message content.
-
-Args:
-    v: The content to validate
-
-Returns:
-  ...
+1) app/core/langgraph/nodes/step_001__validate_request.py:13 — node_step_1 (score 1.00)
+   Evidence: Node wrapper delegating to orchestrator with rag_step_log and rag_step_timer
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
+- Wired via graph registry ✅
+- Incoming: [], Outgoing: [3]
+- Phase 6 Request/Privacy lane implemented
 
 Suggested next TDD actions:
-- Create process implementation for ValidateRequest
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

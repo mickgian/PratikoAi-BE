@@ -39,7 +39,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.46
 
 Top candidates:
-1) app/core/langgraph/graph.py:504 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.46)
+1) app/core/langgraph/graph.py:463 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.46)
    Evidence: Score 0.46, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
 -...
 2) app/orchestrators/classify.py:210 — app.orchestrators.classify.step_31__classify_domain (score 0.46)

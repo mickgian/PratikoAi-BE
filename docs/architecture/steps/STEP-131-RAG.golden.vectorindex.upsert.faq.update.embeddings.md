@@ -10,7 +10,7 @@ Updates vector embeddings for published/updated FAQ entries in the vector index.
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_131__vector_reindex`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator that updates vector embeddings for FAQ entries. Uses EmbeddingManager.update_pinecone_embeddings to upsert FAQ content and metadata into Pinecone vector index. Creates vector indexing metadata for observability. Preserves all context data. Runs in parallel with Step 130 from Step 129 per Mermaid flow.
 
 ## Differences (Blueprint vs Current)
@@ -38,31 +38,8 @@ Updates vector embeddings for published/updated FAQ entries in the vector index.
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.53
-
-Top candidates:
-1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)
-   Evidence: Score 0.53, Approve, reject, or request revision for a generated FAQ
-2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.53)
-   Evidence: Score 0.53, Publish an approved FAQ to make it available to users
-3) app/api/v1/faq.py:431 — app.api.v1.faq.update_faq (score 0.52)
-   Evidence: Score 0.52, Update an existing FAQ entry with versioning.
-
-Requires admin privileges.
-4) app/orchestrators/golden.py:690 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
-   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback.
-
-ID: RAG.golden.post.api.v1.faq.feedba...
-5) app/orchestrators/golden.py:1128 — app.orchestrators.golden.step_131__vector_reindex (score 0.50)
-   Evidence: Score 0.50, RAG STEP 131 — VectorIndex.upsert_faq update embeddings
-ID: RAG.golden.vectorind...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

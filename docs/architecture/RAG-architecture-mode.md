@@ -283,6 +283,8 @@ python scripts/rag_audit.py --write
 
 ## Phase 8 — Golden / KB Gates (2–3 days)
 
+**Status:** ✅ Implemented
+
 **Goal:** Golden fast-path + KB recency checks.
 
 **Nodes:**
@@ -293,6 +295,14 @@ python scripts/rag_audit.py --write
 
 **Metrics:** golden hit% and KB override% by signature.
 **Gate:** Golden answers served with citations; fallbacks verified.
+
+**Implementation notes:**
+- 7 nodes wired in Phase 8 lane (steps 20, 24, 25, 26, 27, 28, 30)
+- Full golden fast-path and KB recency flow operational
+- Tests: 15/15 passing in `tests/langgraph/phase8_golden_kb/test_phase8_comprehensive.py`
+- Wiring registered in `app/core/langgraph/wiring_registry.py`
+- Golden eligibility, lookup/hit decisions, KB context/delta checks all observable
+- Metrics logging for golden hit% and KB override% tracking implemented
 
 ## Phase 9 — Test Suite Hardening (parallel)
 

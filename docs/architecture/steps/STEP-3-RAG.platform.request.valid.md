@@ -9,7 +9,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Status:** ✅ (Implemented & Wired)
+- **Status:** ✅
 - **Paths / classes:**
   - app/core/langgraph/nodes/step_003__valid_check.py:13 — node_step_3 (wrapper)
   - app/orchestrators/platform.py:319 (orchestrator)
@@ -41,19 +41,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 1.00
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/langgraph/nodes/step_003__valid_check.py:13 — node_step_3 (score 1.00)
-   Evidence: Node wrapper delegating to orchestrator with rag_step_log and rag_step_timer
+Wiring information:
+- Node name: node_step_3
+- Incoming edges: [1]
+- Outgoing edges: [4]
 
 Notes:
-- Wired via graph registry ✅
-- Incoming: [1], Outgoing: [4]
-- Phase 6 Request/Privacy lane implemented
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

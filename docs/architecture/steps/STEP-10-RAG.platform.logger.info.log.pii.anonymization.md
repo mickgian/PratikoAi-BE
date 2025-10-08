@@ -9,8 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/platform.py:663` - `step_10__log_pii()`
-- **Role:** Node
-- **Status:** ✅ (Implemented & Wired)
+- **Role:** Internal
+- **Status:** 🔌
 - **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,19 +36,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 1.00
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/langgraph/nodes/step_010__log_pii.py:13 — node_step_10 (score 1.00)
-   Evidence: Node wrapper delegating to orchestrator with rag_step_log and rag_step_timer
+Wiring information:
+- Node name: node_step_10
+- Incoming edges: [9]
+- Outgoing edges: [8]
 
 Notes:
-- Wired via graph registry ✅
-- Incoming: [9], Outgoing: [8]
-- Phase 6 Request/Privacy lane implemented
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

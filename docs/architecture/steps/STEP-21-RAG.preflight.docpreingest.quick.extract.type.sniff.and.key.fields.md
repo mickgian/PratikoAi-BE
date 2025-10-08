@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/preflight.py:147` - `step_21__doc_pre_ingest()`
 - **Role:** Internal
-- **Status:** missing
+- **Status:** 🔌
 - **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,34 +36,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.29
-
-Top candidates:
-1) app/orchestrators/preflight.py:147 — app.orchestrators.preflight.step_21__doc_pre_ingest (score 0.29)
-   Evidence: Score 0.29, RAG STEP 21 — DocPreIngest.quick_extract type sniff and key fields
-ID: RAG.prefl...
-2) app/orchestrators/docs.py:315 — app.orchestrators.docs.step_89__doc_type (score 0.27)
-   Evidence: Score 0.27, RAG STEP 89 — Document type?
-ID: RAG.docs.document.type
-Type: decision | Categor...
-3) app/orchestrators/facts.py:588 — app.orchestrators.facts.step_95__extract_doc_facts (score 0.27)
-   Evidence: Score 0.27, RAG STEP 95 — Extractor.extract Structured fields
-ID: RAG.facts.extractor.extrac...
-4) app/orchestrators/preflight.py:505 — app.orchestrators.preflight.step_82__doc_ingest (score 0.27)
-   Evidence: Score 0.27, RAG STEP 82 — DocumentIngestTool.process Process attachments
-ID: RAG.preflight.d...
-5) app/orchestrators/docs.py:1210 — app.orchestrators.docs._extract_text_and_metadata (score 0.27)
-   Evidence: Score 0.27, Helper function to extract text and metadata from parsed RSS feeds.
-
-Args:
-    p...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for QuickPreIngest
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

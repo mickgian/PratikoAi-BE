@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/facts.py:step_16__canonicalize_facts`
 - **Role:** Internal
-- **Status:** missing
+- **Status:** 🔌
 - **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,27 +36,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.33
-
-Top candidates:
-1) app/services/atomic_facts_extractor.py:581 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_dates (score 0.33)
-   Evidence: Score 0.33, Extract dates, durations, and time-related facts from the query.
-2) app/services/atomic_facts_extractor.py:882 — app.services.atomic_facts_extractor.AtomicFactsExtractor._canonicalize_number (score 0.33)
-   Evidence: Score 0.33, Convert Italian number format to decimal.
-3) app/services/atomic_facts_extractor.py:911 — app.services.atomic_facts_extractor.AtomicFactsExtractor._canonicalize_date (score 0.33)
-   Evidence: Score 0.33, Convert Italian date format to ISO format (YYYY-MM-DD).
-4) app/services/atomic_facts_extractor.py:934 — app.services.atomic_facts_extractor.AtomicFactsExtractor._canonicalize_entity (score 0.33)
-   Evidence: Score 0.33, Canonicalize legal entity text.
-5) app/services/atomic_facts_extractor.py:461 — app.services.atomic_facts_extractor.AtomicFactsExtractor._extract_monetary_amounts (score 0.32)
-   Evidence: Score 0.32, Extract monetary amounts and percentages from the query.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

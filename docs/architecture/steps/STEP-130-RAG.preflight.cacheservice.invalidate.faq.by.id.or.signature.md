@@ -10,7 +10,7 @@ Invalidates cached FAQ responses when an FAQ is published or updated. When an FA
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/preflight.py:909` - `step_130__invalidate_faqcache()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator that invalidates cached FAQ entries. Uses cache_service.clear_cache() to remove cached responses by FAQ ID patterns. Creates cache invalidation metadata for tracking. Preserves all context data. Routes to 'vector_reindex' (Step 131) per Mermaid flow.
 
 ## Differences (Blueprint vs Current)
@@ -38,33 +38,8 @@ Invalidates cached FAQ responses when an FAQ is published or updated. When an FA
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.29
-
-Top candidates:
-1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.29)
-   Evidence: Score 0.29, Initialize the cache service.
-2) app/core/decorators/cache.py:304 — app.core.decorators.cache.invalidate_cache_on_update (score 0.28)
-   Evidence: Score 0.28, Decorator to invalidate cache entries when data is updated.
-
-Args:
-    cache_key...
-3) app/models/faq.py:486 — app.models.faq.generate_faq_cache_key (score 0.28)
-   Evidence: Score 0.28, Generate cache key for FAQ variations.
-4) app/orchestrators/preflight.py:909 — app.orchestrators.preflight.step_130__invalidate_faqcache (score 0.28)
-   Evidence: Score 0.28, RAG STEP 130 — CacheService.invalidate_faq by id or signature
-ID: RAG.preflight....
-5) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.28)
-   Evidence: Score 0.28, Generate a deterministic hash for query deduplication.
-
-Args:
-    messages: List...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for InvalidateFAQCache
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

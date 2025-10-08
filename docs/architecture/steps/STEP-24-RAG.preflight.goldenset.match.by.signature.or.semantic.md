@@ -10,7 +10,7 @@ Matches user queries against the Golden Set (FAQ database) using either query si
 ## Current Implementation (Repo)
 - **Role:** Node
 - **Paths / classes:** `app/core/langgraph/nodes/step_024__golden_lookup.py` - `node_step_24`, `app/orchestrators/preflight.py:239` - `step_24__golden_lookup()`
-- **Status:** ✅ Implemented
+- **Status:** ✅
 - **Behavior notes:** Node orchestrator that performs two-stage matching: (1) Try exact signature match first using query_signature hash from Step 18, (2) Fallback to semantic similarity search using SemanticFAQMatcher. Returns match result with metadata (match_type, similarity_score, search_method) and routes to Step 25 (GoldenHit) for confidence evaluation.
 
 ## Differences (Blueprint vs Current)
@@ -37,34 +37,13 @@ Matches user queries against the Golden Set (FAQ database) using either query si
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.28
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/orchestrators/preflight.py:239 — app.orchestrators.preflight.step_24__golden_lookup (score 0.28)
-   Evidence: Score 0.28, RAG STEP 24 — GoldenSet.match_by_signature_or_semantic
-ID: RAG.preflight.goldens...
-2) app/core/langgraph/nodes/step_024__golden_lookup.py:9 — app.core.langgraph.nodes.step_024__golden_lookup.node_step_24 (score 0.27)
-   Evidence: Score 0.27, Node wrapper for Step 24: Match by signature or semantic search.
-3) app/api/v1/search.py:58 — app.api.v1.search.semantic_search (score 0.26)
-   Evidence: Score 0.26, Perform semantic search on Italian knowledge base.
-
-Args:
-    request: FastAPI r...
-4) app/orchestrators/golden.py:260 — app.orchestrators.golden.step_25__golden_hit (score 0.26)
-   Evidence: Score 0.26, RAG STEP 25 — High confidence match? score at least 0.90
-ID: RAG.golden.high.con...
-5) app/orchestrators/golden.py:320 — app.orchestrators.golden.step_27__kbdelta (score 0.26)
-   Evidence: Score 0.26, RAG STEP 27 — KB newer than Golden as of or conflicting tags?
-ID: RAG.golden.kb....
+Wiring information:
+- Node name: node_step_24
+- Incoming edges: [20]
+- Outgoing edges: [25]
 
 Notes:
-- Strong implementation match found
-- Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [20], Outgoing: [25]
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

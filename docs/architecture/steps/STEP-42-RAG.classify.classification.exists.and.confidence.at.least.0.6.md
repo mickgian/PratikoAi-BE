@@ -9,7 +9,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Status:** missing
+- **Status:** 🔌
 - **Paths / classes:** `app/orchestrators/classify.py:562` - `step_42__class_confidence()`
 - **Behavior notes:** Runtime boundary; checks classification confidence at 0.6 threshold; routes based on confidence levels.
 
@@ -37,32 +37,9 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.46
-
-Top candidates:
-1) app/orchestrators/classify.py:210 — app.orchestrators.classify.step_31__classify_domain (score 0.46)
-   Evidence: Score 0.46, RAG STEP 31 — DomainActionClassifier.classify Rule-based classification
-ID: RAG....
-2) app/orchestrators/classify.py:544 — app.orchestrators.classify.step_35__llmfallback (score 0.44)
-   Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
-ID: RA...
-3) app/orchestrators/classify.py:317 — app.orchestrators.classify.step_32__calc_scores (score 0.43)
-   Evidence: Score 0.43, RAG STEP 32 — Calculate domain and action scores Match Italian keywords
-ID: RAG....
-4) app/orchestrators/classify.py:677 — app.orchestrators.classify.step_35__llm_fallback (score 0.43)
-   Evidence: Score 0.43, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
-ID: RA...
-5) app/core/langgraph/graph.py:463 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.43)
-   Evidence: Score 0.43, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
--...
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ⚠️  Node wrapper exists but not wired in graph
+- Action: Wire this node in the appropriate phase
 <!-- AUTO-AUDIT:END -->

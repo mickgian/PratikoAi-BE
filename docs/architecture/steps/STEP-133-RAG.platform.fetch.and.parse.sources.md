@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:3326` - `step_133__fetch_feeds()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator fetching and parsing RSS feeds and external content sources. Retrieves latest updates from configured sources for knowledge base ingestion. Routes to Step 134 (ParseDocs) for document processing.
 
 ## Differences (Blueprint vs Current)
@@ -37,35 +37,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.37
-
-Top candidates:
-1) app/orchestrators/platform.py:3421 — app.orchestrators.platform._fetch_and_parse_feeds (score 0.37)
-   Evidence: Score 0.37, Helper function to fetch and parse RSS feeds.
-
-Args:
-    rss_feeds: List of RSS ...
-2) app/orchestrators/platform.py:3326 — app.orchestrators.platform.step_133__fetch_feeds (score 0.28)
-   Evidence: Score 0.28, RAG STEP 133 — Fetch and parse sources
-ID: RAG.platform.fetch.and.parse.sources
-...
-3) evals/evaluator.py:182 — evals.evaluator.Evaluator.__fetch_traces (score 0.26)
-   Evidence: Score 0.26, Fetch traces from the past 24 hours without scores.
-
-Returns:
-    List of traces...
-4) test_rss_feeds.py:101 — test_rss_feeds.main (score 0.26)
-   Evidence: Score 0.26, Main testing function.
-5) app/api/v1/regulatory.py:544 — app.api.v1.regulatory.get_regulatory_sources (score 0.26)
-   Evidence: Score 0.26, Get list of available regulatory sources and statistics.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

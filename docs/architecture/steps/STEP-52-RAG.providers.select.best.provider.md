@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `BestProvider` (Select best provider).
 
 ## Current Implementation (Repo)
-- **Role:** Node
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/providers.py:329` - `step_52__best_provider()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Orchestrator selecting the best quality LLM provider based on performance metrics and capabilities. Prioritizes response quality and accuracy over cost considerations.
 
 ## Differences (Blueprint vs Current)
@@ -37,33 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.52
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.52)
-   Evidence: Score 0.52, Select optimal LLM provider based on domain-action requirements
-2) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.50)
-   Evidence: Score 0.50, Route with failover logic - primary provider with fallbacks.
-
-Args:
-    provider...
-3) app/orchestrators/providers.py:1201 — app.orchestrators.providers.step_72__get_failover_provider (score 0.47)
-   Evidence: Score 0.47, RAG STEP 72 — Get FAILOVER provider
-ID: RAG.providers.get.failover.provider
-Type...
-4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
-   Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
-context enri...
-5) app/core/langgraph/nodes/step_072__failover_provider.py:9 — app.core.langgraph.nodes.step_072__failover_provider.node_step_72 (score 0.46)
-   Evidence: Score 0.46, Node wrapper for Step 72: Get failover provider.
+Wiring information:
+- Node name: node_step_52
+- Incoming edges: [50]
+- Outgoing edges: [55]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Test failover and retry mechanisms
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

@@ -9,8 +9,8 @@ Wraps async generators with SinglePassStream to prevent double iteration and str
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/core/langgraph/nodes/step_107__single_pass.py` - `node_step_107`, `app/orchestrators/preflight.py:744` - `step_107__single_pass()`
-- **Role:** Node
-- **Status:** ✅ Implemented
+- **Role:** Internal
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator that wraps async generators with SinglePassStream protection to prevent double iteration. Configures stream protection settings, validates requirements, and prepares for SSE formatting. Routes to WriteSSE (Step 108) with protected stream ready for consumption.
 
 ## Differences (Blueprint vs Current)
@@ -38,31 +38,13 @@ Wraps async generators with SinglePassStream to prevent double iteration and str
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.31
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/streaming_guard.py:19 — app.core.streaming_guard.SinglePassStream.__init__ (score 0.31)
-   Evidence: Score 0.31, method: __init__
-2) app/core/streaming_guard.py:23 — app.core.streaming_guard.SinglePassStream.__aiter__ (score 0.31)
-   Evidence: Score 0.31, method: __aiter__
-3) app/core/streaming_guard.py:13 — app.core.streaming_guard.SinglePassStream (score 0.28)
-   Evidence: Score 0.28, Wraps an async generator to ensure it's only iterated once.
-Raises RuntimeError ...
-4) app/orchestrators/preflight.py:744 — app.orchestrators.preflight.step_107__single_pass (score 0.28)
-   Evidence: Score 0.28, RAG STEP 107 — SinglePassStream Prevent double iteration
-
-Thin async orchestrato...
-5) app/orchestrators/preflight.py:804 — app.orchestrators.preflight._wrap_with_single_pass_protection (score 0.27)
-   Evidence: Score 0.27, Wrap async generator with SinglePassStream to prevent double iteration.
+Wiring information:
+- Node name: node_step_107
+- Incoming edges: [106]
+- Outgoing edges: [108]
 
 Notes:
-- Strong implementation match found
-- Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [106], Outgoing: [108]
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

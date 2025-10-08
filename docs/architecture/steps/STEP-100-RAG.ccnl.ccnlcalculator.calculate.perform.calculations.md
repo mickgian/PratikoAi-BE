@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/ccnl.py:99` - `step_100__ccnlcalc()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator performing CCNL (Italian labor agreement) calculations. Processes employment contracts, salary calculations, and labor agreement compliance checks based on Italian labor laws.
 
 ## Differences (Blueprint vs Current)
@@ -37,30 +37,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.46
-
-Top candidates:
-1) app/models/ccnl_data.py:715 — app.models.ccnl_data.CCNLCalculator.__init__ (score 0.46)
-   Evidence: Score 0.46, Initialize calculator with CCNL agreement.
-2) app/services/ccnl_calculator_engine.py:1 — app.services.ccnl_calculator_engine (score 0.45)
-   Evidence: Score 0.45, CCNL Calculation Engine - Enhanced calculator for Italian Collective Labor Agree...
-3) app/orchestrators/ccnl.py:14 — app.orchestrators.ccnl.step_81__ccnlquery (score 0.44)
-   Evidence: Score 0.44, RAG STEP 81 — CCNLTool.ccnl_query Query labor agreements
-ID: RAG.ccnl.ccnltool.c...
-4) app/orchestrators/ccnl.py:166 — app.orchestrators.ccnl._perform_ccnl_calculations (score 0.43)
-   Evidence: Score 0.43, Perform CCNL calculations using the enhanced calculation engine.
-
-Delegates to E...
-5) app/core/langgraph/tools/ccnl_tool.py:64 — app.core.langgraph.tools.ccnl_tool.CCNLTool (score 0.40)
-   Evidence: Score 0.40, LangGraph tool for accessing CCNL (Italian Collective Labor Agreements) data.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

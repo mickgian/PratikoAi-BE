@@ -10,7 +10,7 @@ Sets up Server-Sent Events (SSE) streaming infrastructure for real-time response
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/core/langgraph/nodes/step_105__stream_setup.py` - `node_step_105`, `app/orchestrators/streaming.py:149` - `step_105__stream_setup()`
 - **Role:** Node
-- **Status:** ✅ Implemented
+- **Status:** ✅
 - **Behavior notes:** Async orchestrator that configures SSE headers (Content-Type, Cache-Control, CORS), prepares streaming context with session data, and validates streaming requirements. Handles custom headers, compression settings, and heartbeat configuration. Routes to AsyncGen (Step 106) with complete streaming infrastructure ready.
 
 ## Differences (Blueprint vs Current)
@@ -38,39 +38,13 @@ Sets up Server-Sent Events (SSE) streaming infrastructure for real-time response
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.34
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/api/v1/chatbot.py:111 — app.api.v1.chatbot.chat_stream (score 0.34)
-   Evidence: Score 0.34, Process a chat request using LangGraph with streaming response.
-
-Args:
-    reque...
-2) app/api/v1/chatbot.py:42 — app.api.v1.chatbot.chat (score 0.30)
-   Evidence: Score 0.30, Process a chat request using LangGraph.
-
-Args:
-    request: The FastAPI request ...
-3) app/api/v1/chatbot.py:247 — app.api.v1.chatbot.clear_chat_history (score 0.28)
-   Evidence: Score 0.28, Clear all messages for a session.
-
-Args:
-    request: The FastAPI request object...
-4) app/orchestrators/streaming.py:149 — app.orchestrators.streaming.step_105__stream_setup (score 0.28)
-   Evidence: Score 0.28, RAG STEP 105 — ChatbotController.chat_stream Setup SSE.
-
-Thin async orchestrator...
-5) app/core/langgraph/nodes/step_105__stream_setup.py:9 — app.core.langgraph.nodes.step_105__stream_setup.node_step_105 (score 0.27)
-   Evidence: Score 0.27, Node wrapper for Step 105: Setup SSE streaming infrastructure.
+Wiring information:
+- Node name: node_step_105
+- Incoming edges: [104]
+- Outgoing edges: [106]
 
 Notes:
-- Strong implementation match found
-- Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [104], Outgoing: [106]
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

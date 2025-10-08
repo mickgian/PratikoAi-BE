@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `TrackUsage` (UsageTracker.track Track API usage).
 
 ## Current Implementation (Repo)
-- **Role:** Node
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/metrics.py:139` - `step_74__track_usage()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator tracking API usage metrics including LLM costs, token consumption, response times, and provider performance. Records data for monitoring, billing, and optimization purposes.
 
 ## Differences (Blueprint vs Current)
@@ -37,35 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.31
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/services/usage_tracker.py:64 — app.services.usage_tracker.UsageTracker.__init__ (score 0.31)
-   Evidence: Score 0.31, Initialize the usage tracker.
-2) app/api/v1/analytics.py:28 — app.api.v1.analytics.get_current_usage (score 0.30)
-   Evidence: Score 0.30, Get current usage and quota information.
-
-Args:
-    request: FastAPI request obj...
-3) app/api/v1/analytics.py:105 — app.api.v1.analytics.get_usage_history (score 0.30)
-   Evidence: Score 0.30, Get historical usage data.
-
-Args:
-    request: FastAPI request object
-    start_...
-4) app/orchestrators/metrics.py:139 — app.orchestrators.metrics.step_74__track_usage (score 0.30)
-   Evidence: Score 0.30, RAG STEP 74 — UsageTracker.track Track API usage
-ID: RAG.metrics.usagetracker.tr...
-5) app/services/usage_tracker.py:61 — app.services.usage_tracker.UsageTracker (score 0.29)
-   Evidence: Score 0.29, Tracks and manages usage for cost control.
+Wiring information:
+- Node name: node_step_74
+- Incoming edges: [68]
+- Outgoing edges: [75]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

@@ -10,7 +10,7 @@ Processes FAQ feedback submissions when users provide feedback on FAQ responses.
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_117__faqfeedback`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator that uses IntelligentFAQService to collect feedback on FAQ responses. Extracts feedback data from context (usage_log_id, was_helpful, followup_needed, comments), calls service to record feedback, and routes to ExpertFeedbackCollector (Step 119) with feedback metadata.
 
 ## Differences (Blueprint vs Current)
@@ -38,30 +38,8 @@ Processes FAQ feedback submissions when users provide feedback on FAQ responses.
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.55
-
-Top candidates:
-1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.55)
-   Evidence: Score 0.55, Approve, reject, or request revision for a generated FAQ
-2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.55)
-   Evidence: Score 0.55, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:690 — app.orchestrators.golden.step_117__faqfeedback (score 0.55)
-   Evidence: Score 0.55, RAG STEP 117 — POST /api/v1/faq/feedback.
-
-ID: RAG.golden.post.api.v1.faq.feedba...
-4) app/api/v1/faq.py:187 — app.api.v1.faq.submit_feedback (score 0.54)
-   Evidence: Score 0.54, Submit user feedback on FAQ responses.
-
-Feedback is used to improve FAQ quality ...
-5) app/api/v1/faq.py:77 — app.api.v1.faq.FAQFeedbackRequest (score 0.51)
-   Evidence: Score 0.51, Request model for FAQ feedback.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

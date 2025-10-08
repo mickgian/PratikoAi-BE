@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/classify.py:16` - `step_12__extract_query()`
 - **Role:** Internal
-- **Status:** missing
+- **Status:** 🔌
 - **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,32 +36,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.46
-
-Top candidates:
-1) app/core/langgraph/graph.py:463 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.46)
-   Evidence: Score 0.46, Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
--...
-2) app/orchestrators/classify.py:210 — app.orchestrators.classify.step_31__classify_domain (score 0.46)
-   Evidence: Score 0.46, RAG STEP 31 — DomainActionClassifier.classify Rule-based classification
-ID: RAG....
-3) app/orchestrators/classify.py:544 — app.orchestrators.classify.step_35__llmfallback (score 0.43)
-   Evidence: Score 0.43, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
-ID: RA...
-4) app/orchestrators/classify.py:317 — app.orchestrators.classify.step_32__calc_scores (score 0.43)
-   Evidence: Score 0.43, RAG STEP 32 — Calculate domain and action scores Match Italian keywords
-ID: RAG....
-5) app/orchestrators/classify.py:677 — app.orchestrators.classify.step_35__llm_fallback (score 0.43)
-   Evidence: Score 0.43, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
-ID: RA...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

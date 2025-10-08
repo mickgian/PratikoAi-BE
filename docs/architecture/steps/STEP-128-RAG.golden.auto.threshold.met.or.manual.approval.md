@@ -10,7 +10,7 @@ Decision node that determines if an FAQ candidate meets the auto-approval qualit
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_128__golden_approval`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async decision orchestrator that evaluates FAQ candidate quality score. Auto-approves if quality_score >= 0.95, rejects if < 0.85, requires manual review if between thresholds. Uses FAQ_AUTOMATION_CONFIG for threshold values. Routes to 'publish_golden' (Step 129) if approved, or 'feedback_end' (Step 115) if rejected/manual review needed.
 
 ## Differences (Blueprint vs Current)
@@ -38,32 +38,8 @@ Decision node that determines if an FAQ candidate meets the auto-approval qualit
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.54
-
-Top candidates:
-1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)
-   Evidence: Score 0.54, Approve, reject, or request revision for a generated FAQ
-2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.54)
-   Evidence: Score 0.54, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:690 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
-   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback.
-
-ID: RAG.golden.post.api.v1.faq.feedba...
-4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.49)
-   Evidence: Score 0.49, Query the FAQ system with semantic search and response variation.
-
-This endpoint...
-5) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.49)
-   Evidence: Score 0.49, Create a new FAQ entry.
-
-Requires admin privileges.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

@@ -12,7 +12,7 @@ Display feedback UI options (Correct, Incomplete, Wrong) to users after presenti
 - **Paths / classes:** `app/orchestrators/feedback.py:129` - `step_113__feedback_ui()`
 - **Helper function:** `app/orchestrators/feedback.py:14` - `_display_feedback_ui_options()`
 - **Test suite:** `tests/test_rag_step_113_feedback_ui.py` (16 comprehensive tests)
-- **Status:** ✅ Implemented (async orchestrator with full functionality)
+- **Status:** 🔌
 - **Behavior notes:**
   - Displays feedback options based on user type and configuration
   - Supports Italian localized feedback categories for tax domain
@@ -60,33 +60,8 @@ Display feedback UI options (Correct, Incomplete, Wrong) to users after presenti
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.49
-
-Top candidates:
-1) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.49)
-   Evidence: Score 0.49, Automatic Improvement Engine for Quality Analysis System.
-
-Automatically generat...
-2) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.48)
-   Evidence: Score 0.48, Service for collecting and processing expert feedback on AI responses.
-
-Features...
-3) app/orchestrators/feedback.py:783 — app.orchestrators.feedback._create_expert_feedback_record (score 0.45)
-   Evidence: Score 0.45, Helper function to create expert feedback record using ExpertFeedbackCollector s...
-4) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.45)
-   Evidence: Score 0.45, Validate feedback data structure and content
-5) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.45)
-   Evidence: Score 0.45, Expert Feedback Collection Service for Quality Analysis System.
-
-Handles collect...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

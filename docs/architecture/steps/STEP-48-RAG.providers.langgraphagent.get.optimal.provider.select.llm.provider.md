@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Role:** Node
 - **Paths / classes:** `app/orchestrators/providers.py:14` - `step_48__select_provider()`
-- **Status:** ✅ Implemented
+- **Status:** ✅
 - **Behavior notes:** Runtime boundary; selects optimal LLM provider based on routing strategy; routes to next provider steps.
 
 ## Differences (Blueprint vs Current)
@@ -37,37 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.50
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.50)
-   Evidence: Score 0.50, Select optimal LLM provider based on domain-action requirements
-2) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.48)
-   Evidence: Score 0.48, Route with failover logic - primary provider with fallbacks.
-
-Args:
-    provider...
-3) app/orchestrators/providers.py:1201 — app.orchestrators.providers.step_72__get_failover_provider (score 0.48)
-   Evidence: Score 0.48, RAG STEP 72 — Get FAILOVER provider
-ID: RAG.providers.get.failover.provider
-Type...
-4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
-   Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
-context enri...
-5) app/core/langgraph/graph.py:599 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.45)
-   Evidence: Score 0.45, Get the optimal LLM provider for the given messages.
-
-Args:
-    messages: List o...
+Wiring information:
+- Node name: node_step_48
+- Incoming edges: none
+- Outgoing edges: [49]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Test failover and retry mechanisms
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

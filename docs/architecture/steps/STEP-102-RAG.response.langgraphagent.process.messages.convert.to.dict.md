@@ -10,7 +10,7 @@ Converts LangChain BaseMessage objects to dictionary format for final response p
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/response.py:697` - `step_102__process_msg()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator that converts LangChain BaseMessage objects to dictionary format using convert_to_openai_messages. Filters to user/assistant messages with non-empty content. Preserves all context data and adds message processing metadata. Routes to LogComplete (Step 103).
 
 ## Differences (Blueprint vs Current)
@@ -38,34 +38,8 @@ Converts LangChain BaseMessage objects to dictionary format for final response p
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.36
-
-Top candidates:
-1) app/core/langgraph/graph.py:1848 — app.core.langgraph.graph.LangGraphAgent.__process_messages (score 0.36)
-   Evidence: Score 0.36, method: __process_messages
-2) app/orchestrators/response.py:656 — app.orchestrators.response._process_messages_to_dict (score 0.31)
-   Evidence: Score 0.31, Convert LangChain BaseMessage objects to dictionary format.
-Mirrors the logic fr...
-3) app/core/langgraph/graph.py:185 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.30)
-   Evidence: Score 0.30, Initialize the LangGraph Agent with necessary components.
-4) app/core/langgraph/graph.py:929 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.29)
-   Evidence: Score 0.29, Determine if the agent should continue or end based on the last message.
-
-Args:
-...
-5) app/core/langgraph/graph.py:447 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
-   Evidence: Score 0.29, Get the LLM routing strategy from configuration.
-
-Returns:
-    RoutingStrategy: ...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

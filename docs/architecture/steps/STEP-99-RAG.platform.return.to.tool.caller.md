@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ToolResults` (Return to tool caller).
 
 ## Current Implementation (Repo)
-- **Role:** Node
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:2526` - `step_99__tool_results()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator returning tool execution results to the LLM for further processing. Formats tool responses and integrates them back into the conversation flow for multi-step interactions.
 
 ## Differences (Blueprint vs Current)
@@ -37,31 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.32
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/orchestrators/platform.py:2248 — app.orchestrators.platform._format_tool_results_for_caller (score 0.32)
-   Evidence: Score 0.32, Format tool results from various tool types into ToolMessage format for LangGrap...
-2) app/orchestrators/facts.py:675 — app.orchestrators.facts.step_98__to_tool_results (score 0.30)
-   Evidence: Score 0.30, RAG STEP 98 — Convert to ToolMessage facts and spans
-ID: RAG.facts.convert.to.to...
-3) app/orchestrators/platform.py:2526 — app.orchestrators.platform.step_99__tool_results (score 0.30)
-   Evidence: Score 0.30, RAG STEP 99 — Return to tool caller.
-
-ID: RAG.platform.return.to.tool.caller
-Typ...
-4) app/orchestrators/platform.py:2491 — app.orchestrators.platform._handle_tool_results_error (score 0.29)
-   Evidence: Score 0.29, Handle errors in tool results processing with graceful fallback.
-5) app/core/langgraph/nodes/step_099__tool_results.py:9 — app.core.langgraph.nodes.step_099__tool_results.node_step_99 (score 0.28)
-   Evidence: Score 0.28, Node wrapper for Step 99: Process and aggregate tool results.
+Wiring information:
+- Node name: node_step_99
+- Incoming edges: [80, 81, 82, 83]
+- Outgoing edges: none
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

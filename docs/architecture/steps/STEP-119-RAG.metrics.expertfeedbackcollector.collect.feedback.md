@@ -13,7 +13,7 @@ Process orchestrator that collects expert feedback and routes to credential vali
 - **Helper function:** `app/orchestrators/metrics.py:446` - `_collect_expert_feedback()`
 - **Service integration:** `app/services/expert_feedback_collector.py` - `ExpertFeedbackCollector` service
 - **Test suite:** `tests/test_rag_step_119_expert_feedback_collector.py` (16 comprehensive tests)
-- **Status:** ✅ Implemented (async process orchestrator with expert feedback collection)
+- **Status:** 🔌
 - **Behavior notes:**
   - Collects expert feedback with comprehensive validation and processing
   - Routes to Step 120 (ValidateExpert) per Mermaid diagram
@@ -70,29 +70,8 @@ Process orchestrator that collects expert feedback and routes to credential vali
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.35
-
-Top candidates:
-1) app/orchestrators/metrics.py:448 — app.orchestrators.metrics._collect_expert_feedback (score 0.35)
-   Evidence: Score 0.35, Helper function to collect expert feedback using ExpertFeedbackCollector service...
-2) app/services/expert_feedback_collector.py:43 — app.services.expert_feedback_collector.ExpertFeedbackCollector.__init__ (score 0.35)
-   Evidence: Score 0.35, method: __init__
-3) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.34)
-   Evidence: Score 0.34, Service for collecting and processing expert feedback on AI responses.
-
-Features...
-4) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.34)
-   Evidence: Score 0.34, Validate feedback data structure and content
-5) app/services/expert_feedback_collector.py:297 — app.services.expert_feedback_collector.ExpertFeedbackCollector._update_statistics (score 0.34)
-   Evidence: Score 0.34, Update internal statistics tracking
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

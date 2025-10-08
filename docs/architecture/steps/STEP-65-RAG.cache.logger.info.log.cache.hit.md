@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/cache.py:581` - `step_65__log_cache_hit()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator logging cache hit events with structured logging for observability. Records cache key, hit time, and performance metrics. Routes to Step 66 (ReturnCached) to serve cached response.
 
 ## Differences (Blueprint vs Current)
@@ -37,39 +37,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.66
-
-Top candidates:
-1) app/orchestrators/cache.py:283 — app.orchestrators.cache.step_62__cache_hit (score 0.66)
-   Evidence: Score 0.66, RAG STEP 62 — Cache hit?
-ID: RAG.cache.cache.hit
-Type: decision | Category: cach...
-2) app/services/cache.py:567 — app.services.cache.get_redis_client (score 0.65)
-   Evidence: Score 0.65, Get Redis client from the global cache service.
-
-Returns:
-    Redis client insta...
-3) app/orchestrators/cache.py:774 — app.orchestrators.cache.step_68__cache_response (score 0.62)
-   Evidence: Score 0.62, RAG STEP 68 — CacheService.cache_response Store in Redis
-ID: RAG.cache.cacheserv...
-4) app/orchestrators/cache.py:581 — app.orchestrators.cache.step_65__log_cache_hit (score 0.56)
-   Evidence: Score 0.56, RAG STEP 65 — Logger.info Log cache hit
-ID: RAG.cache.logger.info.log.cache.hit
-...
-5) app/core/middleware/performance_middleware.py:416 — app.core.middleware.performance_middleware.CacheMiddleware.record_cache_hit (score 0.53)
-   Evidence: Score 0.53, Record a cache hit.
-
-Args:
-    cache_key: Cache key that was hit
-    cache_type:...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Add cache invalidation and TTL tests
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

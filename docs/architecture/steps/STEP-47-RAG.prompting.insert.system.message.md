@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/prompting.py:768` - `step_47__insert_msg()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Orchestrator function inserts system message at position 0 when no system message exists and system prompt is provided
 
 ## Differences (Blueprint vs Current)
@@ -37,28 +37,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.30
-
-Top candidates:
-1) app/orchestrators/prompting.py:768 — app.orchestrators.prompting.step_47__insert_msg (score 0.30)
-   Evidence: Score 0.30, RAG STEP 47 — Insert system message
-ID: RAG.prompting.insert.system.message
-Type...
-2) deployment-orchestration/notification_system.py:764 — deployment-orchestration.notification_system.NotificationManager._create_notification_message (score 0.29)
-   Evidence: Score 0.29, Create a formatted notification message.
-3) failure-recovery-system/recovery_orchestrator.py:865 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._add_status_message (score 0.29)
-   Evidence: Score 0.29, Add a status message to the execution log.
-4) deployment-orchestration/notification_system.py:785 — deployment-orchestration.notification_system.NotificationManager._generate_message_content (score 0.28)
-   Evidence: Score 0.28, Generate title and body for notification.
-5) deployment-orchestration/notification_system.py:109 — deployment-orchestration.notification_system.NotificationMessage (score 0.28)
-   Evidence: Score 0.28, A formatted notification message.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for InsertMsg
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

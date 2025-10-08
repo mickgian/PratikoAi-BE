@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/metrics.py:19` - `step_34__track_metrics()`
 - **Role:** Internal
-- **Status:** missing
+- **Status:** 🔌
 - **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,32 +36,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.34
-
-Top candidates:
-1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)
-   Evidence: Score 0.34, Track domain-action classification usage and metrics.
-
-Args:
-    domain: The cla...
-2) app/orchestrators/metrics.py:19 — app.orchestrators.metrics.step_34__track_metrics (score 0.31)
-   Evidence: Score 0.31, RAG STEP 34 — ClassificationMetrics.track Record metrics
-ID: RAG.metrics.classif...
-3) app/orchestrators/metrics.py:139 — app.orchestrators.metrics.step_74__track_usage (score 0.30)
-   Evidence: Score 0.30, RAG STEP 74 — UsageTracker.track Track API usage
-ID: RAG.metrics.usagetracker.tr...
-4) app/core/monitoring/metrics.py:401 — app.core.monitoring.metrics.track_llm_cost (score 0.29)
-   Evidence: Score 0.29, Track LLM API cost.
-5) app/core/monitoring/metrics.py:406 — app.core.monitoring.metrics.track_api_call (score 0.29)
-   Evidence: Score 0.29, Track API call by provider and status.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

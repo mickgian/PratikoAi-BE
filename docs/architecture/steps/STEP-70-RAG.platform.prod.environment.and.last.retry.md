@@ -9,8 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/platform.py:1530` - `step_70__prod_check()`
-- **Role:** Node
-- **Status:** missing
+- **Role:** Internal
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator checking production environment and last retry status. Decision point for retry logic and error handling.
 
 ## Differences (Blueprint vs Current)
@@ -37,29 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ❌ (Missing)  |  Confidence: 0.28
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/orchestrators/platform.py:1393 — app.orchestrators.platform.step_69__retry_check (score 0.28)
-   Evidence: Score 0.28, RAG STEP 69 — Another attempt allowed?
-ID: RAG.platform.another.attempt.allowed
-...
-2) app/orchestrators/platform.py:1530 — app.orchestrators.platform.step_70__prod_check (score 0.28)
-   Evidence: Score 0.28, RAG STEP 70 — Prod environment and last retry?
-ID: RAG.platform.prod.environment...
-3) app/core/langgraph/graph.py:991 — app.core.langgraph.graph.LangGraphAgent._route_prod_check (score 0.27)
-   Evidence: Score 0.27, Route from ProdCheck node.
-4) app/core/langgraph/nodes/step_069__retry_check.py:9 — app.core.langgraph.nodes.step_069__retry_check.node_step_69 (score 0.27)
-   Evidence: Score 0.27, Node wrapper for Step 69: Retry check decision node.
-5) app/core/langgraph/nodes/step_070__prod_check.py:9 — app.core.langgraph.nodes.step_070__prod_check.node_step_70 (score 0.27)
-   Evidence: Score 0.27, Node wrapper for Step 70: Production environment check decision node.
+Wiring information:
+- Node name: node_step_70
+- Incoming edges: [69]
+- Outgoing edges: [72, 73]
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create decision implementation for ProdCheck
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

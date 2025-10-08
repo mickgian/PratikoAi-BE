@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `AnonymizeText` (Anonymizer.anonymize_text Anonymize PII).
 
 ## Current Implementation (Repo)
-- **Role:** Node
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/privacy.py:371` - `step_7__anonymize_text()`
-- **Status:** ✅ (Implemented & Wired)
+- **Status:** 🔌
 - **Behavior notes:** Internal transform within AnonymizeText node; anonymizes PII using PIIAnonymizer service.
 
 ## Differences (Blueprint vs Current)
@@ -37,19 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 1.00
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/langgraph/nodes/step_007__anonymize_text.py:13 — node_step_7 (score 1.00)
-   Evidence: Node wrapper delegating to orchestrator with rag_step_log and rag_step_timer
+Wiring information:
+- Node name: node_step_7
+- Incoming edges: [6]
+- Outgoing edges: [9]
 
 Notes:
-- Wired via graph registry ✅
-- Incoming: [6], Outgoing: [9]
-- Phase 6 Request/Privacy lane implemented
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

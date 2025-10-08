@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Role:** Node
 - **Paths / classes:** `app/orchestrators/platform.py:1203` - `step_50__strategy_type()`
-- **Status:** ✅ Implemented
+- **Status:** ✅
 - **Behavior notes:** Runtime boundary; determines routing strategy type; routes to cheapest, best, balanced, or primary provider selection.
 
 ## Differences (Blueprint vs Current)
@@ -37,37 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.31
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/orchestrators/platform.py:1203 — app.orchestrators.platform.step_50__strategy_type (score 0.31)
-   Evidence: Score 0.31, RAG STEP 50 — Routing strategy?
-ID: RAG.platform.routing.strategy
-Type: decision...
-2) app/orchestrators/routing.py:14 — app.orchestrators.routing.step_79__tool_type (score 0.31)
-   Evidence: Score 0.31, RAG STEP 79 — Tool type?
-
-ID: RAG.routing.tool.type
-Type: decision | Category: r...
-3) app/orchestrators/routing.py:94 — app.orchestrators.routing._determine_tool_type_and_routing (score 0.30)
-   Evidence: Score 0.30, Determine tool type and routing destination based on tool call context.
-
-Maps to...
-4) app/orchestrators/routing.py:271 — app.orchestrators.routing._handle_tool_type_error (score 0.30)
-   Evidence: Score 0.30, Handle errors in tool type detection with graceful fallback.
-5) app/core/langgraph/graph.py:447 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.28)
-   Evidence: Score 0.28, Get the LLM routing strategy from configuration.
-
-Returns:
-    RoutingStrategy: ...
+Wiring information:
+- Node name: node_step_50
+- Incoming edges: [49]
+- Outgoing edges: [51, 52, 53, 54]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

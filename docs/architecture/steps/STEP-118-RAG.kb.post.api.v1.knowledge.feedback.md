@@ -12,7 +12,7 @@ Process orchestrator that handles knowledge feedback submission and routes to ex
 - **Paths / classes:** `app/orchestrators/kb.py:322` - `step_118__knowledge_feedback()`
 - **Helper function:** `app/orchestrators/kb.py:247` - `_process_knowledge_feedback()`
 - **Test suite:** `tests/test_rag_step_118_knowledge_feedback.py` (14 comprehensive tests)
-- **Status:** ✅ Implemented (async process orchestrator with knowledge feedback processing)
+- **Status:** 🔌
 - **Behavior notes:**
   - Processes knowledge feedback submission with validation and error handling
   - Routes to Step 119 (ExpertFeedbackCollector) per Mermaid diagram
@@ -64,36 +64,8 @@ Process orchestrator that handles knowledge feedback submission and routes to ex
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.47
-
-Top candidates:
-1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.47)
-   Evidence: Score 0.47, Convenience function to retrieve top-k knowledge items.
-
-Args:
-    query_data: Q...
-2) app/api/v1/search.py:772 — app.api.v1.search.reindex_knowledge_fts (score 0.46)
-   Evidence: Score 0.46, Manually reindex knowledge base search vectors.
-
-Admin endpoint for maintenance ...
-3) app/api/v1/search.py:627 — app.api.v1.search.submit_knowledge_feedback (score 0.45)
-   Evidence: Score 0.45, Submit feedback on knowledge search results.
-
-Helps improve search relevance and...
-4) app/services/knowledge_search_service.py:1 — app.services.knowledge_search_service (score 0.45)
-   Evidence: Score 0.45, Knowledge Search Service - RAG STEP 39 Implementation.
-
-Implements RAG STEP 39 —...
-5) app/services/knowledge_search_service.py:97 — app.services.knowledge_search_service.KnowledgeSearchService (score 0.45)
-   Evidence: Score 0.45, Service for hybrid knowledge search with BM25, vector search and recency boost.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

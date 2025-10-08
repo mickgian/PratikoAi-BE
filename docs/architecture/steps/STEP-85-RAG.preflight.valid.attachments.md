@@ -9,8 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/preflight.py:681` - `step_85__valid_attachments_check()`
-- **Role:** Node
-- **Status:** missing
+- **Role:** Internal
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator verifying attachments passed validation checks. Decision point routing to document processing or error handling.
 
 ## Differences (Blueprint vs Current)
@@ -37,33 +37,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ❌ (Missing)  |  Confidence: 0.30
-
-Top candidates:
-1) app/orchestrators/preflight.py:681 — app.orchestrators.preflight.step_85__valid_attachments_check (score 0.30)
-   Evidence: Score 0.30, RAG STEP 85 — Valid attachments?
-ID: RAG.preflight.valid.attachments
-Type: decis...
-2) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.26)
-   Evidence: Score 0.26, Validate the citation.
-3) app/orchestrators/platform.py:319 — app.orchestrators.platform.step_3__valid_check (score 0.26)
-   Evidence: Score 0.26, RAG STEP 3 — Request valid?
-ID: RAG.platform.request.valid
-Type: decision | Cate...
-4) app/orchestrators/preflight.py:92 — app.orchestrators.preflight.step_19__attach_check (score 0.26)
-   Evidence: Score 0.26, RAG STEP 19 — Attachments present?
-ID: RAG.preflight.attachments.present
-Type: p...
-5) app/orchestrators/preflight.py:597 — app.orchestrators.preflight.step_84__validate_attachments (score 0.26)
-   Evidence: Score 0.26, RAG STEP 84 — AttachmentValidator.validate Check files and limits
-ID: RAG.prefli...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create decision implementation for AttachOK
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

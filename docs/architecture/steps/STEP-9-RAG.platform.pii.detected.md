@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Role:** Node
 - **Paths / classes:** `app/orchestrators/platform.py:565` - `step_9__piicheck()`
-- **Status:** ✅ (Implemented & Wired)
+- **Status:** ✅
 - **Behavior notes:** Node orchestrator detecting personally identifiable information in user requests. Coordinates PII detection analysis and confidence scoring for privacy compliance.
 
 ## Differences (Blueprint vs Current)
@@ -37,19 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 1.00
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/langgraph/nodes/step_009__pii_check.py:13 — node_step_9 (score 1.00)
-   Evidence: Node wrapper delegating to orchestrator with rag_step_log and rag_step_timer
+Wiring information:
+- Node name: node_step_9
+- Incoming edges: [7]
+- Outgoing edges: [10]
 
 Notes:
-- Wired via graph registry ✅
-- Incoming: [7], Outgoing: [10]
-- Phase 6 Request/Privacy lane implemented
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

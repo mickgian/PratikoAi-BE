@@ -12,7 +12,7 @@ Decision orchestrator that evaluates trust scores from Step 120 (ValidateExpert)
 - **Paths / classes:** `app/orchestrators/classify.py:1056` - `step_121__trust_score_ok()`
 - **Helper function:** `app/orchestrators/classify.py:985` - `_evaluate_trust_score_decision()`
 - **Test suite:** `tests/test_rag_step_121_trust_score_ok.py` (15 comprehensive tests)
-- **Status:** ✅ Implemented (async decision orchestrator with trust score evaluation)
+- **Status:** 🔌
 - **Behavior notes:**
   - Evaluates trust scores against 0.7 threshold per Mermaid specification
   - Routes to Step 122 (FeedbackRejected) for scores < 0.7
@@ -69,32 +69,8 @@ Decision orchestrator that evaluates trust scores from Step 120 (ValidateExpert)
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.47
-
-Top candidates:
-1) app/orchestrators/classify.py:210 — app.orchestrators.classify.step_31__classify_domain (score 0.47)
-   Evidence: Score 0.47, RAG STEP 31 — DomainActionClassifier.classify Rule-based classification
-ID: RAG....
-2) app/orchestrators/classify.py:544 — app.orchestrators.classify.step_35__llmfallback (score 0.44)
-   Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
-ID: RA...
-3) app/orchestrators/classify.py:317 — app.orchestrators.classify.step_32__calc_scores (score 0.44)
-   Evidence: Score 0.44, RAG STEP 32 — Calculate domain and action scores Match Italian keywords
-ID: RAG....
-4) app/orchestrators/classify.py:677 — app.orchestrators.classify.step_35__llm_fallback (score 0.44)
-   Evidence: Score 0.44, RAG STEP 35 — DomainActionClassifier._llm_fallback Use LLM classification
-ID: RA...
-5) app/orchestrators/classify.py:433 — app.orchestrators.classify.step_33__confidence_check (score 0.40)
-   Evidence: Score 0.40, RAG STEP 33 — Confidence at least threshold?
-ID: RAG.classify.confidence.at.leas...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

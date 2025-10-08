@@ -9,9 +9,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `RouteStrategy` (LLMFactory.get_optimal_provider Apply routing strategy).
 
 ## Current Implementation (Repo)
-- **Role:** Node
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/facts.py:427` - `step_49__route_strategy()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Orchestrator applying routing strategy to select optimal LLM provider. Balances cost, quality, and availability for provider selection.
 
 ## Differences (Blueprint vs Current)
@@ -38,42 +38,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.32
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/llm/factory.py:127 — app.core.llm.factory.LLMFactory.get_optimal_provider (score 0.32)
-   Evidence: Score 0.32, Get the optimal provider based on routing strategy.
-
-Args:
-    messages: List of...
-2) app/core/llm/factory.py:33 — app.core.llm.factory.LLMFactory._get_provider_configs (score 0.29)
-   Evidence: Score 0.29, Get provider configurations from settings.
-
-Returns:
-    Dictionary of provider ...
-3) app/core/langgraph/graph.py:447 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.29)
-   Evidence: Score 0.29, Get the LLM routing strategy from configuration.
-
-Returns:
-    RoutingStrategy: ...
-4) app/core/langgraph/graph.py:599 — app.core.langgraph.graph.LangGraphAgent._get_optimal_provider (score 0.29)
-   Evidence: Score 0.29, Get the optimal LLM provider for the given messages.
-
-Args:
-    messages: List o...
-5) app/core/llm/factory.py:367 — app.core.llm.factory.get_llm_provider (score 0.27)
-   Evidence: Score 0.27, Convenience function to get an optimal LLM provider.
-
-Args:
-    messages: List o...
+Wiring information:
+- Node name: node_step_49
+- Incoming edges: [48]
+- Outgoing edges: [50]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

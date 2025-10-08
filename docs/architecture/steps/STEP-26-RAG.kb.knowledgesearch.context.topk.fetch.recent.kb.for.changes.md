@@ -10,7 +10,7 @@ Fetches recent Knowledge Base changes when a high-confidence Golden Set match oc
 ## Current Implementation (Repo)
 - **Role:** Node
 - **Paths / classes:** `app/core/langgraph/nodes/step_026__kb_context_check.py` - `node_step_26`, `app/orchestrators/kb.py:21` - `step_26__kbcontext_check()`
-- **Status:** ✅ Implemented
+- **Status:** ✅
 - **Behavior notes:** Node orchestrator that fetches recent KB changes using KnowledgeSearchService. Parses Golden Set timestamp for recency comparison, filters KB results to last 14 days, converts results to dicts for context preservation. Routes to Step 27 (KBDelta) for conflict evaluation.
 
 ## Differences (Blueprint vs Current)
@@ -38,33 +38,13 @@ Fetches recent Knowledge Base changes when a high-confidence Golden Set match oc
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.48
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.48)
-   Evidence: Score 0.48, Convenience function to retrieve top-k knowledge items.
-
-Args:
-    query_data: Q...
-2) app/services/knowledge_search_service.py:1 — app.services.knowledge_search_service (score 0.43)
-   Evidence: Score 0.43, Knowledge Search Service - RAG STEP 39 Implementation.
-
-Implements RAG STEP 39 —...
-3) app/services/knowledge_search_service.py:97 — app.services.knowledge_search_service.KnowledgeSearchService (score 0.43)
-   Evidence: Score 0.43, Service for hybrid knowledge search with BM25, vector search and recency boost.
-4) app/services/knowledge_search_service.py:32 — app.services.knowledge_search_service.SearchMode (score 0.43)
-   Evidence: Score 0.43, Search mode for knowledge retrieval.
-5) app/services/vector_providers/pinecone_provider.py:21 — app.services.vector_providers.pinecone_provider.PineconeProvider (score 0.43)
-   Evidence: Score 0.43, Pinecone vector search provider.
+Wiring information:
+- Node name: node_step_26
+- Incoming edges: [25]
+- Outgoing edges: [27]
 
 Notes:
-- Strong implementation match found
-- Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [25], Outgoing: [27]
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

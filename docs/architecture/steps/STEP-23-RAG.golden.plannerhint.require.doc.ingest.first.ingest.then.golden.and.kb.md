@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/golden.py:step_23__require_doc_ingest`
 - **Role:** Internal
-- **Status:** missing
+- **Status:** 🔌
 - **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,32 +36,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.52
-
-Top candidates:
-1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.52)
-   Evidence: Score 0.52, Approve, reject, or request revision for a generated FAQ
-2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.52)
-   Evidence: Score 0.52, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:690 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
-   Evidence: Score 0.50, RAG STEP 117 — POST /api/v1/faq/feedback.
-
-ID: RAG.golden.post.api.v1.faq.feedba...
-4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.48)
-   Evidence: Score 0.48, Query the FAQ system with semantic search and response variation.
-
-This endpoint...
-5) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.48)
-   Evidence: Score 0.48, Create a new FAQ entry.
-
-Requires admin privileges.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

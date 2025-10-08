@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `MessageExists` (User message exists?).
 
 ## Current Implementation (Repo)
-- **Role:** Node
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:971` - `step_13__message_exists()`
-- **Status:** missing
+- **Status:** 🔌
 - **Behavior notes:** Node orchestrator checking if user message was successfully extracted. Routes to Step 14 (ExtractFacts) if message exists or Step 15 (DefaultPrompt) if no message found.
 
 ## Differences (Blueprint vs Current)
@@ -37,34 +37,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.31
-
-Top candidates:
-1) app/orchestrators/platform.py:971 — app.orchestrators.platform.step_13__message_exists (score 0.31)
-   Evidence: Score 0.31, RAG STEP 13 — User message exists?
-ID: RAG.platform.user.message.exists
-Type: de...
-2) app/core/langgraph/nodes/step_013__message_exists.py:9 — app.core.langgraph.nodes.step_013__message_exists.node_step_13 (score 0.28)
-   Evidence: Score 0.28, Node wrapper for Step 13: Check if user message exists.
-3) app/api/v1/auth.py:157 — app.api.v1.auth.register_user (score 0.27)
-   Evidence: Score 0.27, Register a new user.
-
-Args:
-    request: The FastAPI request object for rate lim...
-4) app/api/v1/auth.py:463 — app.api.v1.auth.logout_user (score 0.27)
-   Evidence: Score 0.27, Logout a user by revoking their refresh token.
-
-This endpoint revokes the user's...
-5) app/api/v1/documents.py:143 — app.api.v1.documents.get_user_documents (score 0.27)
-   Evidence: Score 0.27, Get user's uploaded documents with filtering options.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

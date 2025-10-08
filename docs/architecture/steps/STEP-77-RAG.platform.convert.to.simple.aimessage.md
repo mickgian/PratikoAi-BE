@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/platform.py:1907` - `step_77__simple_aimsg()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator converting responses to simple AIMessage format without tool calls. Handles standard LLM responses for direct user interaction.
 
 ## Differences (Blueprint vs Current)
@@ -37,28 +37,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: ❌ (Missing)  |  Confidence: 0.30
-
-Top candidates:
-1) app/orchestrators/platform.py:1784 — app.orchestrators.platform.step_76__convert_aimsg (score 0.30)
-   Evidence: Score 0.30, RAG STEP 76 — Convert to AIMessage with tool_calls
-ID: RAG.platform.convert.to.a...
-2) app/orchestrators/platform.py:1907 — app.orchestrators.platform.step_77__simple_aimsg (score 0.30)
-   Evidence: Score 0.30, RAG STEP 77 — Convert to simple AIMessage
-ID: RAG.platform.convert.to.simple.aim...
-3) app/models/document_simple.py:126 — app.models.document_simple.Document.__init__ (score 0.26)
-   Evidence: Score 0.26, method: __init__
-4) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.26)
-   Evidence: Score 0.26, Check if document has expired
-5) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.26)
-   Evidence: Score 0.26, Convert document to dictionary for API responses
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for SimpleAIMsg
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

@@ -12,7 +12,7 @@ Error orchestrator that handles rejection of expert feedback due to insufficient
 - **Paths / classes:** `app/orchestrators/feedback.py:668` - `step_122__feedback_rejected()`
 - **Helper function:** `app/orchestrators/feedback.py:611` - `_process_feedback_rejection()`
 - **Test suite:** `tests/test_rag_step_122_feedback_rejected.py` (13 comprehensive tests)
-- **Status:** ✅ Implemented (async error orchestrator with feedback rejection handling)
+- **Status:** 🔌
 - **Behavior notes:**
   - Processes expert feedback rejection with comprehensive metadata generation
   - Handles rejection due to insufficient trust scores (< 0.7 from Step 121)
@@ -69,37 +69,8 @@ Error orchestrator that handles rejection of expert feedback due to insufficient
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.50
-
-Top candidates:
-1) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.50)
-   Evidence: Score 0.50, Automatic Improvement Engine for Quality Analysis System.
-
-Automatically generat...
-2) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.47)
-   Evidence: Score 0.47, Expert Feedback Collection Service for Quality Analysis System.
-
-Handles collect...
-3) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.47)
-   Evidence: Score 0.47, Service for collecting and processing expert feedback on AI responses.
-
-Features...
-4) app/services/failure_pattern_analyzer.py:1 — app.services.failure_pattern_analyzer (score 0.43)
-   Evidence: Score 0.43, Failure Pattern Analyzer for Quality Analysis System.
-
-Identifies and analyzes p...
-5) app/orchestrators/feedback.py:668 — app.orchestrators.feedback.step_122__feedback_rejected (score 0.40)
-   Evidence: Score 0.40, RAG STEP 122 — Feedback rejected
-ID: RAG.feedback.feedback.rejected
-Type: error ...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

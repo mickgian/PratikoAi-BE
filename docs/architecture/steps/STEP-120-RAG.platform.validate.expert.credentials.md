@@ -13,7 +13,7 @@ Process orchestrator that validates expert credentials and calculates trust scor
 - **Helper function:** `app/orchestrators/platform.py:2610` - `_validate_expert_credentials()`
 - **Trust scoring:** `app/orchestrators/platform.py:2656` - `_calculate_trust_score()`
 - **Test suite:** `tests/test_rag_step_120_validate_expert.py` (15 comprehensive tests)
-- **Status:** ✅ Implemented (async process orchestrator with expert credential validation)
+- **Status:** 🔌
 - **Behavior notes:**
   - Validates expert credentials with comprehensive trust scoring algorithm
   - Routes to Step 121 (TrustScoreOK decision) per Mermaid diagram
@@ -70,31 +70,8 @@ Process orchestrator that validates expert credentials and calculates trust scor
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.37
-
-Top candidates:
-1) app/orchestrators/platform.py:3041 — app.orchestrators.platform._validate_expert_credentials (score 0.37)
-   Evidence: Score 0.37, Helper function to validate expert credentials and calculate trust score.
-
-Handl...
-2) app/orchestrators/platform.py:3172 — app.orchestrators.platform.step_120__validate_expert (score 0.30)
-   Evidence: Score 0.30, RAG STEP 120 — Validate expert credentials.
-
-Process orchestrator that validates...
-3) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.30)
-   Evidence: Score 0.30, Validate feedback data structure and content
-4) app/services/expert_validation_workflow.py:371 — app.services.expert_validation_workflow.ExpertValidationWorkflow._calculate_credentials_score (score 0.29)
-   Evidence: Score 0.29, Calculate score based on professional credentials
-5) app/services/expert_validation_workflow.py:430 — app.services.expert_validation_workflow.ExpertValidationWorkflow._validate_regulatory_references (score 0.29)
-   Evidence: Score 0.29, Validate regulatory references for accuracy and currency
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

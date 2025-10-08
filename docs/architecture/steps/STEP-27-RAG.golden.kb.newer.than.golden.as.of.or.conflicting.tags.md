@@ -8,9 +8,9 @@
 Evaluates whether KB has newer content or conflicting tags compared to the Golden Set match. Routes to ServeGolden (Step 28) if no conflict, or to PreContextFromGolden (Step 29) if KB has updates that should be merged.
 
 ## Current Implementation (Repo)
-- **Role:** Node
+- **Role:** Internal
 - **Paths / classes:** `app/core/langgraph/nodes/step_027__kb_delta.py` - `node_step_27`, `app/orchestrators/golden.py:320` - `step_27__kbdelta()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Node orchestrator that evaluates KB delta/conflict using dual-check logic: (1) timestamp comparison for newer KB content, (2) tag-based conflict detection for supersedes/obsoletes/replaces/updated indicators. Routes to Step 28 (ServeGolden) if no delta, or Step 29 (PreContextFromGolden) if conflict detected. Preserves all context from Step 26.
 
 ## Differences (Blueprint vs Current)
@@ -38,33 +38,13 @@ Evaluates whether KB has newer content or conflicting tags compared to the Golde
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.54
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.54)
-   Evidence: Score 0.54, Approve, reject, or request revision for a generated FAQ
-2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.54)
-   Evidence: Score 0.54, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:690 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
-   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback.
-
-ID: RAG.golden.post.api.v1.faq.feedba...
-4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.49)
-   Evidence: Score 0.49, Query the FAQ system with semantic search and response variation.
-
-This endpoint...
-5) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.49)
-   Evidence: Score 0.49, Create a new FAQ entry.
-
-Requires admin privileges.
+Wiring information:
+- Node name: node_step_27
+- Incoming edges: [26]
+- Outgoing edges: [28]
 
 Notes:
-- Strong implementation match found
-- Wired via graph registry ✅
-- Incoming: [26], Outgoing: [28]
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

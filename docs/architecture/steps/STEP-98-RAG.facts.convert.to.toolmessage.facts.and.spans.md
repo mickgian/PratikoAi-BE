@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/facts.py:step_98__to_tool_results`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Thin async orchestrator that converts extracted document facts and provenance into ToolMessage format for returning to the LLM tool caller. Formats facts into readable content, includes provenance metadata, and creates langchain ToolMessage. Routes to Step 99 (ToolResults).
 
 ## Differences (Blueprint vs Current)
@@ -37,33 +37,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.31
-
-Top candidates:
-1) app/orchestrators/facts.py:675 — app.orchestrators.facts.step_98__to_tool_results (score 0.31)
-   Evidence: Score 0.31, RAG STEP 98 — Convert to ToolMessage facts and spans
-ID: RAG.facts.convert.to.to...
-2) app/orchestrators/platform.py:891 — app.orchestrators.platform._convert_single_message (score 0.28)
-   Evidence: Score 0.28, Convert a single message from any format to Message object.
-3) app/orchestrators/platform.py:2526 — app.orchestrators.platform.step_99__tool_results (score 0.28)
-   Evidence: Score 0.28, RAG STEP 99 — Return to tool caller.
-
-ID: RAG.platform.return.to.tool.caller
-Typ...
-4) app/orchestrators/platform.py:2491 — app.orchestrators.platform._handle_tool_results_error (score 0.27)
-   Evidence: Score 0.27, Handle errors in tool results processing with graceful fallback.
-5) app/orchestrators/routing.py:94 — app.orchestrators.routing._determine_tool_type_and_routing (score 0.27)
-   Evidence: Score 0.27, Determine tool type and routing destination based on tool call context.
-
-Maps to...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

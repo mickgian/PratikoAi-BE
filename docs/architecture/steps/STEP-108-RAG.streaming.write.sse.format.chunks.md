@@ -9,8 +9,8 @@ Formats streaming chunks into Server-Sent Events (SSE) format using the write_ss
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/core/langgraph/nodes/step_108__write_sse.py` - `node_step_108`, `app/orchestrators/streaming.py:287` - `step_108__write_sse()`
-- **Role:** Node
-- **Status:** ✅ Implemented
+- **Role:** Internal
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator that formats streaming chunks into SSE format using the existing write_sse function. Creates SSE-formatted generator, configures formatting options, and validates requirements. Routes to StreamingResponse (Step 109) with properly formatted SSE stream ready for delivery.
 
 ## Differences (Blueprint vs Current)
@@ -38,33 +38,13 @@ Formats streaming chunks into Server-Sent Events (SSE) format using the write_ss
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.32
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/sse_write.py:15 — app.core.sse_write.write_sse (score 0.32)
-   Evidence: Score 0.32, Log an SSE frame that will be written to the response.
-
-Args:
-    response: The ...
-2) app/orchestrators/streaming.py:287 — app.orchestrators.streaming.step_108__write_sse (score 0.29)
-   Evidence: Score 0.29, RAG STEP 108 — write_sse Format chunks.
-
-Thin async orchestrator that formats st...
-3) app/orchestrators/streaming.py:387 — app.orchestrators.streaming._prepare_sse_format_configuration (score 0.29)
-   Evidence: Score 0.29, Prepare configuration for SSE formatting.
-4) app/orchestrators/streaming.py:446 — app.orchestrators.streaming._validate_sse_format_requirements (score 0.29)
-   Evidence: Score 0.29, Validate SSE formatting requirements and return warnings.
-5) app/core/langgraph/nodes/step_108__write_sse.py:9 — app.core.langgraph.nodes.step_108__write_sse.node_step_108 (score 0.28)
-   Evidence: Score 0.28, Node wrapper for Step 108: Format chunks into SSE format.
+Wiring information:
+- Node name: node_step_108
+- Incoming edges: [107]
+- Outgoing edges: [109]
 
 Notes:
-- Strong implementation match found
-- Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [107], Outgoing: [109]
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

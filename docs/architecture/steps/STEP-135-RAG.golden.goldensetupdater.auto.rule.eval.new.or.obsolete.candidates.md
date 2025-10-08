@@ -10,7 +10,7 @@ Automatically evaluates knowledge base content to identify new FAQ candidates or
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:1240` - `step_135__golden_rules()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator that evaluates knowledge content using rule-based scoring. Applies 5 evaluation rules: content length threshold, priority category boost, recency boost, keyword boost, and minimum score filter. Creates FAQ candidates with proposed questions, confidence scores, and priority rankings. Identifies obsolete candidates when content supersedes existing entries. Preserves all context data and routes to 'golden_candidate' step.
 
 ## Differences (Blueprint vs Current)
@@ -38,28 +38,8 @@ Automatically evaluates knowledge base content to identify new FAQ candidates or
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.52
-
-Top candidates:
-1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.52)
-   Evidence: Score 0.52, Approve, reject, or request revision for a generated FAQ
-2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.52)
-   Evidence: Score 0.52, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:690 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
-   Evidence: Score 0.50, RAG STEP 117 — POST /api/v1/faq/feedback.
-
-ID: RAG.golden.post.api.v1.faq.feedba...
-4) app/api/v1/faq_automation.py:229 — app.api.v1.faq_automation.get_faq_candidates (score 0.49)
-   Evidence: Score 0.49, Get FAQ candidates with filtering and pagination
-5) app/api/v1/faq_automation.py:303 — app.api.v1.faq_automation.generate_faqs_from_candidates (score 0.48)
-   Evidence: Score 0.48, Generate FAQs from selected candidates
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

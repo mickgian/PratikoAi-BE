@@ -9,41 +9,21 @@ Each step should be audited and its documentation filled during the conformance 
 **Implementation Status Overview (Tiered Graph Hybrid):**
 
 **Node Steps** (Runtime boundaries - must be wired):
-- ✅ Implemented & Wired: 0 steps
-- 🔌 Not Wired: 51 steps
-- ❌ Missing: 11 steps
-- Total Node steps: 62
+- ✅ Implemented & Wired: 25 steps
+- 🔌 Not Wired: 2 steps
+- ❌ Missing: 0 steps
+- Total Node steps: 27
 
 **Internal Steps** (Pure transforms - implementation only):
-- 🔌 Implemented: 57 steps
-- ❌ Missing: 16 steps
-- Total Internal steps: 73
+- 🔌 Implemented: 108 steps
+- ❌ Missing: 0 steps
+- Total Internal steps: 108
 
 **Overall Statistics:**
-- ✅ Fully Functional: 0 steps
-- 🔌 Implemented (internal) or Not Wired: 108 steps
-- ❌ Missing: 27 steps
+- ✅ Fully Functional: 25 steps
+- 🔌 Implemented (internal) or Not Wired: 110 steps
+- ❌ Missing: 0 steps
 - Total steps: 135
-
-**By Category:**
-- **cache**: 0 wired + 8 internal / 8 total
-- **ccnl**: 0 wired + 2 internal / 2 total
-- **classify**: 0 wired + 9 internal / 9 total
-- **docs**: 0 wired + 11 internal / 11 total
-- **facts**: 0 wired + 8 internal / 8 total
-- **feedback**: 0 wired + 6 internal / 6 total
-- **golden**: 0 wired + 13 internal / 13 total
-- **kb**: 0 wired + 4 internal / 4 total
-- **llm**: 0 wired + 2 internal / 3 total
-- **metrics**: 0 wired + 5 internal / 5 total
-- **platform**: 0 wired + 10 internal / 24 total
-- **preflight**: 0 wired + 3 internal / 10 total
-- **privacy**: 0 wired + 3 internal / 3 total
-- **prompting**: 0 wired + 3 internal / 6 total
-- **providers**: 0 wired + 12 internal / 12 total
-- **response**: 0 wired + 5 internal / 6 total
-- **routing**: 0 wired + 0 internal / 1 total
-- **streaming**: 0 wired + 4 internal / 4 total
 ## Step Registry
 
 | Step | ID | Node | Type | Category | Owner | Doc |

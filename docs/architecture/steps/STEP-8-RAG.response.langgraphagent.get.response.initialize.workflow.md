@@ -9,8 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/response.py:15` - `step_8__init_agent()`, `app/core/langgraph/graph.py:894` - `get_response()`
-- **Role:** Node
-- **Status:** ✅ (Implemented & Wired)
+- **Role:** Internal
+- **Status:** 🔌
 - **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,19 +36,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 1.00
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/langgraph/nodes/step_008__init_agent.py:13 — node_step_8 (score 1.00)
-   Evidence: Node wrapper delegating to orchestrator with rag_step_log and rag_step_timer
+Wiring information:
+- Node name: node_step_8
+- Incoming edges: [10]
+- Outgoing edges: none
 
 Notes:
-- Wired via graph registry ✅
-- Incoming: [10], Outgoing: []
-- Phase 6 Request/Privacy lane implemented
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

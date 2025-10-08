@@ -15,7 +15,7 @@ Process orchestrator that updates expert performance metrics based on feedback d
 - **Quality calculation:** `app/orchestrators/metrics.py:833` - `_calculate_correction_quality()`
 - **Service integration:** `app/services/expert_validation_workflow.py` - `ExpertValidationWorkflow` service
 - **Test suite:** `tests/test_rag_step_124_update_expert_metrics.py` (30 comprehensive tests)
-- **Status:** ✅ Implemented (async process orchestrator with expert metrics updates)
+- **Status:** 🔌
 - **Behavior notes:**
   - Updates expert performance metrics with trust score and accuracy calculations
   - Routes to Step 125 (CacheFeedback) per Mermaid diagram
@@ -78,35 +78,8 @@ Process orchestrator that updates expert performance metrics based on feedback d
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.37
-
-Top candidates:
-1) app/orchestrators/metrics.py:662 — app.orchestrators.metrics._update_expert_performance_metrics (score 0.37)
-   Evidence: Score 0.37, Helper function to update expert performance metrics using ExpertValidationWorkf...
-2) app/orchestrators/metrics.py:611 — app.orchestrators.metrics.step_124__update_expert_metrics (score 0.35)
-   Evidence: Score 0.35, RAG STEP 124 — Update expert metrics
-ID: RAG.metrics.update.expert.metrics
-Type:...
-3) evals/helpers.py:92 — evals.helpers.update_success_metrics (score 0.32)
-   Evidence: Score 0.32, Update metrics for a successful evaluation.
-
-Args:
-    report: The report dictio...
-4) evals/helpers.py:114 — evals.helpers.update_failure_metrics (score 0.32)
-   Evidence: Score 0.32, Update metrics for a failed evaluation.
-
-Args:
-    report: The report dictionary...
-5) app/core/monitoring/metrics.py:353 — app.core.monitoring.metrics.update_system_metrics (score 0.31)
-   Evidence: Score 0.31, Update system-level metrics like memory and CPU usage.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

@@ -9,8 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/platform.py:1393` - `step_69__retry_check()`
-- **Role:** Node
-- **Status:** missing
+- **Role:** Internal
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator checking if another retry attempt is allowed based on retry limits and error types. Manages retry logic for failed LLM calls and system errors.
 
 ## Differences (Blueprint vs Current)
@@ -37,34 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ❌ (Missing)  |  Confidence: 0.29
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/orchestrators/platform.py:1393 — app.orchestrators.platform.step_69__retry_check (score 0.29)
-   Evidence: Score 0.29, RAG STEP 69 — Another attempt allowed?
-ID: RAG.platform.another.attempt.allowed
-...
-2) app/core/langgraph/nodes/step_069__retry_check.py:9 — app.core.langgraph.nodes.step_069__retry_check.node_step_69 (score 0.27)
-   Evidence: Score 0.27, Node wrapper for Step 69: Retry check decision node.
-3) app/core/langgraph/graph.py:1039 — app.core.langgraph.graph.LangGraphAgent._route_from_retry_check (score 0.27)
-   Evidence: Score 0.27, Route from RetryCheck node.
-4) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
-   Evidence: Score 0.26, Health check endpoint.
-
-Returns:
-    dict: Health status information.
-5) app/main.py:157 — app.main.health_check (score 0.26)
-   Evidence: Score 0.26, Health check endpoint with environment-specific information.
-
-Returns:
-    Dict[...
+Wiring information:
+- Node name: node_step_69
+- Incoming edges: [67]
+- Outgoing edges: [70]
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create decision implementation for RetryCheck
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

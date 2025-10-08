@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/facts.py:114` - `step_18__query_sig()`
 - **Role:** Internal
-- **Status:** missing
+- **Status:** 🔌
 - **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly
@@ -36,34 +36,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.31
-
-Top candidates:
-1) app/orchestrators/facts.py:114 — app.orchestrators.facts.step_18__query_sig (score 0.31)
-   Evidence: Score 0.31, RAG STEP 18 — QuerySignature.compute Hash from canonical facts
-ID: RAG.facts.que...
-2) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.27)
-   Evidence: Score 0.27, Generate a deterministic hash for query deduplication.
-
-Args:
-    messages: List...
-3) app/orchestrators/facts.py:189 — app.orchestrators.facts.step_29__pre_context_from_golden (score 0.27)
-   Evidence: Score 0.27, RAG STEP 29 — ContextBuilder.merge facts and KB docs and doc facts if present
-ID...
-4) app/core/performance/database_optimizer.py:382 — app.core.performance.database_optimizer.DatabaseOptimizer._extract_table_from_query (score 0.27)
-   Evidence: Score 0.27, Extract primary table name from query.
-5) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.25)
-   Evidence: Score 0.25, Query the FAQ system with semantic search and response variation.
-
-This endpoint...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

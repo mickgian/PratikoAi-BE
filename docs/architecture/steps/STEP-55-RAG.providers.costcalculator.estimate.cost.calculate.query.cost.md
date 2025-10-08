@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Role:** Node
 - **Paths / classes:** `app/orchestrators/providers.py:635` - `step_55__estimate_cost()`
-- **Status:** ✅ Implemented
+- **Status:** ✅
 - **Behavior notes:** Orchestrator calculating estimated query costs for LLM providers. Analyzes token counts, provider pricing, and query complexity to provide cost estimates before execution.
 
 ## Differences (Blueprint vs Current)
@@ -37,36 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.50
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.50)
-   Evidence: Score 0.50, Select optimal LLM provider based on domain-action requirements
-2) app/core/llm/cost_calculator.py:141 — app.core.llm.cost_calculator.CostCalculator.calculate_cost_estimate (score 0.49)
-   Evidence: Score 0.49, Calculate cost estimate for a query with a specific provider.
-
-Args:
-    provide...
-3) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.48)
-   Evidence: Score 0.48, Route with failover logic - primary provider with fallbacks.
-
-Args:
-    provider...
-4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.48)
-   Evidence: Score 0.48, Main query router that integrates classification, prompt templates,
-context enri...
-5) app/orchestrators/providers.py:1201 — app.orchestrators.providers.step_72__get_failover_provider (score 0.46)
-   Evidence: Score 0.46, RAG STEP 72 — Get FAILOVER provider
-ID: RAG.providers.get.failover.provider
-Type...
+Wiring information:
+- Node name: node_step_55
+- Incoming edges: [51, 52, 53, 54, 58]
+- Outgoing edges: [56]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Test failover and retry mechanisms
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

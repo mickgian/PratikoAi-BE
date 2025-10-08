@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `AttachCheck` (Attachments present?).
 
 ## Current Implementation (Repo)
-- **Role:** Node
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/preflight.py:92` - `step_19__attach_check()`
-- **Status:** missing
+- **Status:** 🔌
 - **Behavior notes:** Node orchestrator checking if attachments are present in user request. Decision point routing to document processing or golden set lookup.
 
 ## Differences (Blueprint vs Current)
@@ -37,36 +37,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ❌ (Missing)  |  Confidence: 0.30
-
-Top candidates:
-1) app/orchestrators/preflight.py:92 — app.orchestrators.preflight.step_19__attach_check (score 0.30)
-   Evidence: Score 0.30, RAG STEP 19 — Attachments present?
-ID: RAG.preflight.attachments.present
-Type: p...
-2) app/orchestrators/preflight.py:681 — app.orchestrators.preflight.step_85__valid_attachments_check (score 0.29)
-   Evidence: Score 0.29, RAG STEP 85 — Valid attachments?
-ID: RAG.preflight.valid.attachments
-Type: decis...
-3) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.27)
-   Evidence: Score 0.27, Health check endpoint.
-
-Returns:
-    dict: Health status information.
-4) app/main.py:157 — app.main.health_check (score 0.27)
-   Evidence: Score 0.27, Health check endpoint with environment-specific information.
-
-Returns:
-    Dict[...
-5) demo_app.py:100 — demo_app.health_check (score 0.27)
-   Evidence: Score 0.27, Health check endpoint.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for AttachCheck
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

@@ -10,7 +10,7 @@ Proposes a new FAQ candidate for the Golden Set based on expert feedback. When a
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_127__golden_candidate`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator that transforms expert feedback into FAQ candidate. Extracts expert feedback data (query, answer, category, regulatory refs, confidence), calculates priority score based on confidence × trust × frequency, derives quality score from expert metrics, and routes to GoldenApproval (Step 128) with candidate metadata.
 
 ## Differences (Blueprint vs Current)
@@ -38,30 +38,8 @@ Proposes a new FAQ candidate for the Golden Set based on expert feedback. When a
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.53
-
-Top candidates:
-1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)
-   Evidence: Score 0.53, Approve, reject, or request revision for a generated FAQ
-2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.53)
-   Evidence: Score 0.53, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:690 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
-   Evidence: Score 0.50, RAG STEP 117 — POST /api/v1/faq/feedback.
-
-ID: RAG.golden.post.api.v1.faq.feedba...
-4) app/api/v1/faq.py:187 — app.api.v1.faq.submit_feedback (score 0.50)
-   Evidence: Score 0.50, Submit user feedback on FAQ responses.
-
-Feedback is used to improve FAQ quality ...
-5) app/api/v1/faq_automation.py:303 — app.api.v1.faq_automation.generate_faqs_from_candidates (score 0.49)
-   Evidence: Score 0.49, Generate FAQs from selected candidates
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

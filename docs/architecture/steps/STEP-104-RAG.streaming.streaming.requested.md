@@ -10,7 +10,7 @@ Determines if the client requested streaming response format by checking request
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/core/langgraph/nodes/step_104__stream_check.py` - `node_step_104`, `app/orchestrators/streaming.py:15` - `step_104__stream_check()`
 - **Role:** Node
-- **Status:** ✅ Implemented
+- **Status:** ✅
 - **Behavior notes:** Async decision orchestrator that checks stream parameter, HTTP Accept headers, and client preferences. Routes to StreamSetup for streaming or ReturnComplete for JSON responses. Includes streaming configuration setup and comprehensive value parsing for various stream parameter formats.
 
 ## Differences (Blueprint vs Current)
@@ -38,34 +38,13 @@ Determines if the client requested streaming response format by checking request
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.34
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/orchestrators/streaming.py:15 — app.orchestrators.streaming.step_104__stream_check (score 0.34)
-   Evidence: Score 0.34, RAG STEP 104 — Streaming requested?
-
-Thin async orchestrator that determines if ...
-2) app/orchestrators/streaming.py:115 — app.orchestrators.streaming._parse_stream_value (score 0.30)
-   Evidence: Score 0.30, Parse various stream value formats to boolean.
-3) app/orchestrators/streaming.py:239 — app.orchestrators.streaming._prepare_stream_context (score 0.30)
-   Evidence: Score 0.30, Prepare streaming context for async generator creation.
-4) app/orchestrators/streaming.py:149 — app.orchestrators.streaming.step_105__stream_setup (score 0.29)
-   Evidence: Score 0.29, RAG STEP 105 — ChatbotController.chat_stream Setup SSE.
-
-Thin async orchestrator...
-5) app/orchestrators/streaming.py:575 — app.orchestrators.streaming.step_109__stream_response (score 0.29)
-   Evidence: Score 0.29, RAG STEP 109 — StreamingResponse Send chunks.
-
-Thin async orchestrator that crea...
+Wiring information:
+- Node name: node_step_104
+- Incoming edges: none
+- Outgoing edges: [105, 111]
 
 Notes:
-- Strong implementation match found
-- Low confidence in symbol matching
-- Wired via graph registry ✅
-- Incoming: [], Outgoing: [105, 111]
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

@@ -8,9 +8,9 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `PrimaryProvider` (Use primary provider).
 
 ## Current Implementation (Repo)
-- **Role:** Node
+- **Role:** Internal
 - **Paths / classes:** `app/orchestrators/providers.py:533` - `step_54__primary_provider()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Orchestrator selecting primary/preferred LLM provider based on configuration. Routes to the default provider for the given domain-action classification.
 
 ## Differences (Blueprint vs Current)
@@ -37,34 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.50
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/llm/factory.py:298 — app.core.llm.factory.LLMFactory._route_failover (score 0.50)
-   Evidence: Score 0.50, Route with failover logic - primary provider with fallbacks.
-
-Args:
-    provider...
-2) app/services/enhanced_query_router.py:213 — app.services.enhanced_query_router.EnhancedQueryRouter._select_llm_provider (score 0.49)
-   Evidence: Score 0.49, Select optimal LLM provider based on domain-action requirements
-3) app/orchestrators/providers.py:1201 — app.orchestrators.providers.step_72__get_failover_provider (score 0.47)
-   Evidence: Score 0.47, RAG STEP 72 — Get FAILOVER provider
-ID: RAG.providers.get.failover.provider
-Type...
-4) app/services/enhanced_query_router.py:46 — app.services.enhanced_query_router.EnhancedQueryRouter (score 0.46)
-   Evidence: Score 0.46, Main query router that integrates classification, prompt templates,
-context enri...
-5) app/core/langgraph/nodes/step_072__failover_provider.py:9 — app.core.langgraph.nodes.step_072__failover_provider.node_step_72 (score 0.46)
-   Evidence: Score 0.46, Node wrapper for Step 72: Get failover provider.
+Wiring information:
+- Node name: node_step_54
+- Incoming edges: [50]
+- Outgoing edges: [55]
 
 Notes:
-- Strong implementation match found
-- Wired via graph registry ✅
-- Incoming: [50], Outgoing: [55]
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
-- Test failover and retry mechanisms
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

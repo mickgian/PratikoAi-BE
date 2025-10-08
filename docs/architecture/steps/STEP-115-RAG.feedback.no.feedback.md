@@ -12,7 +12,7 @@ Terminal process node that finalizes the feedback pipeline when no feedback is p
 - **Paths / classes:** `app/orchestrators/feedback.py:407` - `step_115__feedback_end()`
 - **Helper function:** `app/orchestrators/feedback.py:332` - `_finalize_feedback_pipeline()`
 - **Test suite:** `tests/test_rag_step_115_feedback_end.py` (15 comprehensive tests)
-- **Status:** ✅ Implemented (async process orchestrator with full functionality)
+- **Status:** 🔌
 - **Behavior notes:**
   - Determines completion reason based on context (no feedback, UI disabled, golden rejection, etc.)
   - Calculates and finalizes pipeline timing metrics
@@ -59,32 +59,8 @@ Terminal process node that finalizes the feedback pipeline when no feedback is p
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.51
-
-Top candidates:
-1) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.51)
-   Evidence: Score 0.51, Service for collecting and processing expert feedback on AI responses.
-
-Features...
-2) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.50)
-   Evidence: Score 0.50, Automatic Improvement Engine for Quality Analysis System.
-
-Automatically generat...
-3) app/orchestrators/feedback.py:783 — app.orchestrators.feedback._create_expert_feedback_record (score 0.47)
-   Evidence: Score 0.47, Helper function to create expert feedback record using ExpertFeedbackCollector s...
-4) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.47)
-   Evidence: Score 0.47, Expert Feedback Collection Service for Quality Analysis System.
-
-Handles collect...
-5) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.46)
-   Evidence: Score 0.46, Validate feedback data structure and content
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

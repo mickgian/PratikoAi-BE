@@ -12,7 +12,7 @@ Decision node that evaluates whether user provided feedback after UI display. Ro
 - **Paths / classes:** `app/orchestrators/feedback.py:270` - `step_114__feedback_provided()`
 - **Helper function:** `app/orchestrators/feedback.py:188` - `_evaluate_feedback_presence()`
 - **Test suite:** `tests/test_rag_step_114_feedback_provided.py` (15 comprehensive tests)
-- **Status:** ✅ Implemented (async decision orchestrator with full functionality)
+- **Status:** 🔌
 - **Behavior notes:**
   - Evaluates feedback presence using priority-based detection logic
   - Handles expert feedback (highest priority), user feedback, and general feedback data
@@ -59,33 +59,8 @@ Decision node that evaluates whether user provided feedback after UI display. Ro
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.49
-
-Top candidates:
-1) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.49)
-   Evidence: Score 0.49, Automatic Improvement Engine for Quality Analysis System.
-
-Automatically generat...
-2) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.47)
-   Evidence: Score 0.47, Service for collecting and processing expert feedback on AI responses.
-
-Features...
-3) app/orchestrators/feedback.py:783 — app.orchestrators.feedback._create_expert_feedback_record (score 0.46)
-   Evidence: Score 0.46, Helper function to create expert feedback record using ExpertFeedbackCollector s...
-4) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.45)
-   Evidence: Score 0.45, Expert Feedback Collection Service for Quality Analysis System.
-
-Handles collect...
-5) app/services/expert_feedback_collector.py:149 — app.services.expert_feedback_collector.ExpertFeedbackCollector._validate_feedback_data (score 0.45)
-   Evidence: Score 0.45, Validate feedback data structure and content
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

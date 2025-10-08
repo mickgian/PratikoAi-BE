@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/preflight.py:step_82__doc_ingest`, `app/core/langgraph/tools/document_ingest_tool.py:DocumentIngestTool`
 - **Role:** Node
-- **Status:** missing
+- **Status:** ✅
 - **Behavior notes:** Thin async orchestrator that executes document processing when the LLM calls the DocumentIngestTool. Uses DocumentIngestTool for text extraction, document classification, and preparing files for RAG pipeline. Supports PDF, Excel, CSV, and image files with OCR. Routes to Step 84 (ValidateAttachments).
 
 ## Differences (Blueprint vs Current)
@@ -37,31 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.32
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/langgraph/tools/document_ingest_tool.py:50 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestInput.validate_attachments (score 0.32)
-   Evidence: Score 0.32, method: validate_attachments
-2) app/core/langgraph/tools/document_ingest_tool.py:80 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool.__init__ (score 0.31)
-   Evidence: Score 0.31, Initialize the document ingest tool.
-3) app/core/langgraph/tools/document_ingest_tool.py:374 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._run (score 0.31)
-   Evidence: Score 0.31, Synchronous wrapper (not recommended, use async version).
-4) app/core/langgraph/tools/document_ingest_tool.py:85 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._get_processor (score 0.30)
-   Evidence: Score 0.30, Get or create document processor instance.
-5) app/core/langgraph/tools/document_ingest_tool.py:91 — app.core.langgraph.tools.document_ingest_tool.DocumentIngestTool._validate_attachment (score 0.30)
-   Evidence: Score 0.30, Validate a single attachment.
-
-Args:
-    attachment: Attachment data dictionary
-...
+Wiring information:
+- Node name: node_step_82
+- Incoming edges: [79]
+- Outgoing edges: [99]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

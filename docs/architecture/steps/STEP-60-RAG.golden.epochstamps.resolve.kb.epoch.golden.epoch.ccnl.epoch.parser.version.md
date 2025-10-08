@@ -10,7 +10,7 @@ Resolves version epochs from various data sources (KB, Golden Set, CCNL, parsers
 ## Current Implementation (Repo)
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/golden.py:step_60__resolve_epochs`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Async orchestrator that extracts epoch timestamps from context (kb_last_updated, golden_last_updated, ccnl_last_updated, parser_version). Creates epoch resolution metadata tracking which epochs were resolved. Routes to Step 61 (GenHash) with resolved epochs for cache key generation.
 
 ## Differences (Blueprint vs Current)
@@ -38,32 +38,8 @@ Resolves version epochs from various data sources (KB, Golden Set, CCNL, parsers
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.53
-
-Top candidates:
-1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)
-   Evidence: Score 0.53, Approve, reject, or request revision for a generated FAQ
-2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.53)
-   Evidence: Score 0.53, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:690 — app.orchestrators.golden.step_117__faqfeedback (score 0.50)
-   Evidence: Score 0.50, RAG STEP 117 — POST /api/v1/faq/feedback.
-
-ID: RAG.golden.post.api.v1.faq.feedba...
-4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.48)
-   Evidence: Score 0.48, Query the FAQ system with semantic search and response variation.
-
-This endpoint...
-5) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.48)
-   Evidence: Score 0.48, Create a new FAQ entry.
-
-Requires admin privileges.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

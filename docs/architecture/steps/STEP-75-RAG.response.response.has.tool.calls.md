@@ -10,7 +10,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 ## Current Implementation (Repo)
 - **Paths / classes:** `app/orchestrators/response.py:431` - `step_75__tool_check()`
 - **Role:** Node
-- **Status:** missing
+- **Status:** ✅
 - **Behavior notes:** Async orchestrator checking if response contains tool calls. Decision point routing to tool execution or simple message response.
 
 ## Differences (Blueprint vs Current)
@@ -37,32 +37,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.34
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/orchestrators/response.py:431 — app.orchestrators.response.step_75__tool_check (score 0.34)
-   Evidence: Score 0.34, RAG STEP 75 — Response has tool_calls?
-ID: RAG.response.response.has.tool.calls
-...
-2) app/core/langgraph/graph.py:973 — app.core.langgraph.graph.LangGraphAgent._route_tool_check (score 0.27)
-   Evidence: Score 0.27, Route from ToolCheck node.
-3) app/core/langgraph/nodes/step_075__tool_check.py:9 — app.core.langgraph.nodes.step_075__tool_check.node_step_75 (score 0.27)
-   Evidence: Score 0.27, Node wrapper for Step 75: Check if tools are needed.
-4) app/core/langgraph/graph.py:1053 — app.core.langgraph.graph.LangGraphAgent._route_from_tool_check (score 0.27)
-   Evidence: Score 0.27, Route from ToolCheck node.
-5) app/api/v1/api.py:64 — app.api.v1.api.health_check (score 0.26)
-   Evidence: Score 0.26, Health check endpoint.
-
-Returns:
-    dict: Health status information.
+Wiring information:
+- Node name: node_step_75
+- Incoming edges: [74]
+- Outgoing edges: [79]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-- Detected Node but not in runtime registry
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

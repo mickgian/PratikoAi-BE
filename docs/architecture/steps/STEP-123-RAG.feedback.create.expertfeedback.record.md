@@ -14,7 +14,7 @@ Process orchestrator that creates ExpertFeedback records for validated experts. 
 - **Error handling:** `app/orchestrators/feedback.py:934` - `_handle_feedback_creation_error()`
 - **Service integration:** `app/services/expert_feedback_collector.py` - `ExpertFeedbackCollector` service
 - **Test suite:** `tests/test_rag_step_123_create_feedback_rec.py` (33 comprehensive tests)
-- **Status:** ✅ Implemented (async process orchestrator with expert feedback record creation)
+- **Status:** 🔌
 - **Behavior notes:**
   - Creates ExpertFeedback records with comprehensive validation and metadata generation
   - Routes to Step 124 (UpdateExpertMetrics) per Mermaid diagram
@@ -73,33 +73,8 @@ Process orchestrator that creates ExpertFeedback records for validated experts. 
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented - internal)  |  Confidence: 0.54
-
-Top candidates:
-1) app/orchestrators/feedback.py:783 — app.orchestrators.feedback._create_expert_feedback_record (score 0.54)
-   Evidence: Score 0.54, Helper function to create expert feedback record using ExpertFeedbackCollector s...
-2) app/services/expert_feedback_collector.py:31 — app.services.expert_feedback_collector.ExpertFeedbackCollector (score 0.49)
-   Evidence: Score 0.49, Service for collecting and processing expert feedback on AI responses.
-
-Features...
-3) app/services/automatic_improvement_engine.py:1 — app.services.automatic_improvement_engine (score 0.49)
-   Evidence: Score 0.49, Automatic Improvement Engine for Quality Analysis System.
-
-Automatically generat...
-4) app/orchestrators/feedback.py:733 — app.orchestrators.feedback.step_123__create_feedback_rec (score 0.49)
-   Evidence: Score 0.49, RAG STEP 123 — Create ExpertFeedback record
-ID: RAG.feedback.create.expertfeedba...
-5) app/services/expert_feedback_collector.py:1 — app.services.expert_feedback_collector (score 0.45)
-   Evidence: Score 0.45, Expert Feedback Collection Service for Quality Analysis System.
-
-Handles collect...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Implemented (internal) - no wiring required
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

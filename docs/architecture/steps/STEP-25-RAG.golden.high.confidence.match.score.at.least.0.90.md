@@ -8,9 +8,9 @@
 Evaluates the confidence score of a Golden Set match from Step 24 to determine routing. If the similarity score is >= 0.90 (high confidence), routes to Step 26 for KB freshness validation. Otherwise routes to Step 30 (ClassifyDomain) for standard RAG flow.
 
 ## Current Implementation (Repo)
-- **Role:** Node
+- **Role:** Internal
 - **Paths / classes:** `app/core/langgraph/nodes/step_025__golden_hit.py` - `node_step_25`, `app/orchestrators/golden.py:260` - `step_25__golden_hit()`
-- **Status:** ✅ Implemented
+- **Status:** 🔌
 - **Behavior notes:** Node orchestrator that performs threshold comparison (0.90) on `similarity_score` from Step 24. Routes to KB context check (Step 26) if high confidence, or ClassifyDomain (Step 30) if low confidence. Includes decision metadata for observability.
 
 ## Differences (Blueprint vs Current)
@@ -37,33 +37,13 @@ Evaluates the confidence score of a Golden Set match from Step 24 to determine r
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.53
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.53)
-   Evidence: Score 0.53, Approve, reject, or request revision for a generated FAQ
-2) app/api/v1/faq_automation.py:460 — app.api.v1.faq_automation.publish_faq (score 0.53)
-   Evidence: Score 0.53, Publish an approved FAQ to make it available to users
-3) app/orchestrators/golden.py:690 — app.orchestrators.golden.step_117__faqfeedback (score 0.51)
-   Evidence: Score 0.51, RAG STEP 117 — POST /api/v1/faq/feedback.
-
-ID: RAG.golden.post.api.v1.faq.feedba...
-4) app/api/v1/faq.py:130 — app.api.v1.faq.query_faq (score 0.49)
-   Evidence: Score 0.49, Query the FAQ system with semantic search and response variation.
-
-This endpoint...
-5) app/api/v1/faq.py:385 — app.api.v1.faq.create_faq (score 0.49)
-   Evidence: Score 0.49, Create a new FAQ entry.
-
-Requires admin privileges.
+Wiring information:
+- Node name: node_step_25
+- Incoming edges: [24]
+- Outgoing edges: [26]
 
 Notes:
-- Strong implementation match found
-- Wired via graph registry ✅
-- Incoming: [24], Outgoing: [26]
-
-Suggested next TDD actions:
-- Verify complete test coverage
-- Add observability logging
-- Performance optimization if needed
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

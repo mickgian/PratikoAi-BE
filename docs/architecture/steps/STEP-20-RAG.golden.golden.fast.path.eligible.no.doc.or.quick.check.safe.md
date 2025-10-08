@@ -9,8 +9,8 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Paths / classes:** `app/orchestrators/golden.py:14` - `step_20__golden_fast_gate()`
-- **Status:** missing
+- **Paths / classes:** `app/core/langgraph/nodes/step_020__golden_fast_gate.py` - `node_step_20`, `app/orchestrators/golden.py:14` - `step_20__golden_fast_gate()`
+- **Status:** ✅ Implemented
 - **Behavior notes:** Node orchestrator using GoldenFastPathService to determine eligibility for golden fast-path. Checks for document-dependent queries, safe factual queries, and complexity indicators. Routes to Step 24 (GoldenLookup) if eligible or Step 31 (ClassifyDomain) if not eligible.
 
 ## Differences (Blueprint vs Current)
@@ -37,7 +37,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.51
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.51
 
 Top candidates:
 1) app/api/v1/faq_automation.py:418 — app.api.v1.faq_automation.approve_faq (score 0.51)
@@ -54,11 +54,12 @@ ID: RAG.golden.post.api.v1.faq.feedba...
    Evidence: Score 0.47, Request model for FAQ queries.
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Detected Node but not in runtime registry
+- Strong implementation match found
+- Wired via graph registry ✅
+- Incoming: [], Outgoing: [24]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

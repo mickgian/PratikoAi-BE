@@ -51,6 +51,15 @@ from .step_109__stream_response import node_step_109
 from .step_110__send_done import node_step_110
 from .step_111__collect_metrics import node_step_111
 
+# Phase 8 Golden/KB Gates imports
+from .step_020__golden_fast_gate import node_step_20
+from .step_024__golden_lookup import node_step_24
+from .step_025__golden_hit import node_step_25
+from .step_026__kb_context_check import node_step_26
+from .step_027__kb_delta import node_step_27
+from .step_028__serve_golden import node_step_28
+from .step_030__return_complete import node_step_30
+
 __all__ = [
     "node_step_1",
     "node_step_3",
@@ -60,6 +69,13 @@ __all__ = [
     "node_step_8",
     "node_step_9",
     "node_step_10",
+    "node_step_20",
+    "node_step_24",
+    "node_step_25",
+    "node_step_26",
+    "node_step_27",
+    "node_step_28",
+    "node_step_30",
     "node_step_48",
     "node_step_49",
     "node_step_50",

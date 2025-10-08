@@ -174,14 +174,16 @@ from app.core.langgraph.wiring_registry import (
     initialize_phase5_registry,
     initialize_phase6_registry,
     initialize_phase7_registry,
+    initialize_phase8_registry,
     track_edge,
 )
 
-# Initialize Phase 4, 5, 6, and 7 registries at module load time
+# Initialize Phase 4, 5, 6, 7, and 8 registries at module load time
 initialize_phase4_registry()
 initialize_phase5_registry()
 initialize_phase6_registry()
 initialize_phase7_registry()
+initialize_phase8_registry()
 
 # Explicit exports for stable API
 __all__ = ["LangGraphAgent", "GraphState", "RAGState", "get_wired_nodes_snapshot"]

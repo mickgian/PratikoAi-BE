@@ -9,8 +9,8 @@ Fetches recent Knowledge Base changes when a high-confidence Golden Set match oc
 
 ## Current Implementation (Repo)
 - **Role:** Node
-- **Paths / classes:** `app/orchestrators/kb.py:21` - `step_26__kbcontext_check()`
-- **Status:** missing
+- **Paths / classes:** `app/core/langgraph/nodes/step_026__kb_context_check.py` - `node_step_26`, `app/orchestrators/kb.py:21` - `step_26__kbcontext_check()`
+- **Status:** ✅ Implemented
 - **Behavior notes:** Node orchestrator that fetches recent KB changes using KnowledgeSearchService. Parses Golden Set timestamp for recency comparison, filters KB results to last 14 days, converts results to dicts for context preservation. Routes to Step 27 (KBDelta) for conflict evaluation.
 
 ## Differences (Blueprint vs Current)
@@ -38,7 +38,7 @@ Fetches recent Knowledge Base changes when a high-confidence Golden Set match oc
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Confidence: 0.48
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Confidence: 0.48
 
 Top candidates:
 1) app/services/knowledge_search_service.py:735 — app.services.knowledge_search_service.retrieve_knowledge_topk (score 0.48)
@@ -58,12 +58,13 @@ Implements RAG STEP 39 —...
    Evidence: Score 0.43, Pinecone vector search provider.
 
 Notes:
-- Implementation exists but may not be wired correctly
+- Strong implementation match found
 - Low confidence in symbol matching
-- Detected Node but not in runtime registry
+- Wired via graph registry ✅
+- Incoming: [25], Outgoing: [27]
 
 Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- Verify complete test coverage
+- Add observability logging
+- Performance optimization if needed
 <!-- AUTO-AUDIT:END -->

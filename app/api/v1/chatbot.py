@@ -30,7 +30,8 @@ from app.schemas.chat import (
 from app.core.privacy.anonymizer import anonymizer
 from app.core.privacy.gdpr import gdpr_compliance, ProcessingPurpose, DataCategory
 from app.core.streaming_guard import SinglePassStream
-from app.core.sse_write import write_sse
+from app.core.sse_write import write_sse, log_sse_summary
+from app.observability.rag_trace import rag_trace_context
 
 router = APIRouter()
 agent = LangGraphAgent()
@@ -94,9 +95,14 @@ async def chat(
             anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
         )
 
-        result = await agent.get_response(
-            processed_messages, session.id, user_id=session.user_id
-        )
+        # Extract user query for trace metadata
+        user_query = processed_messages[-1].content if processed_messages else "N/A"
+
+        # Wrap request processing with RAG trace context (dev/staging only)
+        with rag_trace_context(request_id=str(session.id), user_query=user_query):
+            result = await agent.get_response(
+                processed_messages, session.id, user_id=session.user_id
+            )
 
         logger.info("chat_request_processed", session_id=session.id)
 
@@ -163,6 +169,12 @@ async def chat_stream(
             anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
         )
 
+        # Use session.id as request_id for tracking SSE writes
+        request_id = str(session.id)
+
+        # Extract user query for trace metadata
+        user_query = processed_messages[-1].content if processed_messages else "N/A"
+
         async def event_generator():
             """Generate streaming events with pure markdown output and deduplication.
 
@@ -173,19 +185,24 @@ async def chat_stream(
                 Exception: If there's an error during streaming.
             """
             try:
-                with llm_stream_duration_seconds.labels(model="llm").time():
-                    # Wrap the original stream to prevent double iteration
-                    original_stream = SinglePassStream(agent.get_stream_response(
-                        processed_messages, session.id, user_id=session.user_id
-                    ))
-                    
-                    async for chunk in original_stream:
-                        if chunk and chunk.strip():
-                            # Direct markdown streaming without processing
-                            yield write_sse(None, chunk)
+                # Wrap streaming with RAG trace context (dev/staging only)
+                with rag_trace_context(request_id=request_id, user_query=user_query):
+                    with llm_stream_duration_seconds.labels(model="llm").time():
+                        # Wrap the original stream to prevent double iteration
+                        original_stream = SinglePassStream(agent.get_stream_response(
+                            processed_messages, session.id, user_id=session.user_id
+                        ))
 
-                # Send final done frame
-                yield write_sse(None, "[DONE]")
+                        async for chunk in original_stream:
+                            if chunk and chunk.strip():
+                                # Direct markdown streaming without processing
+                                yield write_sse(None, chunk, request_id=request_id)
+
+                    # Send final done frame
+                    yield write_sse(None, "[DONE]", request_id=request_id)
+
+                    # Log aggregated statistics for this streaming session
+                    log_sse_summary(request_id=request_id)
 
             except RuntimeError as re:
                 if "iterated twice" in str(re):
@@ -193,6 +210,8 @@ async def chat_stream(
                         f"CRITICAL: Stream iterated twice - session: {session.id}",
                         exc_info=True
                     )
+                # Still log summary even on error
+                log_sse_summary(request_id=request_id)
                 raise
             except Exception as e:
                 logger.error(
@@ -203,6 +222,8 @@ async def chat_stream(
                 )
                 error_response = StreamResponse(content=str(e), done=True)
                 yield f"data: {json.dumps(error_response.model_dump())}\n\n"
+                # Log summary even on error
+                log_sse_summary(request_id=request_id)
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
 

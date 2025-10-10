@@ -1,47 +1,45 @@
 """Node wrapper for Step 99: Tool Results."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
 from app.orchestrators.platform import step_99__tool_results
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 99
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_99(state: RAGState) -> RAGState:
     """Node wrapper for Step 99: Process and aggregate tool results."""
+    rag_step_log(STEP, "enter", tools=state.get("tools"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_99__tool_results(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_99__tool_results(messages=messages, ctx=dict(state))
+        # Map to canonical state keys
+        tools = state.setdefault("tools", {})
+        decisions = state.setdefault("decisions", {})
 
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
+        # Field mappings with name translation
+        if "results_returned" in res:
+            tools["results_returned"] = res["results_returned"]
 
-        # Mark tool processing as complete
-        if "tools" not in state:
-            state["tools"] = {}
-        state["tools"]["results_processed"] = True
+        _merge(tools, res.get("tools_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
 
-        # Aggregate results for response path
-        tool_results = []
-        if "kb_results" in state.get("tools", {}):
-            tool_results.append(state["tools"]["kb_results"])
-        if "ccnl_results" in state.get("tools", {}):
-            tool_results.append(state["tools"]["ccnl_results"])
-        if "doc_results" in state.get("tools", {}):
-            tool_results.append(state["tools"]["doc_results"])
-        if "faq_results" in state.get("tools", {}):
-            tool_results.append(state["tools"]["faq_results"])
-
-        state["tools"]["results"] = tool_results
-
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys())
-                                )
-        return state
+    rag_step_log(STEP, "exit", results_returned=tools.get("results_returned"))
+    return state

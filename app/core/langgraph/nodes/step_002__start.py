@@ -1,12 +1,16 @@
 """Node wrapper for Step 2: Start."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from app.core.langgraph.types import RAGState
+from app.observability.rag_logging import (
+    rag_step_log_compat as rag_step_log,
+    rag_step_timer_compat as rag_step_timer,
+)
 from app.orchestrators.platform import step_2__start
 
 STEP = 2
 
 
-def node_step_2(state: RAGState) -> RAGState:
+async def node_step_2(state: RAGState) -> RAGState:
     """Node wrapper for Step 2: Start processing."""
     with rag_step_timer(STEP):
         rag_step_log(STEP, "enter", keys=list(state.keys()))

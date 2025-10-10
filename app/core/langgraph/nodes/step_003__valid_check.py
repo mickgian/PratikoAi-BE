@@ -1,36 +1,44 @@
 """Node wrapper for Step 3: Valid Check."""
 
-from app.core.langgraph import types as rag_types
-
-# Aliases for test introspection
-rag_step_log = rag_types.rag_step_log
-rag_step_timer = rag_types.rag_step_timer
-from app.orchestrators import platform as orchestrators
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.orchestrators.platform import step_3__valid_check
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 3
 
 
-async def node_step_3(state: rag_types.RAGState) -> rag_types.RAGState:
-    """Node wrapper for Step 3: Valid Check (Decision).
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
 
-    Delegates to the orchestrator and updates state with validity check results.
-    """
-    decisions = state.setdefault("decisions", {})
 
-    with rag_types.rag_step_timer(STEP):
-        rag_types.rag_step_log(STEP, "enter", keys=list(state.keys()))
+async def node_step_3(state: RAGState) -> RAGState:
+    """Node wrapper for Step 3: Valid Check (Decision)."""
+    rag_step_log(STEP, "enter", keys=list(state.keys()))
+    with rag_step_timer(STEP):
+        res = await step_3__valid_check(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to the orchestrator (cast to dict for type compatibility)
-        result = await orchestrators.step_3__valid_check(ctx=dict(state), messages=state.get("messages"))
+        # Map to canonical state keys
+        decisions = state.setdefault("decisions", {})
 
-        # Merge result fields into state (preserving existing data)
-        if isinstance(result, dict):
-            if "is_valid" in result:
-                decisions["is_valid"] = bool(result["is_valid"])
-                decisions["request_valid"] = bool(result["is_valid"])  # Legacy compatibility
-            if "validation_result" in result:
-                state["validation_result"] = result["validation_result"]
+        # Field mappings with name translation
+        if "is_valid" in res:
+            decisions["request_valid"] = res["is_valid"]
+            decisions["is_valid"] = res["is_valid"]
 
-        rag_types.rag_step_log(STEP, "exit", decisions=decisions, is_valid=decisions.get("is_valid"))
+        _merge(decisions, res.get("decisions", {}))
 
+    rag_step_log(STEP, "exit", request_valid=decisions.get("request_valid"))
     return state

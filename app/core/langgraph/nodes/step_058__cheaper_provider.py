@@ -1,39 +1,56 @@
 """Node wrapper for Step 58: Cheaper Provider."""
 
-from app.core.langgraph import types as rag_types
-
-# Aliases for test introspection
-rag_step_log = rag_types.rag_step_log
-rag_step_timer = rag_types.rag_step_timer
-from app.orchestrators import providers as orchestrators
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import mirror
+from app.observability.rag_logging import (
+    rag_step_log_compat as rag_step_log,
+    rag_step_timer_compat as rag_step_timer,
+)
+from app.orchestrators.providers import step_58__cheaper_provider
 
 STEP = 58
 
 
-def node_step_58(state: rag_types.RAGState) -> rag_types.RAGState:
-    """Node wrapper for Step 58: Cheaper Provider.
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
 
-    Delegates to the orchestrator and updates state with cheaper provider selection.
-    """
-    provider = state.setdefault("provider", {})
-    state.setdefault("provider_choice", None)
 
-    with rag_types.rag_step_timer(STEP):
-        rag_types.rag_step_log(STEP, "enter", keys=list(state.keys()))
+async def node_step_58(state: RAGState) -> RAGState:
+    """Node wrapper for Step 58: Cheaper Provider."""
+    rag_step_log(STEP, "enter", provider=state.get("provider", {}).get("selected"))
+    with rag_step_timer(STEP):
+        # Call orchestrator with business inputs only
+        res = await step_58__cheaper_provider(ctx=dict(state))
 
-        # Delegate to the orchestrator (cast to dict for type compatibility)
-        result = orchestrators.step_58__cheaper_provider(ctx=dict(state))
+        # Map orchestrator outputs to canonical state keys (additive)
+        provider = state.setdefault("provider", {})
+        decisions = state.setdefault("decisions", {})
 
-        # Merge result fields into provider dict (preserving existing data)
-        if isinstance(result, dict):
-            if "provider" in result:
-                provider["selected"] = result["provider"]
-                state["provider_choice"] = result["provider"]  # legacy field
-            if "cheaper_found" in result:
-                provider["cheaper_found"] = result["cheaper_found"]
-            if "fallback_strategy" in result:
-                provider["fallback_strategy"] = result["fallback_strategy"]
+        # Map fields with name translation (CRITICAL: cheaper_found)
+        if "provider" in res:
+            provider["selected"] = res["provider"]
+        if "cheaper_found" in res:
+            provider["cheaper_found"] = res["cheaper_found"]
+        elif "found" in res:
+            provider["cheaper_found"] = res["found"]
+        mirror(state, "cheaper_provider_found", bool(res.get("found", res.get("cheaper_found", False))))
 
-        rag_types.rag_step_log(STEP, "exit", provider=provider, cheaper_found=provider.get("cheaper_found"))
+        if "fallback_strategy" in res:
+            provider["fallback_strategy"] = res["fallback_strategy"]
 
+        # Merge any extra structured data
+        _merge(provider, res.get("provider_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", cheaper_found=provider.get("cheaper_found"))
     return state

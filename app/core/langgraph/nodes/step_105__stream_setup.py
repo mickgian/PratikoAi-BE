@@ -1,36 +1,51 @@
 """Node wrapper for Step 105: Stream Setup."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import mirror
 from app.orchestrators.streaming import step_105__stream_setup
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 105
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_105(state: RAGState) -> RAGState:
     """Node wrapper for Step 105: Setup SSE streaming infrastructure."""
+    rag_step_log(STEP, "enter", streaming=state.get("streaming"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_105__stream_setup(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_105__stream_setup(messages=messages, ctx=dict(state))
-
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
-
-        # Store streaming setup in nested dict
+        # Map to canonical state keys
         streaming = state.setdefault("streaming", {})
-        streaming["setup"] = True
-        streaming["sse_headers"] = result.get("sse_headers", {}) if isinstance(result, dict) else {}
-        streaming["stream_context"] = result.get("stream_context", {}) if isinstance(result, dict) else {}
-        streaming["mode"] = "sse"
+        decisions = state.setdefault("decisions", {})
 
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys()),
-                    streaming_setup=streaming.get("setup"))
-        return state
+        # Field mappings with name translation
+        if "setup" in res:
+            streaming["setup"] = res["setup"]
+        if "sse_ready" in res:
+            streaming["sse_ready"] = res["sse_ready"]
+        mirror(state, "sse_ready", bool(res.get("sse_ready", False)))
+        if "generator_created" in res:
+            mirror(state, "generator_created", bool(res["generator_created"]))
+
+        _merge(streaming, res.get("streaming_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", setup=streaming.get("setup"))
+    return state

@@ -1,33 +1,54 @@
 """Node wrapper for Step 24: Golden Lookup."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import mirror
 from app.orchestrators.preflight import step_24__golden_lookup
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 24
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_24(state: RAGState) -> RAGState:
     """Node wrapper for Step 24: Match by signature or semantic search."""
+    rag_step_log(STEP, "enter", golden=state.get("golden"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()), golden=state.get("golden"))
+        res = await step_24__golden_lookup(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        result = await step_24__golden_lookup(messages=messages, ctx=dict(state))
-
-        # Merge result back into state additively
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
-
-        # Store golden lookup result in nested dict (additive)
+        # Map to canonical state keys
         golden = state.setdefault("golden", {})
-        golden["lookup"] = result.get("lookup", {}) if isinstance(result, dict) else {}
-        golden["match_found"] = result.get("match_found", False) if isinstance(result, dict) else False
+        decisions = state.setdefault("decisions", {})
 
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys()),
-                    match_found=golden.get("match_found"),
-                    golden=golden)
-        return state
+        # Field mappings with name translation
+        if "match_found" in res:
+            golden["match_found"] = res["match_found"]
+        mirror(state, "match_found", bool(res.get("match_found", False)))
+        mirror(state, "golden_hit", bool(res.get("match_found", False)))
+        if "high_confidence_match" in res:
+            mirror(state, "high_confidence_match", bool(res["high_confidence_match"]))
+        if "similarity_score" in res:
+            mirror(state, "similarity_score", res["similarity_score"])
+        if "lookup" in res:
+            golden["lookup"] = res["lookup"]
+
+        _merge(golden, res.get("golden_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", match_found=golden.get("match_found"))
+    return state

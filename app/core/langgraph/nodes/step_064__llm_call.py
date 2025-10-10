@@ -1,42 +1,65 @@
 """Node wrapper for Step 64: LLM Call."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import ns, mirror
+from app.observability.rag_logging import (
+    rag_step_log_compat as rag_step_log,
+    rag_step_timer_compat as rag_step_timer,
+)
 from app.orchestrators.providers import step_64__llmcall
 
 STEP = 64
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_64(state: RAGState) -> RAGState:
-    """Node wrapper for Step 64: Make LLM API call."""
+    """Node wrapper for Step 64: LLM Call."""
+    rag_step_log(STEP, "enter", provider=state.get("provider", {}).get("selected"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        # Call orchestrator with business inputs only
+        res = await step_64__llmcall(
+            messages=state.get("messages"),
+            ctx=dict(state)
+        )
 
-        # Delegate to existing orchestrator function
-        # Convert RAGState to the format expected by orchestrator
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_64__llmcall(messages=messages, ctx=dict(state))
+        # Map orchestrator outputs to canonical state keys (additive)
+        llm = ns(state, "llm")
+        decisions = state.setdefault("decisions", {})
 
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
+        # Map fields with name translation if needed
+        if "llm_request" in res:
+            llm["request"] = res["llm_request"]
 
-        # Populate consistent LLM state keys
-        llm_request = state.get("llm_request")
-        llm_response = state.get("llm_response")
+        # Always set llm["success"]
+        if "error" in res:
+            llm["error"] = res["error"]
+            llm["success"] = False
+        elif "response" in res or "llm_response" in res:
+            response = res.get("response", res.get("llm_response"))
+            llm["response"] = response
+            llm["success"] = True
+            mirror(state, "llm_response", response)
+        elif "llm_success" in res:
+            llm["success"] = res["llm_success"]
+        else:
+            llm.setdefault("success", False)
 
-        # Initialize LLM state structure
-        if "llm" not in state:
-            state["llm"] = {}
+        # Merge any extra structured data
+        _merge(llm, res.get("llm_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
 
-        state["llm"]["request"] = llm_request
-        state["llm"]["response"] = llm_response
-        state["llm"]["success"] = llm_response is not None
-
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys())
-                                )
-        return state
+    rag_step_log(STEP, "exit", llm_success=llm.get("success"))
+    return state

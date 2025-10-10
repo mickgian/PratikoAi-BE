@@ -1,30 +1,46 @@
 """Node wrapper for Step 112: End."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
 from app.orchestrators.response import step_112__end
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 112
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_112(state: RAGState) -> RAGState:
     """Node wrapper for Step 112: End terminal node."""
+    rag_step_log(STEP, "enter", complete=state.get("complete"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_112__end(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        # Convert RAGState to the format expected by orchestrator
-        messages = state.get("messages", [])
-        ctx = dict(state)  # Pass full state as context
+        # Map to canonical state keys
+        response = state.setdefault("response", {})
+        decisions = state.setdefault("decisions", {})
 
-        # Call orchestrator
-        result = await step_112__end(messages=messages, ctx=ctx)
+        # Field mappings with name translation
+        if "complete" in res:
+            response["complete"] = res["complete"]
+        state["complete"] = True
 
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
+        _merge(response, res.get("response_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
 
-        rag_step_log(STEP, "exit", keys=list(state.keys()))
-        return state
+    rag_step_log(STEP, "exit", complete=state.get("complete"))
+    return state

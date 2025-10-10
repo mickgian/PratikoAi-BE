@@ -1,35 +1,51 @@
 """Node wrapper for Step 108: Write SSE."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import mirror
 from app.orchestrators.streaming import step_108__write_sse
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 108
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_108(state: RAGState) -> RAGState:
     """Node wrapper for Step 108: Format chunks into SSE format."""
+    rag_step_log(STEP, "enter", streaming=state.get("streaming"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_108__write_sse(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_108__write_sse(messages=messages, ctx=dict(state))
-
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
-
-        # Store SSE formatting metadata in streaming dict
+        # Map to canonical state keys
         streaming = state.setdefault("streaming", {})
-        streaming["chunks_formatted"] = result.get("chunks_formatted", False) if isinstance(result, dict) else False
-        streaming["sse_formatted_stream"] = result.get("sse_formatted_stream") if isinstance(result, dict) else None
-        streaming["format_config"] = result.get("format_config", {}) if isinstance(result, dict) else {}
+        decisions = state.setdefault("decisions", {})
 
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys()),
-                    chunks_formatted=streaming.get("chunks_formatted"))
-        return state
+        # Field mappings with name translation
+        if "chunks_sent" in res:
+            streaming["chunks_sent"] = res["chunks_sent"]
+        if "write_success" in res:
+            streaming["write_success"] = res["write_success"]
+        mirror(state, "write_success", bool(res.get("write_success", False)))
+        if "chunks_written" in res:
+            mirror(state, "chunks_written", res["chunks_written"])
+
+        _merge(streaming, res.get("streaming_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", chunks_sent=streaming.get("chunks_sent"))
+    return state

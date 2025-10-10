@@ -1,36 +1,53 @@
 """Node wrapper for Step 67: LLM Success."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.observability.rag_logging import (
+    rag_step_log_compat as rag_step_log,
+    rag_step_timer_compat as rag_step_timer,
+)
 from app.orchestrators.llm import step_67__llmsuccess
 
 STEP = 67
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_67(state: RAGState) -> RAGState:
-    """Node wrapper for Step 67: LLM success decision node."""
+    """Node wrapper for Step 67: LLM Success."""
+    llm_success = state.get("llm", {}).get("success", True)
+    rag_step_log(STEP, "enter", llm_success=llm_success)
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        # Call orchestrator with business inputs only
+        res = await step_67__llmsuccess(
+            messages=state.get("messages"),
+            ctx=dict(state)
+        )
 
-        # Delegate to existing orchestrator function
-        # Convert RAGState to the format expected by orchestrator
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_67__llmsuccess(messages=messages, ctx=dict(state))
-
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
-
-        # This is a decision node - read LLM success from previous step
-        llm_success = state.get("llm", {}).get("success", True)
+        # Map orchestrator outputs to canonical state keys (additive)
+        llm = state.setdefault("llm", {})
+        decisions = state.setdefault("decisions", {})
 
         # Store decision result for routing
-        state["llm_success_decision"] = llm_success
+        if "llm_success" in res:
+            decisions["llm_success"] = res["llm_success"]
+        else:
+            decisions["llm_success"] = llm.get("success", True)
 
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys())
-                                )
-        return state
+        # Merge any extra structured data
+        _merge(llm, res.get("llm_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", llm_success=decisions.get("llm_success"))
+    return state

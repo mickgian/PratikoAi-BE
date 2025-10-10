@@ -1,43 +1,45 @@
 """Node wrapper for Step 111: Collect Metrics."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
 from app.orchestrators.metrics import step_111__collect_metrics
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 111
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_111(state: RAGState) -> RAGState:
     """Node wrapper for Step 111: Collect usage metrics."""
+    rag_step_log(STEP, "enter", metrics=state.get("metrics"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_111__collect_metrics(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_111__collect_metrics(messages=messages, ctx=dict(state))
-
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
-
-        # Store metrics in metrics dict
+        # Map to canonical state keys
         metrics = state.setdefault("metrics", {})
-        if isinstance(result, dict):
-            metrics["collected"] = result.get("metrics_collected", False)
-            metrics["timestamp"] = result.get("timestamp")
-            metrics["user_id"] = result.get("user_id")
-            metrics["session_id"] = result.get("session_id")
-            metrics["response_time_ms"] = result.get("response_time_ms")
-            metrics["cache_hit"] = result.get("cache_hit", False)
-            metrics["provider"] = result.get("provider")
-            metrics["model"] = result.get("model")
-            metrics["total_tokens"] = result.get("total_tokens", 0)
-            metrics["cost"] = result.get("cost", 0.0)
+        decisions = state.setdefault("decisions", {})
 
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys()),
-                    metrics_collected=metrics.get("collected"))
-        return state
+        # Field mappings with name translation
+        _merge(metrics, res)
+        _merge(decisions, res.get("decisions", {}))
+
+        # Set complete metadata
+        state["complete"] = True
+
+    rag_step_log(STEP, "exit", collected=metrics.get("collected"))
+    return state

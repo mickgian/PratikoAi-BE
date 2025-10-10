@@ -1,35 +1,57 @@
 """Node wrapper for Step 57: Create Provider."""
 
-from app.core.langgraph import types as rag_types
-
-# Aliases for test introspection
-rag_step_log = rag_types.rag_step_log
-rag_step_timer = rag_types.rag_step_timer
-from app.orchestrators import providers as orchestrators
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import mirror
+from app.observability.rag_logging import (
+    rag_step_log_compat as rag_step_log,
+    rag_step_timer_compat as rag_step_timer,
+)
+from app.orchestrators.providers import step_57__create_provider
 
 STEP = 57
 
 
-def node_step_57(state: rag_types.RAGState) -> rag_types.RAGState:
-    """Node wrapper for Step 57: Create Provider.
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
 
-    Delegates to the orchestrator and updates state with provider creation.
-    """
-    provider = state.setdefault("provider", {})
 
-    with rag_types.rag_step_timer(STEP):
-        rag_types.rag_step_log(STEP, "enter", keys=list(state.keys()))
+async def node_step_57(state: RAGState) -> RAGState:
+    """Node wrapper for Step 57: Create Provider."""
+    rag_step_log(STEP, "enter", provider=state.get("provider", {}).get("selected"))
+    with rag_step_timer(STEP):
+        # Call orchestrator with business inputs only
+        res = await step_57__create_provider(ctx=dict(state))
 
-        # Delegate to the orchestrator (cast to dict for type compatibility)
-        result = orchestrators.step_57__create_provider(ctx=dict(state))
+        # Map orchestrator outputs to canonical state keys (additive)
+        provider = state.setdefault("provider", {})
+        decisions = state.setdefault("decisions", {})
 
-        # Merge result fields into provider dict (preserving existing data)
-        if isinstance(result, dict):
-            if "provider_created" in result:
-                provider["created"] = result["provider_created"]
-            if "provider_instance" in result:
-                provider["instance"] = result["provider_instance"]
+        # Map fields with name translation if needed
+        if "provider_created" in res:
+            provider["created"] = res["provider_created"]
+        elif "created" in res:
+            provider["created"] = res["created"]
+        elif "provider_ready" in res:
+            provider["created"] = res["provider_ready"]
+        mirror(state, "provider_ready", bool(res.get("provider_ready", res.get("created", res.get("provider_created", False)))))
 
-        rag_types.rag_step_log(STEP, "exit", provider=provider, created=provider.get("created"))
+        if "provider_instance" in res:
+            provider["instance"] = res["provider_instance"]
+            mirror(state, "provider_instance", res["provider_instance"])
 
+        # Merge any extra structured data
+        _merge(provider, res.get("provider_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", created=provider.get("created"))
     return state

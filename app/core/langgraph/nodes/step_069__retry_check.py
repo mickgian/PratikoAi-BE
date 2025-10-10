@@ -1,42 +1,46 @@
 """Node wrapper for Step 69: Retry Check."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
 from app.orchestrators.platform import step_69__retry_check
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 69
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_69(state: RAGState) -> RAGState:
     """Node wrapper for Step 69: Retry check decision node."""
+    rag_step_log(STEP, "enter", llm=state.get("llm"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_69__retry_check(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_69__retry_check(messages=messages, ctx=dict(state))
+        # Map to canonical state keys
+        llm = state.setdefault("llm", {})
+        decisions = state.setdefault("decisions", {})
 
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
+        # Field mappings with name translation
+        if "retry_allowed" in res:
+            llm["retry_allowed"] = res["retry_allowed"]
+            decisions["retry_allowed"] = res["retry_allowed"]
 
-        # Decision logic based on orchestrator result
-        # The orchestrator should set retry_allowed flag
-        retry_allowed = state.get("retry_allowed", False)
+        _merge(llm, res.get("llm_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
 
-        # Update llm state for retry tracking
-        if "llm" not in state:
-            state["llm"] = {}
-        state["llm"]["retry_allowed"] = retry_allowed
-
-        # Set retry count
-        retry_count = state.get("llm", {}).get("retry_count", 0)
-        state["llm"]["retry_count"] = retry_count + 1
-
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys())
-                                )
-        return state
+    rag_step_log(STEP, "exit", retry_allowed=llm.get("retry_allowed"))
+    return state

@@ -1,39 +1,66 @@
 """Node wrapper for Step 59: Check Cache."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import ns, mirror
+from app.observability.rag_logging import (
+    rag_step_log_compat as rag_step_log,
+    rag_step_timer_compat as rag_step_timer,
+)
 from app.orchestrators.cache import step_59__check_cache
 
 STEP = 59
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_59(state: RAGState) -> RAGState:
-    """Node wrapper for Step 59: Check cache for cached LLM response."""
-    cache = state.setdefault("cache", {})
-
+    """Node wrapper for Step 59: Check Cache."""
+    rag_step_log(STEP, "enter", cache_key=state.get("cache_key"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        # Call orchestrator with business inputs only
+        res = await step_59__check_cache(
+            messages=state.get("messages"),
+            ctx=dict(state)
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
+        # Map orchestrator outputs to canonical state keys (additive)
+        cache = ns(state, "cache")
+        decisions = state.setdefault("decisions", {})
 
-        # Call orchestrator (cast to dict for type compatibility)
-        result = await step_59__check_cache(messages=messages, ctx=dict(state))
+        # Map fields with name translation if needed
+        if "cache_key" in res:
+            cache["key"] = res["cache_key"]
 
-        # Merge result fields into state (preserving existing data)
-        if isinstance(result, dict):
-            # Selectively update state with known fields from result
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
+        # Ensure hit is explicitly set
+        if "hit" in res:
+            cache["hit"] = bool(res["hit"])
+        elif "cache_hit" in res:
+            cache["hit"] = bool(res["cache_hit"])
+        else:
+            cache.setdefault("hit", False)
 
-        # Populate consistent cache state keys
-        cache_key = state.get("cache_key")
-        cache_value = state.get("cached_response")
+        # Handle cached response
+        if cache.get("hit"):
+            cached = res.get("value") or res.get("cached_response")
+            if cached is not None:
+                cache["value"] = cached
+                mirror(state, "cached_response", cached)
 
-        cache["key"] = cache_key
-        cache["hit"] = cache_value is not None
-        cache["value"] = cache_value
+        # Merge any extra structured data
+        _merge(cache, res.get("cache_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
 
-        rag_step_log(STEP, "exit", cache=cache, cache_hit=cache.get("hit"))
-
-        return state
+    rag_step_log(STEP, "exit", cache_hit=cache.get("hit"))
+    return state

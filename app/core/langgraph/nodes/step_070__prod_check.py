@@ -1,39 +1,47 @@
 """Node wrapper for Step 70: Prod Check."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
 from app.orchestrators.platform import step_70__prod_check
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 70
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_70(state: RAGState) -> RAGState:
     """Node wrapper for Step 70: Production environment check decision node."""
+    rag_step_log(STEP, "enter", llm=state.get("llm"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_70__prod_check(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_70__prod_check(messages=messages, ctx=dict(state))
+        # Map to canonical state keys
+        llm = state.setdefault("llm", {})
+        decisions = state.setdefault("decisions", {})
 
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
+        # Field mappings with name translation
+        if "prod_check" in res:
+            llm["prod_check"] = res["prod_check"]
+        if "failover_needed" in res:
+            decisions["failover_needed"] = res["failover_needed"]
 
-        # Decision logic based on environment
-        is_production = state.get("is_production", False)
-        should_failover = state.get("should_failover", False)
+        _merge(llm, res.get("llm_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
 
-        # Update state for routing decision
-        if "llm" not in state:
-            state["llm"] = {}
-        state["llm"]["is_production"] = is_production
-        state["llm"]["should_failover"] = should_failover
-
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys())
-                                )
-        return state
+    rag_step_log(STEP, "exit", failover_needed=decisions.get("failover_needed"))
+    return state

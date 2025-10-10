@@ -1,36 +1,50 @@
 """Node wrapper for Step 20: Golden Fast Gate."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import mirror
 from app.orchestrators.golden import step_20__golden_fast_gate
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 20
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_20(state: RAGState) -> RAGState:
     """Node wrapper for Step 20: Golden fast-path eligible check."""
+    rag_step_log(STEP, "enter", golden=state.get("golden"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()), golden=state.get("golden"))
+        res = await step_20__golden_fast_gate(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        result = await step_20__golden_fast_gate(messages=messages, ctx=dict(state))
-
-        # Merge result back into state additively
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
-
-        # Store golden eligibility in nested dict (additive)
+        # Map to canonical state keys
         golden = state.setdefault("golden", {})
-        golden["eligible"] = result.get("golden_eligible", False) if isinstance(result, dict) else False
-
-        # Store decision for routing
         decisions = state.setdefault("decisions", {})
-        decisions["golden_eligible"] = golden["eligible"]
 
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys()),
-                    golden_eligible=golden.get("eligible"),
-                    decisions=decisions)
-        return state
+        # Field mappings with name translation
+        if "golden_eligible" in res:
+            golden["eligible"] = res["golden_eligible"]
+            decisions["golden_eligible"] = res["golden_eligible"]
+        mirror(state, "golden_eligible", bool(res.get("golden_eligible", False)))
+        if "should_check_golden" in res:
+            mirror(state, "should_check_golden", bool(res["should_check_golden"]))
+
+        _merge(golden, res.get("golden_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", eligible=golden.get("eligible"))
+    return state

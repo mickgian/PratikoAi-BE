@@ -1,33 +1,43 @@
 """Node wrapper for Step 8: Init Agent."""
 
-from app.core.langgraph import types as rag_types
-
-# Aliases for test introspection
-rag_step_log = rag_types.rag_step_log
-rag_step_timer = rag_types.rag_step_timer
-from app.orchestrators import response as orchestrators
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.orchestrators.response import step_8__init_agent
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 8
 
 
-async def node_step_8(state: rag_types.RAGState) -> rag_types.RAGState:
-    """Node wrapper for Step 8: Initialize Workflow.
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
 
-    Delegates to the orchestrator and initializes the agent workflow.
-    """
-    with rag_types.rag_step_timer(STEP):
-        rag_types.rag_step_log(STEP, "enter", keys=list(state.keys()))
 
-        # Delegate to the orchestrator (cast to dict for type compatibility)
-        result = await orchestrators.step_8__init_agent(ctx=dict(state), messages=state.get("messages"))
+async def node_step_8(state: RAGState) -> RAGState:
+    """Node wrapper for Step 8: Initialize Workflow."""
+    rag_step_log(STEP, "enter", keys=list(state.keys()))
+    with rag_step_timer(STEP):
+        res = await step_8__init_agent(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Merge result fields into state (preserving existing data)
-        if isinstance(result, dict):
-            if "agent_initialized" in result:
-                state["agent_initialized"] = bool(result["agent_initialized"])
-            if "workflow_ready" in result:
-                state["workflow_ready"] = bool(result["workflow_ready"])
+        # Map to canonical state keys
+        decisions = state.setdefault("decisions", {})
 
-        rag_types.rag_step_log(STEP, "exit", agent_initialized=state.get("agent_initialized"))
+        # Field mappings with name translation
+        if "agent_initialized" in res:
+            state["agent_initialized"] = res["agent_initialized"]
 
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", agent_initialized=state.get("agent_initialized"))
     return state

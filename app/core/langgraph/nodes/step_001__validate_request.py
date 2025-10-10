@@ -1,46 +1,69 @@
 """Node wrapper for Step 1: Validate Request."""
 
-from app.core.langgraph import types as rag_types
-
-# Aliases for test introspection
-rag_step_log = rag_types.rag_step_log
-rag_step_timer = rag_types.rag_step_timer
-from app.orchestrators import platform as orchestrators
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import mirror
+from app.observability.rag_logging import (
+    rag_step_log_compat as rag_step_log,
+    rag_step_timer_compat as rag_step_timer,
+)
+from app.orchestrators.platform import step_1__validate_request
 
 STEP = 1
 
 
-async def node_step_1(state: rag_types.RAGState) -> rag_types.RAGState:
-    """Node wrapper for Step 1: Validate request and authenticate.
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
 
-    Delegates to the orchestrator and updates state with validation results.
-    """
-    decisions = state.setdefault("decisions", {})
 
-    with rag_types.rag_step_timer(STEP):
-        rag_types.rag_step_log(STEP, "enter", keys=list(state.keys()))
+async def node_step_1(state: RAGState) -> RAGState:
+    """Node wrapper for Step 1: Validate Request."""
+    rag_step_log(STEP, "enter", request_id=state.get("request_id"))
+    with rag_step_timer(STEP):
+        # Call orchestrator with business inputs only
+        res = await step_1__validate_request(
+            ctx=dict(state),
+            messages=state.get("messages")
+        )
 
-        # Delegate to the orchestrator (cast to dict for type compatibility)
-        result = await orchestrators.step_1__validate_request(ctx=dict(state), messages=state.get("messages"))
+        # Map orchestrator outputs to canonical state keys (additive)
+        privacy = state.setdefault("privacy", {})
+        decisions = state.setdefault("decisions", {})
 
-        # Merge result fields into state (preserving existing data)
-        if isinstance(result, dict):
-            # Copy validation results into decisions
-            if "request_valid" in result:
-                decisions["request_valid"] = bool(result["request_valid"])
-            if "validation_successful" in result:
-                decisions["validation_successful"] = bool(result["validation_successful"])
-            if "authentication_successful" in result:
-                decisions["authentication_successful"] = bool(result["authentication_successful"])
+        # Map fields with name translation (CRITICAL mapping)
+        if "request_valid" in res:
+            decisions["request_valid"] = bool(res["request_valid"])
+        elif "is_valid" in res:
+            decisions["request_valid"] = bool(res["is_valid"])
+        mirror(state, "request_valid", bool(res.get("is_valid", res.get("request_valid", False))))
 
-            # Copy session and user info if present
-            if "session" in result:
-                state["session"] = result["session"]
-            if "user" in result:
-                state["user"] = result["user"]
-            if "validated_request" in result:
-                state["validated_request"] = result["validated_request"]
+        if "validation_successful" in res:
+            decisions["validation_successful"] = bool(res["validation_successful"])
+        if "authentication_successful" in res:
+            decisions["authentication_successful"] = bool(res["authentication_successful"])
 
-        rag_types.rag_step_log(STEP, "exit", decisions=decisions, request_valid=decisions.get("request_valid"))
+        # Copy session and user info if present
+        if "session" in res:
+            state["session"] = res["session"]
+        if "user" in res:
+            state["user"] = res["user"]
+        if "validated_request" in res:
+            state["validated_request"] = res["validated_request"]
+        if "validation_errors" in res:
+            mirror(state, "validation_errors", res["validation_errors"])
 
+        # Merge any extra structured data
+        _merge(privacy, res.get("privacy_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", request_valid=decisions.get("request_valid"))
     return state

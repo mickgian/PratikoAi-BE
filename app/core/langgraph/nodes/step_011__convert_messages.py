@@ -1,6 +1,10 @@
 """Node wrapper for Step 11: Convert Messages."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from app.core.langgraph.types import RAGState
+from app.observability.rag_logging import (
+    rag_step_log_compat as rag_step_log,
+    rag_step_timer_compat as rag_step_timer,
+)
 from app.orchestrators.platform import step_11__convert_messages
 
 STEP = 11

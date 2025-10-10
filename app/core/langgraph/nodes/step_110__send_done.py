@@ -1,35 +1,45 @@
 """Node wrapper for Step 110: Send Done."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
 from app.orchestrators.platform import step_110__send_done
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 110
 
 
-def node_step_110(state: RAGState) -> RAGState:
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
+async def node_step_110(state: RAGState) -> RAGState:
     """Node wrapper for Step 110: Send DONE frame to terminate streaming."""
+    rag_step_log(STEP, "enter", streaming=state.get("streaming"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_110__send_done(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        # Call orchestrator (synchronous)
-        result = step_110__send_done(messages=messages, ctx=dict(state))
-
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
-
-        # Store done frame metadata in streaming dict
+        # Map to canonical state keys
         streaming = state.setdefault("streaming", {})
-        streaming["done"] = True
-        streaming["chunks_sent"] = result.get("chunks_sent", 0) if isinstance(result, dict) else 0
-        streaming["done_sent"] = result.get("done_sent", False) if isinstance(result, dict) else False
+        decisions = state.setdefault("decisions", {})
 
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys()),
-                    done=streaming.get("done"))
-        return state
+        # Field mappings with name translation
+        if "done" in res:
+            streaming["done"] = res["done"]
+
+        _merge(streaming, res.get("streaming_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", done=streaming.get("done"))
+    return state

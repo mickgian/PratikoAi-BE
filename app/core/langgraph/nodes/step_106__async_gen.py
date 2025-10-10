@@ -1,35 +1,45 @@
 """Node wrapper for Step 106: Async Generator."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
 from app.orchestrators.platform import step_106__async_gen
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 106
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_106(state: RAGState) -> RAGState:
     """Node wrapper for Step 106: Create async generator for streaming."""
+    rag_step_log(STEP, "enter", streaming=state.get("streaming"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_106__async_gen(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_106__async_gen(messages=messages, ctx=dict(state))
-
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
-
-        # Store async generator metadata in streaming dict
+        # Map to canonical state keys
         streaming = state.setdefault("streaming", {})
-        streaming["generator_created"] = result.get("generator_created", False) if isinstance(result, dict) else False
-        streaming["async_generator"] = result.get("async_generator") if isinstance(result, dict) else None
-        streaming["generator_config"] = result.get("generator_config", {}) if isinstance(result, dict) else {}
+        decisions = state.setdefault("decisions", {})
 
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys()),
-                    generator_created=streaming.get("generator_created"))
-        return state
+        # Field mappings with name translation
+        if "generator_created" in res:
+            streaming["generator_created"] = res["generator_created"]
+
+        _merge(streaming, res.get("streaming_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", generator_created=streaming.get("generator_created"))
+    return state

@@ -1,35 +1,51 @@
 """Node wrapper for Step 104: Stream Check."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import mirror
 from app.orchestrators.streaming import step_104__stream_check
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 104
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_104(state: RAGState) -> RAGState:
     """Node wrapper for Step 104: Determine if streaming is requested."""
+    rag_step_log(STEP, "enter", streaming=state.get("streaming"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_104__stream_check(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_104__stream_check(messages=messages, ctx=dict(state))
-
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
-
-        # Store streaming decision in nested dict
+        # Map to canonical state keys
         streaming = state.setdefault("streaming", {})
-        streaming["requested"] = result.get("streaming_requested", False) if isinstance(result, dict) else False
-        streaming["decision"] = result.get("decision", "no") if isinstance(result, dict) else "no"
-        streaming["decision_source"] = result.get("decision_source", "default") if isinstance(result, dict) else "default"
+        decisions = state.setdefault("decisions", {})
 
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys()),
-                    streaming_requested=streaming.get("requested"))
-        return state
+        # Field mappings with name translation
+        if "streaming_requested" in res:
+            streaming["requested"] = res["streaming_requested"]
+            decisions["streaming_requested"] = res["streaming_requested"]
+        elif "stream_requested" in res:
+            streaming["requested"] = res["stream_requested"]
+            decisions["streaming_requested"] = res["stream_requested"]
+        mirror(state, "streaming_enabled", bool(res.get("streaming_enabled", res.get("streaming_requested", res.get("stream_requested", False)))))
+
+        _merge(streaming, res.get("streaming_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", requested=streaming.get("requested"))
+    return state

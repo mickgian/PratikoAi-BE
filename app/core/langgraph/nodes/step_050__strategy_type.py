@@ -1,34 +1,48 @@
 """Node wrapper for Step 50: Strategy Type (Decision)."""
 
-from app.core.langgraph import types as rag_types
-
-# Aliases for test introspection
-rag_step_log = rag_types.rag_step_log
-rag_step_timer = rag_types.rag_step_timer
-from app.orchestrators import platform as orchestrators
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.observability.rag_logging import (
+    rag_step_log_compat as rag_step_log,
+    rag_step_timer_compat as rag_step_timer,
+)
+from app.orchestrators.platform import step_50__strategy_type
 
 STEP = 50
 
 
-def node_step_50(state: rag_types.RAGState) -> rag_types.RAGState:
-    """Node wrapper for Step 50: Strategy Type (Decision).
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
 
-    Delegates to the orchestrator and updates state with strategy type decision.
-    """
-    decisions = state.setdefault("decisions", {})
-    provider = state.setdefault("provider", {})
 
-    with rag_types.rag_step_timer(STEP):
-        rag_types.rag_step_log(STEP, "enter", keys=list(state.keys()))
+async def node_step_50(state: RAGState) -> RAGState:
+    """Node wrapper for Step 50: Strategy Type (Decision)."""
+    rag_step_log(STEP, "enter", strategy=state.get("route_strategy"))
+    with rag_step_timer(STEP):
+        # Call orchestrator with business inputs only
+        res = await step_50__strategy_type(ctx=dict(state))
 
-        # Delegate to the orchestrator (cast to dict for type compatibility)
-        result = orchestrators.step_50__strategy_type(ctx=dict(state))
+        # Map orchestrator outputs to canonical state keys (additive)
+        provider = state.setdefault("provider", {})
+        decisions = state.setdefault("decisions", {})
 
-        # Merge result fields into decisions dict (preserving existing data)
-        if isinstance(result, dict) and "strategy_type" in result:
-            decisions["strategy_type"] = result["strategy_type"]
-            provider["strategy_type"] = result["strategy_type"]
+        # Map fields with name translation if needed (CRITICAL mapping)
+        if "strategy_type" in res:
+            decisions["strategy_type"] = res["strategy_type"]
+            provider["strategy_type"] = res["strategy_type"]
 
-        rag_types.rag_step_log(STEP, "exit", provider=provider, decisions=decisions)
+        # Merge any extra structured data
+        _merge(provider, res.get("provider_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
 
+    rag_step_log(STEP, "exit", strategy_type=decisions.get("strategy_type"))
     return state

@@ -1,41 +1,52 @@
 """Node wrapper for Step 26: KB Context Check."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
-from app.orchestrators.kb import step_26__kbcontext_check
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.core.langgraph.node_utils import mirror
+from app.orchestrators.kb import step_26__kbcontext_check as step_26__kb_context_check
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
+
+# Re-export for test patching
+__all__ = ["node_step_26", "step_26__kb_context_check"]
 
 STEP = 26
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_26(state: RAGState) -> RAGState:
     """Node wrapper for Step 26: Fetch recent KB for changes."""
+    rag_step_log(STEP, "enter", kb=state.get("kb"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()), kb=state.get("kb"), golden=state.get("golden"))
+        res = await step_26__kb_context_check(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        result = await step_26__kbcontext_check(messages=messages, ctx=dict(state))
-
-        # Merge result back into state additively
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
-
-        # Store KB context in nested dict (additive)
+        # Map to canonical state keys
         kb = state.setdefault("kb", {})
-        kb["docs"] = result.get("kb_docs", []) if isinstance(result, dict) else []
-        kb["epoch"] = result.get("kb_epoch") if isinstance(result, dict) else None
-        kb["has_recent_changes"] = result.get("has_recent_changes", False) if isinstance(result, dict) else False
+        decisions = state.setdefault("decisions", {})
 
-        # Log metric for KB override tracking
-        if kb.get("has_recent_changes"):
-            rag_step_log(STEP, "metric",
-                        metric="kb_override",
-                        signature=state.get("query_signature"),
-                        override=True)
+        # Field mappings with name translation
+        if "recent_context" in res:
+            kb["recent_context"] = res["recent_context"]
+        if "has_recent_changes" in res:
+            kb["has_recent_changes"] = res["has_recent_changes"]
+        mirror(state, "kb_required", bool(res.get("has_recent_changes", False)))
 
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys()),
-                    has_recent_changes=kb.get("has_recent_changes"),
-                    kb=kb)
-        return state
+        _merge(kb, res.get("kb_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", has_recent_changes=kb.get("has_recent_changes"))
+    return state

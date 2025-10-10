@@ -306,6 +306,8 @@ python scripts/rag_audit.py --write
 
 ## Phase 9 — Test Suite Hardening (parallel)
 
+**Status:** 🔄 Partially Implemented (72/147 tests passing - 49%)
+
 **Goal:** Ensure comprehensive testing across all lanes.
 
 **Tasks:**
@@ -316,25 +318,17 @@ python scripts/rag_audit.py --write
 
 **Gate:** CI fast & reliable; red tests are actionable.
 
-## Phase 10 — Rollout & Ops (2–4 days)
-
-**Goal:** Ship safely with toggles.
-
-**Feature flags per lane:**
-- `cache_llm_lane`
-- `tools_lane`
-- `provider_lane`
-- `privacy_lane`
-- `streaming_lane`
-- `golden_lane`
-
-**Canary:** 5% → 25% → 50% → 100%
-
-**Dashboards:** cache hit%, LLM retries, tool error rate, latency by lane, token cost/turn
-
-**On incident:** flip off only the offending lane
-
-**Gate:** All lanes at 100%, SLOs hold.
+**Implementation notes:**
+- Test suite structure established across 4 categories (16 test files):
+  - **Parity tests (5 files):** 35/39 passing (89.7%) - validates node wrappers delegate correctly to orchestrators
+  - **Lane integration (5 files):** 16/40 passing (40%) - validates multi-node flows within each phase lane
+  - **Failure injection (4 files):** 3/47 passing (6.4%) - validates error handling and recovery paths
+  - **Performance tests (2 files):** 18/21 passing (85.7%) - validates P95 latency budgets per wrapper
+- **Remaining work:**
+  - 4 parity failures: sync/async orchestrator compatibility (steps 9, 26, 80 + 1 privacy test)
+  - 24 lane integration failures: cross-node state propagation and edge conditions
+  - 44 failure injection failures: error scenario coverage and fallback paths
+  - 3 performance failures: tool wrapper overhead optimization
 
 ## PR Discipline (keep it small)
 

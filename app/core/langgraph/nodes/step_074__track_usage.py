@@ -1,34 +1,42 @@
 """Node wrapper for Step 74: Track Usage."""
 
-from app.core.langgraph.types import RAGState, rag_step_log, rag_step_timer
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
 from app.orchestrators.metrics import step_74__track_usage
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 74
 
 
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
 async def node_step_74(state: RAGState) -> RAGState:
     """Node wrapper for Step 74: Track LLM usage metrics."""
+    rag_step_log(STEP, "enter", metrics=state.get("metrics"))
     with rag_step_timer(STEP):
-        rag_step_log(STEP, "enter", keys=list(state.keys()))
+        res = await step_74__track_usage(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
 
-        # Delegate to existing orchestrator function
-        messages = state.get("messages", [])
-        # Call orchestrator
-        result = await step_74__track_usage(messages=messages, ctx=dict(state))
+        # Map to canonical state keys
+        metrics = state.setdefault("metrics", {})
+        decisions = state.setdefault("decisions", {})
 
-        # Merge result back into state
-        # Mutate state in place
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if key in state or key in RAGState.__annotations__:
-                    state[key] = value  # type: ignore[literal-required]
+        # Field mappings with name translation
+        _merge(metrics, res)
+        _merge(decisions, res.get("decisions", {}))
 
-        # Update metrics tracking status
-        if "metrics" not in state:
-            state["metrics"] = {}
-        state["metrics"]["usage_tracked"] = True
-
-        rag_step_log(STEP, "exit",
-                    keys=list(state.keys())
-                                )
-        return state
+    rag_step_log(STEP, "exit", tracked=metrics.get("tracked"))
+    return state

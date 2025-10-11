@@ -253,7 +253,7 @@ async def send_metrics_report_task() -> None:
         recipient_emails = get_metrics_report_recipients()
         
         # Define environments to monitor
-        environments = [Environment.DEVELOPMENT, Environment.STAGING, Environment.PRODUCTION]
+        environments = [Environment.DEVELOPMENT, Environment.QA, Environment.PREPROD, Environment.PRODUCTION]
         
         # Send the report
         success = await email_service.send_metrics_report(recipient_emails, environments)

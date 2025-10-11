@@ -13,7 +13,8 @@ wheels/
 # Environment variables
 .env
 .env.development
-.env.staging
+.env.qa
+.env.preprod
 .env.production
 
 # Misc

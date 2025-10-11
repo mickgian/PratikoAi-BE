@@ -56,10 +56,10 @@ class VectorConfig:
         # Environment-based defaults
         if self.environment == Environment.DEVELOPMENT:
             return VectorProvider.LOCAL
-        elif self.environment == Environment.STAGING:
+        elif self.environment == Environment.QA:
             # Use pinecone if configured, otherwise local
             return VectorProvider.PINECONE if self.is_pinecone_configured() else VectorProvider.LOCAL
-        elif self.environment in [Environment.PRODUCTION]:
+        elif self.environment in [Environment.PREPROD, Environment.PRODUCTION]:  # PREPROD mirrors PRODUCTION
             return VectorProvider.PINECONE
         else:
             return VectorProvider.LOCAL
@@ -96,7 +96,7 @@ class VectorConfig:
             raise ValueError(f"Invalid domain: {domain}. Must be one of {valid_domains}")
         
         # Validate environment
-        valid_envs = ["dev", "staging", "preprod", "prod"]
+        valid_envs = ["dev", "qa", "preprod", "prod"]
         if env not in valid_envs:
             raise ValueError(f"Invalid environment: {env}. Must be one of {valid_envs}")
         
@@ -113,36 +113,37 @@ class VectorConfig:
         """Get namespace environment identifier for current environment."""
         env_mapping = {
             Environment.DEVELOPMENT: "dev",
-            Environment.STAGING: "staging", 
+            Environment.QA: "qa",
+            Environment.PREPROD: "preprod",
             Environment.PRODUCTION: "prod",
-            Environment.TEST: "dev"
         }
         return env_mapping.get(self.environment, "dev")
     
     def validate_for_environment(self, environment: Environment) -> List[str]:
         """Validate configuration for specific environment."""
         errors = []
-        
-        if environment == Environment.PRODUCTION:
-            # Production requirements
+
+        if environment in [Environment.PRODUCTION, Environment.PREPROD]:
+            # Production and PREPROD requirements (PREPROD mirrors PRODUCTION)
             if not self.pinecone_api_key:
-                errors.append("PINECONE_API_KEY is required for production")
+                errors.append(f"PINECONE_API_KEY is required for {environment.value}")
             if not self.pinecone_environment:
-                errors.append("PINECONE_ENVIRONMENT is required for production")
-                
-        elif environment == Environment.STAGING:
-            # Staging is more flexible but warns if missing
+                errors.append(f"PINECONE_ENVIRONMENT is required for {environment.value}")
+
+        elif environment == Environment.QA:
+            # QA is more flexible but warns if missing
             if self.get_provider_preference() == VectorProvider.PINECONE and not self.is_pinecone_configured():
                 missing = self.get_missing_pinecone_config()
-                errors.append(f"Pinecone configuration missing for staging: {', '.join(missing)}")
-        
+                errors.append(f"Pinecone configuration missing for {environment.value}: {', '.join(missing)}")
+
         # Development has minimal requirements (most permissive)
-        
+
         return errors
     
     def allow_fallback(self) -> bool:
         """Check if fallback to local provider is allowed."""
-        if self.environment == Environment.PRODUCTION and self.strict_mode:
+        # PREPROD mirrors PRODUCTION behavior
+        if self.environment in [Environment.PRODUCTION, Environment.PREPROD] and self.strict_mode:
             return False
         return True
     

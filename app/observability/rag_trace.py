@@ -33,7 +33,11 @@ from typing import Optional
 from app.core.config import Environment, settings
 
 # Only enable per-request tracing in these environments
-TRACE_ENABLED_ENVIRONMENTS = {Environment.DEVELOPMENT, Environment.STAGING}
+# Note: PREPROD does NOT get traces (mirrors production)
+TRACE_ENABLED_ENVIRONMENTS = {
+    Environment.DEVELOPMENT,
+    Environment.QA,
+}
 
 
 class RAGTraceHandler(logging.Handler):

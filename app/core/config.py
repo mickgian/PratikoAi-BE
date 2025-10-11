@@ -25,29 +25,40 @@ class Environment(str, Enum):
     """Application environment types.
 
     Defines the possible environments the application can run in:
-    development, staging, production, and test.
+    - development: Local development
+    - qa: Quality assurance and testing
+    - preprod: Pre-production simulation that mirrors production
+    - production: Live production
     """
 
     DEVELOPMENT = "development"
-    STAGING = "staging"
+    QA = "qa"
+    PREPROD = "preprod"
     PRODUCTION = "production"
-    TEST = "test"
 
 
 # Determine environment
 def get_environment() -> Environment:
-    """Get the current environment.
+    """Get the current environment from APP_ENV variable.
 
     Returns:
-        Environment: The current environment (development, staging, production, or test)
+        Environment: The current environment
+
+    Supported APP_ENV values:
+    - "qa" → Environment.QA
+    - "preprod" → Environment.PREPROD
+    - "production" or "prod" → Environment.PRODUCTION
+    - default → Environment.DEVELOPMENT
     """
-    match os.getenv("APP_ENV", "development").lower():
+    env_str = os.getenv("APP_ENV", "development").lower()
+
+    match env_str:
+        case "qa":
+            return Environment.QA
+        case "preprod":
+            return Environment.PREPROD
         case "production" | "prod":
             return Environment.PRODUCTION
-        case "staging" | "stage":
-            return Environment.STAGING
-        case "test":
-            return Environment.TEST
         case _:
             return Environment.DEVELOPMENT
 
@@ -302,7 +313,19 @@ class Settings:
         self.apply_environment_settings()
 
     def apply_environment_settings(self):
-        """Apply environment-specific settings based on the current environment."""
+        """Apply environment-specific settings.
+
+        Settings are applied only if not explicitly set via environment variables.
+        This allows for environment-specific defaults while preserving manual overrides.
+        """
+        # PRODUCTION config (shared by PRODUCTION and PREPROD)
+        production_config = {
+            "DEBUG": False,
+            "LOG_LEVEL": "WARNING",
+            "LOG_FORMAT": "json",
+            "RATE_LIMIT_DEFAULT": ["200 per day", "50 per hour"],
+        }
+
         env_settings = {
             Environment.DEVELOPMENT: {
                 "DEBUG": True,
@@ -310,22 +333,14 @@ class Settings:
                 "LOG_FORMAT": "console",
                 "RATE_LIMIT_DEFAULT": ["1000 per day", "200 per hour"],
             },
-            Environment.STAGING: {
+            Environment.QA: {
                 "DEBUG": False,
                 "LOG_LEVEL": "INFO",
+                "LOG_FORMAT": "json",
                 "RATE_LIMIT_DEFAULT": ["500 per day", "100 per hour"],
             },
-            Environment.PRODUCTION: {
-                "DEBUG": False,
-                "LOG_LEVEL": "WARNING",
-                "RATE_LIMIT_DEFAULT": ["200 per day", "50 per hour"],
-            },
-            Environment.TEST: {
-                "DEBUG": True,
-                "LOG_LEVEL": "DEBUG",
-                "LOG_FORMAT": "console",
-                "RATE_LIMIT_DEFAULT": ["1000 per day", "1000 per hour"],  # Relaxed for testing
-            },
+            Environment.PREPROD: production_config.copy(),  # PREPROD mirrors PRODUCTION exactly
+            Environment.PRODUCTION: production_config.copy(),
         }
 
         # Get settings for current environment

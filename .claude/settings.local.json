@@ -5,7 +5,12 @@
       "Bash(pytest:*)",
       "Bash(test:*)",
       "Bash(docker logs:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(docker exec:*)",
+      "Read(//private/tmp/test_logs/rag_traces/**)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

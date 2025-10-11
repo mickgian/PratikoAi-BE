@@ -89,6 +89,63 @@ def get_log_file_path() -> Path:
     return settings.LOG_DIR / f"{env_prefix}-{datetime.now().strftime('%Y-%m-%d')}.jsonl"
 
 
+def cleanup_old_logs(retention_days: int = 30) -> None:
+    """Delete log files older than retention_days.
+
+    Args:
+        retention_days: Number of days to keep logs (default 30)
+    """
+    import time
+    cutoff_time = time.time() - (retention_days * 86400)
+    deleted_count = 0
+
+    for log_file in settings.LOG_DIR.glob("*.jsonl"):
+        try:
+            if log_file.stat().st_mtime < cutoff_time:
+                log_file.unlink()
+                deleted_count += 1
+        except Exception:
+            # Silently continue if we can't delete a file
+            pass
+
+    if deleted_count > 0:
+        # Note: Can't use logger here as it may not be initialized yet
+        print(f"Cleaned up {deleted_count} old log file(s) older than {retention_days} days")
+
+
+def cleanup_old_rag_traces(retention_days: int = 7) -> None:
+    """Delete RAG trace files older than retention_days.
+
+    RAG trace files are per-request log files containing only RAG step logs,
+    used for debugging in development and staging environments.
+
+    Args:
+        retention_days: Number of days to keep RAG traces (default 7)
+    """
+    import time
+    trace_dir = settings.LOG_DIR / "rag_traces"
+
+    # Skip if trace directory doesn't exist
+    if not trace_dir.exists():
+        return
+
+    cutoff_time = time.time() - (retention_days * 86400)
+    deleted_count = 0
+
+    for trace_file in trace_dir.glob("trace_*.jsonl"):
+        try:
+            if trace_file.stat().st_mtime < cutoff_time:
+                trace_file.unlink()
+                deleted_count += 1
+        except Exception:
+            # Silently continue if we can't delete a file
+            pass
+
+    if deleted_count > 0:
+        # Note: Can't use logger here as it may not be initialized yet
+        print(f"Cleaned up {deleted_count} old RAG trace file(s) older than {retention_days} days")
+
+
 class JsonlFileHandler(logging.Handler):
     """Custom handler for writing JSONL logs to daily files."""
 
@@ -177,6 +234,20 @@ def setup_logging() -> None:
     In development: pretty console output
     In staging/production: structured JSON logs
     """
+    # Clean up old log files based on environment
+    if settings.ENVIRONMENT == Environment.DEVELOPMENT:
+        cleanup_old_logs(retention_days=30)  # Keep 30 days in development
+        cleanup_old_rag_traces(retention_days=7)  # Keep 7 days of RAG traces in development
+    elif settings.ENVIRONMENT == Environment.QA:
+        cleanup_old_logs(retention_days=60)  # Keep 60 days in QA
+        cleanup_old_rag_traces(retention_days=14)  # Keep 14 days of RAG traces in QA
+    elif settings.ENVIRONMENT == Environment.PREPROD:
+        cleanup_old_logs(retention_days=90)  # Keep 90 days in PREPROD (mirrors production)
+        # No RAG traces in PREPROD (mirrors production - feature disabled)
+    else:  # PRODUCTION
+        cleanup_old_logs(retention_days=90)  # Keep 90 days in production
+        # No RAG traces in production (feature disabled)
+
     # Create file handler for JSON logs
     file_handler = JsonlFileHandler(get_log_file_path())
     file_handler.setLevel(settings.LOG_LEVEL)
@@ -187,8 +258,8 @@ def setup_logging() -> None:
 
     # Get shared processors
     shared_processors = get_structlog_processors(
-        # Include detailed file info only in development and test
-        include_file_info=settings.ENVIRONMENT in [Environment.DEVELOPMENT, Environment.TEST]
+        # Include detailed file info only in development (not QA/PREPROD/PROD)
+        include_file_info=settings.ENVIRONMENT == Environment.DEVELOPMENT
     )
 
     # Configure standard logging

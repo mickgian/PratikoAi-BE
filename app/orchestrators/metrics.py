@@ -327,11 +327,14 @@ async def step_111__collect_metrics(*, messages: Optional[List[Any]] = None, ctx
         error = None
 
         try:
-            # Determine environment
-            if environment_str.lower() == 'production':
+            # Determine environment with backward compatibility
+            env_lower = environment_str.lower()
+            if env_lower in ('production', 'prod'):
                 environment = Environment.PRODUCTION
-            elif environment_str.lower() == 'staging':
-                environment = Environment.STAGING
+            elif env_lower in ('qa', 'quality', 'staging'):  # Support old "staging" name
+                environment = Environment.QA
+            elif env_lower in ('preprod', 'pre-prod', 'test'):  # Support old "test" name
+                environment = Environment.PREPROD
             else:
                 environment = Environment.DEVELOPMENT
 

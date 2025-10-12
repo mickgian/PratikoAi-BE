@@ -10,7 +10,8 @@
       "Bash(docker-compose restart:*)",
       "Bash(docker exec:*)",
       "Read(//private/tmp/test_logs/rag_traces/**)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

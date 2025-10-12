@@ -8,6 +8,11 @@ from .step_007__anonymize_text import node_step_7
 from .step_008__init_agent import node_step_8
 from .step_009__pii_check import node_step_9
 from .step_010__log_pii import node_step_10
+
+# Classification Lane imports (Phase 2)
+from .step_031__classify_domain import node_step_31
+from .step_042__class_confidence import node_step_42
+
 from .step_059__check_cache import node_step_59
 from .step_062__cache_hit import node_step_62
 from .step_064__llm_call import node_step_64
@@ -76,6 +81,8 @@ __all__ = [
     "node_step_27",
     "node_step_28",
     "node_step_30",
+    "node_step_31",
+    "node_step_42",
     "node_step_48",
     "node_step_49",
     "node_step_50",

@@ -1,5 +1,7 @@
 # RAG Architecture Migration Plan
 
+**← Context**: [RAG_FLOW_IMPLEMENTATION_00_orchestrators.md](./RAG_FLOW_IMPLEMENTATION_00_orchestrators.md) (135 orchestrators implemented)
+
 **Mode: Tiered Graph Hybrid**
 
 This project uses two layers by design. They are not duplicates—they have different responsibilities:
@@ -366,3 +368,13 @@ pytest -k "parity or lane or rag_step"
 ```bash
 uvicorn app.main:app --reload
 ```
+
+---
+
+## Next Steps
+
+**Status**: Phases 0-8 ✅ Complete (all 8 lanes implemented with 57 nodes)
+
+**Continue to**: [RAG_FLOW_IMPLEMENTATION_02_unified_graph.md](./RAG_FLOW_IMPLEMENTATION_02_unified_graph.md)
+
+This document describes the investigation, discovery, and plan for connecting all 8 lanes into a unified graph that follows the complete diagram flow.

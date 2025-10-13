@@ -15,7 +15,6 @@ from langchain_core.messages import (
     ToolMessage,
     convert_to_openai_messages,
 )
-from langchain_openai import ChatOpenAI
 from langfuse.langchain import CallbackHandler
 try:
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -63,7 +62,7 @@ except ImportError:
 
     class StateSnapshot:
         pass
-from openai import OpenAIError
+
 from psycopg_pool import AsyncConnectionPool
 
 from app.core.config import (
@@ -77,9 +76,8 @@ from app.services.domain_action_classifier import DomainActionClassifier, Domain
 from app.services.domain_prompt_templates import PromptTemplateManager
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
-from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_llm_error, track_classification_usage
+from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_classification_usage
 from app.core.prompts import SYSTEM_PROMPT
-from app.core.decorators.cache import cache_llm_response, cache_conversation
 from app.services.cache import cache_service
 from app.services.usage_tracker import usage_tracker
 from app.services.golden_fast_path import GoldenFastPathService, EligibilityDecision
@@ -88,10 +86,7 @@ from app.schemas import (
     Message,
 )
 from app.core.langgraph.types import RAGState
-from app.utils import (
-    dump_messages,
-    prepare_messages,
-)
+from app.utils import dump_messages
 
 # Canonical observability imports (unified across repo)
 try:
@@ -154,6 +149,24 @@ from app.core.langgraph.nodes.step_055__estimate_cost import node_step_55
 from app.core.langgraph.nodes.step_056__cost_check import node_step_56
 from app.core.langgraph.nodes.step_057__create_provider import node_step_57
 from app.core.langgraph.nodes.step_058__cheaper_provider import node_step_58
+
+# Phase 2 Node imports - Message Lane
+from app.core.langgraph.nodes.step_011__convert_messages import node_step_11
+from app.core.langgraph.nodes.step_012__extract_query import node_step_12
+from app.core.langgraph.nodes.step_013__message_exists import node_step_13
+
+# Phase 8 Node imports - Golden/KB Gates
+from app.core.langgraph.nodes.step_020__golden_fast_gate import node_step_20
+from app.core.langgraph.nodes.step_024__golden_lookup import node_step_24
+from app.core.langgraph.nodes.step_025__golden_hit import node_step_25
+from app.core.langgraph.nodes.step_026__kb_context_check import node_step_26
+from app.core.langgraph.nodes.step_027__kb_delta import node_step_27
+from app.core.langgraph.nodes.step_028__serve_golden import node_step_28
+from app.core.langgraph.nodes.step_030__return_complete import node_step_30
+
+# Phase 4 Classification Node imports
+from app.core.langgraph.nodes.step_031__classify_domain import node_step_31
+from app.core.langgraph.nodes.step_042__class_confidence import node_step_42
 
 # Phase 7 Node imports - Streaming/Response Lane
 from app.core.langgraph.nodes.step_104__stream_check import node_step_104
@@ -458,7 +471,8 @@ class LangGraphAgent:
         
         return response
 
-    def _get_routing_strategy(self) -> RoutingStrategy:
+    @staticmethod
+    def _get_routing_strategy() -> RoutingStrategy:
         """Get the LLM routing strategy from configuration.
 
         Returns:
@@ -470,11 +484,12 @@ class LangGraphAgent:
             "balanced": RoutingStrategy.BALANCED,
             "failover": RoutingStrategy.FAILOVER,
         }
-        
+
         strategy_str = getattr(settings, 'LLM_ROUTING_STRATEGY', 'cost_optimized')
         return strategy_map.get(strategy_str, RoutingStrategy.COST_OPTIMIZED)
 
-    def _get_classification_aware_routing(self, classification: DomainActionClassification) -> tuple[RoutingStrategy, float]:
+    @staticmethod
+    def _get_classification_aware_routing(classification: DomainActionClassification) -> tuple[RoutingStrategy, float]:
         """Return (routing_strategy, max_cost_eur) based solely on domain/action mapping.
         - No confidence-based scaling.
         - Apply global cap only if explicitly provided (non-None).
@@ -940,7 +955,8 @@ class LangGraphAgent:
             )
         return {"messages": outputs}
 
-    def _should_continue(self, state: GraphState) -> Literal["end", "continue"]:
+    @staticmethod
+    def _should_continue(state: GraphState) -> Literal["end", "continue"]:
         """Determine if the agent should continue or end based on the last message.
 
         Args:
@@ -959,39 +975,45 @@ class LangGraphAgent:
             return "continue"
 
     # Phase 5 routing functions
-    def _route_strategy_type(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_strategy_type(state: Dict[str, Any]) -> str:
         """Route from StrategyType node based on strategy decision."""
         strategy_type = state.get("decisions", {}).get("strategy_type", "PRIMARY")
         return strategy_type
 
-    def _route_cost_check(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_cost_check(state: Dict[str, Any]) -> str:
         """Route from CostCheck node based on budget approval."""
         cost_ok = state.get("decisions", {}).get("cost_ok", True)
         return "approved" if cost_ok else "too_expensive"
 
     # Reuse existing routing functions with new names for clarity
-    def _route_cache_hit(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_cache_hit(state: Dict[str, Any]) -> str:
         """Route from CacheHit node based on cache status."""
         if state.get("cache_hit", False):
             return "hit"
         else:
             return "miss"
 
-    def _route_llm_success(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_llm_success(state: Dict[str, Any]) -> str:
         """Route from LLMSuccess node."""
         if state.get("llm_success", True):
             return "success"
         else:
             return "retry"
 
-    def _route_tool_check(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_tool_check(state: Dict[str, Any]) -> str:
         """Route from ToolCheck node."""
         if state.get("tool_calls") or state.get("tools", {}).get("requested", False):
             return "has_tools"
         else:
             return "no_tools"
 
-    def _route_tool_type(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_tool_type(state: Dict[str, Any]) -> str:
         """Route from ToolType node based on tool type."""
         tool_type = state.get("tools", {}).get("type", "kb")
         mapping = {
@@ -1002,76 +1024,88 @@ class LangGraphAgent:
         }
         return mapping.get(tool_type, "kb")
 
-    def _route_prod_check(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_prod_check(state: Dict[str, Any]) -> str:
         """Route from ProdCheck node."""
         if state.get("llm", {}).get("should_failover", False):
             return "failover"
         else:
             return "retry_same"
 
-    def _route_from_valid_check(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_valid_check(state: Dict[str, Any]) -> str:
         """Route from ValidCheck node based on request validity."""
         if state.get('request_valid', True):
             return "PrivacyCheck"
         else:
             return "End"
 
-    def _route_from_privacy_check(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_privacy_check(_state: Dict[str, Any]) -> str:
         """Route from PrivacyCheck node - always goes to PIICheck."""
         return "PIICheck"
 
-    def _route_from_pii_check(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_pii_check(_state: Dict[str, Any]) -> str:
         """Route from PIICheck node - goes to cache spine."""
         return "CheckCache"
 
-    def _route_from_cache_hit(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_cache_hit(state: Dict[str, Any]) -> str:
         """Route from CacheHit node based on cache status."""
         if state.get('cache_hit', False):
             return "End"
         else:
             return "LLMCall"
 
-    def _route_from_llm_success(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_llm_success(_state: Dict[str, Any]) -> str:
         """Route from LLMSuccess node - simplified for Phase 1A."""
         return "End"
 
     # Phase 4 routing functions
-    def _route_from_cache_hit_phase4(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_cache_hit_phase4(state: Dict[str, Any]) -> str:
         """Route from CacheHit node in Phase 4 based on cache status."""
         if state.get("cache_hit_decision", False):
             return "ReturnCached"
         else:
             return "LLMCall"
 
-    def _route_from_llm_success_phase4(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_llm_success_phase4(state: Dict[str, Any]) -> str:
         """Route from LLMSuccess node in Phase 4."""
         if state.get("llm_success_decision", True):
             return "CacheResponse"
         else:
             return "RetryCheck"
 
-    def _route_from_retry_check(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_retry_check(state: Dict[str, Any]) -> str:
         """Route from RetryCheck node."""
         if state.get("llm", {}).get("retry_allowed", False):
             return "ProdCheck"
         else:
             return "End"
 
-    def _route_from_prod_check(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_prod_check(state: Dict[str, Any]) -> str:
         """Route from ProdCheck node."""
         if state.get("llm", {}).get("should_failover", False):
             return "FailoverProvider"
         else:
             return "RetrySame"
 
-    def _route_from_tool_check(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_tool_check(state: Dict[str, Any]) -> str:
         """Route from ToolCheck node."""
         if state.get("tools", {}).get("requested", False):
             return "ToolType"
         else:
             return "End"
 
-    def _route_from_tool_type(self, state: Dict[str, Any]) -> str:
+    @staticmethod
+    def _route_from_tool_type(state: Dict[str, Any]) -> str:
         """Route from ToolType node based on tool type."""
         tool_type = state.get("tools", {}).get("type", "kb")
         mapping = {
@@ -1081,6 +1115,92 @@ class LangGraphAgent:
             "faq": "FAQTool"
         }
         return mapping.get(tool_type, "KBTool")
+
+    # Unified graph routing functions
+    @staticmethod
+    def _route_from_privacy_check_unified(state: Dict[str, Any]) -> str:
+        """Route from PrivacyCheck in unified graph."""
+        if state.get("privacy", {}).get("anonymize_enabled", False):
+            return "AnonymizeText"
+        else:
+            return "InitAgent"
+
+    @staticmethod
+    def _route_from_pii_check_unified(state: Dict[str, Any]) -> str:
+        """Route from PIICheck in unified graph."""
+        if state.get("privacy", {}).get("pii_detected", False):
+            return "LogPII"
+        else:
+            return "InitAgent"
+
+    @staticmethod
+    def _route_from_golden_fast_gate(state: Dict[str, Any]) -> str:
+        """Route from GoldenFastGate - check if golden lookup is eligible."""
+        if state.get("golden", {}).get("eligible", False):
+            return "GoldenLookup"
+        else:
+            return "ClassifyDomain"
+
+    @staticmethod
+    def _route_from_golden_hit(state: Dict[str, Any]) -> str:
+        """Route from GoldenHit - check if high confidence match found."""
+        if state.get("golden", {}).get("hit", False):
+            return "KBContextCheck"
+        else:
+            return "ClassifyDomain"
+
+    @staticmethod
+    def _route_from_kb_delta(state: Dict[str, Any]) -> str:
+        """Route from KBDelta - check if KB is newer than golden."""
+        if state.get("golden", {}).get("kb_newer", False):
+            return "ClassifyDomain"  # Need fresh LLM response with KB context
+        else:
+            return "ServeGolden"  # Golden answer is still fresh
+
+    @staticmethod
+    def _route_from_strategy_type(state: Dict[str, Any]) -> str:
+        """Route from StrategyType based on routing strategy."""
+        strategy = state.get("provider", {}).get("routing_strategy", "PRIMARY")
+        mapping = {
+            "COST_OPTIMIZED": "CheapProvider",
+            "QUALITY_FIRST": "BestProvider",
+            "BALANCED": "BalanceProvider",
+            "PRIMARY": "PrimaryProvider",
+            "FAILOVER": "PrimaryProvider"
+        }
+        return mapping.get(strategy, "PrimaryProvider")
+
+    @staticmethod
+    def _route_from_cost_check(state: Dict[str, Any]) -> str:
+        """Route from CostCheck - check if cost within budget."""
+        if state.get("provider", {}).get("cost_ok", True):
+            return "CreateProvider"
+        else:
+            return "CheaperProvider"
+
+    @staticmethod
+    def _route_from_cache_hit_unified(state: Dict[str, Any]) -> str:
+        """Route from CacheHit in unified graph."""
+        if state.get("cache", {}).get("hit", False):
+            return "ReturnCached"
+        else:
+            return "LLMCall"
+
+    @staticmethod
+    def _route_from_llm_success_unified(state: Dict[str, Any]) -> str:
+        """Route from LLMSuccess in unified graph."""
+        if state.get("llm", {}).get("success", True):
+            return "CacheResponse"
+        else:
+            return "RetryCheck"
+
+    @staticmethod
+    def _route_from_stream_check(state: Dict[str, Any]) -> str:
+        """Route from StreamCheck - check if streaming requested."""
+        if state.get("streaming", {}).get("requested", False):
+            return "StreamSetup"
+        else:
+            return "CollectMetrics"
 
     async def create_graph_phase1a(self) -> Optional[CompiledStateGraph]:
         """Create Phase 1A graph with explicit RAG nodes.
@@ -1621,6 +1741,290 @@ class LangGraphAgent:
                 return None
             raise e
 
+    async def create_graph_unified(self) -> Optional[CompiledStateGraph]:
+        """Create unified graph connecting all 8 lanes.
+
+        This implements the full RAG flow as specified in pratikoai_rag.mmd diagram.
+        Connects:
+        - Lane 1: Request/Privacy (1→3→4→6→7→9→10→8)
+        - Lane 2: Messages (11→12→13)
+        - Lane 3: Golden/KB (20→24→25→26→27→28→30)
+        - Lane 4: Classification (31, 42)
+        - Lane 5: Prompts (internal steps in classification)
+        - Lane 6: Provider (48→49→50→51/52/53/54→55→56→57/58)
+        - Lane 7: Cache/LLM (59→62→64→67→68/69→70→72/73→74→75→79→80/81/82/83→99)
+        - Lane 8: Streaming (104→105→106→107→108→109→110→111→112)
+
+        Returns:
+            Optional[CompiledStateGraph]: The unified graph or None if init fails
+        """
+        try:
+            graph_builder = StateGraph(GraphState)
+
+            # ========== Add all nodes from all lanes ==========
+
+            # Lane 1: Request/Privacy nodes
+            graph_builder.add_node("ValidateRequest", node_step_1)
+            graph_builder.add_node("ValidCheck", node_step_3)
+            graph_builder.add_node("GDPRLog", node_step_4)
+            graph_builder.add_node("PrivacyCheck", node_step_6)
+            graph_builder.add_node("AnonymizeText", node_step_7)
+            graph_builder.add_node("InitAgent", node_step_8)
+            graph_builder.add_node("PIICheck", node_step_9)
+            graph_builder.add_node("LogPII", node_step_10)
+
+            # Lane 2: Message processing nodes
+            graph_builder.add_node("ConvertMessages", node_step_11)
+            graph_builder.add_node("ExtractQuery", node_step_12)
+            graph_builder.add_node("MessageExists", node_step_13)
+
+            # Lane 3: Golden/KB nodes
+            graph_builder.add_node("GoldenFastGate", node_step_20)
+            graph_builder.add_node("GoldenLookup", node_step_24)
+            graph_builder.add_node("GoldenHit", node_step_25)
+            graph_builder.add_node("KBContextCheck", node_step_26)
+            graph_builder.add_node("KBDelta", node_step_27)
+            graph_builder.add_node("ServeGolden", node_step_28)
+            graph_builder.add_node("ReturnComplete", node_step_30)
+
+            # Lane 4: Classification nodes
+            graph_builder.add_node("ClassifyDomain", node_step_31)
+            graph_builder.add_node("ClassConfidence", node_step_42)
+
+            # Lane 6: Provider nodes
+            graph_builder.add_node("SelectProvider", node_step_48)
+            graph_builder.add_node("RouteStrategy", node_step_49)
+            graph_builder.add_node("StrategyType", node_step_50)
+            graph_builder.add_node("CheapProvider", node_step_51)
+            graph_builder.add_node("BestProvider", node_step_52)
+            graph_builder.add_node("BalanceProvider", node_step_53)
+            graph_builder.add_node("PrimaryProvider", node_step_54)
+            graph_builder.add_node("EstimateCost", node_step_55)
+            graph_builder.add_node("CostCheck", node_step_56)
+            graph_builder.add_node("CreateProvider", node_step_57)
+            graph_builder.add_node("CheaperProvider", node_step_58)
+
+            # Lane 7: Cache/LLM/Tools nodes
+            graph_builder.add_node("CheckCache", node_step_59)
+            graph_builder.add_node("CacheHit", node_step_62)
+            graph_builder.add_node("LLMCall", node_step_64)
+            graph_builder.add_node("ReturnCached", node_step_66)
+            graph_builder.add_node("LLMSuccess", node_step_67)
+            graph_builder.add_node("CacheResponse", node_step_68)
+            graph_builder.add_node("RetryCheck", node_step_69)
+            graph_builder.add_node("ProdCheck", node_step_70)
+            graph_builder.add_node("FailoverProvider", node_step_72)
+            graph_builder.add_node("RetrySame", node_step_73)
+            graph_builder.add_node("TrackUsage", node_step_74)
+            graph_builder.add_node("ToolCheck", node_step_75)
+            graph_builder.add_node("ToolType", node_step_79)
+            graph_builder.add_node("KBTool", node_step_80)
+            graph_builder.add_node("CCNLTool", node_step_81)
+            graph_builder.add_node("DocIngestTool", node_step_82)
+            graph_builder.add_node("FAQTool", node_step_83)
+            graph_builder.add_node("ToolResults", node_step_99)
+
+            # Lane 8: Streaming nodes
+            graph_builder.add_node("StreamCheck", node_step_104)
+            graph_builder.add_node("StreamSetup", node_step_105)
+            graph_builder.add_node("AsyncGen", node_step_106)
+            graph_builder.add_node("SinglePass", node_step_107)
+            graph_builder.add_node("WriteSSE", node_step_108)
+            graph_builder.add_node("StreamResponse", node_step_109)
+            graph_builder.add_node("SendDone", node_step_110)
+            graph_builder.add_node("CollectMetrics", node_step_111)
+            graph_builder.add_node("End", node_step_112)
+
+            # ========== Wire Lane 1: Request/Privacy ==========
+            graph_builder.set_entry_point("ValidateRequest")
+            graph_builder.add_edge("ValidateRequest", "ValidCheck")
+            graph_builder.add_conditional_edges(
+                "ValidCheck",
+                self._route_from_valid_check,
+                {"GDPRLog": "GDPRLog", "End": "End"}
+            )
+            graph_builder.add_edge("GDPRLog", "PrivacyCheck")
+            graph_builder.add_conditional_edges(
+                "PrivacyCheck",
+                self._route_from_privacy_check_unified,
+                {"AnonymizeText": "AnonymizeText", "InitAgent": "InitAgent"}
+            )
+            graph_builder.add_edge("AnonymizeText", "PIICheck")
+            graph_builder.add_conditional_edges(
+                "PIICheck",
+                self._route_from_pii_check_unified,
+                {"LogPII": "LogPII", "InitAgent": "InitAgent"}
+            )
+            graph_builder.add_edge("LogPII", "InitAgent")
+
+            # ========== Wire Lane 1→2: Init to Messages ==========
+            graph_builder.add_edge("InitAgent", "ConvertMessages")
+
+            # ========== Wire Lane 2: Messages ==========
+            graph_builder.add_edge("ConvertMessages", "ExtractQuery")
+            graph_builder.add_edge("ExtractQuery", "MessageExists")
+
+            # ========== Wire Lane 2→3: Messages to Golden ==========
+            # After MessageExists, go to GoldenFastGate
+            # (Internal steps 14-19 are handled by orchestrators)
+            graph_builder.add_edge("MessageExists", "GoldenFastGate")
+
+            # ========== Wire Lane 3: Golden/KB ==========
+            graph_builder.add_conditional_edges(
+                "GoldenFastGate",
+                self._route_from_golden_fast_gate,
+                {"GoldenLookup": "GoldenLookup", "ClassifyDomain": "ClassifyDomain"}
+            )
+            graph_builder.add_edge("GoldenLookup", "GoldenHit")
+            graph_builder.add_conditional_edges(
+                "GoldenHit",
+                self._route_from_golden_hit,
+                {"KBContextCheck": "KBContextCheck", "ClassifyDomain": "ClassifyDomain"}
+            )
+            graph_builder.add_edge("KBContextCheck", "KBDelta")
+            graph_builder.add_conditional_edges(
+                "KBDelta",
+                self._route_from_kb_delta,
+                {"ServeGolden": "ServeGolden", "ClassifyDomain": "ClassifyDomain"}
+            )
+            graph_builder.add_edge("ServeGolden", "ReturnComplete")
+            graph_builder.add_edge("ReturnComplete", "CollectMetrics")
+
+            # ========== Wire Lane 4: Classification ==========
+            # ClassifyDomain includes internal steps 32-40
+            graph_builder.add_edge("ClassifyDomain", "ClassConfidence")
+
+            # ========== Wire Lane 4→6: Classification to Provider ==========
+            # ClassConfidence routes to SelectProvider
+            # (Internal steps 41, 43-47 are handled by orchestrators in SelectProvider)
+            graph_builder.add_edge("ClassConfidence", "SelectProvider")
+
+            # ========== Wire Lane 6: Provider ==========
+            graph_builder.add_edge("SelectProvider", "RouteStrategy")
+            graph_builder.add_edge("RouteStrategy", "StrategyType")
+            graph_builder.add_conditional_edges(
+                "StrategyType",
+                self._route_from_strategy_type,
+                {
+                    "CheapProvider": "CheapProvider",
+                    "BestProvider": "BestProvider",
+                    "BalanceProvider": "BalanceProvider",
+                    "PrimaryProvider": "PrimaryProvider"
+                }
+            )
+            graph_builder.add_edge("CheapProvider", "EstimateCost")
+            graph_builder.add_edge("BestProvider", "EstimateCost")
+            graph_builder.add_edge("BalanceProvider", "EstimateCost")
+            graph_builder.add_edge("PrimaryProvider", "EstimateCost")
+            graph_builder.add_edge("EstimateCost", "CostCheck")
+            graph_builder.add_conditional_edges(
+                "CostCheck",
+                self._route_from_cost_check,
+                {"CreateProvider": "CreateProvider", "CheaperProvider": "CheaperProvider"}
+            )
+            graph_builder.add_edge("CreateProvider", "CheckCache")
+            graph_builder.add_edge("CheaperProvider", "EstimateCost")  # Loop back
+
+            # ========== Wire Lane 7: Cache/LLM/Tools ==========
+            graph_builder.add_edge("CheckCache", "CacheHit")
+            graph_builder.add_conditional_edges(
+                "CacheHit",
+                self._route_from_cache_hit_unified,
+                {"ReturnCached": "ReturnCached", "LLMCall": "LLMCall"}
+            )
+            graph_builder.add_edge("ReturnCached", "StreamCheck")
+
+            graph_builder.add_edge("LLMCall", "LLMSuccess")
+            graph_builder.add_conditional_edges(
+                "LLMSuccess",
+                self._route_from_llm_success_unified,
+                {"CacheResponse": "CacheResponse", "RetryCheck": "RetryCheck"}
+            )
+            graph_builder.add_edge("CacheResponse", "TrackUsage")
+            graph_builder.add_edge("TrackUsage", "ToolCheck")
+
+            # Retry path
+            graph_builder.add_conditional_edges(
+                "RetryCheck",
+                self._route_from_retry_check,
+                {"ProdCheck": "ProdCheck", "End": "End"}
+            )
+            graph_builder.add_conditional_edges(
+                "ProdCheck",
+                self._route_from_prod_check,
+                {"FailoverProvider": "FailoverProvider", "RetrySame": "RetrySame"}
+            )
+            graph_builder.add_edge("FailoverProvider", "LLMCall")
+            graph_builder.add_edge("RetrySame", "LLMCall")
+
+            # Tools path
+            graph_builder.add_conditional_edges(
+                "ToolCheck",
+                self._route_from_tool_check,
+                {"ToolType": "ToolType", "StreamCheck": "StreamCheck"}
+            )
+            graph_builder.add_conditional_edges(
+                "ToolType",
+                self._route_from_tool_type,
+                {
+                    "KBTool": "KBTool",
+                    "CCNLTool": "CCNLTool",
+                    "DocIngestTool": "DocIngestTool",
+                    "FAQTool": "FAQTool"
+                }
+            )
+            graph_builder.add_edge("KBTool", "ToolResults")
+            graph_builder.add_edge("CCNLTool", "ToolResults")
+            graph_builder.add_edge("DocIngestTool", "ToolResults")
+            graph_builder.add_edge("FAQTool", "ToolResults")
+            graph_builder.add_edge("ToolResults", "StreamCheck")
+
+            # ========== Wire Lane 8: Streaming ==========
+            graph_builder.add_conditional_edges(
+                "StreamCheck",
+                self._route_from_stream_check,
+                {"StreamSetup": "StreamSetup", "CollectMetrics": "CollectMetrics"}
+            )
+            graph_builder.add_edge("StreamSetup", "AsyncGen")
+            graph_builder.add_edge("AsyncGen", "SinglePass")
+            graph_builder.add_edge("SinglePass", "WriteSSE")
+            graph_builder.add_edge("WriteSSE", "StreamResponse")
+            graph_builder.add_edge("StreamResponse", "SendDone")
+            graph_builder.add_edge("SendDone", "CollectMetrics")
+
+            # Final step
+            graph_builder.add_edge("CollectMetrics", "End")
+
+            # Compile graph
+            connection_pool = await self._get_connection_pool()
+            if connection_pool and AsyncPostgresSaver is not None:
+                checkpointer = AsyncPostgresSaver(connection_pool)
+                await checkpointer.setup()
+            else:
+                checkpointer = None
+
+            compiled_graph = graph_builder.compile(
+                checkpointer=checkpointer,
+                name=f"{settings.PROJECT_NAME} Agent Unified ({settings.ENVIRONMENT.value})"
+            )
+
+            logger.info(
+                "unified_graph_created",
+                graph_name=f"{settings.PROJECT_NAME} Agent Unified",
+                environment=settings.ENVIRONMENT.value,
+                has_checkpointer=checkpointer is not None,
+                total_nodes=59
+            )
+
+            return compiled_graph
+
+        except Exception as e:
+            logger.error("unified_graph_creation_failed", error=str(e), environment=settings.ENVIRONMENT.value)
+            if settings.ENVIRONMENT == Environment.PRODUCTION:
+                logger.warning("continuing_without_unified_graph")
+                return None
+            raise e
+
     async def create_graph(self) -> Optional[CompiledStateGraph]:
         """Create and configure the LangGraph workflow.
 
@@ -1628,9 +2032,9 @@ class LangGraphAgent:
             Optional[CompiledStateGraph]: The configured LangGraph instance or None if init fails
         """
         if self._graph is None:
-            # Phase 1A graph is now the default
-            logger.info("using_phase1a_graph", environment=settings.ENVIRONMENT.value)
-            self._graph = await self.create_graph_phase1a()
+            # Unified graph is now the default (connects all 8 lanes)
+            logger.info("using_unified_graph", environment=settings.ENVIRONMENT.value)
+            self._graph = await self.create_graph_unified()
 
         return self._graph
 
@@ -1681,18 +2085,19 @@ class LangGraphAgent:
             self._current_user_id = None
             self._current_session_id = None
 
-    def _needs_complex_workflow(self, classification: Optional[DomainActionClassification]) -> bool:
+    @staticmethod
+    def _needs_complex_workflow(classification: Optional[DomainActionClassification]) -> bool:
         """Determine if query needs tools/complex workflow based on classification.
-        
+
         Args:
             classification: Domain-action classification result
-            
+
         Returns:
             bool: True if complex workflow is needed, False for simple streaming
         """
         if not classification:
             return False
-            
+
         # Actions that always need database/tool access
         complex_actions = {
             Action.CCNL_QUERY,           # Always needs CCNL database access
@@ -1955,7 +2360,8 @@ class LangGraphAgent:
         
         return messages
 
-    def __process_messages(self, messages: list[BaseMessage]) -> list[Message]:
+    @staticmethod
+    def __process_messages(messages: list[BaseMessage]) -> list[Message]:
         openai_style_messages = convert_to_openai_messages(messages)
         # keep just assistant and user messages
         return [

@@ -32,6 +32,7 @@ from app.core.privacy.gdpr import gdpr_compliance, ProcessingPurpose, DataCatego
 from app.core.streaming_guard import SinglePassStream
 from app.core.sse_write import write_sse, log_sse_summary
 from app.observability.rag_trace import rag_trace_context
+from app.observability.rag_logging import rag_step_log
 
 router = APIRouter()
 agent = LangGraphAgent()
@@ -59,6 +60,16 @@ async def chat(
         HTTPException: If there's an error processing the request.
     """
     try:
+        # Step 1: Validate request and authenticate
+        rag_step_log(
+            step=1,
+            step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+            node_label='ValidateRequest',
+            processing_stage='completed',
+            session_id=session.id,
+            user_id=session.user_id
+        )
+
         # Record data processing for GDPR compliance
         gdpr_compliance.data_processor.record_processing(
             user_id=session.user_id,
@@ -68,6 +79,16 @@ async def chat(
             legal_basis="Service provision under contract",
             anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS
         )
+
+        # Step 4: GDPR log
+        rag_step_log(
+            step=4,
+            step_id='RAG.privacy.gdprcompliance.record.processing.log.data.processing',
+            node_label='GDPRLog',
+            processing_stage='completed',
+            session_id=session.id,
+            user_id=session.user_id
+        )
         
         # Anonymize request if privacy settings require it
         processed_messages = chat_request.messages
@@ -75,16 +96,37 @@ async def chat(
             processed_messages = []
             for message in chat_request.messages:
                 anonymization_result = anonymizer.anonymize_text(message.content)
+
+                # Step 7: Anonymize PII
+                rag_step_log(
+                    step=7,
+                    step_id='RAG.privacy.anonymizer.anonymize.text.anonymize.pii',
+                    node_label='AnonymizeText',
+                    processing_stage='completed',
+                    session_id=session.id,
+                    pii_detected=len(anonymization_result.pii_matches) > 0
+                )
+
                 processed_messages.append(Message(
                     role=message.role,
                     content=anonymization_result.anonymized_text
                 ))
-                
+
                 if anonymization_result.pii_matches:
                     logger.info(
                         "chat_request_pii_anonymized",
                         session_id=session.id,
                         pii_types=[match.pii_type.value for match in anonymization_result.pii_matches],
+                        pii_count=len(anonymization_result.pii_matches)
+                    )
+
+                    # Step 10: Log PII anonymization
+                    rag_step_log(
+                        step=10,
+                        step_id='RAG.platform.logger.info.log.pii.anonymization',
+                        node_label='LogPII',
+                        processing_stage='completed',
+                        session_id=session.id,
                         pii_count=len(anonymization_result.pii_matches)
                     )
 
@@ -133,6 +175,16 @@ async def chat_stream(
         HTTPException: If there's an error processing the request.
     """
     try:
+        # Step 1: Validate request and authenticate
+        rag_step_log(
+            step=1,
+            step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+            node_label='ValidateRequest',
+            processing_stage='completed',
+            session_id=session.id,
+            user_id=session.user_id
+        )
+
         # Record data processing for GDPR compliance
         gdpr_compliance.data_processor.record_processing(
             user_id=session.user_id,
@@ -142,6 +194,16 @@ async def chat_stream(
             legal_basis="Service provision under contract",
             anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS
         )
+
+        # Step 4: GDPR log
+        rag_step_log(
+            step=4,
+            step_id='RAG.privacy.gdprcompliance.record.processing.log.data.processing',
+            node_label='GDPRLog',
+            processing_stage='completed',
+            session_id=session.id,
+            user_id=session.user_id
+        )
         
         # Anonymize request if privacy settings require it
         processed_messages = chat_request.messages
@@ -149,16 +211,37 @@ async def chat_stream(
             processed_messages = []
             for message in chat_request.messages:
                 anonymization_result = anonymizer.anonymize_text(message.content)
+
+                # Step 7: Anonymize PII
+                rag_step_log(
+                    step=7,
+                    step_id='RAG.privacy.anonymizer.anonymize.text.anonymize.pii',
+                    node_label='AnonymizeText',
+                    processing_stage='completed',
+                    session_id=session.id,
+                    pii_detected=len(anonymization_result.pii_matches) > 0
+                )
+
                 processed_messages.append(Message(
                     role=message.role,
                     content=anonymization_result.anonymized_text
                 ))
-                
+
                 if anonymization_result.pii_matches:
                     logger.info(
                         "stream_chat_request_pii_anonymized",
                         session_id=session.id,
                         pii_types=[match.pii_type.value for match in anonymization_result.pii_matches],
+                        pii_count=len(anonymization_result.pii_matches)
+                    )
+
+                    # Step 10: Log PII anonymization
+                    rag_step_log(
+                        step=10,
+                        step_id='RAG.platform.logger.info.log.pii.anonymization',
+                        node_label='LogPII',
+                        processing_stage='completed',
+                        session_id=session.id,
                         pii_count=len(anonymization_result.pii_matches)
                     )
 

@@ -11,7 +11,8 @@
       "Bash(docker exec:*)",
       "Read(//private/tmp/test_logs/rag_traces/**)",
       "Bash(python3:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []

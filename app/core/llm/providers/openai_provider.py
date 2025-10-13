@@ -1,8 +1,7 @@
 """OpenAI provider implementation."""
 
 import asyncio
-import re
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from langchain_core.messages import (
     BaseMessage,
@@ -23,7 +22,7 @@ from app.core.llm.base import (
     LLMModelTier,
 )
 from app.core.logging import logger
-from app.observability.rag_logging import rag_step_log, rag_step_timer
+from app.observability.rag_logging import rag_step_timer
 from app.schemas.chat import Message
 
 
@@ -46,7 +45,7 @@ class OpenAIProvider(LLMProvider):
     def client(self) -> AsyncOpenAI:
         """Get the OpenAI async client."""
         if self._client is None:
-            self._client = AsyncOpenAI(api_key=self.api_key)
+            self._client = AsyncOpenAI(api_key=self.api_key)  # type: ignore[arg-type]
         return self._client
     
     @property
@@ -54,7 +53,7 @@ class OpenAIProvider(LLMProvider):
         """Get the LangChain OpenAI client."""
         if self._langchain_client is None:
             self._langchain_client = ChatOpenAI(
-                api_key=self.api_key,
+                api_key=self.api_key,  # type: ignore[arg-type]
                 model=self.model,
                 temperature=self.config.get("temperature", 0.2),
                 max_tokens=self.config.get("max_tokens", None),
@@ -176,10 +175,10 @@ class OpenAIProvider(LLMProvider):
                     # Use LangChain for tool support
                     langchain_messages = self._convert_messages_to_langchain(messages)
                     llm_with_tools = self.langchain_client.bind_tools(tools)
-                    # NEW: if tests/mock make bind_tools async, await it
+                    # Defensive: if tests/mock make bind_tools async, await it
                     if asyncio.iscoroutine(llm_with_tools):
-                        llm_with_tools = await llm_with_tools
-                    
+                        llm_with_tools = await llm_with_tools  # type: ignore[misc]
+
                     response = await llm_with_tools.ainvoke(
                         langchain_messages,
                         temperature=temperature,
@@ -208,8 +207,8 @@ class OpenAIProvider(LLMProvider):
                 else:
                     # Use direct OpenAI client for better control
                     openai_messages = self._convert_messages_to_openai(messages)
-                    
-                    response = await self.client.chat.completions.create(
+
+                    response = await self.client.chat.completions.create(  # type: ignore[call-overload]
                         model=self.model,
                         messages=openai_messages,
                         temperature=temperature,
@@ -244,7 +243,7 @@ class OpenAIProvider(LLMProvider):
                     provider=self.provider_type.value,
                 )
                 raise
-            except Exception as e:
+            except (ConnectionError, TimeoutError, ValueError) as e:
                 logger.error(
                     "openai_completion_unexpected_error",
                     error=str(e),
@@ -260,7 +259,7 @@ class OpenAIProvider(LLMProvider):
         temperature: float = 0.2,
         max_tokens: Optional[int] = None,
         **kwargs
-    ) -> AsyncIterator[LLMStreamResponse]:
+    ) -> AsyncGenerator[LLMStreamResponse, None]:
         """Generate a streaming chat completion using OpenAI.
         
         Args:
@@ -275,10 +274,10 @@ class OpenAIProvider(LLMProvider):
         """
         try:
             openai_messages = self._convert_messages_to_openai(messages)
-            
+
             # Note: Streaming with tools is complex, for now we'll disable tools in streaming
             # This can be enhanced later if needed
-            stream = await self.client.chat.completions.create(
+            stream = await self.client.chat.completions.create(  # type: ignore[call-overload]
                 model=self.model,
                 messages=openai_messages,
                 temperature=temperature,
@@ -314,7 +313,7 @@ class OpenAIProvider(LLMProvider):
                 provider=self.provider_type.value,
             )
             raise
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError) as e:
             logger.error(
                 "openai_stream_unexpected_error",
                 error=str(e),
@@ -369,19 +368,19 @@ class OpenAIProvider(LLMProvider):
 
     async def validate_connection(self) -> bool:
         """Validate that the OpenAI connection is working.
-        
+
         Returns:
             True if connection is valid, False otherwise
         """
         try:
             # Make a minimal API call to test the connection
-            response = await self.client.chat.completions.create(
+            await self.client.chat.completions.create(
                 model=self.model,
-                messages=[{"role": "user", "content": "test"}],
+                messages=[{"role": "user", "content": "test"}],  # type: ignore[arg-type]
                 max_tokens=1,
             )
             return True
-        except Exception as e:
+        except (OpenAIError, ConnectionError, TimeoutError) as e:
             logger.error(
                 "openai_connection_validation_failed",
                 error=str(e),

@@ -16,6 +16,7 @@ from langchain_core.messages import (
     convert_to_openai_messages,
 )
 from langfuse.langchain import CallbackHandler
+
 try:
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
     from langgraph.graph import (
@@ -80,7 +81,7 @@ from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_cl
 from app.core.prompts import SYSTEM_PROMPT
 from app.services.cache import cache_service
 from app.services.usage_tracker import usage_tracker
-from app.services.golden_fast_path import GoldenFastPathService, EligibilityDecision
+from app.services.golden_fast_path import GoldenFastPathService, EligibilityResult
 from app.schemas import (
     GraphState,
     Message,
@@ -216,13 +217,17 @@ class LangGraphAgent:
         self._connection_pool: Optional[AsyncConnectionPool] = None
         self._graph: Optional[CompiledStateGraph] = None
         self._current_provider: Optional[LLMProvider] = None
-        
+
         # Initialize domain-action classification services
         self._domain_classifier = DomainActionClassifier()
         self._prompt_template_manager = PromptTemplateManager()
         self._golden_fast_path_service = GoldenFastPathService()
         self._current_classification = None  # Store current query classification
         self._response_metadata = None  # Store response metadata
+
+        # Initialize tracking attributes
+        self._current_user_id: Optional[str] = None
+        self._current_session_id: Optional[str] = None
 
         logger.info("llm_agent_initialized", environment=settings.ENVIRONMENT.value)
 
@@ -280,7 +285,7 @@ class LangGraphAgent:
             logger.error("query_classification_failed", error=str(e), exc_info=True)
             return None
 
-    async def _check_golden_fast_path_eligibility(self, messages: List[Message], session_id: str, user_id: Optional[str]) -> 'EligibilityResult':
+    async def _check_golden_fast_path_eligibility(self, messages: List[Message], session_id: str, user_id: Optional[str]) -> EligibilityResult:
         """
         Check if the current query is eligible for golden fast-path processing.
         
@@ -793,11 +798,11 @@ class LangGraphAgent:
                     model=settings.LLM_MODEL or settings.OPENAI_MODEL,
                 )
 
-    async def _get_connection_pool(self) -> AsyncConnectionPool:
+    async def _get_connection_pool(self) -> Optional[AsyncConnectionPool]:
         """Get a PostgreSQL connection pool using environment-specific settings.
 
         Returns:
-            AsyncConnectionPool: A connection pool for PostgreSQL database.
+            Optional[AsyncConnectionPool]: A connection pool for PostgreSQL database, or None if connection fails in production.
         """
         if self._connection_pool is None:
             try:
@@ -934,7 +939,7 @@ class LangGraphAgent:
         raise Exception(f"Failed to get a response from the LLM after {max_retries} attempts")
 
     # Define our tool node
-    async def _tool_call(self, state: GraphState) -> GraphState:
+    async def _tool_call(self, state: GraphState) -> Dict[str, List[ToolMessage]]:
         """Process tool calls from the last message.
 
         Args:
@@ -2043,7 +2048,7 @@ class LangGraphAgent:
         messages: list[Message],
         session_id: str,
         user_id: Optional[str] = None,
-    ) -> list[dict]:
+    ) -> list[Message]:
         """Get a response from the LLM.
 
         Args:
@@ -2052,7 +2057,7 @@ class LangGraphAgent:
             user_id (Optional[str]): The user ID for Langfuse tracking.
 
         Returns:
-            list[dict]: The response from the LLM.
+            list[Message]: The response from the LLM.
         """
         # Store user and session info for tracking
         self._current_user_id = user_id
@@ -2060,7 +2065,8 @@ class LangGraphAgent:
         
         if self._graph is None:
             self._graph = await self.create_graph()
-        config = {
+        # Type cast: LangGraph accepts dicts for config
+        config: Any = {
             "configurable": {"thread_id": session_id},
             "callbacks": [
                 CallbackHandler()
@@ -2073,9 +2079,9 @@ class LangGraphAgent:
             },
         }
         try:
-            response = await self._graph.ainvoke(
-                {"messages": dump_messages(messages), "session_id": session_id}, config
-            )
+            # Type cast: LangGraph accepts dicts matching the state schema
+            input_state: Any = {"messages": dump_messages(messages), "session_id": session_id}
+            response = await self._graph.ainvoke(input_state, config)
             return self.__process_messages(response["messages"])
         except Exception as e:
             logger.error(f"Error getting response: {str(e)}")
@@ -2121,7 +2127,10 @@ class LangGraphAgent:
     async def get_stream_response(
         self, messages: list[Message], session_id: str, user_id: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
-        """Get a hybrid stream response using optimal approach based on query complexity.
+        """Get a hybrid stream response using unified graph for pre-LLM steps.
+
+        Phase 4 Implementation: Uses the unified graph to execute all steps (1-63)
+        before the LLM call, then streams the LLM response (Step 64) directly.
 
         Args:
             messages (list[Message]): The messages to send to the LLM.
@@ -2134,43 +2143,131 @@ class LangGraphAgent:
         # Store user and session info for tracking
         self._current_user_id = user_id
         self._current_session_id = session_id
-        
+
         try:
-            # Classify user query to determine streaming strategy
-            self._current_classification = await self._classify_user_query(messages)
-            
-            # RAG STEP 20: Check golden fast-path eligibility
-            golden_eligibility = await self._check_golden_fast_path_eligibility(messages, session_id, user_id)
-            
-            # Decide streaming approach based on classification and golden fast-path eligibility
-            if golden_eligibility.decision == EligibilityDecision.ELIGIBLE and golden_eligibility.allows_golden_lookup:
-                # TODO: Implement golden lookup in future step
-                # For now, use direct LLM streaming but log the golden eligibility
-                logger.info(
-                    "golden_fast_path_eligible_fallback_to_llm",
-                    session_id=session_id,
-                    confidence=golden_eligibility.confidence,
-                    reasons=golden_eligibility.reasons
+            # Ensure unified graph is initialized
+            if self._graph is None:
+                self._graph = await self.create_graph()
+
+            if self._graph is None:
+                logger.error(
+                    "unified_graph_not_available_fallback_to_direct",
+                    session_id=session_id
                 )
+                # Fallback to old direct streaming if graph unavailable
+                self._current_classification = await self._classify_user_query(messages)
                 async for chunk in self._stream_with_direct_llm(messages, session_id):
                     yield chunk
-            elif self._needs_complex_workflow(self._current_classification):
-                # Use LangGraph workflow streaming for tool-heavy operations
-                async for chunk in self._stream_with_langgraph_workflow(messages, session_id):
+                return
+
+            # Build initial state for unified graph
+            # Convert Message objects to dicts for graph compatibility
+            message_dicts = [{"role": msg.role, "content": msg.content} for msg in messages]
+
+            initial_state = {
+                "messages": message_dicts,
+                "session_id": session_id,
+                "user_id": user_id,
+                "streaming_requested": True,  # Flag to indicate streaming mode
+            }
+
+            logger.info(
+                "unified_graph_streaming_started",
+                session_id=session_id,
+                user_id=user_id,
+                message_count=len(messages)
+            )
+
+            # Execute unified graph through all pre-LLM steps
+            # The graph will execute:
+            # - Lane 1: Request/Privacy validation (Steps 1-10)
+            # - Lane 2: Message processing (Steps 11-13)
+            # - Lane 3: Golden fast-path check (Steps 20-30)
+            # - Lane 4: Classification (Steps 31, 42)
+            # - Lane 6: Provider selection (Steps 48-58)
+            # - Lane 7: Cache check (Steps 59-62)
+            # - Lane 7: LLM Call and Tool handling (Steps 64-99)
+            # - Lane 8: Streaming (Steps 104-112)
+
+            # For now, use the full graph - it will execute completely
+            # TODO Phase 4.1: Optimize to stop at Step 62 for streaming
+            state = await self._graph.ainvoke(
+                initial_state,
+                config={"configurable": {"session_id": session_id}}
+            )
+
+            # Check if there's a final response in the state
+            final_response = state.get("final_response")
+            if final_response:
+                # Graph completed successfully, return the response
+                content = final_response.get("content", "")
+                if content:
+                    yield content
+                logger.info(
+                    "unified_graph_streaming_completed_from_graph",
+                    session_id=session_id,
+                    response_length=len(content)
+                )
+                return
+
+            # If no final_response but cache hit, return cached
+            if state.get("cache", {}).get("hit"):
+                cached_response = state.get("cache", {}).get("response", {})
+                content = cached_response.get("content", "")
+                logger.info(
+                    "unified_graph_cache_hit_streaming",
+                    session_id=session_id,
+                    cached=True
+                )
+                if content:
+                    yield content
+                return
+
+            # If graph didn't produce a response, fall back to direct LLM streaming
+            # This handles cases where the graph setup is incomplete
+            logger.warning(
+                "unified_graph_no_response_fallback_to_direct",
+                session_id=session_id,
+                state_keys=list(state.keys())
+            )
+
+            # Use provider from state if available, otherwise get one
+            provider: Optional[LLMProvider] = state.get("provider", {}).get("selected")
+            processed_messages: List[Message] = state.get("processed_messages", messages)
+
+            if not provider:
+                # Fallback: classify and get provider directly
+                self._current_classification = await self._classify_user_query(messages)
+                system_prompt = await self._get_system_prompt(messages, self._current_classification)
+                processed_messages = await self._prepare_messages_with_system_prompt(
+                    messages, system_prompt, self._current_classification
+                )
+                provider = self._get_optimal_provider(processed_messages)
+
+            # At this point provider is guaranteed to be non-None
+            assert provider is not None, "Provider must be set at this point"
+
+            # Stream from provider
+            async for chunk in provider.stream_completion(
+                messages=processed_messages,
+                tools=None,
+                temperature=settings.DEFAULT_LLM_TEMPERATURE,
+                max_tokens=settings.MAX_TOKENS,
+            ):
+                # Handle both LLMStreamResponse objects and plain strings
+                if isinstance(chunk, str):
                     yield chunk
-            else:
-                # Use direct LLM streaming for simple Q&A
-                async for chunk in self._stream_with_direct_llm(messages, session_id):
-                    yield chunk
-                    
+                elif hasattr(chunk, 'content') and chunk.content:
+                    yield chunk.content
+                    if hasattr(chunk, 'done') and chunk.done:
+                        break
+
         except Exception as stream_error:
             logger.error(
-                "hybrid_stream_failed",
+                "unified_graph_streaming_failed",
                 error=str(stream_error),
                 session_id=session_id,
-                classification_used=self._current_classification is not None,
-                domain=self._current_classification.domain.value if self._current_classification else None,
-                action=self._current_classification.action.value if self._current_classification else None,
+                user_id=user_id
             )
             raise stream_error
         finally:
@@ -2258,11 +2355,12 @@ class LangGraphAgent:
             if self._graph is None:
                 self._graph = await self.create_graph()
             
-            config = {
+            # Type cast: LangGraph accepts dicts for config
+            config: Any = {
                 "configurable": {"thread_id": session_id},
                 "callbacks": [CallbackHandler()],
             }
-            
+
             logger.info(
                 "langgraph_workflow_stream_started",
                 session_id=session_id,
@@ -2270,10 +2368,13 @@ class LangGraphAgent:
                 domain=self._current_classification.domain.value if self._current_classification else None,
                 action=self._current_classification.action.value if self._current_classification else None,
             )
-            
+
+            # Type cast: LangGraph accepts dicts matching the state schema
+            input_state: Any = {"messages": dump_messages(messages), "session_id": session_id}
+
             # Stream from LangGraph with filtering to avoid duplicates
             async for token, metadata in self._graph.astream(
-                {"messages": dump_messages(messages), "session_id": session_id}, 
+                input_state,
                 config, 
                 stream_mode="messages"
             ):
@@ -2340,7 +2441,8 @@ class LangGraphAgent:
         state: StateSnapshot = await sync_to_async(self._graph.get_state)(
             config={"configurable": {"thread_id": session_id}}
         )
-        messages = self.__process_messages(state.values["messages"]) if state.values else []
+        # StateSnapshot.values exists but IDE type stubs don't recognize it
+        messages = self.__process_messages(state.values["messages"]) if state.values else []  # type: ignore[attr-defined]
         
         # Cache the conversation for future use
         if messages:

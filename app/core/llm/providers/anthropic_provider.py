@@ -1,7 +1,6 @@
 """Anthropic Claude provider implementation."""
 
-import json
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 try:
     import anthropic
@@ -20,7 +19,7 @@ from app.core.llm.base import (
     LLMModelTier,
 )
 from app.core.logging import logger
-from app.observability.rag_logging import rag_step_log, rag_step_timer
+from app.observability.rag_logging import rag_step_timer
 from app.schemas.chat import Message
 
 
@@ -141,7 +140,7 @@ class AnthropicProvider(LLMProvider):
                         "properties": schema.get("properties", {}),
                         "required": schema.get("required", [])
                     }
-                except Exception as e:
+                except (AttributeError, TypeError, ValueError) as e:
                     logger.warning(
                         "anthropic_tool_schema_conversion_failed",
                         tool_name=tool.name,
@@ -263,7 +262,7 @@ class AnthropicProvider(LLMProvider):
         temperature: float = 0.2,
         max_tokens: Optional[int] = None,
         **kwargs
-    ) -> AsyncIterator[LLMStreamResponse]:
+    ) -> AsyncGenerator[LLMStreamResponse, None]:
         """Generate a streaming chat completion using Anthropic Claude.
         
         Args:
@@ -377,19 +376,19 @@ class AnthropicProvider(LLMProvider):
 
     async def validate_connection(self) -> bool:
         """Validate that the Anthropic connection is working.
-        
+
         Returns:
             True if connection is valid, False otherwise
         """
         try:
             # Make a minimal API call to test the connection
-            response = await self.client.messages.create(
+            await self.client.messages.create(
                 model=self.model,
-                messages=[{"role": "user", "content": "test"}],
+                messages=[{"role": "user", "content": "test"}],  # type: ignore[arg-type]
                 max_tokens=1,
             )
             return True
-        except Exception as e:
+        except (AnthropicError, ConnectionError, TimeoutError) as e:
             logger.error(
                 "anthropic_connection_validation_failed",
                 error=str(e),

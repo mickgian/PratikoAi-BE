@@ -171,89 +171,78 @@ class AnthropicProvider(LLMProvider):
         Returns:
             LLMResponse with the generated content
         """
-        # RAG STEP 64 — LLMCall: Use timer for performance tracking and final logging
-        with rag_step_timer(
-            64,
-            "RAG.providers.llmprovider.chat.completion.make.api.call",
-            "LLMCall",
-            provider=self.provider_type.value,
-            model=self.model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            message_count=len(messages),
-            tools_count=len(tools) if tools else 0
-        ):
-            try:
-                system_prompt, conversation_messages = self._convert_messages_to_anthropic(messages)
-                anthropic_tools = self._convert_tools_to_anthropic(tools)
-                
-                # Build request parameters
-                request_params = {
-                    "model": self.model,
-                    "messages": conversation_messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens or 4096,
-                    **kwargs
-                }
-                
-                if system_prompt:
-                    request_params["system"] = system_prompt
-                    
-                if anthropic_tools:
-                    request_params["tools"] = anthropic_tools
-                
-                response = await self.client.messages.create(**request_params)
-                
-                # Extract content
-                content = ""
-                tool_calls = None
-                
-                for content_block in response.content:
-                    if content_block.type == "text":
-                        content += content_block.text
-                    elif content_block.type == "tool_use":
-                        if tool_calls is None:
-                            tool_calls = []
-                        tool_calls.append({
-                            "id": content_block.id,
-                            "name": content_block.name,
-                            "args": content_block.input
-                        })
-                
-                # Calculate cost estimate
-                cost_estimate = None
-                if response.usage:
-                    cost_estimate = self.estimate_cost(
-                        response.usage.input_tokens,
-                        response.usage.output_tokens
-                    )
-                
-                return LLMResponse(
-                    content=content,
-                    model=self.model,
-                    provider=self.provider_type.value,
-                    tokens_used=response.usage.input_tokens + response.usage.output_tokens if response.usage else None,
-                    cost_estimate=cost_estimate,
-                    finish_reason=response.stop_reason,
-                    tool_calls=tool_calls,
+        # Note: Step 64 timing/logging handled by node_step_64 wrapper to avoid duplicate logging
+        try:
+            system_prompt, conversation_messages = self._convert_messages_to_anthropic(messages)
+            anthropic_tools = self._convert_tools_to_anthropic(tools)
+
+            # Build request parameters
+            request_params = {
+                "model": self.model,
+                "messages": conversation_messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens or 4096,
+                **kwargs
+            }
+
+            if system_prompt:
+                request_params["system"] = system_prompt
+
+            if anthropic_tools:
+                request_params["tools"] = anthropic_tools
+
+            response = await self.client.messages.create(**request_params)
+
+            # Extract content
+            content = ""
+            tool_calls = None
+
+            for content_block in response.content:
+                if content_block.type == "text":
+                    content += content_block.text
+                elif content_block.type == "tool_use":
+                    if tool_calls is None:
+                        tool_calls = []
+                    tool_calls.append({
+                        "id": content_block.id,
+                        "name": content_block.name,
+                        "args": content_block.input
+                    })
+
+            # Calculate cost estimate
+            cost_estimate = None
+            if response.usage:
+                cost_estimate = self.estimate_cost(
+                    response.usage.input_tokens,
+                    response.usage.output_tokens
                 )
-                
-            except AnthropicError as e:
-                logger.error(
-                    "anthropic_completion_failed",
-                    error=str(e),
-                    model=self.model,
-                    provider=self.provider_type.value,
-                )
-                raise
-            except Exception as e:
-                logger.error(
-                    "anthropic_completion_unexpected_error",
-                    error=str(e),
-                    model=self.model,
-                    provider=self.provider_type.value,
-                )
-                raise
+
+            return LLMResponse(
+                content=content,
+                model=self.model,
+                provider=self.provider_type.value,
+                tokens_used=response.usage.input_tokens + response.usage.output_tokens if response.usage else None,
+                cost_estimate=cost_estimate,
+                finish_reason=response.stop_reason,
+                tool_calls=tool_calls,
+            )
+
+        except AnthropicError as e:
+            logger.error(
+                "anthropic_completion_failed",
+                error=str(e),
+                model=self.model,
+                provider=self.provider_type.value,
+            )
+            raise
+        except Exception as e:
+            logger.error(
+                "anthropic_completion_unexpected_error",
+                error=str(e),
+                model=self.model,
+                provider=self.provider_type.value,
+            )
+            raise
 
     async def stream_completion(
         self,

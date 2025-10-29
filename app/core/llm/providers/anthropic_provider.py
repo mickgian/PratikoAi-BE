@@ -1,7 +1,6 @@
 """Anthropic Claude provider implementation."""
 
-import json
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 try:
     import anthropic
@@ -20,6 +19,7 @@ from app.core.llm.base import (
     LLMModelTier,
 )
 from app.core.logging import logger
+from app.observability.rag_logging import rag_step_timer
 from app.schemas.chat import Message
 
 
@@ -140,7 +140,7 @@ class AnthropicProvider(LLMProvider):
                         "properties": schema.get("properties", {}),
                         "required": schema.get("required", [])
                     }
-                except Exception as e:
+                except (AttributeError, TypeError, ValueError) as e:
                     logger.warning(
                         "anthropic_tool_schema_conversion_failed",
                         tool_name=tool.name,
@@ -171,10 +171,11 @@ class AnthropicProvider(LLMProvider):
         Returns:
             LLMResponse with the generated content
         """
+        # Note: Step 64 timing/logging handled by node_step_64 wrapper to avoid duplicate logging
         try:
             system_prompt, conversation_messages = self._convert_messages_to_anthropic(messages)
             anthropic_tools = self._convert_tools_to_anthropic(tools)
-            
+
             # Build request parameters
             request_params = {
                 "model": self.model,
@@ -183,19 +184,19 @@ class AnthropicProvider(LLMProvider):
                 "max_tokens": max_tokens or 4096,
                 **kwargs
             }
-            
+
             if system_prompt:
                 request_params["system"] = system_prompt
-                
+
             if anthropic_tools:
                 request_params["tools"] = anthropic_tools
-            
+
             response = await self.client.messages.create(**request_params)
-            
+
             # Extract content
             content = ""
             tool_calls = None
-            
+
             for content_block in response.content:
                 if content_block.type == "text":
                     content += content_block.text
@@ -207,7 +208,7 @@ class AnthropicProvider(LLMProvider):
                         "name": content_block.name,
                         "args": content_block.input
                     })
-            
+
             # Calculate cost estimate
             cost_estimate = None
             if response.usage:
@@ -215,7 +216,7 @@ class AnthropicProvider(LLMProvider):
                     response.usage.input_tokens,
                     response.usage.output_tokens
                 )
-            
+
             return LLMResponse(
                 content=content,
                 model=self.model,
@@ -225,7 +226,7 @@ class AnthropicProvider(LLMProvider):
                 finish_reason=response.stop_reason,
                 tool_calls=tool_calls,
             )
-            
+
         except AnthropicError as e:
             logger.error(
                 "anthropic_completion_failed",
@@ -250,7 +251,7 @@ class AnthropicProvider(LLMProvider):
         temperature: float = 0.2,
         max_tokens: Optional[int] = None,
         **kwargs
-    ) -> AsyncIterator[LLMStreamResponse]:
+    ) -> AsyncGenerator[LLMStreamResponse, None]:
         """Generate a streaming chat completion using Anthropic Claude.
         
         Args:
@@ -364,19 +365,19 @@ class AnthropicProvider(LLMProvider):
 
     async def validate_connection(self) -> bool:
         """Validate that the Anthropic connection is working.
-        
+
         Returns:
             True if connection is valid, False otherwise
         """
         try:
             # Make a minimal API call to test the connection
-            response = await self.client.messages.create(
+            await self.client.messages.create(
                 model=self.model,
-                messages=[{"role": "user", "content": "test"}],
+                messages=[{"role": "user", "content": "test"}],  # type: ignore[arg-type]
                 max_tokens=1,
             )
             return True
-        except Exception as e:
+        except (AnthropicError, ConnectionError, TimeoutError) as e:
             logger.error(
                 "anthropic_connection_validation_failed",
                 error=str(e),

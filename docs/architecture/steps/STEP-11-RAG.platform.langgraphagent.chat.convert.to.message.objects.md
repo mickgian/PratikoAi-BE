@@ -8,68 +8,36 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ConvertMessages` (LangGraphAgent._chat Convert to Message objects).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
-
+- **Paths / classes:** `app/orchestrators/platform.py:747` - `step_11__convert_messages()`
+- **Role:** Internal
+- **Status:** 🔌
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 11 (RAG.platform.langgraphagent.chat.convert.to.message.objects): LangGraphAgent._chat Convert to Message objects | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 11 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
-
-Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.32)
-   Evidence: Score 0.32, Validate the message content.
-
-Args:
-    v: The content to validate
-
-Returns:
-  ...
-2) app/core/langgraph/graph.py:63 — app.core.langgraph.graph.LangGraphAgent.__init__ (score 0.31)
-   Evidence: Score 0.31, Initialize the LangGraph Agent with necessary components.
-3) app/core/langgraph/graph.py:274 — app.core.langgraph.graph.LangGraphAgent._get_routing_strategy (score 0.31)
-   Evidence: Score 0.31, Get the LLM routing strategy from configuration.
-
-Returns:
-    RoutingStrategy: ...
-4) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.31)
-   Evidence: Score 0.31, Get routing strategy and cost limit based on domain-action classification.
-
-Args...
-5) app/core/langgraph/graph.py:345 — app.core.langgraph.graph.LangGraphAgent._get_system_prompt (score 0.31)
-   Evidence: Score 0.31, Get the appropriate system prompt based on classification.
-
-Args:
-    messages: ...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

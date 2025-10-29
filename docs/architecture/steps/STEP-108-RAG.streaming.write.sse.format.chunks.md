@@ -1,64 +1,50 @@
 # RAG STEP 108 — write_sse Format chunks (RAG.streaming.write.sse.format.chunks)
 
-**Type:** process  
-**Category:** streaming  
+**Type:** process
+**Category:** streaming
 **Node ID:** `WriteSSE`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `WriteSSE` (write_sse Format chunks).
+Formats streaming chunks into Server-Sent Events (SSE) format using the write_sse function. Transforms protected async generator streams into proper SSE format for browser consumption. Essential step that bridges stream protection to streaming response delivery, enabling proper SSE formatting with logging and error handling. Routes from SinglePass (Step 107) to StreamingResponse (Step 109). This step is derived from the Mermaid node: `WriteSSE` (write_sse Format chunks).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/core/langgraph/nodes/step_108__write_sse.py` - `node_step_108`, `app/orchestrators/streaming.py:287` - `step_108__write_sse()`
+- **Role:** Internal
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator that formats streaming chunks into SSE format using the existing write_sse function. Creates SSE-formatted generator, configures formatting options, and validates requirements. Routes to StreamingResponse (Step 109) with properly formatted SSE stream ready for delivery.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - thin orchestrator preserving existing write_sse formatting logic
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 108 (RAG.streaming.write.sse.format.chunks): write_sse Format chunks | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (SSE formatting, configuration settings, complex chunks, context preservation, metadata addition, validation requirements, SSE options, stream errors, formatting parameters, logging)
+- [x] Parity tests (SSE formatting behavior verification)
+- [x] Integration tests (SinglePass→WriteSSE→StreamingResponse flow, error handling)
+- [x] Implementation changes (async SSE formatting orchestrator)
+- [x] Observability: add structured log line
+  `RAG STEP 108 (RAG.streaming.write.sse.format.chunks): write_sse Format chunks | attrs={step, request_id, chunks_formatted, format_configured, next_step, processing_stage}`
+- [x] Feature flag / config if needed (none required - uses existing write_sse infrastructure)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/sse_write.py:15 — app.core.sse_write.write_sse (score 0.33)
-   Evidence: Score 0.33, Log an SSE frame that will be written to the response.
-
-Args:
-    response: The ...
-2) app/services/i18n_service.py:322 — app.services.i18n_service.I18nService.format_date (score 0.25)
-   Evidence: Score 0.25, Format date according to language preferences.
-3) app/models/cassazione_data.py:345 — app.models.cassazione_data.ScrapingStatistics.reset (score 0.23)
-   Evidence: Score 0.23, Reset all statistics.
-4) load_testing/locust_tests.py:64 — load_testing.locust_tests.PratikoAIUser._register_user (score 0.23)
-   Evidence: Score 0.23, Register a new test user
-5) app/core/performance/cdn_integration.py:69 — app.core.performance.cdn_integration.CDNManager.__init__ (score 0.23)
-   Evidence: Score 0.23, Initialize CDN manager.
+Wiring information:
+- Node name: node_step_108
+- Incoming edges: [107]
+- Outgoing edges: [109]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

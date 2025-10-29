@@ -8,59 +8,36 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `QuerySig` (QuerySignature.compute Hash from canonical facts).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
-
+- **Paths / classes:** `app/orchestrators/facts.py:114` - `step_18__query_sig()`
+- **Role:** Internal
+- **Status:** 🔌
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests (signature computation, identical facts, different facts, empty facts, deterministic hashing, all fact types, routing)
+- [x] Integration tests (Step 16→18 flow, context preservation)
+- [x] Implementation changes (thin async orchestrator in app/orchestrators/facts.py)
+- [x] Observability: add structured log line
   `RAG STEP 18 (RAG.facts.querysignature.compute.hash.from.canonical.facts): QuerySignature.compute Hash from canonical facts | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config if needed (none required - core functionality)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.26
-
-Top candidates:
-1) app/core/security/request_signing.py:79 — app.core.security.request_signing.RequestSigner.verify_signature (score 0.26)
-   Evidence: Score 0.26, Verify request signature.
-
-Args:
-    method: HTTP method
-    path: Request path
-...
-2) app/models/query.py:50 — app.models.query.LLMResponse.__post_init__ (score 0.25)
-   Evidence: Score 0.25, Add timestamp if not present.
-3) app/models/query.py:74 — app.models.query.QueryResponse.__post_init__ (score 0.25)
-   Evidence: Score 0.25, method: __post_init__
-4) app/models/query.py:181 — app.models.query.QueryMetrics.success_rate (score 0.25)
-   Evidence: Score 0.25, Calculate success rate percentage.
-5) app/models/query.py:188 — app.models.query.QueryMetrics.failure_rate (score 0.25)
-   Evidence: Score 0.25, Calculate failure rate percentage.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for QuerySig
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

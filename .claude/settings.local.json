@@ -1,27 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(uv add:*)",
-      "Bash(uv run ruff:*)",
-      "Bash(mv:*)",
-      "Bash(chmod:*)",
       "Bash(python:*)",
-      "Bash(find:*)",
-      "Bash(git add:*)",
-      "Bash(ls:*)",
-      "Bash(curl:*)",
-      "Bash(pkill:*)",
-      "Bash(docker-compose up:*)",
-      "Bash(docker-compose logs:*)",
-      "Bash(docker-compose:*)",
-      "Bash(docker stop:*)",
-      "Bash(grep:*)",
-      "Bash(sed:*)",
-      "Bash(rm:*)",
       "Bash(pytest:*)",
-      "Bash(uv run:*)",
-      "WebFetch(domain:github.com)"
+      "Bash(test:*)",
+      "Bash(docker logs:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(docker exec:*)",
+      "Read(//private/tmp/test_logs/rag_traces/**)",
+      "Bash(python3:*)",
+      "Bash(find:*)",
+      "Bash(awk:*)"
     ],
-    "deny": []
+    "deny": [],
+    "ask": []
   }
 }

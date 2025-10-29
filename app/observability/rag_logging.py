@@ -74,6 +74,55 @@ def rag_step_log(
     )
 
 
+def rag_step_log_compat(*args, **kwargs) -> None:
+    """
+    Compatibility wrapper for old-style rag_step_log calls.
+
+    Old form: rag_step_log(STEP, "enter", **ctx)
+    New form: rag_step_log(step, step_id, node_label, **ctx)
+
+    This adapter translates the old 2-arg signature to the new 3-arg signature.
+    """
+    # If already using new named parameters, pass through
+    if "step" in kwargs and "step_id" in kwargs and "node_label" in kwargs:
+        return rag_step_log(**kwargs)
+
+    step = None
+    event = None
+
+    if len(args) >= 1:
+        step = args[0]
+    if len(args) >= 2:
+        event = args[1]
+
+    # Generate node_label and step_id from step number
+    node_label = f"step_{int(step):03d}" if step is not None else "step_unknown"
+    step_id = f"RAG.step.{int(step):03d}"
+
+    # Map old "enter"/"exit" events to node_label suffix
+    if event:
+        node_label = f"{node_label}.{event}"
+
+    return rag_step_log(step=step, step_id=step_id, node_label=node_label, **kwargs)
+
+
+@contextmanager
+def rag_step_timer_compat(step: int, **attrs: Any):
+    """
+    Compatibility wrapper for old-style rag_step_timer calls.
+
+    Old form: with rag_step_timer(STEP):
+    New form: with rag_step_timer(step, step_id, node_label):
+
+    This adapter translates the old 1-arg signature to the new 3-arg signature.
+    """
+    node_label = f"step_{int(step):03d}"
+    step_id = f"RAG.step.{int(step):03d}"
+
+    with rag_step_timer(step, step_id, node_label, **attrs):
+        yield
+
+
 @contextmanager
 def rag_step_timer(
     step: int,

@@ -1,70 +1,50 @@
 # RAG STEP 112 — Return response to user (RAG.response.return.response.to.user)
 
-**Type:** startEnd  
-**Category:** response  
+**Type:** startEnd
+**Category:** response
 **Node ID:** `End`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `End` (Return response to user).
+Final step in the RAG pipeline that delivers the complete response to the user. Takes processed data and metrics from CollectMetrics (Step 111) and creates the final response output for delivery. Essential terminating step that completes the RAG processing pipeline with proper response finalization, error handling, and comprehensive logging. Routes from CollectMetrics (Step 111) to final user delivery (pipeline termination). This step is derived from the Mermaid node: `End` (Return response to user).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/core/langgraph/nodes/step_112__end.py` - `node_step_112`, `app/orchestrators/response.py:769` - `step_112__end()`
+- **Role:** Node
+- **Status:** ✅
+- **Behavior notes:** Async orchestrator that finalizes response delivery to the user. Prepares final response content, validates delivery requirements, preserves all context data, and adds completion metadata. Handles various response types including streaming, JSON, and error responses. Routes to user with complete RAG processing results.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - thin orchestrator preserving existing response delivery logic
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 112 (RAG.response.return.response.to.user): Return response to user | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (final response delivery, streaming responses, context preservation, completion metadata, error responses, empty context handling, various response types, performance metrics, feedback context, logging)
+- [x] Parity tests (response delivery behavior verification)
+- [x] Integration tests (CollectMetrics→End flow, full pipeline completion, error handling)
+- [x] Implementation changes (async response finalization orchestrator)
+- [x] Observability: add structured log line
+  `RAG STEP 112 (RAG.response.return.response.to.user): Return response to user | attrs={step, request_id, response_delivered, final_step, response_type, user_id, session_id, processing_stage}`
+- [x] Feature flag / config if needed (none required - final delivery step)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/models/user.py:20 — app.models.user.User (score 0.34)
-   Evidence: Score 0.34, User model for storing user accounts.
-
-Attributes:
-    id: The primary key
-    e...
-2) app/models/user.py:50 — app.models.user.User.verify_password (score 0.30)
-   Evidence: Score 0.30, Verify if the provided password matches the hash.
-3) app/models/user.py:55 — app.models.user.User.hash_password (score 0.30)
-   Evidence: Score 0.30, Hash a password using bcrypt.
-4) app/models/user.py:60 — app.models.user.User.set_refresh_token_hash (score 0.30)
-   Evidence: Score 0.30, Set the hash of the refresh token.
-
-Stores a bcrypt hash of the refresh token fo...
-5) app/models/user.py:72 — app.models.user.User.verify_refresh_token (score 0.30)
-   Evidence: Score 0.30, Verify if the provided refresh token matches the stored hash.
-
-Args:
-    refresh...
+Wiring information:
+- Node name: node_step_112
+- Incoming edges: [111]
+- Outgoing edges: none
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

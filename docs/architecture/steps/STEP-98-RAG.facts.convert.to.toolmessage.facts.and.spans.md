@@ -8,69 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ToToolResults` (Convert to ToolMessage facts and spans).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/facts.py:step_98__to_tool_results`
+- **Status:** 🔌
+- **Behavior notes:** Thin async orchestrator that converts extracted document facts and provenance into ToolMessage format for returning to the LLM tool caller. Formats facts into readable content, includes provenance metadata, and creates langchain ToolMessage. Routes to Step 99 (ToolResults).
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests (ToolMessage conversion, facts formatting, provenance metadata, empty facts, multiple document types, routing, context preservation)
+- [x] Integration tests (Step 97→98 flow, Step 99 preparation)
+- [x] Implementation changes (thin async orchestrator creating ToolMessage from facts)
+- [x] Observability: add structured log line
   `RAG STEP 98 (RAG.facts.convert.to.toolmessage.facts.and.spans): Convert to ToolMessage facts and spans | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config if needed (none required - standard conversion)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
-
-Top candidates:
-1) app/schemas/chat.py:34 — app.schemas.chat.Message.validate_content (score 0.25)
-   Evidence: Score 0.25, Validate the message content.
-
-Args:
-    v: The content to validate
-
-Returns:
-  ...
-2) app/core/llm/factory.py:27 — app.core.llm.factory.LLMFactory.__init__ (score 0.24)
-   Evidence: Score 0.24, Initialize the LLM factory.
-3) app/core/llm/factory.py:33 — app.core.llm.factory.LLMFactory._get_provider_configs (score 0.24)
-   Evidence: Score 0.24, Get provider configurations from settings.
-
-Returns:
-    Dictionary of provider ...
-4) app/core/llm/factory.py:59 — app.core.llm.factory.LLMFactory.create_provider (score 0.24)
-   Evidence: Score 0.24, Create an LLM provider instance.
-
-Args:
-    provider_type: Type of provider to c...
-5) app/core/llm/factory.py:105 — app.core.llm.factory.LLMFactory.get_available_providers (score 0.24)
-   Evidence: Score 0.24, Get all available configured providers.
-
-Returns:
-    List of available provider...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for ToToolResults
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

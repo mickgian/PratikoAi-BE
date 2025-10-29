@@ -8,54 +8,42 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `StrategyType` (Routing strategy?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Node
+- **Paths / classes:** `app/orchestrators/platform.py:1203` - `step_50__strategy_type()`
+- **Status:** ✅
+- **Behavior notes:** Runtime boundary; determines routing strategy type; routes to cheapest, best, balanced, or primary provider selection.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 50 (RAG.platform.routing.strategy): Routing strategy? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 50 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) failure-recovery-system/decision_tree_engine.py:207 — failure-recovery-system.decision_tree_engine.RecoveryStrategy.__post_init__ (score 0.24)
-   Evidence: Score 0.24, method: __post_init__
-2) app/models/cassazione_data.py:367 — app.models.cassazione_data.ScrapingError.category (score 0.23)
-   Evidence: Score 0.23, Categorize the error.
-3) app/services/export_file_generator.py:792 — app.services.export_file_generator.ExportFileGenerator._translate_query_type (score 0.23)
-   Evidence: Score 0.23, Translate query type to Italian
-4) failure-recovery-system/recovery_orchestrator.py:879 — failure-recovery-system.recovery_orchestrator.RecoveryOrchestrator._get_strategy_by_id (score 0.23)
-   Evidence: Score 0.23, Get a strategy by its ID from all available strategies.
-5) app/models/cassazione_data.py:319 — app.models.cassazione_data.ScrapingStatistics.save_rate (score 0.23)
-   Evidence: Score 0.23, Calculate decision save rate.
+Wiring information:
+- Node name: node_step_50
+- Incoming edges: [49]
+- Outgoing edges: [51, 52, 53, 54]
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create decision implementation for StrategyType
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

@@ -8,58 +8,44 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `Start` (User submits query via POST /api/v1/chat).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:**
+  - `app/api/v1/chatbot.py:40` - `@router.post("/chat")` (HTTP entry point)
+  - `app/orchestrators/platform.py:179` - `step_2__start()` (orchestrator)
+  - `app/core/langgraph/nodes/step_002__start.py:9` - `node_step_2()` (wrapper exists but not wired)
+- **Status:** 🔌
+- **Behavior notes:**
+  - **Why Internal?** This is the HTTP API entry point, not a graph node. The workflow starts at Step 1 (ValidateRequest), which is called by the FastAPI endpoint.
+  - **Why NOT wired?** Step 2 represents the external API boundary (`POST /api/v1/chat`). It's the trigger that initiates the graph execution, not a node within the graph itself.
+  - **Canonical Node Set:** Per `docs/architecture/RAG-architecture-mode.md`, the Request/Privacy lane promotes only steps 1, 3, 6, and 9 as runtime nodes. Step 2 remains Internal because it's pure infrastructure (HTTP → graph initialization).
+  - The FastAPI endpoint receives the POST request, validates at the HTTP layer, then invokes the LangGraph workflow starting at node_step_1.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 2 (RAG.platform.user.submits.query.via.post.api.v1.chat): User submits query via POST /api/v1/chat | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (POST endpoint flow and orchestrator integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 2 (RAG.platform.user.submits.query.via.post.api.v1.chat): User submits query via POST /api/v1/chat | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (API endpoint configuration and rate limiting)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
-
-Top candidates:
-1) app/models/user.py:20 — app.models.user.User (score 0.32)
-   Evidence: Score 0.32, User model for storing user accounts.
-
-Attributes:
-    id: The primary key
-    e...
-2) app/api/v1/ccnl_calculations.py:31 — app.api.v1.ccnl_calculations.CompensationRequest (score 0.31)
-   Evidence: Score 0.31, Request model for compensation calculation.
-3) app/api/v1/ccnl_calculations.py:44 — app.api.v1.ccnl_calculations.LeaveBalanceRequest (score 0.31)
-   Evidence: Score 0.31, Request model for leave balance calculation.
-4) app/api/v1/ccnl_calculations.py:52 — app.api.v1.ccnl_calculations.SeniorityBenefitsRequest (score 0.31)
-   Evidence: Score 0.31, Request model for seniority benefits calculation.
-5) app/api/v1/ccnl_calculations.py:60 — app.api.v1.ccnl_calculations.ComplexQueryRequest (score 0.31)
-   Evidence: Score 0.31, Request model for complex CCNL queries.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

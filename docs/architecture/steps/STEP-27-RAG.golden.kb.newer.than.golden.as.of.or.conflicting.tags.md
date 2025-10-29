@@ -5,57 +5,46 @@
 **Node ID:** `KBDelta`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `KBDelta` (KB newer than Golden as of or conflicting tags?).
+Evaluates whether KB has newer content or conflicting tags compared to the Golden Set match. Routes to ServeGolden (Step 28) if no conflict, or to PreContextFromGolden (Step 29) if KB has updates that should be merged.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/core/langgraph/nodes/step_027__kb_delta.py` - `node_step_27`, `app/orchestrators/golden.py:320` - `step_27__kbdelta()`
+- **Status:** 🔌
+- **Behavior notes:** Node orchestrator that evaluates KB delta/conflict using dual-check logic: (1) timestamp comparison for newer KB content, (2) tag-based conflict detection for supersedes/obsoletes/replaces/updated indicators. Routes to Step 28 (ServeGolden) if no delta, or Step 29 (PreContextFromGolden) if conflict detected. Preserves all context from Step 26.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - graceful degradation on missing timestamps/metadata
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 27 (RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags): KB newer than Golden as of or conflicting tags? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (no changes→serve, newer KB→merge, conflicting tags→merge, context preservation, delta metadata, logging, missing timestamps, supersedes tag)
+- [x] Parity tests (delta logic verification)
+- [x] Integration tests (Step 26→27→28/29 flow, Step 27→28 context preparation)
+- [x] Implementation changes (async orchestrator with timestamp + tag conflict checks)
+- [x] Observability: add structured log line
+  `RAG STEP 27 (RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags): KB newer than Golden as of or conflicting tags? | attrs={kb_has_delta, conflict_reason, next_step, processing_stage}`
+- [x] Feature flag / config if needed (none required - uses Step 26 output)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.45
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/models/faq.py:486 — app.models.faq.generate_faq_cache_key (score 0.45)
-   Evidence: Score 0.45, Generate cache key for FAQ variations.
-2) app/models/faq.py:495 — app.models.faq.calculate_cost_savings (score 0.45)
-   Evidence: Score 0.45, Calculate cost savings from FAQ system usage.
-3) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.40)
-   Evidence: Score 0.40, Request model for FAQ queries.
-4) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.40)
-   Evidence: Score 0.40, Response model for FAQ queries.
-5) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.40)
-   Evidence: Score 0.40, Request model for creating FAQ entries.
+Wiring information:
+- Node name: node_step_27
+- Incoming edges: [26]
+- Outgoing edges: [28]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

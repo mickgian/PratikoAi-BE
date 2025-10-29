@@ -1,0 +1,29 @@
+thresholds:
+  implemented: 0.75     # was 0.80
+  partial: 0.55         # was 0.50
+  not_wired_callers_min: 1  # 0 callers => "Not wired"
+
+weights:
+  name_similarity: 0.45
+  docstring_hints: 0.20
+  path_hints: 0.20
+  graph_proximity: 0.15
+
+synonyms:
+  "Golden fast-path eligible?": ["GoldenFastPathService", "GoldenFastGate", "fast path", "golden fast path", "faq gate", "answer bank", "golden match", "pre-llm faq"]
+  "KBPreFetch": ["knowledge retrieve_topk", "kb search", "vector search", "bm25", "pinecone"]
+  "CheckCache": ["_get_cached_llm_response", "cache response key", "epoch merge", "redis key"]
+  "Tool type?": ["tool_calls", "planner route", "execute tools", "router"]
+  "DocIngest": ["AttachmentValidator", "DocClassifier", "parser", "OCR", "blob store", "provenance"]
+  "LLMCall": ["chat_completion", "retry", "failover", "provider call"]
+  "PrivacyCheck": ["gdpr", "privacy", "anonymize"]
+  "CanonicalizeFacts": ["normalize amounts", "dates normalization", "canonical facts"]
+  "KBDelta": ["kb newer than golden", "rss conflict", "recency override"]
+
+path_bias:
+  cache: ["cache", "redis"]
+  kb: ["kb", "knowledge", "retrieval", "search", "pinecone", "vector"]
+  golden: ["faq", "golden", "answerbank"]
+  docs: ["doc", "parser", "ocr", "fattura", "f24", "contract", "payslip", "blob", "provenance"]
+  providers: ["provider", "llm", "router", "route", "failover"]
+  feedback: ["feedback", "expert", "pattern", "improvement"]

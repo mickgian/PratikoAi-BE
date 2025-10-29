@@ -6,31 +6,24 @@ Each step should be audited and its documentation filled during the conformance 
 
 ## Audit Summary
 
-**Implementation Status Overview:**
-- ✅ Implemented: 0 steps
-- 🟡 Partial: 1 steps
-- 🔌 Not wired: 88 steps
-- ❌ Missing: 46 steps
+**Implementation Status Overview (Tiered Graph Hybrid):**
 
-**By Category:**
-- **cache**: 0/8 implemented
-- **ccnl**: 0/2 implemented
-- **classify**: 0/9 implemented
-- **docs**: 0/11 implemented
-- **facts**: 0/8 implemented
-- **feedback**: 0/6 implemented
-- **golden**: 0/13 implemented
-- **kb**: 0/4 implemented
-- **llm**: 0/3 implemented
-- **metrics**: 0/5 implemented
-- **platform**: 0/24 implemented
-- **preflight**: 0/10 implemented
-- **privacy**: 0/3 implemented
-- **prompting**: 0/6 implemented
-- **providers**: 0/12 implemented
-- **response**: 0/6 implemented
-- **routing**: 0/1 implemented
-- **streaming**: 0/4 implemented
+**Node Steps** (Runtime boundaries - must be wired):
+- ✅ Implemented & Wired: 25 steps
+- 🔌 Not Wired: 2 steps
+- ❌ Missing: 0 steps
+- Total Node steps: 27
+
+**Internal Steps** (Pure transforms - implementation only):
+- 🔌 Implemented: 108 steps
+- ❌ Missing: 0 steps
+- Total Internal steps: 108
+
+**Overall Statistics:**
+- ✅ Fully Functional: 25 steps
+- 🔌 Implemented (internal) or Not Wired: 110 steps
+- ❌ Missing: 0 steps
+- Total steps: 135
 ## Step Registry
 
 | Step | ID | Node | Type | Category | Owner | Doc |
@@ -173,7 +166,7 @@ Each step should be audited and its documentation filled during the conformance 
 
 ## How to Update
 
-1. **Edit the Mermaid diagram**: `docs/architecture/diagrams/pratikoai_rag.mmd`
+1. **Edit the Mermaid diagram**: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 2. **Regenerate registry and docs**: `python scripts/rag_stepgen.py --write`
 3. **Fill/update per-step documentation**: Edit files in `docs/architecture/steps/`
 4. **Review changes**: Check git diff to ensure only intended changes

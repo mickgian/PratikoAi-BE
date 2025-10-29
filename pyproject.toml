@@ -7,9 +7,9 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.13",
     "fastapi>=0.115.12",
-    "langchain>=0.3.25",
-    "langchain-core>=0.3.58",
-    "langchain-openai>=0.3.16",
+    "langchain>=0.3.25,<1.0",
+    "langchain-core>=0.3.58,<1.0",
+    "langchain-openai>=0.3.16,<1.0",
     "langfuse==3.0.3",
     "langgraph>=0.4.1",
     "langgraph-checkpoint-postgres>=2.0.19",
@@ -34,7 +34,7 @@ dependencies = [
     "psutil>=6.1.0",
     "asgiref>=3.8.1",
     "duckduckgo-search>=6.2.0",
-    "langchain-community>=0.3.20",
+    "langchain-community>=0.3.20,<1.0",
     "tqdm>=4.67.1",
     "colorama>=0.4.6",
     "anthropic>=0.40.0",
@@ -78,6 +78,9 @@ test = ["httpx>=0.28.1", "pytest>=8.3.5"]
 
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
 markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
 python_files = ["test_*.py", "*_test.py", "tests.py"]
 

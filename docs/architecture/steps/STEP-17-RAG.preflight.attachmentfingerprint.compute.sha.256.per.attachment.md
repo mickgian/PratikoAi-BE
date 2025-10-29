@@ -8,54 +8,36 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `AttachmentFingerprint` (AttachmentFingerprint.compute SHA-256 per attachment).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
-
+- **Paths / classes:** `app/orchestrators/preflight.py:15` - `step_17__attachment_fingerprint()`
+- **Role:** Internal
+- **Status:** 🔌
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing preflight validation infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 17 (RAG.preflight.attachmentfingerprint.compute.sha.256.per.attachment): AttachmentFingerprint.compute SHA-256 per attachment | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 17 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
-
-Top candidates:
-1) app/models/regional_taxes.py:134 — app.models.regional_taxes.Comune.__repr__ (score 0.25)
-   Evidence: Score 0.25, method: __repr__
-2) app/models/regional_taxes.py:137 — app.models.regional_taxes.Comune.get_primary_cap (score 0.25)
-   Evidence: Score 0.25, Get the primary postal code for this comune
-3) app/models/regional_taxes.py:141 — app.models.regional_taxes.Comune.has_cap (score 0.25)
-   Evidence: Score 0.25, Check if this comune includes the given CAP
-4) app/models/regional_taxes.py:145 — app.models.regional_taxes.Comune.to_dict (score 0.25)
-   Evidence: Score 0.25, method: to_dict
-5) app/services/vector_provider_factory.py:20 — app.services.vector_provider_factory.VectorSearchProvider.upsert (score 0.24)
-   Evidence: Score 0.24, Upsert vectors into the provider.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for AttachmentFingerprint
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

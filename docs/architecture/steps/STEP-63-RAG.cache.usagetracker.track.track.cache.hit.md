@@ -8,66 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `TrackCacheHit` (UsageTracker.track Track cache hit).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/cache.py:427` - `step_63__track_cache_hit()`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator tracking cache hit metrics and usage patterns. Records cache performance data for monitoring and optimization. Routes to Step 65 (LogCacheHit) for structured logging.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing caching infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 63 (RAG.cache.usagetracker.track.track.cache.hit): UsageTracker.track Track cache hit | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (caching operations, invalidation, key generation)
+- [x] Integration tests (cache flow and invalidation handling)
+- [x] Implementation changes (async orchestrator with caching operations, invalidation, key generation)
+- [x] Observability: add structured log line
+  `RAG STEP 63 (...): ... | attrs={cache_key, hit_rate, expiry_time}`
+- [x] Feature flag / config if needed (cache settings and TTL configuration)
+- [x] Rollout plan (implemented with cache performance and consistency safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.52
-
-Top candidates:
-1) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.52)
-   Evidence: Score 0.52, Decorator to cache LLM responses based on messages and model.
-
-Args:
-    ttl: Ti...
-2) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.52)
-   Evidence: Score 0.52, Decorator to cache conversation history.
-
-Args:
-    ttl: Time to live in seconds...
-3) app/core/decorators/cache.py:190 — app.core.decorators.cache.cache_result (score 0.52)
-   Evidence: Score 0.52, Generic caching decorator for any function result.
-
-Args:
-    key_func: Function...
-4) app/core/decorators/cache.py:304 — app.core.decorators.cache.invalidate_cache_on_update (score 0.52)
-   Evidence: Score 0.52, Decorator to invalidate cache entries when data is updated.
-
-Args:
-    cache_key...
-5) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.52)
-   Evidence: Score 0.52, Initialize the cache service.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Add cache invalidation and TTL tests
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

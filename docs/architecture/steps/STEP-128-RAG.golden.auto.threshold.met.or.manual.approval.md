@@ -1,61 +1,45 @@
 # RAG STEP 128 — Auto threshold met or manual approval? (RAG.golden.auto.threshold.met.or.manual.approval)
 
-**Type:** decision  
-**Category:** golden  
+**Type:** decision
+**Category:** golden
 **Node ID:** `GoldenApproval`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `GoldenApproval` (Auto threshold met or manual approval?).
+Decision node that determines if an FAQ candidate meets the auto-approval quality threshold or requires manual review. Evaluates candidate quality score against configured thresholds (auto_approve_threshold: 0.95, quality_threshold: 0.85). Routes approved candidates to PublishGolden (Step 129) for immediate publication, and rejected/manual review candidates to FeedbackEnd (Step 115). This step is derived from the Mermaid node: `GoldenApproval` (Auto threshold met or manual approval?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/golden.py:step_128__golden_approval`
+- **Status:** 🔌
+- **Behavior notes:** Async decision orchestrator that evaluates FAQ candidate quality score. Auto-approves if quality_score >= 0.95, rejects if < 0.85, requires manual review if between thresholds. Uses FAQ_AUTOMATION_CONFIG for threshold values. Routes to 'publish_golden' (Step 129) if approved, or 'feedback_end' (Step 115) if rejected/manual review needed.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - thin orchestrator preserving existing workflow
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 128 (RAG.golden.auto.threshold.met.or.manual.approval): Auto threshold met or manual approval? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (auto-approve high quality, reject low quality, manual review borderline, trust score consideration, context preservation, approval metadata, missing score, error handling, logging)
+- [x] Parity tests (approval logic behavior verification)
+- [x] Integration tests (GoldenCandidate→GoldenApproval→PublishGolden flow, rejection routing to FeedbackEnd)
+- [x] Implementation changes (async decision orchestrator with threshold-based routing)
+- [x] Observability: add structured log line
+  `RAG STEP 128 (RAG.golden.auto.threshold.met.or.manual.approval): Auto threshold met or manual approval? | attrs={approval_decision, quality_score, trust_score, threshold, next_step, processing_stage}`
+- [x] Feature flag / config if needed (uses FAQ_AUTOMATION_CONFIG for thresholds)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.44
-
-Top candidates:
-1) app/models/faq.py:486 — app.models.faq.generate_faq_cache_key (score 0.44)
-   Evidence: Score 0.44, Generate cache key for FAQ variations.
-2) app/models/faq.py:495 — app.models.faq.calculate_cost_savings (score 0.44)
-   Evidence: Score 0.44, Calculate cost savings from FAQ system usage.
-3) app/models/faq.py:525 — app.models.faq.get_faq_search_vector (score 0.38)
-   Evidence: Score 0.38, Generate search vector content for PostgreSQL full-text search.
-4) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.37)
-   Evidence: Score 0.37, Request model for FAQ queries.
-5) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.37)
-   Evidence: Score 0.37, Response model for FAQ queries.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

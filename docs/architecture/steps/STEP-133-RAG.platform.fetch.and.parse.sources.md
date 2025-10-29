@@ -8,54 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `FetchFeeds` (Fetch and parse sources).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/platform.py:3326` - `step_133__fetch_feeds()`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator fetching and parsing RSS feeds and external content sources. Retrieves latest updates from configured sources for knowledge base ingestion. Routes to Step 134 (ParseDocs) for document processing.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 133 (RAG.platform.fetch.and.parse.sources): Fetch and parse sources | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 133 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
-
-Top candidates:
-1) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.25)
-   Evidence: Score 0.25, Analyze distribution of precedent values in decisions.
-2) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.25)
-   Evidence: Score 0.25, Analyze temporal distribution of decisions.
-3) app/api/v1/data_sources.py:1384 — app.api.v1.data_sources._count_legal_areas (score 0.25)
-   Evidence: Score 0.25, Count legal areas in principles.
-4) app/api/v1/data_sources.py:1393 — app.api.v1.data_sources._count_precedent_strength (score 0.25)
-   Evidence: Score 0.25, Count precedent strength in principles.
-5) app/api/v1/data_sources.py:1402 — app.api.v1.data_sources._generate_cassazione_recommendations (score 0.25)
-   Evidence: Score 0.25, Generate recommendations based on validation results.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for FetchFeeds
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

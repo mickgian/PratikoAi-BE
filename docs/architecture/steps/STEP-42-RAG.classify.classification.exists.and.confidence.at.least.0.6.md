@@ -8,62 +8,38 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ClassConfidence` (Classification exists and confidence at least 0.6?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Node
+- **Status:** 🔌
+- **Paths / classes:** `app/orchestrators/classify.py:562` - `step_42__class_confidence()`
+- **Behavior notes:** Runtime boundary; checks classification confidence at 0.6 threshold; routes based on confidence levels.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing classification infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 42 (RAG.classify.classification.exists.and.confidence.at.least.0.6): Classification exists and confidence at least 0.6? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (classification logic, domain/action scoring, Italian keywords)
+- [x] Integration tests (classification flow and domain routing)
+- [x] Implementation changes (async orchestrator with classification logic, domain/action scoring, Italian keywords)
+- [x] Observability: add structured log line
+  `RAG STEP 42 (...): ... | attrs={domain, action, confidence_score}`
+- [x] Feature flag / config if needed (classification thresholds and keyword mappings)
+- [x] Rollout plan (implemented with classification accuracy and performance safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.34
-
-Top candidates:
-1) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.34)
-   Evidence: Score 0.34, Track domain-action classification usage and metrics.
-
-Args:
-    domain: The cla...
-2) app/core/langgraph/graph.py:290 — app.core.langgraph.graph.LangGraphAgent._get_classification_aware_routing (score 0.33)
-   Evidence: Score 0.33, Get routing strategy and cost limit based on domain-action classification.
-
-Args...
-3) app/services/domain_action_classifier.py:416 — app.services.domain_action_classifier.DomainActionClassifier._calculate_domain_scores (score 0.31)
-   Evidence: Score 0.31, Calculate confidence scores for each domain
-4) app/services/domain_action_classifier.py:447 — app.services.domain_action_classifier.DomainActionClassifier._calculate_action_scores (score 0.31)
-   Evidence: Score 0.31, Calculate confidence scores for each action
-5) app/services/ccnl_integration_service.py:163 — app.services.ccnl_integration_service.CCNLIntegrationService._extract_ccnl_parameters (score 0.31)
-   Evidence: Score 0.31, Extract parameters for CCNL tool from user query and classification.
-
-Args:
-    ...
+Role: Node  |  Status: 🔌 (Implemented but Not Wired)  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ⚠️  Node wrapper exists but not wired in graph
+- Action: Wire this node in the appropriate phase
 <!-- AUTO-AUDIT:END -->

@@ -1,0 +1,46 @@
+"""Node wrapper for Step 25: Golden Hit (Decision)."""
+
+from typing import Dict, Any
+from app.core.langgraph.types import RAGState
+from app.orchestrators.golden import step_25__golden_hit
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
+
+STEP = 25
+
+
+def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+    """Recursively merge patch into d (additive)."""
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict):
+            d.setdefault(k, {})
+            if isinstance(d[k], dict):
+                _merge(d[k], v)
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+
+
+async def node_step_25(state: RAGState) -> RAGState:
+    """Node wrapper for Step 25: High confidence match decision (score >= 0.90)."""
+    rag_step_log(STEP, "enter", golden=state.get("golden"))
+    with rag_step_timer(STEP):
+        res = await step_25__golden_hit(
+            messages=state.get("messages"),
+            ctx=dict(state),
+        )
+
+        # Map to canonical state keys
+        golden = state.setdefault("golden", {})
+        decisions = state.setdefault("decisions", {})
+
+        # Field mappings with name translation
+        if "high_confidence_match" in res:
+            golden["hit"] = res["high_confidence_match"]
+            decisions["golden_hit"] = res["high_confidence_match"]
+
+        _merge(golden, res.get("golden_extra", {}))
+        _merge(decisions, res.get("decisions", {}))
+
+    rag_step_log(STEP, "exit", hit=golden.get("hit"))
+    return state

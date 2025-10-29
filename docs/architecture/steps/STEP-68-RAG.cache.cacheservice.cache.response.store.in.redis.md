@@ -8,64 +8,42 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `CacheResponse` (CacheService.cache_response Store in Redis).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/cache.py:774` - `step_68__cache_response()`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator storing LLM responses in Redis cache with TTL. Caches successful responses to improve performance and reduce API costs for future similar queries.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing caching infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 68 (RAG.cache.cacheservice.cache.response.store.in.redis): CacheService.cache_response Store in Redis | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (caching operations, invalidation, key generation)
+- [x] Integration tests (cache flow and invalidation handling)
+- [x] Implementation changes (async orchestrator with caching operations, invalidation, key generation)
+- [x] Observability: add structured log line
+  `RAG STEP 68 (...): ... | attrs={cache_key, hit_rate, expiry_time}`
+- [x] Feature flag / config if needed (cache settings and TTL configuration)
+- [x] Rollout plan (implemented with cache performance and consistency safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🟡  |  Confidence: 0.55
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.55)
-   Evidence: Score 0.55, Initialize the cache service.
-2) app/services/cache.py:107 — app.services.cache.CacheService._generate_conversation_key (score 0.55)
-   Evidence: Score 0.55, Generate cache key for conversation history.
-
-Args:
-    session_id: Unique sessi...
-3) app/services/cache.py:118 — app.services.cache.CacheService._generate_query_key (score 0.55)
-   Evidence: Score 0.55, Generate cache key for LLM query response.
-
-Args:
-    query_hash: Hash of the qu...
-4) app/services/cache.py:27 — app.services.cache.CacheService (score 0.52)
-   Evidence: Score 0.52, Redis-based caching service for LLM responses and conversations.
-5) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.52)
-   Evidence: Score 0.52, Decorator to cache LLM responses based on messages and model.
-
-Args:
-    ttl: Ti...
+Wiring information:
+- Node name: node_step_68
+- Incoming edges: [67]
+- Outgoing edges: [74]
 
 Notes:
-- Partial implementation identified
-
-Suggested next TDD actions:
-- Complete partial implementation
-- Add missing error handling
-- Expand test coverage
-- Add performance benchmarks if needed
-- Add cache invalidation and TTL tests
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

@@ -8,22 +8,23 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ToolType` (Tool type?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/routing.py:14` - `step_79__tool_type()`
+- **Role:** Node
+- **Status:** ✅
+- **Behavior notes:** Tool type detection is fully implemented with structured logging. Detects Knowledge, CCNL, Document, FAQ, and Unknown tool types. Integrated into _tool_call method with proper timing and logging.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - graceful degradation with existing error handling
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 79 (RAG.routing.tool.type): Tool type? | attrs={...}`
+- [x] Unit tests (tool type detection, routing decisions, error handling)
+- [x] Integration tests (end-to-end tool routing flow)
+- [x] Implementation changes (tool type detection methods added to LangGraphAgent)
+- [x] Observability: add structured log line  
+  `RAG STEP 79 (RAG.routing.tool.type): Tool type? | attrs={tool_name, tool_type, decision}`
 - [ ] Feature flag / config if needed
 - [ ] Rollout plan
 
@@ -31,31 +32,18 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.31
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/langgraph/tools/ccnl_tool.py:83 — app.core.langgraph.tools.ccnl_tool.CCNLTool.__init__ (score 0.31)
-   Evidence: Score 0.31, method: __init__
-2) app/core/langgraph/tools/ccnl_tool.py:90 — app.core.langgraph.tools.ccnl_tool.CCNLTool.search_service (score 0.31)
-   Evidence: Score 0.31, method: search_service
-3) app/core/langgraph/tools/ccnl_tool.py:96 — app.core.langgraph.tools.ccnl_tool.CCNLTool.calculator_engine (score 0.31)
-   Evidence: Score 0.31, method: calculator_engine
-4) app/core/langgraph/tools/ccnl_tool.py:101 — app.core.langgraph.tools.ccnl_tool.CCNLTool._run (score 0.31)
-   Evidence: Score 0.31, Execute CCNL query (synchronous version).
-5) app/core/langgraph/tools/ccnl_tool.py:535 — app.core.langgraph.tools.ccnl_tool.CCNLTool._parse_sector (score 0.31)
-   Evidence: Score 0.31, Parse sector string to enum.
+Wiring information:
+- Node name: node_step_79
+- Incoming edges: [75]
+- Outgoing edges: [80, 81, 82, 83]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

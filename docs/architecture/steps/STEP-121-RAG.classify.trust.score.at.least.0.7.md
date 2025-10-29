@@ -64,7 +64,7 @@ Decision orchestrator that evaluates trust scores from Step 120 (ValidateExpert)
 - [x] feature behind flag if risky (trust score decision with graceful error handling).
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 

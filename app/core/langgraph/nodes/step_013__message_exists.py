@@ -19,7 +19,7 @@ async def node_step_13(state: RAGState) -> RAGState:
         messages = state.get("messages", [])
 
         # Call orchestrator (cast to dict for type compatibility)
-        result = step_13__message_exists(messages=messages, ctx=dict(state))
+        result = await step_13__message_exists(messages=messages, ctx=dict(state))
 
         # Merge result fields into state (preserving existing data)
         if isinstance(result, dict):

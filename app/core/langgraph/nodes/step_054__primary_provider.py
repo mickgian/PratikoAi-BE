@@ -28,16 +28,23 @@ async def node_step_54(state: RAGState) -> RAGState:
     """Node wrapper for Step 54: Primary Provider."""
     rag_step_log(STEP, "enter", strategy="PRIMARY")
     with rag_step_timer(STEP):
-        # Call orchestrator with business inputs only
-        res = await step_54__primary_provider(ctx=dict(state))
+        # Call orchestrator with business inputs only (sync function)
+        res = step_54__primary_provider(ctx=dict(state))
 
         # Map orchestrator outputs to canonical state keys (additive)
         provider = state.setdefault("provider", {})
         decisions = state.setdefault("decisions", {})
 
         # Map fields with name translation if needed
-        if "provider" in res:
-            provider["selected"] = res["provider"]
+        # DON'T store provider object (has circular refs) - extract metadata only
+        if "provider" in res and res["provider"]:
+            prov_obj = res["provider"]
+            # Extract serializable metadata only
+            provider["provider_type"] = res.get("provider_type") or (
+                prov_obj.provider_type.value if hasattr(prov_obj.provider_type, 'value') else str(prov_obj.provider_type)
+            )
+            provider["model"] = res.get("model") or getattr(prov_obj, 'model', None)
+            provider["cost_per_token"] = res.get("cost_per_token") or getattr(prov_obj, 'cost_per_token', 0.0)
         provider["strategy"] = "PRIMARY"
 
         # Merge any extra structured data

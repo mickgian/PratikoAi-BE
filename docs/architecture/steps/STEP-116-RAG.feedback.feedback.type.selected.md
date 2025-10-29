@@ -57,7 +57,7 @@ Process orchestrator that routes feedback to appropriate processing endpoints ba
 - [x] feature behind flag if risky (routing logic with graceful fallback).
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 

@@ -81,10 +81,19 @@ def _determine_streaming_preference(ctx: Dict[str, Any]) -> Dict[str, Any]:
     """Determine if streaming is requested based on various sources.
 
     Priority order:
-    1. Request data 'stream' parameter
-    2. HTTP Accept header
-    3. Default to non-streaming
+    1. Streaming state (set by get_stream_response)
+    2. Request data 'stream' parameter
+    3. HTTP Accept header
+    4. Default to non-streaming
     """
+    # Check if streaming was explicitly requested in state (e.g. from get_stream_response)
+    streaming_state = ctx.get('streaming', {})
+    if 'requested' in streaming_state:
+        return {
+            'requested': streaming_state['requested'],
+            'source': 'state'
+        }
+
     request_data = ctx.get('request_data', {})
     http_headers = ctx.get('http_headers', {})
 

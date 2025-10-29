@@ -54,7 +54,7 @@ Decision node that evaluates whether user provided feedback after UI display. Ro
 - [x] feature behind flag if risky (uses existing context-based routing).
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 

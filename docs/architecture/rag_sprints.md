@@ -2,7 +2,7 @@
 
 This plan sequences the 135 RAG steps into pragmatic sprints with clear scope and commands to open/issues per sprint.
 
-> Single source of truth: `docs/architecture/diagrams/pratikoai_rag.mmd`  
+> Single source of truth: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`  
 > Backlog view: `docs/architecture/rag_conformance.md`  
 > Step docs live in: `docs/architecture/steps/STEP-*.md`
 

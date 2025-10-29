@@ -8,6 +8,7 @@ from typing import (
     Literal,
     Optional,
 )
+import traceback
 
 from asgiref.sync import sync_to_async
 from langchain_core.messages import (
@@ -106,6 +107,7 @@ GraphState = GraphState
 # Phase 1A Node imports
 from app.core.langgraph.nodes import (
     node_step_1,
+    node_step_2,
     node_step_3,
     node_step_6,
     node_step_9,
@@ -118,6 +120,7 @@ from app.core.langgraph.nodes import (
 
 # Phase 6 Node imports (additional to Phase 1A)
 from app.core.langgraph.nodes.step_004__gdpr_log import node_step_4
+from app.core.langgraph.nodes.step_005__error400 import node_step_5
 from app.core.langgraph.nodes.step_007__anonymize_text import node_step_7
 from app.core.langgraph.nodes.step_008__init_agent import node_step_8
 from app.core.langgraph.nodes.step_010__log_pii import node_step_10
@@ -167,7 +170,22 @@ from app.core.langgraph.nodes.step_030__return_complete import node_step_30
 
 # Phase 4 Classification Node imports
 from app.core.langgraph.nodes.step_031__classify_domain import node_step_31
+from app.core.langgraph.nodes.step_032__calc_scores import node_step_32
+from app.core.langgraph.nodes.step_033__confidence_check import node_step_33
+from app.core.langgraph.nodes.step_034__track_metrics import node_step_34
+from app.core.langgraph.nodes.step_035__llm_fallback import node_step_35
+from app.core.langgraph.nodes.step_036__llm_better import node_step_36
+from app.core.langgraph.nodes.step_037__use_llm import node_step_37
+from app.core.langgraph.nodes.step_038__use_rule_based import node_step_38
+from app.core.langgraph.nodes.step_039__kbpre_fetch import node_step_39
+from app.core.langgraph.nodes.step_040__build_context import node_step_40
+from app.core.langgraph.nodes.step_041__select_prompt import node_step_41
 from app.core.langgraph.nodes.step_042__class_confidence import node_step_42
+from app.core.langgraph.nodes.step_043__domain_prompt import node_step_43
+from app.core.langgraph.nodes.step_044__default_sys_prompt import node_step_44
+from app.core.langgraph.nodes.step_045__check_sys_msg import node_step_45
+from app.core.langgraph.nodes.step_046__replace_msg import node_step_46
+from app.core.langgraph.nodes.step_047__insert_msg import node_step_47
 
 # Phase 7 Node imports - Streaming/Response Lane
 from app.core.langgraph.nodes.step_104__stream_check import node_step_104
@@ -1040,25 +1058,69 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_valid_check(state: Dict[str, Any]) -> str:
         """Route from ValidCheck node based on request validity."""
-        if state.get('request_valid', True):
-            return "PrivacyCheck"
+        # Check in both root and decisions dict
+        decisions = state.get('decisions', {})
+        request_valid = state.get('request_valid') or decisions.get('request_valid')
+
+        # Default to False for safety - invalid until proven valid
+        if request_valid is None:
+            request_valid = False
+
+        branch = "GDPRLog" if request_valid else "Error400"
+        logger.debug(
+            "routing_decision",
+            from_node="ValidCheck",
+            to_node=branch,
+            condition="request_valid",
+            value=request_valid,
+            reason=f"Request validation {'passed' if request_valid else 'failed'}"
+        )
+
+        if request_valid:
+            return "GDPRLog"  # Valid request continues to GDPR logging (Step 4)
         else:
-            return "End"
+            return "Error400"  # Invalid request goes to Error400 (Step 5)
 
     @staticmethod
     def _route_from_privacy_check(_state: Dict[str, Any]) -> str:
         """Route from PrivacyCheck node - always goes to PIICheck."""
+        logger.debug(
+            "routing_decision",
+            from_node="PrivacyCheck",
+            to_node="PIICheck",
+            condition="always",
+            value=True,
+            reason="Privacy check complete, proceeding to PII detection"
+        )
         return "PIICheck"
 
     @staticmethod
     def _route_from_pii_check(_state: Dict[str, Any]) -> str:
         """Route from PIICheck node - goes to cache spine."""
+        logger.debug(
+            "routing_decision",
+            from_node="PIICheck",
+            to_node="CheckCache",
+            condition="always",
+            value=True,
+            reason="PII check complete, proceeding to cache layer"
+        )
         return "CheckCache"
 
     @staticmethod
     def _route_from_cache_hit(state: Dict[str, Any]) -> str:
         """Route from CacheHit node based on cache status."""
-        if state.get('cache_hit', False):
+        cache_hit = state.get('cache_hit', False)
+        branch = "End" if cache_hit else "LLMCall"
+        logger.debug(
+            "routing_decision",
+            from_node="CacheHit",
+            to_node=branch,
+            condition="cache_hit",
+            value=cache_hit,
+            reason=f"Cache {'hit' if cache_hit else 'miss'}, {'returning cached response' if cache_hit else 'calling LLM'}"
+        )
+        if cache_hit:
             return "End"
         else:
             return "LLMCall"
@@ -1066,13 +1128,31 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_llm_success(_state: Dict[str, Any]) -> str:
         """Route from LLMSuccess node - simplified for Phase 1A."""
+        logger.debug(
+            "routing_decision",
+            from_node="LLMSuccess",
+            to_node="End",
+            condition="always",
+            value=True,
+            reason="LLM call successful, completing workflow (Phase 1A simplified)"
+        )
         return "End"
 
     # Phase 4 routing functions
     @staticmethod
     def _route_from_cache_hit_phase4(state: Dict[str, Any]) -> str:
         """Route from CacheHit node in Phase 4 based on cache status."""
-        if state.get("cache_hit_decision", False):
+        cache_hit = state.get("cache_hit_decision", False)
+        branch = "ReturnCached" if cache_hit else "LLMCall"
+        logger.debug(
+            "routing_decision",
+            from_node="CacheHit",
+            to_node=branch,
+            condition="cache_hit_decision",
+            value=cache_hit,
+            reason=f"Cache {'hit' if cache_hit else 'miss'}, {'returning cached' if cache_hit else 'proceeding to LLM'}"
+        )
+        if cache_hit:
             return "ReturnCached"
         else:
             return "LLMCall"
@@ -1080,7 +1160,17 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_llm_success_phase4(state: Dict[str, Any]) -> str:
         """Route from LLMSuccess node in Phase 4."""
-        if state.get("llm_success_decision", True):
+        llm_success = state.get("llm_success_decision", True)
+        branch = "CacheResponse" if llm_success else "RetryCheck"
+        logger.debug(
+            "routing_decision",
+            from_node="LLMSuccess",
+            to_node=branch,
+            condition="llm_success_decision",
+            value=llm_success,
+            reason=f"LLM {'succeeded' if llm_success else 'failed'}, {'caching response' if llm_success else 'checking retry options'}"
+        )
+        if llm_success:
             return "CacheResponse"
         else:
             return "RetryCheck"
@@ -1088,7 +1178,17 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_retry_check(state: Dict[str, Any]) -> str:
         """Route from RetryCheck node."""
-        if state.get("llm", {}).get("retry_allowed", False):
+        retry_allowed = state.get("llm", {}).get("retry_allowed", False)
+        branch = "ProdCheck" if retry_allowed else "End"
+        logger.debug(
+            "routing_decision",
+            from_node="RetryCheck",
+            to_node=branch,
+            condition="retry_allowed",
+            value=retry_allowed,
+            reason=f"Retry {'allowed' if retry_allowed else 'not allowed'}, {'checking production status' if retry_allowed else 'ending workflow'}"
+        )
+        if retry_allowed:
             return "ProdCheck"
         else:
             return "End"
@@ -1096,7 +1196,17 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_prod_check(state: Dict[str, Any]) -> str:
         """Route from ProdCheck node."""
-        if state.get("llm", {}).get("should_failover", False):
+        should_failover = state.get("llm", {}).get("should_failover", False)
+        branch = "FailoverProvider" if should_failover else "RetrySame"
+        logger.debug(
+            "routing_decision",
+            from_node="ProdCheck",
+            to_node=branch,
+            condition="should_failover",
+            value=should_failover,
+            reason=f"Failover {'required' if should_failover else 'not required'}, {'switching to failover provider' if should_failover else 'retrying with same provider'}"
+        )
+        if should_failover:
             return "FailoverProvider"
         else:
             return "RetrySame"
@@ -1104,10 +1214,20 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_tool_check(state: Dict[str, Any]) -> str:
         """Route from ToolCheck node."""
-        if state.get("tools", {}).get("requested", False):
+        tools_requested = state.get("tools", {}).get("requested", False)
+        branch = "ToolType" if tools_requested else "StreamCheck"
+        logger.debug(
+            "routing_decision",
+            from_node="ToolCheck",
+            to_node=branch,
+            condition="tools.requested",
+            value=tools_requested,
+            reason=f"Tools {'requested' if tools_requested else 'not requested'}, {'routing to tool type' if tools_requested else 'routing to stream check'}"
+        )
+        if tools_requested:
             return "ToolType"
         else:
-            return "End"
+            return "StreamCheck"
 
     @staticmethod
     def _route_from_tool_type(state: Dict[str, Any]) -> str:
@@ -1119,13 +1239,32 @@ class LangGraphAgent:
             "doc": "DocIngestTool",
             "faq": "FAQTool"
         }
-        return mapping.get(tool_type, "KBTool")
+        branch = mapping.get(tool_type, "KBTool")
+        logger.debug(
+            "routing_decision",
+            from_node="ToolType",
+            to_node=branch,
+            condition="tools.type",
+            value=tool_type,
+            reason=f"Tool type is '{tool_type}', routing to {branch}"
+        )
+        return branch
 
     # Unified graph routing functions
     @staticmethod
     def _route_from_privacy_check_unified(state: Dict[str, Any]) -> str:
         """Route from PrivacyCheck in unified graph."""
-        if state.get("privacy", {}).get("anonymize_enabled", False):
+        anonymize_enabled = state.get("privacy", {}).get("anonymize_enabled", False)
+        branch = "AnonymizeText" if anonymize_enabled else "InitAgent"
+        logger.debug(
+            "routing_decision",
+            from_node="PrivacyCheck",
+            to_node=branch,
+            condition="privacy.anonymize_enabled",
+            value=anonymize_enabled,
+            reason=f"Anonymization {'enabled' if anonymize_enabled else 'disabled'}, {'anonymizing text' if anonymize_enabled else 'proceeding to agent initialization'}"
+        )
+        if anonymize_enabled:
             return "AnonymizeText"
         else:
             return "InitAgent"
@@ -1133,7 +1272,17 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_pii_check_unified(state: Dict[str, Any]) -> str:
         """Route from PIICheck in unified graph."""
-        if state.get("privacy", {}).get("pii_detected", False):
+        pii_detected = state.get("privacy", {}).get("pii_detected", False)
+        branch = "LogPII" if pii_detected else "InitAgent"
+        logger.debug(
+            "routing_decision",
+            from_node="PIICheck",
+            to_node=branch,
+            condition="privacy.pii_detected",
+            value=pii_detected,
+            reason=f"PII {'detected' if pii_detected else 'not detected'}, {'logging PII' if pii_detected else 'proceeding to agent initialization'}"
+        )
+        if pii_detected:
             return "LogPII"
         else:
             return "InitAgent"
@@ -1141,7 +1290,17 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_golden_fast_gate(state: Dict[str, Any]) -> str:
         """Route from GoldenFastGate - check if golden lookup is eligible."""
-        if state.get("golden", {}).get("eligible", False):
+        eligible = state.get("golden", {}).get("eligible", False)
+        branch = "GoldenLookup" if eligible else "ClassifyDomain"
+        logger.debug(
+            "routing_decision",
+            from_node="GoldenFastGate",
+            to_node=branch,
+            condition="golden.eligible",
+            value=eligible,
+            reason=f"Golden lookup {'eligible' if eligible else 'not eligible'}, {'looking up golden answer' if eligible else 'proceeding to domain classification'}"
+        )
+        if eligible:
             return "GoldenLookup"
         else:
             return "ClassifyDomain"
@@ -1149,7 +1308,17 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_golden_hit(state: Dict[str, Any]) -> str:
         """Route from GoldenHit - check if high confidence match found."""
-        if state.get("golden", {}).get("hit", False):
+        golden_hit = state.get("golden", {}).get("hit", False)
+        branch = "KBContextCheck" if golden_hit else "ClassifyDomain"
+        logger.debug(
+            "routing_decision",
+            from_node="GoldenHit",
+            to_node=branch,
+            condition="golden.hit",
+            value=golden_hit,
+            reason=f"Golden answer {'found' if golden_hit else 'not found'}, {'checking KB context' if golden_hit else 'proceeding to domain classification'}"
+        )
+        if golden_hit:
             return "KBContextCheck"
         else:
             return "ClassifyDomain"
@@ -1157,10 +1326,93 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_kb_delta(state: Dict[str, Any]) -> str:
         """Route from KBDelta - check if KB is newer than golden."""
-        if state.get("golden", {}).get("kb_newer", False):
+        kb_newer = state.get("golden", {}).get("kb_newer", False)
+        branch = "ClassifyDomain" if kb_newer else "ServeGolden"
+        logger.debug(
+            "routing_decision",
+            from_node="KBDelta",
+            to_node=branch,
+            condition="golden.kb_newer",
+            value=kb_newer,
+            reason=f"KB {'newer than golden' if kb_newer else 'not newer'}, {'need fresh LLM response with KB context' if kb_newer else 'golden answer still fresh'}"
+        )
+        if kb_newer:
             return "ClassifyDomain"  # Need fresh LLM response with KB context
         else:
             return "ServeGolden"  # Golden answer is still fresh
+
+    @staticmethod
+    def _route_from_confidence_check(state: Dict[str, Any]) -> str:
+        """Route from ConfidenceCheck - check if classification confidence is sufficient."""
+        confidence_sufficient = state.get("classification", {}).get("confidence_sufficient", False)
+        branch = "TrackMetrics" if confidence_sufficient else "LLMFallback"
+        logger.debug(
+            "routing_decision",
+            from_node="ConfidenceCheck",
+            to_node=branch,
+            condition="classification.confidence_sufficient",
+            value=confidence_sufficient,
+            reason=f"Classification confidence {'sufficient' if confidence_sufficient else 'insufficient'}, {'tracking metrics' if confidence_sufficient else 'using LLM fallback'}"
+        )
+        if confidence_sufficient:
+            return "TrackMetrics"
+        else:
+            return "LLMFallback"
+
+    @staticmethod
+    def _route_from_llm_better(state: Dict[str, Any]) -> str:
+        """Route from LLMBetter - check if LLM classification is better than rule-based."""
+        llm_is_better = state.get("classification", {}).get("llm_is_better", False)
+        branch = "UseLLM" if llm_is_better else "UseRuleBased"
+        logger.debug(
+            "routing_decision",
+            from_node="LLMBetter",
+            to_node=branch,
+            condition="classification.llm_is_better",
+            value=llm_is_better,
+            reason=f"LLM classification {'better' if llm_is_better else 'not better'} than rule-based, {'using LLM' if llm_is_better else 'using rule-based'}"
+        )
+        if llm_is_better:
+            return "UseLLM"
+        else:
+            return "UseRuleBased"
+
+    @staticmethod
+    def _route_from_class_confidence(state: Dict[str, Any]) -> str:
+        """Route from ClassConfidence - check if classification confidence is sufficient for domain prompt."""
+        confidence_check = state.get("confidence_check", {})
+        confidence_sufficient = confidence_check.get("confidence_sufficient", False)
+        branch = "DomainPrompt" if confidence_sufficient else "DefaultSysPrompt"
+        logger.debug(
+            "routing_decision",
+            from_node="ClassConfidence",
+            to_node=branch,
+            condition="confidence_check.confidence_sufficient",
+            value=confidence_sufficient,
+            reason=f"Classification confidence {'sufficient' if confidence_sufficient else 'insufficient'}, {'using domain-specific prompt' if confidence_sufficient else 'using default prompt'}"
+        )
+        if confidence_sufficient:
+            return "DomainPrompt"
+        else:
+            return "DefaultSysPrompt"
+
+    @staticmethod
+    def _route_from_check_sys_msg(state: Dict[str, Any]) -> str:
+        """Route from CheckSysMsg - check if system message already exists."""
+        sys_msg_exists = state.get("sys_msg_exists", False)
+        branch = "ReplaceMsg" if sys_msg_exists else "InsertMsg"
+        logger.debug(
+            "routing_decision",
+            from_node="CheckSysMsg",
+            to_node=branch,
+            condition="sys_msg_exists",
+            value=sys_msg_exists,
+            reason=f"System message {'exists' if sys_msg_exists else 'does not exist'}, {'replacing' if sys_msg_exists else 'inserting'} message"
+        )
+        if sys_msg_exists:
+            return "ReplaceMsg"
+        else:
+            return "InsertMsg"
 
     @staticmethod
     def _route_from_strategy_type(state: Dict[str, Any]) -> str:
@@ -1173,12 +1425,31 @@ class LangGraphAgent:
             "PRIMARY": "PrimaryProvider",
             "FAILOVER": "PrimaryProvider"
         }
-        return mapping.get(strategy, "PrimaryProvider")
+        branch = mapping.get(strategy, "PrimaryProvider")
+        logger.debug(
+            "routing_decision",
+            from_node="StrategyType",
+            to_node=branch,
+            condition="provider.routing_strategy",
+            value=strategy,
+            reason=f"Routing strategy is '{strategy}', selecting {branch}"
+        )
+        return branch
 
     @staticmethod
     def _route_from_cost_check(state: Dict[str, Any]) -> str:
         """Route from CostCheck - check if cost within budget."""
-        if state.get("provider", {}).get("cost_ok", True):
+        cost_ok = state.get("provider", {}).get("cost_ok", True)
+        branch = "CreateProvider" if cost_ok else "CheaperProvider"
+        logger.debug(
+            "routing_decision",
+            from_node="CostCheck",
+            to_node=branch,
+            condition="provider.cost_ok",
+            value=cost_ok,
+            reason=f"Cost {'within budget' if cost_ok else 'exceeds budget'}, {'creating provider' if cost_ok else 'finding cheaper provider'}"
+        )
+        if cost_ok:
             return "CreateProvider"
         else:
             return "CheaperProvider"
@@ -1186,7 +1457,17 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_cache_hit_unified(state: Dict[str, Any]) -> str:
         """Route from CacheHit in unified graph."""
-        if state.get("cache", {}).get("hit", False):
+        cache_hit = state.get("cache", {}).get("hit", False)
+        branch = "ReturnCached" if cache_hit else "LLMCall"
+        logger.debug(
+            "routing_decision",
+            from_node="CacheHit",
+            to_node=branch,
+            condition="cache.hit",
+            value=cache_hit,
+            reason=f"Cache {'hit' if cache_hit else 'miss'}, {'returning cached response' if cache_hit else 'calling LLM'}"
+        )
+        if cache_hit:
             return "ReturnCached"
         else:
             return "LLMCall"
@@ -1194,15 +1475,56 @@ class LangGraphAgent:
     @staticmethod
     def _route_from_llm_success_unified(state: Dict[str, Any]) -> str:
         """Route from LLMSuccess in unified graph."""
-        if state.get("llm", {}).get("success", True):
-            return "CacheResponse"
-        else:
-            return "RetryCheck"
+        llm = state.get("llm", {})
+        llm_success = llm.get("success", True)
+
+        # Check for non-retryable errors FIRST
+        if not llm_success:
+            error_type = llm.get("error_type")
+            error_msg = str(llm.get("error", "")).lower()
+
+            # Check if error is non-retryable
+            is_non_retryable = (
+                error_type in ("TypeError", "ValueError", "AttributeError")
+                or "multiple values for keyword argument" in error_msg
+            )
+
+            if is_non_retryable:
+                logger.error(
+                    "routing_decision_non_retryable",
+                    from_node="LLMSuccess",
+                    to_node="End",
+                    error_type=error_type,
+                    reason="Non-retryable error detected, terminating workflow"
+                )
+                return "End"  # Skip retry, go straight to end
+
+        # Normal routing
+        branch = "CacheResponse" if llm_success else "RetryCheck"
+        logger.debug(
+            "routing_decision",
+            from_node="LLMSuccess",
+            to_node=branch,
+            condition="llm.success",
+            value=llm_success,
+            reason=f"LLM {'succeeded' if llm_success else 'failed'}, {'caching response' if llm_success else 'checking retry options'}"
+        )
+        return branch
 
     @staticmethod
     def _route_from_stream_check(state: Dict[str, Any]) -> str:
         """Route from StreamCheck - check if streaming requested."""
-        if state.get("streaming", {}).get("requested", False):
+        streaming_requested = state.get("streaming", {}).get("requested", False)
+        branch = "StreamSetup" if streaming_requested else "CollectMetrics"
+        logger.debug(
+            "routing_decision",
+            from_node="StreamCheck",
+            to_node=branch,
+            condition="streaming.requested",
+            value=streaming_requested,
+            reason=f"Streaming {'requested' if streaming_requested else 'not requested'}, {'setting up stream' if streaming_requested else 'collecting metrics'}"
+        )
+        if streaming_requested:
             return "StreamSetup"
         else:
             return "CollectMetrics"
@@ -1214,7 +1536,7 @@ class LangGraphAgent:
             Optional[CompiledStateGraph]: The Phase 1A graph or None if init fails
         """
         try:
-            graph_builder = StateGraph(GraphState)
+            graph_builder = StateGraph(RAGState)
 
             # Add Phase 1A nodes
             graph_builder.add_node("ValidateRequest", node_step_1)
@@ -1299,7 +1621,7 @@ class LangGraphAgent:
             Optional[CompiledStateGraph]: The Phase 4 graph or None if init fails
         """
         try:
-            graph_builder = StateGraph(GraphState)
+            graph_builder = StateGraph(RAGState)
 
             # Add all Phase 1A nodes
             graph_builder.add_node("ValidateRequest", node_step_1)
@@ -1486,7 +1808,7 @@ class LangGraphAgent:
             Optional[CompiledStateGraph]: The Phase 5 graph or None if init fails
         """
         try:
-            graph_builder = StateGraph(GraphState)
+            graph_builder = StateGraph(RAGState)
 
             # Add all Phase 1A nodes
             graph_builder.add_node("ValidateRequest", node_step_1)
@@ -1749,7 +2071,7 @@ class LangGraphAgent:
     async def create_graph_unified(self) -> Optional[CompiledStateGraph]:
         """Create unified graph connecting all 8 lanes.
 
-        This implements the full RAG flow as specified in pratikoai_rag.mmd diagram.
+        This implements the full RAG flow as specified in pratikoai_rag_hybrid.mmd diagram.
         Connects:
         - Lane 1: Request/Privacy (1→3→4→6→7→9→10→8)
         - Lane 2: Messages (11→12→13)
@@ -1764,7 +2086,7 @@ class LangGraphAgent:
             Optional[CompiledStateGraph]: The unified graph or None if init fails
         """
         try:
-            graph_builder = StateGraph(GraphState)
+            graph_builder = StateGraph(RAGState)
 
             # ========== Add all nodes from all lanes ==========
 
@@ -1772,6 +2094,7 @@ class LangGraphAgent:
             graph_builder.add_node("ValidateRequest", node_step_1)
             graph_builder.add_node("ValidCheck", node_step_3)
             graph_builder.add_node("GDPRLog", node_step_4)
+            graph_builder.add_node("Error400", node_step_5)
             graph_builder.add_node("PrivacyCheck", node_step_6)
             graph_builder.add_node("AnonymizeText", node_step_7)
             graph_builder.add_node("InitAgent", node_step_8)
@@ -1794,7 +2117,22 @@ class LangGraphAgent:
 
             # Lane 4: Classification nodes
             graph_builder.add_node("ClassifyDomain", node_step_31)
+            graph_builder.add_node("CalcScores", node_step_32)
+            graph_builder.add_node("ConfidenceCheck", node_step_33)
+            graph_builder.add_node("TrackMetrics", node_step_34)
+            graph_builder.add_node("LLMFallback", node_step_35)
+            graph_builder.add_node("LLMBetter", node_step_36)
+            graph_builder.add_node("UseLLM", node_step_37)
+            graph_builder.add_node("UseRuleBased", node_step_38)
+            graph_builder.add_node("KBPreFetch", node_step_39)
+            graph_builder.add_node("BuildContext", node_step_40)
+            graph_builder.add_node("SelectPrompt", node_step_41)
             graph_builder.add_node("ClassConfidence", node_step_42)
+            graph_builder.add_node("DomainPrompt", node_step_43)
+            graph_builder.add_node("DefaultSysPrompt", node_step_44)
+            graph_builder.add_node("CheckSysMsg", node_step_45)
+            graph_builder.add_node("ReplaceMsg", node_step_46)
+            graph_builder.add_node("InsertMsg", node_step_47)
 
             # Lane 6: Provider nodes
             graph_builder.add_node("SelectProvider", node_step_48)
@@ -1841,14 +2179,19 @@ class LangGraphAgent:
             graph_builder.add_node("End", node_step_112)
 
             # ========== Wire Lane 1: Request/Privacy ==========
-            graph_builder.set_entry_point("ValidateRequest")
+            # NOTE: Validation (Steps 1-7) happens in chatbot.py BEFORE entering graph
+            # Graph starts at Step 8 (InitAgent) as per RAG architecture
+            graph_builder.set_entry_point("InitAgent")
+
+            # Keep ValidateRequest node for potential future use, but not in main flow
             graph_builder.add_edge("ValidateRequest", "ValidCheck")
             graph_builder.add_conditional_edges(
                 "ValidCheck",
                 self._route_from_valid_check,
-                {"GDPRLog": "GDPRLog", "End": "End"}
+                {"GDPRLog": "GDPRLog", "Error400": "Error400", "End": "End"}
             )
             graph_builder.add_edge("GDPRLog", "PrivacyCheck")
+            graph_builder.add_edge("Error400", "End")  # Terminal error node
             graph_builder.add_conditional_edges(
                 "PrivacyCheck",
                 self._route_from_privacy_check_unified,
@@ -1896,13 +2239,59 @@ class LangGraphAgent:
             graph_builder.add_edge("ReturnComplete", "CollectMetrics")
 
             # ========== Wire Lane 4: Classification ==========
-            # ClassifyDomain includes internal steps 32-40
-            graph_builder.add_edge("ClassifyDomain", "ClassConfidence")
+            # Wire classification flow with internal steps
+            graph_builder.add_edge("ClassifyDomain", "CalcScores")
+            graph_builder.add_edge("CalcScores", "ConfidenceCheck")
 
-            # ========== Wire Lane 4→6: Classification to Provider ==========
-            # ClassConfidence routes to SelectProvider
-            # (Internal steps 41, 43-47 are handled by orchestrators in SelectProvider)
-            graph_builder.add_edge("ClassConfidence", "SelectProvider")
+            # ConfidenceCheck decision: sufficient confidence → TrackMetrics, else → LLMFallback
+            graph_builder.add_conditional_edges(
+                "ConfidenceCheck",
+                self._route_from_confidence_check,
+                {"TrackMetrics": "TrackMetrics", "LLMFallback": "LLMFallback"}
+            )
+
+            # LLMFallback path
+            graph_builder.add_edge("LLMFallback", "LLMBetter")
+
+            # LLMBetter decision: LLM better → UseLLM, else → UseRuleBased
+            graph_builder.add_conditional_edges(
+                "LLMBetter",
+                self._route_from_llm_better,
+                {"UseLLM": "UseLLM", "UseRuleBased": "UseRuleBased"}
+            )
+
+            # Both paths converge at TrackMetrics
+            graph_builder.add_edge("UseLLM", "TrackMetrics")
+            graph_builder.add_edge("UseRuleBased", "TrackMetrics")
+
+            # Continue to KB prefetch and context building
+            graph_builder.add_edge("TrackMetrics", "KBPreFetch")
+            graph_builder.add_edge("KBPreFetch", "BuildContext")
+            graph_builder.add_edge("BuildContext", "SelectPrompt")
+            graph_builder.add_edge("SelectPrompt", "ClassConfidence")
+
+            # ========== Wire Lane 4→5: Classification to Prompt Selection ==========
+            # ClassConfidence decision: confidence sufficient → DomainPrompt, else → DefaultSysPrompt
+            graph_builder.add_conditional_edges(
+                "ClassConfidence",
+                self._route_from_class_confidence,
+                {"DomainPrompt": "DomainPrompt", "DefaultSysPrompt": "DefaultSysPrompt"}
+            )
+
+            # Both prompt paths converge at CheckSysMsg
+            graph_builder.add_edge("DomainPrompt", "CheckSysMsg")
+            graph_builder.add_edge("DefaultSysPrompt", "CheckSysMsg")
+
+            # CheckSysMsg decision: exists → ReplaceMsg, else → InsertMsg
+            graph_builder.add_conditional_edges(
+                "CheckSysMsg",
+                self._route_from_check_sys_msg,
+                {"ReplaceMsg": "ReplaceMsg", "InsertMsg": "InsertMsg"}
+            )
+
+            # Both message paths converge at SelectProvider
+            graph_builder.add_edge("ReplaceMsg", "SelectProvider")
+            graph_builder.add_edge("InsertMsg", "SelectProvider")
 
             # ========== Wire Lane 6: Provider ==========
             graph_builder.add_edge("SelectProvider", "RouteStrategy")
@@ -1943,7 +2332,7 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "LLMSuccess",
                 self._route_from_llm_success_unified,
-                {"CacheResponse": "CacheResponse", "RetryCheck": "RetryCheck"}
+                {"CacheResponse": "CacheResponse", "RetryCheck": "RetryCheck", "End": "End"}
             )
             graph_builder.add_edge("CacheResponse", "TrackUsage")
             graph_builder.add_edge("TrackUsage", "ToolCheck")
@@ -2140,13 +2529,38 @@ class LangGraphAgent:
         Yields:
             str: Raw markdown chunks of the LLM response.
         """
+        from app.observability.rag_logging import rag_step_log
+
+        # Step 8: InitAgent - Entry into LangGraph workflow
+        rag_step_log(
+            step=8,
+            step_id='RAG.langgraphagent.get.stream.response.initialize.workflow',
+            node_label='InitAgent',
+            processing_stage='entered',
+            session_id=session_id,
+            user_id=user_id,
+            message_count=len(messages),
+            method='get_stream_response',
+            next_step=11  # Next will be message conversion
+        )
+
+        logger.debug(
+            "get_stream_response_entry",
+            session_id=session_id,
+            user_id=user_id,
+            message_count=len(messages)
+        )
+
         # Store user and session info for tracking
         self._current_user_id = user_id
         self._current_session_id = session_id
 
         try:
+            logger.debug("checking_graph_initialization", session_id=session_id)
+
             # Ensure unified graph is initialized
             if self._graph is None:
+                logger.info("graph_is_none_calling_create_graph", session_id=session_id)
                 self._graph = await self.create_graph()
 
             if self._graph is None:
@@ -2160,15 +2574,20 @@ class LangGraphAgent:
                     yield chunk
                 return
 
+            logger.debug("graph_initialized_successfully", session_id=session_id)
+
             # Build initial state for unified graph
             # Convert Message objects to dicts for graph compatibility
             message_dicts = [{"role": msg.role, "content": msg.content} for msg in messages]
 
             initial_state = {
+                "request_id": session_id,  # RAGState requires request_id
                 "messages": message_dicts,
                 "session_id": session_id,
                 "user_id": user_id,
-                "streaming_requested": True,  # Flag to indicate streaming mode
+                "streaming": {
+                    "requested": True  # Nested structure for StreamCheck routing
+                },
             }
 
             logger.info(
@@ -2191,16 +2610,126 @@ class LangGraphAgent:
 
             # For now, use the full graph - it will execute completely
             # TODO Phase 4.1: Optimize to stop at Step 62 for streaming
-            state = await self._graph.ainvoke(
-                initial_state,
-                config={"configurable": {"session_id": session_id}}
+            logger.info("calling_graph_ainvoke", session_id=session_id)
+
+            # Step 8: Log graph invocation start
+            rag_step_log(
+                step=8,
+                step_id='RAG.langgraphagent.unified.graph.invoke.start',
+                node_label='InitAgent',
+                processing_stage='graph_invocation_started',
+                session_id=session_id,
+                user_id=user_id,
+                transition='Step 8 → Unified Graph (Lanes 1-8)',
+                next_step=11  # First step in Lane 2 (message processing)
+            )
+
+            # Debug: Log config and graph state
+            config_to_use = {
+                "configurable": {"thread_id": session_id},
+                "recursion_limit": 50  # Increased from default 25 to prevent infinite loops
+            }
+            logger.debug(
+                "graph_ainvoke_debug",
+                session_id=session_id,
+                config=config_to_use,
+                initial_state_keys=list(initial_state.keys()),
+                graph_exists=self._graph is not None,
+                graph_has_checkpointer=hasattr(self._graph, 'checkpointer') if self._graph else False
+            )
+
+            try:
+                state = await self._graph.ainvoke(
+                    initial_state,
+                    config=config_to_use
+                )
+            except Exception as graph_error:
+                # Get full traceback for debugging
+                tb_str = ''.join(traceback.format_exception(type(graph_error), graph_error, graph_error.__traceback__))
+
+                # Step 8: Log graph invocation failure with full traceback
+                rag_step_log(
+                    step=8,
+                    step_id='RAG.langgraphagent.unified.graph.invoke.error',
+                    node_label='InitAgent',
+                    processing_stage='graph_invocation_failed',
+                    session_id=session_id,
+                    user_id=user_id,
+                    error=str(graph_error),
+                    error_type=type(graph_error).__name__,
+                    traceback=tb_str,
+                    cannot_proceed_reason=f"Graph invocation failed: {str(graph_error)}"
+                )
+                logger.error(
+                    "graph_ainvoke_failed",
+                    session_id=session_id,
+                    error=str(graph_error),
+                    traceback=tb_str,
+                    exc_info=True
+                )
+                raise
+
+            # Step 8: Log graph invocation completion
+            rag_step_log(
+                step=8,
+                step_id='RAG.langgraphagent.unified.graph.invoke.completed',
+                node_label='InitAgent',
+                processing_stage='graph_invocation_completed',
+                session_id=session_id,
+                user_id=user_id,
+                state_keys=list(state.keys()) if state else [],
+                has_final_response=bool(state.get("final_response")) if state else False,
+                has_cache_hit=bool(state.get("cache", {}).get("hit")) if state else False,
+                next_step='response_processing'
+            )
+
+            logger.info(
+                "graph_ainvoke_completed",
+                session_id=session_id,
+                state_keys=list(state.keys()) if state else [],
+                has_final_response=bool(state.get("final_response")) if state else False,
+                has_cache_hit=bool(state.get("cache", {}).get("hit")) if state else False
             )
 
             # Check if there's a final response in the state
             final_response = state.get("final_response")
             if final_response:
-                # Graph completed successfully, return the response
+                # Check if this is an error response
+                is_error = (
+                    final_response.get("type") == "error" or
+                    state.get("workflow_terminated") == True or
+                    state.get("status_code", 200) >= 400
+                )
+
+                if is_error:
+                    # Yield error content for streaming to frontend
+                    error_msg = final_response.get("content", "An error occurred")
+                    status_code = state.get("status_code", 400)
+                    logger.error(
+                        "graph_returned_error",
+                        session_id=session_id,
+                        status_code=status_code,
+                        error_message=error_msg,
+                        error_type=final_response.get("error_type")
+                    )
+                    if error_msg:
+                        yield error_msg
+                    logger.info(
+                        "unified_graph_error_response_streamed",
+                        session_id=session_id,
+                        status_code=status_code,
+                        error_length=len(error_msg)
+                    )
+                    return
+
+                # Normal successful response
                 content = final_response.get("content", "")
+                logger.info(
+                    "final_response_branch",
+                    session_id=session_id,
+                    has_content=bool(content),
+                    content_length=len(content) if content else 0
+                )
                 if content:
                     yield content
                 logger.info(
@@ -2215,12 +2744,18 @@ class LangGraphAgent:
                 cached_response = state.get("cache", {}).get("response", {})
                 content = cached_response.get("content", "")
                 logger.info(
+                    "cache_hit_branch",
+                    session_id=session_id,
+                    has_content=bool(content),
+                    content_length=len(content) if content else 0
+                )
+                if content:
+                    yield content
+                logger.info(
                     "unified_graph_cache_hit_streaming",
                     session_id=session_id,
                     cached=True
                 )
-                if content:
-                    yield content
                 return
 
             # If graph didn't produce a response, fall back to direct LLM streaming
@@ -2263,6 +2798,19 @@ class LangGraphAgent:
                         break
 
         except Exception as stream_error:
+            # Step 8: InitAgent - Failure logging
+            rag_step_log(
+                step=8,
+                step_id='RAG.langgraphagent.get.stream.response.error',
+                node_label='InitAgent',
+                processing_stage='failed',
+                session_id=session_id,
+                user_id=user_id,
+                error=str(stream_error),
+                error_type=type(stream_error).__name__,
+                cannot_proceed_reason=f"Streaming failed: {str(stream_error)}"
+            )
+
             logger.error(
                 "unified_graph_streaming_failed",
                 error=str(stream_error),
@@ -2359,6 +2907,7 @@ class LangGraphAgent:
             config: Any = {
                 "configurable": {"thread_id": session_id},
                 "callbacks": [CallbackHandler()],
+                "recursion_limit": 50  # Increased from default 25 to prevent infinite loops
             }
 
             logger.info(

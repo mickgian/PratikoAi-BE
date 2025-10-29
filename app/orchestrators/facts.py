@@ -480,6 +480,11 @@ def step_49__route_strategy(*, messages: Optional[List[Any]] = None, ctx: Option
         session_id = params.get('session_id')
 
         try:
+            # Convert dict messages to Message objects if needed
+            from app.schemas.chat import Message
+            if messages and isinstance(messages[0], dict):
+                messages = [Message.model_validate(msg) for msg in messages]
+
             # Get the LLM factory and apply routing strategy
             factory = get_llm_factory()
             provider = factory.get_optimal_provider(

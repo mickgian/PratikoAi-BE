@@ -1,8 +1,10 @@
 """RAG Graph Node implementations."""
 
-from .step_001__validate_request import node_step_1
+from .step_001__start import node_step_1
+from .step_002__validate_request import node_step_2
 from .step_003__valid_check import node_step_3
 from .step_004__gdpr_log import node_step_4
+from .step_005__error400 import node_step_5
 from .step_006__privacy_check import node_step_6
 from .step_007__anonymize_text import node_step_7
 from .step_008__init_agent import node_step_8
@@ -11,7 +13,22 @@ from .step_010__log_pii import node_step_10
 
 # Classification Lane imports (Phase 2)
 from .step_031__classify_domain import node_step_31
+from .step_032__calc_scores import node_step_32
+from .step_033__confidence_check import node_step_33
+from .step_034__track_metrics import node_step_34
+from .step_035__llm_fallback import node_step_35
+from .step_036__llm_better import node_step_36
+from .step_037__use_llm import node_step_37
+from .step_038__use_rule_based import node_step_38
+from .step_039__kbpre_fetch import node_step_39
+from .step_040__build_context import node_step_40
+from .step_041__select_prompt import node_step_41
 from .step_042__class_confidence import node_step_42
+from .step_043__domain_prompt import node_step_43
+from .step_044__default_sys_prompt import node_step_44
+from .step_045__check_sys_msg import node_step_45
+from .step_046__replace_msg import node_step_46
+from .step_047__insert_msg import node_step_47
 
 from .step_059__check_cache import node_step_59
 from .step_062__cache_hit import node_step_62
@@ -67,8 +84,10 @@ from .step_030__return_complete import node_step_30
 
 __all__ = [
     "node_step_1",
+    "node_step_2",
     "node_step_3",
     "node_step_4",
+    "node_step_5",
     "node_step_6",
     "node_step_7",
     "node_step_8",
@@ -82,7 +101,22 @@ __all__ = [
     "node_step_28",
     "node_step_30",
     "node_step_31",
+    "node_step_32",
+    "node_step_33",
+    "node_step_34",
+    "node_step_35",
+    "node_step_36",
+    "node_step_37",
+    "node_step_38",
+    "node_step_39",
+    "node_step_40",
+    "node_step_41",
     "node_step_42",
+    "node_step_43",
+    "node_step_44",
+    "node_step_45",
+    "node_step_46",
+    "node_step_47",
     "node_step_48",
     "node_step_49",
     "node_step_50",

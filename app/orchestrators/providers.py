@@ -181,6 +181,11 @@ def step_51__cheap_provider(*, messages: Optional[List[Any]] = None, ctx: Option
         session_id = params.get('session_id')
 
         try:
+            # Convert dict messages to Message objects if needed
+            from app.schemas.chat import Message
+            if messages and isinstance(messages[0], dict):
+                messages = [Message.model_validate(msg) for msg in messages]
+
             # Get the LLM factory and select cheapest provider using cost-optimized strategy
             factory = get_llm_factory()
             from app.core.llm.factory import RoutingStrategy
@@ -369,6 +374,11 @@ def step_52__best_provider(*, messages: Optional[List[Any]] = None, ctx: Optiona
         session_id = params.get('session_id')
 
         try:
+            # Convert dict messages to Message objects if needed
+            from app.schemas.chat import Message
+            if messages and isinstance(messages[0], dict):
+                messages = [Message.model_validate(msg) for msg in messages]
+
             # Get the LLM factory and select best provider using quality-first strategy
             factory = get_llm_factory()
             provider = factory.get_optimal_provider(
@@ -471,6 +481,11 @@ def step_53__balance_provider(*, messages: Optional[List[Any]] = None, ctx: Opti
         session_id = params.get('session_id')
 
         try:
+            # Convert dict messages to Message objects if needed
+            from app.schemas.chat import Message
+            if messages and isinstance(messages[0], dict):
+                messages = [Message.model_validate(msg) for msg in messages]
+
             # Get the LLM factory and select balanced provider
             factory = get_llm_factory()
             provider = factory.get_optimal_provider(
@@ -573,6 +588,11 @@ def step_54__primary_provider(*, messages: Optional[List[Any]] = None, ctx: Opti
         session_id = params.get('session_id')
 
         try:
+            # Convert dict messages to Message objects if needed
+            from app.schemas.chat import Message
+            if messages and isinstance(messages[0], dict):
+                messages = [Message.model_validate(msg) for msg in messages]
+
             # Get the LLM factory and select primary provider with failover strategy
             factory = get_llm_factory()
             provider = factory.get_optimal_provider(
@@ -930,6 +950,11 @@ def step_58__cheaper_provider(*, messages: Optional[List[Any]] = None, ctx: Opti
         session_id = params.get('session_id')
 
         try:
+            # Convert dict messages to Message objects if needed
+            from app.schemas.chat import Message
+            if messages and isinstance(messages[0], dict):
+                messages = [Message.model_validate(msg) for msg in messages]
+
             # Try to find a cheaper provider by forcing cost-optimized strategy with stricter budget
             factory = get_llm_factory()
 
@@ -1019,6 +1044,24 @@ async def _execute_llm_api_call(ctx: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Extract provider instance from context (not the provider name string)
         provider = ctx.get('provider_instance')
+
+        # If provider instance not in context, recreate from metadata
+        if not provider:
+            provider_dict = ctx.get('provider', {})
+            if isinstance(provider_dict, dict):
+                provider_type_str = provider_dict.get('provider_type')
+                model = provider_dict.get('model')
+                if provider_type_str and model:
+                    # Recreate provider from metadata
+                    from app.core.llm.factory import get_llm_factory
+                    from app.core.llm.base import LLMProviderType
+                    factory = get_llm_factory()
+                    try:
+                        provider_type = LLMProviderType(provider_type_str)
+                        provider = factory.create_provider(provider_type, model)
+                    except (ValueError, AttributeError):
+                        pass
+
         if not provider:
             return {
                 'llm_call_successful': False,
@@ -1030,6 +1073,12 @@ async def _execute_llm_api_call(ctx: Dict[str, Any]) -> Dict[str, Any]:
 
         # Extract messages and model from context
         messages = ctx.get('messages', [])
+
+        # Convert dict messages to Message objects if needed
+        from app.schemas.chat import Message
+        if messages and isinstance(messages[0], dict):
+            messages = [Message.model_validate(msg) for msg in messages]
+
         model = ctx.get('model')
 
         if not messages:
@@ -1065,10 +1114,14 @@ async def _execute_llm_api_call(ctx: Dict[str, Any]) -> Dict[str, Any]:
         if 'llm_params' in ctx:
             llm_params.update(ctx['llm_params'])
 
-        # Execute the LLM API call
+        # Extract model separately for logging (provider uses its own self.model)
+        model = model or ctx.get('model')
+        # CRITICAL: Remove model from llm_params to prevent duplicate keyword argument
+        llm_params.pop('model', None)
+
+        # Execute the LLM API call (provider uses self.model, don't pass model param)
         response: LLMResponse = await provider.chat_completion(
             messages=messages,
-            model=model,
             **llm_params
         )
 
@@ -1116,6 +1169,7 @@ async def _execute_llm_api_call(ctx: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         # Handle API call errors
         error_msg = f"LLM API call failed: {str(e)}"
+        error_type = type(e).__name__
 
         # Get provider name from multiple sources, prioritizing context
         provider_name = ctx.get('provider') or 'unknown'
@@ -1131,7 +1185,8 @@ async def _execute_llm_api_call(ctx: Dict[str, Any]) -> Dict[str, Any]:
         return {
             'llm_call_successful': False,
             'error': error_msg,
-            'exception_type': type(e).__name__,
+            'error_type': error_type,  # Add error_type as top-level key
+            'exception_type': error_type,  # Keep for backwards compat
             'provider': provider_name,
             'model': ctx.get('model'),
             'response_time_ms': None,
@@ -1356,6 +1411,9 @@ async def step_73__retry_same(*, messages: Optional[List[Any]] = None, ctx: Opti
 
     # Extract context parameters
     provider = kwargs.get('provider') or ctx.get('provider')
+    # Extract provider instance if provider is a dict with 'instance' key
+    if isinstance(provider, dict):
+        provider = provider.get('instance')
     attempt_number = kwargs.get('attempt_number') or ctx.get('attempt_number', 0)
     max_retries = kwargs.get('max_retries') or ctx.get('max_retries', 3)
     conversation_messages = kwargs.get('messages') or ctx.get('messages', [])
@@ -1372,9 +1430,11 @@ async def step_73__retry_same(*, messages: Optional[List[Any]] = None, ctx: Opti
     model = None
 
     # Extract provider metadata
-    if provider:
-        provider_type = provider.provider_type.value if hasattr(provider.provider_type, 'value') else str(provider.provider_type)
-        model = provider.model
+    if provider and not isinstance(provider, dict):
+        if hasattr(provider, 'provider_type'):
+            provider_type = provider.provider_type.value if hasattr(provider.provider_type, 'value') else str(provider.provider_type)
+        if hasattr(provider, 'model'):
+            model = provider.model
 
     # Log process start
     rag_step_log(

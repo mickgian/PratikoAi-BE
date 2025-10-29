@@ -33,10 +33,31 @@ async def node_step_73(state: RAGState) -> RAGState:
         # Map to canonical state keys
         provider = state.setdefault("provider", {})
         decisions = state.setdefault("decisions", {})
+        retries = state.setdefault("retries", {})  # Add retries tracking
 
         # Field mappings with name translation
         if "retry_same" in res:
             provider["retry_same"] = res["retry_same"]
+
+        # CRITICAL: Map attempt_number to state.retries (persistent counter)
+        if "attempt_number" in res:
+            retries["llm_attempts"] = res["attempt_number"]
+
+        # Enforce hard cap from env (safety net)
+        import os
+        max_retries = int(os.getenv("RAG_MAX_RETRIES", "2"))
+        if retries.get("llm_attempts", 0) > max_retries:
+            # Override decision - force error route
+            decisions["force_error"] = True
+            from app.core.logging import logger
+            logger.error(
+                f"retry_hard_cap_exceeded",
+                extra={
+                    'step': 73,
+                    'llm_attempts': retries["llm_attempts"],
+                    'max_retries': max_retries
+                }
+            )
 
         _merge(provider, res.get("provider_extra", {}))
         _merge(decisions, res.get("decisions", {}))

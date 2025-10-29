@@ -28,16 +28,22 @@ async def node_step_52(state: RAGState) -> RAGState:
     """Node wrapper for Step 52: Best Provider."""
     rag_step_log(STEP, "enter", strategy="BEST")
     with rag_step_timer(STEP):
-        # Call orchestrator with business inputs only
-        res = await step_52__best_provider(ctx=dict(state))
+        # Call orchestrator with business inputs only (sync function)
+        res = step_52__best_provider(ctx=dict(state))
 
         # Map orchestrator outputs to canonical state keys (additive)
         provider = state.setdefault("provider", {})
         decisions = state.setdefault("decisions", {})
 
         # Map fields with name translation if needed
-        if "provider" in res:
-            provider["selected"] = res["provider"]
+        # DON'T store provider object (has circular refs) - extract metadata only
+        if "provider" in res and res["provider"]:
+            prov_obj = res["provider"]
+            provider["provider_type"] = res.get("provider_type") or (
+                prov_obj.provider_type.value if hasattr(prov_obj.provider_type, 'value') else str(prov_obj.provider_type)
+            )
+            provider["model"] = res.get("model") or getattr(prov_obj, 'model', None)
+            provider["cost_per_token"] = res.get("cost_per_token") or getattr(prov_obj, 'cost_per_token', 0.0)
         provider["strategy"] = "BEST"
 
         # Merge any extra structured data

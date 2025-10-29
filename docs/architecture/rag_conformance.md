@@ -166,7 +166,7 @@ Each step should be audited and its documentation filled during the conformance 
 
 ## How to Update
 
-1. **Edit the Mermaid diagram**: `docs/architecture/diagrams/pratikoai_rag.mmd`
+1. **Edit the Mermaid diagram**: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 2. **Regenerate registry and docs**: `python scripts/rag_stepgen.py --write`
 3. **Fill/update per-step documentation**: Edit files in `docs/architecture/steps/`
 4. **Review changes**: Check git diff to ensure only intended changes

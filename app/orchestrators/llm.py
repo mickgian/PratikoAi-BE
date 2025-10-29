@@ -350,6 +350,7 @@ async def step_67__llmsuccess(*, messages: Optional[List[Any]] = None, ctx: Opti
     exception_type = None
     has_tool_calls = False
     cost_eur = None
+    is_non_retryable = False
 
     # Log decision start
     rag_step_log(
@@ -407,18 +408,45 @@ async def step_67__llmsuccess(*, messages: Optional[List[Any]] = None, ctx: Opti
                 if not error_message:
                     error_message = str(exception)
 
-            logger.warning(
-                f"llm_call_failed",
-                extra={
-                    'request_id': request_id,
-                    'step': 67,
-                    'attempt_number': attempt_number,
-                    'provider': provider,
-                    'model': model,
-                    'error': error_message,
-                    'exception_type': exception_type
-                }
+            # Also check for error_type in ctx.llm (from step 64)
+            if not exception_type:
+                llm_dict = ctx.get('llm', {})
+                exception_type = llm_dict.get('error_type')
+
+            # Check if error is non-retryable
+            error_str = (error_message or "").lower()
+            is_non_retryable = (
+                "multiple values for keyword argument" in error_str
+                or exception_type in ("TypeError", "ValueError", "AttributeError")
             )
+
+            if is_non_retryable:
+                # Mark as non-retryable to short-circuit retry logic
+                next_step = 'error_500'  # Skip retry, go straight to error
+                logger.error(
+                    f"llm_call_non_retryable_error",
+                    extra={
+                        'request_id': request_id,
+                        'step': 67,
+                        'error': error_message,
+                        'exception_type': exception_type,
+                        'retryable': False
+                    }
+                )
+            else:
+                logger.warning(
+                    f"llm_call_failed",
+                    extra={
+                        'request_id': request_id,
+                        'step': 67,
+                        'attempt_number': attempt_number,
+                        'provider': provider,
+                        'model': model,
+                        'error': error_message,
+                        'exception_type': exception_type,
+                        'retryable': True
+                    }
+                )
 
     except Exception as e:
         # Unexpected error in decision logic
@@ -470,6 +498,7 @@ async def step_67__llmsuccess(*, messages: Optional[List[Any]] = None, ctx: Opti
         'llm_response': llm_response,
         'error_message': error_message,
         'exception_type': exception_type,
+        'retryable': not is_non_retryable,  # Add retryability flag
         'attempt_number': attempt_number,
         'max_retries': max_retries,
         'provider': provider,

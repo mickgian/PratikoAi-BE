@@ -73,7 +73,7 @@ Process orchestrator that updates expert performance metrics based on feedback d
 - [x] feature behind flag if risky (metrics update with graceful error handling).
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 

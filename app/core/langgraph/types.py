@@ -93,6 +93,11 @@ class RAGState(TypedDict, total=False):
     should_failover: Optional[bool]  # Step 70
     error_message: Optional[str]
     error_code: Optional[int]
+    error_response: Optional[dict]  # Step 5: Error response details
+    error_details: Optional[dict]  # Step 5: Additional error information
+    workflow_terminated: Optional[bool]  # Step 5: Workflow termination flag
+    terminal_step: Optional[bool]  # Step 5: Indicates terminal node reached
+    status_code: Optional[int]  # Step 5: HTTP status code for error responses
     processing_stage: str
     node_history: List[str]
 

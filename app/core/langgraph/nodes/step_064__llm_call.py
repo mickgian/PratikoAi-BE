@@ -44,9 +44,19 @@ async def node_step_64(state: RAGState) -> RAGState:
             llm["request"] = res["llm_request"]
 
         # Always set llm["success"]
-        if "error" in res:
+        if "error" in res and res["error"] not in ["", None]:
             llm["error"] = res["error"]
             llm["success"] = False
+            # Track error type for retryability check
+            if "error_type" in res:
+                llm["error_type"] = res["error_type"]
+        elif "llm_call_successful" in res:
+            # Explicitly check for llm_call_successful from orchestrator
+            llm["success"] = res["llm_call_successful"]
+            if "response" in res or "llm_response" in res:
+                response = res.get("response", res.get("llm_response"))
+                llm["response"] = response
+                mirror(state, "llm_response", response)
         elif "response" in res or "llm_response" in res:
             response = res.get("response", res.get("llm_response"))
             llm["response"] = response

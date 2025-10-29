@@ -29,8 +29,8 @@ async def node_step_55(state: RAGState) -> RAGState:
     """Node wrapper for Step 55: Estimate Cost."""
     rag_step_log(STEP, "enter", provider=state.get("provider", {}).get("selected"))
     with rag_step_timer(STEP):
-        # Call orchestrator with business inputs only
-        res = await step_55__estimate_cost(ctx=dict(state))
+        # Call orchestrator with business inputs only (sync function)
+        res = step_55__estimate_cost(ctx=dict(state))
 
         # Map orchestrator outputs to canonical state keys (additive)
         provider = ns(state, "provider")

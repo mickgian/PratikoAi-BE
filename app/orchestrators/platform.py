@@ -13,9 +13,9 @@ except Exception:  # pragma: no cover
     def rag_step_log(**kwargs): return None
     def rag_step_timer(*args, **kwargs): return nullcontext()
 
-async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_2__validate_request(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
-    RAG STEP 1 — ChatbotController.chat Validate request and authenticate
+    RAG STEP 2 — ChatbotController.chat Validate request and authenticate
     ID: RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate
     Type: process | Category: platform | Node: ValidateRequest
 
@@ -25,8 +25,8 @@ async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx:
     from app.core.logging import logger
     from datetime import datetime, timezone
 
-    with rag_step_timer(1, 'RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate', 'ValidateRequest', stage="start"):
-        rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate', node_label='ValidateRequest',
+    with rag_step_timer(2, 'RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate', 'ValidateRequest', stage="start"):
+        rag_step_log(step=2, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate', node_label='ValidateRequest',
                      category='platform', type='process', processing_stage="started")
 
         # Extract context parameters
@@ -52,11 +52,11 @@ async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx:
         }
 
         try:
-            # Step 1: Critical request validation (must happen before auth)
+            # Step 2: Critical request validation (must happen before auth)
             if not context and not any([request_body, content_type, method, authorization_header]):
                 result['error'] = 'Missing request context'
                 logger.error("Request validation failed: Missing context", request_id=request_id)
-                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                rag_step_log(step=2, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
                            node_label='ValidateRequest', processing_stage="completed", error="missing_context",
                            validation_successful=False, authentication_successful=False, request_id=request_id)
                 return result
@@ -65,7 +65,7 @@ async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx:
             if not request_body or not isinstance(request_body, dict):
                 result['error'] = 'Invalid request body'
                 logger.error("Request validation failed: Invalid request body", request_id=request_id)
-                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                rag_step_log(step=2, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
                            node_label='ValidateRequest', processing_stage="completed", error="invalid_request_body",
                            validation_successful=False, authentication_successful=False, request_id=request_id)
                 return result
@@ -74,7 +74,7 @@ async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx:
             if method and method.upper() not in ['POST']:
                 result['error'] = f'Invalid HTTP method: {method}'
                 logger.error("Request validation failed: Invalid method", method=method, request_id=request_id)
-                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                rag_step_log(step=2, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
                            node_label='ValidateRequest', processing_stage="completed", error="invalid_method",
                            validation_successful=False, authentication_successful=False, request_id=request_id)
                 return result
@@ -83,7 +83,7 @@ async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx:
             if not authorization_header:
                 result['error'] = 'Missing authorization header'
                 logger.error("Authentication failed: Missing authorization header", request_id=request_id)
-                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                rag_step_log(step=2, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
                            node_label='ValidateRequest', processing_stage="completed", error="missing_auth_header",
                            validation_successful=False, authentication_successful=False, request_id=request_id)
                 return result
@@ -108,7 +108,7 @@ async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx:
             except Exception as auth_error:
                 result['error'] = f'Authentication failed: {str(auth_error)}'
                 logger.error("Authentication failed", error=str(auth_error), request_id=request_id)
-                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                rag_step_log(step=2, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
                            node_label='ValidateRequest', processing_stage="completed", error="authentication_failed",
                            validation_successful=False, authentication_successful=False, request_id=request_id)
                 return result
@@ -128,7 +128,7 @@ async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx:
             if validation_errors:
                 result['error'] = '; '.join(validation_errors)
                 logger.error("Request validation failed", errors=validation_errors, request_id=request_id)
-                rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+                rag_step_log(step=2, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
                            node_label='ValidateRequest', processing_stage="completed", error=result['error'],
                            validation_successful=False, authentication_successful=True, request_id=request_id,
                            session_id=result['session'].id if result['session'] else 'unknown',
@@ -160,7 +160,7 @@ async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx:
                 }
             )
 
-            rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+            rag_step_log(step=2, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
                         node_label='ValidateRequest', processing_stage="completed",
                         validation_successful=True, authentication_successful=True,
                         session_id=session_id, user_id=user_id, request_id=request_id,
@@ -171,14 +171,14 @@ async def step_1__validate_request(*, messages: Optional[List[Any]] = None, ctx:
         except Exception as e:
             result['error'] = f'Validation error: {str(e)}'
             logger.error("Request validation failed with exception", error=str(e), request_id=request_id, exc_info=True)
-            rag_step_log(step=1, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
+            rag_step_log(step=2, step_id='RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate',
                         node_label='ValidateRequest', processing_stage="completed", error=str(e),
                         validation_successful=False, authentication_successful=False, request_id=request_id)
             return result
 
-def step_2__start(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_1__start(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
-    RAG STEP 2 — User submits query via POST /api/v1/chat
+    RAG STEP 1 — User submits query via POST /api/v1/chat
     ID: RAG.platform.user.submits.query.via.post.api.v1.chat
     Type: startEnd | Category: platform | Node: Start
 
@@ -189,8 +189,8 @@ def step_2__start(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[st
     from datetime import datetime, timezone
     import uuid
 
-    with rag_step_timer(2, 'RAG.platform.user.submits.query.via.post.api.v1.chat', 'Start', stage="start"):
-        rag_step_log(step=2, step_id='RAG.platform.user.submits.query.via.post.api.v1.chat', node_label='Start',
+    with rag_step_timer(1, 'RAG.platform.user.submits.query.via.post.api.v1.chat', 'Start', stage="start"):
+        rag_step_log(step=1, step_id='RAG.platform.user.submits.query.via.post.api.v1.chat', node_label='Start',
                      category='platform', type='startEnd', processing_stage="started")
 
         # Extract context parameters
@@ -274,7 +274,7 @@ def step_2__start(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[st
 
             # Log completion
             rag_step_log(
-                step=2,
+                step=1,
                 step_id='RAG.platform.user.submits.query.via.post.api.v1.chat',
                 node_label='Start',
                 processing_stage="completed",
@@ -305,7 +305,7 @@ def step_2__start(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[st
             )
 
             rag_step_log(
-                step=2,
+                step=1,
                 step_id='RAG.platform.user.submits.query.via.post.api.v1.chat',
                 node_label='Start',
                 processing_stage="completed",
@@ -316,7 +316,7 @@ def step_2__start(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[st
 
             return result
 
-def step_3__valid_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_3__valid_check(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 3 — Request valid?
     ID: RAG.platform.request.valid
@@ -409,7 +409,7 @@ def step_3__valid_check(*, messages: Optional[List[Any]] = None, ctx: Optional[D
 
         return validation_data
 
-def step_5__error400(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_5__error400(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 5 — Return 400 Bad Request
     ID: RAG.platform.return.400.bad.request
@@ -562,7 +562,7 @@ def step_5__error400(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict
 
         return result
 
-def step_9__piicheck(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_9__piicheck(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 9 — PII detected?
     ID: RAG.platform.pii.detected
@@ -660,7 +660,7 @@ def step_9__piicheck(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict
 
         return pii_data
 
-def step_10__log_pii(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_10__log_pii(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 10 — Logger.info Log PII anonymization
     ID: RAG.platform.logger.info.log.pii.anonymization
@@ -968,7 +968,7 @@ async def _deduplicate_messages(messages: List['Message']) -> List['Message']:
 
     return deduplicated
 
-def step_13__message_exists(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_13__message_exists(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 13 — User message exists?
     ID: RAG.platform.user.message.exists
@@ -976,9 +976,25 @@ def step_13__message_exists(*, messages: Optional[List[Any]] = None, ctx: Option
 
     Checks if a user message exists in the request for processing.
     This orchestrator coordinates message analysis and user content detection.
+
+    Per hybrid architecture, internally calls:
+    - Steps 14-19 (ExtractFacts → CanonicalizeFacts → AttachmentFingerprint → QuerySig → AttachCheck) when message exists
+    - Step 15 (DefaultPrompt) when message doesn't exist
     """
     from app.core.logging import logger
     from datetime import datetime
+
+    # Import internal step orchestrators
+    from app.orchestrators.facts import (
+        step_14__extract_facts,
+        step_16__canonicalize_facts,
+        step_18__query_sig,
+    )
+    from app.orchestrators.preflight import (
+        step_17__attachment_fingerprint,
+        step_19__attach_check,
+    )
+    from app.orchestrators.prompting import step_15__default_prompt
 
     with rag_step_timer(13, 'RAG.platform.user.message.exists', 'MessageExists', stage="start"):
         # Extract context parameters
@@ -1057,7 +1073,46 @@ def step_13__message_exists(*, messages: Optional[List[Any]] = None, ctx: Option
             processing_stage="completed"
         )
 
-        return message_data
+        # Merge context for internal steps
+        internal_ctx = {
+            **(ctx or {}),
+            **message_data,
+            **kwargs,
+            'messages': message_list,
+            'user_message': user_message_content,
+        }
+
+        # Execute internal steps based on message existence (hybrid architecture)
+        if message_exists:
+            # YES branch: Execute steps 14→16→17→18→19
+
+            # Step 14: Extract atomic facts
+            step_14_result = await step_14__extract_facts(messages=message_list, ctx=internal_ctx)
+            internal_ctx.update(step_14_result if isinstance(step_14_result, dict) else {})
+
+            # Step 16: Canonicalize facts
+            step_16_result = await step_16__canonicalize_facts(messages=message_list, ctx=internal_ctx)
+            internal_ctx.update(step_16_result if isinstance(step_16_result, dict) else {})
+
+            # Step 17: Attachment fingerprint
+            step_17_result = await step_17__attachment_fingerprint(messages=message_list, ctx=internal_ctx)
+            internal_ctx.update(step_17_result if isinstance(step_17_result, dict) else {})
+
+            # Step 18: Query signature
+            step_18_result = await step_18__query_sig(messages=message_list, ctx=internal_ctx)
+            internal_ctx.update(step_18_result if isinstance(step_18_result, dict) else {})
+
+            # Step 19: Attachment check
+            step_19_result = await step_19__attach_check(messages=message_list, ctx=internal_ctx)
+            internal_ctx.update(step_19_result if isinstance(step_19_result, dict) else {})
+
+        else:
+            # NO branch: Execute step 15 (DefaultPrompt)
+            step_15_result = await step_15__default_prompt(ctx=internal_ctx)
+            internal_ctx.update(step_15_result if isinstance(step_15_result, dict) else {})
+
+        # Return merged result with internal step outputs
+        return internal_ctx
 
 async def step_38__use_rule_based(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
@@ -1200,7 +1255,7 @@ async def step_38__use_rule_based(*, messages: Optional[List[Any]] = None, ctx: 
 
         return result
 
-def step_50__strategy_type(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
+async def step_50__strategy_type(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
     """
     RAG STEP 50 — Routing strategy?
     ID: RAG.platform.routing.strategy
@@ -1407,7 +1462,17 @@ async def step_69__retry_check(*, messages: Optional[List[Any]] = None, ctx: Opt
 
     # Extract context parameters
     attempt_number = kwargs.get('attempt_number') or ctx.get('attempt_number', 1)
-    max_retries = kwargs.get('max_retries') or ctx.get('max_retries') or settings.MAX_LLM_CALL_RETRIES
+
+    # ALSO check stateful counter from state.retries (source of truth)
+    retries_dict = ctx.get('retries', {})
+    llm_attempts = retries_dict.get('llm_attempts', 0)
+    # Use whichever is higher (in case attempt_number wasn't persisted)
+    attempt_number = max(attempt_number, llm_attempts)
+
+    # Get max from env with fallback to settings
+    import os
+    max_retries = int(os.getenv("RAG_MAX_RETRIES", str(kwargs.get('max_retries') or ctx.get('max_retries') or settings.MAX_LLM_CALL_RETRIES)))
+
     error = kwargs.get('error') or ctx.get('error')
     previous_errors = kwargs.get('previous_errors') or ctx.get('previous_errors', [])
     request_id = ctx.get('request_id', 'unknown')
@@ -2597,7 +2662,7 @@ async def step_99__tool_results(*, messages: Optional[List[Any]] = None, ctx: Op
             # On error, still route to FinalResponse with error context
             return await _handle_tool_results_error(ctx, str(e))
 
-def step_103__log_complete(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_103__log_complete(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 103 — Logger.info Log completion
     ID: RAG.platform.logger.info.log.completion
@@ -2888,7 +2953,7 @@ def _validate_generator_requirements(ctx: Dict[str, Any]) -> List[str]:
     return warnings
 
 
-def step_110__send_done(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+async def step_110__send_done(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
     """
     RAG STEP 110 — Send DONE frame
     ID: RAG.platform.send.done.frame

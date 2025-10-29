@@ -54,7 +54,7 @@ Terminal process node that finalizes the feedback pipeline when no feedback is p
 - [x] feature behind flag if risky (terminal node with graceful completion).
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 

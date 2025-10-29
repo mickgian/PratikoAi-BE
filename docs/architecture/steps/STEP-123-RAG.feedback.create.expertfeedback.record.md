@@ -68,7 +68,7 @@ Process orchestrator that creates ExpertFeedback records for validated experts. 
 - [x] feature behind flag if risky (feedback creation with graceful error handling).
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 

@@ -49,7 +49,7 @@ ROOT = Path(__file__).resolve().parents[1]
 STEPS_DIR = ROOT / "docs" / "architecture" / "steps"
 STEPS_REGISTRY = ROOT / "docs" / "architecture" / "rag_steps.yml"
 DASHBOARD = ROOT / "docs" / "architecture" / "rag_conformance.md"
-MERMAID = ROOT / "docs" / "architecture" / "diagrams" / "pratikoai_rag.mmd"
+MERMAID = ROOT / "docs" / "architecture" / "diagrams" / "pratikoai_rag_hybrid.mmd"
 BASELINE = ROOT / ".rag_alignment_index.json"
 RUNTIME_LOG = ROOT / ".rag_runtime_log.jsonl"
 
@@ -65,7 +65,7 @@ STATUS_LABEL_MAP = {
 
 MASTER_GUARDRAILS = '''\
 **MASTER_GUARDRAILS (READ FIRST)**
-- Mermaid is the single source of truth: docs/architecture/diagrams/pratikoai_rag.mmd
+- Mermaid is the single source of truth: docs/architecture/diagrams/pratikoai_rag_hybrid.mmd
 - Steps registry: docs/architecture/rag_steps.yml
 - Baseline cache REQUIRED: the "STEP 0 — Investigation" below is generated from .rag_alignment_index.json
 - No hallucinations. Do NOT write code until you review the Investigation section evidence (file:line).
@@ -417,7 +417,7 @@ def build_issue_body(
 - If the current implementation collapses multiple diagram nodes into a single factory/service, add a thin **orchestrator** that matches the diagram and preserves behavior (prove with parity tests).
 
 **Files of interest**
-- Mermaid diagram: docs/architecture/diagrams/pratikoai_rag.mmd
+- Mermaid diagram: docs/architecture/diagrams/pratikoai_rag_hybrid.mmd
 - Step doc: docs/architecture/steps/STEP-{step_num}-{step_id}.md
 - Observability: app/observability/rag_logging.py
 
@@ -452,7 +452,7 @@ def build_issue_body(
 **Links**
 - Step doc: docs/architecture/steps/STEP-{step_num}-{step_id}.md
 - Conformance dashboard: docs/architecture/rag_conformance.md
-- Mermaid: docs/architecture/diagrams/pratikoai_rag.mmd
+- Mermaid: docs/architecture/diagrams/pratikoai_rag_hybrid.mmd
 
 **Meta**
 - Step: {step_num}

@@ -29,8 +29,8 @@ async def node_step_57(state: RAGState) -> RAGState:
     """Node wrapper for Step 57: Create Provider."""
     rag_step_log(STEP, "enter", provider=state.get("provider", {}).get("selected"))
     with rag_step_timer(STEP):
-        # Call orchestrator with business inputs only
-        res = await step_57__create_provider(ctx=dict(state))
+        # Call orchestrator with business inputs only (sync function)
+        res = step_57__create_provider(ctx=dict(state))
 
         # Map orchestrator outputs to canonical state keys (additive)
         provider = state.setdefault("provider", {})
@@ -45,9 +45,11 @@ async def node_step_57(state: RAGState) -> RAGState:
             provider["created"] = res["provider_ready"]
         mirror(state, "provider_ready", bool(res.get("provider_ready", res.get("created", res.get("provider_created", False)))))
 
+        # DON'T store provider_instance object (has circular refs)
+        # Provider metadata (type, model) is already in provider dict from step 54
         if "provider_instance" in res:
-            provider["instance"] = res["provider_instance"]
-            mirror(state, "provider_instance", res["provider_instance"])
+            # Provider instance should be recreated when needed, not stored in state
+            pass
 
         # Merge any extra structured data
         _merge(provider, res.get("provider_extra", {}))

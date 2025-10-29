@@ -55,7 +55,7 @@ Display feedback UI options (Correct, Incomplete, Wrong) to users after presenti
 - [x] feature behind flag if risky (uses existing context flags).
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 

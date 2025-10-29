@@ -29,8 +29,8 @@ async def node_step_48(state: RAGState) -> RAGState:
     """Node wrapper for Step 48: Select Provider."""
     rag_step_log(STEP, "enter", strategy=state.get("route_strategy"))
     with rag_step_timer(STEP):
-        # Call orchestrator with business inputs only
-        res = await step_48__select_provider(ctx=dict(state))
+        # Call orchestrator with business inputs only (sync function)
+        res = step_48__select_provider(ctx=dict(state))
 
         # Map orchestrator outputs to canonical state keys (additive)
         provider = ns(state, "provider")

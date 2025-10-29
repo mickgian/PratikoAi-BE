@@ -6,7 +6,7 @@
 
 ## 📋 EXECUTIVE SUMMARY
 
-**PROBLEM**: RAG execution flow doesn't match `@docs/architecture/diagrams/pratikoai_rag.mmd` diagram.
+**PROBLEM**: RAG execution flow doesn't match `@docs/architecture/diagrams/pratikoai_rag_hybrid.mmd` diagram.
 
 **ROOT CAUSE**:
 1. Frontend uses `/chat/stream` which bypasses ALL graphs
@@ -30,7 +30,7 @@
 
 ## 🔴 PROBLEM IDENTIFIED
 
-The current execution **DOES NOT** follow the `@docs/architecture/diagrams/pratikoai_rag.mmd` flow diagram.
+The current execution **DOES NOT** follow the `@docs/architecture/diagrams/pratikoai_rag_hybrid.mmd` flow diagram.
 
 ## 📊 Expected Flow (per Diagram)
 

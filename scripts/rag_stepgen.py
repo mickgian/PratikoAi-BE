@@ -314,7 +314,7 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 """
         
@@ -353,7 +353,7 @@ Each step should be audited and its documentation filled during the conformance 
         content += """
 ## How to Update
 
-1. **Edit the Mermaid diagram**: `docs/architecture/diagrams/pratikoai_rag.mmd`
+1. **Edit the Mermaid diagram**: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 2. **Regenerate registry and docs**: `python scripts/rag_stepgen.py --write`
 3. **Fill/update per-step documentation**: Edit files in `docs/architecture/steps/`
 4. **Review changes**: Check git diff to ensure only intended changes
@@ -383,7 +383,7 @@ class RAGStepGenerator:
     
     def __init__(self, base_dir: Path):
         self.base_dir = base_dir
-        self.mermaid_path = base_dir / 'docs/architecture/diagrams/pratikoai_rag.mmd'
+        self.mermaid_path = base_dir / 'docs/architecture/diagrams/pratikoai_rag_hybrid.mmd'
         self.registry_path = base_dir / 'docs/architecture/rag_steps.yml'
         self.steps_dir = base_dir / 'docs/architecture/steps'
         self.dashboard_path = base_dir / 'docs/architecture/rag_conformance.md'

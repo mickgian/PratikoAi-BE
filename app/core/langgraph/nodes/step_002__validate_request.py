@@ -1,4 +1,4 @@
-"""Node wrapper for Step 1: Validate Request."""
+"""Node wrapper for Step 2: Validate Request."""
 
 from typing import Dict, Any
 from app.core.langgraph.types import RAGState
@@ -7,9 +7,9 @@ from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
     rag_step_timer_compat as rag_step_timer,
 )
-from app.orchestrators.platform import step_1__validate_request
+from app.orchestrators.platform import step_2__validate_request
 
-STEP = 1
+STEP = 2
 
 
 def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
@@ -25,12 +25,12 @@ def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
             d[k] = v
 
 
-async def node_step_1(state: RAGState) -> RAGState:
-    """Node wrapper for Step 1: Validate Request."""
+async def node_step_2(state: RAGState) -> RAGState:
+    """Node wrapper for Step 2: Validate Request."""
     rag_step_log(STEP, "enter", request_id=state.get("request_id"))
     with rag_step_timer(STEP):
         # Call orchestrator with business inputs only
-        res = await step_1__validate_request(
+        res = await step_2__validate_request(
             ctx=dict(state),
             messages=state.get("messages")
         )

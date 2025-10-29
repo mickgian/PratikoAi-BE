@@ -4,6 +4,14 @@
 
 **Mode: Tiered Graph Hybrid**
 
+## Architecture Summary
+
+**Actual Implementation:**
+- **135 Total Orchestrators** (business logic in `app/orchestrators/`)
+- **27 Canonical Nodes** (graph boundaries with node wrappers)
+- **108 Internal Orchestrators** (called within node boundaries)
+- **60 Node Wrappers** (in `app/core/langgraph/nodes/`)
+
 This project uses two layers by design. They are not duplicates—they have different responsibilities:
 
 ## 1. Orchestrators (source of business logic)
@@ -60,9 +68,9 @@ Deterministic functions executed inside a Node boundary.
 - Called directly by a Node wrapper
 - Covered by unit tests and Node-level parity tests
 
-## Canonical Node Set (~35 promoted)
+## Canonical Node Set (27 implemented)
 
-Everything not listed here remains **Internal**.
+Everything not listed here remains **Internal** (108 orchestrators).
 
 ### Request / Privacy
 - 1 ValidateRequest
@@ -103,7 +111,7 @@ Everything not listed here remains **Internal**.
 
 ## Phase 0 — Align & Freeze
 **Status:** ✅ Implemented
-**Goal:** Lock the Tiered Graph Hybrid target (~35 Nodes, ~100 Internals).
+**Goal:** Lock the Tiered Graph Hybrid target (27 Canonical Nodes, 108 Internal Orchestrators).
 **Deliverable:** This doc + team ACK in PR comments.
 
 **Gate:** PR comment from the team: "We're doing Tiered Graph Hybrid."

@@ -8,6 +8,7 @@ from typing import (
     Literal,
     Optional,
 )
+import asyncio
 import traceback
 
 from asgiref.sync import sync_to_async
@@ -264,17 +265,21 @@ class LangGraphAgent:
         """
         if not messages:
             return None
-            
+
         # Find the latest user message
+        # Handle both dict and Message object formats
         user_message = None
         for message in reversed(messages):
-            if message.role == "user":
-                user_message = message.content
+            # Get role - handle both dict and object formats
+            role = message.role if hasattr(message, 'role') else message.get("role")
+            if role == "user":
+                # Get content - handle both dict and object formats
+                user_message = message.content if hasattr(message, 'content') else message.get("content")
                 break
-                
+
         if not user_message:
             return None
-            
+
         try:
             # Perform classification
             classification = await self._domain_classifier.classify(user_message)
@@ -2691,6 +2696,82 @@ class LangGraphAgent:
                 has_cache_hit=bool(state.get("cache", {}).get("hit")) if state else False
             )
 
+            # FIX: Extract LLM response and build final_response if missing
+            # BUT: Skip extraction for streaming requests - let them fall through to provider.stream_completion()
+            # This preserves token-by-token streaming while fixing non-streaming responses
+            streaming_requested = state.get("streaming", {}).get("requested", False)
+
+            if not state.get("final_response") and not streaming_requested:
+                # Only extract for non-streaming responses
+                # Streaming responses will fall through to provider.stream_completion() below
+                llm_response_data = state.get("llm_response")
+
+                # Debug logging to understand actual structure
+                logger.info(
+                    "llm_response_structure_debug",
+                    session_id=session_id,
+                    has_llm_response=bool(llm_response_data),
+                    llm_response_type=type(llm_response_data).__name__ if llm_response_data else None,
+                    llm_response_keys=list(llm_response_data.keys()) if isinstance(llm_response_data, dict) else None,
+                    llm_response_sample=str(llm_response_data)[:500] if llm_response_data else None
+                )
+
+                # Try multiple extraction paths for content
+                content = None
+                if llm_response_data:
+                    if isinstance(llm_response_data, dict):
+                        # Try various possible keys
+                        content = (
+                            llm_response_data.get("content") or
+                            (llm_response_data.get("response", {}).get("content") if isinstance(llm_response_data.get("response"), dict) else None) or
+                            llm_response_data.get("text") or
+                            llm_response_data.get("message")
+                        )
+                    elif hasattr(llm_response_data, 'content'):
+                        content = llm_response_data.content
+
+                    if content:
+                        state["final_response"] = {
+                            "content": content,
+                            "type": "success"
+                        }
+                        logger.info(
+                            "final_response_extracted_from_llm_response",
+                            session_id=session_id,
+                            content_length=len(content)
+                        )
+
+                # Fallback: Extract from last assistant message if llm_response didn't work
+                if not state.get("final_response"):
+                    messages = state.get("messages", [])
+                    for msg in reversed(messages):
+                        if isinstance(msg, dict) and msg.get("role") == "assistant":
+                            content = msg.get("content", "")
+                            if content:
+                                state["final_response"] = {
+                                    "content": content,
+                                    "type": "success"
+                                }
+                                logger.info(
+                                    "final_response_extracted_from_messages",
+                                    session_id=session_id,
+                                    content_length=len(content)
+                                )
+                                break
+
+            # Add diagnostic logging
+            logger.info(
+                "streaming_response_extraction",
+                session_id=session_id,
+                streaming_requested=streaming_requested,
+                has_final_response=bool(state.get("final_response")),
+                has_llm_response=bool(state.get("llm_response")),
+                has_messages=bool(state.get("messages")),
+                message_count=len(state.get("messages", [])),
+                llm_success=state.get("llm", {}).get("success"),
+                will_use_fallback_streaming=streaming_requested and not bool(state.get("final_response"))
+            )
+
             # Check if there's a final response in the state
             final_response = state.get("final_response")
             if final_response:
@@ -2765,6 +2846,36 @@ class LangGraphAgent:
                 session_id=session_id,
                 state_keys=list(state.keys())
             )
+
+            # FIX: Check for buffered response from Step 64 before making second LLM call
+            llm_data = state.get("llm", {})
+            buffered_response = llm_data.get("response")
+
+            if llm_data.get("success") and buffered_response:
+                # Extract content from LLMResponse object or dict format
+                content = None
+                if isinstance(buffered_response, dict):
+                    content = buffered_response.get("content")
+                elif hasattr(buffered_response, 'content'):
+                    content = buffered_response.content
+
+                if content:
+                    logger.info(
+                        "streaming_from_buffered_response",
+                        session_id=session_id,
+                        content_length=len(content),
+                        source="step_64_completed"
+                    )
+
+                    # Stream the buffered content by chunking
+                    chunk_size = 5
+                    for i in range(0, len(content), chunk_size):
+                        chunk = content[i:i+chunk_size]
+                        yield chunk
+                        await asyncio.sleep(0.01)  # Small delay for visible streaming effect
+
+                    logger.info("buffered_streaming_complete", session_id=session_id)
+                    return  # Exit without making second LLM call
 
             # Use provider from state if available, otherwise get one
             provider: Optional[LLMProvider] = state.get("provider", {}).get("selected")

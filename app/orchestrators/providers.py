@@ -1234,6 +1234,29 @@ async def step_64__llmcall(*, messages: Optional[List[Any]] = None, ctx: Optiona
             'call_timestamp': datetime.now(timezone.utc).isoformat()
         })
 
+        # Extract tools information for observability
+        tools_provided = ctx.get('tools') or ctx.get('llm_params', {}).get('tools')
+        tool_names = []
+        tool_count = 0
+
+        if tools_provided:
+            if isinstance(tools_provided, list):
+                tool_count = len(tools_provided)
+                for tool in tools_provided:
+                    # Handle tool objects with .name attribute
+                    if hasattr(tool, 'name'):
+                        tool_names.append(tool.name)
+                    # Handle OpenAI API dict format
+                    elif isinstance(tool, dict) and 'function' in tool:
+                        tool_names.append(tool['function'].get('name', 'unknown'))
+                    # Handle direct name dict format
+                    elif isinstance(tool, dict) and 'name' in tool:
+                        tool_names.append(tool['name'])
+            else:
+                tool_count = 1
+                if hasattr(tools_provided, 'name'):
+                    tool_names.append(tools_provided.name)
+
         rag_step_log(
             step=64,
             step_id='RAG.providers.llmprovider.chat.completion.make.api.call',
@@ -1248,6 +1271,9 @@ async def step_64__llmcall(*, messages: Optional[List[Any]] = None, ctx: Optiona
             cost_estimate=result.get('cost_estimate'),
             response_time_ms=result.get('response_time_ms'),
             error=result.get('error'),
+            tools_provided=bool(tools_provided),
+            tool_count=tool_count,
+            tool_names=tool_names[:5],  # Limit to first 5 to avoid log bloat
             processing_stage="completed"
         )
 

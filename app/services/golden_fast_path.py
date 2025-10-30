@@ -313,6 +313,47 @@ class GoldenFastPathService:
             "requires_doc_context": False
         }
 
+    def can_serve_from_golden(
+        self,
+        confidence: float,
+        kb_epoch: int,
+        golden_epoch: int,
+        confidence_threshold: float = 0.90
+    ) -> bool:
+        """Check if a Golden answer can be served based on confidence and epoch.
+
+        This implements the policy: serve Golden only if:
+        1. Confidence >= threshold (default 0.90)
+        2. kb_epoch <= golden_epoch (KB hasn't been updated since Golden was created)
+
+        Args:
+            confidence: Confidence score of the Golden match
+            kb_epoch: Current knowledge base epoch
+            golden_epoch: Epoch when Golden answer was created
+            confidence_threshold: Minimum confidence required (default 0.90)
+
+        Returns:
+            True if Golden can be served, False otherwise
+
+        Examples:
+            >>> service = GoldenFastPathService()
+            >>> service.can_serve_from_golden(0.95, 100, 100)
+            True
+            >>> service.can_serve_from_golden(0.95, 101, 100)
+            False
+            >>> service.can_serve_from_golden(0.85, 100, 100)
+            False
+        """
+        # Check confidence threshold
+        if confidence < confidence_threshold:
+            return False
+
+        # Check epoch rule: KB must not be newer than Golden
+        if kb_epoch > golden_epoch:
+            return False
+
+        return True
+
 
 # Convenience function for direct usage
 async def check_golden_fast_path_eligibility(query_data: Dict[str, Any]) -> EligibilityResult:

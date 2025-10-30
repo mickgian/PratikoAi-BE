@@ -391,11 +391,15 @@ async def chat_stream(
 
                         async for chunk in original_stream:
                             if chunk and chunk.strip():
-                                # Direct markdown streaming without processing
-                                yield write_sse(None, chunk, request_id=request_id)
+                                # Format as proper SSE event
+                                stream_response = StreamResponse(content=chunk, done=False)
+                                sse_event = f"data: {stream_response.model_dump_json()}\n\n"
+                                yield write_sse(None, sse_event, request_id=request_id)
 
                     # Send final done frame
-                    yield write_sse(None, "[DONE]", request_id=request_id)
+                    done_response = StreamResponse(content="", done=True)
+                    sse_done = f"data: {done_response.model_dump_json()}\n\n"
+                    yield write_sse(None, sse_done, request_id=request_id)
 
                     # Log aggregated statistics for this streaming session
                     log_sse_summary(request_id=request_id)

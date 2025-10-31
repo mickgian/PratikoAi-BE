@@ -17,6 +17,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pratikoai_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,9 +49,16 @@ jobs:
         run: |
           uv sync
 
+      - name: Set up test environment variables
+        run: |
+          echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
+          echo "LLM_API_KEY=test-key-for-ci" >> $GITHUB_ENV
+          echo "JWT_SECRET_KEY=test-jwt-secret-key-for-ci" >> $GITHUB_ENV
+          echo "LANGFUSE_PUBLIC_KEY=test-langfuse-public" >> $GITHUB_ENV
+          echo "LANGFUSE_SECRET_KEY=test-langfuse-secret" >> $GITHUB_ENV
+
       - name: Run streaming protection tests (critical)
         run: |
-          source scripts/set_env.sh development
           uv run pytest \
             tests/test_sse_format_validation.py \
             tests/langgraph/test_buffered_streaming_timing.py::TestBufferedStreamingRegressionProtection \
@@ -47,7 +68,6 @@ jobs:
       - name: Run all tests with coverage
         if: success()
         run: |
-          source scripts/set_env.sh development
           uv run pytest tests/ \
             -v \
             --cov=app \

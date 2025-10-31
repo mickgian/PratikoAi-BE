@@ -1,5 +1,10 @@
 """This file contains the LangGraph Agent/workflow and interactions with the LLM."""
 
+# ruff: noqa: E402
+# E402: Module level imports appear after code due to fallback handling for langgraph
+
+import asyncio
+import traceback
 from typing import (
     Any,
     AsyncGenerator,
@@ -8,8 +13,6 @@ from typing import (
     Literal,
     Optional,
 )
-import asyncio
-import traceback
 
 from asgiref.sync import sync_to_async
 from langchain_core.messages import (
@@ -66,6 +69,7 @@ except ImportError:
     class StateSnapshot:
         pass
 
+
 from psycopg_pool import AsyncConnectionPool
 
 from app.core.config import (
@@ -73,42 +77,61 @@ from app.core.config import (
     settings,
 )
 from app.core.langgraph.tools import tools
-from app.core.llm.factory import get_llm_provider, RoutingStrategy
+from app.core.langgraph.types import RAGState
 from app.core.llm.base import LLMProvider
-from app.services.domain_action_classifier import DomainActionClassifier, DomainActionClassification, Action
-from app.services.domain_prompt_templates import PromptTemplateManager
+from app.core.llm.factory import (
+    RoutingStrategy,
+    get_llm_provider,
+)
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
-from app.core.monitoring.metrics import track_llm_cost, track_api_call, track_classification_usage
+from app.core.monitoring.metrics import (
+    track_api_call,
+    track_classification_usage,
+    track_llm_cost,
+)
 from app.core.prompts import SYSTEM_PROMPT
-from app.services.cache import cache_service
-from app.services.usage_tracker import usage_tracker
-from app.services.golden_fast_path import GoldenFastPathService, EligibilityResult
 from app.schemas import (
     GraphState,
     Message,
 )
-from app.core.langgraph.types import RAGState
+from app.services.cache import cache_service
+from app.services.domain_action_classifier import (
+    Action,
+    DomainActionClassification,
+    DomainActionClassifier,
+)
+from app.services.domain_prompt_templates import PromptTemplateManager
+from app.services.golden_fast_path import (
+    EligibilityResult,
+    GoldenFastPathService,
+)
+from app.services.usage_tracker import usage_tracker
 from app.utils import dump_messages
 
 # Canonical observability imports (unified across repo)
 try:
-    from app.observability.rag_logging import rag_step_log, rag_step_timer
+    from app.observability.rag_logging import (
+        rag_step_log,
+        rag_step_timer,
+    )
 except Exception:  # pragma: no cover
     # Safe fallbacks so imports never break tests
     def rag_step_log(*args, **kwargs):  # no-op
         return None
+
     from contextlib import nullcontext
+
     def rag_step_timer(*args, **kwargs):
         return nullcontext()
+
 
 # Re-export GraphState for stable import by tests and other modules
 GraphState = GraphState
 
 # Phase 1A Node imports
-from app.core.langgraph.nodes import (
+from app.core.langgraph.nodes import (  # noqa: E402
     node_step_1,
-    node_step_2,
     node_step_3,
     node_step_6,
     node_step_9,
@@ -120,40 +143,11 @@ from app.core.langgraph.nodes import (
 )
 
 # Phase 6 Node imports (additional to Phase 1A)
-from app.core.langgraph.nodes.step_004__gdpr_log import node_step_4
-from app.core.langgraph.nodes.step_005__error400 import node_step_5
-from app.core.langgraph.nodes.step_007__anonymize_text import node_step_7
-from app.core.langgraph.nodes.step_008__init_agent import node_step_8
-from app.core.langgraph.nodes.step_010__log_pii import node_step_10
-
-# Phase 4 Node imports
-from app.core.langgraph.nodes.step_066__return_cached import node_step_66
-from app.core.langgraph.nodes.step_068__cache_response import node_step_68
-from app.core.langgraph.nodes.step_069__retry_check import node_step_69
-from app.core.langgraph.nodes.step_070__prod_check import node_step_70
-from app.core.langgraph.nodes.step_072__failover_provider import node_step_72
-from app.core.langgraph.nodes.step_073__retry_same import node_step_73
-from app.core.langgraph.nodes.step_074__track_usage import node_step_74
-from app.core.langgraph.nodes.step_075__tool_check import node_step_75
-from app.core.langgraph.nodes.step_079__tool_type import node_step_79
-from app.core.langgraph.nodes.step_080__kb_tool import node_step_80
-from app.core.langgraph.nodes.step_081__ccnl_tool import node_step_81
-from app.core.langgraph.nodes.step_082__doc_ingest_tool import node_step_82
-from app.core.langgraph.nodes.step_083__faq_tool import node_step_83
-from app.core.langgraph.nodes.step_099__tool_results import node_step_99
-
-# Phase 5 Node imports
-from app.core.langgraph.nodes.step_048__select_provider import node_step_48
-from app.core.langgraph.nodes.step_049__route_strategy import node_step_49
-from app.core.langgraph.nodes.step_050__strategy_type import node_step_50
-from app.core.langgraph.nodes.step_051__cheap_provider import node_step_51
-from app.core.langgraph.nodes.step_052__best_provider import node_step_52
-from app.core.langgraph.nodes.step_053__balance_provider import node_step_53
-from app.core.langgraph.nodes.step_054__primary_provider import node_step_54
-from app.core.langgraph.nodes.step_055__estimate_cost import node_step_55
-from app.core.langgraph.nodes.step_056__cost_check import node_step_56
-from app.core.langgraph.nodes.step_057__create_provider import node_step_57
-from app.core.langgraph.nodes.step_058__cheaper_provider import node_step_58
+from app.core.langgraph.nodes.step_004__gdpr_log import node_step_4  # noqa: E402
+from app.core.langgraph.nodes.step_005__error400 import node_step_5  # noqa: E402
+from app.core.langgraph.nodes.step_007__anonymize_text import node_step_7  # noqa: E402
+from app.core.langgraph.nodes.step_008__init_agent import node_step_8  # noqa: E402
+from app.core.langgraph.nodes.step_010__log_pii import node_step_10  # noqa: E402
 
 # Phase 2 Node imports - Message Lane
 from app.core.langgraph.nodes.step_011__convert_messages import node_step_11
@@ -188,6 +182,35 @@ from app.core.langgraph.nodes.step_045__check_sys_msg import node_step_45
 from app.core.langgraph.nodes.step_046__replace_msg import node_step_46
 from app.core.langgraph.nodes.step_047__insert_msg import node_step_47
 
+# Phase 5 Node imports
+from app.core.langgraph.nodes.step_048__select_provider import node_step_48
+from app.core.langgraph.nodes.step_049__route_strategy import node_step_49
+from app.core.langgraph.nodes.step_050__strategy_type import node_step_50
+from app.core.langgraph.nodes.step_051__cheap_provider import node_step_51
+from app.core.langgraph.nodes.step_052__best_provider import node_step_52
+from app.core.langgraph.nodes.step_053__balance_provider import node_step_53
+from app.core.langgraph.nodes.step_054__primary_provider import node_step_54
+from app.core.langgraph.nodes.step_055__estimate_cost import node_step_55
+from app.core.langgraph.nodes.step_056__cost_check import node_step_56
+from app.core.langgraph.nodes.step_057__create_provider import node_step_57
+from app.core.langgraph.nodes.step_058__cheaper_provider import node_step_58
+
+# Phase 4 Node imports
+from app.core.langgraph.nodes.step_066__return_cached import node_step_66  # noqa: E402
+from app.core.langgraph.nodes.step_068__cache_response import node_step_68
+from app.core.langgraph.nodes.step_069__retry_check import node_step_69
+from app.core.langgraph.nodes.step_070__prod_check import node_step_70
+from app.core.langgraph.nodes.step_072__failover_provider import node_step_72
+from app.core.langgraph.nodes.step_073__retry_same import node_step_73
+from app.core.langgraph.nodes.step_074__track_usage import node_step_74
+from app.core.langgraph.nodes.step_075__tool_check import node_step_75
+from app.core.langgraph.nodes.step_079__tool_type import node_step_79
+from app.core.langgraph.nodes.step_080__kb_tool import node_step_80
+from app.core.langgraph.nodes.step_081__ccnl_tool import node_step_81
+from app.core.langgraph.nodes.step_082__doc_ingest_tool import node_step_82
+from app.core.langgraph.nodes.step_083__faq_tool import node_step_83
+from app.core.langgraph.nodes.step_099__tool_results import node_step_99
+
 # Phase 7 Node imports - Streaming/Response Lane
 from app.core.langgraph.nodes.step_104__stream_check import node_step_104
 from app.core.langgraph.nodes.step_105__stream_setup import node_step_105
@@ -197,8 +220,6 @@ from app.core.langgraph.nodes.step_108__write_sse import node_step_108
 from app.core.langgraph.nodes.step_109__stream_response import node_step_109
 from app.core.langgraph.nodes.step_110__send_done import node_step_110
 from app.core.langgraph.nodes.step_111__collect_metrics import node_step_111
-
-# Phase 1A nodes are now the default implementation
 
 # Import wiring registry functions from centralized module
 from app.core.langgraph.wiring_registry import (
@@ -210,6 +231,9 @@ from app.core.langgraph.wiring_registry import (
     initialize_phase8_registry,
     track_edge,
 )
+
+# Phase 1A nodes are now the default implementation
+
 
 # Initialize Phase 4, 5, 6, 7, and 8 registries at module load time
 initialize_phase4_registry()
@@ -252,16 +276,16 @@ class LangGraphAgent:
 
     async def _classify_user_query(self, messages: List[Message]) -> Optional[DomainActionClassification]:
         """Classify the latest user query using domain-action classifier.
-        
-        Args:
-            messages: List of conversation messages
-            
-        Returns:
-            DomainActionClassification or None if no messages
-    Implements RAG STEP 8 (LangGraphAgent.get_response Initialize workflow)
-    Node ID: RAG.response.langgraphagent.get.response.initialize.workflow
-    Category: response
-    Type: process
+
+            Args:
+                messages: List of conversation messages
+
+            Returns:
+                DomainActionClassification or None if no messages
+        Implements RAG STEP 8 (LangGraphAgent.get_response Initialize workflow)
+        Node ID: RAG.response.langgraphagent.get.response.initialize.workflow
+        Category: response
+        Type: process
         """
         if not messages:
             return None
@@ -271,10 +295,10 @@ class LangGraphAgent:
         user_message = None
         for message in reversed(messages):
             # Get role - handle both dict and object formats
-            role = message.role if hasattr(message, 'role') else message.get("role")
+            role = message.role if hasattr(message, "role") else message.get("role")
             if role == "user":
                 # Get content - handle both dict and object formats
-                user_message = message.content if hasattr(message, 'content') else message.get("content")
+                user_message = message.content if hasattr(message, "content") else message.get("content")
                 break
 
         if not user_message:
@@ -283,7 +307,7 @@ class LangGraphAgent:
         try:
             # Perform classification
             classification = await self._domain_classifier.classify(user_message)
-            
+
             # Log classification result
             logger.info(
                 "query_classified",
@@ -291,55 +315,61 @@ class LangGraphAgent:
                 action=classification.action.value,
                 confidence=classification.confidence,
                 sub_domain=classification.sub_domain,
-                fallback_used=classification.fallback_used
+                fallback_used=classification.fallback_used,
             )
-            
+
             # Track classification metrics
             track_classification_usage(
                 domain=classification.domain.value,
                 action=classification.action.value,
                 confidence=classification.confidence,
-                fallback_used=classification.fallback_used
+                fallback_used=classification.fallback_used,
             )
-            
+
             return classification
-            
+
         except Exception as e:
             logger.error("query_classification_failed", error=str(e), exc_info=True)
             return None
 
-    async def _check_golden_fast_path_eligibility(self, messages: List[Message], session_id: str, user_id: Optional[str]) -> EligibilityResult:
+    async def _check_golden_fast_path_eligibility(
+        self, messages: List[Message], session_id: str, user_id: Optional[str]
+    ) -> EligibilityResult:
         """
         Check if the current query is eligible for golden fast-path processing.
-        
+
         Args:
             messages: List of conversation messages
             session_id: Session identifier
             user_id: User identifier
-            
+
         Returns:
             EligibilityResult with decision and reasoning
         """
         import time
-        
+
         # Find the latest user message
         user_message = None
         for message in reversed(messages):
             if message.role == "user":
                 user_message = message.content
                 break
-        
+
         if not user_message:
             # No user message found, not eligible
-            from app.services.golden_fast_path import EligibilityResult, EligibilityDecision
+            from app.services.golden_fast_path import (
+                EligibilityDecision,
+                EligibilityResult,
+            )
+
             return EligibilityResult(
                 decision=EligibilityDecision.NOT_ELIGIBLE,
                 confidence=1.0,
                 reasons=["no_user_message"],
                 next_step="ClassifyDomain",
-                allows_golden_lookup=False
+                allows_golden_lookup=False,
             )
-        
+
         # Prepare query data for golden fast-path service
         query_data = {
             "query": user_message,
@@ -348,42 +378,42 @@ class LangGraphAgent:
             "session_id": session_id,
             "canonical_facts": [],  # TODO: Extract from atomic facts extraction in future
             "query_signature": f"session_{session_id}_{hash(user_message)}",
-            "trace_id": f"trace_{session_id}_{int(time.time())}"
+            "trace_id": f"trace_{session_id}_{int(time.time())}",
         }
-        
+
         # Check eligibility using golden fast-path service
         return await self._golden_fast_path_service.is_eligible_for_fast_path(query_data)
 
-    async def _get_cached_llm_response(self, provider: LLMProvider, messages: List[Message], tools: list, temperature: float, max_tokens: int):
+    async def _get_cached_llm_response(
+        self, provider: LLMProvider, messages: List[Message], tools: list, temperature: float, max_tokens: int
+    ):
         """Get LLM response with caching support.
-        
+
         Args:
             provider: The LLM provider to use
             messages: List of conversation messages
             tools: Available tools for the LLM
             temperature: Temperature setting
             max_tokens: Maximum tokens to generate
-            
+
         Returns:
             LLMResponse: The response from the LLM (cached or fresh)
         """
         # Try to get cached response first
         try:
             cached_response = await cache_service.get_cached_response(
-                messages=messages,
-                model=provider.model,
-                temperature=temperature
+                messages=messages, model=provider.model, temperature=temperature
             )
             if cached_response:
                 logger.info(
                     "llm_cache_hit",
                     model=provider.model,
                     provider=provider.provider_type.value,
-                    message_count=len(messages)
+                    message_count=len(messages),
                 )
-                
+
                 # Track cache hit usage
-                if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):
+                if hasattr(self, "_current_session_id") and hasattr(self, "_current_user_id"):
                     try:
                         await usage_tracker.track_llm_usage(
                             user_id=self._current_user_id,
@@ -393,69 +423,62 @@ class LangGraphAgent:
                             llm_response=cached_response,
                             response_time_ms=10,  # Minimal time for cache hit
                             cache_hit=True,
-                            pii_detected=getattr(self, '_pii_detected', False),
-                            pii_types=getattr(self, '_pii_types', None)
+                            pii_detected=getattr(self, "_pii_detected", False),
+                            pii_types=getattr(self, "_pii_types", None),
                         )
                     except Exception as e:
                         logger.error(
                             "cache_hit_tracking_failed",
                             error=str(e),
                             provider=provider.provider_type.value,
-                            model=provider.model
+                            model=provider.model,
                         )
-                
+
                 return cached_response
         except Exception as e:
-            logger.error(
-                "llm_cache_get_failed",
-                error=str(e),
-                model=provider.model
-            )
-        
+            logger.error("llm_cache_get_failed", error=str(e), model=provider.model)
+
         # Get fresh response from provider
         import time
+
         start_time = time.time()
-        
+
         response = await provider.chat_completion(
             messages=messages,
             tools=tools,
             temperature=temperature,
             max_tokens=max_tokens,
         )
-        
+
         response_time_ms = int((time.time() - start_time) * 1000)
-        
+
         # Track Prometheus metrics for this LLM call
         try:
-            user_id = getattr(self, '_current_user_id', 'unknown')
-            
+            user_id = getattr(self, "_current_user_id", "unknown")
+
             # Track API call success/failure
             status = "success" if response else "error"
-            track_api_call(
-                provider=provider.provider_type.value,
-                model=provider.model,
-                status=status
-            )
-            
+            track_api_call(provider=provider.provider_type.value, model=provider.model, status=status)
+
             # Track cost if response contains cost information
-            if response and hasattr(response, 'cost_eur') and response.cost_eur:
+            if response and hasattr(response, "cost_eur") and response.cost_eur:
                 track_llm_cost(
                     provider=provider.provider_type.value,
                     model=provider.model,
                     user_id=user_id,
-                    cost_eur=response.cost_eur
+                    cost_eur=response.cost_eur,
                 )
-                
+
         except Exception as e:
             logger.error(
                 "prometheus_metrics_tracking_failed",
                 error=str(e),
                 provider=provider.provider_type.value,
-                model=provider.model
+                model=provider.model,
             )
-        
+
         # Track usage (only for non-cached responses)
-        if hasattr(self, '_current_session_id') and hasattr(self, '_current_user_id'):
+        if hasattr(self, "_current_session_id") and hasattr(self, "_current_user_id"):
             try:
                 await usage_tracker.track_llm_usage(
                     user_id=self._current_user_id,
@@ -465,38 +488,28 @@ class LangGraphAgent:
                     llm_response=response,
                     response_time_ms=response_time_ms,
                     cache_hit=False,
-                    pii_detected=getattr(self, '_pii_detected', False),
-                    pii_types=getattr(self, '_pii_types', None)
+                    pii_detected=getattr(self, "_pii_detected", False),
+                    pii_types=getattr(self, "_pii_types", None),
                 )
             except Exception as e:
                 logger.error(
-                    "usage_tracking_failed",
-                    error=str(e),
-                    provider=provider.provider_type.value,
-                    model=provider.model
+                    "usage_tracking_failed", error=str(e), provider=provider.provider_type.value, model=provider.model
                 )
-        
+
         # Cache the response for future use
         try:
             await cache_service.cache_response(
-                messages=messages,
-                model=provider.model,
-                response=response,
-                temperature=temperature
+                messages=messages, model=provider.model, response=response, temperature=temperature
             )
             logger.info(
                 "llm_response_cached",
                 model=provider.model,
                 provider=provider.provider_type.value,
-                response_length=len(response.content)
+                response_length=len(response.content),
             )
         except Exception as e:
-            logger.error(
-                "llm_cache_set_failed",
-                error=str(e),
-                model=provider.model
-            )
-        
+            logger.error("llm_cache_set_failed", error=str(e), model=provider.model)
+
         return response
 
     @staticmethod
@@ -513,7 +526,7 @@ class LangGraphAgent:
             "failover": RoutingStrategy.FAILOVER,
         }
 
-        strategy_str = getattr(settings, 'LLM_ROUTING_STRATEGY', 'cost_optimized')
+        strategy_str = getattr(settings, "LLM_ROUTING_STRATEGY", "cost_optimized")
         return strategy_map.get(strategy_str, RoutingStrategy.COST_OPTIMIZED)
 
     @staticmethod
@@ -524,33 +537,31 @@ class LangGraphAgent:
         """
         strategy_map = {
             # High-accuracy requirements
-            ("legal", "document_generation"):       (RoutingStrategy.QUALITY_FIRST, 0.030),
-            ("legal", "compliance_check"):          (RoutingStrategy.QUALITY_FIRST, 0.025),
-            ("tax", "calculation_request"):         (RoutingStrategy.QUALITY_FIRST, 0.020),
-            ("accounting", "document_analysis"):    (RoutingStrategy.QUALITY_FIRST, 0.025),
-            ("business", "strategic_advice"):       (RoutingStrategy.QUALITY_FIRST, 0.025),
-
+            ("legal", "document_generation"): (RoutingStrategy.QUALITY_FIRST, 0.030),
+            ("legal", "compliance_check"): (RoutingStrategy.QUALITY_FIRST, 0.025),
+            ("tax", "calculation_request"): (RoutingStrategy.QUALITY_FIRST, 0.020),
+            ("accounting", "document_analysis"): (RoutingStrategy.QUALITY_FIRST, 0.025),
+            ("business", "strategic_advice"): (RoutingStrategy.QUALITY_FIRST, 0.025),
             # CCNL / balanced
-            ("labor", "ccnl_query"):                (RoutingStrategy.BALANCED, 0.018),
-            ("labor", "calculation_request"):       (RoutingStrategy.BALANCED, 0.020),
-            ("tax", "strategic_advice"):            (RoutingStrategy.BALANCED, 0.015),
-            ("labor", "compliance_check"):          (RoutingStrategy.BALANCED, 0.015),
-            ("business", "document_generation"):    (RoutingStrategy.BALANCED, 0.020),
-            ("accounting", "compliance_check"):     (RoutingStrategy.BALANCED, 0.015),
-
+            ("labor", "ccnl_query"): (RoutingStrategy.BALANCED, 0.018),
+            ("labor", "calculation_request"): (RoutingStrategy.BALANCED, 0.020),
+            ("tax", "strategic_advice"): (RoutingStrategy.BALANCED, 0.015),
+            ("labor", "compliance_check"): (RoutingStrategy.BALANCED, 0.015),
+            ("business", "document_generation"): (RoutingStrategy.BALANCED, 0.020),
+            ("accounting", "compliance_check"): (RoutingStrategy.BALANCED, 0.015),
             # Cost-optimized simple info (tests expect 0.015)
-            ("tax", "information_request"):         (RoutingStrategy.COST_OPTIMIZED, 0.015),
-            ("legal", "information_request"):       (RoutingStrategy.COST_OPTIMIZED, 0.015),
-            ("labor", "information_request"):       (RoutingStrategy.COST_OPTIMIZED, 0.015),
-            ("business", "information_request"):    (RoutingStrategy.COST_OPTIMIZED, 0.015),
-            ("accounting", "information_request"):  (RoutingStrategy.COST_OPTIMIZED, 0.015),
+            ("tax", "information_request"): (RoutingStrategy.COST_OPTIMIZED, 0.015),
+            ("legal", "information_request"): (RoutingStrategy.COST_OPTIMIZED, 0.015),
+            ("labor", "information_request"): (RoutingStrategy.COST_OPTIMIZED, 0.015),
+            ("business", "information_request"): (RoutingStrategy.COST_OPTIMIZED, 0.015),
+            ("accounting", "information_request"): (RoutingStrategy.COST_OPTIMIZED, 0.015),
         }
 
         key = (classification.domain.value, classification.action.value)
         strategy, base_cost = strategy_map.get(key, (RoutingStrategy.BALANCED, 0.020))
 
         # Only cap if explicitly configured (non-default); otherwise leave mapping as-is
-        global_cap = getattr(settings, 'LLM_MAX_COST_EUR', None)
+        global_cap = getattr(settings, "LLM_MAX_COST_EUR", None)
         DEFAULT_CAP = 0.020  # Same as in config.py default
 
         try:
@@ -564,7 +575,9 @@ class LangGraphAgent:
 
         return strategy, max_cost
 
-    async def _get_system_prompt(self, messages: List[Message], classification: Optional['DomainActionClassification']) -> str:
+    async def _get_system_prompt(
+        self, messages: List[Message], classification: Optional["DomainActionClassification"]
+    ) -> str:
         """Select the appropriate system prompt via RAG Step 41 orchestrator."""
         from app.orchestrators.prompting import step_41__select_prompt
 
@@ -572,33 +585,30 @@ class LangGraphAgent:
         result = await step_41__select_prompt(
             messages=messages,
             ctx={
-                'classification': classification,
-                'prompt_template_manager': self._prompt_template_manager,
-                'request_id': getattr(self, '_current_request_id', 'unknown')
-            }
+                "classification": classification,
+                "prompt_template_manager": self._prompt_template_manager,
+                "request_id": getattr(self, "_current_request_id", "unknown"),
+            },
         )
 
         # Extract the selected prompt from orchestrator result
-        return result.get('selected_prompt', SYSTEM_PROMPT)
+        return result.get("selected_prompt", SYSTEM_PROMPT)
 
     async def _prepare_messages_with_system_prompt(
         self,
         messages: List[Message],
         system_prompt: Optional[str] = None,
-        classification: Optional['DomainActionClassification'] = None,
+        classification: Optional["DomainActionClassification"] = None,
     ) -> List[Message]:
         """Ensure system message presence (RAG STEP 45 — CheckSysMsg) with backward-compatible signature."""
         if messages is None:
             messages = []
         msgs = messages  # operate IN-PLACE
 
-        original_count = len(msgs)
         # Resolve classification (fallback to agent state)
-        resolved_class = classification if classification is not None else getattr(self, "_current_classification", None)
-        has_classification = resolved_class is not None
-        conf = resolved_class.confidence if has_classification else None
-        domain = resolved_class.domain.value if has_classification else None
-        action = resolved_class.action.value if has_classification else None
+        resolved_class = (
+            classification if classification is not None else getattr(self, "_current_classification", None)
+        )
 
         # Resolve prompt if not provided
         if system_prompt is None:
@@ -606,46 +616,32 @@ class LangGraphAgent:
                 system_prompt = await self._get_system_prompt(msgs, resolved_class)
             except Exception:
                 from app.core.prompts import SYSTEM_PROMPT as _SP
-                system_prompt = _SP
 
-        messages_empty = (original_count == 0)
-        system_exists = bool(msgs and getattr(msgs[0], "role", None) == "system")
+                system_prompt = _SP
 
         # Use RAG STEP 45 orchestrator for system message existence decision
         from app.orchestrators.prompting import step_45__check_sys_msg
 
         step_45_decision = step_45__check_sys_msg(
-            messages=msgs,
-            ctx={
-                'classification': resolved_class,
-                'system_prompt': system_prompt
-            }
+            messages=msgs, ctx={"classification": resolved_class, "system_prompt": system_prompt}
         )
 
         # Route based on Step 45 decision
-        if step_45_decision['next_step'] == 47:
+        if step_45_decision["next_step"] == 47:
             # Route to Step 47 (InsertMsg)
             from app.orchestrators.prompting import step_47__insert_msg
 
             msgs = step_47__insert_msg(
-                messages=msgs,
-                ctx={
-                    'system_prompt': system_prompt,
-                    'classification': resolved_class
-                }
+                messages=msgs, ctx={"system_prompt": system_prompt, "classification": resolved_class}
             )
             return msgs
 
-        elif step_45_decision['next_step'] == 46:
+        elif step_45_decision["next_step"] == 46:
             # Route to Step 46 (ReplaceMsg)
             from app.orchestrators.prompting import step_46__replace_msg
 
             msgs = step_46__replace_msg(
-                messages=msgs,
-                ctx={
-                    'new_system_prompt': system_prompt,
-                    'classification': resolved_class
-                }
+                messages=msgs, ctx={"new_system_prompt": system_prompt, "classification": resolved_class}
             )
             return msgs
 
@@ -674,10 +670,10 @@ class LangGraphAgent:
                     strategy, max_cost = self._get_classification_aware_routing(self._current_classification)
                 else:
                     strategy = self._get_routing_strategy()
-                    max_cost = getattr(settings, 'LLM_MAX_COST_EUR', 0.020)
+                    max_cost = getattr(settings, "LLM_MAX_COST_EUR", 0.020)
 
-                preferred_provider = getattr(settings, 'LLM_PREFERRED_PROVIDER', None)
-                settings_max_cost = getattr(settings, 'LLM_MAX_COST_EUR', 0.020)
+                preferred_provider = getattr(settings, "LLM_PREFERRED_PROVIDER", None)
+                settings_max_cost = getattr(settings, "LLM_MAX_COST_EUR", 0.020)
 
                 # RAG STEP 49 — Apply routing strategy
                 rag_step_log(
@@ -723,7 +719,9 @@ class LangGraphAgent:
                     RoutingStrategy.BALANCED: ("BalanceProvider", "routing_to_balanced"),
                     RoutingStrategy.FAILOVER: ("PrimaryProvider", "routing_to_failover"),
                 }
-                next_step, decision = strategy_to_next_step.get(strategy, ("BalanceProvider", "routing_fallback_to_balanced"))
+                next_step, decision = strategy_to_next_step.get(
+                    strategy, ("BalanceProvider", "routing_fallback_to_balanced")
+                )
 
                 rag_step_log(
                     step=50,
@@ -756,7 +754,9 @@ class LangGraphAgent:
                     classification_used=self._current_classification is not None,
                     domain=self._current_classification.domain.value if self._current_classification else None,
                     action=self._current_classification.action.value if self._current_classification else None,
-                    classification_confidence=self._current_classification.confidence if self._current_classification else None,
+                    classification_confidence=(
+                        self._current_classification.confidence if self._current_classification else None
+                    ),
                     preferred_provider=preferred_provider,
                     messages_count=len(messages),
                     messages_empty=len(messages) == 0,
@@ -783,7 +783,7 @@ class LangGraphAgent:
                     node_label="RouteStrategy",
                     decision="routing_strategy_failed",
                     error=str(e),
-                    routing_strategy=getattr(strategy, 'value', None) if 'strategy' in locals() else None,
+                    routing_strategy=getattr(strategy, "value", None) if "strategy" in locals() else None,
                     processing_stage="error",
                 )
 
@@ -794,7 +794,7 @@ class LangGraphAgent:
                     node_label="StrategyType",
                     decision="routing_decision_failed",
                     error=str(e),
-                    routing_strategy=getattr(strategy, 'value', None) if 'strategy' in locals() else None,
+                    routing_strategy=getattr(strategy, "value", None) if "strategy" in locals() else None,
                     processing_stage="error",
                 )
 
@@ -816,6 +816,7 @@ class LangGraphAgent:
                 )
                 # Fallback to legacy OpenAI configuration
                 from app.core.llm.providers.openai_provider import OpenAIProvider
+
                 return OpenAIProvider(
                     api_key=settings.LLM_API_KEY or settings.OPENAI_API_KEY,
                     model=settings.LLM_MODEL or settings.OPENAI_MODEL,
@@ -865,7 +866,7 @@ class LangGraphAgent:
         # Convert GraphState messages to Message objects for provider
         conversation_messages = []
         for msg in state.messages:
-            if hasattr(msg, 'role') and hasattr(msg, 'content'):
+            if hasattr(msg, "role") and hasattr(msg, "content"):
                 conversation_messages.append(Message(role=msg.role, content=msg.content))
             else:
                 # Handle legacy message format
@@ -876,9 +877,11 @@ class LangGraphAgent:
 
         # Get domain-specific system prompt or default
         system_prompt = await self._get_system_prompt(conversation_messages, self._current_classification)
-        
+
         # Use RAG STEP 45 to prepare messages with system prompt
-        conversation_messages = await self._prepare_messages_with_system_prompt(conversation_messages, system_prompt, self._current_classification)
+        conversation_messages = await self._prepare_messages_with_system_prompt(
+            conversation_messages, system_prompt, self._current_classification
+        )
 
         llm_calls_num = 0
         max_retries = settings.MAX_LLM_CALL_RETRIES
@@ -903,13 +906,12 @@ class LangGraphAgent:
                 if response.tool_calls:
                     # Create AIMessage with tool calls
                     from langchain_core.messages import AIMessage
-                    ai_message = AIMessage(
-                        content=response.content,
-                        tool_calls=response.tool_calls
-                    )
+
+                    ai_message = AIMessage(content=response.content, tool_calls=response.tool_calls)
                 else:
                     # Create simple AIMessage
                     from langchain_core.messages import AIMessage
+
                     ai_message = AIMessage(content=response.content)
 
                 logger.info(
@@ -921,7 +923,7 @@ class LangGraphAgent:
                     cost_estimate=response.cost_estimate,
                     environment=settings.ENVIRONMENT.value,
                 )
-                
+
                 return {"messages": [ai_message]}
 
             except Exception as e:
@@ -931,17 +933,18 @@ class LangGraphAgent:
                     attempt=attempt + 1,
                     max_retries=max_retries,
                     error=str(e),
-                    provider=getattr(self._current_provider, 'provider_type', {}).get('value', 'unknown') if self._current_provider else 'unknown',
+                    provider=(
+                        getattr(self._current_provider, "provider_type", {}).get("value", "unknown")
+                        if self._current_provider
+                        else "unknown"
+                    ),
                     environment=settings.ENVIRONMENT.value,
                 )
                 llm_calls_num += 1
 
                 # In production, we might want to fall back to a different provider/model
                 if settings.ENVIRONMENT == Environment.PRODUCTION and attempt == max_retries - 2:
-                    logger.warning(
-                        "attempting_fallback_provider",
-                        environment=settings.ENVIRONMENT.value
-                    )
+                    logger.warning("attempting_fallback_provider", environment=settings.ENVIRONMENT.value)
                     # Force failover strategy for next attempt
                     try:
                         fallback_provider = get_llm_provider(
@@ -1044,12 +1047,7 @@ class LangGraphAgent:
     def _route_tool_type(state: Dict[str, Any]) -> str:
         """Route from ToolType node based on tool type."""
         tool_type = state.get("tools", {}).get("type", "kb")
-        mapping = {
-            "kb": "kb",
-            "ccnl": "ccnl",
-            "doc": "doc",
-            "faq": "faq"
-        }
+        mapping = {"kb": "kb", "ccnl": "ccnl", "doc": "doc", "faq": "faq"}
         return mapping.get(tool_type, "kb")
 
     @staticmethod
@@ -1064,8 +1062,8 @@ class LangGraphAgent:
     def _route_from_valid_check(state: Dict[str, Any]) -> str:
         """Route from ValidCheck node based on request validity."""
         # Check in both root and decisions dict
-        decisions = state.get('decisions', {})
-        request_valid = state.get('request_valid') or decisions.get('request_valid')
+        decisions = state.get("decisions", {})
+        request_valid = state.get("request_valid") or decisions.get("request_valid")
 
         # Default to False for safety - invalid until proven valid
         if request_valid is None:
@@ -1078,7 +1076,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="request_valid",
             value=request_valid,
-            reason=f"Request validation {'passed' if request_valid else 'failed'}"
+            reason=f"Request validation {'passed' if request_valid else 'failed'}",
         )
 
         if request_valid:
@@ -1095,7 +1093,7 @@ class LangGraphAgent:
             to_node="PIICheck",
             condition="always",
             value=True,
-            reason="Privacy check complete, proceeding to PII detection"
+            reason="Privacy check complete, proceeding to PII detection",
         )
         return "PIICheck"
 
@@ -1108,14 +1106,14 @@ class LangGraphAgent:
             to_node="CheckCache",
             condition="always",
             value=True,
-            reason="PII check complete, proceeding to cache layer"
+            reason="PII check complete, proceeding to cache layer",
         )
         return "CheckCache"
 
     @staticmethod
     def _route_from_cache_hit(state: Dict[str, Any]) -> str:
         """Route from CacheHit node based on cache status."""
-        cache_hit = state.get('cache_hit', False)
+        cache_hit = state.get("cache_hit", False)
         branch = "End" if cache_hit else "LLMCall"
         logger.debug(
             "routing_decision",
@@ -1123,7 +1121,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="cache_hit",
             value=cache_hit,
-            reason=f"Cache {'hit' if cache_hit else 'miss'}, {'returning cached response' if cache_hit else 'calling LLM'}"
+            reason=f"Cache {'hit' if cache_hit else 'miss'}, {'returning cached response' if cache_hit else 'calling LLM'}",
         )
         if cache_hit:
             return "End"
@@ -1139,7 +1137,7 @@ class LangGraphAgent:
             to_node="End",
             condition="always",
             value=True,
-            reason="LLM call successful, completing workflow (Phase 1A simplified)"
+            reason="LLM call successful, completing workflow (Phase 1A simplified)",
         )
         return "End"
 
@@ -1155,7 +1153,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="cache_hit_decision",
             value=cache_hit,
-            reason=f"Cache {'hit' if cache_hit else 'miss'}, {'returning cached' if cache_hit else 'proceeding to LLM'}"
+            reason=f"Cache {'hit' if cache_hit else 'miss'}, {'returning cached' if cache_hit else 'proceeding to LLM'}",
         )
         if cache_hit:
             return "ReturnCached"
@@ -1173,7 +1171,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="llm_success_decision",
             value=llm_success,
-            reason=f"LLM {'succeeded' if llm_success else 'failed'}, {'caching response' if llm_success else 'checking retry options'}"
+            reason=f"LLM {'succeeded' if llm_success else 'failed'}, {'caching response' if llm_success else 'checking retry options'}",
         )
         if llm_success:
             return "CacheResponse"
@@ -1191,7 +1189,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="retry_allowed",
             value=retry_allowed,
-            reason=f"Retry {'allowed' if retry_allowed else 'not allowed'}, {'checking production status' if retry_allowed else 'ending workflow'}"
+            reason=f"Retry {'allowed' if retry_allowed else 'not allowed'}, {'checking production status' if retry_allowed else 'ending workflow'}",
         )
         if retry_allowed:
             return "ProdCheck"
@@ -1209,7 +1207,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="should_failover",
             value=should_failover,
-            reason=f"Failover {'required' if should_failover else 'not required'}, {'switching to failover provider' if should_failover else 'retrying with same provider'}"
+            reason=f"Failover {'required' if should_failover else 'not required'}, {'switching to failover provider' if should_failover else 'retrying with same provider'}",
         )
         if should_failover:
             return "FailoverProvider"
@@ -1227,7 +1225,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="tools.requested",
             value=tools_requested,
-            reason=f"Tools {'requested' if tools_requested else 'not requested'}, {'routing to tool type' if tools_requested else 'routing to stream check'}"
+            reason=f"Tools {'requested' if tools_requested else 'not requested'}, {'routing to tool type' if tools_requested else 'routing to stream check'}",
         )
         if tools_requested:
             return "ToolType"
@@ -1238,12 +1236,7 @@ class LangGraphAgent:
     def _route_from_tool_type(state: Dict[str, Any]) -> str:
         """Route from ToolType node based on tool type."""
         tool_type = state.get("tools", {}).get("type", "kb")
-        mapping = {
-            "kb": "KBTool",
-            "ccnl": "CCNLTool",
-            "doc": "DocIngestTool",
-            "faq": "FAQTool"
-        }
+        mapping = {"kb": "KBTool", "ccnl": "CCNLTool", "doc": "DocIngestTool", "faq": "FAQTool"}
         branch = mapping.get(tool_type, "KBTool")
         logger.debug(
             "routing_decision",
@@ -1251,7 +1244,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="tools.type",
             value=tool_type,
-            reason=f"Tool type is '{tool_type}', routing to {branch}"
+            reason=f"Tool type is '{tool_type}', routing to {branch}",
         )
         return branch
 
@@ -1267,7 +1260,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="privacy.anonymize_enabled",
             value=anonymize_enabled,
-            reason=f"Anonymization {'enabled' if anonymize_enabled else 'disabled'}, {'anonymizing text' if anonymize_enabled else 'proceeding to agent initialization'}"
+            reason=f"Anonymization {'enabled' if anonymize_enabled else 'disabled'}, {'anonymizing text' if anonymize_enabled else 'proceeding to agent initialization'}",
         )
         if anonymize_enabled:
             return "AnonymizeText"
@@ -1285,7 +1278,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="privacy.pii_detected",
             value=pii_detected,
-            reason=f"PII {'detected' if pii_detected else 'not detected'}, {'logging PII' if pii_detected else 'proceeding to agent initialization'}"
+            reason=f"PII {'detected' if pii_detected else 'not detected'}, {'logging PII' if pii_detected else 'proceeding to agent initialization'}",
         )
         if pii_detected:
             return "LogPII"
@@ -1303,7 +1296,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="golden.eligible",
             value=eligible,
-            reason=f"Golden lookup {'eligible' if eligible else 'not eligible'}, {'looking up golden answer' if eligible else 'proceeding to domain classification'}"
+            reason=f"Golden lookup {'eligible' if eligible else 'not eligible'}, {'looking up golden answer' if eligible else 'proceeding to domain classification'}",
         )
         if eligible:
             return "GoldenLookup"
@@ -1321,7 +1314,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="golden.hit",
             value=golden_hit,
-            reason=f"Golden answer {'found' if golden_hit else 'not found'}, {'checking KB context' if golden_hit else 'proceeding to domain classification'}"
+            reason=f"Golden answer {'found' if golden_hit else 'not found'}, {'checking KB context' if golden_hit else 'proceeding to domain classification'}",
         )
         if golden_hit:
             return "KBContextCheck"
@@ -1339,7 +1332,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="golden.kb_newer",
             value=kb_newer,
-            reason=f"KB {'newer than golden' if kb_newer else 'not newer'}, {'need fresh LLM response with KB context' if kb_newer else 'golden answer still fresh'}"
+            reason=f"KB {'newer than golden' if kb_newer else 'not newer'}, {'need fresh LLM response with KB context' if kb_newer else 'golden answer still fresh'}",
         )
         if kb_newer:
             return "ClassifyDomain"  # Need fresh LLM response with KB context
@@ -1357,7 +1350,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="classification.confidence_sufficient",
             value=confidence_sufficient,
-            reason=f"Classification confidence {'sufficient' if confidence_sufficient else 'insufficient'}, {'tracking metrics' if confidence_sufficient else 'using LLM fallback'}"
+            reason=f"Classification confidence {'sufficient' if confidence_sufficient else 'insufficient'}, {'tracking metrics' if confidence_sufficient else 'using LLM fallback'}",
         )
         if confidence_sufficient:
             return "TrackMetrics"
@@ -1375,7 +1368,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="classification.llm_is_better",
             value=llm_is_better,
-            reason=f"LLM classification {'better' if llm_is_better else 'not better'} than rule-based, {'using LLM' if llm_is_better else 'using rule-based'}"
+            reason=f"LLM classification {'better' if llm_is_better else 'not better'} than rule-based, {'using LLM' if llm_is_better else 'using rule-based'}",
         )
         if llm_is_better:
             return "UseLLM"
@@ -1394,7 +1387,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="confidence_check.confidence_sufficient",
             value=confidence_sufficient,
-            reason=f"Classification confidence {'sufficient' if confidence_sufficient else 'insufficient'}, {'using domain-specific prompt' if confidence_sufficient else 'using default prompt'}"
+            reason=f"Classification confidence {'sufficient' if confidence_sufficient else 'insufficient'}, {'using domain-specific prompt' if confidence_sufficient else 'using default prompt'}",
         )
         if confidence_sufficient:
             return "DomainPrompt"
@@ -1412,7 +1405,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="sys_msg_exists",
             value=sys_msg_exists,
-            reason=f"System message {'exists' if sys_msg_exists else 'does not exist'}, {'replacing' if sys_msg_exists else 'inserting'} message"
+            reason=f"System message {'exists' if sys_msg_exists else 'does not exist'}, {'replacing' if sys_msg_exists else 'inserting'} message",
         )
         if sys_msg_exists:
             return "ReplaceMsg"
@@ -1428,7 +1421,7 @@ class LangGraphAgent:
             "QUALITY_FIRST": "BestProvider",
             "BALANCED": "BalanceProvider",
             "PRIMARY": "PrimaryProvider",
-            "FAILOVER": "PrimaryProvider"
+            "FAILOVER": "PrimaryProvider",
         }
         branch = mapping.get(strategy, "PrimaryProvider")
         logger.debug(
@@ -1437,7 +1430,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="provider.routing_strategy",
             value=strategy,
-            reason=f"Routing strategy is '{strategy}', selecting {branch}"
+            reason=f"Routing strategy is '{strategy}', selecting {branch}",
         )
         return branch
 
@@ -1452,7 +1445,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="provider.cost_ok",
             value=cost_ok,
-            reason=f"Cost {'within budget' if cost_ok else 'exceeds budget'}, {'creating provider' if cost_ok else 'finding cheaper provider'}"
+            reason=f"Cost {'within budget' if cost_ok else 'exceeds budget'}, {'creating provider' if cost_ok else 'finding cheaper provider'}",
         )
         if cost_ok:
             return "CreateProvider"
@@ -1470,7 +1463,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="cache.hit",
             value=cache_hit,
-            reason=f"Cache {'hit' if cache_hit else 'miss'}, {'returning cached response' if cache_hit else 'calling LLM'}"
+            reason=f"Cache {'hit' if cache_hit else 'miss'}, {'returning cached response' if cache_hit else 'calling LLM'}",
         )
         if cache_hit:
             return "ReturnCached"
@@ -1500,7 +1493,7 @@ class LangGraphAgent:
                     from_node="LLMSuccess",
                     to_node="End",
                     error_type=error_type,
-                    reason="Non-retryable error detected, terminating workflow"
+                    reason="Non-retryable error detected, terminating workflow",
                 )
                 return "End"  # Skip retry, go straight to end
 
@@ -1512,7 +1505,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="llm.success",
             value=llm_success,
-            reason=f"LLM {'succeeded' if llm_success else 'failed'}, {'caching response' if llm_success else 'checking retry options'}"
+            reason=f"LLM {'succeeded' if llm_success else 'failed'}, {'caching response' if llm_success else 'checking retry options'}",
         )
         return branch
 
@@ -1527,7 +1520,7 @@ class LangGraphAgent:
             to_node=branch,
             condition="streaming.requested",
             value=streaming_requested,
-            reason=f"Streaming {'requested' if streaming_requested else 'not requested'}, {'setting up stream' if streaming_requested else 'collecting metrics'}"
+            reason=f"Streaming {'requested' if streaming_requested else 'not requested'}, {'setting up stream' if streaming_requested else 'collecting metrics'}",
         )
         if streaming_requested:
             return "StreamSetup"
@@ -1557,32 +1550,18 @@ class LangGraphAgent:
             # Add edges - Phase 1A flow
             graph_builder.add_edge("ValidateRequest", "ValidCheck")
             graph_builder.add_conditional_edges(
-                "ValidCheck",
-                self._route_from_valid_check,
-                {"PrivacyCheck": "PrivacyCheck", "End": "End"}
+                "ValidCheck", self._route_from_valid_check, {"PrivacyCheck": "PrivacyCheck", "End": "End"}
             )
             graph_builder.add_conditional_edges(
-                "PrivacyCheck",
-                self._route_from_privacy_check,
-                {"PIICheck": "PIICheck"}
+                "PrivacyCheck", self._route_from_privacy_check, {"PIICheck": "PIICheck"}
             )
-            graph_builder.add_conditional_edges(
-                "PIICheck",
-                self._route_from_pii_check,
-                {"CheckCache": "CheckCache"}
-            )
+            graph_builder.add_conditional_edges("PIICheck", self._route_from_pii_check, {"CheckCache": "CheckCache"})
             graph_builder.add_edge("CheckCache", "CacheHit")
             graph_builder.add_conditional_edges(
-                "CacheHit",
-                self._route_from_cache_hit,
-                {"End": "End", "LLMCall": "LLMCall"}
+                "CacheHit", self._route_from_cache_hit, {"End": "End", "LLMCall": "LLMCall"}
             )
             graph_builder.add_edge("LLMCall", "LLMSuccess")
-            graph_builder.add_conditional_edges(
-                "LLMSuccess",
-                self._route_from_llm_success,
-                {"End": "End"}
-            )
+            graph_builder.add_conditional_edges("LLMSuccess", self._route_from_llm_success, {"End": "End"})
 
             # Set entry and exit points
             graph_builder.set_entry_point("ValidateRequest")
@@ -1599,8 +1578,7 @@ class LangGraphAgent:
                     raise Exception("Connection pool initialization failed")
 
             compiled_graph = graph_builder.compile(
-                checkpointer=checkpointer,
-                name=f"{settings.PROJECT_NAME} Agent Phase1A ({settings.ENVIRONMENT.value})"
+                checkpointer=checkpointer, name=f"{settings.PROJECT_NAME} Agent Phase1A ({settings.ENVIRONMENT.value})"
             )
 
             logger.info(
@@ -1660,29 +1638,19 @@ class LangGraphAgent:
             # Add Phase 1A edges up to cache
             graph_builder.add_edge("ValidateRequest", "ValidCheck")
             graph_builder.add_conditional_edges(
-                "ValidCheck",
-                self._route_from_valid_check,
-                {"PrivacyCheck": "PrivacyCheck", "End": "End"}
+                "ValidCheck", self._route_from_valid_check, {"PrivacyCheck": "PrivacyCheck", "End": "End"}
             )
             graph_builder.add_conditional_edges(
-                "PrivacyCheck",
-                self._route_from_privacy_check,
-                {"PIICheck": "PIICheck"}
+                "PrivacyCheck", self._route_from_privacy_check, {"PIICheck": "PIICheck"}
             )
-            graph_builder.add_conditional_edges(
-                "PIICheck",
-                self._route_from_pii_check,
-                {"CheckCache": "CheckCache"}
-            )
+            graph_builder.add_conditional_edges("PIICheck", self._route_from_pii_check, {"CheckCache": "CheckCache"})
 
             # Phase 4 cache lane edges
             graph_builder.add_edge("CheckCache", "CacheHit")
             track_edge(59, 62)  # CheckCache → CacheHit
 
             graph_builder.add_conditional_edges(
-                "CacheHit",
-                self._route_from_cache_hit_phase4,
-                {"ReturnCached": "ReturnCached", "LLMCall": "LLMCall"}
+                "CacheHit", self._route_from_cache_hit_phase4, {"ReturnCached": "ReturnCached", "LLMCall": "LLMCall"}
             )
             track_edge(62, 66)  # CacheHit → ReturnCached (cache hit path)
             track_edge(62, 64)  # CacheHit → LLMCall (cache miss path)
@@ -1696,7 +1664,7 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "LLMSuccess",
                 self._route_from_llm_success_phase4,
-                {"CacheResponse": "CacheResponse", "RetryCheck": "RetryCheck"}
+                {"CacheResponse": "CacheResponse", "RetryCheck": "RetryCheck"},
             )
             track_edge(67, 68)  # LLMSuccess → CacheResponse (success path)
             track_edge(67, 69)  # LLMSuccess → RetryCheck (failure path)
@@ -1710,16 +1678,14 @@ class LangGraphAgent:
 
             # Retry path
             graph_builder.add_conditional_edges(
-                "RetryCheck",
-                self._route_from_retry_check,
-                {"ProdCheck": "ProdCheck", "End": "End"}
+                "RetryCheck", self._route_from_retry_check, {"ProdCheck": "ProdCheck", "End": "End"}
             )
             track_edge(69, 70)  # RetryCheck → ProdCheck (retry allowed)
 
             graph_builder.add_conditional_edges(
                 "ProdCheck",
                 self._route_from_prod_check,
-                {"FailoverProvider": "FailoverProvider", "RetrySame": "RetrySame"}
+                {"FailoverProvider": "FailoverProvider", "RetrySame": "RetrySame"},
             )
             track_edge(70, 72)  # ProdCheck → FailoverProvider (failover path)
             track_edge(70, 73)  # ProdCheck → RetrySame (retry same path)
@@ -1733,21 +1699,14 @@ class LangGraphAgent:
 
             # Phase 4 tools lane edges
             graph_builder.add_conditional_edges(
-                "ToolCheck",
-                self._route_from_tool_check,
-                {"ToolType": "ToolType", "End": "End"}
+                "ToolCheck", self._route_from_tool_check, {"ToolType": "ToolType", "End": "End"}
             )
             track_edge(75, 79)  # ToolCheck → ToolType (tools needed)
 
             graph_builder.add_conditional_edges(
                 "ToolType",
                 self._route_from_tool_type,
-                {
-                    "KBTool": "KBTool",
-                    "CCNLTool": "CCNLTool",
-                    "DocIngestTool": "DocIngestTool",
-                    "FAQTool": "FAQTool"
-                }
+                {"KBTool": "KBTool", "CCNLTool": "CCNLTool", "DocIngestTool": "DocIngestTool", "FAQTool": "FAQTool"},
             )
             track_edge(79, 80)  # ToolType → KBTool
             track_edge(79, 81)  # ToolType → CCNLTool
@@ -1784,8 +1743,7 @@ class LangGraphAgent:
                     raise Exception("Connection pool initialization failed")
 
             compiled_graph = graph_builder.compile(
-                checkpointer=checkpointer,
-                name=f"{settings.PROJECT_NAME} Agent Phase4 ({settings.ENVIRONMENT.value})"
+                checkpointer=checkpointer, name=f"{settings.PROJECT_NAME} Agent Phase4 ({settings.ENVIRONMENT.value})"
             )
 
             logger.info(
@@ -1874,8 +1832,8 @@ class LangGraphAgent:
                     "CHEAP": "CheapProvider",
                     "BEST": "BestProvider",
                     "BALANCED": "BalanceProvider",
-                    "PRIMARY": "PrimaryProvider"
-                }
+                    "PRIMARY": "PrimaryProvider",
+                },
             )
 
             # All strategy providers go to cost estimation
@@ -1887,12 +1845,7 @@ class LangGraphAgent:
             # Cost check conditional routing
             graph_builder.add_edge("EstimateCost", "CostCheck")
             graph_builder.add_conditional_edges(
-                "CostCheck",
-                self._route_cost_check,
-                {
-                    "approved": "CreateProvider",
-                    "too_expensive": "CheaperProvider"
-                }
+                "CostCheck", self._route_cost_check, {"approved": "CreateProvider", "too_expensive": "CheaperProvider"}
             )
 
             # Cheaper provider loops back to estimate cost
@@ -1904,44 +1857,24 @@ class LangGraphAgent:
             # Phase 4 Cache → LLM → Tools edges (reusing existing logic)
             graph_builder.add_edge("CheckCache", "CacheHit")
             graph_builder.add_conditional_edges(
-                "CacheHit",
-                self._route_cache_hit,
-                {
-                    "hit": "ReturnCached",
-                    "miss": "LLMCall"
-                }
+                "CacheHit", self._route_cache_hit, {"hit": "ReturnCached", "miss": "LLMCall"}
             )
 
             graph_builder.add_edge("LLMCall", "LLMSuccess")
             graph_builder.add_conditional_edges(
-                "LLMSuccess",
-                self._route_llm_success,
-                {
-                    "success": "CacheResponse",
-                    "retry": "RetryCheck"
-                }
+                "LLMSuccess", self._route_llm_success, {"success": "CacheResponse", "retry": "RetryCheck"}
             )
 
             graph_builder.add_edge("CacheResponse", "TrackUsage")
             graph_builder.add_edge("TrackUsage", "ToolCheck")
             graph_builder.add_conditional_edges(
-                "ToolCheck",
-                self._route_tool_check,
-                {
-                    "has_tools": "ToolType",
-                    "no_tools": "End"
-                }
+                "ToolCheck", self._route_tool_check, {"has_tools": "ToolType", "no_tools": "End"}
             )
 
             graph_builder.add_conditional_edges(
                 "ToolType",
                 self._route_tool_type,
-                {
-                    "kb": "KBTool",
-                    "ccnl": "CCNLTool",
-                    "doc": "DocIngestTool",
-                    "faq": "FAQTool"
-                }
+                {"kb": "KBTool", "ccnl": "CCNLTool", "doc": "DocIngestTool", "faq": "FAQTool"},
             )
 
             # All tools go to results aggregation
@@ -1953,12 +1886,7 @@ class LangGraphAgent:
             # Retry logic
             graph_builder.add_edge("RetryCheck", "ProdCheck")
             graph_builder.add_conditional_edges(
-                "ProdCheck",
-                self._route_prod_check,
-                {
-                    "failover": "FailoverProvider",
-                    "retry_same": "RetrySame"
-                }
+                "ProdCheck", self._route_prod_check, {"failover": "FailoverProvider", "retry_same": "RetrySame"}
             )
 
             graph_builder.add_edge("FailoverProvider", "LLMCall")
@@ -2009,11 +1937,10 @@ class LangGraphAgent:
             # StreamCheck branches: stream=True → StreamSetup, stream=False → CollectMetrics
             graph_builder.add_conditional_edges(
                 "StreamCheck",
-                lambda state: "StreamSetup" if state.get("streaming", {}).get("requested", False) else "CollectMetrics",
-                {
-                    "StreamSetup": "StreamSetup",
-                    "CollectMetrics": "CollectMetrics"
-                }
+                lambda state: (
+                    "StreamSetup" if state.get("streaming", {}).get("requested", False) else "CollectMetrics"
+                ),
+                {"StreamSetup": "StreamSetup", "CollectMetrics": "CollectMetrics"},
             )
 
             # Streaming path (linear):
@@ -2054,7 +1981,7 @@ class LangGraphAgent:
 
             compiled_graph = graph_builder.compile(
                 checkpointer=checkpointer,
-                name=f"{settings.PROJECT_NAME} Agent Phase7 Streaming ({settings.ENVIRONMENT.value})"
+                name=f"{settings.PROJECT_NAME} Agent Phase7 Streaming ({settings.ENVIRONMENT.value})",
             )
 
             logger.info(
@@ -2067,7 +1994,9 @@ class LangGraphAgent:
             return compiled_graph
 
         except Exception as e:
-            logger.error("phase7_streaming_graph_creation_failed", error=str(e), environment=settings.ENVIRONMENT.value)
+            logger.error(
+                "phase7_streaming_graph_creation_failed", error=str(e), environment=settings.ENVIRONMENT.value
+            )
             if settings.ENVIRONMENT == Environment.PRODUCTION:
                 logger.warning("continuing_without_phase7_streaming_graph")
                 return None
@@ -2193,20 +2122,18 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "ValidCheck",
                 self._route_from_valid_check,
-                {"GDPRLog": "GDPRLog", "Error400": "Error400", "End": "End"}
+                {"GDPRLog": "GDPRLog", "Error400": "Error400", "End": "End"},
             )
             graph_builder.add_edge("GDPRLog", "PrivacyCheck")
             graph_builder.add_edge("Error400", "End")  # Terminal error node
             graph_builder.add_conditional_edges(
                 "PrivacyCheck",
                 self._route_from_privacy_check_unified,
-                {"AnonymizeText": "AnonymizeText", "InitAgent": "InitAgent"}
+                {"AnonymizeText": "AnonymizeText", "InitAgent": "InitAgent"},
             )
             graph_builder.add_edge("AnonymizeText", "PIICheck")
             graph_builder.add_conditional_edges(
-                "PIICheck",
-                self._route_from_pii_check_unified,
-                {"LogPII": "LogPII", "InitAgent": "InitAgent"}
+                "PIICheck", self._route_from_pii_check_unified, {"LogPII": "LogPII", "InitAgent": "InitAgent"}
             )
             graph_builder.add_edge("LogPII", "InitAgent")
 
@@ -2226,19 +2153,19 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "GoldenFastGate",
                 self._route_from_golden_fast_gate,
-                {"GoldenLookup": "GoldenLookup", "ClassifyDomain": "ClassifyDomain"}
+                {"GoldenLookup": "GoldenLookup", "ClassifyDomain": "ClassifyDomain"},
             )
             graph_builder.add_edge("GoldenLookup", "GoldenHit")
             graph_builder.add_conditional_edges(
                 "GoldenHit",
                 self._route_from_golden_hit,
-                {"KBContextCheck": "KBContextCheck", "ClassifyDomain": "ClassifyDomain"}
+                {"KBContextCheck": "KBContextCheck", "ClassifyDomain": "ClassifyDomain"},
             )
             graph_builder.add_edge("KBContextCheck", "KBDelta")
             graph_builder.add_conditional_edges(
                 "KBDelta",
                 self._route_from_kb_delta,
-                {"ServeGolden": "ServeGolden", "ClassifyDomain": "ClassifyDomain"}
+                {"ServeGolden": "ServeGolden", "ClassifyDomain": "ClassifyDomain"},
             )
             graph_builder.add_edge("ServeGolden", "ReturnComplete")
             graph_builder.add_edge("ReturnComplete", "CollectMetrics")
@@ -2252,7 +2179,7 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "ConfidenceCheck",
                 self._route_from_confidence_check,
-                {"TrackMetrics": "TrackMetrics", "LLMFallback": "LLMFallback"}
+                {"TrackMetrics": "TrackMetrics", "LLMFallback": "LLMFallback"},
             )
 
             # LLMFallback path
@@ -2260,9 +2187,7 @@ class LangGraphAgent:
 
             # LLMBetter decision: LLM better → UseLLM, else → UseRuleBased
             graph_builder.add_conditional_edges(
-                "LLMBetter",
-                self._route_from_llm_better,
-                {"UseLLM": "UseLLM", "UseRuleBased": "UseRuleBased"}
+                "LLMBetter", self._route_from_llm_better, {"UseLLM": "UseLLM", "UseRuleBased": "UseRuleBased"}
             )
 
             # Both paths converge at TrackMetrics
@@ -2280,7 +2205,7 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "ClassConfidence",
                 self._route_from_class_confidence,
-                {"DomainPrompt": "DomainPrompt", "DefaultSysPrompt": "DefaultSysPrompt"}
+                {"DomainPrompt": "DomainPrompt", "DefaultSysPrompt": "DefaultSysPrompt"},
             )
 
             # Both prompt paths converge at CheckSysMsg
@@ -2289,9 +2214,7 @@ class LangGraphAgent:
 
             # CheckSysMsg decision: exists → ReplaceMsg, else → InsertMsg
             graph_builder.add_conditional_edges(
-                "CheckSysMsg",
-                self._route_from_check_sys_msg,
-                {"ReplaceMsg": "ReplaceMsg", "InsertMsg": "InsertMsg"}
+                "CheckSysMsg", self._route_from_check_sys_msg, {"ReplaceMsg": "ReplaceMsg", "InsertMsg": "InsertMsg"}
             )
 
             # Both message paths converge at SelectProvider
@@ -2308,8 +2231,8 @@ class LangGraphAgent:
                     "CheapProvider": "CheapProvider",
                     "BestProvider": "BestProvider",
                     "BalanceProvider": "BalanceProvider",
-                    "PrimaryProvider": "PrimaryProvider"
-                }
+                    "PrimaryProvider": "PrimaryProvider",
+                },
             )
             graph_builder.add_edge("CheapProvider", "EstimateCost")
             graph_builder.add_edge("BestProvider", "EstimateCost")
@@ -2319,7 +2242,7 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "CostCheck",
                 self._route_from_cost_check,
-                {"CreateProvider": "CreateProvider", "CheaperProvider": "CheaperProvider"}
+                {"CreateProvider": "CreateProvider", "CheaperProvider": "CheaperProvider"},
             )
             graph_builder.add_edge("CreateProvider", "CheckCache")
             graph_builder.add_edge("CheaperProvider", "EstimateCost")  # Loop back
@@ -2327,9 +2250,7 @@ class LangGraphAgent:
             # ========== Wire Lane 7: Cache/LLM/Tools ==========
             graph_builder.add_edge("CheckCache", "CacheHit")
             graph_builder.add_conditional_edges(
-                "CacheHit",
-                self._route_from_cache_hit_unified,
-                {"ReturnCached": "ReturnCached", "LLMCall": "LLMCall"}
+                "CacheHit", self._route_from_cache_hit_unified, {"ReturnCached": "ReturnCached", "LLMCall": "LLMCall"}
             )
             graph_builder.add_edge("ReturnCached", "StreamCheck")
 
@@ -2337,40 +2258,31 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "LLMSuccess",
                 self._route_from_llm_success_unified,
-                {"CacheResponse": "CacheResponse", "RetryCheck": "RetryCheck", "End": "End"}
+                {"CacheResponse": "CacheResponse", "RetryCheck": "RetryCheck", "End": "End"},
             )
             graph_builder.add_edge("CacheResponse", "TrackUsage")
             graph_builder.add_edge("TrackUsage", "ToolCheck")
 
             # Retry path
             graph_builder.add_conditional_edges(
-                "RetryCheck",
-                self._route_from_retry_check,
-                {"ProdCheck": "ProdCheck", "End": "End"}
+                "RetryCheck", self._route_from_retry_check, {"ProdCheck": "ProdCheck", "End": "End"}
             )
             graph_builder.add_conditional_edges(
                 "ProdCheck",
                 self._route_from_prod_check,
-                {"FailoverProvider": "FailoverProvider", "RetrySame": "RetrySame"}
+                {"FailoverProvider": "FailoverProvider", "RetrySame": "RetrySame"},
             )
             graph_builder.add_edge("FailoverProvider", "LLMCall")
             graph_builder.add_edge("RetrySame", "LLMCall")
 
             # Tools path
             graph_builder.add_conditional_edges(
-                "ToolCheck",
-                self._route_from_tool_check,
-                {"ToolType": "ToolType", "StreamCheck": "StreamCheck"}
+                "ToolCheck", self._route_from_tool_check, {"ToolType": "ToolType", "StreamCheck": "StreamCheck"}
             )
             graph_builder.add_conditional_edges(
                 "ToolType",
                 self._route_from_tool_type,
-                {
-                    "KBTool": "KBTool",
-                    "CCNLTool": "CCNLTool",
-                    "DocIngestTool": "DocIngestTool",
-                    "FAQTool": "FAQTool"
-                }
+                {"KBTool": "KBTool", "CCNLTool": "CCNLTool", "DocIngestTool": "DocIngestTool", "FAQTool": "FAQTool"},
             )
             graph_builder.add_edge("KBTool", "ToolResults")
             graph_builder.add_edge("CCNLTool", "ToolResults")
@@ -2382,7 +2294,7 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "StreamCheck",
                 self._route_from_stream_check,
-                {"StreamSetup": "StreamSetup", "CollectMetrics": "CollectMetrics"}
+                {"StreamSetup": "StreamSetup", "CollectMetrics": "CollectMetrics"},
             )
             graph_builder.add_edge("StreamSetup", "AsyncGen")
             graph_builder.add_edge("AsyncGen", "SinglePass")
@@ -2403,8 +2315,7 @@ class LangGraphAgent:
                 checkpointer = None
 
             compiled_graph = graph_builder.compile(
-                checkpointer=checkpointer,
-                name=f"{settings.PROJECT_NAME} Agent Unified ({settings.ENVIRONMENT.value})"
+                checkpointer=checkpointer, name=f"{settings.PROJECT_NAME} Agent Unified ({settings.ENVIRONMENT.value})"
             )
 
             logger.info(
@@ -2412,7 +2323,7 @@ class LangGraphAgent:
                 graph_name=f"{settings.PROJECT_NAME} Agent Unified",
                 environment=settings.ENVIRONMENT.value,
                 has_checkpointer=checkpointer is not None,
-                total_nodes=59
+                total_nodes=59,
             )
 
             return compiled_graph
@@ -2456,15 +2367,13 @@ class LangGraphAgent:
         # Store user and session info for tracking
         self._current_user_id = user_id
         self._current_session_id = session_id
-        
+
         if self._graph is None:
             self._graph = await self.create_graph()
         # Type cast: LangGraph accepts dicts for config
         config: Any = {
             "configurable": {"thread_id": session_id},
-            "callbacks": [
-                CallbackHandler()
-            ],
+            "callbacks": [CallbackHandler()],
             "metadata": {
                 "user_id": user_id,
                 "session_id": session_id,
@@ -2500,14 +2409,14 @@ class LangGraphAgent:
 
         # Actions that always need database/tool access
         complex_actions = {
-            Action.CCNL_QUERY,           # Always needs CCNL database access
-            Action.DOCUMENT_ANALYSIS,    # Might need document processing tools
+            Action.CCNL_QUERY,  # Always needs CCNL database access
+            Action.DOCUMENT_ANALYSIS,  # Might need document processing tools
             Action.CALCULATION_REQUEST,  # Might need calculation tools
-            Action.COMPLIANCE_CHECK,     # Might need regulation lookup tools
+            Action.COMPLIANCE_CHECK,  # Might need regulation lookup tools
         }
-        
+
         needs_complex = classification.action in complex_actions
-        
+
         logger.info(
             "workflow_decision",
             action=classification.action.value,
@@ -2515,9 +2424,9 @@ class LangGraphAgent:
             confidence=classification.confidence,
             needs_complex_workflow=needs_complex,
         )
-        
+
         return needs_complex
-    
+
     async def get_stream_response(
         self, messages: list[Message], session_id: str, user_id: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
@@ -2539,22 +2448,17 @@ class LangGraphAgent:
         # Step 8: InitAgent - Entry into LangGraph workflow
         rag_step_log(
             step=8,
-            step_id='RAG.langgraphagent.get.stream.response.initialize.workflow',
-            node_label='InitAgent',
-            processing_stage='entered',
+            step_id="RAG.langgraphagent.get.stream.response.initialize.workflow",
+            node_label="InitAgent",
+            processing_stage="entered",
             session_id=session_id,
             user_id=user_id,
             message_count=len(messages),
-            method='get_stream_response',
-            next_step=11  # Next will be message conversion
+            method="get_stream_response",
+            next_step=11,  # Next will be message conversion
         )
 
-        logger.debug(
-            "get_stream_response_entry",
-            session_id=session_id,
-            user_id=user_id,
-            message_count=len(messages)
-        )
+        logger.debug("get_stream_response_entry", session_id=session_id, user_id=user_id, message_count=len(messages))
 
         # Store user and session info for tracking
         self._current_user_id = user_id
@@ -2569,10 +2473,7 @@ class LangGraphAgent:
                 self._graph = await self.create_graph()
 
             if self._graph is None:
-                logger.error(
-                    "unified_graph_not_available_fallback_to_direct",
-                    session_id=session_id
-                )
+                logger.error("unified_graph_not_available_fallback_to_direct", session_id=session_id)
                 # Fallback to old direct streaming if graph unavailable
                 self._current_classification = await self._classify_user_query(messages)
                 async for chunk in self._stream_with_direct_llm(messages, session_id):
@@ -2590,16 +2491,11 @@ class LangGraphAgent:
                 "messages": message_dicts,
                 "session_id": session_id,
                 "user_id": user_id,
-                "streaming": {
-                    "requested": True  # Nested structure for StreamCheck routing
-                },
+                "streaming": {"requested": True},  # Nested structure for StreamCheck routing
             }
 
             logger.info(
-                "unified_graph_streaming_started",
-                session_id=session_id,
-                user_id=user_id,
-                message_count=len(messages)
+                "unified_graph_streaming_started", session_id=session_id, user_id=user_id, message_count=len(messages)
             )
 
             # Execute unified graph through all pre-LLM steps
@@ -2620,19 +2516,19 @@ class LangGraphAgent:
             # Step 8: Log graph invocation start
             rag_step_log(
                 step=8,
-                step_id='RAG.langgraphagent.unified.graph.invoke.start',
-                node_label='InitAgent',
-                processing_stage='graph_invocation_started',
+                step_id="RAG.langgraphagent.unified.graph.invoke.start",
+                node_label="InitAgent",
+                processing_stage="graph_invocation_started",
                 session_id=session_id,
                 user_id=user_id,
-                transition='Step 8 → Unified Graph (Lanes 1-8)',
-                next_step=11  # First step in Lane 2 (message processing)
+                transition="Step 8 → Unified Graph (Lanes 1-8)",
+                next_step=11,  # First step in Lane 2 (message processing)
             )
 
             # Debug: Log config and graph state
             config_to_use = {
                 "configurable": {"thread_id": session_id},
-                "recursion_limit": 50  # Increased from default 25 to prevent infinite loops
+                "recursion_limit": 50,  # Increased from default 25 to prevent infinite loops
             }
             logger.debug(
                 "graph_ainvoke_debug",
@@ -2640,52 +2536,49 @@ class LangGraphAgent:
                 config=config_to_use,
                 initial_state_keys=list(initial_state.keys()),
                 graph_exists=self._graph is not None,
-                graph_has_checkpointer=hasattr(self._graph, 'checkpointer') if self._graph else False
+                graph_has_checkpointer=hasattr(self._graph, "checkpointer") if self._graph else False,
             )
 
             try:
-                state = await self._graph.ainvoke(
-                    initial_state,
-                    config=config_to_use
-                )
+                state = await self._graph.ainvoke(initial_state, config=config_to_use)
             except Exception as graph_error:
                 # Get full traceback for debugging
-                tb_str = ''.join(traceback.format_exception(type(graph_error), graph_error, graph_error.__traceback__))
+                tb_str = "".join(traceback.format_exception(type(graph_error), graph_error, graph_error.__traceback__))
 
                 # Step 8: Log graph invocation failure with full traceback
                 rag_step_log(
                     step=8,
-                    step_id='RAG.langgraphagent.unified.graph.invoke.error',
-                    node_label='InitAgent',
-                    processing_stage='graph_invocation_failed',
+                    step_id="RAG.langgraphagent.unified.graph.invoke.error",
+                    node_label="InitAgent",
+                    processing_stage="graph_invocation_failed",
                     session_id=session_id,
                     user_id=user_id,
                     error=str(graph_error),
                     error_type=type(graph_error).__name__,
                     traceback=tb_str,
-                    cannot_proceed_reason=f"Graph invocation failed: {str(graph_error)}"
+                    cannot_proceed_reason=f"Graph invocation failed: {str(graph_error)}",
                 )
                 logger.error(
                     "graph_ainvoke_failed",
                     session_id=session_id,
                     error=str(graph_error),
                     traceback=tb_str,
-                    exc_info=True
+                    exc_info=True,
                 )
                 raise
 
             # Step 8: Log graph invocation completion
             rag_step_log(
                 step=8,
-                step_id='RAG.langgraphagent.unified.graph.invoke.completed',
-                node_label='InitAgent',
-                processing_stage='graph_invocation_completed',
+                step_id="RAG.langgraphagent.unified.graph.invoke.completed",
+                node_label="InitAgent",
+                processing_stage="graph_invocation_completed",
                 session_id=session_id,
                 user_id=user_id,
                 state_keys=list(state.keys()) if state else [],
                 has_final_response=bool(state.get("final_response")) if state else False,
                 has_cache_hit=bool(state.get("cache", {}).get("hit")) if state else False,
-                next_step='response_processing'
+                next_step="response_processing",
             )
 
             logger.info(
@@ -2693,13 +2586,25 @@ class LangGraphAgent:
                 session_id=session_id,
                 state_keys=list(state.keys()) if state else [],
                 has_final_response=bool(state.get("final_response")) if state else False,
-                has_cache_hit=bool(state.get("cache", {}).get("hit")) if state else False
+                has_cache_hit=bool(state.get("cache", {}).get("hit")) if state else False,
             )
 
             # FIX: Extract LLM response and build final_response if missing
             # BUT: Skip extraction for streaming requests - let them fall through to provider.stream_completion()
             # This preserves token-by-token streaming while fixing non-streaming responses
             streaming_requested = state.get("streaming", {}).get("requested", False)
+
+            # DIAGNOSTIC: Log streaming state after graph execution
+            logger.info(
+                "DIAGNOSTIC_streaming_state_after_graph",
+                session_id=session_id,
+                streaming_requested=streaming_requested,
+                streaming_state=state.get("streaming"),
+                has_final_response=bool(state.get("final_response")),
+                has_llm_response=bool(state.get("llm_response")),
+                has_llm_data=bool(state.get("llm")),
+                state_keys=list(state.keys()),
+            )
 
             if not state.get("final_response") and not streaming_requested:
                 # Only extract for non-streaming responses
@@ -2713,7 +2618,7 @@ class LangGraphAgent:
                     has_llm_response=bool(llm_response_data),
                     llm_response_type=type(llm_response_data).__name__ if llm_response_data else None,
                     llm_response_keys=list(llm_response_data.keys()) if isinstance(llm_response_data, dict) else None,
-                    llm_response_sample=str(llm_response_data)[:500] if llm_response_data else None
+                    llm_response_sample=str(llm_response_data)[:500] if llm_response_data else None,
                 )
 
                 # Try multiple extraction paths for content
@@ -2722,23 +2627,24 @@ class LangGraphAgent:
                     if isinstance(llm_response_data, dict):
                         # Try various possible keys
                         content = (
-                            llm_response_data.get("content") or
-                            (llm_response_data.get("response", {}).get("content") if isinstance(llm_response_data.get("response"), dict) else None) or
-                            llm_response_data.get("text") or
-                            llm_response_data.get("message")
+                            llm_response_data.get("content")
+                            or (
+                                llm_response_data.get("response", {}).get("content")
+                                if isinstance(llm_response_data.get("response"), dict)
+                                else None
+                            )
+                            or llm_response_data.get("text")
+                            or llm_response_data.get("message")
                         )
-                    elif hasattr(llm_response_data, 'content'):
+                    elif hasattr(llm_response_data, "content"):
                         content = llm_response_data.content
 
                     if content:
-                        state["final_response"] = {
-                            "content": content,
-                            "type": "success"
-                        }
+                        state["final_response"] = {"content": content, "type": "success"}
                         logger.info(
                             "final_response_extracted_from_llm_response",
                             session_id=session_id,
-                            content_length=len(content)
+                            content_length=len(content),
                         )
 
                 # Fallback: Extract from last assistant message if llm_response didn't work
@@ -2748,14 +2654,11 @@ class LangGraphAgent:
                         if isinstance(msg, dict) and msg.get("role") == "assistant":
                             content = msg.get("content", "")
                             if content:
-                                state["final_response"] = {
-                                    "content": content,
-                                    "type": "success"
-                                }
+                                state["final_response"] = {"content": content, "type": "success"}
                                 logger.info(
                                     "final_response_extracted_from_messages",
                                     session_id=session_id,
-                                    content_length=len(content)
+                                    content_length=len(content),
                                 )
                                 break
 
@@ -2769,17 +2672,28 @@ class LangGraphAgent:
                 has_messages=bool(state.get("messages")),
                 message_count=len(state.get("messages", [])),
                 llm_success=state.get("llm", {}).get("success"),
-                will_use_fallback_streaming=streaming_requested and not bool(state.get("final_response"))
+                will_use_fallback_streaming=streaming_requested and not bool(state.get("final_response")),
             )
 
             # Check if there's a final response in the state
             final_response = state.get("final_response")
+
+            # DIAGNOSTIC: Log final_response check
+            logger.info(
+                "DIAGNOSTIC_final_response_check",
+                session_id=session_id,
+                has_final_response=bool(final_response),
+                final_response_type=final_response.get("type") if final_response else None,
+                final_response_content_length=len(final_response.get("content", "")) if final_response else 0,
+                streaming_requested=streaming_requested,
+            )
+
             if final_response:
                 # Check if this is an error response
                 is_error = (
-                    final_response.get("type") == "error" or
-                    state.get("workflow_terminated") == True or
-                    state.get("status_code", 200) >= 400
+                    final_response.get("type") == "error"
+                    or state.get("workflow_terminated") == True
+                    or state.get("status_code", 200) >= 400
                 )
 
                 if is_error:
@@ -2791,7 +2705,7 @@ class LangGraphAgent:
                         session_id=session_id,
                         status_code=status_code,
                         error_message=error_msg,
-                        error_type=final_response.get("error_type")
+                        error_type=final_response.get("error_type"),
                     )
                     if error_msg:
                         yield error_msg
@@ -2799,26 +2713,37 @@ class LangGraphAgent:
                         "unified_graph_error_response_streamed",
                         session_id=session_id,
                         status_code=status_code,
-                        error_length=len(error_msg)
+                        error_length=len(error_msg),
                     )
                     return
 
-                # Normal successful response
-                content = final_response.get("content", "")
-                logger.info(
-                    "final_response_branch",
-                    session_id=session_id,
-                    has_content=bool(content),
-                    content_length=len(content) if content else 0
-                )
-                if content:
-                    yield content
-                logger.info(
-                    "unified_graph_streaming_completed_from_graph",
-                    session_id=session_id,
-                    response_length=len(content)
-                )
-                return
+                # FIX: For streaming requests, don't yield complete response - use buffered streaming
+                if streaming_requested:
+                    logger.info(
+                        "streaming_requested_skipping_complete_response",
+                        session_id=session_id,
+                        has_content=bool(final_response.get("content")),
+                        will_use_buffered_streaming=True,
+                    )
+                    # Fall through to buffered streaming logic below
+                    # Don't return - let the buffered streaming handle it
+                else:
+                    # Normal successful response for non-streaming requests
+                    content = final_response.get("content", "")
+                    logger.info(
+                        "final_response_branch",
+                        session_id=session_id,
+                        has_content=bool(content),
+                        content_length=len(content) if content else 0,
+                    )
+                    if content:
+                        yield content
+                    logger.info(
+                        "unified_graph_streaming_completed_from_graph",
+                        session_id=session_id,
+                        response_length=len(content),
+                    )
+                    return
 
             # If no final_response but cache hit, return cached
             if state.get("cache", {}).get("hit"):
@@ -2828,54 +2753,144 @@ class LangGraphAgent:
                     "cache_hit_branch",
                     session_id=session_id,
                     has_content=bool(content),
-                    content_length=len(content) if content else 0
+                    content_length=len(content) if content else 0,
                 )
                 if content:
                     yield content
-                logger.info(
-                    "unified_graph_cache_hit_streaming",
-                    session_id=session_id,
-                    cached=True
-                )
+                logger.info("unified_graph_cache_hit_streaming", session_id=session_id, cached=True)
                 return
 
-            # If graph didn't produce a response, fall back to direct LLM streaming
-            # This handles cases where the graph setup is incomplete
-            logger.warning(
-                "unified_graph_no_response_fallback_to_direct",
-                session_id=session_id,
-                state_keys=list(state.keys())
-            )
+            # FIX: Check for content to stream (from final_response or buffered response)
+            content = None
 
-            # FIX: Check for buffered response from Step 64 before making second LLM call
-            llm_data = state.get("llm", {})
-            buffered_response = llm_data.get("response")
-
-            if llm_data.get("success") and buffered_response:
-                # Extract content from LLMResponse object or dict format
-                content = None
-                if isinstance(buffered_response, dict):
-                    content = buffered_response.get("content")
-                elif hasattr(buffered_response, 'content'):
-                    content = buffered_response.content
-
+            # Priority 1: Check final_response (if we fell through from streaming path above)
+            if final_response and streaming_requested:
+                content = final_response.get("content", "")
                 if content:
                     logger.info(
-                        "streaming_from_buffered_response",
+                        "streaming_from_final_response",
                         session_id=session_id,
                         content_length=len(content),
-                        source="step_64_completed"
+                        source="final_response_with_streaming_requested",
                     )
 
-                    # Stream the buffered content by chunking
-                    chunk_size = 5
-                    for i in range(0, len(content), chunk_size):
-                        chunk = content[i:i+chunk_size]
-                        yield chunk
-                        await asyncio.sleep(0.01)  # Small delay for visible streaming effect
+            # Priority 2: Check buffered response from Step 64
+            if not content:
+                llm_data = state.get("llm", {})
+                buffered_response = llm_data.get("response")
 
-                    logger.info("buffered_streaming_complete", session_id=session_id)
-                    return  # Exit without making second LLM call
+                if llm_data.get("success") and buffered_response:
+                    # Extract content from LLMResponse object or dict format
+                    if isinstance(buffered_response, dict):
+                        content = buffered_response.get("content")
+                    elif hasattr(buffered_response, "content"):
+                        content = buffered_response.content
+
+                    if content:
+                        logger.info(
+                            "streaming_from_buffered_response",
+                            session_id=session_id,
+                            content_length=len(content),
+                            source="step_64_completed",
+                        )
+
+            # DIAGNOSTIC: Log content extraction result
+            logger.info(
+                "DIAGNOSTIC_content_extraction_result",
+                session_id=session_id,
+                content_found=bool(content),
+                content_length=len(content) if content else 0,
+                will_use_buffered_streaming=bool(content),
+                will_fallback_to_provider_stream=not bool(content),
+            )
+
+            if content:
+                # Stream the buffered content by chunking at word boundaries
+                logger.info(
+                    "DIAGNOSTIC_starting_buffered_streaming_loop",  # pragma: allowlist secret
+                    session_id=session_id,
+                    content_length=len(content),
+                    chunk_size=100,
+                )
+                chunk_size = 100  # Industry standard for buffered streaming
+                i = 0
+                chunk_count = 0
+                while i < len(content):
+                    # Find word boundary near chunk_size
+                    end = min(i + chunk_size, len(content))
+
+                    # If not at end, look for word boundary (space, newline, punctuation)
+                    if end < len(content):
+                        # Search forward up to 20 chars for a good breaking point
+                        search_end = min(end + 20, len(content))
+                        boundary_chars = (" ", "\n", "\t", ".", ",", "!", "?", ";", ":", ")")
+
+                        # Find next boundary after target chunk size
+                        best_break = -1
+                        for boundary_char in boundary_chars:
+                            pos = content.find(boundary_char, end, search_end)
+                            if pos != -1:
+                                if best_break == -1 or pos < best_break:
+                                    best_break = pos
+
+                        # Use boundary if found, otherwise use exact chunk_size
+                        if best_break != -1:
+                            end = best_break + 1  # Include the boundary character
+
+                    chunk = content[i:end]
+                    chunk_count += 1
+
+                    # DIAGNOSTIC: Log each chunk before yielding
+                    logger.info(
+                        "DIAGNOSTIC_yielding_chunk",
+                        session_id=session_id,
+                        chunk_number=chunk_count,
+                        chunk_size=len(chunk),
+                        chunk_start_pos=i,
+                        chunk_end_pos=end,
+                        chunk_preview=chunk[:50] if len(chunk) > 50 else chunk,
+                        remaining_content=len(content) - end,
+                    )
+
+                    try:
+                        yield chunk
+
+                        # DIAGNOSTIC: Log after successful yield
+                        logger.info(
+                            "DIAGNOSTIC_chunk_yielded_successfully", session_id=session_id, chunk_number=chunk_count
+                        )
+                    except Exception as yield_error:
+                        # DIAGNOSTIC: Log any errors during yield
+                        logger.error(
+                            "DIAGNOSTIC_error_yielding_chunk",
+                            session_id=session_id,
+                            chunk_number=chunk_count,
+                            error=str(yield_error),
+                            error_type=type(yield_error).__name__,
+                            exc_info=True,
+                        )
+                        raise
+
+                    i = end
+                    await asyncio.sleep(0.05)  # 50ms delay, industry standard
+
+                logger.info(
+                    "DIAGNOSTIC_buffered_streaming_complete",  # pragma: allowlist secret
+                    session_id=session_id,
+                    total_chunks_yielded=chunk_count,
+                    total_content_length=len(content),
+                )
+                return  # Exit without making second LLM call
+
+            # DIAGNOSTIC: We reached the fallback streaming path (content was not found)
+            logger.warning(
+                "DIAGNOSTIC_fallback_to_provider_streaming",  # pragma: allowlist secret
+                session_id=session_id,
+                reason="No buffered content found, making second LLM call",
+                had_final_response=bool(final_response),
+                had_llm_data=bool(state.get("llm")),
+                streaming_requested=streaming_requested,
+            )
 
             # Use provider from state if available, otherwise get one
             provider: Optional[LLMProvider] = state.get("provider", {}).get("selected")
@@ -2894,7 +2909,13 @@ class LangGraphAgent:
             assert provider is not None, "Provider must be set at this point"
 
             # Stream from provider
-            async for chunk in provider.stream_completion(
+            logger.info(
+                "DIAGNOSTIC_starting_provider_stream_completion",
+                session_id=session_id,
+                provider=provider.provider_type.value if provider else None,
+                model=provider.model if provider else None,
+            )
+            async for chunk in provider.stream_completion(  # type: ignore[misc]
                 messages=processed_messages,
                 tools=None,
                 temperature=settings.DEFAULT_LLM_TEMPERATURE,
@@ -2903,30 +2924,27 @@ class LangGraphAgent:
                 # Handle both LLMStreamResponse objects and plain strings
                 if isinstance(chunk, str):
                     yield chunk
-                elif hasattr(chunk, 'content') and chunk.content:
+                elif hasattr(chunk, "content") and chunk.content:
                     yield chunk.content
-                    if hasattr(chunk, 'done') and chunk.done:
+                    if hasattr(chunk, "done") and chunk.done:
                         break
 
         except Exception as stream_error:
             # Step 8: InitAgent - Failure logging
             rag_step_log(
                 step=8,
-                step_id='RAG.langgraphagent.get.stream.response.error',
-                node_label='InitAgent',
-                processing_stage='failed',
+                step_id="RAG.langgraphagent.get.stream.response.error",
+                node_label="InitAgent",
+                processing_stage="failed",
                 session_id=session_id,
                 user_id=user_id,
                 error=str(stream_error),
                 error_type=type(stream_error).__name__,
-                cannot_proceed_reason=f"Streaming failed: {str(stream_error)}"
+                cannot_proceed_reason=f"Streaming failed: {str(stream_error)}",
             )
 
             logger.error(
-                "unified_graph_streaming_failed",
-                error=str(stream_error),
-                session_id=session_id,
-                user_id=user_id
+                "unified_graph_streaming_failed", error=str(stream_error), session_id=session_id, user_id=user_id
             )
             raise stream_error
         finally:
@@ -2934,16 +2952,14 @@ class LangGraphAgent:
             self._current_user_id = None
             self._current_session_id = None
             self._current_classification = None
-    
-    async def _stream_with_direct_llm(
-        self, messages: list[Message], session_id: str
-    ) -> AsyncGenerator[str, None]:
+
+    async def _stream_with_direct_llm(self, messages: list[Message], session_id: str) -> AsyncGenerator[str, None]:
         """Stream directly from LLM provider for simple queries (no tools).
-        
+
         Args:
             messages: List of conversation messages
             session_id: Session ID for logging
-            
+
         Yields:
             str: Raw markdown chunks
         """
@@ -2952,12 +2968,14 @@ class LangGraphAgent:
             system_prompt = await self._get_system_prompt(messages, self._current_classification)
 
             # Use RAG STEP 45 to prepare messages with system prompt
-            processed_messages = await self._prepare_messages_with_system_prompt(messages, system_prompt, self._current_classification)
-            
+            processed_messages = await self._prepare_messages_with_system_prompt(
+                messages, system_prompt, self._current_classification
+            )
+
             # Get optimal provider (classification-aware)
             provider = self._get_optimal_provider(processed_messages)
             self._current_provider = provider
-            
+
             logger.info(
                 "direct_llm_stream_started",
                 session_id=session_id,
@@ -2967,9 +2985,9 @@ class LangGraphAgent:
                 domain=self._current_classification.domain.value if self._current_classification else None,
                 action=self._current_classification.action.value if self._current_classification else None,
             )
-            
+
             # Stream directly from LLM provider (no tools)
-            async for chunk in provider.stream_completion(
+            async for chunk in provider.stream_completion(  # type: ignore[misc]
                 messages=processed_messages,
                 tools=None,  # No tools for simple streaming
                 temperature=settings.DEFAULT_LLM_TEMPERATURE,
@@ -2977,7 +2995,7 @@ class LangGraphAgent:
             ):
                 if chunk.content:
                     yield chunk.content
-                    
+
                 # Log when streaming completes
                 if chunk.done:
                     logger.info(
@@ -2987,25 +3005,29 @@ class LangGraphAgent:
                         provider=provider.provider_type.value,
                     )
                     break
-                    
+
         except Exception as e:
             logger.error(
                 "direct_llm_stream_failed",
                 error=str(e),
                 session_id=session_id,
-                provider=getattr(self._current_provider, 'provider_type', {}).get('value', 'unknown') if self._current_provider else 'unknown',
+                provider=(
+                    getattr(self._current_provider, "provider_type", {}).get("value", "unknown")
+                    if self._current_provider
+                    else "unknown"
+                ),
             )
             raise
-    
+
     async def _stream_with_langgraph_workflow(
         self, messages: list[Message], session_id: str
     ) -> AsyncGenerator[str, None]:
         """Stream using LangGraph workflow for complex queries (with tools).
-        
+
         Args:
             messages: List of conversation messages
             session_id: Session ID for logging
-            
+
         Yields:
             str: Raw markdown chunks and workflow updates
         """
@@ -3013,12 +3035,12 @@ class LangGraphAgent:
             # Ensure graph is initialized
             if self._graph is None:
                 self._graph = await self.create_graph()
-            
+
             # Type cast: LangGraph accepts dicts for config
             config: Any = {
                 "configurable": {"thread_id": session_id},
                 "callbacks": [CallbackHandler()],
-                "recursion_limit": 50  # Increased from default 25 to prevent infinite loops
+                "recursion_limit": 50,  # Increased from default 25 to prevent infinite loops
             }
 
             logger.info(
@@ -3033,33 +3055,25 @@ class LangGraphAgent:
             input_state: Any = {"messages": dump_messages(messages), "session_id": session_id}
 
             # Stream from LangGraph with filtering to avoid duplicates
-            async for token, metadata in self._graph.astream(
-                input_state,
-                config, 
-                stream_mode="messages"
-            ):
+            async for token, metadata in self._graph.astream(input_state, config, stream_mode="messages"):
                 try:
                     # Filter only from the main chat node to avoid tool call duplicates
                     if metadata.get("langgraph_node") == "chat":
-                        if hasattr(token, 'content') and token.content:
+                        if hasattr(token, "content") and token.content:
                             # Avoid yielding very large chunks (likely complete messages)
                             # This helps prevent the final complete message from being duplicated
                             if len(token.content) < 150:  # Threshold for token vs complete message
                                 yield token.content
-                            
+
                 except Exception as token_error:
-                    logger.error(
-                        "langgraph_token_processing_error", 
-                        error=str(token_error), 
-                        session_id=session_id
-                    )
+                    logger.error("langgraph_token_processing_error", error=str(token_error), session_id=session_id)
                     continue
-            
+
             logger.info(
                 "langgraph_workflow_stream_completed",
                 session_id=session_id,
             )
-                    
+
         except Exception as e:
             logger.error(
                 "langgraph_workflow_stream_failed",
@@ -3081,18 +3095,10 @@ class LangGraphAgent:
         try:
             cached_messages = await cache_service.get_conversation_cache(session_id)
             if cached_messages:
-                logger.info(
-                    "conversation_cache_hit",
-                    session_id=session_id,
-                    message_count=len(cached_messages)
-                )
+                logger.info("conversation_cache_hit", session_id=session_id, message_count=len(cached_messages))
                 return cached_messages
         except Exception as e:
-            logger.error(
-                "conversation_cache_get_failed",
-                error=str(e),
-                session_id=session_id
-            )
+            logger.error("conversation_cache_get_failed", error=str(e), session_id=session_id)
 
         # Get from database if not cached
         if self._graph is None:
@@ -3103,23 +3109,15 @@ class LangGraphAgent:
         )
         # StateSnapshot.values exists but IDE type stubs don't recognize it
         messages = self.__process_messages(state.values["messages"]) if state.values else []  # type: ignore[attr-defined]
-        
+
         # Cache the conversation for future use
         if messages:
             try:
                 await cache_service.cache_conversation(session_id, messages)
-                logger.info(
-                    "conversation_cached",
-                    session_id=session_id,
-                    message_count=len(messages)
-                )
+                logger.info("conversation_cached", session_id=session_id, message_count=len(messages))
             except Exception as e:
-                logger.error(
-                    "conversation_cache_set_failed",
-                    error=str(e),
-                    session_id=session_id
-                )
-        
+                logger.error("conversation_cache_set_failed", error=str(e), session_id=session_id)
+
         return messages
 
     @staticmethod
@@ -3147,11 +3145,7 @@ class LangGraphAgent:
                 await cache_service.invalidate_conversation(session_id)
                 logger.info("conversation_cache_invalidated", session_id=session_id)
             except Exception as e:
-                logger.error(
-                    "conversation_cache_invalidation_failed",
-                    error=str(e),
-                    session_id=session_id
-                )
+                logger.error("conversation_cache_invalidation_failed", error=str(e), session_id=session_id)
 
             # Make sure the pool is initialized in the current event loop
             conn_pool = await self._get_connection_pool()

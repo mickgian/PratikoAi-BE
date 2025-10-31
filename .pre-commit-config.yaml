@@ -30,7 +30,6 @@ repos:
     rev: 24.1.1
     hooks:
       - id: black
-        language_version: python3.11
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
@@ -45,3 +44,14 @@ repos:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
         exclude: .*\.(lock|example)$
+
+  # Run critical streaming tests before commit
+  - repo: local
+    hooks:
+      - id: streaming-tests
+        name: Run streaming protection tests
+        entry: bash -c 'source scripts/set_env.sh development && python -m pytest tests/test_sse_format_validation.py tests/langgraph/test_buffered_streaming_timing.py::TestBufferedStreamingRegressionProtection -v --tb=line -x'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

@@ -1,0 +1,74 @@
+name: 🧪 Tests
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - 'DEV-*'
+  pull_request:
+    branches:
+      - master
+      - develop
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv sync
+
+      - name: Run streaming protection tests (critical)
+        run: |
+          source scripts/set_env.sh development
+          uv run pytest \
+            tests/test_sse_format_validation.py \
+            tests/langgraph/test_buffered_streaming_timing.py::TestBufferedStreamingRegressionProtection \
+            -v --tb=line -x
+        continue-on-error: false
+
+      - name: Run all tests with coverage
+        if: success()
+        run: |
+          source scripts/set_env.sh development
+          uv run pytest tests/ \
+            -v \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing
+
+      - name: Upload coverage reports
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            htmlcov/
+            coverage.xml
+          retention-days: 30
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request' && success()
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 70
+          MINIMUM_ORANGE: 50

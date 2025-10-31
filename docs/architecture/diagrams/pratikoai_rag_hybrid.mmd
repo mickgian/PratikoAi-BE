@@ -54,9 +54,9 @@ flowchart TD
     S025 -->|No| S031
 
     %% If Golden hits, still consult KB; if KB newer or conflicting -> go to LLM with context
-    S026 --> S027{S027 · KB newer than Golden as of<br/>or conflicting tags?}
-    S027 -->|No| S028[S028 · Serve Golden answer<br/>with citations]
-    S027 -->|Yes| S029[S029 · ContextBuilder.merge<br/>facts and KB docs and doc facts if present]
+    S026 --> S027{S027 · can_serve_from_golden<br/>kb_epoch <= golden_epoch AND<br/>no conflicting tags?}
+    S027 -->|Yes| S028[S028 · Serve Golden answer<br/>with citations]
+    S027 -->|No| S029[S029 · ContextBuilder.merge<br/>facts and KB docs and doc facts if present]
     S028 --> S030[S030 · Return ChatResponse]
 
     %% Domain classification
@@ -71,13 +71,15 @@ flowchart TD
     S037 --> S034
     S038 --> S034
 
-    %% Always fetch KB context before LLM (RSS never bypassed)
-    S034 --> S039[S039 · KnowledgeSearch.retrieve_topk<br/>BM25 and vectors and recency boost]
+    %% NEW: Retrieval Pre-Gate (Policy-Gated Autonomy)
+    S034 --> S034a{S034a · retrieval_gate<br/>Needs retrieval?<br/>Check time-sensitive/regulatory hints}
+    S034a -->|Yes| S039[S039 · KnowledgeSearch.retrieve_topk<br/>BM25 and vectors and recency boost]
+    S034a -->|No| S041[S041 · LangGraphAgent._get_system_prompt<br/>Select appropriate prompt<br/>with tool_choice=none]
     S029 --> S039
     S039 --> S040[S040 · ContextBuilder.merge<br/>facts and KB docs and optional doc facts]
 
     %% Prompt and provider
-    S040 --> S041[S041 · LangGraphAgent._get_system_prompt<br/>Select appropriate prompt]
+    S040 --> S041
     S015 --> S041
     S041 --> S042{S042 · Classification exists<br/>and confidence at least 0.6?}
     S042 -->|Yes| S043[S043 · PromptTemplateManager.get_prompt<br/>Get domain-specific prompt]
@@ -255,10 +257,18 @@ flowchart TD
 
     %% Internal Steps (108 total) - Pure transforms, no isolation
     %% These steps are styled with light green dashed borders to distinguish from Canonical Nodes
-    class Start,S001,S004,S005,S007,S008,S010,S011,S012,S014,S015,S016,S017,S018,S019,S021,S022,S023,S025,S027,S028,S029,S030,S032,S033,S034,S035,S036,S037,S038,S039,S040,S043,S044,S045,S046,S047,S049,S051,S052,S053,S054,S057,S058,S060,S061,S063,S065,S066,S068,S069,S070,S071,S072,S073,S074,S076,S077,S078,S084,S085,S086,S087,S088,S089,S090,S091,S092,S093,S094,S095,S096,S097,S098,S099,S100,S101,S102,S103,S106,S107,S108,S110,S111,S113,S114,S115,S116,S117,S118,S119,S120,S121,S122,S123,S124,S125,S126,S127,S128,S129,S130,S131,S132,S133,S134,S135 internalNode
+    class Start,S001,S004,S005,S007,S008,S010,S011,S012,S014,S015,S016,S017,S018,S019,S021,S022,S023,S025,S027,S028,S029,S030,S032,S033,S034,S034a,S035,S036,S037,S038,S039,S040,S043,S044,S045,S046,S047,S049,S051,S052,S053,S054,S057,S058,S060,S061,S063,S065,S066,S068,S069,S070,S071,S072,S073,S074,S076,S077,S078,S084,S085,S086,S087,S088,S089,S090,S091,S092,S093,S094,S095,S096,S097,S098,S099,S100,S101,S102,S103,S106,S107,S108,S110,S111,S113,S114,S115,S116,S117,S118,S119,S120,S121,S122,S123,S124,S125,S126,S127,S128,S129,S130,S131,S132,S133,S134,S135 internalNode
 
     %% Databases
     class RedisCache,PostgresDB,GoldenSetDB,KnowledgeStore databaseNode
+
+    %% Policy-Gated Autonomy Note
+    subgraph PolicyNote ["Policy-Gated Autonomy"]
+        PN1[S034a: Retrieval Pre-Gate]
+        PN2[When 'No': Retrieval and tool calls disabled]
+        PN3[When 'Yes': Allow max 1 tool call per turn]
+        PN4[S027: Serve Golden only if kb_epoch <= golden_epoch]
+    end
 
     %% Legend
     subgraph Legend

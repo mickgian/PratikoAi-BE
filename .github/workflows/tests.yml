@@ -47,7 +47,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync
+          uv sync --all-groups
 
       - name: Set up test environment variables
         run: |

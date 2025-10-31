@@ -57,11 +57,39 @@ async def node_step_64(state: RAGState) -> RAGState:
                 response = res.get("response", res.get("llm_response"))
                 llm["response"] = response
                 mirror(state, "llm_response", response)
+
+                # FIX: Add assistant message to messages list for checkpointer persistence
+                # Handle both LLMResponse objects and dict formats
+                content = None
+                if isinstance(response, dict):
+                    content = response.get("content")
+                elif hasattr(response, 'content'):
+                    content = response.content
+
+                if content:
+                    state.setdefault("messages", []).append({
+                        "role": "assistant",
+                        "content": content
+                    })
         elif "response" in res or "llm_response" in res:
             response = res.get("response", res.get("llm_response"))
             llm["response"] = response
             llm["success"] = True
             mirror(state, "llm_response", response)
+
+            # FIX: Add assistant message to messages list for checkpointer persistence
+            # Handle both LLMResponse objects and dict formats
+            content = None
+            if isinstance(response, dict):
+                content = response.get("content")
+            elif hasattr(response, 'content'):
+                content = response.content
+
+            if content:
+                state.setdefault("messages", []).append({
+                    "role": "assistant",
+                    "content": content
+                })
         elif "llm_success" in res:
             llm["success"] = res["llm_success"]
         else:

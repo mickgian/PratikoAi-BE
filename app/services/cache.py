@@ -117,14 +117,82 @@ class CacheService:
 
     def _generate_query_key(self, query_hash: str) -> str:
         """Generate cache key for LLM query response.
-        
+
         Args:
             query_hash: Hash of the query
-            
+
         Returns:
             Cache key for the query response
         """
         return f"llm_response:{query_hash}"
+
+    def _generate_hardened_response_key(
+        self,
+        query_signature: str,
+        doc_hashes: Optional[List[str]],
+        epochs: Dict[str, int],
+        prompt_version: str,
+        provider: str,
+        model: str,
+        temperature: float,
+        tools_used: bool
+    ) -> str:
+        """Generate a hardened cache key with epochs and metadata.
+
+        This method generates a cache key that invalidates when any of:
+        - Query signature changes
+        - Document hashes change
+        - Any epoch changes (kb_epoch, golden_epoch, ccnl_epoch, parser_version)
+        - Prompt version changes
+        - Provider/model/temperature changes
+        - Tools used flag changes
+
+        Args:
+            query_signature: Canonical query signature hash
+            doc_hashes: List of document SHA-256 hashes (or None)
+            epochs: Dictionary of epochs:
+                - kb_epoch: Knowledge base epoch
+                - golden_epoch: Golden set epoch (optional)
+                - ccnl_epoch: CCNL database epoch (optional)
+                - parser_version: Document parser version (optional)
+            prompt_version: Version of the prompt template
+            provider: LLM provider name (e.g., "openai", "anthropic")
+            model: Model name (e.g., "gpt-4o-mini", "claude-3-sonnet")
+            temperature: Temperature setting
+            tools_used: Whether tools were used in generating the response
+
+        Returns:
+            SHA-256 hash to use as cache key
+
+        Examples:
+            >>> service = CacheService()
+            >>> key = service._generate_hardened_response_key(
+            ...     "abc123",
+            ...     ["doc1hash", "doc2hash"],
+            ...     {"kb_epoch": 100, "golden_epoch": 95},
+            ...     "v1.2.3",
+            ...     "openai",
+            ...     "gpt-4o-mini",
+            ...     0.2,
+            ...     True
+            ... )
+            >>> len(key)
+            64
+        """
+        payload = {
+            "sig": query_signature,
+            "doc_hashes": sorted(doc_hashes or []),
+            "epochs": epochs,
+            "prompt_version": prompt_version,
+            "provider": provider,
+            "model": model,
+            "temperature": round(temperature, 2),
+            "tools_used": tools_used,
+        }
+
+        # Generate deterministic JSON and hash it
+        blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+        return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
     async def get_cached_response(
         self, 

@@ -12,7 +12,8 @@
       "Read(//private/tmp/test_logs/rag_traces/**)",
       "Bash(python3:*)",
       "Bash(find:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Read(//Users/micky/WebstormProjects/PratikoAiWebApp/**)"
     ],
     "deny": [],
     "ask": []

@@ -4,11 +4,9 @@ Internal step - merges facts, KB docs, and optional document facts into unified 
 """
 
 from app.core.langgraph.types import RAGState
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log
+from app.observability.rag_logging import rag_step_timer_compat as rag_step_timer
 from app.orchestrators.facts import step_40__build_context
-from app.observability.rag_logging import (
-    rag_step_log_compat as rag_step_log,
-    rag_step_timer_compat as rag_step_timer,
-)
 
 STEP = 40
 
@@ -25,25 +23,29 @@ async def node_step_40(state: RAGState) -> RAGState:
     rag_step_log(STEP, "enter")
 
     with rag_step_timer(STEP):
-        res = await step_40__build_context(
-            messages=state.get("messages", []),
-            ctx=dict(state)
-        )
+        res = await step_40__build_context(messages=state.get("messages", []), ctx=dict(state))
 
-        # Store merged context
-        state["context"] = res.get("context", "")
+        # Store merged context - orchestrator returns "merged_context" key
+        merged_context = res.get("merged_context", "")
+        state["context"] = merged_context
+
+        # Extract source distribution from orchestrator response
+        source_dist = res.get("source_distribution", {})
+
         state["context_metadata"] = {
-            "facts_count": res.get("facts_count", 0),
-            "kb_docs_count": res.get("kb_docs_count", 0),
-            "doc_facts_count": res.get("doc_facts_count", 0),
-            "total_chars": len(res.get("context", "")),
-            "timestamp": res.get("timestamp")
+            "facts_count": source_dist.get("facts", 0),
+            "kb_docs_count": source_dist.get("kb_docs", 0),
+            "doc_facts_count": source_dist.get("document_facts", 0),
+            "total_chars": len(merged_context),
+            "token_count": res.get("token_count", 0),
+            "quality_score": res.get("context_quality_score", 0.0),
+            "timestamp": res.get("timestamp"),
         }
 
     rag_step_log(
         STEP,
         "exit",
         context_length=len(state.get("context", "")),
-        facts_count=state["context_metadata"].get("facts_count", 0)
+        facts_count=state["context_metadata"].get("facts_count", 0),
     )
     return state

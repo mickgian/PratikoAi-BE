@@ -157,15 +157,24 @@ def is_done_event(sse_event: str) -> bool:
     """Check if an SSE event is a 'done' event.
 
     Args:
-        sse_event: Valid SSE event string
+        sse_event: SSE event string (may be valid or invalid)
 
     Returns:
-        bool: True if this is a done event (done=true)
-
-    Raises:
-        ValueError: If SSE event is invalid
+        bool: True if this is a done event (done=true), False otherwise (including invalid events)
     """
-    _validate_sse_format(sse_event)
+    # SSE comments (starting with :) are not done events
+    if sse_event.startswith(":"):
+        return False
+
+    # Invalid events that don't start with data: are not done events
+    if not sse_event.startswith("data: "):
+        return False
+
+    # Validate format - if invalid, return False
+    try:
+        _validate_sse_format(sse_event)
+    except ValueError:
+        return False
 
     # Extract JSON
     json_start = len("data: ")
@@ -173,5 +182,8 @@ def is_done_event(sse_event: str) -> bool:
     json_str = sse_event[json_start:json_end]
 
     # Parse and check done flag
-    json_obj = json.loads(json_str)
-    return json_obj.get("done", False)
+    try:
+        json_obj = json.loads(json_str)
+        return json_obj.get("done", False)
+    except Exception:
+        return False

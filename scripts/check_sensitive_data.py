@@ -100,6 +100,10 @@ def check_file_for_sensitive_data(filepath: str) -> List[Tuple[int, str, str]]:
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             for line_num, line in enumerate(f, 1):
+                # Skip lines with pragma allowlist comment
+                if "pragma: allowlist secret" in line:
+                    continue
+
                 for pattern, description in SENSITIVE_PATTERNS:
                     if re.search(pattern, line, re.IGNORECASE):
                         # Don't flag example, placeholder, or test values

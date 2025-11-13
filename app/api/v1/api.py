@@ -6,29 +6,33 @@ endpoints like authentication and chatbot functionality.
 
 from fastapi import APIRouter
 
-from app.api.v1.auth import router as auth_router
-from app.api.v1.chatbot import router as chatbot_router
-from app.api.v1.payments import router as payments_router
 from app.api.v1.analytics import router as analytics_router
-from app.api.v1.privacy import router as privacy_router
+from app.api.v1.auth import router as auth_router
+from app.api.v1.ccnl_calculations import router as ccnl_calculations_router
+from app.api.v1.ccnl_search import router as ccnl_search_router
+from app.api.v1.chatbot import router as chatbot_router
+from app.api.v1.data_sources import router as data_sources_router
+from app.api.v1.demo import router as demo_router
+from app.api.v1.documents_minimal import router as documents_router
+
+# from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router
+from app.api.v1.financial_validation import router as financial_validation_router
+from app.api.v1.health import router as health_router
 from app.api.v1.italian import router as italian_router
-from app.api.v1.italian_subscriptions import router as italian_subscriptions_router  
+from app.api.v1.italian_subscriptions import router as italian_subscriptions_router
+
 # from app.api.v1.data_export import router as data_export_router
 # Temporarily disabled routers due to import issues
 # from app.api.v1.search import router as search_router
 # from app.api.v1.security import router as security_router
 # from app.api.v1.performance import router as performance_router
 from app.api.v1.monitoring import router as monitoring_router
-from app.api.v1.regulatory import router as regulatory_router
+from app.api.v1.payments import router as payments_router
+from app.api.v1.privacy import router as privacy_router
+
 # from app.api.v1.faq import router as faq_router
 from app.api.v1.regional_taxes import router as regional_taxes_router
-from app.api.v1.documents_minimal import router as documents_router
-from app.api.v1.demo import router as demo_router
-# from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router
-from app.api.v1.financial_validation import router as financial_validation_router
-from app.api.v1.ccnl_calculations import router as ccnl_calculations_router
-from app.api.v1.ccnl_search import router as ccnl_search_router
-from app.api.v1.data_sources import router as data_sources_router
+from app.api.v1.regulatory import router as regulatory_router
 from app.api.v1.success_criteria import router as success_criteria_router
 from app.core.logging import logger
 
@@ -47,6 +51,7 @@ api_router.include_router(italian_subscriptions_router, prefix="/billing", tags=
 # api_router.include_router(security_router, prefix="/security", tags=["security"])
 # api_router.include_router(performance_router, prefix="/performance", tags=["performance"])
 api_router.include_router(monitoring_router, prefix="/monitoring", tags=["monitoring"])
+api_router.include_router(health_router, tags=["health"])
 api_router.include_router(regulatory_router, prefix="/regulatory", tags=["regulatory"])
 # api_router.include_router(faq_router, tags=["faq"])
 api_router.include_router(regional_taxes_router, prefix="/taxes", tags=["regional-taxes"])

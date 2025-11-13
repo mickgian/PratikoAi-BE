@@ -64,6 +64,8 @@ dependencies = [
     "aiohttp>=3.8.0",
     "asyncio-throttle>=1.0.2",
     "reportlab>=4.4.3",
+    # Vector database dependencies
+    "pgvector>=0.2.0",
 ]
 
 [project.optional-dependencies]

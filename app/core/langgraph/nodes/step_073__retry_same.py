@@ -1,9 +1,14 @@
 """Node wrapper for Step 73: Retry Same."""
 
-from typing import Dict, Any
+from typing import (
+    Any,
+    Dict,
+)
+
 from app.core.langgraph.types import RAGState
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log
+from app.observability.rag_logging import rag_step_timer_compat as rag_step_timer
 from app.orchestrators.providers import step_73__retry_same
-from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 73
 
@@ -39,24 +44,23 @@ async def node_step_73(state: RAGState) -> RAGState:
         if "retry_same" in res:
             provider["retry_same"] = res["retry_same"]
 
-        # CRITICAL: Map attempt_number to state.retries (persistent counter)
+        # CRITICAL: Map attempt_number to state.retries AND top-level (persistent counters)
         if "attempt_number" in res:
             retries["llm_attempts"] = res["attempt_number"]
+            state["attempt_number"] = res["attempt_number"]  # Also store at top level
 
         # Enforce hard cap from env (safety net)
         import os
+
         max_retries = int(os.getenv("RAG_MAX_RETRIES", "2"))
         if retries.get("llm_attempts", 0) > max_retries:
             # Override decision - force error route
             decisions["force_error"] = True
             from app.core.logging import logger
+
             logger.error(
                 f"retry_hard_cap_exceeded",
-                extra={
-                    'step': 73,
-                    'llm_attempts': retries["llm_attempts"],
-                    'max_retries': max_retries
-                }
+                extra={"step": 73, "llm_attempts": retries["llm_attempts"], "max_retries": max_retries},
             )
 
         _merge(provider, res.get("provider_extra", {}))

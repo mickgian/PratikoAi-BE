@@ -1,0 +1,82 @@
+# Documentation Directory Index
+
+**Auto-generated:** 2025-11-13 12:41:03
+
+> 💡 This directory contains 18 technical documentation files plus 146 architecture documents.
+
+---
+
+## 🏗️ Architecture
+
+**Complete system architecture and RAG pipeline documentation:**
+
+- **[Architecture Overview](architecture/INDEX.md)** - Main architecture index
+  - RAG flow implementation documents
+  - Policy gated autonomy
+  - 146 total architecture documents including 135 detailed steps
+
+---
+
+## 🎯 Features & Capabilities
+
+- **[Atomic Facts Extraction System - Implementation Summary](ATOMIC_FACTS_IMPLEMENTATION_SUMMARY.md)** ✅ Current
+  - The **Atomic Facts Extraction System** has been fully implemented and integrated into PratikoAI's query processing pipeline using **Test-Driven Dev...
+- **[Atomic Facts Integration in PratikoAI Query Processing](ATOMIC_FACTS_INTEGRATION.md)** ✅ Current
+  - The Atomic Facts Extraction System has been integrated into PratikoAI's query processing pipeline to enhance classification accuracy, improve searc...
+- **[Automated FAQ Generation System](FAQ_AUTOMATION_SYSTEM.md)** ✅ Current
+  - The Automated FAQ Generation System for PratikoAI analyzes user query patterns, automatically generates high-quality FAQ entries from successful LL...
+- **[Database Encryption at Rest - PratikoAI](DATABASE_ENCRYPTION.md)** ✅ Current
+  - PratikoAI implements comprehensive AES-256 database encryption at rest to protect sensitive Italian tax/financial data and ensure compliance with G...
+- **[Expert Management Guide - Manual Expert Creation](EXPERT_MANAGEMENT_GUIDE.md)** ✅ Current
+  - This guide provides step-by-step instructions for manually creating and managing expert profiles in PratikoAI's expert feedback system. Since there...
+- **[GDPR Article 20 Data Export System](GDPR_DATA_EXPORT.md)** ✅ Current
+  - This document provides comprehensive documentation for PratikoAI's GDPR Article 20 "Right to data portability" compliance system, specifically desi...
+- **[GDPR Data Deletion System - PratikoAI](GDPR_DATA_DELETION.md)** ✅ Current
+  - PratikoAI implements a comprehensive GDPR Article 17 "Right to be forgotten" compliance system that ensures complete and irreversible deletion of u...
+- **[Italian Market Annual Subscription Plans](ITALIAN_SUBSCRIPTIONS.md)** ✅ Current
+  - This document provides comprehensive documentation for the Italian market subscription system with support for annual plans, IVA calculations, and ...
+- **[Quality Analysis System with Expert Feedback Loop](QUALITY_ANALYSIS_SYSTEM.md)** ✅ Current
+  - The Quality Analysis System for PratikoAI provides a comprehensive expert feedback loop and advanced prompt engineering solution specifically desig...
+
+## 🗄️ Database & Search
+
+- **[Advanced Vector Search Features for PratikoAI](ADVANCED_VECTOR_SEARCH.md)** ✅ Current
+  - The Advanced Vector Search system for PratikoAI combines PostgreSQL full-text search with Pinecone vector embeddings to boost answer quality from 6...
+- **[PostgreSQL Full-Text Search Implementation](PostgreSQL_Full_Text_Search.md)** ✅ Current
+  - This document provides comprehensive information about the PostgreSQL Full-Text Search (FTS) implementation for PratikoAI knowledge base.
+- **[PostgreSQL RAG Schema Report](schema_report.md)** ⚠️ Deprecated
+  - **Generated:** 2025-11-03T10:11:28.432068Z **Database:** `POSTGRES_URL`
+- **[Quality Analysis System with Expert Feedback Loop](QUALITY_ANALYSIS_SYSTEM.md)** ✅ Current
+  - The Quality Analysis System for PratikoAI provides a comprehensive expert feedback loop and advanced prompt engineering solution specifically desig...
+
+## ⚙️ Operations
+
+- **[LLM Retry Mechanisms for PratikoAI](LLM_RETRY_MECHANISMS.md)** ✅ Current
+  - This document provides comprehensive documentation for the robust retry mechanisms implemented for LLM API calls in PratikoAI, ensuring production ...
+- **[Load Testing for PratikoAI](LOAD_TESTING.md)** ✅ Current
+  - This document provides comprehensive documentation for the load testing system implemented to validate that PratikoAI can handle 50-100 concurrent ...
+
+## 📚 Other
+
+- **[Documentation Directory Index](INDEX.md)** ✅ Current
+  - **Auto-generated:** 2025-11-13 12:40:25
+- **[Environment Inventory Report](env-inventory.md)** ✅ Current
+  - **Generated**: 2025-09-11 **Version**: 1.0.0
+- **[Pinecone Guardrails Implementation](pinecone-guardrails.md)** ✅ Current
+  - This document describes the implemented Pinecone environment guardrails, provider selection logic, fallback behavior, and smoke test verification f...
+- **[Regional Tax Variations for PratikoAI](REGIONAL_TAX_VARIATIONS.md)** ✅ Current
+  - The Regional Tax Variations system provides comprehensive support for Italian regional and municipal tax calculations, accounting for the significa...
+
+---
+
+## 📊 Statistics
+
+- **Feature Docs:** 9
+- **Database/Search:** 4
+- **Operations:** 2
+- **Architecture:** 146
+- **Total:** 164
+
+---
+
+**Last Updated:** 2025-11-13 12:41:03

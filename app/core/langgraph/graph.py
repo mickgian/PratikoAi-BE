@@ -16,7 +16,10 @@ from typing import (
 
 from asgiref.sync import sync_to_async
 from langchain_core.messages import (
+    AIMessage,
     BaseMessage,
+    HumanMessage,
+    SystemMessage,
     ToolMessage,
     convert_to_openai_messages,
 )
@@ -2486,11 +2489,19 @@ class LangGraphAgent:
             # Convert Message objects to dicts for graph compatibility
             message_dicts = [{"role": msg.role, "content": msg.content} for msg in messages]
 
+            # Extract user query from messages for knowledge retrieval
+            user_query_text = ""
+            for msg in messages:
+                if msg.role == "user":
+                    user_query_text = msg.content
+                    break
+
             initial_state = {
                 "request_id": session_id,  # RAGState requires request_id
                 "messages": message_dicts,
                 "session_id": session_id,
                 "user_id": user_id,
+                "user_query": user_query_text,  # User query for KB retrieval
                 "streaming": {"requested": True},  # Nested structure for StreamCheck routing
             }
 
@@ -2538,6 +2549,11 @@ class LangGraphAgent:
                 graph_exists=self._graph is not None,
                 graph_has_checkpointer=hasattr(self._graph, "checkpointer") if self._graph else False,
             )
+
+            # CRITICAL: Yield SSE comment immediately to establish connection
+            # This prevents timeout during the 33-second graph execution in ainvoke()
+            # SSE spec allows comment lines (starting with ":") which clients ignore
+            yield ": starting\n\n"
 
             try:
                 state = await self._graph.ainvoke(initial_state, config=config_to_use)
@@ -3122,7 +3138,38 @@ class LangGraphAgent:
 
     @staticmethod
     def __process_messages(messages: list[BaseMessage]) -> list[Message]:
-        openai_style_messages = convert_to_openai_messages(messages)
+        """Convert messages from state to Message objects.
+
+        Messages may be stored as dicts, Message objects, or BaseMessage objects.
+        We need to convert them to BaseMessage objects before passing to convert_to_openai_messages.
+        """
+        # Convert dict/Message objects to BaseMessage objects
+        base_messages = []
+        for msg in messages:
+            # Already a BaseMessage
+            if isinstance(msg, BaseMessage):
+                base_messages.append(msg)
+            # Dict or Message object - convert based on role
+            else:
+                # Get role and content (handle both dict and Message object)
+                if isinstance(msg, dict):
+                    role = msg.get("role", "user")
+                    content = msg.get("content", "")
+                else:
+                    # Pydantic Message object
+                    role = getattr(msg, "role", "user")
+                    content = getattr(msg, "content", "")
+
+                # Convert to appropriate BaseMessage type
+                if role == "system":
+                    base_messages.append(SystemMessage(content=content))
+                elif role == "assistant":
+                    base_messages.append(AIMessage(content=content))
+                else:  # user or any other role
+                    base_messages.append(HumanMessage(content=content))
+
+        # Now convert to OpenAI format
+        openai_style_messages = convert_to_openai_messages(base_messages)
         # keep just assistant and user messages
         return [
             Message(**message)

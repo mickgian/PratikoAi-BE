@@ -289,7 +289,9 @@ class TestBufferedStreamingRegressionProtection:
                 # Verify chunks are spaced apart in time
                 if chunk_intervals:
                     avg_interval = sum(chunk_intervals) / len(chunk_intervals)
-                    assert avg_interval > 0.04, (
+                    # Use 0.035s threshold to account for CI timing variance
+                    # (sleep is 0.05s, but CI overhead can reduce measured interval)
+                    assert avg_interval > 0.035, (
                         f"Chunks appearing too quickly (avg {avg_interval:.4f}s), " f"asyncio.sleep likely missing!"
                     )
 

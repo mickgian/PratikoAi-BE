@@ -88,11 +88,3 @@ jobs:
             htmlcov/
             coverage.xml
           retention-days: 30
-
-      - name: Comment coverage on PR
-        if: github.event_name == 'pull_request' && (success() || failure())
-        uses: py-cov-action/python-coverage-comment-action@v3
-        with:
-          GITHUB_TOKEN: ${{ github.token }}
-          MINIMUM_GREEN: 70
-          MINIMUM_ORANGE: 50

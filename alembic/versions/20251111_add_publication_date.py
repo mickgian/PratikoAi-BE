@@ -1,7 +1,7 @@
 """Add publication_date column to knowledge_items
 
 Revision ID: 20251111_add_pub_date
-Revises:
+Revises: extraction_quality_junk_20251103
 Create Date: 2025-11-11
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20251111_add_pub_date"
-down_revision = None  # Set to your latest revision
+down_revision = "extraction_quality_junk_20251103"
 branch_labels = None
 depends_on = None
 

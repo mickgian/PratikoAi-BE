@@ -2555,8 +2555,27 @@ class LangGraphAgent:
             # SSE spec allows comment lines (starting with ":") which clients ignore
             yield ": starting\n\n"
 
+            # Keepalive mechanism: Send ": keepalive\n\n" every 5 seconds during RAG processing
+            # This prevents frontend timeout (30-120s) for long queries
             try:
-                state = await self._graph.ainvoke(initial_state, config=config_to_use)
+                # Create the ainvoke task
+                ainvoke_task = asyncio.create_task(self._graph.ainvoke(initial_state, config=config_to_use))
+
+                # Wait for ainvoke with periodic keepalive checks
+                keepalive_interval = 5.0  # seconds
+                while not ainvoke_task.done():
+                    try:
+                        # Wait up to keepalive_interval for task to complete
+                        await asyncio.wait_for(asyncio.shield(ainvoke_task), timeout=keepalive_interval)
+                        # Task completed within interval
+                        break
+                    except asyncio.TimeoutError:
+                        # Timeout reached, send keepalive and continue waiting
+                        logger.debug("sending_keepalive_during_rag", session_id=session_id)
+                        yield ": keepalive\n\n"
+
+                # Get the result from completed task
+                state = await ainvoke_task
             except Exception as graph_error:
                 # Get full traceback for debugging
                 tb_str = "".join(traceback.format_exception(type(graph_error), graph_error, graph_error.__traceback__))

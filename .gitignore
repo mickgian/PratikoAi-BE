@@ -41,3 +41,6 @@ load_test.log
 CLAUDE.md
 CLAUDE.local.md
 CLAUDE_ORIGINAL.md
+
+# Claude Code settings - keep local only
+.claude/settings.local.json

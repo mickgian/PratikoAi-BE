@@ -5,59 +5,46 @@
 **Node ID:** `KBContextCheck`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `KBContextCheck` (KnowledgeSearch.context_topk fetch recent KB for changes).
+Fetches recent Knowledge Base changes when a high-confidence Golden Set match occurs. This step validates whether the KB has newer or conflicting information that should be merged with or override the Golden Set answer. Routes to Step 27 for freshness/conflict evaluation.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Node
+- **Paths / classes:** `app/core/langgraph/nodes/step_026__kb_context_check.py` - `node_step_26`, `app/orchestrators/kb.py:21` - `step_26__kbcontext_check()`
+- **Status:** ✅
+- **Behavior notes:** Node orchestrator that fetches recent KB changes using KnowledgeSearchService. Parses Golden Set timestamp for recency comparison, filters KB results to last 14 days, converts results to dicts for context preservation. Routes to Step 27 (KBDelta) for conflict evaluation.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - graceful degradation on service errors, KB service already battle-tested
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 26 (RAG.kb.knowledgesearch.context.topk.fetch.recent.kb.for.changes): KnowledgeSearch.context_topk fetch recent KB for changes | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (fetch recent changes, no changes, context preservation, KB metadata, logging, error handling, golden timestamp parsing)
+- [x] Integration tests (Step 25→26→27 flow, Step 26→27 context preparation)
+- [x] Parity tests (KB service integration)
+- [x] Implementation changes (async orchestrator wrapping KnowledgeSearchService.fetch_recent_kb_for_changes)
+- [x] Observability: add structured log line
+  `RAG STEP 26 (RAG.kb.knowledgesearch.context.topk.fetch.recent.kb.for.changes): KnowledgeSearch.context_topk fetch recent KB for changes | attrs={has_recent_changes, recent_changes_count, query, processing_stage}`
+- [x] Feature flag / config if needed (none required - uses service-level config)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.37
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/services/vector_providers/pinecone_provider.py:113 — app.services.vector_providers.pinecone_provider.PineconeProvider.upsert (score 0.37)
-   Evidence: Score 0.37, Upsert vectors into Pinecone index.
-2) app/services/vector_providers/pinecone_provider.py:161 — app.services.vector_providers.pinecone_provider.PineconeProvider.query (score 0.37)
-   Evidence: Score 0.37, Query vectors from Pinecone index.
-3) app/services/vector_providers/pinecone_provider.py:21 — app.services.vector_providers.pinecone_provider.PineconeProvider (score 0.36)
-   Evidence: Score 0.36, Pinecone vector search provider.
-4) app/models/knowledge.py:13 — app.models.knowledge.KnowledgeItem (score 0.36)
-   Evidence: Score 0.36, Knowledge base item with full-text search support.
-
-This model stores processed ...
-5) app/models/knowledge.py:112 — app.models.knowledge.KnowledgeQuery (score 0.36)
-   Evidence: Score 0.36, Query model for knowledge search requests
+Wiring information:
+- Node name: node_step_26
+- Incoming edges: [25]
+- Outgoing edges: [27]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

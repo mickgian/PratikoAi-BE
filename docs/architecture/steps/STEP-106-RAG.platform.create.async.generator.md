@@ -1,70 +1,50 @@
 # RAG STEP 106 — Create async generator (RAG.platform.create.async.generator)
 
-**Type:** process  
-**Category:** platform  
+**Type:** process
+**Category:** platform
 **Node ID:** `AsyncGen`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `AsyncGen` (Create async generator).
+Creates an async generator for streaming response delivery. Configures streaming parameters, session data, and provider settings to enable real-time response streaming. Essential step that bridges streaming setup to actual response generation, enabling browser-compatible async iteration. Routes from StreamSetup (Step 105) to SinglePassStream (Step 107). This step is derived from the Mermaid node: `AsyncGen` (Create async generator).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/core/langgraph/nodes/step_106__async_gen.py` - `node_step_106`, `app/orchestrators/platform.py:2721` - `step_106__async_gen()`
+- **Role:** Internal
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator that creates async generator with proper streaming configuration, session data, and provider settings. Handles generator configuration, validation, and metadata preparation. Routes to SinglePassStream (Step 107) with complete async generator ready for consumption.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - thin orchestrator preserving existing async generator creation logic
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 106 (RAG.platform.create.async.generator): Create async generator | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (async generator creation, configuration settings, complex messages, context preservation, metadata addition, streaming parameters, custom options, validation requirements, provider-specific config, logging)
+- [x] Parity tests (generator creation behavior verification)
+- [x] Integration tests (StreamSetup→AsyncGen→SinglePassStream flow, error handling)
+- [x] Implementation changes (async generator creation orchestrator)
+- [x] Observability: add structured log line
+  `RAG STEP 106 (RAG.platform.create.async.generator): Create async generator | attrs={step, request_id, generator_created, generator_configured, next_step, processing_stage}`
+- [x] Feature flag / config if needed (none required - uses existing async generator infrastructure)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) feature-flags/dependency_tracking/cross_repo_tracker.py:771 — feature-flags.dependency_tracking.cross_repo_tracker.sync (score 0.27)
-   Evidence: Score 0.27, Sync dependencies from all repositories.
-2) app/schemas/auth.py:69 — app.schemas.auth.UserCreate.validate_password (score 0.25)
-   Evidence: Score 0.25, Validate password strength.
-
-Args:
-    v: The password to validate
-
-Returns:
-   ...
-3) evals/helpers.py:169 — evals.helpers.generate_report (score 0.25)
-   Evidence: Score 0.25, Generate a JSON report file with evaluation results.
-
-Args:
-    report: The repo...
-4) load_testing/config.py:263 — load_testing.config.TestDataGenerator.generate_italian_queries (score 0.24)
-   Evidence: Score 0.24, Generate realistic Italian tax/regulatory queries
-5) load_testing/config.py:279 — load_testing.config.TestDataGenerator.generate_tax_calculation_requests (score 0.24)
-   Evidence: Score 0.24, Generate tax calculation test requests
+Wiring information:
+- Node name: node_step_106
+- Incoming edges: [105]
+- Outgoing edges: [107]
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for AsyncGen
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

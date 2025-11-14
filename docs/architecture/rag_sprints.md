@@ -2,7 +2,7 @@
 
 This plan sequences the 135 RAG steps into pragmatic sprints with clear scope and commands to open/issues per sprint.
 
-> Single source of truth: `docs/architecture/diagrams/pratikoai_rag.mmd`  
+> Single source of truth: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`  
 > Backlog view: `docs/architecture/rag_conformance.md`  
 > Step docs live in: `docs/architecture/steps/STEP-*.md`
 
@@ -24,14 +24,14 @@ _No step closures planned here._
 
 ---
 
-## Sprint 1 — Core Pipeline (Week 1)
+## Sprint 1 — Core Pipeline (Week 1) ✅ **COMPLETED**
 
-**Steps**: 20, 39, 59, 79, 82, 64  
-- 20 Golden fast-path gate  
-- 39 KBPreFetch (BM25+vector+recency)  
-- 59 CheckCache (response cache key)  
-- 79 Tool type? (router)  
-- 82 DocIngest pipeline scaffold  
+**Steps**: 20, 39, 59, 79, 82, 64
+- 20 Golden fast-path gate
+- 39 KBPreFetch (BM25+vector+recency)
+- 59 CheckCache (response cache key)
+- 79 Tool type? (router)
+- 82 DocIngest pipeline scaffold
 - 64 LLMCall (provider invocation)
 
 **Create issues**
@@ -53,7 +53,8 @@ Router correctness > 95%
 
 DocIngest skeleton in place (no security holes)
 
-## Sprint 2 — Retrieval & Prompting
+## Sprint 2 — Retrieval & Prompting ✅ **COMPLETED**
+
 **Steps**: 26, 27, 40, 41, 42, 43, 44, 45, 46, 47
 
 26 KBContextCheck
@@ -70,11 +71,11 @@ DocIngest skeleton in place (no security holes)
 
 44 DefaultSysPrompt
 
-45 CheckSysMsg
+45 CheckSysMsg ✅
 
-46 ReplaceMsg
+46 ReplaceMsg ✅
 
-47 InsertMsg
+47 InsertMsg ✅
 
 Create issues
 
@@ -85,7 +86,8 @@ python scripts/rag_issue_prompter.py --create \
   --status "❌,🔌,🟡" \
   --labels "priority/high,team/rag,sprint/2-retrieval"
 
-## Sprint 3 — Providers, Routing & Cache Hardening
+## Sprint 3 — Providers, Routing & Cache Hardening 🔄 **IN PROGRESS**
+
 **Steps**: 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 60, 61, 62, 63, 65, 66, 67, 68, 69, 70, 71, 72, 73
 
 Focus
@@ -104,6 +106,7 @@ python scripts/rag_issue_prompter.py --create \
   --steps 48,49,50,51,52,53,54,55,56,57,58,60,61,62,63,65,66,67,68,69,70,71,72,73 \
   --status "❌,🔌,🟡" \
   --labels "team/rag,sprint/3-providers-cache"
+
 ## Sprint 4 — Document Ingest (Part I: validation & security)
 **Steps**: 84, 85, 86, 87, 88, 89, 95, 96, 97, 98, 99
 

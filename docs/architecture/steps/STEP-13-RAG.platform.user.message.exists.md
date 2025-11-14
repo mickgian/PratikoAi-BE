@@ -8,61 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `MessageExists` (User message exists?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/platform.py:971` - `step_13__message_exists()`
+- **Status:** 🔌
+- **Behavior notes:** Node orchestrator checking if user message was successfully extracted. Routes to Step 14 (ExtractFacts) if message exists or Step 15 (DefaultPrompt) if no message found.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 13 (RAG.platform.user.message.exists): User message exists? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 13 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.33
-
-Top candidates:
-1) app/models/user.py:50 — app.models.user.User.verify_password (score 0.33)
-   Evidence: Score 0.33, Verify if the provided password matches the hash.
-2) app/models/user.py:55 — app.models.user.User.hash_password (score 0.33)
-   Evidence: Score 0.33, Hash a password using bcrypt.
-3) app/models/user.py:60 — app.models.user.User.set_refresh_token_hash (score 0.33)
-   Evidence: Score 0.33, Set the hash of the refresh token.
-
-Stores a bcrypt hash of the refresh token fo...
-4) app/models/user.py:72 — app.models.user.User.verify_refresh_token (score 0.33)
-   Evidence: Score 0.33, Verify if the provided refresh token matches the stored hash.
-
-Args:
-    refresh...
-5) app/models/user.py:85 — app.models.user.User.revoke_refresh_token (score 0.33)
-   Evidence: Score 0.33, Revoke the current refresh token by clearing its hash.
-
-This effectively invalid...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

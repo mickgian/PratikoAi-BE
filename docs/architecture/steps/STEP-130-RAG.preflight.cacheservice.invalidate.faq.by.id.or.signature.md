@@ -5,66 +5,41 @@
 **Node ID:** `InvalidateFAQCache`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `InvalidateFAQCache` (CacheService.invalidate_faq by id or signature).
+Invalidates cached FAQ responses when an FAQ is published or updated. When an FAQ entry is created or modified (from Step 129), this step clears related cache entries by FAQ ID and content signature to ensure fresh data is served. This step is derived from the Mermaid node: `InvalidateFAQCache` (CacheService.invalidate_faq by id or signature).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/preflight.py:909` - `step_130__invalidate_faqcache()`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator that invalidates cached FAQ entries. Uses cache_service.clear_cache() to remove cached responses by FAQ ID patterns. Creates cache invalidation metadata for tracking. Preserves all context data. Routes to 'vector_reindex' (Step 131) per Mermaid flow.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - thin orchestrator preserving existing service behavior
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 130 (RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature): CacheService.invalidate_faq by id or signature | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (invalidate by FAQ ID, multiple patterns, signature invalidation, context preservation, metadata tracking, no cache entries, error handling, logging)
+- [x] Parity tests (cache invalidation behavior verification)
+- [x] Integration tests (PublishGolden→InvalidateFAQCache flow, FAQ publication completion)
+- [x] Implementation changes (async orchestrator wrapping cache_service)
+- [x] Observability: add structured log line
+  `RAG STEP 130 (RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature): CacheService.invalidate_faq by id or signature | attrs={faq_id, keys_deleted, operation, processing_stage}`
+- [x] Feature flag / config if needed (none required - uses existing service)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.32
-
-Top candidates:
-1) app/services/cache.py:30 — app.services.cache.CacheService.__init__ (score 0.32)
-   Evidence: Score 0.32, Initialize the cache service.
-2) app/services/cache.py:82 — app.services.cache.CacheService._generate_query_hash (score 0.32)
-   Evidence: Score 0.32, Generate a deterministic hash for query deduplication.
-
-Args:
-    messages: List...
-3) app/services/cache.py:107 — app.services.cache.CacheService._generate_conversation_key (score 0.32)
-   Evidence: Score 0.32, Generate cache key for conversation history.
-
-Args:
-    session_id: Unique sessi...
-4) app/services/cache.py:118 — app.services.cache.CacheService._generate_query_key (score 0.32)
-   Evidence: Score 0.32, Generate cache key for LLM query response.
-
-Args:
-    query_hash: Hash of the qu...
-5) app/services/cache.py:27 — app.services.cache.CacheService (score 0.28)
-   Evidence: Score 0.28, Redis-based caching service for LLM responses and conversations.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

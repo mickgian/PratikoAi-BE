@@ -5,17 +5,9 @@ for the application. It includes environment detection, .env file loading, and
 configuration value parsing.
 """
 
-import json
 import os
 from enum import Enum
 from pathlib import Path
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Union,
-)
 
 from dotenv import load_dotenv
 
@@ -25,29 +17,40 @@ class Environment(str, Enum):
     """Application environment types.
 
     Defines the possible environments the application can run in:
-    development, staging, production, and test.
+    - development: Local development
+    - qa: Quality assurance and testing
+    - preprod: Pre-production simulation that mirrors production
+    - production: Live production
     """
 
     DEVELOPMENT = "development"
-    STAGING = "staging"
+    QA = "qa"
+    PREPROD = "preprod"
     PRODUCTION = "production"
-    TEST = "test"
 
 
 # Determine environment
 def get_environment() -> Environment:
-    """Get the current environment.
+    """Get the current environment from APP_ENV variable.
 
     Returns:
-        Environment: The current environment (development, staging, production, or test)
+        Environment: The current environment
+
+    Supported APP_ENV values:
+    - "qa" → Environment.QA
+    - "preprod" → Environment.PREPROD
+    - "production" or "prod" → Environment.PRODUCTION
+    - default → Environment.DEVELOPMENT
     """
-    match os.getenv("APP_ENV", "development").lower():
+    env_str = os.getenv("APP_ENV", "development").lower()
+
+    match env_str:
+        case "qa":
+            return Environment.QA
+        case "preprod":
+            return Environment.PREPROD
         case "production" | "prod":
             return Environment.PRODUCTION
-        case "staging" | "stage":
-            return Environment.STAGING
-        case "test":
-            return Environment.TEST
         case _:
             return Environment.DEVELOPMENT
 
@@ -138,7 +141,7 @@ class Settings:
         )
         self.API_V1_STR = os.getenv("API_V1_STR", "/api/v1")
         self.DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "t", "yes")
-        
+
         # Base URL configuration
         self.BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
@@ -161,19 +164,26 @@ class Settings:
         # Legacy OpenAI config (for backward compatibility)
         self.LLM_API_KEY = os.getenv("LLM_API_KEY", "")
         self.LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
-        
+
         # Multi-provider configuration
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", os.getenv("LLM_API_KEY", ""))
         self.OPENAI_MODEL = os.getenv("OPENAI_MODEL", os.getenv("LLM_MODEL", "gpt-4o-mini"))
-        
+
         self.ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
         self.ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
-        
+
         # LLM routing configuration
-        self.LLM_ROUTING_STRATEGY = os.getenv("LLM_ROUTING_STRATEGY", "cost_optimized")  # cost_optimized, quality_first, balanced, failover
+        self.LLM_ROUTING_STRATEGY = os.getenv(
+            "LLM_ROUTING_STRATEGY", "cost_optimized"
+        )  # cost_optimized, quality_first, balanced, failover
         self.LLM_MAX_COST_EUR = float(os.getenv("LLM_MAX_COST_EUR", "0.020"))  # Max €0.02 per request
         self.LLM_PREFERRED_PROVIDER = os.getenv("LLM_PREFERRED_PROVIDER", "")  # openai, anthropic
-        
+
+        # Query Normalization (LLM-based document reference extraction)
+        self.QUERY_NORMALIZATION_ENABLED = os.getenv("QUERY_NORMALIZATION_ENABLED", "true").lower() == "true"
+        self.QUERY_NORMALIZATION_MODEL = os.getenv("QUERY_NORMALIZATION_MODEL", "gpt-4o-mini")
+        self.QUERY_NORMALIZATION_CACHE_TTL = int(os.getenv("QUERY_NORMALIZATION_CACHE_TTL", "3600"))  # 1 hour
+
         # General LLM settings
         self.DEFAULT_LLM_TEMPERATURE = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.2"))
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
@@ -183,7 +193,9 @@ class Settings:
         self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
         self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
         # Access token expires in 30 days for faster development (TODO: reduce for production)
-        self.JWT_ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_HOURS", str(30 * 24)))  # 30 days in hours
+        self.JWT_ACCESS_TOKEN_EXPIRE_HOURS = int(
+            os.getenv("JWT_ACCESS_TOKEN_EXPIRE_HOURS", str(30 * 24))
+        )  # 30 days in hours
         # Refresh token expires in 365 days for faster development (TODO: reduce for production)
         self.JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "365"))
 
@@ -197,27 +209,36 @@ class Settings:
         self.POSTGRES_POOL_SIZE = int(os.getenv("POSTGRES_POOL_SIZE", "20"))
         self.POSTGRES_MAX_OVERFLOW = int(os.getenv("POSTGRES_MAX_OVERFLOW", "10"))
         self.CHECKPOINT_TABLES = ["checkpoint_blobs", "checkpoint_writes", "checkpoints"]
-        
+
         # Redis Configuration for Caching
         self.REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
         self.REDIS_DB = int(os.getenv("REDIS_DB", "0"))
         self.REDIS_MAX_CONNECTIONS = int(os.getenv("REDIS_MAX_CONNECTIONS", "10"))
-        
+
         # Caching Configuration
         self.CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() in ("true", "1", "t", "yes")
         self.CACHE_DEFAULT_TTL = int(os.getenv("CACHE_DEFAULT_TTL", "3600"))  # 1 hour
         self.CACHE_CONVERSATION_TTL = int(os.getenv("CACHE_CONVERSATION_TTL", "7200"))  # 2 hours
         self.CACHE_LLM_RESPONSE_TTL = int(os.getenv("CACHE_LLM_RESPONSE_TTL", "86400"))  # 24 hours
         self.CACHE_MAX_QUERY_SIZE = int(os.getenv("CACHE_MAX_QUERY_SIZE", "10000"))  # Max chars to cache
-        
+
         # Privacy and GDPR Configuration
         self.PRIVACY_ANONYMIZE_LOGS = os.getenv("PRIVACY_ANONYMIZE_LOGS", "true").lower() in ("true", "1", "t", "yes")
-        self.PRIVACY_ANONYMIZE_REQUESTS = os.getenv("PRIVACY_ANONYMIZE_REQUESTS", "true").lower() in ("true", "1", "t", "yes")
+        self.PRIVACY_ANONYMIZE_REQUESTS = os.getenv("PRIVACY_ANONYMIZE_REQUESTS", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
         self.PRIVACY_DATA_RETENTION_DAYS = int(os.getenv("PRIVACY_DATA_RETENTION_DAYS", "365"))  # 1 year default
-        self.PRIVACY_CONSENT_EXPIRY_DAYS = int(os.getenv("PRIVACY_CONSENT_EXPIRY_DAYS", "365"))  # 1 year consent validity
-        self.PRIVACY_PII_CONFIDENCE_THRESHOLD = float(os.getenv("PRIVACY_PII_CONFIDENCE_THRESHOLD", "0.7"))  # PII detection threshold
-        
+        self.PRIVACY_CONSENT_EXPIRY_DAYS = int(
+            os.getenv("PRIVACY_CONSENT_EXPIRY_DAYS", "365")
+        )  # 1 year consent validity
+        self.PRIVACY_PII_CONFIDENCE_THRESHOLD = float(
+            os.getenv("PRIVACY_PII_CONFIDENCE_THRESHOLD", "0.7")
+        )  # PII detection threshold
+
         # Stripe Payment Configuration
         self.STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
         self.STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
@@ -226,10 +247,10 @@ class Settings:
         self.STRIPE_TRIAL_PERIOD_DAYS = int(os.getenv("STRIPE_TRIAL_PERIOD_DAYS", "7"))  # 7-day trial
         self.STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", f"{self.BASE_URL}/payment/success")
         self.STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", f"{self.BASE_URL}/payment/cancel")
-        
-        # Domain-Action Classification Configuration  
+
+        # Domain-Action Classification Configuration
         self.CLASSIFICATION_CONFIDENCE_THRESHOLD = float(os.getenv("CLASSIFICATION_CONFIDENCE_THRESHOLD", "0.6"))
-        
+
         # Vector Database Configuration (Pinecone)
         self.PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
         self.PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "")
@@ -273,7 +294,7 @@ class Settings:
         self.SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
         self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
         self.FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@pratikoai.com")
-        
+
         # Metrics Report Recipients (comma-separated)
         self.METRICS_REPORT_RECIPIENTS = os.getenv("METRICS_REPORT_RECIPIENTS", "admin@pratikoai.com")
         self.METRICS_REPORT_RECIPIENTS_ADMIN = os.getenv("METRICS_REPORT_RECIPIENTS_ADMIN", "")
@@ -281,28 +302,62 @@ class Settings:
         self.METRICS_REPORT_RECIPIENTS_BUSINESS = os.getenv("METRICS_REPORT_RECIPIENTS_BUSINESS", "")
 
         # Security and Antivirus Settings
-        self.ENABLE_EXTERNAL_AV_SCAN = os.getenv("ENABLE_EXTERNAL_AV_SCAN", "false").lower() in ("true", "1", "t", "yes")
+        self.ENABLE_EXTERNAL_AV_SCAN = os.getenv("ENABLE_EXTERNAL_AV_SCAN", "false").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
         self.CLAMAV_HOST = os.getenv("CLAMAV_HOST", "localhost")
         self.CLAMAV_PORT = int(os.getenv("CLAMAV_PORT", "3310"))
         self.CLAMAV_TIMEOUT = int(os.getenv("CLAMAV_TIMEOUT", "30"))
         self.VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY", "")
         self.VIRUSTOTAL_TIMEOUT = int(os.getenv("VIRUSTOTAL_TIMEOUT", "60"))
         self.VIRUS_SCAN_MAX_FILE_SIZE_MB = int(os.getenv("VIRUS_SCAN_MAX_FILE_SIZE_MB", "100"))
-        self.QUARANTINE_INFECTED_FILES = os.getenv("QUARANTINE_INFECTED_FILES", "true").lower() in ("true", "1", "t", "yes")
+        self.QUARANTINE_INFECTED_FILES = os.getenv("QUARANTINE_INFECTED_FILES", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
         self.SECURITY_SCAN_TIMEOUT = int(os.getenv("SECURITY_SCAN_TIMEOUT", "30"))
-        
+
         # Document Security Settings
         self.MAX_DOCUMENT_ENTROPY = float(os.getenv("MAX_DOCUMENT_ENTROPY", "7.5"))
-        self.ALLOW_MACROS_IN_DOCUMENTS = os.getenv("ALLOW_MACROS_IN_DOCUMENTS", "false").lower() in ("true", "1", "t", "yes")
-        self.ALLOW_JAVASCRIPT_IN_PDF = os.getenv("ALLOW_JAVASCRIPT_IN_PDF", "false").lower() in ("true", "1", "t", "yes")
+        self.ALLOW_MACROS_IN_DOCUMENTS = os.getenv("ALLOW_MACROS_IN_DOCUMENTS", "false").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+        self.ALLOW_JAVASCRIPT_IN_PDF = os.getenv("ALLOW_JAVASCRIPT_IN_PDF", "false").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
         self.MAX_EXTERNAL_REFERENCES = int(os.getenv("MAX_EXTERNAL_REFERENCES", "5"))
-        self.ENABLE_CONTENT_STRUCTURE_VALIDATION = os.getenv("ENABLE_CONTENT_STRUCTURE_VALIDATION", "true").lower() in ("true", "1", "t", "yes")
+        self.ENABLE_CONTENT_STRUCTURE_VALIDATION = os.getenv(
+            "ENABLE_CONTENT_STRUCTURE_VALIDATION", "true"
+        ).lower() in ("true", "1", "t", "yes")
 
         # Apply environment-specific settings
         self.apply_environment_settings()
 
     def apply_environment_settings(self):
-        """Apply environment-specific settings based on the current environment."""
+        """Apply environment-specific settings.
+
+        Settings are applied only if not explicitly set via environment variables.
+        This allows for environment-specific defaults while preserving manual overrides.
+        """
+        # PRODUCTION config (shared by PRODUCTION and PREPROD)
+        production_config = {
+            "DEBUG": False,
+            "LOG_LEVEL": "WARNING",
+            "LOG_FORMAT": "json",
+            "RATE_LIMIT_DEFAULT": ["200 per day", "50 per hour"],
+        }
+
         env_settings = {
             Environment.DEVELOPMENT: {
                 "DEBUG": True,
@@ -310,22 +365,14 @@ class Settings:
                 "LOG_FORMAT": "console",
                 "RATE_LIMIT_DEFAULT": ["1000 per day", "200 per hour"],
             },
-            Environment.STAGING: {
+            Environment.QA: {
                 "DEBUG": False,
                 "LOG_LEVEL": "INFO",
+                "LOG_FORMAT": "json",
                 "RATE_LIMIT_DEFAULT": ["500 per day", "100 per hour"],
             },
-            Environment.PRODUCTION: {
-                "DEBUG": False,
-                "LOG_LEVEL": "WARNING",
-                "RATE_LIMIT_DEFAULT": ["200 per day", "50 per hour"],
-            },
-            Environment.TEST: {
-                "DEBUG": True,
-                "LOG_LEVEL": "DEBUG",
-                "LOG_FORMAT": "console",
-                "RATE_LIMIT_DEFAULT": ["1000 per day", "1000 per hour"],  # Relaxed for testing
-            },
+            Environment.PREPROD: production_config.copy(),  # PREPROD mirrors PRODUCTION exactly
+            Environment.PRODUCTION: production_config.copy(),
         }
 
         # Get settings for current environment
@@ -342,6 +389,51 @@ class Settings:
 # Create settings instance
 settings = Settings()
 
+
 def get_settings() -> Settings:
     """Get the global settings instance."""
     return settings
+
+
+# ==============================================================================
+# Hybrid RAG Configuration
+# ==============================================================================
+
+# Embedding Model Configuration
+EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")  # 1536-d
+EMBED_DIM = int(os.getenv("EMBED_DIM", "1536"))
+
+# Chunking Configuration
+CHUNK_TOKENS = int(os.getenv("CHUNK_TOKENS", "900"))
+CHUNK_OVERLAP = float(os.getenv("CHUNK_OVERLAP", "0.12"))  # 12% overlap
+
+# PDF Extraction Configuration
+EXTRACTOR_PRIMARY = os.getenv("EXTRACTOR_PRIMARY", "pdfplumber")  # "pdfplumber" (MIT)
+PDF_EXTRACTOR = os.getenv("PDF_EXTRACTOR", "pdfplumber")  # Feature flag for extraction method
+OCR_ENABLED = os.getenv("OCR_ENABLED", "true").lower() in ("true", "1", "yes")
+OCR_LANGUAGES = os.getenv("OCR_LANGUAGES", "ita")  # Tesseract language codes
+OCR_PAGE_SAMPLE = int(os.getenv("OCR_PAGE_SAMPLE", "3"))  # Pages to sample for quality check
+OCR_MAX_PAGES = int(os.getenv("OCR_MAX_PAGES", "12"))  # Max pages to OCR per document
+OCR_MIN_PAGE_WIDTH = int(os.getenv("OCR_MIN_PAGE_WIDTH", "1500"))  # Min raster width for OCR
+
+# Text Quality Thresholds
+CLEAN_MIN_LEN = int(os.getenv("CLEAN_MIN_LEN", "20"))  # Minimum chunk length
+CLEAN_PRINTABLE_RATIO = float(os.getenv("CLEAN_PRINTABLE_RATIO", "0.60"))  # Min printable chars ratio
+CLEAN_ALPHA_RATIO = float(os.getenv("CLEAN_ALPHA_RATIO", "0.25"))  # Min alphabetic chars ratio
+CLEAN_MIN_WORDS = int(os.getenv("CLEAN_MIN_WORDS", "5"))  # Minimum word count
+JUNK_DROP_CHUNK = os.getenv("JUNK_DROP_CHUNK", "true").lower() in ("true", "1", "yes")  # Drop junk chunks on ingestion
+
+# Repair/Re-extraction Configuration
+REPAIR_BATCH_SIZE = int(os.getenv("REPAIR_BATCH_SIZE", "5"))  # Embeddings batch size for repair
+REPAIR_LIMIT_DEFAULT = int(os.getenv("REPAIR_LIMIT_DEFAULT", "20"))  # Default repair limit
+QUALITY_MIN_DOC = float(os.getenv("QUALITY_MIN_DOC", "0.60"))  # Min quality threshold for repair
+
+# Hybrid Retrieval Weights (must sum to ~1.0)
+HYBRID_WEIGHT_FTS = float(os.getenv("HYBRID_WEIGHT_FTS", "0.50"))
+HYBRID_WEIGHT_VEC = float(os.getenv("HYBRID_WEIGHT_VEC", "0.35"))
+HYBRID_WEIGHT_RECENCY = float(os.getenv("HYBRID_WEIGHT_RECENCY", "0.15"))
+
+# Retrieval Parameters
+HYBRID_K_FTS = int(os.getenv("HYBRID_K_FTS", "20"))  # Top-K for FTS candidates
+HYBRID_K_VEC = int(os.getenv("HYBRID_K_VEC", "20"))  # Top-K for vector candidates
+CONTEXT_TOP_K = int(os.getenv("CONTEXT_TOP_K", "14"))  # Final top-K for context

@@ -8,55 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `FatturaParser` (FatturaParser.parse_xsd XSD validation).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/docs.py:387` - `step_90__fattura_parser()`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator parsing Italian electronic invoices (Fattura Elettronica) using XSD validation. Processes XML invoices according to Italian tax authority specifications, extracts structured data, and validates against schema requirements.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing document processing infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 90 (RAG.docs.fatturaparser.parse.xsd.xsd.validation): FatturaParser.parse_xsd XSD validation | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (document processing, parsing, format handling)
+- [x] Integration tests (document processing flow and format validation)
+- [x] Implementation changes (async orchestrator with document processing, parsing, format handling)
+- [x] Observability: add structured log line
+  `RAG STEP 90 (...): ... | attrs={document_type, file_size, processing_time}`
+- [x] Feature flag / config if needed (document processing limits and format support)
+- [x] Rollout plan (implemented with document processing reliability and security safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
-
-Top candidates:
-1) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.35)
-   Evidence: Score 0.35, Convert APIContract to OpenAPI specification.
-2) version-management/validation/contract_validator.py:75 — version-management.validation.contract_validator.APIContractValidator.__init__ (score 0.32)
-   Evidence: Score 0.32, method: __init__
-3) version-management/validation/contract_validator.py:78 — version-management.validation.contract_validator.APIContractValidator._load_breaking_change_rules (score 0.32)
-   Evidence: Score 0.32, Load rules for detecting breaking changes.
-4) version-management/validation/contract_validator.py:633 — version-management.validation.contract_validator.APIContractValidator._generate_summary (score 0.32)
-   Evidence: Score 0.32, Generate summary statistics.
-5) version-management/validation/contract_validator.py:728 — version-management.validation.contract_validator.APIContractValidator._generate_test_data (score 0.32)
-   Evidence: Score 0.32, Generate test data based on JSON schema.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Test document parsing and validation
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

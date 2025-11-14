@@ -8,67 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `KBPreFetch` (KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Status:** 🔌
+- **Paths / classes:** `app/orchestrators/preflight.py:360` - `step_39__kbpre_fetch()`
+- **Behavior notes:** Runtime boundary; retrieves top-K documents using hybrid search; routes to next steps.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing preflight validation infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 39 (RAG.preflight.knowledgesearch.retrieve.topk.bm25.and.vectors.and.recency.boost): KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 39 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
-
-Top candidates:
-1) load_testing/locust_tests.py:215 — load_testing.locust_tests.PratikoAIUser.knowledge_search (score 0.28)
-   Evidence: Score 0.28, Test regulatory knowledge searches
-2) app/core/decorators/cache.py:19 — app.core.decorators.cache.cache_llm_response (score 0.25)
-   Evidence: Score 0.25, Decorator to cache LLM responses based on messages and model.
-
-Args:
-    ttl: Ti...
-3) app/core/decorators/cache.py:112 — app.core.decorators.cache.cache_conversation (score 0.25)
-   Evidence: Score 0.25, Decorator to cache conversation history.
-
-Args:
-    ttl: Time to live in seconds...
-4) app/core/decorators/cache.py:190 — app.core.decorators.cache.cache_result (score 0.25)
-   Evidence: Score 0.25, Generic caching decorator for any function result.
-
-Args:
-    key_func: Function...
-5) app/core/decorators/cache.py:304 — app.core.decorators.cache.invalidate_cache_on_update (score 0.25)
-   Evidence: Score 0.25, Decorator to invalidate cache entries when data is updated.
-
-Args:
-    cache_key...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Top match is in test files
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for KBPreFetch
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

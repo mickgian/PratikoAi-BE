@@ -30,7 +30,6 @@ repos:
     rev: 24.1.1
     hooks:
       - id: black
-        language_version: python3.11
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
@@ -44,4 +43,48 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: .*\.(lock|example)$
+        exclude: (.*\.(lock|example)$|\.github/workflows/.*\.yml$)
+
+  # Check critical dependencies are present
+  - repo: local
+    hooks:
+      - id: check-critical-dependencies
+        name: Check critical dependencies in pyproject.toml
+        entry: python scripts/check_critical_deps.py
+        language: system
+        pass_filenames: false
+        files: ^pyproject.toml$
+        always_run: false
+
+  # Run critical streaming tests before commit
+  - repo: local
+    hooks:
+      - id: streaming-tests
+        name: Run streaming protection tests
+        entry: bash -c 'source scripts/set_env.sh development && python -m pytest tests/api/test_sse_formatter.py tests/api/test_sse_comment_detection.py tests/api/test_sse_keepalive_timing.py tests/unit/core/test_sse_write_helper.py -v --tb=line -x'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+  # Run RSS scheduler tests before commit
+  - repo: local
+    hooks:
+      - id: rss-scheduler-tests
+        name: Run RSS scheduler tests
+        entry: bash -c 'source scripts/set_env.sh development && python -m pytest tests/test_scheduler_italian_integration.py -v --tb=line -x'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+  # Auto-regenerate documentation indexes when markdown files change
+  - repo: local
+    hooks:
+      - id: generate-docs-index
+        name: Generate documentation indexes
+        entry: python scripts/generate_docs_index.py
+        language: system
+        files: \.md$
+        pass_filenames: false
+        stages: [pre-commit]

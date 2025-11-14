@@ -8,54 +8,42 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `AnonymizeText` (Anonymizer.anonymize_text Anonymize PII).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/privacy.py:371` - `step_7__anonymize_text()`
+- **Status:** 🔌
+- **Behavior notes:** Internal transform within AnonymizeText node; anonymizes PII using PIIAnonymizer service.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing privacy infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 7 (RAG.privacy.anonymizer.anonymize.text.anonymize.pii): Anonymizer.anonymize_text Anonymize PII | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (PII detection, anonymization, GDPR compliance)
+- [x] Integration tests (privacy compliance flow and anonymization processing)
+- [x] Implementation changes (async orchestrator with PII detection, anonymization, GDPR compliance)
+- [x] Observability: add structured log line
+  `RAG STEP 7 (...): ... | attrs={pii_detected, anonymization_method, compliance_status}`
+- [x] Feature flag / config if needed (privacy settings and anonymization rules)
+- [x] Rollout plan (implemented with privacy compliance and data protection safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.55
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.55)
-   Evidence: Score 0.55, Anonymize PII in text while preserving structure.
-2) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.51)
-   Evidence: Score 0.51, Anonymize PII in structured data (dictionaries).
-3) app/core/privacy/anonymizer.py:55 — app.core.privacy.anonymizer.PIIAnonymizer.__init__ (score 0.46)
-   Evidence: Score 0.46, Initialize the anonymizer with Italian-specific patterns.
-4) app/core/privacy/anonymizer.py:61 — app.core.privacy.anonymizer.PIIAnonymizer._build_patterns (score 0.46)
-   Evidence: Score 0.46, Build regex patterns for PII detection.
-5) app/core/privacy/anonymizer.py:134 — app.core.privacy.anonymizer.PIIAnonymizer._generate_anonymous_replacement (score 0.46)
-   Evidence: Score 0.46, Generate consistent anonymous replacement for PII.
+Wiring information:
+- Node name: node_step_7
+- Incoming edges: [6]
+- Outgoing edges: [9]
 
 Notes:
-- Implementation exists but may not be wired correctly
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Test PII detection and anonymization
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

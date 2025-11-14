@@ -8,22 +8,23 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `BuildContext` (ContextBuilder.merge facts and KB docs and optional doc facts).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/facts.py:271` - `step_40__build_context()`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator merging canonical facts, KB search results, and optional document facts into unified context. Uses ContextBuilderMerge service for token budget management, content prioritization, and deduplication. Routes to Step 41 (SelectPrompt) with enriched context.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing fact extraction infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 40 (RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.optional.doc.facts): ContextBuilder.merge facts and KB docs and optional doc facts | attrs={...}`
+- [x] Unit tests (all sources merge, facts+KB only, token budget, prioritization weights, empty inputs, deduplication, error handling, structured logging)
+- [x] Integration tests (end-to-end context merging scenarios with realistic data)
+- [x] Implementation changes (ContextBuilderMerge class, merge logic, priority scoring, deduplication, token management)
+- [x] Observability: add structured log line  
+  `RAG STEP 40 (RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.optional.doc.facts): ContextBuilder.merge facts and KB docs and optional doc facts | attrs={token_count, max_tokens, source_distribution, context_quality_score, deduplication_applied, content_truncated, processing_stage}`
 - [ ] Feature flag / config if needed
 - [ ] Rollout plan
 
@@ -31,31 +32,13 @@ Describe the purpose of this step in the approved RAG. This step is derived from
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
-
-Top candidates:
-1) app/services/context_builder.py:56 — app.services.context_builder.MultiSourceContextBuilder.__init__ (score 0.28)
-   Evidence: Score 0.28, method: __init__
-2) app/services/context_builder.py:179 — app.services.context_builder.MultiSourceContextBuilder._group_results_by_source (score 0.28)
-   Evidence: Score 0.28, Group search results by source type
-3) app/services/context_builder.py:367 — app.services.context_builder.MultiSourceContextBuilder._find_best_span (score 0.28)
-   Evidence: Score 0.28, Find the best span of content that covers most query term positions
-4) app/services/context_builder.py:395 — app.services.context_builder.MultiSourceContextBuilder._clean_excerpt (score 0.28)
-   Evidence: Score 0.28, Clean and improve excerpt boundaries
-5) app/services/context_builder.py:417 — app.services.context_builder.MultiSourceContextBuilder._truncate_at_sentence_boundary (score 0.28)
-   Evidence: Score 0.28, Truncate text at a sentence boundary
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for BuildContext
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

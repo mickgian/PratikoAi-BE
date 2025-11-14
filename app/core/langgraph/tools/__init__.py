@@ -9,6 +9,8 @@ from langchain_core.tools.base import BaseTool
 
 # from .duckduckgo_search import duckduckgo_search_tool  # Temporarily disabled due to version conflict
 from .ccnl_tool import ccnl_tool
+from .document_ingest_tool import document_ingest_tool
+from .knowledge_search_tool import knowledge_search_tool
 
 # tools: list[BaseTool] = [duckduckgo_search_tool, ccnl_tool]
-tools: list[BaseTool] = [ccnl_tool]  # Temporarily using only CCNL tool
+tools: list[BaseTool] = [knowledge_search_tool, ccnl_tool, document_ingest_tool]

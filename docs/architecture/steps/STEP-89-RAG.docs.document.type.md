@@ -8,55 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DocType` (Document type?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/docs.py:315` - `step_89__doc_type()`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator determining document type decision point. Routes to specialized parsers based on document classification results.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing document processing infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 89 (RAG.docs.document.type): Document type? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (document processing, parsing, format handling)
+- [x] Integration tests (document processing flow and format validation)
+- [x] Implementation changes (async orchestrator with document processing, parsing, format handling)
+- [x] Observability: add structured log line
+  `RAG STEP 89 (...): ... | attrs={document_type, file_size, processing_time}`
+- [x] Feature flag / config if needed (document processing limits and format support)
+- [x] Rollout plan (implemented with document processing reliability and security safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.35
-
-Top candidates:
-1) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.35)
-   Evidence: Score 0.35, Check if document has expired
-2) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.35)
-   Evidence: Score 0.35, Convert document to dictionary
-3) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.35)
-   Evidence: Score 0.35, Check if document has expired
-4) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.35)
-   Evidence: Score 0.35, Convert document to dictionary for API responses
-5) app/models/document.py:112 — app.models.document.Document.__init__ (score 0.33)
-   Evidence: Score 0.33, method: __init__
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Test document parsing and validation
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

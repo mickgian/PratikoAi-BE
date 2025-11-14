@@ -5,7 +5,6 @@ streaming chat, message history management, and chat history clearing.
 """
 
 import json
-from typing import List
 
 from fastapi import (
     APIRouter,
@@ -14,27 +13,40 @@ from fastapi import (
     Request,
 )
 from fastapi.responses import StreamingResponse
-from app.core.metrics import llm_stream_duration_seconds
+
 from app.api.v1.auth import get_current_session
 from app.core.config import settings
 from app.core.langgraph.graph import LangGraphAgent
 from app.core.limiter import limiter
 from app.core.logging import logger
+from app.core.metrics import llm_stream_duration_seconds
+from app.core.privacy.anonymizer import anonymizer
+from app.core.privacy.gdpr import (
+    DataCategory,
+    ProcessingPurpose,
+    gdpr_compliance,
+)
+from app.core.sse_formatter import (
+    format_sse_done,
+    format_sse_event,
+)
+from app.core.sse_write import (
+    log_sse_summary,
+    write_sse,
+)
+from app.core.streaming_guard import SinglePassStream
 from app.models.session import Session
+from app.observability.rag_logging import rag_step_log
+from app.observability.rag_trace import rag_trace_context
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
     Message,
     StreamResponse,
 )
-from app.core.privacy.anonymizer import anonymizer
-from app.core.privacy.gdpr import gdpr_compliance, ProcessingPurpose, DataCategory
-from app.core.streaming_guard import SinglePassStream
-from app.core.sse_write import write_sse
 
 router = APIRouter()
 agent = LangGraphAgent()
-
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -58,49 +70,139 @@ async def chat(
         HTTPException: If there's an error processing the request.
     """
     try:
-        # Record data processing for GDPR compliance
-        gdpr_compliance.data_processor.record_processing(
-            user_id=session.user_id,
-            data_category=DataCategory.CONTENT,
-            processing_purpose=ProcessingPurpose.SERVICE_PROVISION,
-            data_source="chat_api",
-            legal_basis="Service provision under contract",
-            anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS
-        )
-        
-        # Anonymize request if privacy settings require it
-        processed_messages = chat_request.messages
-        if settings.PRIVACY_ANONYMIZE_REQUESTS:
-            processed_messages = []
-            for message in chat_request.messages:
-                anonymization_result = anonymizer.anonymize_text(message.content)
-                processed_messages.append(Message(
-                    role=message.role,
-                    content=anonymization_result.anonymized_text
-                ))
-                
-                if anonymization_result.pii_matches:
-                    logger.info(
-                        "chat_request_pii_anonymized",
+        # Extract user query for trace metadata (before anonymization)
+        user_query = chat_request.messages[-1].content if chat_request.messages else "N/A"
+
+        # Wrap entire request processing with RAG trace context (dev/staging only)
+        with rag_trace_context(request_id=str(session.id), user_query=user_query):
+            # Step 1: User submits query (entry point)
+            rag_step_log(
+                step=1,
+                step_id="RAG.platform.chatbotcontroller.chat.user.submits.query",
+                node_label="Start",
+                processing_stage="received",
+                session_id=session.id,
+                user_id=session.user_id,
+                message_count=len(chat_request.messages),
+                query_preview=user_query[:100] if user_query else "N/A",
+            )
+
+            # Step 2: Validate request and authenticate
+            rag_step_log(
+                step=2,
+                step_id="RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate",
+                node_label="ValidateRequest",
+                processing_stage="completed",
+                session_id=session.id,
+                user_id=session.user_id,
+            )
+
+            # Step 3: Request valid? (decision point)
+            # At this point, request passed validation
+            logger.info("EXECUTING STEP 3 - Request Valid Check", session_id=session.id)
+            rag_step_log(
+                step=3,
+                step_id="RAG.platform.request.valid.check",
+                node_label="ValidCheck",
+                processing_stage="decision",
+                session_id=session.id,
+                user_id=session.user_id,
+                decision_result="Yes",  # Request is valid if we reached this point
+            )
+            logger.info("COMPLETED STEP 3 - Request Valid Check", session_id=session.id)
+
+            # Record data processing for GDPR compliance
+            gdpr_compliance.data_processor.record_processing(
+                user_id=session.user_id,
+                data_category=DataCategory.CONTENT,
+                processing_purpose=ProcessingPurpose.SERVICE_PROVISION,
+                data_source="chat_api",
+                legal_basis="Service provision under contract",
+                anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
+            )
+
+            # Step 4: GDPR log
+            rag_step_log(
+                step=4,
+                step_id="RAG.privacy.gdprcompliance.record.processing.log.data.processing",
+                node_label="GDPRLog",
+                processing_stage="completed",
+                session_id=session.id,
+                user_id=session.user_id,
+            )
+
+            # Step 6: PRIVACY_ANONYMIZE_REQUESTS enabled? (decision point)
+            rag_step_log(
+                step=6,
+                step_id="RAG.privacy.privacy.anonymize.requests.enabled",
+                node_label="PrivacyCheck",
+                processing_stage="decision",
+                session_id=session.id,
+                user_id=session.user_id,
+                decision_result="Yes" if settings.PRIVACY_ANONYMIZE_REQUESTS else "No",
+            )
+
+            # Anonymize request if privacy settings require it
+            processed_messages = chat_request.messages
+            if settings.PRIVACY_ANONYMIZE_REQUESTS:
+                processed_messages = []
+                for message in chat_request.messages:
+                    anonymization_result = anonymizer.anonymize_text(message.content)
+
+                    # Step 7: Anonymize PII
+                    rag_step_log(
+                        step=7,
+                        step_id="RAG.privacy.anonymizer.anonymize.text.anonymize.pii",
+                        node_label="AnonymizeText",
+                        processing_stage="completed",
                         session_id=session.id,
-                        pii_types=[match.pii_type.value for match in anonymization_result.pii_matches],
-                        pii_count=len(anonymization_result.pii_matches)
+                        pii_detected=len(anonymization_result.pii_matches) > 0,
                     )
 
-        logger.info(
-            "chat_request_received",
-            session_id=session.id,
-            message_count=len(processed_messages),
-            anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
-        )
+                    # Step 9: PII detected? (decision point)
+                    pii_detected = len(anonymization_result.pii_matches) > 0
+                    rag_step_log(
+                        step=9,
+                        step_id="RAG.privacy.pii.detected.check",
+                        node_label="PIICheck",
+                        processing_stage="decision",
+                        session_id=session.id,
+                        decision_result="Yes" if pii_detected else "No",
+                        pii_count=len(anonymization_result.pii_matches),
+                    )
 
-        result = await agent.get_response(
-            processed_messages, session.id, user_id=session.user_id
-        )
+                    processed_messages.append(Message(role=message.role, content=anonymization_result.anonymized_text))
 
-        logger.info("chat_request_processed", session_id=session.id)
+                    if anonymization_result.pii_matches:
+                        logger.info(
+                            "chat_request_pii_anonymized",
+                            session_id=session.id,
+                            pii_types=[match.pii_type.value for match in anonymization_result.pii_matches],
+                            pii_count=len(anonymization_result.pii_matches),
+                        )
 
-        return ChatResponse(messages=result)
+                        # Step 10: Log PII anonymization
+                        rag_step_log(
+                            step=10,
+                            step_id="RAG.platform.logger.info.log.pii.anonymization",
+                            node_label="LogPII",
+                            processing_stage="completed",
+                            session_id=session.id,
+                            pii_count=len(anonymization_result.pii_matches),
+                        )
+
+            logger.info(
+                "chat_request_received",
+                session_id=session.id,
+                message_count=len(processed_messages),
+                anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
+            )
+
+            result = await agent.get_response(processed_messages, session.id, user_id=session.user_id)
+
+            logger.info("chat_request_processed", session_id=session.id)
+
+            return ChatResponse(messages=result)
     except Exception as e:
         logger.error("chat_request_failed", session_id=session.id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -127,33 +229,33 @@ async def chat_stream(
         HTTPException: If there's an error processing the request.
     """
     try:
-        # Record data processing for GDPR compliance
+        # Record data processing for GDPR compliance (outer function)
         gdpr_compliance.data_processor.record_processing(
             user_id=session.user_id,
             data_category=DataCategory.CONTENT,
             processing_purpose=ProcessingPurpose.SERVICE_PROVISION,
             data_source="chat_stream_api",
             legal_basis="Service provision under contract",
-            anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS
+            anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
         )
-        
-        # Anonymize request if privacy settings require it
+
+        # Anonymize request if privacy settings require it (outer function)
         processed_messages = chat_request.messages
+        pii_detected_count = 0
         if settings.PRIVACY_ANONYMIZE_REQUESTS:
             processed_messages = []
             for message in chat_request.messages:
                 anonymization_result = anonymizer.anonymize_text(message.content)
-                processed_messages.append(Message(
-                    role=message.role,
-                    content=anonymization_result.anonymized_text
-                ))
-                
+
+                processed_messages.append(Message(role=message.role, content=anonymization_result.anonymized_text))
+
                 if anonymization_result.pii_matches:
+                    pii_detected_count = len(anonymization_result.pii_matches)
                     logger.info(
                         "stream_chat_request_pii_anonymized",
                         session_id=session.id,
                         pii_types=[match.pii_type.value for match in anonymization_result.pii_matches],
-                        pii_count=len(anonymization_result.pii_matches)
+                        pii_count=len(anonymization_result.pii_matches),
                     )
 
         logger.info(
@@ -162,6 +264,12 @@ async def chat_stream(
             message_count=len(processed_messages),
             anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
         )
+
+        # Use session.id as request_id for tracking SSE writes
+        request_id = str(session.id)
+
+        # Extract user query for trace metadata (before anonymization for readability)
+        user_query = chat_request.messages[-1].content if chat_request.messages else "N/A"
 
         async def event_generator():
             """Generate streaming events with pure markdown output and deduplication.
@@ -173,26 +281,175 @@ async def chat_stream(
                 Exception: If there's an error during streaming.
             """
             try:
-                with llm_stream_duration_seconds.labels(model="llm").time():
-                    # Wrap the original stream to prevent double iteration
-                    original_stream = SinglePassStream(agent.get_stream_response(
-                        processed_messages, session.id, user_id=session.user_id
-                    ))
-                    
-                    async for chunk in original_stream:
-                        if chunk and chunk.strip():
-                            # Direct markdown streaming without processing
-                            yield write_sse(None, chunk)
+                # Wrap streaming with RAG trace context (dev/staging only)
+                with rag_trace_context(request_id=request_id, user_query=user_query):
+                    # Log Steps 1, 2, 4, 7, 10 inside trace context (completed in outer function)
+                    # Step 1: User submits query (entry point)
+                    rag_step_log(
+                        step=1,
+                        step_id="RAG.platform.chatbotcontroller.chat.user.submits.query",
+                        node_label="Start",
+                        processing_stage="received",
+                        session_id=session.id,
+                        user_id=session.user_id,
+                        message_count=len(processed_messages),
+                        query_preview=user_query[:100] if user_query else "N/A",
+                    )
 
-                # Send final done frame
-                yield write_sse(None, "[DONE]")
+                    # Step 2: Validate request and authenticate
+                    rag_step_log(
+                        step=2,
+                        step_id="RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate",
+                        node_label="ValidateRequest",
+                        processing_stage="completed",
+                        session_id=session.id,
+                        user_id=session.user_id,
+                    )
+
+                    # Step 3: Request valid? (decision point)
+                    rag_step_log(
+                        step=3,
+                        step_id="RAG.platform.request.valid.check",
+                        node_label="ValidCheck",
+                        processing_stage="decision",
+                        session_id=session.id,
+                        user_id=session.user_id,
+                        decision_result="Yes",  # Request is valid if we reached this point
+                    )
+
+                    # Step 4: GDPR log
+                    rag_step_log(
+                        step=4,
+                        step_id="RAG.privacy.gdprcompliance.record.processing.log.data.processing",
+                        node_label="GDPRLog",
+                        processing_stage="completed",
+                        session_id=session.id,
+                        user_id=session.user_id,
+                    )
+
+                    # Step 6: PRIVACY_ANONYMIZE_REQUESTS enabled? (decision point)
+                    rag_step_log(
+                        step=6,
+                        step_id="RAG.privacy.privacy.anonymize.requests.enabled",
+                        node_label="PrivacyCheck",
+                        processing_stage="decision",
+                        session_id=session.id,
+                        user_id=session.user_id,
+                        decision_result="Yes" if settings.PRIVACY_ANONYMIZE_REQUESTS else "No",
+                    )
+
+                    # Step 7: Anonymize PII (log for each processed message)
+                    if settings.PRIVACY_ANONYMIZE_REQUESTS:
+                        rag_step_log(
+                            step=7,
+                            step_id="RAG.privacy.anonymizer.anonymize.text.anonymize.pii",
+                            node_label="AnonymizeText",
+                            processing_stage="completed",
+                            session_id=session.id,
+                            pii_detected=pii_detected_count > 0,
+                        )
+
+                        # Step 9: PII detected? (decision point)
+                        rag_step_log(
+                            step=9,
+                            step_id="RAG.privacy.pii.detected.check",
+                            node_label="PIICheck",
+                            processing_stage="decision",
+                            session_id=session.id,
+                            decision_result="Yes" if pii_detected_count > 0 else "No",
+                            pii_count=pii_detected_count,
+                        )
+
+                    # Step 10: Log PII anonymization (if PII was detected)
+                    if pii_detected_count > 0:
+                        rag_step_log(
+                            step=10,
+                            step_id="RAG.platform.logger.info.log.pii.anonymization",
+                            node_label="LogPII",
+                            processing_stage="completed",
+                            session_id=session.id,
+                            pii_count=pii_detected_count,
+                        )
+
+                    # Step 8: InitAgent - Transition to LangGraph workflow
+                    rag_step_log(
+                        step=8,
+                        step_id="RAG.langgraphagent.get.response.initialize.workflow",
+                        node_label="InitAgent",
+                        processing_stage="started",
+                        session_id=session.id,
+                        user_id=session.user_id,
+                        previous_step=10 if pii_detected_count > 0 else 7,
+                        transition=f"Step {10 if pii_detected_count > 0 else 7} → Step 8",
+                        message_count=len(processed_messages),
+                        streaming_requested=True,
+                    )
+
+                    with llm_stream_duration_seconds.labels(model="llm").time():
+                        # Wrap the original stream to prevent double iteration
+                        original_stream = SinglePassStream(
+                            agent.get_stream_response(processed_messages, session.id, user_id=session.user_id)
+                        )
+
+                        async for chunk in original_stream:
+                            if chunk:
+                                # ============================================================================
+                                # SSE Comment vs Content Distinction
+                                # ============================================================================
+                                # The graph yields two types of chunks:
+                                #
+                                # 1. SSE COMMENTS (Keepalives):
+                                #    Format: ": <text>\n\n"
+                                #    Example: ": starting\n\n"
+                                #    Purpose: Establish connection immediately during blocking operations
+                                #    Must be: colon + SPACE + text + double newline
+                                #    Frontend: Skips these (api.ts:788)
+                                #
+                                # 2. CONTENT CHUNKS:
+                                #    Format: Plain text strings (no SSE formatting)
+                                #    Example: "Ecco le informazioni richieste..."
+                                #    Purpose: Actual response content from LLM
+                                #    Must be: Wrapped as SSE data events for frontend
+                                #    Frontend: Parses as data: {...}\n\n format
+                                #
+                                # CRITICAL: Content that happens to start with ":" (e.g., ": Ecco...")
+                                # is NOT an SSE comment. It must be wrapped as normal content.
+                                # SSE comments MUST have ": " (colon-space) AND "\n\n" (double newline).
+                                #
+                                # If we incorrectly treat content as SSE comment:
+                                # - Content gets yielded without data: {...}\n\n wrapper
+                                # - Frontend receives malformed SSE format
+                                # - Frontend strict parser (api.ts:794-797) errors and stops all processing
+                                # - User sees "Sto pensando..." forever (STUCK)
+                                # ============================================================================
+
+                                # Check if this is an SSE comment (keepalive) using strict format check
+                                is_sse_comment = chunk.startswith(": ") and chunk.endswith("\n\n")
+
+                                if is_sse_comment:
+                                    # This is an SSE keepalive comment (e.g., ": starting\n\n")
+                                    # Pass through unchanged - frontend will skip it (api.ts:788)
+                                    yield chunk
+                                else:
+                                    # This is regular content (plain text string from graph)
+                                    # Wrap as proper SSE data event: data: {"content":"...","done":false}\n\n
+                                    # Frontend expects this format (api.ts:756-784)
+                                    stream_response = StreamResponse(content=chunk, done=False)
+                                    sse_event = format_sse_event(stream_response)
+                                    yield write_sse(None, sse_event, request_id=request_id)
+
+                    # Send final done frame using validated formatter
+                    sse_done = format_sse_done()
+                    yield write_sse(None, sse_done, request_id=request_id)
+
+                    # Log aggregated statistics for this streaming session
+                    log_sse_summary(request_id=request_id)
 
             except RuntimeError as re:
                 if "iterated twice" in str(re):
-                    logger.error(
-                        f"CRITICAL: Stream iterated twice - session: {session.id}",
-                        exc_info=True
-                    )
+                    logger.error(f"CRITICAL: Stream iterated twice - session: {session.id}", exc_info=True)
+                # Still log summary even on error
+                log_sse_summary(request_id=request_id)
                 raise
             except Exception as e:
                 logger.error(
@@ -203,6 +460,8 @@ async def chat_stream(
                 )
                 error_response = StreamResponse(content=str(e), done=True)
                 yield f"data: {json.dumps(error_response.model_dump())}\n\n"
+                # Log summary even on error
+                log_sse_summary(request_id=request_id)
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
 

@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//private/tmp/**)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(docker-compose ps:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(while read file)",
+      "Bash(do [ -f \"$file\" ])",
+      "Bash(done)",
+      "Bash(for file in app/services/dynamic_knowledge_collector.py app/services/rss_feed_monitor.py app/services/knowledge_integrator.py app/services/italian_document_collector.py app/services/document_processor.py app/services/context_builder_merge.py app/core/document_ingestion.py app/models/database.py app/models/regulatory_documents.py)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(for file in app/services/dynamic_knowledge_collector.py app/services/rss_feed_monitor.py app/services/knowledge_integrator.py app/services/italian_document_collector.py app/services/document_processor.py)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker-compose exec:*)",
+      "Bash(paste - - - -)",
+      "Bash(cat:*)",
+      "Bash(npm test:*)",
+      "Bash(git mv:*)",
+      "Bash(pre-commit run generate-docs-index:*)",
+      "Bash(git -C <PATH_TO_WEBAPP> mv MANUAL_VERIFICATION_CHECKLIST.md docs/meta/)",
+      "Bash(git -C <PATH_TO_WEBAPP> mv MANUAL_VERIFICATION_COMPLETE_FLOW.md docs/meta/)",
+      "Bash(git -C <PATH_TO_WEBAPP> mv MANUAL_VERIFICATION_SESSION_RACE_FIX.md docs/meta/)",
+      "Bash(PGPASSWORD=devpass psql -h localhost -U aifinance -d aifinance -c \"SELECT id, title, category FROM knowledge_items WHERE title ILIKE ''%64%'' LIMIT 5;\")",
+      "Bash(PGPASSWORD=devpass psql -h localhost -U aifinance -d aifinance -c \"SELECT COUNT(*) FROM knowledge_chunks WHERE knowledge_item_id = 81;\")",
+      "Bash(PGPASSWORD=devpass psql -h localhost -U aifinance -d aifinance -c \"\nSELECT \n    ki.id, \n    ki.title, \n    ki.category,\n    ts_rank(kc.search_vector, query, 32) AS rank\nFROM \n    knowledge_chunks kc\n    JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id,\n    websearch_to_tsquery(''italian'', ''contratti locazione'') query\nWHERE \n    kc.search_vector @@ query\n    AND kc.junk = FALSE\nORDER BY rank DESC\nLIMIT 5;\n\")",
+      "Read(//<PATH_TO_WEBAPP>/src/app/chat/handlers/**)",
+      "Bash(uv run pytest tests/api/test_sse_keepalive_during_processing.py::TestSSEKeepaliveDuringProcessing::test_keepalive_sent_during_slow_rag_processing -v --tb=short)",
+      "Bash(uv run pytest:*)",
+      "Read(//<PATH_TO_WEBAPP>/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -240,7 +240,7 @@ This step is part of the PratikoAI RAG blueprint implementation. The audit syste
 ## Links
 - [Step Documentation](docs/architecture/steps/STEP-{step_num}-{step_id}.md)
 - [RAG Conformance Dashboard](docs/architecture/rag_conformance.md)
-- [RAG Diagram](docs/architecture/diagrams/pratikoai_rag.mmd)
+- [RAG Diagram](docs/architecture/diagrams/pratikoai_rag_hybrid.mmd)
 """
             
             # Build labels

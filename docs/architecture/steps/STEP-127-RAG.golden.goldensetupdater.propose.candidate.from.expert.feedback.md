@@ -1,61 +1,45 @@
 # RAG STEP 127 — GoldenSetUpdater.propose_candidate from expert feedback (RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback)
 
-**Type:** process  
-**Category:** golden  
+**Type:** process
+**Category:** golden
 **Node ID:** `GoldenCandidate`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `GoldenCandidate` (GoldenSetUpdater.propose_candidate from expert feedback).
+Proposes a new FAQ candidate for the Golden Set based on expert feedback. When an expert provides improved answers and corrections, this step transforms that feedback into a structured FAQ candidate with priority scoring, quality metrics, and regulatory references. The candidate is then routed to GoldenApproval (Step 128) for approval decision. This step is derived from the Mermaid node: `GoldenCandidate` (GoldenSetUpdater.propose_candidate from expert feedback).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/golden.py:step_127__golden_candidate`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator that transforms expert feedback into FAQ candidate. Extracts expert feedback data (query, answer, category, regulatory refs, confidence), calculates priority score based on confidence × trust × frequency, derives quality score from expert metrics, and routes to GoldenApproval (Step 128) with candidate metadata.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - thin orchestrator preserving existing workflow
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 127 (RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback): GoldenSetUpdater.propose_candidate from expert feedback | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (propose candidate, priority calculation, regulatory refs preservation, context preservation, metadata, missing category, error handling, logging)
+- [x] Parity tests (candidate creation behavior verification)
+- [x] Integration tests (DetermineAction→GoldenCandidate→GoldenApproval flow, data preparation for approval)
+- [x] Implementation changes (async orchestrator creating FAQ candidate from expert feedback)
+- [x] Observability: add structured log line
+  `RAG STEP 127 (RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback): GoldenSetUpdater.propose_candidate from expert feedback | attrs={candidate_id, priority_score, quality_score, expert_confidence, category, processing_stage}`
+- [x] Feature flag / config if needed (none required - uses existing workflow)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.44
-
-Top candidates:
-1) app/models/faq.py:486 — app.models.faq.generate_faq_cache_key (score 0.44)
-   Evidence: Score 0.44, Generate cache key for FAQ variations.
-2) app/models/faq.py:495 — app.models.faq.calculate_cost_savings (score 0.44)
-   Evidence: Score 0.44, Calculate cost savings from FAQ system usage.
-3) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.40)
-   Evidence: Score 0.40, Request model for FAQ queries.
-4) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.40)
-   Evidence: Score 0.40, Response model for FAQ queries.
-5) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.40)
-   Evidence: Score 0.40, Request model for creating FAQ entries.
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

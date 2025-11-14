@@ -1,0 +1,286 @@
+flowchart TD
+    %% ============================================================================
+    %% HYBRID ARCHITECTURE DIAGRAM - ALL 135 STEPS
+    %% ============================================================================
+    %% Same structure as pratikoai_rag.mmd but with:
+    %% - Detailed descriptive labels (class.method + descriptions)
+    %% - Step numbers as node IDs (S001, S002, etc.)
+    %% - Architectural colors (green=canonical, light green=internal, purple=db)
+    %% ============================================================================
+
+    %% Entry Point
+    Start([S001 · User submits query via POST /api/v1/chat]) --> S002[S002 · ChatbotController.chat<br/>Validate request and authenticate]
+
+    S002 --> S003{S003 · Request valid?}
+    S003 -->|Yes| S004[S004 · GDPRCompliance.record_processing<br/>Log data processing]
+    S003 -->|No| S005[S005 · Return 400 Bad Request]
+
+    S004 --> S006{S006 · PRIVACY_ANONYMIZE_REQUESTS<br/>enabled?}
+    S006 -->|Yes| S007[S007 · Anonymizer.anonymize_text<br/>Anonymize PII]
+    S006 -->|No| S008[S008 · LangGraphAgent.get_response<br/>Initialize workflow]
+
+    S007 --> S009{S009 · PII detected?}
+    S009 -->|Yes| S010[S010 · Logger.info<br/>Log PII anonymization]
+    S009 -->|No| S008
+    S010 --> S008
+
+    %% Query extraction
+    S008 --> S011[S011 · LangGraphAgent._chat<br/>Convert to Message objects]
+    S011 --> S012[S012 · LangGraphAgent._classify_user_query<br/>Extract user message]
+
+    S012 --> S013{S013 · User message<br/>exists?}
+    S013 -->|Yes| S014[S014 · AtomicFactsExtractor.extract<br/>Extract atomic facts]
+    S013 -->|No| S015[S015 · Continue without classification]
+
+    S014 --> S016[S016 · AtomicFactsExtractor.canonicalize<br/>Normalize dates amounts rates]
+
+    %% NEW: compute attachment hashes early for safe caching
+    S016 --> S017[S017 · AttachmentFingerprint.compute<br/>SHA-256 per attachment]
+    S017 --> S018[S018 · QuerySignature.compute<br/>Hash from canonical facts]
+
+    %% Attachment-aware gating + Golden fast-path (pre-LLM)
+    S018 --> S019{S019 · Attachments present?}
+    S019 -->|No| S020[S020 · Golden fast-path eligible?<br/>no doc or quick check safe]
+    S019 -->|Yes| S021[S021 · DocPreIngest.quick_extract<br/>type sniff and key fields]
+    S021 --> S022{S022 · Doc-dependent or refers to doc?}
+    S022 -->|Yes| S023[S023 · PlannerHint.require_doc_ingest_first<br/>ingest then Golden and KB]
+    S022 -->|No| S020
+
+    S020 -->|Yes| S024[S024 · GoldenSet.match_by_signature_or_semantic]
+    S020 -->|No| S031
+
+    S024 --> S025{S025 · High confidence match?<br/>score at least 0.90}
+    S025 -->|Yes| S026[S026 · KnowledgeSearch.context_topk<br/>fetch recent KB for changes]
+    S025 -->|No| S031
+
+    %% If Golden hits, still consult KB; if KB newer or conflicting -> go to LLM with context
+    S026 --> S027{S027 · can_serve_from_golden<br/>kb_epoch <= golden_epoch AND<br/>no conflicting tags?}
+    S027 -->|Yes| S028[S028 · Serve Golden answer<br/>with citations]
+    S027 -->|No| S029[S029 · ContextBuilder.merge<br/>facts and KB docs and doc facts if present]
+    S028 --> S030[S030 · Return ChatResponse]
+
+    %% Domain classification
+    S023 --> S031[S031 · DomainActionClassifier.classify<br/>Rule-based classification]
+    S031 --> S032[S032 · Calculate domain and action scores<br/>Match Italian keywords]
+    S032 --> S033{S033 · Confidence at least threshold?}
+    S033 -->|Yes| S034[S034 · ClassificationMetrics.track<br/>Record metrics]
+    S033 -->|No| S035[S035 · DomainActionClassifier._llm_fallback<br/>Use LLM classification]
+    S035 --> S036{S036 · LLM better than rule-based?}
+    S036 -->|Yes| S037[S037 · Use LLM classification]
+    S036 -->|No| S038[S038 · Use rule-based classification]
+    S037 --> S034
+    S038 --> S034
+
+    %% NEW: Retrieval Pre-Gate (Policy-Gated Autonomy)
+    S034 --> S034a{S034a · retrieval_gate<br/>Needs retrieval?<br/>Check time-sensitive/regulatory hints}
+    S034a -->|Yes| S039[S039 · KnowledgeSearch.retrieve_topk<br/>BM25 and vectors and recency boost]
+    S034a -->|No| S041[S041 · LangGraphAgent._get_system_prompt<br/>Select appropriate prompt<br/>with tool_choice=none]
+    S029 --> S039
+    S039 --> S040[S040 · ContextBuilder.merge<br/>facts and KB docs and optional doc facts]
+
+    %% Prompt and provider
+    S040 --> S041
+    S015 --> S041
+    S041 --> S042{S042 · Classification exists<br/>and confidence at least 0.6?}
+    S042 -->|Yes| S043[S043 · PromptTemplateManager.get_prompt<br/>Get domain-specific prompt]
+    S042 -->|No| S044[S044 · Use default SYSTEM_PROMPT]
+    S043 --> S045{S045 · System message exists?}
+    S044 --> S045
+    S045 -->|Yes| S046[S046 · Replace system message]
+    S045 -->|No| S047[S047 · Insert system message]
+    S046 --> S048[S048 · LangGraphAgent._get_optimal_provider<br/>Select LLM provider]
+    S047 --> S048
+
+    %% LLM Provider Selection
+    S048 --> S049[S049 · LLMFactory.get_optimal_provider<br/>Apply routing strategy]
+    S049 --> S050{S050 · Routing strategy?}
+    S050 -->|COST_OPTIMIZED| S051[S051 · Select cheapest provider]
+    S050 -->|QUALITY_FIRST| S052[S052 · Select best provider]
+    S050 -->|BALANCED| S053[S053 · Balance cost and quality]
+    S050 -->|FAILOVER| S054[S054 · Use primary provider]
+    S051 --> S055[S055 · CostCalculator.estimate_cost<br/>Calculate query cost]
+    S052 --> S055
+    S053 --> S055
+    S054 --> S055
+    S055 --> S056{S056 · Cost within budget?}
+    S056 -->|Yes| S057[S057 · Create provider instance]
+    S056 -->|No| S058[S058 · Select cheaper provider or fail]
+
+    %% Response-level cache check (now uses doc hashes and epochs)
+    S057 --> S059[S059 · LangGraphAgent._get_cached_llm_response<br/>Check for cached response]
+    S058 --> S059
+    S059 --> S060[S060 · EpochStamps.resolve<br/>kb_epoch golden_epoch ccnl_epoch parser_version]
+    S060 --> S061[S061 · CacheService._generate_response_key<br/>sig and doc_hashes and epochs and versions]
+    S061 --> RedisCache[(RedisCache.get<br/>Check cache)]
+    RedisCache --> S062{S062 · Cache hit?}
+    S062 -->|Yes| S063[S063 · UsageTracker.track<br/>Track cache hit]
+    S062 -->|No| S064[S064 · LLMProvider.chat_completion<br/>Make API call]
+    S063 --> S065[S065 · Logger.info<br/>Log cache hit]
+    S065 --> S066[S066 · Return cached response]
+
+    %% LLM Execution and Tools
+    S064 --> S067{S067 · LLM call successful?}
+    S067 -->|Yes| S068[S068 · CacheService.cache_response<br/>Store in Redis]
+    S067 -->|No| S069{S069 · Another attempt allowed?}
+    S069 -->|Yes| S070{S070 · Prod environment and last retry?}
+    S069 -->|No| S071[S071 · Return 500 error]
+    S070 -->|Yes| S072[S072 · Get FAILOVER provider]
+    S070 -->|No| S073[S073 · Retry same provider]
+    S072 --> S064
+    S073 --> S064
+    S068 --> S074[S074 · UsageTracker.track<br/>Track API usage]
+    S074 --> S075{S075 · Response has tool_calls?}
+
+    S075 -->|Yes| S076[S076 · Convert to AIMessage<br/>with tool_calls]
+    S075 -->|No| S077[S077 · Convert to simple AIMessage]
+    S075 -->|No tools| S104
+    S076 --> S078[S078 · LangGraphAgent._tool_call<br/>Execute tools]
+    S078 --> S079{S079 · Tool type?}
+
+    S079 -->|Knowledge| S080[S080 · KnowledgeSearchTool.search<br/>KB on demand]
+    S079 -->|CCNL| S081[S081 · CCNLTool.ccnl_query<br/>Query labor agreements]
+    S079 -->|Document| S082[S082 · DocumentIngestTool.process<br/>Process attachments]
+    S079 -->|FAQ| S083[S083 · FAQTool.faq_query<br/>Query Golden Set]
+
+    %% Document Ingest Tool Pipeline
+    S082 --> S084[S084 · AttachmentValidator.validate<br/>Check files and limits]
+    S084 --> S085{S085 · Valid attachments?}
+    S085 -->|No| S086[S086 · Return tool error<br/>Invalid file]
+    S085 -->|Yes| S087[S087 · DocSanitizer.sanitize<br/>Strip macros and JS]
+    S087 --> S088[S088 · DocClassifier.classify<br/>Detect document type]
+    S088 --> S089{S089 · Document type?}
+    S089 -->|Fattura XML| S090[S090 · FatturaParser.parse_xsd<br/>XSD validation]
+    S089 -->|F24| S091[S091 · F24Parser.parse_ocr<br/>Layout aware OCR]
+    S089 -->|Contratto| S092[S092 · ContractParser.parse]
+    S089 -->|Busta paga| S093[S093 · PayslipParser.parse]
+    S089 -->|Other| S094[S094 · GenericOCR.parse_with_layout]
+    S090 --> S095[S095 · Extractor.extract<br/>Structured fields]
+    S091 --> S095
+    S092 --> S095
+    S093 --> S095
+    S094 --> S095
+    S095 --> S096[S096 · BlobStore.put<br/>Encrypted TTL storage]
+    S096 --> S097[S097 · Provenance.log<br/>Ledger entry]
+    S097 --> S098[S098 · Convert to ToolMessage<br/>facts and spans]
+    S098 --> S099[S099 · Return to tool caller]
+
+    %% Knowledge Tool path
+    S080 --> S099
+
+    %% FAQ Tool path
+    S083 --> S099
+    GoldenSetDB[(Golden Set / FAQ Store)] -.-> S083
+    GoldenSetDB -.-> S024
+
+    %% CCNL Tool path
+    S081 --> PostgresDB[(PostgreSQL<br/>Search CCNL database)]
+    PostgresDB --> S100[S100 · CCNLCalculator.calculate<br/>Perform calculations]
+    S100 --> S099
+
+    %% Back to agent
+    S099 --> S101[S101 · Return to chat node<br/>for final response]
+    S077 --> S101
+
+    %% Response Processing
+    S101 --> S102[S102 · LangGraphAgent.__process_messages<br/>Convert to dict]
+    S066 --> S102
+    S102 --> S103[S103 · Logger.info<br/>Log completion]
+    S103 --> S104{S104 · Streaming requested?}
+    S104 -->|Yes| S105[S105 · ChatbotController.chat_stream<br/>Setup SSE]
+    S104 -->|No| S030
+    S105 --> S106[S106 · Create async generator]
+    S106 --> S107[S107 · SinglePassStream<br/>Prevent double iteration]
+    S107 --> S108[S108 · write_sse<br/>Format chunks]
+    S108 --> S109[S109 · StreamingResponse<br/>Send chunks]
+    S109 --> S110[S110 · Send DONE frame]
+    S110 --> S111[S111 · Collect usage metrics]
+    S030 --> S111
+    S111 --> S112([S112 · Return response to user])
+
+    %% Expert Feedback System (async, post-response) + Golden management
+    S111 --> S113[S113 · FeedbackUI.show_options<br/>Correct Incomplete Wrong]
+    S113 --> S114{S114 · User provides feedback?}
+    S114 -->|No| S115[S115 · No feedback]
+    S114 -->|Yes| S116[S116 · Feedback type selected]
+    S116 --> S117[S117 · POST /api/v1/faq/feedback]
+    S116 --> S118[S118 · POST /api/v1/knowledge/feedback]
+    S116 --> S119[S119 · ExpertFeedbackCollector.collect_feedback]
+    S117 --> S119
+    S118 --> S119
+    S119 --> S120[S120 · Validate expert credentials]
+    S120 --> S121{S121 · Trust score at least 0.7?}
+    S121 -->|No| S122[S122 · Feedback rejected]
+    S121 -->|Yes| S123[S123 · Create ExpertFeedback record]
+    S123 --> S124[S124 · Update expert metrics]
+    S124 --> S125[S125 · Cache feedback 1h TTL]
+    S125 --> S126[S126 · Determine action]
+
+    S126 --> S127[S127 · GoldenSetUpdater.propose_candidate<br/>from expert feedback]
+    S127 --> S128{S128 · Auto threshold met<br/>or manual approval?}
+    S128 -->|Auto or approved| S129[S129 · GoldenSet.publish_or_update<br/>versioned entry]
+    S128 -->|Rejected| S115
+    S129 --> S130[S130 · CacheService.invalidate_faq<br/>by id or signature]
+    S129 --> S131[S131 · VectorIndex.upsert_faq<br/>update embeddings]
+    S129 --> GoldenSetDB
+
+    %% Background RSS Influence (schedule)
+    S132[S132 · RSS Monitor] --> S133[S133 · Fetch and parse sources]
+    S133 --> S134[S134 · Extract text and metadata]
+    S134 --> KnowledgeStore[(Knowledge Base)]
+    KnowledgeStore --> S135[S135 · GoldenSetUpdater.auto_rule_eval<br/>new or obsolete candidates]
+    S135 --> S127
+
+    %% KB wiring (read-only pulls)
+    KnowledgeStore -.-> S039
+    KnowledgeStore -.-> S026
+    KnowledgeStore -.-> S080
+
+    %% Error Paths
+    S086 --> S101
+    S005 --> S112
+    S071 --> S112
+
+    %% ============================================================================
+    %% STYLING - HYBRID ARCHITECTURE COLORS
+    %% ============================================================================
+    %% Canonical Nodes (27) = dark green border (runtime boundaries)
+    %% Internal Steps (108) = light green dashed border (pure transforms)
+    %% Databases = purple
+    %% ============================================================================
+
+    classDef canonicalNode fill:#90EE90,stroke:#228B22,stroke-width:5px,color:#000000
+    classDef internalNode fill:#E0FFE0,stroke:#666666,stroke-width:3px,stroke-dasharray: 5 5,color:#000000
+    classDef databaseNode fill:#E6D5F5,stroke:#8E44AD,stroke-width:3px,color:#000000
+
+    %% Canonical Nodes (27 total) - Runtime boundaries with metrics/retries
+    class S002,S003,S006,S009,S013,S020,S024,S026,S031,S041,S042,S048,S050,S055,S056,S059,S062,S064,S067,S075,S079,S080,S081,S082,S083,S104,S105,S109,S112 canonicalNode
+
+    %% Internal Steps (108 total) - Pure transforms, no isolation
+    %% These steps are styled with light green dashed borders to distinguish from Canonical Nodes
+    class Start,S001,S004,S005,S007,S008,S010,S011,S012,S014,S015,S016,S017,S018,S019,S021,S022,S023,S025,S027,S028,S029,S030,S032,S033,S034,S034a,S035,S036,S037,S038,S039,S040,S043,S044,S045,S046,S047,S049,S051,S052,S053,S054,S057,S058,S060,S061,S063,S065,S066,S068,S069,S070,S071,S072,S073,S074,S076,S077,S078,S084,S085,S086,S087,S088,S089,S090,S091,S092,S093,S094,S095,S096,S097,S098,S099,S100,S101,S102,S103,S106,S107,S108,S110,S111,S113,S114,S115,S116,S117,S118,S119,S120,S121,S122,S123,S124,S125,S126,S127,S128,S129,S130,S131,S132,S133,S134,S135 internalNode
+
+    %% Databases
+    class RedisCache,PostgresDB,GoldenSetDB,KnowledgeStore databaseNode
+
+    %% Policy-Gated Autonomy Note
+    subgraph PolicyNote ["Policy-Gated Autonomy"]
+        PN1[S034a: Retrieval Pre-Gate]
+        PN2[When 'No': Retrieval and tool calls disabled]
+        PN3[When 'Yes': Allow max 1 tool call per turn]
+        PN4[S027: Serve Golden only if kb_epoch <= golden_epoch]
+    end
+
+    %% Legend
+    subgraph Legend
+        L1[Green = Canonical Node]
+        L2[Light Green Dashed = Internal]
+        L3{Diamond = Decision Point}
+        L4[(Purple = Database)]
+    end
+
+    style Legend fill:#fafafa,stroke:#666,stroke-width:3px,color:#000000
+    style L1 fill:#90EE90,stroke:#228B22,stroke-width:5px,color:#000000
+    style L2 fill:#E0FFE0,stroke:#666666,stroke-width:3px,stroke-dasharray: 5 5,color:#000000
+    style L3 fill:#90EE90,stroke:#228B22,stroke-width:5px,color:#000000
+    style L4 fill:#E6D5F5,stroke:#8E44AD,stroke-width:3px,color:#000000
+

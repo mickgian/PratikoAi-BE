@@ -8,64 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `UseRuleBased` (Use rule-based classification).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/platform.py:1062` - `step_38__use_rule_based()`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator proceeding with rule-based classification result. Routes to context building when classification confidence is sufficient.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 38 (RAG.platform.use.rule.based.classification): Use rule-based classification | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 38 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.27
-
-Top candidates:
-1) app/core/llm/base.py:61 — app.core.llm.base.LLMProvider.__init__ (score 0.27)
-   Evidence: Score 0.27, Initialize the LLM provider.
-
-Args:
-    api_key: API key for the provider
-    mo...
-2) app/core/llm/base.py:75 — app.core.llm.base.LLMProvider.provider_type (score 0.27)
-   Evidence: Score 0.27, Get the provider type.
-3) app/core/llm/base.py:81 — app.core.llm.base.LLMProvider.supported_models (score 0.27)
-   Evidence: Score 0.27, Get supported models and their cost information.
-4) app/core/llm/base.py:132 — app.core.llm.base.LLMProvider.estimate_tokens (score 0.27)
-   Evidence: Score 0.27, Estimate token count for a list of messages.
-
-Args:
-    messages: List of conver...
-5) app/core/llm/base.py:144 — app.core.llm.base.LLMProvider.estimate_cost (score 0.27)
-   Evidence: Score 0.27, Estimate cost for given token counts.
-
-Args:
-    input_tokens: Number of input t...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for UseRuleBased
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

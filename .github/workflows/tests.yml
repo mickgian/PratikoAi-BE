@@ -1,0 +1,90 @@
+name: 🧪 Tests
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - 'DEV-*'
+  pull_request:
+    branches:
+      - master
+      - develop
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pratikoai_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-groups
+
+      - name: Set up test environment variables
+        run: |
+          echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
+          echo "LLM_API_KEY=test-key-for-ci" >> $GITHUB_ENV
+          echo "JWT_SECRET_KEY=test-jwt-secret-key-for-ci" >> $GITHUB_ENV
+          echo "LANGFUSE_PUBLIC_KEY=test-langfuse-public" >> $GITHUB_ENV
+          echo "LANGFUSE_SECRET_KEY=test-langfuse-secret" >> $GITHUB_ENV
+
+      - name: Run streaming protection tests (critical)
+        run: |
+          uv run pytest \
+            tests/test_sse_format_validation.py \
+            tests/langgraph/test_buffered_streaming_timing.py::TestBufferedStreamingRegressionProtection \
+            -v --tb=line -x
+        continue-on-error: false
+
+      - name: Run all tests with coverage
+        continue-on-error: true
+        run: |
+          uv run pytest tests/ \
+            -v \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing
+
+      - name: Upload coverage reports
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            htmlcov/
+            coverage.xml
+          retention-days: 30

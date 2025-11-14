@@ -1,0 +1,3363 @@
+{
+  "1": {
+    "step": 1,
+    "id": "RAG.platform.chatbotcontroller.chat.validate.request.and.authenticate",
+    "node_id": "ValidateRequest",
+    "node_label": "ChatbotController.chat Validate request and authenticate",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ValidCheck"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "2": {
+    "step": 2,
+    "id": "RAG.platform.user.submits.query.via.post.api.v1.chat",
+    "node_id": "Start",
+    "node_label": "User submits query via POST /api/v1/chat",
+    "category": "platform",
+    "type": "startEnd",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "3": {
+    "step": 3,
+    "id": "RAG.platform.request.valid",
+    "node_id": "ValidCheck",
+    "node_label": "Request valid?",
+    "category": "platform",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "ValidateRequest"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "4": {
+    "step": 4,
+    "id": "RAG.privacy.gdprcompliance.record.processing.log.data.processing",
+    "node_id": "GDPRLog",
+    "node_label": "GDPRCompliance.record_processing Log data processing",
+    "category": "privacy",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "PrivacyCheck"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "5": {
+    "step": 5,
+    "id": "RAG.platform.return.400.bad.request",
+    "node_id": "Error400",
+    "node_label": "Return 400 Bad Request",
+    "category": "platform",
+    "type": "error",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "End"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "6": {
+    "step": 6,
+    "id": "RAG.privacy.privacy.anonymize.requests.enabled",
+    "node_id": "PrivacyCheck",
+    "node_label": "PRIVACY_ANONYMIZE_REQUESTS enabled?",
+    "category": "privacy",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "GDPRLog"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "7": {
+    "step": 7,
+    "id": "RAG.privacy.anonymizer.anonymize.text.anonymize.pii",
+    "node_id": "AnonymizeText",
+    "node_label": "Anonymizer.anonymize_text Anonymize PII",
+    "category": "privacy",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "PIICheck"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "8": {
+    "step": 8,
+    "id": "RAG.response.langgraphagent.get.response.initialize.workflow",
+    "node_id": "InitAgent",
+    "node_label": "LangGraphAgent.get_response Initialize workflow",
+    "category": "response",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "LogPII"
+      ],
+      "outgoing": [
+        "ConvertMessages"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "9": {
+    "step": 9,
+    "id": "RAG.platform.pii.detected",
+    "node_id": "PIICheck",
+    "node_label": "PII detected?",
+    "category": "platform",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "AnonymizeText"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "10": {
+    "step": 10,
+    "id": "RAG.platform.logger.info.log.pii.anonymization",
+    "node_id": "LogPII",
+    "node_label": "Logger.info Log PII anonymization",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "InitAgent"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "11": {
+    "step": 11,
+    "id": "RAG.platform.langgraphagent.chat.convert.to.message.objects",
+    "node_id": "ConvertMessages",
+    "node_label": "LangGraphAgent._chat Convert to Message objects",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "InitAgent"
+      ],
+      "outgoing": [
+        "ExtractQuery"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "12": {
+    "step": 12,
+    "id": "RAG.classify.langgraphagent.classify.user.query.extract.user.message",
+    "node_id": "ExtractQuery",
+    "node_label": "LangGraphAgent._classify_user_query Extract user message",
+    "category": "classify",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ConvertMessages"
+      ],
+      "outgoing": [
+        "MessageExists"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "13": {
+    "step": 13,
+    "id": "RAG.platform.user.message.exists",
+    "node_id": "MessageExists",
+    "node_label": "User message exists?",
+    "category": "platform",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "ExtractQuery"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "14": {
+    "step": 14,
+    "id": "RAG.facts.atomicfactsextractor.extract.extract.atomic.facts",
+    "node_id": "ExtractFacts",
+    "node_label": "AtomicFactsExtractor.extract Extract atomic facts",
+    "category": "facts",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "CanonicalizeFacts"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "15": {
+    "step": 15,
+    "id": "RAG.prompting.continue.without.classification",
+    "node_id": "DefaultPrompt",
+    "node_label": "Continue without classification",
+    "category": "prompting",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "SelectPrompt"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "16": {
+    "step": 16,
+    "id": "RAG.facts.atomicfactsextractor.canonicalize.normalize.dates.amounts.rates",
+    "node_id": "CanonicalizeFacts",
+    "node_label": "AtomicFactsExtractor.canonicalize Normalize dates amounts rates",
+    "category": "facts",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ExtractFacts"
+      ],
+      "outgoing": [
+        "AttachmentFingerprint"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "17": {
+    "step": 17,
+    "id": "RAG.preflight.attachmentfingerprint.compute.sha.256.per.attachment",
+    "node_id": "AttachmentFingerprint",
+    "node_label": "AttachmentFingerprint.compute SHA-256 per attachment",
+    "category": "preflight",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "CanonicalizeFacts"
+      ],
+      "outgoing": [
+        "QuerySig"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "18": {
+    "step": 18,
+    "id": "RAG.facts.querysignature.compute.hash.from.canonical.facts",
+    "node_id": "QuerySig",
+    "node_label": "QuerySignature.compute Hash from canonical facts",
+    "category": "facts",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "AttachmentFingerprint"
+      ],
+      "outgoing": [
+        "AttachCheck"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "19": {
+    "step": 19,
+    "id": "RAG.preflight.attachments.present",
+    "node_id": "AttachCheck",
+    "node_label": "Attachments present?",
+    "category": "preflight",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "QuerySig"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "20": {
+    "step": 20,
+    "id": "RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe",
+    "node_id": "GoldenFastGate",
+    "node_label": "Golden fast-path eligible? no doc or quick check safe",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "21": {
+    "step": 21,
+    "id": "RAG.preflight.docpreingest.quick.extract.type.sniff.and.key.fields",
+    "node_id": "QuickPreIngest",
+    "node_label": "DocPreIngest.quick_extract type sniff and key fields",
+    "category": "preflight",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "DocDependent"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "22": {
+    "step": 22,
+    "id": "RAG.docs.doc.dependent.or.refers.to.doc",
+    "node_id": "DocDependent",
+    "node_label": "Doc-dependent or refers to doc?",
+    "category": "docs",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "QuickPreIngest"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "23": {
+    "step": 23,
+    "id": "RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb",
+    "node_id": "RequireDocIngest",
+    "node_label": "PlannerHint.require_doc_ingest_first ingest then Golden and KB",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ClassifyDomain"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "24": {
+    "step": 24,
+    "id": "RAG.preflight.goldenset.match.by.signature.or.semantic",
+    "node_id": "GoldenLookup",
+    "node_label": "GoldenSet.match_by_signature_or_semantic",
+    "category": "preflight",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "GoldenHit"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "25": {
+    "step": 25,
+    "id": "RAG.golden.high.confidence.match.score.at.least.0.90",
+    "node_id": "GoldenHit",
+    "node_label": "High confidence match? score at least 0.90",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "GoldenLookup"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "26": {
+    "step": 26,
+    "id": "RAG.kb.knowledgesearch.context.topk.fetch.recent.kb.for.changes",
+    "node_id": "KBContextCheck",
+    "node_label": "KnowledgeSearch.context_topk fetch recent KB for changes",
+    "category": "kb",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "KBDelta"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "27": {
+    "step": 27,
+    "id": "RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags",
+    "node_id": "KBDelta",
+    "node_label": "KB newer than Golden as of or conflicting tags?",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "KBContextCheck"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "28": {
+    "step": 28,
+    "id": "RAG.golden.serve.golden.answer.with.citations",
+    "node_id": "ServeGolden",
+    "node_label": "Serve Golden answer with citations",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ReturnComplete"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "29": {
+    "step": 29,
+    "id": "RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.doc.facts.if.present",
+    "node_id": "PreContextFromGolden",
+    "node_label": "ContextBuilder.merge facts and KB docs and doc facts if present",
+    "category": "facts",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "KBPreFetch"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "30": {
+    "step": 30,
+    "id": "RAG.response.return.chatresponse",
+    "node_id": "ReturnComplete",
+    "node_label": "Return ChatResponse",
+    "category": "response",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ServeGolden"
+      ],
+      "outgoing": [
+        "CollectMetrics"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "31": {
+    "step": 31,
+    "id": "RAG.classify.domainactionclassifier.classify.rule.based.classification",
+    "node_id": "ClassifyDomain",
+    "node_label": "DomainActionClassifier.classify Rule-based classification",
+    "category": "classify",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "RequireDocIngest"
+      ],
+      "outgoing": [
+        "CalcScores"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "32": {
+    "step": 32,
+    "id": "RAG.classify.calculate.domain.and.action.scores.match.italian.keywords",
+    "node_id": "CalcScores",
+    "node_label": "Calculate domain and action scores Match Italian keywords",
+    "category": "classify",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ClassifyDomain"
+      ],
+      "outgoing": [
+        "ConfidenceCheck"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "33": {
+    "step": 33,
+    "id": "RAG.classify.confidence.at.least.threshold",
+    "node_id": "ConfidenceCheck",
+    "node_label": "Confidence at least threshold?",
+    "category": "classify",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "CalcScores"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "34": {
+    "step": 34,
+    "id": "RAG.metrics.classificationmetrics.track.record.metrics",
+    "node_id": "TrackMetrics",
+    "node_label": "ClassificationMetrics.track Record metrics",
+    "category": "metrics",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "UseLLM",
+        "UseRuleBased"
+      ],
+      "outgoing": [
+        "KBPreFetch"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "35": {
+    "step": 35,
+    "id": "RAG.classify.domainactionclassifier.llm.fallback.use.llm.classification",
+    "node_id": "LLMFallback",
+    "node_label": "DomainActionClassifier._llm_fallback Use LLM classification",
+    "category": "classify",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "LLMBetter"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "36": {
+    "step": 36,
+    "id": "RAG.llm.llm.better.than.rule.based",
+    "node_id": "LLMBetter",
+    "node_label": "LLM better than rule-based?",
+    "category": "llm",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "LLMFallback"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "37": {
+    "step": 37,
+    "id": "RAG.llm.use.llm.classification",
+    "node_id": "UseLLM",
+    "node_label": "Use LLM classification",
+    "category": "llm",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "TrackMetrics"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "38": {
+    "step": 38,
+    "id": "RAG.platform.use.rule.based.classification",
+    "node_id": "UseRuleBased",
+    "node_label": "Use rule-based classification",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "TrackMetrics"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "39": {
+    "step": 39,
+    "id": "RAG.preflight.knowledgesearch.retrieve.topk.bm25.and.vectors.and.recency.boost",
+    "node_id": "KBPreFetch",
+    "node_label": "KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost",
+    "category": "preflight",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "TrackMetrics",
+        "PreContextFromGolden"
+      ],
+      "outgoing": [
+        "BuildContext"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "40": {
+    "step": 40,
+    "id": "RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.optional.doc.facts",
+    "node_id": "BuildContext",
+    "node_label": "ContextBuilder.merge facts and KB docs and optional doc facts",
+    "category": "facts",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "KBPreFetch"
+      ],
+      "outgoing": [
+        "SelectPrompt"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "41": {
+    "step": 41,
+    "id": "RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt",
+    "node_id": "SelectPrompt",
+    "node_label": "LangGraphAgent._get_system_prompt Select appropriate prompt",
+    "category": "prompting",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "BuildContext",
+        "DefaultPrompt"
+      ],
+      "outgoing": [
+        "ClassConfidence"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "42": {
+    "step": 42,
+    "id": "RAG.classify.classification.exists.and.confidence.at.least.0.6",
+    "node_id": "ClassConfidence",
+    "node_label": "Classification exists and confidence at least 0.6?",
+    "category": "classify",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "SelectPrompt"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "43": {
+    "step": 43,
+    "id": "RAG.classify.prompttemplatemanager.get.prompt.get.domain.specific.prompt",
+    "node_id": "DomainPrompt",
+    "node_label": "PromptTemplateManager.get_prompt Get domain-specific prompt",
+    "category": "classify",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "CheckSysMsg"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "44": {
+    "step": 44,
+    "id": "RAG.prompting.use.default.system.prompt",
+    "node_id": "DefaultSysPrompt",
+    "node_label": "Use default SYSTEM_PROMPT",
+    "category": "prompting",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "CheckSysMsg"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "45": {
+    "step": 45,
+    "id": "RAG.prompting.system.message.exists",
+    "node_id": "CheckSysMsg",
+    "node_label": "System message exists?",
+    "category": "prompting",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "DomainPrompt",
+        "DefaultSysPrompt"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "46": {
+    "step": 46,
+    "id": "RAG.prompting.replace.system.message",
+    "node_id": "ReplaceMsg",
+    "node_label": "Replace system message",
+    "category": "prompting",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "SelectProvider"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "47": {
+    "step": 47,
+    "id": "RAG.prompting.insert.system.message",
+    "node_id": "InsertMsg",
+    "node_label": "Insert system message",
+    "category": "prompting",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "SelectProvider"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "48": {
+    "step": 48,
+    "id": "RAG.providers.langgraphagent.get.optimal.provider.select.llm.provider",
+    "node_id": "SelectProvider",
+    "node_label": "LangGraphAgent._get_optimal_provider Select LLM provider",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ReplaceMsg",
+        "InsertMsg"
+      ],
+      "outgoing": [
+        "RouteStrategy"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "49": {
+    "step": 49,
+    "id": "RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy",
+    "node_id": "RouteStrategy",
+    "node_label": "LLMFactory.get_optimal_provider Apply routing strategy",
+    "category": "facts",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "SelectProvider"
+      ],
+      "outgoing": [
+        "StrategyType"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "50": {
+    "step": 50,
+    "id": "RAG.platform.routing.strategy",
+    "node_id": "StrategyType",
+    "node_label": "Routing strategy?",
+    "category": "platform",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "RouteStrategy"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "51": {
+    "step": 51,
+    "id": "RAG.providers.select.cheapest.provider",
+    "node_id": "CheapProvider",
+    "node_label": "Select cheapest provider",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "EstimateCost"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "52": {
+    "step": 52,
+    "id": "RAG.providers.select.best.provider",
+    "node_id": "BestProvider",
+    "node_label": "Select best provider",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "EstimateCost"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "53": {
+    "step": 53,
+    "id": "RAG.providers.balance.cost.and.quality",
+    "node_id": "BalanceProvider",
+    "node_label": "Balance cost and quality",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "EstimateCost"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "54": {
+    "step": 54,
+    "id": "RAG.providers.use.primary.provider",
+    "node_id": "PrimaryProvider",
+    "node_label": "Use primary provider",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "EstimateCost"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "55": {
+    "step": 55,
+    "id": "RAG.providers.costcalculator.estimate.cost.calculate.query.cost",
+    "node_id": "EstimateCost",
+    "node_label": "CostCalculator.estimate_cost Calculate query cost",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "CheapProvider",
+        "BestProvider",
+        "BalanceProvider",
+        "PrimaryProvider"
+      ],
+      "outgoing": [
+        "CostCheck"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "56": {
+    "step": 56,
+    "id": "RAG.providers.cost.within.budget",
+    "node_id": "CostCheck",
+    "node_label": "Cost within budget?",
+    "category": "providers",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "EstimateCost"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "57": {
+    "step": 57,
+    "id": "RAG.providers.create.provider.instance",
+    "node_id": "CreateProvider",
+    "node_label": "Create provider instance",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "CheckCache"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "58": {
+    "step": 58,
+    "id": "RAG.providers.select.cheaper.provider.or.fail",
+    "node_id": "CheaperProvider",
+    "node_label": "Select cheaper provider or fail",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "CheckCache"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "59": {
+    "step": 59,
+    "id": "RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response",
+    "node_id": "CheckCache",
+    "node_label": "LangGraphAgent._get_cached_llm_response Check for cached response",
+    "category": "cache",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "CreateProvider",
+        "CheaperProvider"
+      ],
+      "outgoing": [
+        "ResolveEpochs"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "60": {
+    "step": 60,
+    "id": "RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version",
+    "node_id": "ResolveEpochs",
+    "node_label": "EpochStamps.resolve kb_epoch golden_epoch ccnl_epoch parser_version",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "CheckCache"
+      ],
+      "outgoing": [
+        "GenHash"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "61": {
+    "step": 61,
+    "id": "RAG.cache.cacheservice.generate.response.key.sig.and.doc.hashes.and.epochs.and.versions",
+    "node_id": "GenHash",
+    "node_label": "CacheService._generate_response_key sig and doc_hashes and epochs and versions",
+    "category": "cache",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ResolveEpochs"
+      ],
+      "outgoing": [
+        "RedisGet"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "62": {
+    "step": 62,
+    "id": "RAG.cache.cache.hit",
+    "node_id": "CacheHit",
+    "node_label": "Cache hit?",
+    "category": "cache",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "RedisGet"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "63": {
+    "step": 63,
+    "id": "RAG.cache.usagetracker.track.track.cache.hit",
+    "node_id": "TrackCacheHit",
+    "node_label": "UsageTracker.track Track cache hit",
+    "category": "cache",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "LogCacheHit"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "64": {
+    "step": 64,
+    "id": "RAG.providers.llmprovider.chat.completion.make.api.call",
+    "node_id": "LLMCall",
+    "node_label": "LLMProvider.chat_completion Make API call",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "FailoverProvider",
+        "RetrySame"
+      ],
+      "outgoing": [
+        "LLMSuccess"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "65": {
+    "step": 65,
+    "id": "RAG.cache.logger.info.log.cache.hit",
+    "node_id": "LogCacheHit",
+    "node_label": "Logger.info Log cache hit",
+    "category": "cache",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "TrackCacheHit"
+      ],
+      "outgoing": [
+        "ReturnCached"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "66": {
+    "step": 66,
+    "id": "RAG.cache.return.cached.response",
+    "node_id": "ReturnCached",
+    "node_label": "Return cached response",
+    "category": "cache",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "LogCacheHit"
+      ],
+      "outgoing": [
+        "ProcessMsg"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "67": {
+    "step": 67,
+    "id": "RAG.llm.llm.call.successful",
+    "node_id": "LLMSuccess",
+    "node_label": "LLM call successful?",
+    "category": "llm",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "LLMCall"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "68": {
+    "step": 68,
+    "id": "RAG.cache.cacheservice.cache.response.store.in.redis",
+    "node_id": "CacheResponse",
+    "node_label": "CacheService.cache_response Store in Redis",
+    "category": "cache",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "TrackUsage"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "69": {
+    "step": 69,
+    "id": "RAG.platform.another.attempt.allowed",
+    "node_id": "RetryCheck",
+    "node_label": "Another attempt allowed?",
+    "category": "platform",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "70": {
+    "step": 70,
+    "id": "RAG.platform.prod.environment.and.last.retry",
+    "node_id": "ProdCheck",
+    "node_label": "Prod environment and last retry?",
+    "category": "platform",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "71": {
+    "step": 71,
+    "id": "RAG.platform.return.500.error",
+    "node_id": "Error500",
+    "node_label": "Return 500 error",
+    "category": "platform",
+    "type": "error",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "End"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "72": {
+    "step": 72,
+    "id": "RAG.providers.get.failover.provider",
+    "node_id": "FailoverProvider",
+    "node_label": "Get FAILOVER provider",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "LLMCall"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "73": {
+    "step": 73,
+    "id": "RAG.providers.retry.same.provider",
+    "node_id": "RetrySame",
+    "node_label": "Retry same provider",
+    "category": "providers",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "LLMCall"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "74": {
+    "step": 74,
+    "id": "RAG.metrics.usagetracker.track.track.api.usage",
+    "node_id": "TrackUsage",
+    "node_label": "UsageTracker.track Track API usage",
+    "category": "metrics",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "CacheResponse"
+      ],
+      "outgoing": [
+        "ToolCheck"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "75": {
+    "step": 75,
+    "id": "RAG.response.response.has.tool.calls",
+    "node_id": "ToolCheck",
+    "node_label": "Response has tool_calls?",
+    "category": "response",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "TrackUsage"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "76": {
+    "step": 76,
+    "id": "RAG.platform.convert.to.aimessage.with.tool.calls",
+    "node_id": "ConvertAIMsg",
+    "node_label": "Convert to AIMessage with tool_calls",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ExecuteTools"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "77": {
+    "step": 77,
+    "id": "RAG.platform.convert.to.simple.aimessage",
+    "node_id": "SimpleAIMsg",
+    "node_label": "Convert to simple AIMessage",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "FinalResponse"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "78": {
+    "step": 78,
+    "id": "RAG.platform.langgraphagent.tool.call.execute.tools",
+    "node_id": "ExecuteTools",
+    "node_label": "LangGraphAgent._tool_call Execute tools",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ConvertAIMsg"
+      ],
+      "outgoing": [
+        "ToolType"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "79": {
+    "step": 79,
+    "id": "RAG.routing.tool.type",
+    "node_id": "ToolType",
+    "node_label": "Tool type?",
+    "category": "routing",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "ExecuteTools"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "80": {
+    "step": 80,
+    "id": "RAG.kb.knowledgesearchtool.search.kb.on.demand",
+    "node_id": "KBQueryTool",
+    "node_label": "KnowledgeSearchTool.search KB on demand",
+    "category": "kb",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ToolResults"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "81": {
+    "step": 81,
+    "id": "RAG.ccnl.ccnltool.ccnl.query.query.labor.agreements",
+    "node_id": "CCNLQuery",
+    "node_label": "CCNLTool.ccnl_query Query labor agreements",
+    "category": "ccnl",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "PostgresQuery"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "82": {
+    "step": 82,
+    "id": "RAG.preflight.documentingesttool.process.process.attachments",
+    "node_id": "DocIngest",
+    "node_label": "DocumentIngestTool.process Process attachments",
+    "category": "preflight",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ValidateAttach"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "83": {
+    "step": 83,
+    "id": "RAG.golden.faqtool.faq.query.query.golden.set",
+    "node_id": "FAQQuery",
+    "node_label": "FAQTool.faq_query Query Golden Set",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ToolResults"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "84": {
+    "step": 84,
+    "id": "RAG.preflight.attachmentvalidator.validate.check.files.and.limits",
+    "node_id": "ValidateAttach",
+    "node_label": "AttachmentValidator.validate Check files and limits",
+    "category": "preflight",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "DocIngest"
+      ],
+      "outgoing": [
+        "AttachOK"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "85": {
+    "step": 85,
+    "id": "RAG.preflight.valid.attachments",
+    "node_id": "AttachOK",
+    "node_label": "Valid attachments?",
+    "category": "preflight",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "ValidateAttach"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "86": {
+    "step": 86,
+    "id": "RAG.platform.return.tool.error.invalid.file",
+    "node_id": "ToolErr",
+    "node_label": "Return tool error Invalid file",
+    "category": "platform",
+    "type": "error",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "FinalResponse"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "87": {
+    "step": 87,
+    "id": "RAG.docs.docsanitizer.sanitize.strip.macros.and.js",
+    "node_id": "DocSecurity",
+    "node_label": "DocSanitizer.sanitize Strip macros and JS",
+    "category": "docs",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "DocClassify"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "88": {
+    "step": 88,
+    "id": "RAG.classify.docclassifier.classify.detect.document.type",
+    "node_id": "DocClassify",
+    "node_label": "DocClassifier.classify Detect document type",
+    "category": "classify",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "DocSecurity"
+      ],
+      "outgoing": [
+        "DocType"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "89": {
+    "step": 89,
+    "id": "RAG.docs.document.type",
+    "node_id": "DocType",
+    "node_label": "Document type?",
+    "category": "docs",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "DocClassify"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "90": {
+    "step": 90,
+    "id": "RAG.docs.fatturaparser.parse.xsd.xsd.validation",
+    "node_id": "FatturaParser",
+    "node_label": "FatturaParser.parse_xsd XSD validation",
+    "category": "docs",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ExtractDocFacts"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "91": {
+    "step": 91,
+    "id": "RAG.docs.f24parser.parse.ocr.layout.aware.ocr",
+    "node_id": "F24Parser",
+    "node_label": "F24Parser.parse_ocr Layout aware OCR",
+    "category": "docs",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ExtractDocFacts"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "92": {
+    "step": 92,
+    "id": "RAG.docs.contractparser.parse",
+    "node_id": "ContractParser",
+    "node_label": "ContractParser.parse",
+    "category": "docs",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ExtractDocFacts"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "93": {
+    "step": 93,
+    "id": "RAG.docs.payslipparser.parse",
+    "node_id": "PayslipParser",
+    "node_label": "PayslipParser.parse",
+    "category": "docs",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ExtractDocFacts"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "94": {
+    "step": 94,
+    "id": "RAG.docs.genericocr.parse.with.layout",
+    "node_id": "GenericOCR",
+    "node_label": "GenericOCR.parse_with_layout",
+    "category": "docs",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ExtractDocFacts"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "95": {
+    "step": 95,
+    "id": "RAG.facts.extractor.extract.structured.fields",
+    "node_id": "ExtractDocFacts",
+    "node_label": "Extractor.extract Structured fields",
+    "category": "facts",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "FatturaParser",
+        "F24Parser",
+        "ContractParser",
+        "PayslipParser",
+        "GenericOCR"
+      ],
+      "outgoing": [
+        "StoreBlob"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "96": {
+    "step": 96,
+    "id": "RAG.docs.blobstore.put.encrypted.ttl.storage",
+    "node_id": "StoreBlob",
+    "node_label": "BlobStore.put Encrypted TTL storage",
+    "category": "docs",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ExtractDocFacts"
+      ],
+      "outgoing": [
+        "Provenance"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "97": {
+    "step": 97,
+    "id": "RAG.docs.provenance.log.ledger.entry",
+    "node_id": "Provenance",
+    "node_label": "Provenance.log Ledger entry",
+    "category": "docs",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "StoreBlob"
+      ],
+      "outgoing": [
+        "ToToolResults"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "98": {
+    "step": 98,
+    "id": "RAG.facts.convert.to.toolmessage.facts.and.spans",
+    "node_id": "ToToolResults",
+    "node_label": "Convert to ToolMessage facts and spans",
+    "category": "facts",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "Provenance"
+      ],
+      "outgoing": [
+        "ToolResults"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "99": {
+    "step": 99,
+    "id": "RAG.platform.return.to.tool.caller",
+    "node_id": "ToolResults",
+    "node_label": "Return to tool caller",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ToToolResults",
+        "KBQueryTool",
+        "FAQQuery",
+        "CCNLCalc"
+      ],
+      "outgoing": [
+        "FinalResponse"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "100": {
+    "step": 100,
+    "id": "RAG.ccnl.ccnlcalculator.calculate.perform.calculations",
+    "node_id": "CCNLCalc",
+    "node_label": "CCNLCalculator.calculate Perform calculations",
+    "category": "ccnl",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "PostgresQuery"
+      ],
+      "outgoing": [
+        "ToolResults"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "101": {
+    "step": 101,
+    "id": "RAG.response.return.to.chat.node.for.final.response",
+    "node_id": "FinalResponse",
+    "node_label": "Return to chat node for final response",
+    "category": "response",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ToolResults",
+        "SimpleAIMsg",
+        "ToolErr"
+      ],
+      "outgoing": [
+        "ProcessMsg"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "102": {
+    "step": 102,
+    "id": "RAG.response.langgraphagent.process.messages.convert.to.dict",
+    "node_id": "ProcessMsg",
+    "node_label": "LangGraphAgent.__process_messages Convert to dict",
+    "category": "response",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "FinalResponse",
+        "ReturnCached"
+      ],
+      "outgoing": [
+        "LogComplete"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "103": {
+    "step": 103,
+    "id": "RAG.platform.logger.info.log.completion",
+    "node_id": "LogComplete",
+    "node_label": "Logger.info Log completion",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ProcessMsg"
+      ],
+      "outgoing": [
+        "StreamCheck"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "104": {
+    "step": 104,
+    "id": "RAG.streaming.streaming.requested",
+    "node_id": "StreamCheck",
+    "node_label": "Streaming requested?",
+    "category": "streaming",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "LogComplete"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "105": {
+    "step": 105,
+    "id": "RAG.streaming.chatbotcontroller.chat.stream.setup.sse",
+    "node_id": "StreamSetup",
+    "node_label": "ChatbotController.chat_stream Setup SSE",
+    "category": "streaming",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "AsyncGen"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "106": {
+    "step": 106,
+    "id": "RAG.platform.create.async.generator",
+    "node_id": "AsyncGen",
+    "node_label": "Create async generator",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "StreamSetup"
+      ],
+      "outgoing": [
+        "SinglePass"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "107": {
+    "step": 107,
+    "id": "RAG.preflight.singlepassstream.prevent.double.iteration",
+    "node_id": "SinglePass",
+    "node_label": "SinglePassStream Prevent double iteration",
+    "category": "preflight",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "AsyncGen"
+      ],
+      "outgoing": [
+        "WriteSSE"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "108": {
+    "step": 108,
+    "id": "RAG.streaming.write.sse.format.chunks",
+    "node_id": "WriteSSE",
+    "node_label": "write_sse Format chunks",
+    "category": "streaming",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "SinglePass"
+      ],
+      "outgoing": [
+        "StreamResponse"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "109": {
+    "step": 109,
+    "id": "RAG.streaming.streamingresponse.send.chunks",
+    "node_id": "StreamResponse",
+    "node_label": "StreamingResponse Send chunks",
+    "category": "streaming",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "WriteSSE"
+      ],
+      "outgoing": [
+        "SendDone"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "110": {
+    "step": 110,
+    "id": "RAG.platform.send.done.frame",
+    "node_id": "SendDone",
+    "node_label": "Send DONE frame",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "StreamResponse"
+      ],
+      "outgoing": [
+        "CollectMetrics"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "111": {
+    "step": 111,
+    "id": "RAG.metrics.collect.usage.metrics",
+    "node_id": "CollectMetrics",
+    "node_label": "Collect usage metrics",
+    "category": "metrics",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "SendDone",
+        "ReturnComplete"
+      ],
+      "outgoing": [
+        "End",
+        "FeedbackUI"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "112": {
+    "step": 112,
+    "id": "RAG.response.return.response.to.user",
+    "node_id": "End",
+    "node_label": "Return response to user",
+    "category": "response",
+    "type": "startEnd",
+    "neighbors": {
+      "incoming": [
+        "CollectMetrics",
+        "Error400",
+        "Error500"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "113": {
+    "step": 113,
+    "id": "RAG.feedback.feedbackui.show.options.correct.incomplete.wrong",
+    "node_id": "FeedbackUI",
+    "node_label": "FeedbackUI.show_options Correct Incomplete Wrong",
+    "category": "feedback",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "CollectMetrics"
+      ],
+      "outgoing": [
+        "FeedbackProvided"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "114": {
+    "step": 114,
+    "id": "RAG.feedback.user.provides.feedback",
+    "node_id": "FeedbackProvided",
+    "node_label": "User provides feedback?",
+    "category": "feedback",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "FeedbackUI"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "115": {
+    "step": 115,
+    "id": "RAG.feedback.no.feedback",
+    "node_id": "FeedbackEnd",
+    "node_label": "No feedback",
+    "category": "feedback",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "116": {
+    "step": 116,
+    "id": "RAG.feedback.feedback.type.selected",
+    "node_id": "FeedbackTypeSel",
+    "node_label": "Feedback type selected",
+    "category": "feedback",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "FAQFeedback",
+        "KnowledgeFeedback",
+        "ExpertFeedbackCollector"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "117": {
+    "step": 117,
+    "id": "RAG.golden.post.api.v1.faq.feedback",
+    "node_id": "FAQFeedback",
+    "node_label": "POST /api/v1/faq/feedback",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "FeedbackTypeSel"
+      ],
+      "outgoing": [
+        "ExpertFeedbackCollector"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "118": {
+    "step": 118,
+    "id": "RAG.kb.post.api.v1.knowledge.feedback",
+    "node_id": "KnowledgeFeedback",
+    "node_label": "POST /api/v1/knowledge/feedback",
+    "category": "kb",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "FeedbackTypeSel"
+      ],
+      "outgoing": [
+        "ExpertFeedbackCollector"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "119": {
+    "step": 119,
+    "id": "RAG.metrics.expertfeedbackcollector.collect.feedback",
+    "node_id": "ExpertFeedbackCollector",
+    "node_label": "ExpertFeedbackCollector.collect_feedback",
+    "category": "metrics",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "FeedbackTypeSel",
+        "FAQFeedback",
+        "KnowledgeFeedback"
+      ],
+      "outgoing": [
+        "ValidateExpert"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "120": {
+    "step": 120,
+    "id": "RAG.platform.validate.expert.credentials",
+    "node_id": "ValidateExpert",
+    "node_label": "Validate expert credentials",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "ExpertFeedbackCollector"
+      ],
+      "outgoing": [
+        "TrustScoreOK"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "121": {
+    "step": 121,
+    "id": "RAG.classify.trust.score.at.least.0.7",
+    "node_id": "TrustScoreOK",
+    "node_label": "Trust score at least 0.7?",
+    "category": "classify",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "ValidateExpert"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "122": {
+    "step": 122,
+    "id": "RAG.feedback.feedback.rejected",
+    "node_id": "FeedbackRejected",
+    "node_label": "Feedback rejected",
+    "category": "feedback",
+    "type": "error",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "123": {
+    "step": 123,
+    "id": "RAG.feedback.create.expertfeedback.record",
+    "node_id": "CreateFeedbackRec",
+    "node_label": "Create ExpertFeedback record",
+    "category": "feedback",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "UpdateExpertMetrics"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "124": {
+    "step": 124,
+    "id": "RAG.metrics.update.expert.metrics",
+    "node_id": "UpdateExpertMetrics",
+    "node_label": "Update expert metrics",
+    "category": "metrics",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "CreateFeedbackRec"
+      ],
+      "outgoing": [
+        "CacheFeedback"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "125": {
+    "step": 125,
+    "id": "RAG.cache.cache.feedback.1h.ttl",
+    "node_id": "CacheFeedback",
+    "node_label": "Cache feedback 1h TTL",
+    "category": "cache",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "UpdateExpertMetrics"
+      ],
+      "outgoing": [
+        "DetermineAction"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "126": {
+    "step": 126,
+    "id": "RAG.platform.determine.action",
+    "node_id": "DetermineAction",
+    "node_label": "Determine action",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "CacheFeedback"
+      ],
+      "outgoing": [
+        "GoldenCandidate"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "127": {
+    "step": 127,
+    "id": "RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback",
+    "node_id": "GoldenCandidate",
+    "node_label": "GoldenSetUpdater.propose_candidate from expert feedback",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "DetermineAction",
+        "GoldenRules"
+      ],
+      "outgoing": [
+        "GoldenApproval"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "128": {
+    "step": 128,
+    "id": "RAG.golden.auto.threshold.met.or.manual.approval",
+    "node_id": "GoldenApproval",
+    "node_label": "Auto threshold met or manual approval?",
+    "category": "golden",
+    "type": "decision",
+    "neighbors": {
+      "incoming": [
+        "GoldenCandidate"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "129": {
+    "step": 129,
+    "id": "RAG.golden.goldenset.publish.or.update.versioned.entry",
+    "node_id": "PublishGolden",
+    "node_label": "GoldenSet.publish_or_update versioned entry",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "InvalidateFAQCache",
+        "VectorReindex",
+        "GoldenSetDB"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "130": {
+    "step": 130,
+    "id": "RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature",
+    "node_id": "InvalidateFAQCache",
+    "node_label": "CacheService.invalidate_faq by id or signature",
+    "category": "preflight",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "PublishGolden"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "131": {
+    "step": 131,
+    "id": "RAG.golden.vectorindex.upsert.faq.update.embeddings",
+    "node_id": "VectorReindex",
+    "node_label": "VectorIndex.upsert_faq update embeddings",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "PublishGolden"
+      ],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "132": {
+    "step": 132,
+    "id": "RAG.kb.rss.monitor",
+    "node_id": "RSSMonitor",
+    "node_label": "RSS Monitor",
+    "category": "kb",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": []
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "133": {
+    "step": 133,
+    "id": "RAG.platform.fetch.and.parse.sources",
+    "node_id": "FetchFeeds",
+    "node_label": "Fetch and parse sources",
+    "category": "platform",
+    "type": "process",
+    "neighbors": {
+      "incoming": [],
+      "outgoing": [
+        "ParseDocs"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "134": {
+    "step": 134,
+    "id": "RAG.docs.extract.text.and.metadata",
+    "node_id": "ParseDocs",
+    "node_label": "Extract text and metadata",
+    "category": "docs",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "FetchFeeds"
+      ],
+      "outgoing": [
+        "KnowledgeStore"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  },
+  "135": {
+    "step": 135,
+    "id": "RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates",
+    "node_id": "GoldenRules",
+    "node_label": "GoldenSetUpdater.auto_rule_eval new or obsolete candidates",
+    "category": "golden",
+    "type": "process",
+    "neighbors": {
+      "incoming": [
+        "KnowledgeStore"
+      ],
+      "outgoing": [
+        "GoldenCandidate"
+      ]
+    },
+    "code_refs": {
+      "by_stepnum": [],
+      "by_stepid": [],
+      "by_nodeid": [],
+      "by_label": []
+    },
+    "orchestrator": false,
+    "tests_refs": [],
+    "runtime_hits": 0,
+    "status": "missing"
+  }
+}

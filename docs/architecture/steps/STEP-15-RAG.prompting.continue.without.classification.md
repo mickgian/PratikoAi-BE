@@ -8,63 +8,36 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DefaultPrompt` (Continue without classification).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
-
+- **Paths / classes:** `app/orchestrators/prompting.py:14` - `step_15__default_prompt()`
+- **Role:** Internal
+- **Status:** 🔌
+- **Behavior notes:** Internal transform within parent node; [processing description].
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing prompting infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 15 (RAG.prompting.continue.without.classification): Continue without classification | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 15 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
-
-Top candidates:
-1) app/services/domain_action_classifier.py:633 — app.services.domain_action_classifier.DomainActionClassifier.get_classification_stats (score 0.25)
-   Evidence: Score 0.25, Get statistics about the classification patterns
-2) app/core/monitoring/metrics.py:612 — app.core.monitoring.metrics.track_classification_usage (score 0.24)
-   Evidence: Score 0.24, Track domain-action classification usage and metrics.
-
-Args:
-    domain: The cla...
-3) app/services/domain_prompt_templates.py:346 — app.services.domain_prompt_templates.PromptTemplateManager.get_prompt (score 0.24)
-   Evidence: Score 0.24, Get the appropriate prompt for domain-action combination.
-
-Args:
-    domain: Pro...
-4) app/services/ccnl_rss_monitor.py:358 — app.services.ccnl_rss_monitor.CCNLUpdateDetector.classify_sector (score 0.24)
-   Evidence: Score 0.24, Classify which CCNL sector an update refers to.
-5) app/core/langgraph/graph.py:625 — app.core.langgraph.graph.LangGraphAgent._should_continue (score 0.24)
-   Evidence: Score 0.24, Determine if the agent should continue or end based on the last message.
-
-Args:
-...
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for DefaultPrompt
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

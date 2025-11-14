@@ -8,55 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `Provenance` (Provenance.log Ledger entry).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/docs.py:step_97__provenance`
+- **Status:** 🔌
+- **Behavior notes:** Thin orchestrator logs provenance ledger entries with immutable metadata for document processing audit trail. Creates ledger entries with timestamp, blob_id, encryption status, TTL. Routes to Step 98 (ToToolResults).
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing document processing infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests (provenance logging, ledger metadata, immutable characteristics, routing)
+- [x] Integration tests (Step 96→97→98 flow, multiple documents)
+- [x] Implementation changes (thin orchestrator in app/orchestrators/docs.py)
+- [x] Observability: add structured log line
   `RAG STEP 97 (RAG.docs.provenance.log.ledger.entry): Provenance.log Ledger entry | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config if needed (none required - core functionality)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
-
-Top candidates:
-1) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
-   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
-2) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
-   Evidence: Score 0.27, Check if document has expired
-3) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.27)
-   Evidence: Score 0.27, Convert document to dictionary
-4) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.27)
-   Evidence: Score 0.27, Check if document has expired
-5) app/models/document_simple.py:136 — app.models.document_simple.Document.to_dict (score 0.27)
-   Evidence: Score 0.27, Convert document to dictionary for API responses
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for Provenance
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
-- Test document parsing and validation
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

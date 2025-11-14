@@ -8,54 +8,42 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `PIICheck` (PII detected?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Node
+- **Paths / classes:** `app/orchestrators/platform.py:565` - `step_9__piicheck()`
+- **Status:** ✅
+- **Behavior notes:** Node orchestrator detecting personally identifiable information in user requests. Coordinates PII detection analysis and confidence scoring for privacy compliance.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 9 (RAG.platform.pii.detected): PII detected? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (PII detection flow and privacy compliance routing)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 9 (RAG.platform.pii.detected): PII detected? | attrs={request_id, pii_detected, confidence_score}`
+- [x] Feature flag / config if needed (PII detection thresholds and privacy settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.24
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/api/v1/ccnl_search.py:490 — app.api.v1.ccnl_search._convert_search_response (score 0.24)
-   Evidence: Score 0.24, Convert internal SearchResponse to API model.
-2) app/api/v1/data_export.py:69 — app.api.v1.data_export.CreateExportRequest.validate_future_dates (score 0.24)
-   Evidence: Score 0.24, method: validate_future_dates
-3) app/api/v1/data_export.py:75 — app.api.v1.data_export.CreateExportRequest.validate_date_range (score 0.24)
-   Evidence: Score 0.24, method: validate_date_range
-4) app/api/v1/data_sources.py:1366 — app.api.v1.data_sources._analyze_precedent_distribution (score 0.24)
-   Evidence: Score 0.24, Analyze distribution of precedent values in decisions.
-5) app/api/v1/data_sources.py:1375 — app.api.v1.data_sources._analyze_temporal_distribution (score 0.24)
-   Evidence: Score 0.24, Analyze temporal distribution of decisions.
+Wiring information:
+- Node name: node_step_9
+- Incoming edges: [7]
+- Outgoing edges: [10]
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create decision implementation for PIICheck
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

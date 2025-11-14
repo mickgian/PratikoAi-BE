@@ -8,56 +8,42 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `KBQueryTool` (KnowledgeSearchTool.search KB on demand).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/kb.py:150` - `step_80__kbquery_tool()`
+- **Role:** Node
+- **Status:** ✅
+- **Behavior notes:** Thin async orchestrator that executes on-demand knowledge base search when the LLM calls the KnowledgeSearchTool. Uses KnowledgeSearchService for hybrid BM25 + vector + recency search. Routes to Step 99 (ToolResults).
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing KnowledgeSearchService infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
+- [x] Unit tests (KB search execution, query handling, hybrid results, empty results, metadata, routing, context preservation)
+- [x] Integration tests (Step 79→80→99 flow, Step 99 preparation)
+- [x] Implementation changes (thin async orchestrator wrapping KnowledgeSearchService, KnowledgeSearchTool for LangGraph)
+- [x] Observability: add structured log line
   `RAG STEP 80 (RAG.kb.knowledgesearchtool.search.kb.on.demand): KnowledgeSearchTool.search KB on demand | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Feature flag / config if needed (uses existing KnowledgeSearchService configuration)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.37
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/services/vector_providers/pinecone_provider.py:113 — app.services.vector_providers.pinecone_provider.PineconeProvider.upsert (score 0.37)
-   Evidence: Score 0.37, Upsert vectors into Pinecone index.
-2) app/services/vector_providers/pinecone_provider.py:161 — app.services.vector_providers.pinecone_provider.PineconeProvider.query (score 0.37)
-   Evidence: Score 0.37, Query vectors from Pinecone index.
-3) app/models/knowledge.py:13 — app.models.knowledge.KnowledgeItem (score 0.37)
-   Evidence: Score 0.37, Knowledge base item with full-text search support.
-
-This model stores processed ...
-4) app/models/knowledge.py:112 — app.models.knowledge.KnowledgeQuery (score 0.37)
-   Evidence: Score 0.37, Query model for knowledge search requests
-5) app/models/knowledge.py:125 — app.models.knowledge.KnowledgeSearchResponse (score 0.37)
-   Evidence: Score 0.37, Response model for knowledge search results
+Wiring information:
+- Node name: node_step_80
+- Incoming edges: [79]
+- Outgoing edges: [99]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

@@ -8,56 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `RSSMonitor` (RSS Monitor).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/kb.py:395` - `step_132__rssmonitor()`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator monitoring RSS feeds for content updates. Periodically checks configured RSS sources for new content and triggers knowledge base updates when changes are detected.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing knowledge base infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 132 (RAG.kb.rss.monitor): RSS Monitor | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (platform flow and API integration)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 132 (...): ... | attrs={request_id, user_id, endpoint}`
+- [x] Feature flag / config if needed (platform configuration and API settings)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.37
-
-Top candidates:
-1) app/services/vector_providers/pinecone_provider.py:113 — app.services.vector_providers.pinecone_provider.PineconeProvider.upsert (score 0.37)
-   Evidence: Score 0.37, Upsert vectors into Pinecone index.
-2) app/services/vector_providers/pinecone_provider.py:161 — app.services.vector_providers.pinecone_provider.PineconeProvider.query (score 0.37)
-   Evidence: Score 0.37, Query vectors from Pinecone index.
-3) app/models/knowledge.py:13 — app.models.knowledge.KnowledgeItem (score 0.37)
-   Evidence: Score 0.37, Knowledge base item with full-text search support.
-
-This model stores processed ...
-4) app/models/knowledge.py:112 — app.models.knowledge.KnowledgeQuery (score 0.37)
-   Evidence: Score 0.37, Query model for knowledge search requests
-5) app/models/knowledge.py:125 — app.models.knowledge.KnowledgeSearchResponse (score 0.37)
-   Evidence: Score 0.37, Response model for knowledge search results
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

@@ -2,11 +2,11 @@
 
 import re
 from typing import (
+    Any,
     Dict,
     List,
     Literal,
     Optional,
-    Any,
 )
 
 from pydantic import (
@@ -27,7 +27,7 @@ class Message(BaseModel):
     model_config = {"extra": "ignore"}
 
     role: Literal["user", "assistant", "system"] = Field(..., description="The role of the message sender")
-    content: str = Field(..., description="The content of the message", min_length=1, max_length=3000)
+    content: str = Field(..., description="The content of the message", min_length=1, max_length=50000)
 
     @field_validator("content")
     @classmethod
@@ -56,7 +56,7 @@ class Message(BaseModel):
 
 class QueryClassificationMetadata(BaseModel):
     """Metadata about query classification for debugging and monitoring."""
-    
+
     domain: str = Field(..., description="The classified professional domain")
     action: str = Field(..., description="The classified user action/intent")
     confidence: float = Field(..., description="Classification confidence score (0-1)")
@@ -69,7 +69,7 @@ class QueryClassificationMetadata(BaseModel):
 
 class ResponseMetadata(BaseModel):
     """Response metadata for debugging and monitoring."""
-    
+
     model_used: str = Field(..., description="LLM model that generated the response")
     provider: str = Field(..., description="LLM provider used")
     strategy: str = Field(..., description="Routing strategy applied")

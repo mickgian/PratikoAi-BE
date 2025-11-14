@@ -8,55 +8,37 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `DocSecurity` (DocSanitizer.sanitize Strip macros and JS).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/orchestrators/docs.py:92` - `step_87__doc_security()`
+- **Status:** 🔌
+- **Behavior notes:** Async orchestrator sanitizing documents by stripping macros and JavaScript. Security measure preventing malicious code execution.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing document processing infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 87 (RAG.docs.docsanitizer.sanitize.strip.macros.and.js): DocSanitizer.sanitize Strip macros and JS | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (document processing, parsing, format handling)
+- [x] Integration tests (document processing flow and format validation)
+- [x] Implementation changes (async orchestrator with document processing, parsing, format handling)
+- [x] Observability: add structured log line
+  `RAG STEP 87 (...): ... | attrs={document_type, file_size, processing_time}`
+- [x] Feature flag / config if needed (document processing limits and format support)
+- [x] Rollout plan (implemented with document processing reliability and security safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.28
-
-Top candidates:
-1) app/services/document_uploader.py:351 — app.services.document_uploader.DocumentUploader._document_security_scan (score 0.28)
-   Evidence: Score 0.28, Document-specific security scanning
-2) version-management/validation/contract_validator.py:146 — version-management.validation.contract_validator.APIContractValidator._contract_to_openapi (score 0.28)
-   Evidence: Score 0.28, Convert APIContract to OpenAPI specification.
-3) app/models/document.py:118 — app.models.document.Document.is_expired (score 0.27)
-   Evidence: Score 0.27, Check if document has expired
-4) app/models/document.py:134 — app.models.document.Document.to_dict (score 0.27)
-   Evidence: Score 0.27, Convert document to dictionary
-5) app/models/document_simple.py:132 — app.models.document_simple.Document.is_expired (score 0.27)
-   Evidence: Score 0.27, Check if document has expired
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create process implementation for DocSecurity
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
-- Test document parsing and validation
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

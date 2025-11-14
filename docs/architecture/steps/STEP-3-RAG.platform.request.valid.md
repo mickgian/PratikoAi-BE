@@ -8,54 +8,46 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `ValidCheck` (Request valid?).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Node
+- **Status:** ✅
+- **Paths / classes:**
+  - app/core/langgraph/nodes/step_003__valid_check.py:13 — node_step_3 (wrapper)
+  - app/orchestrators/platform.py:319 (orchestrator)
+- **Behavior notes:**
+  - Runtime boundary; decision point for request validation.
+  - Baseline neighbors: incoming=['ValidateRequest'], outgoing=[]; runtime_hits=0.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing platform infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 3 (RAG.platform.request.valid): Request valid? | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (request validation, authentication, API integration)
+- [x] Integration tests (request validation flow and validation success routing)
+- [x] Implementation changes (async orchestrator with request validation, authentication, API integration)
+- [x] Observability: add structured log line
+  `RAG STEP 3 (RAG.platform.request.valid): Request valid? | attrs={request_id, validation_status, user_id}`
+- [x] Feature flag / config if needed (validation rules configuration and bypass options)
+- [x] Rollout plan (implemented with request validation and authentication safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: ❌  |  Confidence: 0.25
+Role: Node  |  Status: ✅ (Implemented & Wired)  |  Registry: ✅ Wired
 
-Top candidates:
-1) feature-flags/feature_flag_service.py:179 — feature-flags.feature_flag_service.FlagRequest.validate_flag_id (score 0.25)
-   Evidence: Score 0.25, method: validate_flag_id
-2) app/models/cassazione_data.py:217 — app.models.cassazione_data.Citation.is_valid (score 0.25)
-   Evidence: Score 0.25, Validate the citation.
-3) app/models/cassazione_data.py:279 — app.models.cassazione_data.ScrapingResult.is_valid (score 0.25)
-   Evidence: Score 0.25, Validate the result.
-4) app/services/ccnl_service.py:91 — app.services.ccnl_service.CCNLQueryFilters.is_valid (score 0.25)
-   Evidence: Score 0.25, Validate filter constraints.
-5) app/core/security/request_signing.py:16 — app.core.security.request_signing.RequestSigner.__init__ (score 0.24)
-   Evidence: Score 0.24, Initialize request signer.
+Wiring information:
+- Node name: node_step_3
+- Incoming edges: [1]
+- Outgoing edges: [4]
 
 Notes:
-- Weak or missing implementation
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Create decision implementation for ValidCheck
-- Add unit tests covering happy path and edge cases
-- Wire into the RAG pipeline flow
+- ✅ Node is wired in LangGraph runtime
 <!-- AUTO-AUDIT:END -->

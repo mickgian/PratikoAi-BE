@@ -2,10 +2,8 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Dict, List, Optional, Union
 from enum import Enum
-
-from pydantic import BaseModel
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from app.schemas.chat import Message
 
@@ -113,16 +111,16 @@ class LLMProvider(ABC):
         temperature: float = 0.2,
         max_tokens: Optional[int] = None,
         **kwargs
-    ) -> AsyncIterator[LLMStreamResponse]:
+    ) -> AsyncGenerator[LLMStreamResponse, None]:
         """Generate a streaming chat completion.
-        
+
         Args:
             messages: List of conversation messages
             tools: Optional list of tools available to the model
             temperature: Sampling temperature (0.0 to 2.0)
             max_tokens: Maximum tokens to generate
             **kwargs: Additional provider-specific parameters
-            
+
         Yields:
             LLMStreamResponse chunks
         """

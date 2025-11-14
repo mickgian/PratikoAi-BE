@@ -5,57 +5,45 @@
 **Node ID:** `GoldenHit`
 
 ## Intent (Blueprint)
-Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `GoldenHit` (High confidence match? score at least 0.90).
+Evaluates the confidence score of a Golden Set match from Step 24 to determine routing. If the similarity score is >= 0.90 (high confidence), routes to Step 26 for KB freshness validation. Otherwise routes to Step 30 (ClassifyDomain) for standard RAG flow.
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Role:** Internal
+- **Paths / classes:** `app/core/langgraph/nodes/step_025__golden_hit.py` - `node_step_25`, `app/orchestrators/golden.py:260` - `step_25__golden_hit()`
+- **Status:** 🔌
+- **Behavior notes:** Node orchestrator that performs threshold comparison (0.90) on `similarity_score` from Step 24. Routes to KB context check (Step 26) if high confidence, or ClassifyDomain (Step 30) if low confidence. Includes decision metadata for observability.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - simple threshold comparison with clear decision logic
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 25 (RAG.golden.high.confidence.match.score.at.least.0.90): High confidence match? score at least 0.90 | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (high confidence, low confidence, exact threshold, no match, context preservation, decision metadata, logging, missing score)
+- [x] Integration tests (Step 24→25→26 high confidence flow, Step 24→25→30 low confidence flow, Step 25→26 context preparation)
+- [x] Implementation changes (async orchestrator with 0.90 threshold decision logic)
+- [x] Observability: add structured log line
+  `RAG STEP 25 (RAG.golden.high.confidence.match.score.at.least.0.90): High confidence match? score at least 0.90 | attrs={high_confidence_match, similarity_score, confidence_threshold, next_step}`
+- [x] Feature flag / config if needed (none required - threshold hardcoded per Mermaid spec)
+- [x] Rollout plan (implemented with comprehensive tests)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.44
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/models/faq.py:486 — app.models.faq.generate_faq_cache_key (score 0.44)
-   Evidence: Score 0.44, Generate cache key for FAQ variations.
-2) app/models/faq.py:495 — app.models.faq.calculate_cost_savings (score 0.44)
-   Evidence: Score 0.44, Calculate cost savings from FAQ system usage.
-3) app/api/v1/faq.py:40 — app.api.v1.faq.FAQQueryRequest (score 0.40)
-   Evidence: Score 0.40, Request model for FAQ queries.
-4) app/api/v1/faq.py:47 — app.api.v1.faq.FAQQueryResponse (score 0.40)
-   Evidence: Score 0.40, Response model for FAQ queries.
-5) app/api/v1/faq.py:60 — app.api.v1.faq.FAQCreateRequest (score 0.40)
-   Evidence: Score 0.40, Request model for creating FAQ entries.
+Wiring information:
+- Node name: node_step_25
+- Incoming edges: [24]
+- Outgoing edges: [26]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

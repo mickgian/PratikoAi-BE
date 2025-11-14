@@ -50,6 +50,32 @@ clean:
 	rm -rf __pycache__
 	rm -rf .pytest_cache
 
+# Testing targets
+test:
+	@echo "Running all tests..."
+	@bash -c "source scripts/set_env.sh test && python -m pytest tests/ -v"
+
+test-streaming:
+	@echo "Running streaming protection tests..."
+	@bash -c "source scripts/set_env.sh test && python -m pytest \
+		tests/test_sse_format_validation.py \
+		tests/api/test_chatbot_streaming_integration.py \
+		tests/langgraph/test_buffered_streaming_timing.py \
+		-v --tb=line"
+
+test-quick:
+	@echo "Running quick validation tests..."
+	@bash -c "source scripts/set_env.sh test && python -m pytest \
+		tests/test_sse_format_validation.py \
+		tests/test_tool_guardrails.py \
+		tests/test_retrieval_gate.py \
+		-v --tb=line"
+
+test-coverage:
+	@echo "Running tests with coverage..."
+	@bash -c "source scripts/set_env.sh test && python -m pytest tests/ \
+		-v --cov=app --cov-report=html --cov-report=term-missing"
+
 docker-build:
 	docker build -t fastapi-langgraph-template .
 
@@ -234,7 +260,10 @@ help:
 	@echo "  eval: Run evaluation with interactive mode"
 	@echo "  eval-quick: Run evaluation with default settings"
 	@echo "  eval-no-report: Run evaluation without generating report"
-	@echo "  test: Run tests"
+	@echo "  test: Run all tests"
+	@echo "  test-streaming: Run streaming protection tests"
+	@echo "  test-quick: Run quick validation tests"
+	@echo "  test-coverage: Run tests with coverage report"
 	@echo "  clean: Clean up"
 	@echo "  docker-build: Build default Docker image"
 	@echo "  docker-build-env ENV=<environment>: Build Docker image for specific environment"
@@ -258,3 +287,28 @@ help:
 	@echo "  monitoring-start: Start monitoring stack (Prometheus + Grafana)"
 	@echo "  monitoring-stop: Stop monitoring stack"
 	@echo "  monitoring-logs: View monitoring stack logs"
+
+# PDF Quality Repair Commands
+repair-qa:
+	@echo "Running PDF quality repair QA batch (limit: 5)..."
+	@bash scripts/ops/repair_one_click.sh --env development --limit 5
+
+repair-full:
+	@echo "Running full PDF quality repair pass..."
+	@bash scripts/ops/repair_one_click.sh --env development --full
+
+quality-report:
+	@echo "Generating quality report..."
+	@mkdir -p reports/quality/$$(date +%Y%m%d_%H%M)
+	@bash -c "source scripts/set_env.sh development && \
+		python scripts/diag/find_junk_chunks.py | tee reports/quality/$$(date +%Y%m%d_%H%M)/find_junk.txt && \
+		python scripts/diag/quality_report.py | tee reports/quality/$$(date +%Y%m%d_%H%M)/quality_report.txt"
+	@echo "Reports saved to reports/quality/$$(date +%Y%m%d_%H%M)/"
+
+repair-dry-run:
+	@echo "Running PDF repair in dry-run mode..."
+	@bash scripts/ops/repair_one_click.sh --env development --limit 5 --dry-run --skip-dump
+
+repair-mark-junk:
+	@echo "Marking obvious junk chunks..."
+	@bash -c "source scripts/set_env.sh development && python scripts/diag/find_junk_chunks.py --mark"

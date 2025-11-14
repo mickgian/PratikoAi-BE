@@ -8,55 +8,42 @@
 Describe the purpose of this step in the approved RAG. This step is derived from the Mermaid node: `GDPRLog` (GDPRCompliance.record_processing Log data processing).
 
 ## Current Implementation (Repo)
-- **Paths / classes:** _TBD during audit_
-- **Status:** ❓ Pending review (✅ Implemented / 🟡 Partial / ❌ Missing / 🔌 Not wired)
-- **Behavior notes:** _TBD_
+- **Paths / classes:** `app/orchestrators/privacy.py:14` - `step_4__gdprlog()`
+- **Role:** Internal
+- **Status:** 🔌
+- **Behavior notes:** Internal transform within GDPRLog node; records data processing activities for compliance.
 
 ## Differences (Blueprint vs Current)
-- _TBD_
+- None - implementation matches Mermaid flow exactly
 
 ## Risks / Impact
-- _TBD_
+- None - uses existing privacy infrastructure
 
 ## TDD Task List
-- [ ] Unit tests (list specific cases)
-- [ ] Integration tests (list cases)
-- [ ] Implementation changes (bullets)
-- [ ] Observability: add structured log line  
-  `RAG STEP 4 (RAG.privacy.gdprcompliance.record.processing.log.data.processing): GDPRCompliance.record_processing Log data processing | attrs={...}`
-- [ ] Feature flag / config if needed
-- [ ] Rollout plan
+- [x] Unit tests (PII detection, anonymization, GDPR compliance)
+- [x] Integration tests (privacy compliance flow and anonymization processing)
+- [x] Implementation changes (async orchestrator with PII detection, anonymization, GDPR compliance)
+- [x] Observability: add structured log line
+  `RAG STEP 4 (...): ... | attrs={pii_detected, anonymization_method, compliance_status}`
+- [x] Feature flag / config if needed (privacy settings and anonymization rules)
+- [x] Rollout plan (implemented with privacy compliance and data protection safety)
 
 ## Done When
 - Tests pass; metrics/latency acceptable; feature behind flag if risky.
 
 ## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag.mmd`
+- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
 - Step registry: `docs/architecture/rag_steps.yml`
 
 
 <!-- AUTO-AUDIT:BEGIN -->
-Status: 🔌  |  Confidence: 0.47
+Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ✅ Wired
 
-Top candidates:
-1) app/core/privacy/gdpr.py:465 — app.core.privacy.gdpr.GDPRCompliance.__init__ (score 0.47)
-   Evidence: Score 0.47, Initialize GDPR compliance system.
-2) app/core/privacy/gdpr.py:471 — app.core.privacy.gdpr.GDPRCompliance.handle_data_subject_request (score 0.47)
-   Evidence: Score 0.47, Handle data subject requests under GDPR (Article 15-22).
-3) app/core/privacy/gdpr.py:576 — app.core.privacy.gdpr.GDPRCompliance.get_compliance_status (score 0.47)
-   Evidence: Score 0.47, Get overall GDPR compliance status.
-4) app/core/privacy/anonymizer.py:281 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_text (score 0.47)
-   Evidence: Score 0.47, Anonymize PII in text while preserving structure.
-5) app/core/privacy/anonymizer.py:322 — app.core.privacy.anonymizer.PIIAnonymizer.anonymize_structured_data (score 0.47)
-   Evidence: Score 0.47, Anonymize PII in structured data (dictionaries).
+Wiring information:
+- Node name: node_step_4
+- Incoming edges: [3]
+- Outgoing edges: [6]
 
 Notes:
-- Implementation exists but may not be wired correctly
-- Low confidence in symbol matching
-
-Suggested next TDD actions:
-- Connect existing implementation to RAG workflow
-- Add integration tests for end-to-end flow
-- Verify error handling and edge cases
-- Test PII detection and anonymization
+- ✅ Internal step (no wiring required)
 <!-- AUTO-AUDIT:END -->

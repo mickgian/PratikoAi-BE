@@ -1,39 +1,75 @@
 import os
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
-from alembic import context
+from sqlalchemy import (
+    engine_from_config,
+    pool,
+)
 from sqlmodel import SQLModel
 
-# Import all models to ensure they are registered with SQLModel.metadata
-from app.models.user import User
-from app.models.session import Session
-from app.models.document import Document, DocumentAnalysis, DocumentProcessingJob
-from app.models.thread import Thread
+from alembic import context
 from app.models.cassazione import CassazioneDecision
+from app.models.document import (
+    Document,
+    DocumentAnalysis,
+    DocumentProcessingJob,
+)
+
 # Temporarily exclude encrypted models due to CI dependency issues
 # from app.models.encrypted_user import EncryptedUser, EncryptedQueryLog, EncryptedSubscriptionData
 from app.models.faq import (
-    FAQEntry, FAQUsageLog, FAQVersionHistory, FAQObsolescenceCheck,
-    FAQCategory, FAQVariationCache, FAQAnalyticsSummary
+    FAQAnalyticsSummary,
+    FAQCategory,
+    FAQEntry,
+    FAQObsolescenceCheck,
+    FAQUsageLog,
+    FAQVariationCache,
+    FAQVersionHistory,
 )
 from app.models.italian_data import (
-    ItalianTaxRate, ItalianLegalTemplate, ItalianRegulation, TaxCalculation,
-    ComplianceCheck, ItalianOfficialDocument, ItalianKnowledgeSource
+    ComplianceCheck,
+    ItalianKnowledgeSource,
+    ItalianLegalTemplate,
+    ItalianOfficialDocument,
+    ItalianRegulation,
+    ItalianTaxRate,
+    TaxCalculation,
 )
-from app.models.knowledge import KnowledgeItem, KnowledgeFeedback
-from app.models.payment import Subscription, Payment, Invoice, Customer, WebhookEvent
+from app.models.knowledge import (
+    KnowledgeFeedback,
+    KnowledgeItem,
+)
+from app.models.knowledge_chunk import KnowledgeChunk
+from app.models.payment import (
+    Customer,
+    Invoice,
+    Payment,
+    Subscription,
+    WebhookEvent,
+)
 from app.models.query_normalization import (
-    QueryNormalizationLog, QueryNormalizationStats, QueryNormalizationPattern
+    QueryNormalizationLog,
+    QueryNormalizationPattern,
+    QueryNormalizationStats,
 )
 from app.models.regulatory_documents import (
-    RegulatoryDocument, FeedStatus, DocumentProcessingLog, DocumentCollection
+    DocumentCollection,
+    DocumentProcessingLog,
+    FeedStatus,
+    RegulatoryDocument,
 )
+from app.models.session import Session
+from app.models.thread import Thread
 from app.models.usage import (
-    UsageEvent, UserUsageSummary, CostAlert, UsageQuota, CostOptimizationSuggestion
+    CostAlert,
+    CostOptimizationSuggestion,
+    UsageEvent,
+    UsageQuota,
+    UserUsageSummary,
 )
+
+# Import all models to ensure they are registered with SQLModel.metadata
+from app.models.user import User
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -98,9 +134,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

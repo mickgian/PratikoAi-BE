@@ -393,10 +393,50 @@ async def chat_stream(
 
                         async for chunk in original_stream:
                             if chunk:
-                                # Format as proper SSE event using validated formatter
-                                stream_response = StreamResponse(content=chunk, done=False)
-                                sse_event = format_sse_event(stream_response)
-                                yield write_sse(None, sse_event, request_id=request_id)
+                                # ============================================================================
+                                # SSE Comment vs Content Distinction
+                                # ============================================================================
+                                # The graph yields two types of chunks:
+                                #
+                                # 1. SSE COMMENTS (Keepalives):
+                                #    Format: ": <text>\n\n"
+                                #    Example: ": starting\n\n"
+                                #    Purpose: Establish connection immediately during blocking operations
+                                #    Must be: colon + SPACE + text + double newline
+                                #    Frontend: Skips these (api.ts:788)
+                                #
+                                # 2. CONTENT CHUNKS:
+                                #    Format: Plain text strings (no SSE formatting)
+                                #    Example: "Ecco le informazioni richieste..."
+                                #    Purpose: Actual response content from LLM
+                                #    Must be: Wrapped as SSE data events for frontend
+                                #    Frontend: Parses as data: {...}\n\n format
+                                #
+                                # CRITICAL: Content that happens to start with ":" (e.g., ": Ecco...")
+                                # is NOT an SSE comment. It must be wrapped as normal content.
+                                # SSE comments MUST have ": " (colon-space) AND "\n\n" (double newline).
+                                #
+                                # If we incorrectly treat content as SSE comment:
+                                # - Content gets yielded without data: {...}\n\n wrapper
+                                # - Frontend receives malformed SSE format
+                                # - Frontend strict parser (api.ts:794-797) errors and stops all processing
+                                # - User sees "Sto pensando..." forever (STUCK)
+                                # ============================================================================
+
+                                # Check if this is an SSE comment (keepalive) using strict format check
+                                is_sse_comment = chunk.startswith(": ") and chunk.endswith("\n\n")
+
+                                if is_sse_comment:
+                                    # This is an SSE keepalive comment (e.g., ": starting\n\n")
+                                    # Pass through unchanged - frontend will skip it (api.ts:788)
+                                    yield chunk
+                                else:
+                                    # This is regular content (plain text string from graph)
+                                    # Wrap as proper SSE data event: data: {"content":"...","done":false}\n\n
+                                    # Frontend expects this format (api.ts:756-784)
+                                    stream_response = StreamResponse(content=chunk, done=False)
+                                    sse_event = format_sse_event(stream_response)
+                                    yield write_sse(None, sse_event, request_id=request_id)
 
                     # Send final done frame using validated formatter
                     sse_done = format_sse_done()

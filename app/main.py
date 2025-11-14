@@ -16,7 +16,11 @@ from fastapi import (
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse, Response
+from fastapi.responses import (
+    JSONResponse,
+    PlainTextResponse,
+    Response,
+)
 from langfuse import Langfuse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -41,6 +45,23 @@ langfuse = Langfuse(
 )
 
 
+async def check_pgvector_availability() -> bool:
+    """Check if pgvector extension is available in the database."""
+    try:
+        from sqlalchemy import text
+
+        async with database_service.get_session() as session:
+            result = await session.execute(
+                text(
+                    "SELECT installed_version FROM pg_available_extensions WHERE name='vector' AND installed_version IS NOT NULL"
+                )
+            )
+            return result.scalar() is not None
+    except Exception as e:
+        logger.warning("pgvector_check_failed", error=str(e))
+        return False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle application startup and shutdown events."""
@@ -50,15 +71,47 @@ async def lifespan(app: FastAPI):
         version=settings.VERSION,
         api_prefix=settings.API_V1_STR,
     )
-    
+
+    # Log Hybrid RAG configuration and capabilities
+    from app.core.config import (
+        CHUNK_OVERLAP,
+        CHUNK_TOKENS,
+        CONTEXT_TOP_K,
+        EMBED_DIM,
+        EMBED_MODEL,
+        HYBRID_WEIGHT_FTS,
+        HYBRID_WEIGHT_RECENCY,
+        HYBRID_WEIGHT_VEC,
+    )
+
+    # Check pgvector availability
+    pgvector_available = await check_pgvector_availability()
+    retrieval_mode = "Hybrid (FTS + Vector + Recency)" if pgvector_available else "FTS-only (Vector unavailable)"
+
+    logger.info(
+        "retrieval_capabilities",
+        mode=retrieval_mode,
+        pgvector_enabled=pgvector_available,
+        embed_model=EMBED_MODEL,
+        embed_dim=EMBED_DIM,
+        chunk_tokens=CHUNK_TOKENS,
+        chunk_overlap=f"{CHUNK_OVERLAP:.0%}",
+        weights=f"FTS={HYBRID_WEIGHT_FTS:.2f}, VEC={HYBRID_WEIGHT_VEC:.2f}, RECENCY={HYBRID_WEIGHT_RECENCY:.2f}",
+        context_top_k=CONTEXT_TOP_K,
+    )
+
     # Start the scheduler service for RSS feed collection
-    from app.services.scheduler_service import start_scheduler, stop_scheduler
+    from app.services.scheduler_service import (
+        start_scheduler,
+        stop_scheduler,
+    )
+
     logger.info("Starting scheduler service for RSS feed collection...")
     await start_scheduler()
     logger.info("Scheduler service started successfully")
-    
+
     yield
-    
+
     # Stop the scheduler service during shutdown
     logger.info("Stopping scheduler service...")
     await stop_scheduler()
@@ -127,8 +180,12 @@ app.add_middleware(
 )
 
 # Add cost limiter middleware for payment enforcement
-from app.core.middleware.cost_limiter import CostLimiterMiddleware, CostOptimizationMiddleware
+from app.core.middleware.cost_limiter import (
+    CostLimiterMiddleware,
+    CostOptimizationMiddleware,
+)
 from app.core.middleware.prometheus_middleware import PrometheusMiddleware
+
 app.add_middleware(CostLimiterMiddleware)
 app.add_middleware(CostOptimizationMiddleware)
 app.add_middleware(PrometheusMiddleware)
@@ -164,11 +221,12 @@ async def health_check(request: Request) -> Dict[str, Any]:
 
     # Check database connectivity
     db_healthy = await database_service.health_check()
-    
+
     # Check cache connectivity
     from app.services.cache import cache_service
+
     cache_healthy = await cache_service.health_check()
-    
+
     # Overall system health
     overall_healthy = db_healthy and cache_healthy
 
@@ -179,7 +237,7 @@ async def health_check(request: Request) -> Dict[str, Any]:
         "components": {
             "api": "healthy",
             "database": "healthy" if db_healthy else "unhealthy",
-            "cache": "healthy" if cache_healthy else "unhealthy"
+            "cache": "healthy" if cache_healthy else "unhealthy",
         },
         "timestamp": datetime.now().isoformat(),
     }
@@ -194,20 +252,19 @@ async def health_check(request: Request) -> Dict[str, Any]:
 async def metrics():
     """Prometheus metrics endpoint for scraping."""
     from fastapi.responses import PlainTextResponse
-    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest, REGISTRY as DEFAULT_REGISTRY
-    
+    from prometheus_client import CONTENT_TYPE_LATEST
+    from prometheus_client import REGISTRY as DEFAULT_REGISTRY
+    from prometheus_client import generate_latest
+
     try:
         # Get metrics from both registries
         custom_metrics = get_metrics_content()
-        default_metrics = generate_latest(DEFAULT_REGISTRY).decode('utf-8')
-        
+        default_metrics = generate_latest(DEFAULT_REGISTRY).decode("utf-8")
+
         # Combine both metric sets
         combined_metrics = default_metrics + "\n" + custom_metrics
-        
-        return Response(
-            content=combined_metrics,
-            media_type=CONTENT_TYPE_LATEST
-        )
+
+        return Response(content=combined_metrics, media_type=CONTENT_TYPE_LATEST)
     except Exception as e:
         logger.error("metrics_endpoint_failed", error=str(e), exc_info=True)
         return PlainTextResponse("# Metrics unavailable\n", status_code=500)

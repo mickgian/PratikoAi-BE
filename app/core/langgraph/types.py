@@ -3,7 +3,12 @@
 import logging
 import time
 from contextlib import contextmanager
-from typing import Any, List, Optional, TypedDict
+from typing import (
+    Any,
+    List,
+    Optional,
+    TypedDict,
+)
 
 # Get logger for rag_step_log
 logger = logging.getLogger(__name__)
@@ -20,6 +25,7 @@ class RAGState(TypedDict, total=False):
     request_id: str
     session_id: str
     user_id: Optional[str]
+    user_query: Optional[str]  # Original user query text
     messages: List[dict]  # original request messages (as dicts)
     streaming: Optional[dict]  # Phase 7: {requested, setup, mode, channel, chunks_sent, done, ...}
 
@@ -46,13 +52,24 @@ class RAGState(TypedDict, total=False):
     golden_answer: Optional[dict]
     kb_docs: Optional[List[dict]]
 
+    # Prompt and context fields (for steps 40-47)
+    context: Optional[str]  # Merged context from step 40 (KB docs + facts)
+    selected_prompt: Optional[str]  # Selected prompt from step 41
+    system_prompt: Optional[str]  # System prompt for message insertion (step 47)
+    prompt_metadata: Optional[dict]  # Prompt selection metadata
+    classification: Optional[dict]  # Domain/action classification result
+    context_metadata: Optional[dict]  # Context building metadata from step 40
+    kb_results: Optional[dict]  # KB search results from step 39
+
     # provider & cost (legacy fields - kept for compatibility)
     route_strategy: Optional[str]
     provider_choice: Optional[str]
     estimated_cost: Optional[float]
 
     # provider governance (Phase 5)
-    provider: Optional[dict]  # {"strategy": str|None, "selected": str|None, "estimate": float|None, "budget_ok": bool|None}
+    provider: Optional[
+        dict
+    ]  # {"strategy": str|None, "selected": str|None, "estimate": float|None, "budget_ok": bool|None}
     decisions: Optional[dict]  # {"strategy_type": "CHEAP|BEST|BALANCED|PRIMARY", "cost_ok": bool, ...}
 
     # cache
@@ -77,6 +94,7 @@ class RAGState(TypedDict, total=False):
     # metrics/epochs (always present)
     metrics: dict  # counters/timers; always present (can be {})
     epochs: Optional[dict]  # kb_epoch/golden_epoch/etc.
+    retries: Optional[dict]  # Retry tracking: {llm_attempts, total_attempts, last_error, ...}
 
     # Additional fields for compatibility with existing nodes
     request_valid: Optional[bool]
@@ -89,6 +107,7 @@ class RAGState(TypedDict, total=False):
     tool_type: Optional[str]  # Step 79
     returning_cached: Optional[bool]  # Step 66
     retry_allowed: Optional[bool]  # Step 69
+    attempt_number: Optional[int]  # Current retry attempt number
     is_production: Optional[bool]  # Step 70
     should_failover: Optional[bool]  # Step 70
     error_message: Optional[str]
@@ -131,8 +150,7 @@ def rag_step_timer(step: int):
         yield
     finally:
         duration = time.time() - start_time
-        logger.info(f"RAG_STEP_{step}_TIMER: {duration:.3f}s",
-                   extra={"step": step, "duration_seconds": duration})
+        logger.info(f"RAG_STEP_{step}_TIMER: {duration:.3f}s", extra={"step": step, "duration_seconds": duration})
 
 
 # For backwards compatibility, also export GraphState

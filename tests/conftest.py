@@ -6,9 +6,14 @@ including database mocking and async support.
 """
 
 import os
-import pytest
 from contextlib import contextmanager
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import (
+    AsyncMock,
+    Mock,
+    patch,
+)
+
+import pytest
 
 
 def pytest_addoption(parser):
@@ -93,6 +98,16 @@ def mock_database_session():
     session.close = AsyncMock()
     session.exec = Mock()
     return session
+
+
+@pytest.fixture
+async def db_session():
+    """Real async database session for integration tests."""
+    from app.models.database import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        yield session
+        await session.close()
 
 
 @contextmanager

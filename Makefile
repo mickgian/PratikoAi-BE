@@ -287,3 +287,28 @@ help:
 	@echo "  monitoring-start: Start monitoring stack (Prometheus + Grafana)"
 	@echo "  monitoring-stop: Stop monitoring stack"
 	@echo "  monitoring-logs: View monitoring stack logs"
+
+# PDF Quality Repair Commands
+repair-qa:
+	@echo "Running PDF quality repair QA batch (limit: 5)..."
+	@bash scripts/ops/repair_one_click.sh --env development --limit 5
+
+repair-full:
+	@echo "Running full PDF quality repair pass..."
+	@bash scripts/ops/repair_one_click.sh --env development --full
+
+quality-report:
+	@echo "Generating quality report..."
+	@mkdir -p reports/quality/$$(date +%Y%m%d_%H%M)
+	@bash -c "source scripts/set_env.sh development && \
+		python scripts/diag/find_junk_chunks.py | tee reports/quality/$$(date +%Y%m%d_%H%M)/find_junk.txt && \
+		python scripts/diag/quality_report.py | tee reports/quality/$$(date +%Y%m%d_%H%M)/quality_report.txt"
+	@echo "Reports saved to reports/quality/$$(date +%Y%m%d_%H%M)/"
+
+repair-dry-run:
+	@echo "Running PDF repair in dry-run mode..."
+	@bash scripts/ops/repair_one_click.sh --env development --limit 5 --dry-run --skip-dump
+
+repair-mark-junk:
+	@echo "Marking obvious junk chunks..."
+	@bash -c "source scripts/set_env.sh development && python scripts/diag/find_junk_chunks.py --mark"

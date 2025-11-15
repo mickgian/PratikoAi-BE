@@ -1,9 +1,12 @@
 """Node wrapper for Step 52: Best Provider."""
 
-from typing import Dict, Any
+from typing import Any, Dict
+
 from app.core.langgraph.types import RAGState
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
 from app.orchestrators.providers import step_52__best_provider
@@ -11,7 +14,7 @@ from app.orchestrators.providers import step_52__best_provider
 STEP = 52
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):
@@ -40,10 +43,12 @@ async def node_step_52(state: RAGState) -> RAGState:
         if "provider" in res and res["provider"]:
             prov_obj = res["provider"]
             provider["provider_type"] = res.get("provider_type") or (
-                prov_obj.provider_type.value if hasattr(prov_obj.provider_type, 'value') else str(prov_obj.provider_type)
+                prov_obj.provider_type.value
+                if hasattr(prov_obj.provider_type, "value")
+                else str(prov_obj.provider_type)
             )
-            provider["model"] = res.get("model") or getattr(prov_obj, 'model', None)
-            provider["cost_per_token"] = res.get("cost_per_token") or getattr(prov_obj, 'cost_per_token', 0.0)
+            provider["model"] = res.get("model") or getattr(prov_obj, "model", None)
+            provider["cost_per_token"] = res.get("cost_per_token") or getattr(prov_obj, "cost_per_token", 0.0)
         provider["strategy"] = "BEST"
 
         # Merge any extra structured data

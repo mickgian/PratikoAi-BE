@@ -50,7 +50,9 @@ class TestKnowledgeRetrievalIntegration:
     def search_service(self, db_session):
         """Create knowledge search service with real DB session."""
         return KnowledgeSearchService(
-            db_session=db_session, vector_service=None, config=None  # Will use FTS-only mode  # Use defaults
+            db_session=db_session,
+            vector_service=None,
+            config=None,  # Will use FTS-only mode  # Use defaults
         )
 
     async def test_db_has_risoluzione_56_content(self, db_session):

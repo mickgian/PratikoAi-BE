@@ -25,7 +25,6 @@ depends_on = None
 
 def upgrade():
     """Add GDPR deletion system tables and indexes."""
-
     # Create GDPR deletion requests table
     op.create_table(
         "gdpr_deletion_requests",
@@ -195,7 +194,6 @@ def upgrade():
 
 def downgrade():
     """Remove GDPR deletion system tables."""
-
     # Drop triggers and functions
     op.execute("DROP TRIGGER IF EXISTS update_gdpr_deletion_requests_updated_at ON gdpr_deletion_requests")
     op.execute("DROP FUNCTION IF EXISTS update_gdpr_deletion_requests_updated_at()")

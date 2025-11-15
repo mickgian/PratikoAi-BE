@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""
-Test script to verify October 2025 documents appear with correct publication dates.
+"""Test script to verify October 2025 documents appear with correct publication dates.
 Tests the complete flow: authentication -> create session -> query -> check dates in response.
 """
+
 import asyncio
 import json
 from datetime import datetime
@@ -16,7 +16,6 @@ TEST_PASSWORD = "TestPass123!"  # pragma: allowlist secret
 
 async def test_october_query():
     """Test query for October 2025 documents."""
-
     async with httpx.AsyncClient(timeout=60.0) as client:
         print("🔐 Authenticating...")
 
@@ -125,7 +124,7 @@ async def test_october_query():
 
         if trace_id:
             print(f"\n📋 Trace ID: {trace_id}")
-            print(f"   Check logs at: /Users/micky/PycharmProjects/PratikoAi-BE/logs/rag_traces/")
+            print("   Check logs at: /Users/micky/PycharmProjects/PratikoAi-BE/logs/rag_traces/")
 
         return trace_id, response_text
 

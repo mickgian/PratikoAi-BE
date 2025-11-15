@@ -109,10 +109,9 @@ async def test_multi_month_aggregation_no_crash(db_session: AsyncSession):
     results = await service.retrieve_topk(query_data)
 
     # Must return documents from both months (at least 5 total)
-    assert len(results) >= 5, (
-        f"Expected ≥5 documents for Oct+Nov, got {len(results)}. "
-        f"Datetime bug may have caused mid-processing crash."
-    )
+    assert (
+        len(results) >= 5
+    ), f"Expected ≥5 documents for Oct+Nov, got {len(results)}. Datetime bug may have caused mid-processing crash."
 
     # Verify we have documents from both months
     titles_text = " ".join([r.title.lower() for r in results])
@@ -121,9 +120,7 @@ async def test_multi_month_aggregation_no_crash(db_session: AsyncSession):
 
     # Note: Due to SQL title matching and multi-month logic, we might not always
     # get both months, but we should get SOME results without crashing
-    assert (
-        has_october or has_november
-    ), f"No October or November documents found. This suggests search failed entirely."
+    assert has_october or has_november, "No October or November documents found. This suggests search failed entirely."
 
     # Verify all results have valid datetime types
     for result in results:

@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""
-Standalone Demo App for PratikoAI Document Upload Functionality.
+"""Standalone Demo App for PratikoAI Document Upload Functionality.
 
 This is a minimal FastAPI app that demonstrates the document upload
 and processing features we've implemented.
 """
 
+from pathlib import Path
+
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
+
+from app.api.v1.demo import router as demo_router
 
 # Import our new document functionality
 from app.api.v1.documents_minimal import router as documents_router
-from app.api.v1.demo import router as demo_router
 
 # Create FastAPI app
 app = FastAPI(
@@ -22,12 +23,13 @@ app = FastAPI(
     description="Demo of drag & drop document upload and AI analysis for Italian tax professionals",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # Include our routers
 app.include_router(documents_router, prefix="/api/v1")
 app.include_router(demo_router, prefix="/api/v1")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -47,20 +49,20 @@ async def root():
     <body>
         <h1>🚀 PratikoAI Document Processing Demo</h1>
         <p>This demo showcases the document upload and processing functionality we've implemented.</p>
-        
+
         <div class="card">
             <h3>📄 Document Upload Demo</h3>
             <p>Try the drag & drop interface for Italian tax document upload.</p>
             <a href="/api/v1/demo/document-upload" class="button">Open Upload Interface</a>
         </div>
-        
+
         <div class="card">
             <h3>📚 API Documentation</h3>
             <p>Explore the complete API documentation with interactive testing.</p>
             <a href="/docs" class="button">View API Docs (Swagger)</a>
             <a href="/redoc" class="button">View ReDoc</a>
         </div>
-        
+
         <div class="card">
             <h3>🔧 API Endpoints</h3>
             <ul>
@@ -69,7 +71,7 @@ async def root():
                 <li><strong>GET /api/v1/documents/demo-status</strong> - Demo status</li>
             </ul>
         </div>
-        
+
         <div class="card">
             <h3>✨ Features Implemented</h3>
             <ul>
@@ -83,7 +85,7 @@ async def root():
                 <li>✅ Italian language interface</li>
             </ul>
         </div>
-        
+
         <div class="card">
             <h3>📊 Supported Documents</h3>
             <ul>
@@ -96,20 +98,17 @@ async def root():
     </html>
     """
 
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "pratikoai-document-demo"}
+
 
 if __name__ == "__main__":
     print("🚀 Starting PratikoAI Document Processing Demo...")
     print("📄 Document Upload Demo: http://localhost:8001/api/v1/demo/document-upload")
     print("📚 API Documentation: http://localhost:8001/docs")
     print("🏠 Home Page: http://localhost:8001/")
-    
-    uvicorn.run(
-        "demo_app:app",
-        host="0.0.0.0",
-        port=8001,
-        reload=True
-    )
+
+    uvicorn.run("demo_app:app", host="0.0.0.0", port=8001, reload=True)

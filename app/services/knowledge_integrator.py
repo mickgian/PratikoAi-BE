@@ -1,5 +1,4 @@
-"""
-Knowledge Integration Service for Dynamic Knowledge Collection.
+"""Knowledge Integration Service for Dynamic Knowledge Collection.
 
 This service integrates new regulatory documents into the knowledge base,
 handles updates, manages citations, and invalidates relevant caches.
@@ -8,6 +7,7 @@ handles updates, manages citations, and invalidates relevant caches.
 import hashlib
 import time
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -62,7 +62,7 @@ class KnowledgeIntegrator:
             "dicembre": "12",
         }
 
-    async def update_knowledge_base(self, document_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_knowledge_base(self, document_data: dict[str, Any]) -> dict[str, Any]:
         """Update knowledge base with new regulatory document.
 
         Args:
@@ -152,7 +152,7 @@ class KnowledgeIntegrator:
                     ocr_used=chunk_dict.get("ocr_used", False),
                     start_char=chunk_dict.get("start_char"),
                     end_char=chunk_dict.get("end_char"),
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                 )
 
                 self.db.add(knowledge_chunk)
@@ -191,7 +191,7 @@ class KnowledgeIntegrator:
             logger.error("knowledge_base_update_failed", document_data=document_data, error=str(e), exc_info=True)
             return {"success": False, "error": str(e), "action": "failed"}
 
-    async def handle_document_update(self, document_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_document_update(self, document_data: dict[str, Any]) -> dict[str, Any]:
         """Handle document updates and versioning.
 
         Args:
@@ -232,7 +232,7 @@ class KnowledgeIntegrator:
 
             # Create updated knowledge item
             updated_item = KnowledgeItem(
-                title=document_data.get("title", "") + f" (Aggiornata)",
+                title=document_data.get("title", "") + " (Aggiornata)",
                 content=content,
                 category=existing_item.category,
                 subcategory=existing_item.subcategory,
@@ -257,7 +257,7 @@ class KnowledgeIntegrator:
             existing_item.extra_metadata = {
                 **existing_item.extra_metadata,
                 "superseded_by": new_version,
-                "superseded_at": datetime.now(timezone.utc).isoformat(),
+                "superseded_at": datetime.now(UTC).isoformat(),
             }
 
             # Add new version to database
@@ -292,7 +292,7 @@ class KnowledgeIntegrator:
                     ocr_used=chunk_dict.get("ocr_used", False),
                     start_char=chunk_dict.get("start_char"),
                     end_char=chunk_dict.get("end_char"),
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                 )
 
                 self.db.add(knowledge_chunk)
@@ -335,7 +335,7 @@ class KnowledgeIntegrator:
             logger.error("document_update_failed", url=document_data.get("url"), error=str(e), exc_info=True)
             return {"success": False, "action": "update_failed", "error": str(e)}
 
-    async def create_citation_data(self, document_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_citation_data(self, document_data: dict[str, Any]) -> dict[str, Any]:
         """Create proper citation data for regulatory documents.
 
         Args:
@@ -400,7 +400,7 @@ class KnowledgeIntegrator:
                 "error": str(e),
             }
 
-    async def invalidate_relevant_caches(self, topics: List[str], source: str) -> None:
+    async def invalidate_relevant_caches(self, topics: list[str], source: str) -> None:
         """Invalidate caches related to the new document.
 
         Args:
@@ -446,7 +446,7 @@ class KnowledgeIntegrator:
         except Exception as e:
             logger.error("cache_invalidation_failed", topics=topics, source=source, error=str(e), exc_info=True)
 
-    async def _find_existing_document(self, url: str, content_hash: str) -> Optional[KnowledgeItem]:
+    async def _find_existing_document(self, url: str, content_hash: str) -> KnowledgeItem | None:
         """Find existing document by URL or content hash.
 
         Args:
@@ -486,7 +486,7 @@ class KnowledgeIntegrator:
             )
             return None
 
-    async def _create_regulatory_document(self, document_data: Dict[str, Any], knowledge_item_id: int) -> None:
+    async def _create_regulatory_document(self, document_data: dict[str, Any], knowledge_item_id: int) -> None:
         """Create regulatory document record.
 
         Args:
@@ -522,7 +522,7 @@ class KnowledgeIntegrator:
             # Don't raise exception as this is supplementary data
 
     async def _update_regulatory_document(
-        self, document_data: Dict[str, Any], knowledge_item_id: int, version: int
+        self, document_data: dict[str, Any], knowledge_item_id: int, version: int
     ) -> None:
         """Update regulatory document record with new version.
 
@@ -589,7 +589,7 @@ class KnowledgeIntegrator:
 
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
-    def _determine_knowledge_category(self, document_data: Dict[str, Any]) -> str:
+    def _determine_knowledge_category(self, document_data: dict[str, Any]) -> str:
         """Determine knowledge category based on document data.
 
         Args:
@@ -599,7 +599,7 @@ class KnowledgeIntegrator:
             Knowledge category string
         """
         source = document_data.get("source", "").lower()
-        source_type = document_data.get("source_type", "").lower()
+        document_data.get("source_type", "").lower()
         title = document_data.get("title", "").lower()
 
         # Category mapping based on source and content
@@ -626,7 +626,7 @@ class KnowledgeIntegrator:
         else:
             return "regulatory_update"
 
-    def _determine_knowledge_subcategory(self, document_data: Dict[str, Any]) -> str:
+    def _determine_knowledge_subcategory(self, document_data: dict[str, Any]) -> str:
         """Determine knowledge subcategory.
 
         Args:
@@ -653,7 +653,7 @@ class KnowledgeIntegrator:
         else:
             return "documenti"
 
-    async def _prepare_metadata(self, document_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _prepare_metadata(self, document_data: dict[str, Any]) -> dict[str, Any]:
         """Prepare metadata for storage.
 
         Args:
@@ -665,7 +665,7 @@ class KnowledgeIntegrator:
         metadata = document_data.get("metadata", {}).copy()
 
         # Add extraction timestamp
-        metadata["extracted_at"] = datetime.now(timezone.utc).isoformat()
+        metadata["extracted_at"] = datetime.now(UTC).isoformat()
 
         # Add document identifiers
         if document_data.get("document_number"):
@@ -685,7 +685,7 @@ class KnowledgeIntegrator:
 
         return metadata
 
-    def _calculate_relevance_score(self, document_data: Dict[str, Any]) -> float:
+    def _calculate_relevance_score(self, document_data: dict[str, Any]) -> float:
         """Calculate relevance score for the document.
 
         Args:
@@ -720,7 +720,7 @@ class KnowledgeIntegrator:
         # Ensure score is within bounds
         return min(1.0, max(0.1, score))
 
-    def _format_italian_date(self, date_obj: Optional[datetime]) -> str:
+    def _format_italian_date(self, date_obj: datetime | None) -> str:
         """Format date in Italian format.
 
         Args:
@@ -761,7 +761,7 @@ class KnowledgeIntegrator:
 # Utility functions for external use
 
 
-async def integrate_document(db_session: AsyncSession, document_data: Dict[str, Any]) -> Dict[str, Any]:
+async def integrate_document(db_session: AsyncSession, document_data: dict[str, Any]) -> dict[str, Any]:
     """Convenience function to integrate a single document.
 
     Args:
@@ -775,7 +775,7 @@ async def integrate_document(db_session: AsyncSession, document_data: Dict[str, 
     return await integrator.update_knowledge_base(document_data)
 
 
-async def create_document_citation(document_data: Dict[str, Any]) -> Dict[str, Any]:
+async def create_document_citation(document_data: dict[str, Any]) -> dict[str, Any]:
     """Convenience function to create document citation.
 
     Args:

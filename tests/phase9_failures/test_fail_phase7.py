@@ -4,14 +4,15 @@ Failure injection tests for Phase 7: Streaming failures.
 Tests error handling for stream disconnects and SSE write errors.
 """
 
-import pytest
 from unittest.mock import patch
 
-from tests.common.fixtures_state import make_state, state_streaming_enabled
-from tests.common.fakes import FakeOrchestrator, FakeSSEWriter
+import pytest
+
 from app.core.langgraph.nodes.step_105__stream_setup import node_step_105
 from app.core.langgraph.nodes.step_108__write_sse import node_step_108
 from app.core.langgraph.nodes.step_109__stream_response import node_step_109
+from tests.common.fakes import FakeOrchestrator, FakeSSEWriter
+from tests.common.fixtures_state import make_state, state_streaming_enabled
 
 
 @pytest.mark.failure
@@ -25,13 +26,15 @@ class TestPhase7StreamDisconnect:
         state["response"] = {"content": "chunk1 chunk2 chunk3", "complete": True}
 
         # SSE write fails mid-stream
-        fake_write = FakeOrchestrator({
-            "chunks_written": 1,  # Only wrote 1 chunk before disconnect
-            "write_success": False,
-            "error": "Stream disconnect",
-            "disconnect": True,
-            "chunks_attempted": 3
-        })
+        fake_write = FakeOrchestrator(
+            {
+                "chunks_written": 1,  # Only wrote 1 chunk before disconnect
+                "write_success": False,
+                "error": "Stream disconnect",
+                "disconnect": True,
+                "chunks_attempted": 3,
+            }
+        )
         with patch("app.core.langgraph.nodes.step_108__write_sse.step_108__write_sse", fake_write):
             state = await node_step_108(state)
 
@@ -45,12 +48,9 @@ class TestPhase7StreamDisconnect:
         state = state_streaming_enabled()
 
         # Disconnect during streaming
-        fake_stream = FakeOrchestrator({
-            "streaming_in_progress": False,
-            "disconnect": True,
-            "error": "Connection lost",
-            "cleanup_triggered": True
-        })
+        fake_stream = FakeOrchestrator(
+            {"streaming_in_progress": False, "disconnect": True, "error": "Connection lost", "cleanup_triggered": True}
+        )
         with patch("app.core.langgraph.nodes.step_109__stream_response.step_109__stream_response", fake_stream):
             state = await node_step_109(state)
 
@@ -62,12 +62,9 @@ class TestPhase7StreamDisconnect:
         """Verify client timeout during streaming is handled."""
         state = state_streaming_enabled()
 
-        fake_write = FakeOrchestrator({
-            "write_success": False,
-            "error": "Client timeout",
-            "timeout": True,
-            "client_disconnected": True
-        })
+        fake_write = FakeOrchestrator(
+            {"write_success": False, "error": "Client timeout", "timeout": True, "client_disconnected": True}
+        )
         with patch("app.core.langgraph.nodes.step_108__write_sse.step_108__write_sse", fake_write):
             state = await node_step_108(state)
 
@@ -86,12 +83,9 @@ class TestPhase7SSEWriteErrors:
         state = state_streaming_enabled()
         state["response"] = {"content": "x" * 1000000, "complete": True}  # Very large
 
-        fake_write = FakeOrchestrator({
-            "write_success": False,
-            "error": "Buffer overflow",
-            "buffer_exceeded": True,
-            "buffer_size": 65536
-        })
+        fake_write = FakeOrchestrator(
+            {"write_success": False, "error": "Buffer overflow", "buffer_exceeded": True, "buffer_size": 65536}
+        )
         with patch("app.core.langgraph.nodes.step_108__write_sse.step_108__write_sse", fake_write):
             state = await node_step_108(state)
 
@@ -104,11 +98,9 @@ class TestPhase7SSEWriteErrors:
         state = state_streaming_enabled()
 
         # Connection not ready
-        fake_write = FakeOrchestrator({
-            "write_success": False,
-            "error": "SSE connection not ready",
-            "connection_ready": False
-        })
+        fake_write = FakeOrchestrator(
+            {"write_success": False, "error": "SSE connection not ready", "connection_ready": False}
+        )
         with patch("app.core.langgraph.nodes.step_108__write_sse.step_108__write_sse", fake_write):
             state = await node_step_108(state)
 
@@ -122,13 +114,15 @@ class TestPhase7SSEWriteErrors:
         state["response"] = {"content": "chunk1 chunk2 chunk3 chunk4", "complete": True}
 
         # Partial write (some succeeded, some failed)
-        fake_write = FakeOrchestrator({
-            "write_success": False,
-            "partial_write": True,
-            "chunks_written": 2,
-            "chunks_attempted": 4,
-            "error": "Write failed after chunk 2"
-        })
+        fake_write = FakeOrchestrator(
+            {
+                "write_success": False,
+                "partial_write": True,
+                "chunks_written": 2,
+                "chunks_attempted": 4,
+                "error": "Write failed after chunk 2",
+            }
+        )
         with patch("app.core.langgraph.nodes.step_108__write_sse.step_108__write_sse", fake_write):
             state = await node_step_108(state)
 
@@ -147,11 +141,9 @@ class TestPhase7StreamSetupErrors:
         state = state_streaming_enabled()
 
         # Generator creation fails
-        fake_setup = FakeOrchestrator({
-            "sse_ready": False,
-            "generator_created": False,
-            "error": "Failed to create async generator"
-        })
+        fake_setup = FakeOrchestrator(
+            {"sse_ready": False, "generator_created": False, "error": "Failed to create async generator"}
+        )
         with patch("app.core.langgraph.nodes.step_105__stream_setup.step_105__stream_setup", fake_setup):
             state = await node_step_105(state)
 
@@ -163,11 +155,9 @@ class TestPhase7StreamSetupErrors:
         """Verify SSE channel unavailable is handled."""
         state = state_streaming_enabled()
 
-        fake_setup = FakeOrchestrator({
-            "sse_ready": False,
-            "error": "SSE channel unavailable",
-            "channel_available": False
-        })
+        fake_setup = FakeOrchestrator(
+            {"sse_ready": False, "error": "SSE channel unavailable", "channel_available": False}
+        )
         with patch("app.core.langgraph.nodes.step_105__stream_setup.step_105__stream_setup", fake_setup):
             state = await node_step_105(state)
 
@@ -180,12 +170,9 @@ class TestPhase7StreamSetupErrors:
         state = state_streaming_enabled()
 
         # Streaming setup fails
-        fake_setup = FakeOrchestrator({
-            "sse_ready": False,
-            "generator_created": False,
-            "error": "Setup failed",
-            "fallback_to_single_pass": True
-        })
+        fake_setup = FakeOrchestrator(
+            {"sse_ready": False, "generator_created": False, "error": "Setup failed", "fallback_to_single_pass": True}
+        )
         with patch("app.core.langgraph.nodes.step_105__stream_setup.step_105__stream_setup", fake_setup):
             state = await node_step_105(state)
 
@@ -193,13 +180,10 @@ class TestPhase7StreamSetupErrors:
         assert state.get("fallback_to_single_pass") is True
 
         # Use single-pass instead
-        fake_single = FakeOrchestrator({
-            "response_complete": True,
-            "response_sent": True,
-            "streaming_disabled": True
-        })
+        fake_single = FakeOrchestrator({"response_complete": True, "response_sent": True, "streaming_disabled": True})
         with patch("app.core.langgraph.nodes.step_107__single_pass.step_107__single_pass", fake_single):
             from app.core.langgraph.nodes.step_107__single_pass import node_step_107
+
             state = await node_step_107(state)
 
         # Single-pass used
@@ -216,11 +200,7 @@ class TestPhase7StreamingDataErrors:
         state = state_streaming_enabled()
         state["response"] = {"content": "", "complete": True}
 
-        fake_write = FakeOrchestrator({
-            "write_success": True,
-            "chunks_written": 0,
-            "empty_response": True
-        })
+        fake_write = FakeOrchestrator({"write_success": True, "chunks_written": 0, "empty_response": True})
         with patch("app.core.langgraph.nodes.step_108__write_sse.step_108__write_sse", fake_write):
             state = await node_step_108(state)
 
@@ -233,11 +213,9 @@ class TestPhase7StreamingDataErrors:
         state = state_streaming_enabled()
         state["response"] = None  # Missing response
 
-        fake_write = FakeOrchestrator({
-            "write_success": False,
-            "error": "Malformed response data",
-            "response_valid": False
-        })
+        fake_write = FakeOrchestrator(
+            {"write_success": False, "error": "Malformed response data", "response_valid": False}
+        )
         with patch("app.core.langgraph.nodes.step_108__write_sse.step_108__write_sse", fake_write):
             state = await node_step_108(state)
 
@@ -251,11 +229,9 @@ class TestPhase7StreamingDataErrors:
         state["response"] = {"content": "partial", "complete": False}
 
         # Try to stream incomplete response
-        fake_stream = FakeOrchestrator({
-            "streaming_in_progress": False,
-            "error": "Response incomplete",
-            "response_complete": False
-        })
+        fake_stream = FakeOrchestrator(
+            {"streaming_in_progress": False, "error": "Response incomplete", "response_complete": False}
+        )
         with patch("app.core.langgraph.nodes.step_109__stream_response.step_109__stream_response", fake_stream):
             state = await node_step_109(state)
 

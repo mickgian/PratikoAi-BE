@@ -1,21 +1,20 @@
-"""
-Email Service for Automated Reporting
+"""Email Service for Automated Reporting
 
 This service handles automated email reporting for system metrics across all environments.
 Supports HTML email templates, scheduled reports, and multi-environment monitoring.
 """
 
 import asyncio
-import smtplib
 import logging
-from datetime import datetime
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from typing import List, Dict, Any, Optional
+import smtplib
 from dataclasses import asdict
+from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
-from app.services.metrics_service import MetricsService, MetricsReport, Environment, MetricStatus
+from app.services.metrics_service import Environment, MetricsReport, MetricsService, MetricStatus
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +25,15 @@ class EmailService:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.metrics_service = MetricsService()
-        
-        # Email configuration
-        self.smtp_server = settings.SMTP_SERVER if hasattr(settings, 'SMTP_SERVER') else "smtp.gmail.com"
-        self.smtp_port = settings.SMTP_PORT if hasattr(settings, 'SMTP_PORT') else 587
-        self.smtp_username = settings.SMTP_USERNAME if hasattr(settings, 'SMTP_USERNAME') else None
-        self.smtp_password = settings.SMTP_PASSWORD if hasattr(settings, 'SMTP_PASSWORD') else None
-        self.from_email = settings.FROM_EMAIL if hasattr(settings, 'FROM_EMAIL') else "noreply@pratikoai.com"
 
-    async def send_metrics_report(self, recipient_emails: List[str], environments: List[Environment]) -> bool:
+        # Email configuration
+        self.smtp_server = settings.SMTP_SERVER if hasattr(settings, "SMTP_SERVER") else "smtp.gmail.com"
+        self.smtp_port = settings.SMTP_PORT if hasattr(settings, "SMTP_PORT") else 587
+        self.smtp_username = settings.SMTP_USERNAME if hasattr(settings, "SMTP_USERNAME") else None
+        self.smtp_password = settings.SMTP_PASSWORD if hasattr(settings, "SMTP_PASSWORD") else None
+        self.from_email = settings.FROM_EMAIL if hasattr(settings, "FROM_EMAIL") else "noreply@pratikoai.com"
+
+    async def send_metrics_report(self, recipient_emails: list[str], environments: list[Environment]) -> bool:
         """Send comprehensive metrics report for all specified environments to multiple recipients."""
         try:
             # Validate recipient emails
@@ -65,9 +64,7 @@ class EmailService:
             all_success = True
             for recipient_email in recipient_emails:
                 success = await self._send_email(
-                    recipient_email=recipient_email,
-                    subject=subject,
-                    html_content=html_content
+                    recipient_email=recipient_email, subject=subject, html_content=html_content
                 )
 
                 if success:
@@ -82,10 +79,10 @@ class EmailService:
             self.logger.error(f"Error sending metrics report: {e}")
             return False
 
-    def _generate_html_report(self, reports: Dict[str, MetricsReport]) -> str:
+    def _generate_html_report(self, reports: dict[str, MetricsReport]) -> str:
         """Generate HTML email content from metrics reports."""
         current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-        
+
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -153,11 +150,11 @@ class EmailService:
 
         return html
 
-    def _generate_summary_section(self, reports: Dict[str, MetricsReport]) -> str:
+    def _generate_summary_section(self, reports: dict[str, MetricsReport]) -> str:
         """Generate summary section for all environments."""
         total_environments = len(reports)
         healthy_environments = sum(1 for report in reports.values() if report.overall_health_score >= 90)
-        
+
         html = f"""
         <div class="summary">
             <h2>📊 Overall System Health</h2>
@@ -165,27 +162,27 @@ class EmailService:
             <p><strong>Healthy Environments:</strong> {healthy_environments}/{total_environments}</p>
             <div style="margin-top: 15px;">
         """
-        
+
         for env_name, report in reports.items():
             health_class = self._get_health_class(report.overall_health_score)
             html += f"""
                 <div style="display: inline-block; margin: 5px 10px 5px 0;">
-                    <strong>{env_name.title()}:</strong> 
+                    <strong>{env_name.title()}:</strong>
                     <span class="health-score {health_class}">{report.overall_health_score:.1f}%</span>
                 </div>
             """
-        
+
         html += """
             </div>
         </div>
         """
-        
+
         return html
 
     def _generate_environment_section(self, env_name: str, report: MetricsReport) -> str:
         """Generate HTML section for a single environment."""
         health_class = self._get_health_class(report.overall_health_score)
-        
+
         html = f"""
         <div class="environment">
             <div class="env-header">
@@ -196,7 +193,7 @@ class EmailService:
                 <div class="metrics-section">
                     <h3>🔧 Technical Metrics</h3>
         """
-        
+
         # Add technical metrics
         for metric in report.technical_metrics:
             status_class = f"status-{metric.status.value.lower()}"
@@ -209,13 +206,13 @@ class EmailService:
                         </div>
                     </div>
             """
-        
+
         html += """
                 </div>
                 <div class="metrics-section">
                     <h3>💼 Business Metrics</h3>
         """
-        
+
         # Add business metrics
         for metric in report.business_metrics:
             status_class = f"status-{metric.status.value.lower()}"
@@ -228,12 +225,12 @@ class EmailService:
                         </div>
                     </div>
             """
-        
+
         html += """
                 </div>
             </div>
         """
-        
+
         # Add alerts if any
         if report.alerts:
             html += """
@@ -243,7 +240,7 @@ class EmailService:
             for alert in report.alerts:
                 html += f'<div class="alert-item">• {alert}</div>'
             html += "</div>"
-        
+
         # Add recommendations if any
         if report.recommendations:
             html += """
@@ -253,9 +250,9 @@ class EmailService:
             for recommendation in report.recommendations:
                 html += f'<div class="recommendation-item">• {recommendation}</div>'
             html += "</div>"
-        
+
         html += "</div>"
-        
+
         return html
 
     def _get_health_class(self, health_score: float) -> str:
@@ -280,13 +277,13 @@ class EmailService:
                 return True
 
             # Create message
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = self.from_email
-            msg['To'] = recipient_email
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = self.from_email
+            msg["To"] = recipient_email
 
             # Create HTML part
-            html_part = MIMEText(html_content, 'html')
+            html_part = MIMEText(html_content, "html")
             msg.attach(html_part)
 
             # Send email

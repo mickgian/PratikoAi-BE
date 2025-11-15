@@ -1,9 +1,9 @@
 """Test state integrity throughout Phase 5 provider lane."""
 
-import pytest
 from unittest.mock import patch
 
-from app.core.langgraph.types import RAGState
+import pytest
+
 from app.core.langgraph.nodes.step_048__select_provider import node_step_48
 from app.core.langgraph.nodes.step_049__route_strategy import node_step_49
 from app.core.langgraph.nodes.step_050__strategy_type import node_step_50
@@ -11,6 +11,7 @@ from app.core.langgraph.nodes.step_051__cheap_provider import node_step_51
 from app.core.langgraph.nodes.step_055__estimate_cost import node_step_55
 from app.core.langgraph.nodes.step_056__cost_check import node_step_56
 from app.core.langgraph.nodes.step_057__create_provider import node_step_57
+from app.core.langgraph.types import RAGState
 
 
 class TestStateIntegrity:
@@ -26,19 +27,20 @@ class TestStateIntegrity:
             "streaming": False,
             "provider": {},
             "decisions": {},
-            "metrics": {}
+            "metrics": {},
         }
 
     def test_full_lane_state_flow(self, initial_state):
         """Test full provider lane flow maintains state integrity."""
-        with patch('app.orchestrators.providers.step_48__select_provider') as mock_48, \
-             patch('app.orchestrators.facts.step_49__route_strategy') as mock_49, \
-             patch('app.orchestrators.platform.step_50__strategy_type') as mock_50, \
-             patch('app.orchestrators.providers.step_51__cheap_provider') as mock_51, \
-             patch('app.orchestrators.providers.step_55__estimate_cost') as mock_55, \
-             patch('app.orchestrators.providers.step_56__cost_check') as mock_56, \
-             patch('app.orchestrators.providers.step_57__create_provider') as mock_57:
-
+        with (
+            patch("app.orchestrators.providers.step_48__select_provider") as mock_48,
+            patch("app.orchestrators.facts.step_49__route_strategy") as mock_49,
+            patch("app.orchestrators.platform.step_50__strategy_type") as mock_50,
+            patch("app.orchestrators.providers.step_51__cheap_provider") as mock_51,
+            patch("app.orchestrators.providers.step_55__estimate_cost") as mock_55,
+            patch("app.orchestrators.providers.step_56__cost_check") as mock_56,
+            patch("app.orchestrators.providers.step_57__create_provider") as mock_57,
+        ):
             # Step 48: Select Provider
             mock_48.return_value = {"strategy": "cost_optimization"}
             state = node_step_48(initial_state)
@@ -101,15 +103,17 @@ class TestStateIntegrity:
     def test_state_keys_not_corrupted(self, initial_state):
         """Test that existing state keys are not corrupted by provider nodes."""
         # Add some existing state that should be preserved
-        initial_state.update({
-            "cache_key": "existing-cache-key",
-            "privacy_enabled": True,
-            "pii_detected": False,
-            "atomic_facts": [{"fact": "test"}],
-            "kb_docs": [{"doc": "test-doc"}]
-        })
+        initial_state.update(
+            {
+                "cache_key": "existing-cache-key",
+                "privacy_enabled": True,
+                "pii_detected": False,
+                "atomic_facts": [{"fact": "test"}],
+                "kb_docs": [{"doc": "test-doc"}],
+            }
+        )
 
-        with patch('app.orchestrators.providers.step_48__select_provider') as mock_48:
+        with patch("app.orchestrators.providers.step_48__select_provider") as mock_48:
             mock_48.return_value = {"strategy": "test"}
 
             result = node_step_48(initial_state)
@@ -127,12 +131,9 @@ class TestStateIntegrity:
     def test_provider_dict_updates_are_additive(self, initial_state):
         """Test that provider dictionary updates are additive, not replacing."""
         # Start with some provider data
-        initial_state["provider"] = {
-            "existing_field": "should_remain",
-            "another_field": 42
-        }
+        initial_state["provider"] = {"existing_field": "should_remain", "another_field": 42}
 
-        with patch('app.orchestrators.providers.step_48__select_provider') as mock_48:
+        with patch("app.orchestrators.providers.step_48__select_provider") as mock_48:
             mock_48.return_value = {"strategy": "new_strategy"}
 
             result = node_step_48(initial_state)
@@ -147,12 +148,9 @@ class TestStateIntegrity:
     def test_decisions_dict_updates_are_additive(self, initial_state):
         """Test that decisions dictionary updates are additive."""
         # Start with some decisions
-        initial_state["decisions"] = {
-            "existing_decision": "keep_this",
-            "previous_step": True
-        }
+        initial_state["decisions"] = {"existing_decision": "keep_this", "previous_step": True}
 
-        with patch('app.orchestrators.platform.step_50__strategy_type') as mock_50:
+        with patch("app.orchestrators.platform.step_50__strategy_type") as mock_50:
             mock_50.return_value = {"strategy_type": "BALANCED"}
 
             result = node_step_50(initial_state)
@@ -166,7 +164,7 @@ class TestStateIntegrity:
 
     def test_legacy_compatibility_fields(self, initial_state):
         """Test that legacy compatibility fields are maintained."""
-        with patch('app.orchestrators.providers.step_51__cheap_provider') as mock_51:
+        with patch("app.orchestrators.providers.step_51__cheap_provider") as mock_51:
             mock_51.return_value = {"provider": "test-provider"}
 
             result = node_step_51(initial_state)

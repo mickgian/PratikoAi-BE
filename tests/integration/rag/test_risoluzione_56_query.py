@@ -167,14 +167,6 @@ class TestRisoluzione56QueryRegression:
         """
         # This test documents the contract that step_39__kbpre_fetch returns
         # Expected keys in orchestrator response:
-        expected_keys = {
-            "knowledge_items",  # NOT "documents"
-            "total_results",  # NOT "doc_count"
-            "search_mode",  # NOT "method"
-            "timestamp",
-            "search_performed",
-            "error",
-        }
 
         # If this test fails, the orchestrator API changed and node wrapper
         # needs updating to match new keys

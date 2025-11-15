@@ -40,7 +40,7 @@ def format_messages(messages: list[dict]) -> str:
     return "\n".join(formatted_messages)
 
 
-def get_input_output(trace: TraceWithDetails) -> Tuple[Optional[str], Optional[str]]:
+def get_input_output(trace: TraceWithDetails) -> tuple[str | None, str | None]:
     """Extract and format input and output messages from a trace.
 
     Args:
@@ -56,7 +56,7 @@ def get_input_output(trace: TraceWithDetails) -> Tuple[Optional[str], Optional[s
     return format_messages(input_messages), format_messages([output_message])
 
 
-def initialize_report(model_name: str) -> Dict[str, Any]:
+def initialize_report(model_name: str) -> dict[str, Any]:
     """Initialize report data structure.
 
     Args:
@@ -78,7 +78,7 @@ def initialize_report(model_name: str) -> Dict[str, Any]:
     }
 
 
-def initialize_metrics_summary(report: Dict[str, Any], metrics: List[Dict[str, str]]) -> None:
+def initialize_metrics_summary(report: dict[str, Any], metrics: list[dict[str, str]]) -> None:
     """Initialize metrics summary in the report.
 
     Args:
@@ -90,7 +90,7 @@ def initialize_metrics_summary(report: Dict[str, Any], metrics: List[Dict[str, s
 
 
 def update_success_metrics(
-    report: Dict[str, Any], trace_id: str, metric_name: str, score: ScoreSchema, trace_results: Dict[str, Any]
+    report: dict[str, Any], trace_id: str, metric_name: str, score: ScoreSchema, trace_results: dict[str, Any]
 ) -> None:
     """Update metrics for a successful evaluation.
 
@@ -112,7 +112,7 @@ def update_success_metrics(
 
 
 def update_failure_metrics(
-    report: Dict[str, Any], trace_id: str, metric_name: str, trace_results: Dict[str, Any]
+    report: dict[str, Any], trace_id: str, metric_name: str, trace_results: dict[str, Any]
 ) -> None:
     """Update metrics for a failed evaluation.
 
@@ -127,7 +127,7 @@ def update_failure_metrics(
 
 
 def process_trace_results(
-    report: Dict[str, Any], trace_id: str, trace_results: Dict[str, Any], metrics_count: int
+    report: dict[str, Any], trace_id: str, trace_results: dict[str, Any], metrics_count: int
 ) -> None:
     """Process results for a single trace.
 
@@ -155,7 +155,7 @@ def process_trace_results(
         )
 
 
-def calculate_avg_scores(report: Dict[str, Any]) -> None:
+def calculate_avg_scores(report: dict[str, Any]) -> None:
     """Calculate average scores for each metric.
 
     Args:
@@ -166,7 +166,7 @@ def calculate_avg_scores(report: Dict[str, Any]) -> None:
             data["avg_score"] = round(data["avg_score"] / data["success_count"], 2)
 
 
-def generate_report(report: Dict[str, Any]) -> str:
+def generate_report(report: dict[str, Any]) -> str:
     """Generate a JSON report file with evaluation results.
 
     Args:

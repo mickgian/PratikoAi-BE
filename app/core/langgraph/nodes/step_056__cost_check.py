@@ -1,10 +1,13 @@
 """Node wrapper for Step 56: Cost Check (Decision)."""
 
-from typing import Dict, Any
+from typing import Any, Dict
+
+from app.core.langgraph.node_utils import mirror, ns
 from app.core.langgraph.types import RAGState
-from app.core.langgraph.node_utils import ns, mirror
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
 from app.orchestrators.providers import step_56__cost_check
@@ -12,7 +15,7 @@ from app.orchestrators.providers import step_56__cost_check
 STEP = 56
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):

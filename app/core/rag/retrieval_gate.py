@@ -21,8 +21,9 @@ class GateDecision:
         needs_retrieval: True if query requires retrieval/tools, False otherwise
         reasons: List of pattern matches or reasoning for the decision
     """
+
     needs_retrieval: bool
-    reasons: List[str]
+    reasons: list[str]
 
 
 # Patterns indicating time-sensitive or regulatory queries that need sources

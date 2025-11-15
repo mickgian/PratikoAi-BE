@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""
-Test script to verify Risoluzione 56 query works end-to-end.
+"""Test script to verify Risoluzione 56 query works end-to-end.
 Tests the complete flow: authentication -> create session -> query -> check results.
 """
+
 import asyncio
 import json
 from datetime import datetime
@@ -16,7 +16,6 @@ TEST_PASSWORD = "TestPass123!"  # pragma: allowlist secret
 
 async def test_risoluzione_query():
     """Test the complete flow for Risoluzione 56 query."""
-
     async with httpx.AsyncClient(timeout=30.0) as client:
         print("🔐 Authenticating...")
 
@@ -92,7 +91,7 @@ async def test_risoluzione_query():
         query_duration = (datetime.now() - query_start).total_seconds()
 
         print(f"\n✅ Query completed in {query_duration:.2f}s")
-        print(f"\n📊 Response preview:")
+        print("\n📊 Response preview:")
         print(f"   {response_text[:300]}...")
 
         # Check if response mentions Risoluzione 56 content
@@ -105,7 +104,7 @@ async def test_risoluzione_query():
         # Get trace ID for log analysis
         if trace_id:
             print(f"\n📋 Trace ID: {trace_id}")
-            print(f"   Check logs at: /Users/micky/PycharmProjects/PratikoAi-BE/logs/rag_traces/")
+            print("   Check logs at: /Users/micky/PycharmProjects/PratikoAi-BE/logs/rag_traces/")
 
         return trace_id
 

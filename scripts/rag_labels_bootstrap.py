@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Create (idempotently) all GitHub issue labels needed by the RAG workflow.
 
@@ -26,10 +25,10 @@ import json
 import shutil
 import subprocess
 import sys
-from typing import Dict, Iterable, List, Set
+from collections.abc import Iterable
+from typing import Dict, List, Set
 
-
-CORE_LABELS: Dict[str, Dict] = {
+CORE_LABELS: dict[str, dict] = {
     "rag": {"color": "6f42c1", "description": "RAG work item"},
     "needs/functional-align": {
         "color": "1f6feb",
@@ -37,7 +36,7 @@ CORE_LABELS: Dict[str, Dict] = {
     },
 }
 
-STATUS_LABELS: Dict[str, Dict] = {
+STATUS_LABELS: dict[str, dict] = {
     "status/implemented": {"color": "0e8a16", "description": "✅ Implemented"},
     "status/partial": {"color": "fbca04", "description": "🟡 Partial"},
     "status/not-wired": {"color": "c2e0c6", "description": "🔌 Exists, not wired"},
@@ -45,7 +44,7 @@ STATUS_LABELS: Dict[str, Dict] = {
     "status/unknown": {"color": "d4c5f9", "description": "❓ Unknown"},
 }
 
-DEFAULT_AREAS: List[str] = [
+DEFAULT_AREAS: list[str] = [
     "platform",
     "privacy",
     "response",
@@ -69,7 +68,7 @@ AREA_COLOR = "0366d6"
 STEP_COLOR = "ededed"
 
 
-def run_gh(args: List[str], *, check: bool = True) -> subprocess.CompletedProcess:
+def run_gh(args: list[str], *, check: bool = True) -> subprocess.CompletedProcess:
     """Run a gh command and return the process."""
     proc = subprocess.run(
         ["gh", *args],
@@ -88,12 +87,11 @@ def ensure_gh_available() -> None:
         run_gh(["repo", "view"], check=True)
     except Exception as e:
         raise SystemExit(
-            "ERROR: `gh repo view` failed. Ensure you run from the repo root and are authenticated.\n"
-            f"Details: {e}"
+            f"ERROR: `gh repo view` failed. Ensure you run from the repo root and are authenticated.\nDetails: {e}"
         )
 
 
-def list_existing_labels() -> Set[str]:
+def list_existing_labels() -> set[str]:
     try:
         proc = run_gh(["label", "list", "--json", "name"], check=True)
         data = json.loads(proc.stdout or "[]")
@@ -119,9 +117,9 @@ def create_label(name: str, color: str, description: str = "", *, dry_run: bool 
         print(f"ℹ️  exists or could not create '{name}': {proc.stderr.strip() or proc.stdout.strip()}")
 
 
-def ensure_labels(core: Dict[str, Dict], status: Dict[str, Dict],
-                  areas: Iterable[str], steps_max: int,
-                  *, dry_run: bool = False) -> None:
+def ensure_labels(
+    core: dict[str, dict], status: dict[str, dict], areas: Iterable[str], steps_max: int, *, dry_run: bool = False
+) -> None:
     existing = list_existing_labels()
 
     # Core

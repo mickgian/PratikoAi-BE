@@ -4,11 +4,13 @@ Internal step - adopts LLM classification as final result.
 """
 
 from app.core.langgraph.types import RAGState
-from app.orchestrators.llm import step_37__use_llm
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
+from app.orchestrators.llm import step_37__use_llm
 
 STEP = 37
 
@@ -25,10 +27,7 @@ async def node_step_37(state: RAGState) -> RAGState:
     rag_step_log(STEP, "enter", using_llm=True)
 
     with rag_step_timer(STEP):
-        res = await step_37__use_llm(
-            messages=state.get("messages", []),
-            ctx=dict(state)
-        )
+        res = await step_37__use_llm(messages=state.get("messages", []), ctx=dict(state))
 
         # Set LLM classification as final
         classification = state.setdefault("classification", {})
@@ -38,10 +37,5 @@ async def node_step_37(state: RAGState) -> RAGState:
         classification["method_used"] = "llm"
         classification["fallback_used"] = True
 
-    rag_step_log(
-        STEP,
-        "exit",
-        domain=classification.get("domain"),
-        confidence=classification.get("confidence")
-    )
+    rag_step_log(STEP, "exit", domain=classification.get("domain"), confidence=classification.get("confidence"))
     return state

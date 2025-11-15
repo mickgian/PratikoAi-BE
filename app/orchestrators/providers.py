@@ -3,6 +3,7 @@
 # Implement thin coordination here (call services/factories), not core business logic.
 
 from contextlib import nullcontext
+from datetime import UTC
 from typing import (
     Any,
     Dict,
@@ -25,10 +26,9 @@ except Exception:  # pragma: no cover
 
 
 def step_48__select_provider(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Dict[str, Any]:
-    """
-    RAG STEP 48 — LangGraphAgent._get_optimal_provider Select LLM provider
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> dict[str, Any]:
+    """RAG STEP 48 — LangGraphAgent._get_optimal_provider Select LLM provider
     ID: RAG.providers.langgraphagent.get.optimal.provider.select.llm.provider
     Type: process | Category: providers | Node: SelectProvider
 
@@ -85,7 +85,7 @@ def step_48__select_provider(
 
         # Log the provider selection initiation
         logger.info(
-            f"STEP 48: Initiating provider selection",
+            "STEP 48: Initiating provider selection",
             extra={
                 "step": 48,
                 "messages_count": len(messages),
@@ -147,10 +147,9 @@ def step_48__select_provider(
 
 
 def step_51__cheap_provider(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Dict[str, Any]:
-    """
-    RAG STEP 51 — Select cheapest provider
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> dict[str, Any]:
+    """RAG STEP 51 — Select cheapest provider
     ID: RAG.providers.select.cheapest.provider
     Type: process | Category: providers | Node: CheapProvider
 
@@ -225,7 +224,7 @@ def step_51__cheap_provider(
             if not provider:
                 # No provider available within budget
                 logger.warning(
-                    f"STEP 51: No cheap provider available within budget",
+                    "STEP 51: No cheap provider available within budget",
                     extra={
                         "step": 51,
                         "max_cost_eur": max_cost_eur,
@@ -267,7 +266,7 @@ def step_51__cheap_provider(
             cost_per_token = getattr(provider, "cost_per_token", 0.0)
 
             logger.info(
-                f"STEP 51: Cheapest provider selected successfully",
+                "STEP 51: Cheapest provider selected successfully",
                 extra={
                     "step": 51,
                     "provider_type": provider_type,
@@ -333,7 +332,7 @@ def step_51__cheap_provider(
         except Exception as e:
             error_msg = str(e)
             logger.error(
-                f"STEP 51: Failed to select cheapest provider",
+                "STEP 51: Failed to select cheapest provider",
                 extra={"step": 51, "error": error_msg, "max_cost_eur": max_cost_eur},
             )
 
@@ -359,10 +358,9 @@ def step_51__cheap_provider(
 
 
 def step_52__best_provider(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Dict[str, Any]:
-    """
-    RAG STEP 52 — Select best provider
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> dict[str, Any]:
+    """RAG STEP 52 — Select best provider
     ID: RAG.providers.select.best.provider
     Type: process | Category: providers | Node: BestProvider
 
@@ -434,9 +432,7 @@ def step_52__best_provider(
             )
 
             if not provider:
-                logger.warning(
-                    f"STEP 52: No best provider available", extra={"step": 52, "max_cost_eur": max_cost_eur}
-                )
+                logger.warning("STEP 52: No best provider available", extra={"step": 52, "max_cost_eur": max_cost_eur})
                 rag_step_log(
                     step=52,
                     step_id="RAG.providers.select.best.provider",
@@ -467,7 +463,7 @@ def step_52__best_provider(
             cost_per_token = getattr(provider, "cost_per_token", 0.0)
 
             logger.info(
-                f"STEP 52: Best provider selected successfully",
+                "STEP 52: Best provider selected successfully",
                 extra={"step": 52, "provider_type": provider_type, "model": model, "cost_per_token": cost_per_token},
             )
 
@@ -507,7 +503,7 @@ def step_52__best_provider(
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"STEP 52: Failed to select best provider", extra={"step": 52, "error": error_msg})
+            logger.error("STEP 52: Failed to select best provider", extra={"step": 52, "error": error_msg})
             rag_step_log(
                 step=52,
                 step_id="RAG.providers.select.best.provider",
@@ -528,10 +524,9 @@ def step_52__best_provider(
 
 
 def step_53__balance_provider(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Dict[str, Any]:
-    """
-    RAG STEP 53 — Balance cost and quality
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> dict[str, Any]:
+    """RAG STEP 53 — Balance cost and quality
     ID: RAG.providers.balance.cost.and.quality
     Type: process | Category: providers | Node: BalanceProvider
 
@@ -604,7 +599,7 @@ def step_53__balance_provider(
 
             if not provider:
                 logger.warning(
-                    f"STEP 53: No balanced provider available", extra={"step": 53, "max_cost_eur": max_cost_eur}
+                    "STEP 53: No balanced provider available", extra={"step": 53, "max_cost_eur": max_cost_eur}
                 )
                 rag_step_log(
                     step=53,
@@ -636,7 +631,7 @@ def step_53__balance_provider(
             cost_per_token = getattr(provider, "cost_per_token", 0.0)
 
             logger.info(
-                f"STEP 53: Balanced provider selected successfully",
+                "STEP 53: Balanced provider selected successfully",
                 extra={"step": 53, "provider_type": provider_type, "model": model, "cost_per_token": cost_per_token},
             )
 
@@ -676,7 +671,7 @@ def step_53__balance_provider(
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"STEP 53: Failed to select balanced provider", extra={"step": 53, "error": error_msg})
+            logger.error("STEP 53: Failed to select balanced provider", extra={"step": 53, "error": error_msg})
             rag_step_log(
                 step=53,
                 step_id="RAG.providers.balance.cost.and.quality",
@@ -697,10 +692,9 @@ def step_53__balance_provider(
 
 
 def step_54__primary_provider(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Dict[str, Any]:
-    """
-    RAG STEP 54 — Use primary provider
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> dict[str, Any]:
+    """RAG STEP 54 — Use primary provider
     ID: RAG.providers.use.primary.provider
     Type: process | Category: providers | Node: PrimaryProvider
 
@@ -770,7 +764,7 @@ def step_54__primary_provider(
 
             if not provider:
                 logger.warning(
-                    f"STEP 54: No primary provider available", extra={"step": 54, "max_cost_eur": max_cost_eur}
+                    "STEP 54: No primary provider available", extra={"step": 54, "max_cost_eur": max_cost_eur}
                 )
                 rag_step_log(
                     step=54,
@@ -802,7 +796,7 @@ def step_54__primary_provider(
             cost_per_token = getattr(provider, "cost_per_token", 0.0)
 
             logger.info(
-                f"STEP 54: Primary provider selected successfully",
+                "STEP 54: Primary provider selected successfully",
                 extra={"step": 54, "provider_type": provider_type, "model": model, "cost_per_token": cost_per_token},
             )
 
@@ -842,7 +836,7 @@ def step_54__primary_provider(
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"STEP 54: Failed to select primary provider", extra={"step": 54, "error": error_msg})
+            logger.error("STEP 54: Failed to select primary provider", extra={"step": 54, "error": error_msg})
             rag_step_log(
                 step=54,
                 step_id="RAG.providers.use.primary.provider",
@@ -863,10 +857,9 @@ def step_54__primary_provider(
 
 
 def step_55__estimate_cost(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Dict[str, Any]:
-    """
-    RAG STEP 55 — CostCalculator.estimate_cost Calculate query cost
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> dict[str, Any]:
+    """RAG STEP 55 — CostCalculator.estimate_cost Calculate query cost
     ID: RAG.providers.costcalculator.estimate.cost.calculate.query.cost
     Type: process | Category: providers | Node: EstimateCost
 
@@ -948,7 +941,7 @@ def step_55__estimate_cost(
             estimated_cost_eur = estimated_cost  # Assuming cost_per_token is already in EUR
 
             logger.info(
-                f"STEP 55: Cost estimation completed",
+                "STEP 55: Cost estimation completed",
                 extra={
                     "step": 55,
                     "provider_type": provider_type,
@@ -996,7 +989,7 @@ def step_55__estimate_cost(
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"STEP 55: Failed to estimate cost", extra={"step": 55, "error": error_msg})
+            logger.error("STEP 55: Failed to estimate cost", extra={"step": 55, "error": error_msg})
             rag_step_log(
                 step=55,
                 step_id="RAG.providers.costcalculator.estimate.cost.calculate.query.cost",
@@ -1017,10 +1010,9 @@ def step_55__estimate_cost(
 
 
 def step_56__cost_check(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Dict[str, Any]:
-    """
-    RAG STEP 56 — Cost within budget?
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> dict[str, Any]:
+    """RAG STEP 56 — Cost within budget?
     ID: RAG.providers.cost.within.budget
     Type: decision | Category: providers | Node: CostCheck
 
@@ -1065,7 +1057,7 @@ def step_56__cost_check(
             next_step = "CheaperProvider"
 
         logger.info(
-            f"STEP 56: Cost check completed",
+            "STEP 56: Cost check completed",
             extra={
                 "step": 56,
                 "estimated_cost": estimated_cost,
@@ -1116,10 +1108,9 @@ def step_56__cost_check(
 
 
 def step_57__create_provider(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Dict[str, Any]:
-    """
-    RAG STEP 57 — Create provider instance
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> dict[str, Any]:
+    """RAG STEP 57 — Create provider instance
     ID: RAG.providers.create.provider.instance
     Type: process | Category: providers | Node: CreateProvider
 
@@ -1175,7 +1166,7 @@ def step_57__create_provider(
             # The provider instance is already created from previous steps
             # This step confirms it's ready for use and finalizes the setup
             logger.info(
-                f"STEP 57: Provider instance created successfully",
+                "STEP 57: Provider instance created successfully",
                 extra={
                     "step": 57,
                     "provider_type": provider_type,
@@ -1219,7 +1210,7 @@ def step_57__create_provider(
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"STEP 57: Failed to create provider instance", extra={"step": 57, "error": error_msg})
+            logger.error("STEP 57: Failed to create provider instance", extra={"step": 57, "error": error_msg})
             rag_step_log(
                 step=57,
                 step_id="RAG.providers.create.provider.instance",
@@ -1240,10 +1231,9 @@ def step_57__create_provider(
 
 
 def step_58__cheaper_provider(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Dict[str, Any]:
-    """
-    RAG STEP 58 — Select cheaper provider or fail
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> dict[str, Any]:
+    """RAG STEP 58 — Select cheaper provider or fail
     ID: RAG.providers.select.cheaper.provider.or.fail
     Type: process | Category: providers | Node: CheaperProvider
 
@@ -1321,7 +1311,7 @@ def step_58__cheaper_provider(
             if not cheaper_provider:
                 # No cheaper provider available
                 logger.warning(
-                    f"STEP 58: No cheaper provider available within budget",
+                    "STEP 58: No cheaper provider available within budget",
                     extra={
                         "step": 58,
                         "max_cost_eur": max_cost_eur,
@@ -1363,7 +1353,7 @@ def step_58__cheaper_provider(
             cost_per_token = getattr(cheaper_provider, "cost_per_token", 0.0)
 
             logger.info(
-                f"STEP 58: Cheaper provider found successfully",
+                "STEP 58: Cheaper provider found successfully",
                 extra={
                     "step": 58,
                     "original_provider": original_provider_type,
@@ -1413,7 +1403,7 @@ def step_58__cheaper_provider(
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"STEP 58: Failed to select cheaper provider", extra={"step": 58, "error": error_msg})
+            logger.error("STEP 58: Failed to select cheaper provider", extra={"step": 58, "error": error_msg})
             rag_step_log(
                 step=58,
                 step_id="RAG.providers.select.cheaper.provider.or.fail",
@@ -1433,9 +1423,8 @@ def step_58__cheaper_provider(
             }
 
 
-async def _execute_llm_api_call(ctx: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Helper function to execute the actual LLM API call using the provider instance.
+async def _execute_llm_api_call(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Helper function to execute the actual LLM API call using the provider instance.
     Handles API call execution, error handling, and response processing.
     """
     import time
@@ -1618,11 +1607,8 @@ async def _execute_llm_api_call(ctx: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
-async def step_64__llmcall(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Any:
-    """
-    RAG STEP 64 — LLMProvider.chat_completion Make API call.
+async def step_64__llmcall(*, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs) -> Any:
+    """RAG STEP 64 — LLMProvider.chat_completion Make API call.
 
     Thin async orchestrator that executes the actual LLM API call using the provider instance.
     Takes input from cache miss (Step 62) and routes to LLM success check (Step 67).
@@ -1658,9 +1644,7 @@ async def step_64__llmcall(
         result.update(call_result)
 
         # Add processing metadata
-        result.update(
-            {"processing_stage": "llm_call_completed", "call_timestamp": datetime.now(timezone.utc).isoformat()}
-        )
+        result.update({"processing_stage": "llm_call_completed", "call_timestamp": datetime.now(UTC).isoformat()})
 
         # Extract tools information for observability
         tools_provided = ctx.get("tools") or ctx.get("llm_params", {}).get("tools")
@@ -1709,10 +1693,9 @@ async def step_64__llmcall(
 
 
 async def step_72__get_failover_provider(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 72 — Get FAILOVER provider
+    """RAG STEP 72 — Get FAILOVER provider
     ID: RAG.providers.get.failover.provider
     Type: process | Category: providers | Node: FailoverProvider
 
@@ -1769,7 +1752,7 @@ async def step_72__get_failover_provider(
         # Get failover provider using FAILOVER strategy
         # Matches existing logic from graph.py:786-791
         logger.warning(
-            f"attempting_fallback_provider",
+            "attempting_fallback_provider",
             extra={
                 "request_id": request_id,
                 "step": 72,
@@ -1795,7 +1778,7 @@ async def step_72__get_failover_provider(
             model = provider.model
 
         logger.info(
-            f"failover_provider_selected",
+            "failover_provider_selected",
             extra={
                 "request_id": request_id,
                 "step": 72,
@@ -1813,7 +1796,7 @@ async def step_72__get_failover_provider(
         provider = None
 
         logger.error(
-            f"failover_provider_selection_failed",
+            "failover_provider_selection_failed",
             extra={
                 "request_id": request_id,
                 "step": 72,
@@ -1854,17 +1837,16 @@ async def step_72__get_failover_provider(
         "environment": environment,
         "error": error,
         "request_id": request_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
     return result
 
 
 async def step_73__retry_same(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 73 — Retry same provider
+    """RAG STEP 73 — Retry same provider
     ID: RAG.providers.retry.same.provider
     Type: process | Category: providers | Node: RetrySame
 
@@ -1929,7 +1911,7 @@ async def step_73__retry_same(
     # Log retry initiation
     # Matches existing logic from graph.py:799 (continue)
     logger.info(
-        f"retry_same_provider",
+        "retry_same_provider",
         extra={
             "request_id": request_id,
             "step": 73,
@@ -1971,7 +1953,7 @@ async def step_73__retry_same(
         "previous_errors": previous_errors,
         "is_failover": is_failover,
         "request_id": request_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
     return result

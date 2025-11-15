@@ -4,6 +4,7 @@
 
 from contextlib import nullcontext
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -29,10 +30,9 @@ except Exception:  # pragma: no cover
 
 
 async def step_17__attachment_fingerprint(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 17 — AttachmentFingerprint.compute SHA-256 per attachment
+    """RAG STEP 17 — AttachmentFingerprint.compute SHA-256 per attachment
     ID: RAG.preflight.attachmentfingerprint.compute.sha.256.per.attachment
     Type: process | Category: preflight | Node: AttachmentFingerprint
 
@@ -111,10 +111,9 @@ async def step_17__attachment_fingerprint(
 
 
 async def step_19__attach_check(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 19 — Attachments present?
+    """RAG STEP 19 — Attachments present?
     ID: RAG.preflight.attachments.present
     Type: process | Category: preflight | Node: AttachCheck
 
@@ -169,10 +168,9 @@ async def step_19__attach_check(
 
 
 async def step_21__doc_pre_ingest(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 21 — DocPreIngest.quick_extract type sniff and key fields
+    """RAG STEP 21 — DocPreIngest.quick_extract type sniff and key fields
     ID: RAG.preflight.docpreingest.quick.extract.type.sniff.and.key.fields
     Type: process | Category: preflight | Node: QuickPreIngest
 
@@ -267,10 +265,9 @@ step_21__quick_pre_ingest = step_21__doc_pre_ingest
 
 
 async def step_24__golden_lookup(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 24 — GoldenSet.match_by_signature_or_semantic
+    """RAG STEP 24 — GoldenSet.match_by_signature_or_semantic
     ID: RAG.preflight.goldenset.match.by.signature.or.semantic
     Type: process | Category: preflight | Node: GoldenLookup
 
@@ -396,10 +393,9 @@ async def step_24__golden_lookup(
 
 
 async def step_39__kbpre_fetch(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 39 — KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost
+    """RAG STEP 39 — KnowledgeSearch.retrieve_topk BM25 and vectors and recency boost
     ID: RAG.preflight.knowledgesearch.retrieve.topk.bm25.and.vectors.and.recency.boost
     Type: process | Category: preflight | Node: KBPreFetch
 
@@ -409,7 +405,6 @@ async def step_39__kbpre_fetch(
     """
     from datetime import (
         datetime,
-        timezone,
     )
 
     from app.core.logging import logger
@@ -567,7 +562,7 @@ async def step_39__kbpre_fetch(
             "session_id": session_id,
             "trace_id": trace_id,
             "request_id": request_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "error": error,
         }
 
@@ -588,10 +583,9 @@ async def step_39__kbpre_fetch(
 
 
 async def step_82__doc_ingest(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 82 — DocumentIngestTool.process Process attachments
+    """RAG STEP 82 — DocumentIngestTool.process Process attachments
     ID: RAG.preflight.documentingesttool.process.process.attachments
     Type: process | Category: preflight | Node: DocIngest
 
@@ -695,10 +689,9 @@ async def step_82__doc_ingest(
 
 
 async def step_84__validate_attachments(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 84 — AttachmentValidator.validate Check files and limits
+    """RAG STEP 84 — AttachmentValidator.validate Check files and limits
     ID: RAG.preflight.attachmentvalidator.validate.check.files.and.limits
     Type: process | Category: preflight | Node: ValidateAttach
 
@@ -785,10 +778,9 @@ step_84__validate_attach = step_84__validate_attachments
 
 
 async def step_85__valid_attachments_check(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 85 — Valid attachments?
+    """RAG STEP 85 — Valid attachments?
     ID: RAG.preflight.valid.attachments
     Type: decision | Category: preflight | Node: AttachOK
 
@@ -852,10 +844,9 @@ step_85__attach_ok = step_85__valid_attachments_check
 
 
 async def step_107__single_pass(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 107 — SinglePassStream Prevent double iteration
+    """RAG STEP 107 — SinglePassStream Prevent double iteration
 
     Thin async orchestrator that wraps async generators with SinglePassStream to prevent double iteration.
     Takes generator data from AsyncGen (Step 106) and prepares for WriteSSE (Step 108).
@@ -892,7 +883,7 @@ async def step_107__single_pass(
                 "stream_protected": True,
                 "processing_stage": "stream_protected",
                 "next_step": "write_sse",
-                "protection_timestamp": datetime.now(timezone.utc).isoformat(),
+                "protection_timestamp": datetime.now(UTC).isoformat(),
             }
         )
 
@@ -915,7 +906,7 @@ async def step_107__single_pass(
         return result
 
 
-def _wrap_with_single_pass_protection(ctx: Dict[str, Any]) -> Any:
+def _wrap_with_single_pass_protection(ctx: dict[str, Any]) -> Any:
     """Wrap async generator with SinglePassStream to prevent double iteration."""
     from app.core.streaming_guard import SinglePassStream
 
@@ -934,7 +925,7 @@ def _wrap_with_single_pass_protection(ctx: Dict[str, Any]) -> Any:
     return wrapped_stream
 
 
-def _prepare_protection_configuration(ctx: Dict[str, Any]) -> Dict[str, Any]:
+def _prepare_protection_configuration(ctx: dict[str, Any]) -> dict[str, Any]:
     """Prepare configuration for stream protection."""
     generator_config = ctx.get("generator_config", {})
     stream_protection_config = ctx.get("stream_protection_config", {})
@@ -997,7 +988,7 @@ def _prepare_protection_configuration(ctx: Dict[str, Any]) -> Dict[str, Any]:
     return config
 
 
-def _validate_stream_requirements(ctx: Dict[str, Any]) -> List[str]:
+def _validate_stream_requirements(ctx: dict[str, Any]) -> list[str]:
     """Validate stream protection requirements and return warnings."""
     warnings = []
 
@@ -1030,10 +1021,9 @@ def _validate_stream_requirements(ctx: Dict[str, Any]) -> List[str]:
 
 
 async def step_130__invalidate_faqcache(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 130 — CacheService.invalidate_faq by id or signature
+    """RAG STEP 130 — CacheService.invalidate_faq by id or signature
     ID: RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature
     Type: process | Category: preflight | Node: InvalidateFAQCache
 
@@ -1101,7 +1091,7 @@ async def step_130__invalidate_faqcache(
 
             # Build cache invalidation metadata
             cache_invalidation = {
-                "invalidated_at": datetime.now(timezone.utc).isoformat(),
+                "invalidated_at": datetime.now(UTC).isoformat(),
                 "faq_id": faq_id,
                 "operation": operation,
                 "keys_deleted": total_keys_deleted,
@@ -1137,7 +1127,7 @@ async def step_130__invalidate_faqcache(
             )
             # On error, still continue with error context
             cache_invalidation = {
-                "invalidated_at": datetime.now(timezone.utc).isoformat(),
+                "invalidated_at": datetime.now(UTC).isoformat(),
                 "faq_id": faq_id,
                 "operation": operation,
                 "keys_deleted": 0,

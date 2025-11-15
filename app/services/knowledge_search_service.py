@@ -1,5 +1,4 @@
-"""
-Knowledge Search Service - RAG STEP 39 Implementation.
+"""Knowledge Search Service - RAG STEP 39 Implementation.
 
 Implements RAG STEP 39 — KBPreFetch
 
@@ -17,6 +16,7 @@ from dataclasses import (
     field,
 )
 from datetime import (
+    UTC,
     date,
     datetime,
     timedelta,
@@ -102,22 +102,22 @@ class SearchResult:
     category: str
     score: float  # Final combined score
     source: str
-    source_url: Optional[str] = None
-    updated_at: Optional[datetime] = None
-    publication_date: Optional[date] = None
+    source_url: str | None = None
+    updated_at: datetime | None = None
+    publication_date: date | None = None
 
     # Individual scoring components
-    bm25_score: Optional[float] = None
-    vector_score: Optional[float] = None
-    recency_score: Optional[float] = None
+    bm25_score: float | None = None
+    vector_score: float | None = None
+    recency_score: float | None = None
 
     # Search metadata
     search_method: str = field(default="hybrid")
-    rank_position: Optional[int] = None
-    highlight: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    rank_position: int | None = None
+    highlight: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for structured logging."""
         return {
             "id": self.id,
@@ -139,7 +139,7 @@ class KnowledgeSearchService:
     """Service for hybrid knowledge search with BM25, vector search and recency boost."""
 
     def __init__(
-        self, db_session: AsyncSession, vector_service: Any = None, config: Optional[KnowledgeSearchConfig] = None
+        self, db_session: AsyncSession, vector_service: Any = None, config: KnowledgeSearchConfig | None = None
     ):
         """Initialize knowledge search service."""
         self.db = db_session
@@ -150,12 +150,11 @@ class KnowledgeSearchService:
         self.search_service = SearchService(db_session)
 
         # Cache for performance optimization
-        self._embedding_cache: Dict[str, List[float]] = {}
-        self._query_cache: Dict[str, List[SearchResult]] = {}
+        self._embedding_cache: dict[str, list[float]] = {}
+        self._query_cache: dict[str, list[SearchResult]] = {}
 
-    async def retrieve_topk(self, query_data: Dict[str, Any]) -> List[SearchResult]:
-        """
-        Retrieve top-k knowledge items using hybrid search.
+    async def retrieve_topk(self, query_data: dict[str, Any]) -> list[SearchResult]:
+        """Retrieve top-k knowledge items using hybrid search.
 
         Args:
             query_data: Dictionary containing:
@@ -259,10 +258,9 @@ class KnowledgeSearchService:
             return []
 
     async def _perform_hybrid_search(
-        self, query: str, canonical_facts: List[str], filters: Dict[str, Any], max_results: int
-    ) -> List[SearchResult]:
+        self, query: str, canonical_facts: list[str], filters: dict[str, Any], max_results: int
+    ) -> list[SearchResult]:
         """Perform hybrid search combining BM25, vector search and recency boost."""
-
         # Perform both searches concurrently for better performance
         import asyncio
 
@@ -323,9 +321,8 @@ class KnowledgeSearchService:
 
         return scored_results[:max_results]
 
-    def _extract_organization_filter(self, query: str, canonical_facts: Optional[List[str]] = None) -> Optional[str]:
-        """
-        Extract organization mention from Italian query using HYBRID approach:
+    def _extract_organization_filter(self, query: str, canonical_facts: list[str] | None = None) -> str | None:
+        """Extract organization mention from Italian query using HYBRID approach:
         1. Fast pattern matching on query string (handles 95% of cases, no LLM cost)
         2. Fallback to LLM-extracted canonical facts (handles typos like "aginzia dll'entrata")
 
@@ -388,8 +385,7 @@ class KnowledgeSearchService:
         return None
 
     def _remove_organization_keywords(self, query: str) -> str:
-        """
-        Remove Italian organization keywords from query for fallback search.
+        """Remove Italian organization keywords from query for fallback search.
 
         Used when org-filtered search returns zero results - try again with just
         the core entity/temporal keywords.
@@ -418,10 +414,9 @@ class KnowledgeSearchService:
         return cleaned_query if cleaned_query != query.lower() else query
 
     async def _perform_bm25_search(
-        self, query: str, canonical_facts: List[str], max_results: int, filters: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, query: str, canonical_facts: list[str], max_results: int, filters: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Perform BM25 full-text search with OR fallback for zero results."""
-
         # Query expansion: prioritize canonical facts for better search
         search_query = query
         if canonical_facts:
@@ -491,13 +486,12 @@ class KnowledgeSearchService:
 
             for word in query_words:
                 # Keep entity type keywords (using substring match for stemming)
-                if any(entity in word for entity in entity_keywords):
-                    simplified_parts.append(word)
-                # Keep temporal keywords (months)
-                elif any(month in word for month in temporal_keywords):
-                    simplified_parts.append(word)
-                # Keep years (4-digit numbers)
-                elif word.isdigit() and len(word) == 4:
+                if (
+                    any(entity in word for entity in entity_keywords)
+                    or any(month in word for month in temporal_keywords)
+                    or word.isdigit()
+                    and len(word) == 4
+                ):
                     simplified_parts.append(word)
                 # SKIP organization references in aggregation queries
                 # Organization filtering is handled via source_pattern filter,
@@ -960,10 +954,9 @@ class KnowledgeSearchService:
         return bm25_results
 
     async def _perform_vector_search(
-        self, query: str, canonical_facts: List[str], filters: Dict[str, Any]
-    ) -> List[SearchResult]:
+        self, query: str, canonical_facts: list[str], filters: dict[str, Any]
+    ) -> list[SearchResult]:
         """Perform vector semantic search."""
-
         if not self.vector_service or not self.vector_service.is_available():
             # Graceful degradation - return empty results if vector service unavailable
             logger.warning("vector_service_unavailable", query=query)
@@ -1028,11 +1021,10 @@ class KnowledgeSearchService:
             return []
 
     def _combine_and_deduplicate_results(
-        self, bm25_results: List[SearchResult], vector_results: List[SearchResult]
-    ) -> List[SearchResult]:
+        self, bm25_results: list[SearchResult], vector_results: list[SearchResult]
+    ) -> list[SearchResult]:
         """Combine results from BM25 and vector search, removing duplicates."""
-
-        results_by_id: Dict[str, SearchResult] = {}
+        results_by_id: dict[str, SearchResult] = {}
 
         # Add BM25 results
         for result in bm25_results:
@@ -1052,9 +1044,8 @@ class KnowledgeSearchService:
 
         return list(results_by_id.values())
 
-    def _apply_hybrid_scoring(self, results: List[SearchResult]) -> List[SearchResult]:
+    def _apply_hybrid_scoring(self, results: list[SearchResult]) -> list[SearchResult]:
         """Apply hybrid scoring combining BM25, vector similarity, and recency boost."""
-
         if not results:
             return results
 
@@ -1090,13 +1081,11 @@ class KnowledgeSearchService:
 
         return results
 
-    def _calculate_recency_boost(self, updated_at: Optional[Union[datetime, str]]) -> float:
-        """
-        Calculate recency boost based on document age.
+    def _calculate_recency_boost(self, updated_at: datetime | str | None) -> float:
+        """Calculate recency boost based on document age.
 
         Handles both datetime objects and ISO string representations (from cache/serialization).
         """
-
         if not updated_at:
             return 0.0  # No boost for documents without timestamp
 
@@ -1123,9 +1112,9 @@ class KnowledgeSearchService:
 
         # Ensure timezone-aware comparison
         if updated_at.tzinfo is None:
-            updated_at = updated_at.replace(tzinfo=timezone.utc)
+            updated_at = updated_at.replace(tzinfo=UTC)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         age_days = (now - updated_at).total_seconds() / 86400  # Convert to days
 
         # Apply exponential decay: newer documents get higher boost
@@ -1136,9 +1125,8 @@ class KnowledgeSearchService:
 
         return recency_boost
 
-    def _apply_final_ranking(self, results: List[SearchResult], max_results: int) -> List[SearchResult]:
+    def _apply_final_ranking(self, results: list[SearchResult], max_results: int) -> list[SearchResult]:
         """Apply final ranking and filtering."""
-
         # Filter by minimum score threshold
         filtered_results = [r for r in results if r.score >= self.config.min_score_threshold]
 
@@ -1151,9 +1139,8 @@ class KnowledgeSearchService:
 
         return filtered_results[:max_results]
 
-    async def fetch_recent_kb_for_changes(self, query_data: Dict[str, Any]) -> List[SearchResult]:
-        """
-        RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes.
+    async def fetch_recent_kb_for_changes(self, query_data: dict[str, Any]) -> list[SearchResult]:
+        """RAG STEP 26 — KnowledgeSearch.context_topk fetch recent KB for changes.
 
         This method specifically fetches recent KB changes when a Golden Set hit occurs,
         to determine if KB has newer or conflicting information that should be merged
@@ -1281,21 +1268,20 @@ class KnowledgeSearchService:
             return []
 
     def _filter_recent_changes(
-        self, results: List[SearchResult], golden_timestamp: Optional[datetime], recency_threshold_days: int
-    ) -> List[SearchResult]:
+        self, results: list[SearchResult], golden_timestamp: datetime | None, recency_threshold_days: int
+    ) -> list[SearchResult]:
         """Filter results to only include recent changes."""
-
         if not results:
             return []
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Calculate cutoff time - use the more recent of golden_timestamp or recency_threshold
         cutoff_time = now - timedelta(days=recency_threshold_days)
         if golden_timestamp:
             # Ensure timezone-aware comparison
             if golden_timestamp.tzinfo is None:
-                golden_timestamp = golden_timestamp.replace(tzinfo=timezone.utc)
+                golden_timestamp = golden_timestamp.replace(tzinfo=UTC)
             cutoff_time = max(cutoff_time, golden_timestamp)
 
         # Filter for recent results
@@ -1305,7 +1291,7 @@ class KnowledgeSearchService:
                 # Ensure timezone-aware comparison
                 updated_at = result.updated_at
                 if updated_at.tzinfo is None:
-                    updated_at = updated_at.replace(tzinfo=timezone.utc)
+                    updated_at = updated_at.replace(tzinfo=UTC)
 
                 if updated_at > cutoff_time:
                     recent_results.append(result)
@@ -1313,10 +1299,9 @@ class KnowledgeSearchService:
         return recent_results
 
     def _detect_conflicts_with_golden(
-        self, results: List[SearchResult], golden_metadata: Dict[str, Any]
-    ) -> List[SearchResult]:
+        self, results: list[SearchResult], golden_metadata: dict[str, Any]
+    ) -> list[SearchResult]:
         """Detect potential conflicts between KB results and Golden Set."""
-
         if not results or not golden_metadata:
             return results
 
@@ -1362,9 +1347,8 @@ class KnowledgeSearchService:
 
         return results
 
-    def _rank_for_context_check(self, results: List[SearchResult]) -> List[SearchResult]:
+    def _rank_for_context_check(self, results: list[SearchResult]) -> list[SearchResult]:
         """Apply specialized ranking for context checking."""
-
         if not results:
             return []
 
@@ -1390,9 +1374,8 @@ class KnowledgeSearchService:
 
 
 # Convenience function for direct usage
-async def retrieve_knowledge_topk(query_data: Dict[str, Any]) -> List[SearchResult]:
-    """
-    Convenience function to retrieve top-k knowledge items.
+async def retrieve_knowledge_topk(query_data: dict[str, Any]) -> list[SearchResult]:
+    """Convenience function to retrieve top-k knowledge items.
 
     Args:
         query_data: Query data dictionary with db_session and vector_service

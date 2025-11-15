@@ -33,13 +33,16 @@ def _get_anonymizer():
     if _anonymizer is None:
         try:
             from app.core.privacy.anonymizer import anonymizer
+
             _anonymizer = anonymizer
         except ImportError:
             # If privacy module is not available, create a no-op anonymizer
             class NoOpAnonymizer:
                 def anonymize_text(self, text, **kwargs):
                     from app.core.privacy.anonymizer import AnonymizationResult
+
                     return AnonymizationResult(anonymized_text=text)
+
             _anonymizer = NoOpAnonymizer()
     return _anonymizer
 
@@ -47,18 +50,26 @@ def _get_anonymizer():
 def _anonymize_pii_processor(logger, method_name, event_dict):
     """Structlog processor to anonymize PII in log messages."""
     # Only anonymize if privacy features are enabled
-    privacy_enabled = getattr(settings, 'PRIVACY_ANONYMIZE_LOGS', True)
+    privacy_enabled = getattr(settings, "PRIVACY_ANONYMIZE_LOGS", True)
     if not privacy_enabled:
         return event_dict
-    
+
     anonymizer = _get_anonymizer()
-    
+
     # Fields that should be anonymized
     sensitive_fields = [
-        'message', 'error', 'user_input', 'query', 'response', 
-        'email', 'phone', 'address', 'content', 'text'
+        "message",
+        "error",
+        "user_input",
+        "query",
+        "response",
+        "email",
+        "phone",
+        "address",
+        "content",
+        "text",
     ]
-    
+
     for field in sensitive_fields:
         if field in event_dict and isinstance(event_dict[field], str):
             try:
@@ -67,13 +78,14 @@ def _anonymize_pii_processor(logger, method_name, event_dict):
                     event_dict[field] = result.anonymized_text
                     # Add anonymization metadata (but not in production to avoid noise)
                     if settings.ENVIRONMENT == Environment.DEVELOPMENT:
-                        event_dict[f'{field}_pii_anonymized'] = len(result.pii_matches)
+                        event_dict[f"{field}_pii_anonymized"] = len(result.pii_matches)
             except Exception:
                 # If anonymization fails, continue without anonymizing
                 # We don't want logging failures to break the application
                 pass
-    
+
     return event_dict
+
 
 # Ensure log directory exists
 settings.LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -96,6 +108,7 @@ def cleanup_old_logs(retention_days: int = 30) -> None:
         retention_days: Number of days to keep logs (default 30)
     """
     import time
+
     cutoff_time = time.time() - (retention_days * 86400)
     deleted_count = 0
 
@@ -123,6 +136,7 @@ def cleanup_old_rag_traces(retention_days: int = 7) -> None:
         retention_days: Number of days to keep RAG traces (default 7)
     """
     import time
+
     trace_dir = settings.LOG_DIR / "rag_traces"
 
     # Skip if trace directory doesn't exist
@@ -184,7 +198,7 @@ class JsonlFileHandler(logging.Handler):
         super().close()
 
 
-def get_structlog_processors(include_file_info: bool = True) -> List[Any]:
+def get_structlog_processors(include_file_info: bool = True) -> list[Any]:
     """Get the structlog processors based on configuration.
 
     Args:
@@ -221,7 +235,7 @@ def get_structlog_processors(include_file_info: bool = True) -> List[Any]:
 
     # Add environment info
     processors.append(lambda _, __, event_dict: {**event_dict, "environment": settings.ENVIRONMENT.value})
-    
+
     # Add PII anonymization processor
     processors.append(_anonymize_pii_processor)
 

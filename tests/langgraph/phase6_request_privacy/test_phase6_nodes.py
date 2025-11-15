@@ -1,7 +1,9 @@
 """Tests for Phase 6 Request/Privacy Lane nodes."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from app.core.langgraph.types import RAGState
 
 
@@ -160,7 +162,7 @@ async def test_step_8_init_agent():
 @pytest.mark.asyncio
 async def test_wiring_registry_phase6():
     """Test that Phase 6 nodes are registered in wiring registry."""
-    from app.core.langgraph.wiring_registry import get_wired_nodes_snapshot, initialize_phase6_registry, WIRED_NODES
+    from app.core.langgraph.wiring_registry import WIRED_NODES, get_wired_nodes_snapshot, initialize_phase6_registry
 
     # Clear and reinitialize
     WIRED_NODES.clear()

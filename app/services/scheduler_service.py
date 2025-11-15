@@ -1,14 +1,16 @@
-"""
-Scheduler Service for Automated Tasks
+"""Scheduler Service for Automated Tasks
 
 This service handles scheduling of automated tasks including metrics reporting,
 system maintenance, and other periodic operations.
 """
 
 import asyncio
+import contextlib
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import (
+    UTC,
     datetime,
     timedelta,
     timezone,
@@ -16,7 +18,6 @@ from datetime import (
 from enum import Enum
 from typing import (
     Any,
-    Callable,
     Dict,
     List,
     Optional,
@@ -50,8 +51,8 @@ class ScheduledTask:
     kwargs: dict = None
     enabled: bool = True
     run_immediately: bool = False  # Run task immediately on scheduler startup
-    last_run: Optional[datetime] = None
-    next_run: Optional[datetime] = None
+    last_run: datetime | None = None
+    next_run: datetime | None = None
 
 
 class SchedulerService:
@@ -59,9 +60,9 @@ class SchedulerService:
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.tasks: Dict[str, ScheduledTask] = {}
+        self.tasks: dict[str, ScheduledTask] = {}
         self.running = False
-        self._task_handle: Optional[asyncio.Task] = None
+        self._task_handle: asyncio.Task | None = None
 
     def add_task(self, task: ScheduledTask) -> None:
         """Add a scheduled task."""
@@ -117,10 +118,8 @@ class SchedulerService:
 
         if self._task_handle:
             self._task_handle.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task_handle
-            except asyncio.CancelledError:
-                pass
 
         self.logger.info("Scheduler stopped")
 
@@ -130,10 +129,10 @@ class SchedulerService:
 
         while self.running:
             try:
-                current_time = datetime.now(timezone.utc)
+                current_time = datetime.now(UTC)
 
                 # Check each task
-                for task_name, task in self.tasks.items():
+                for _task_name, task in self.tasks.items():
                     if not task.enabled:
                         continue
 
@@ -163,7 +162,7 @@ class SchedulerService:
                 task.function(*task.args, **task.kwargs)
 
             # Update task timing
-            task.last_run = datetime.now(timezone.utc)
+            task.last_run = datetime.now(UTC)
             task.next_run = self._calculate_next_run(task.interval, task.last_run)
 
             self.logger.info(f"Completed scheduled task: {task.name}. Next run: {task.next_run}")
@@ -172,12 +171,12 @@ class SchedulerService:
             self.logger.error(f"Error executing scheduled task {task.name}: {e}")
 
             # Still update next run time even if task failed
-            task.last_run = datetime.now(timezone.utc)
+            task.last_run = datetime.now(UTC)
             task.next_run = self._calculate_next_run(task.interval, task.last_run)
 
-    def _calculate_next_run(self, interval: ScheduleInterval, from_time: Optional[datetime] = None) -> datetime:
+    def _calculate_next_run(self, interval: ScheduleInterval, from_time: datetime | None = None) -> datetime:
         """Calculate next run time based on interval."""
-        base_time = from_time or datetime.now(timezone.utc)
+        base_time = from_time or datetime.now(UTC)
 
         if interval == ScheduleInterval.MINUTES_30:
             return base_time + timedelta(minutes=30)
@@ -195,10 +194,10 @@ class SchedulerService:
             # Default to daily
             return base_time + timedelta(days=1)
 
-    def get_task_status(self) -> Dict[str, Dict[str, Any]]:
+    def get_task_status(self) -> dict[str, dict[str, Any]]:
         """Get status of all scheduled tasks."""
         status = {}
-        current_time = datetime.now(timezone.utc)
+        current_time = datetime.now(UTC)
 
         for task_name, task in self.tasks.items():
             status[task_name] = {
@@ -226,7 +225,7 @@ class SchedulerService:
 scheduler_service = SchedulerService()
 
 
-def get_metrics_report_recipients() -> List[str]:
+def get_metrics_report_recipients() -> list[str]:
     """Get list of email recipients for metrics reports from environment variables."""
     recipients = []
 
@@ -337,7 +336,7 @@ async def collect_rss_feeds_task() -> None:
 
         async with async_session_maker() as session:
             # Query all enabled feeds
-            query = select(FeedStatus).where(FeedStatus.enabled == True)  # type: ignore[arg-type]
+            query = select(FeedStatus).where(FeedStatus.enabled is True)  # type: ignore[arg-type]
             result = await session.execute(query)
             feeds = result.scalars().all()
 
@@ -381,7 +380,7 @@ async def collect_rss_feeds_task() -> None:
 
                     # Update feed_status
                     feed.items_found = stats.get("total_items", 0)
-                    feed.last_success = datetime.now(timezone.utc)
+                    feed.last_success = datetime.now(UTC)
                     feed.consecutive_errors = 0
                     feed.status = "healthy"
                     session.add(feed)
@@ -435,7 +434,6 @@ async def collect_rss_feeds_task() -> None:
 
 def setup_default_tasks() -> None:
     """Setup default scheduled tasks."""
-
     # Add 12-hour metrics report task
     metrics_report_task = ScheduledTask(
         name="metrics_report_12h",

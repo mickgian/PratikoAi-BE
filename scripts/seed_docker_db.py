@@ -3,6 +3,7 @@
 Seed Docker database with essential data from host database.
 Imports user accounts and Risoluzione 56 knowledge base content.
 """
+
 import asyncio
 import json
 import sys
@@ -29,7 +30,7 @@ def prepare_row_data(row_dict):
     for key, value in row_dict.items():
         if value is None:
             result[key] = None
-        elif isinstance(value, (dict, list)):
+        elif isinstance(value, dict | list):
             result[key] = json.dumps(value)
         elif isinstance(value, Decimal):
             result[key] = float(value)
@@ -66,7 +67,7 @@ async def seed_data():
 
                 # Insert users
                 for user in users:
-                    user_dict = prepare_row_data(dict(zip(columns, user)))
+                    user_dict = prepare_row_data(dict(zip(columns, user, strict=False)))
                     insert_sql = f'INSERT INTO "user" ({cols_str}) VALUES ({placeholders})'
                     docker_conn.execute(text(insert_sql), user_dict)
                 docker_conn.commit()
@@ -101,7 +102,7 @@ async def seed_data():
                 # Insert knowledge items
                 item_ids = []
                 for item in items:
-                    item_dict = prepare_row_data(dict(zip(columns, item)))
+                    item_dict = prepare_row_data(dict(zip(columns, item, strict=False)))
                     item_ids.append(item_dict["id"])
                     insert_sql = f"INSERT INTO knowledge_items ({cols_str}) VALUES ({placeholders})"
                     docker_conn.execute(text(insert_sql), item_dict)
@@ -134,7 +135,7 @@ async def seed_data():
 
                             # Insert chunks
                             for chunk in chunks:
-                                chunk_dict = prepare_row_data(dict(zip(chunk_columns, chunk)))
+                                chunk_dict = prepare_row_data(dict(zip(chunk_columns, chunk, strict=False)))
                                 insert_sql = (
                                     f"INSERT INTO knowledge_chunks ({chunk_cols_str}) VALUES ({chunk_placeholders})"
                                 )

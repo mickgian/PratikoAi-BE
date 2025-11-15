@@ -1,14 +1,16 @@
 """Node wrapper for Step 5: Error400 - Return 400 Bad Request."""
 
-from typing import Dict, Any
+from typing import Any, Dict
+
 from app.core.langgraph.types import RAGState
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log
+from app.observability.rag_logging import rag_step_timer_compat as rag_step_timer
 from app.orchestrators.platform import step_5__error400
-from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 5
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):
@@ -39,7 +41,7 @@ async def node_step_5(state: RAGState) -> RAGState:
             validation_errors=validation_errors,
             session_id=state.get("session_id"),
             user_id=state.get("user_id"),
-            request_context={"request_id": state.get("request_id")}
+            request_context={"request_id": state.get("request_id")},
         )
 
         # Store error response in state
@@ -55,18 +57,12 @@ async def node_step_5(state: RAGState) -> RAGState:
             "content": error_message or "Invalid request",
             "type": "error",
             "status_code": 400,
-            "error_type": error_type
+            "error_type": error_type,
         }
 
         # Update decisions with error info
         decisions["error_returned"] = res.get("error_returned", True)
         decisions["error_type"] = res.get("error_type", error_type)
 
-    rag_step_log(
-        STEP,
-        "exit",
-        error_returned=True,
-        status_code=state.get("status_code"),
-        workflow_terminated=True
-    )
+    rag_step_log(STEP, "exit", error_returned=True, status_code=state.get("status_code"), workflow_terminated=True)
     return state

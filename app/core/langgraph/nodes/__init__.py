@@ -11,6 +11,15 @@ from .step_008__init_agent import node_step_8
 from .step_009__pii_check import node_step_9
 from .step_010__log_pii import node_step_10
 
+# Phase 8 Golden/KB Gates imports
+from .step_020__golden_fast_gate import node_step_20
+from .step_024__golden_lookup import node_step_24
+from .step_025__golden_hit import node_step_25
+from .step_026__kb_context_check import node_step_26
+from .step_027__kb_delta import node_step_27
+from .step_028__serve_golden import node_step_28
+from .step_030__return_complete import node_step_30
+
 # Classification Lane imports (Phase 2)
 from .step_031__classify_domain import node_step_31
 from .step_032__calc_scores import node_step_32
@@ -30,6 +39,18 @@ from .step_045__check_sys_msg import node_step_45
 from .step_046__replace_msg import node_step_46
 from .step_047__insert_msg import node_step_47
 
+# Phase 5 Provider Governance Lane imports
+from .step_048__select_provider import node_step_48
+from .step_049__route_strategy import node_step_49
+from .step_050__strategy_type import node_step_50
+from .step_051__cheap_provider import node_step_51
+from .step_052__best_provider import node_step_52
+from .step_053__balance_provider import node_step_53
+from .step_054__primary_provider import node_step_54
+from .step_055__estimate_cost import node_step_55
+from .step_056__cost_check import node_step_56
+from .step_057__create_provider import node_step_57
+from .step_058__cheaper_provider import node_step_58
 from .step_059__check_cache import node_step_59
 from .step_062__cache_hit import node_step_62
 from .step_064__llm_call import node_step_64
@@ -48,20 +69,6 @@ from .step_081__ccnl_tool import node_step_81
 from .step_082__doc_ingest_tool import node_step_82
 from .step_083__faq_tool import node_step_83
 from .step_099__tool_results import node_step_99
-from .step_112__end import node_step_112
-
-# Phase 5 Provider Governance Lane imports
-from .step_048__select_provider import node_step_48
-from .step_049__route_strategy import node_step_49
-from .step_050__strategy_type import node_step_50
-from .step_051__cheap_provider import node_step_51
-from .step_052__best_provider import node_step_52
-from .step_053__balance_provider import node_step_53
-from .step_054__primary_provider import node_step_54
-from .step_055__estimate_cost import node_step_55
-from .step_056__cost_check import node_step_56
-from .step_057__create_provider import node_step_57
-from .step_058__cheaper_provider import node_step_58
 
 # Phase 7 Streaming/Response Lane imports
 from .step_104__stream_check import node_step_104
@@ -72,15 +79,7 @@ from .step_108__write_sse import node_step_108
 from .step_109__stream_response import node_step_109
 from .step_110__send_done import node_step_110
 from .step_111__collect_metrics import node_step_111
-
-# Phase 8 Golden/KB Gates imports
-from .step_020__golden_fast_gate import node_step_20
-from .step_024__golden_lookup import node_step_24
-from .step_025__golden_hit import node_step_25
-from .step_026__kb_context_check import node_step_26
-from .step_027__kb_delta import node_step_27
-from .step_028__serve_golden import node_step_28
-from .step_030__return_complete import node_step_30
+from .step_112__end import node_step_112
 
 __all__ = [
     "node_step_1",

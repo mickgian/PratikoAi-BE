@@ -1,7 +1,9 @@
 """Comprehensive Phase 8 Golden/KB Gates tests."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+
 from app.core.langgraph.nodes.step_020__golden_fast_gate import node_step_20
 from app.core.langgraph.nodes.step_024__golden_lookup import node_step_24
 from app.core.langgraph.nodes.step_025__golden_hit import node_step_25
@@ -63,10 +65,7 @@ async def test_golden_fast_gate_not_eligible(mock_orch):
 @patch("app.orchestrators.preflight.step_24__golden_lookup", new_callable=AsyncMock)
 async def test_golden_lookup_match_found(mock_orch):
     """Test golden lookup with match found."""
-    mock_orch.return_value = {
-        "match_found": True,
-        "lookup": {"faq_id": "faq-123", "similarity_score": 0.95}
-    }
+    mock_orch.return_value = {"match_found": True, "lookup": {"faq_id": "faq-123", "similarity_score": 0.95}}
 
     state: RAGState = {
         "messages": [],
@@ -89,10 +88,7 @@ async def test_golden_lookup_match_found(mock_orch):
 @patch("app.orchestrators.golden.step_25__golden_hit", new_callable=AsyncMock)
 async def test_golden_hit_high_confidence(mock_orch):
     """Test golden hit decision with high confidence."""
-    mock_orch.return_value = {
-        "high_confidence_match": True,
-        "similarity_score": 0.95
-    }
+    mock_orch.return_value = {"high_confidence_match": True, "similarity_score": 0.95}
 
     state: RAGState = {
         "messages": [],
@@ -116,10 +112,7 @@ async def test_golden_hit_high_confidence(mock_orch):
 @patch("app.orchestrators.golden.step_25__golden_hit", new_callable=AsyncMock)
 async def test_golden_hit_low_confidence(mock_orch):
     """Test golden hit decision with low confidence."""
-    mock_orch.return_value = {
-        "high_confidence_match": False,
-        "similarity_score": 0.75
-    }
+    mock_orch.return_value = {"high_confidence_match": False, "similarity_score": 0.75}
 
     state: RAGState = {
         "messages": [],
@@ -144,7 +137,7 @@ async def test_kb_context_with_recent_changes(mock_orch):
     mock_orch.return_value = {
         "kb_docs": [{"doc_id": "kb-1", "title": "Update"}],
         "kb_epoch": "2025-01-01",
-        "has_recent_changes": True
+        "has_recent_changes": True,
     }
 
     state: RAGState = {
@@ -168,10 +161,7 @@ async def test_kb_context_with_recent_changes(mock_orch):
 @patch("app.orchestrators.golden.step_27__kbdelta", new_callable=AsyncMock)
 async def test_kb_delta_true(mock_orch):
     """Test KB delta with newer content."""
-    mock_orch.return_value = {
-        "kb_has_delta": True,
-        "conflict_reason": "newer_timestamp"
-    }
+    mock_orch.return_value = {"kb_has_delta": True, "conflict_reason": "newer_timestamp"}
 
     state: RAGState = {
         "messages": [],
@@ -195,10 +185,7 @@ async def test_kb_delta_true(mock_orch):
 @patch("app.orchestrators.golden.step_27__kbdelta", new_callable=AsyncMock)
 async def test_kb_delta_false(mock_orch):
     """Test KB delta with no conflicts."""
-    mock_orch.return_value = {
-        "kb_has_delta": False,
-        "conflict_reason": None
-    }
+    mock_orch.return_value = {"kb_has_delta": False, "conflict_reason": None}
 
     state: RAGState = {
         "messages": [],
@@ -221,11 +208,7 @@ async def test_kb_delta_false(mock_orch):
 async def test_serve_golden_with_citations(mock_orch):
     """Test serving golden answer with citations."""
     mock_orch.return_value = {
-        "answer": {
-            "faq_id": "faq-123",
-            "text": "Golden answer text",
-            "citations": ["source1", "source2"]
-        }
+        "answer": {"faq_id": "faq-123", "text": "Golden answer text", "citations": ["source1", "source2"]}
     }
 
     state: RAGState = {
@@ -249,10 +232,7 @@ async def test_serve_golden_with_citations(mock_orch):
 @patch("app.orchestrators.response.step_30__return_complete", new_callable=AsyncMock)
 async def test_return_complete(mock_orch):
     """Test return complete with response."""
-    mock_orch.return_value = {
-        "response": {"message": "Complete response"},
-        "complete": True
-    }
+    mock_orch.return_value = {"response": {"message": "Complete response"}, "complete": True}
 
     state: RAGState = {
         "messages": [],
@@ -283,7 +263,7 @@ async def test_state_integrity_no_key_loss(mock_orch):
         "metrics": {"existing_metric": 123},
         "processing_stage": "init",
         "node_history": ["step_1"],
-        "custom_key": "should_not_be_lost"
+        "custom_key": "should_not_be_lost",
     }
 
     original_keys = set(state.keys())
@@ -330,9 +310,7 @@ async def test_golden_fast_gate_logs_and_times(mock_orch, mock_timer, mock_log):
 @patch("app.orchestrators.golden.step_28__serve_golden", new_callable=AsyncMock)
 async def test_serve_golden_logs_metric(mock_orch, mock_log):
     """Test that ServeGolden logs golden_hit metric."""
-    mock_orch.return_value = {
-        "answer": {"faq_id": "faq-123", "text": "answer"}
-    }
+    mock_orch.return_value = {"answer": {"faq_id": "faq-123", "text": "answer"}}
 
     state: RAGState = {
         "messages": [],

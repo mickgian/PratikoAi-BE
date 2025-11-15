@@ -21,7 +21,6 @@ depends_on = None
 
 def upgrade():
     """Create vector indexes if pgvector is available"""
-
     # Only build indexes if pgvector is present
     op.execute(
         """

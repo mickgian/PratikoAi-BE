@@ -21,7 +21,6 @@ depends_on = None
 
 def upgrade():
     """Enable pgvector extension if available"""
-
     # Ensure plpgsql is present (usually is by default)
     op.execute("CREATE EXTENSION IF NOT EXISTS plpgsql;")
 

@@ -75,10 +75,10 @@ def main():
         syntax_ok, syntax_err = check_syntax(file_path)
         if not syntax_ok:
             syntax_errors.append((file_path, syntax_err))
-            print(f"  ❌ SYNTAX ERROR")
+            print("  ❌ SYNTAX ERROR")
             continue
 
-        print(f"  ✅ Syntax OK")
+        print("  ✅ Syntax OK")
 
         # Check imports
         import_ok, import_err = check_imports(file_path)
@@ -86,7 +86,7 @@ def main():
             import_errors.append((file_path, import_err))
             print(f"  ⚠️  Import warning: {import_err[:100]}")
         else:
-            print(f"  ✅ Imports OK")
+            print("  ✅ Imports OK")
 
     # Summary
     print("\n" + "=" * 80)

@@ -8,7 +8,7 @@ from typing import (
 from app.schemas.chat import Message
 
 
-def get_message_role(msg: Union[dict, Message, Any]) -> str:
+def get_message_role(msg: dict | Message | Any) -> str:
     """Safely get the role from a message (dict or Message object).
 
     Args:
@@ -22,7 +22,7 @@ def get_message_role(msg: Union[dict, Message, Any]) -> str:
     return getattr(msg, "role", "")
 
 
-def get_message_content(msg: Union[dict, Message, Any]) -> str:
+def get_message_content(msg: dict | Message | Any) -> str:
     """Safely get the content from a message (dict or Message object).
 
     Args:

@@ -1,5 +1,4 @@
-"""
-Text cleaning utilities for Italian regulatory documents.
+"""Text cleaning utilities for Italian regulatory documents.
 
 Handles:
 - HTML extraction and cleaning
@@ -16,8 +15,7 @@ from bs4 import BeautifulSoup
 
 
 def clean_html(html_content: str) -> str:
-    """
-    Extract and clean text from HTML content.
+    """Extract and clean text from HTML content.
 
     Args:
         html_content: Raw HTML string
@@ -44,8 +42,7 @@ def clean_html(html_content: str) -> str:
 
 
 def normalize_whitespace(text: str) -> str:
-    """
-    Normalize whitespace in text.
+    """Normalize whitespace in text.
 
     Args:
         text: Input text
@@ -71,8 +68,7 @@ def normalize_whitespace(text: str) -> str:
 
 
 def clean_italian_text(text: str) -> str:
-    """
-    Clean Italian text while preserving special characters.
+    """Clean Italian text while preserving special characters.
 
     Args:
         text: Input text in Italian
@@ -99,9 +95,8 @@ def clean_italian_text(text: str) -> str:
     return text
 
 
-def extract_text_from_url_content(content: str, content_type: Optional[str] = None) -> str:
-    """
-    Extract clean text from URL content (HTML, PDF, etc.).
+def extract_text_from_url_content(content: str, content_type: str | None = None) -> str:
+    """Extract clean text from URL content (HTML, PDF, etc.).
 
     Args:
         content: Raw content string
@@ -127,8 +122,7 @@ def extract_text_from_url_content(content: str, content_type: Optional[str] = No
 
 
 def truncate_text(text: str, max_chars: int = 50000) -> str:
-    """
-    Truncate text to maximum character length.
+    """Truncate text to maximum character length.
 
     Args:
         text: Input text
@@ -144,8 +138,7 @@ def truncate_text(text: str, max_chars: int = 50000) -> str:
 
 
 def is_valid_text(text: str, min_length: int = 50) -> bool:
-    """
-    Check if text is valid for processing.
+    """Check if text is valid for processing.
 
     Args:
         text: Input text
@@ -162,7 +155,4 @@ def is_valid_text(text: str, min_length: int = 50) -> bool:
 
     # Check for actual content (not just special characters)
     alphanumeric = re.sub(r"[^a-zA-Z0-9À-ÿ]", "", text)
-    if len(alphanumeric) < min_length // 2:
-        return False
-
-    return True
+    return not len(alphanumeric) < min_length // 2

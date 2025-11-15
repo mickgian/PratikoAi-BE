@@ -1,12 +1,13 @@
 """Smoke tests for metrics and logging in Phase 5 nodes."""
 
-import pytest
-from unittest.mock import patch, call, MagicMock
+from unittest.mock import MagicMock, call, patch
 
-from app.core.langgraph.types import RAGState
+import pytest
+
 from app.core.langgraph.nodes.step_048__select_provider import node_step_48
 from app.core.langgraph.nodes.step_055__estimate_cost import node_step_55
 from app.core.langgraph.nodes.step_056__cost_check import node_step_56
+from app.core.langgraph.types import RAGState
 
 
 class TestMetricsLogsSmoke:
@@ -15,15 +16,11 @@ class TestMetricsLogsSmoke:
     @pytest.fixture
     def base_state(self):
         """Base test state."""
-        return {
-            "messages": [{"role": "user", "content": "test"}],
-            "provider": {},
-            "decisions": {}
-        }
+        return {"messages": [{"role": "user", "content": "test"}], "provider": {}, "decisions": {}}
 
-    @patch('app.core.langgraph.types.rag_step_log')
-    @patch('app.core.langgraph.types.rag_step_timer')
-    @patch('app.orchestrators.providers.step_48__select_provider')
+    @patch("app.core.langgraph.types.rag_step_log")
+    @patch("app.core.langgraph.types.rag_step_timer")
+    @patch("app.orchestrators.providers.step_48__select_provider")
     def test_step_48_logging_and_timing(self, mock_orchestrator, mock_timer, mock_log, base_state):
         """Test that Step 48 calls logging and timing functions."""
         mock_orchestrator.return_value = {"strategy": "test_strategy"}
@@ -37,14 +34,13 @@ class TestMetricsLogsSmoke:
 
         # Verify logging was called at enter and exit
         assert mock_log.call_count == 2
-        mock_log.assert_has_calls([
-            call(48, "enter", keys=list(base_state.keys())),
-            call(48, "exit", provider=result["provider"])
-        ])
+        mock_log.assert_has_calls(
+            [call(48, "enter", keys=list(base_state.keys())), call(48, "exit", provider=result["provider"])]
+        )
 
-    @patch('app.core.langgraph.types.rag_step_log')
-    @patch('app.core.langgraph.types.rag_step_timer')
-    @patch('app.orchestrators.providers.step_55__estimate_cost')
+    @patch("app.core.langgraph.types.rag_step_log")
+    @patch("app.core.langgraph.types.rag_step_timer")
+    @patch("app.orchestrators.providers.step_55__estimate_cost")
     def test_step_55_logging_with_cost_data(self, mock_orchestrator, mock_timer, mock_log, base_state):
         """Test that Step 55 logs cost estimation data."""
         mock_orchestrator.return_value = {"estimated_cost": 1.25}
@@ -56,9 +52,9 @@ class TestMetricsLogsSmoke:
         # Verify exit log includes cost estimate
         mock_log.assert_any_call(55, "exit", provider=result["provider"], estimate=1.25)
 
-    @patch('app.core.langgraph.types.rag_step_log')
-    @patch('app.core.langgraph.types.rag_step_timer')
-    @patch('app.orchestrators.providers.step_56__cost_check')
+    @patch("app.core.langgraph.types.rag_step_log")
+    @patch("app.core.langgraph.types.rag_step_timer")
+    @patch("app.orchestrators.providers.step_56__cost_check")
     def test_step_56_logging_with_decision_data(self, mock_orchestrator, mock_timer, mock_log, base_state):
         """Test that Step 56 logs decision data."""
         mock_orchestrator.return_value = {"budget_ok": True}
@@ -70,8 +66,8 @@ class TestMetricsLogsSmoke:
         # Verify exit log includes decisions
         mock_log.assert_any_call(56, "exit", provider=result["provider"], decisions=result["decisions"])
 
-    @patch('app.core.langgraph.types.rag_step_log')
-    @patch('app.orchestrators.providers.step_48__select_provider')
+    @patch("app.core.langgraph.types.rag_step_log")
+    @patch("app.orchestrators.providers.step_48__select_provider")
     def test_logging_with_exception_handling(self, mock_orchestrator, mock_log, base_state):
         """Test that logging continues to work even if orchestrator raises exception."""
         mock_orchestrator.side_effect = Exception("Test exception")
@@ -82,8 +78,8 @@ class TestMetricsLogsSmoke:
         # Verify enter log was called despite exception
         mock_log.assert_any_call(48, "enter", keys=list(base_state.keys()))
 
-    @patch('app.core.langgraph.types.rag_step_timer')
-    @patch('app.orchestrators.providers.step_48__select_provider')
+    @patch("app.core.langgraph.types.rag_step_timer")
+    @patch("app.orchestrators.providers.step_48__select_provider")
     def test_timer_context_manager_usage(self, mock_orchestrator, mock_timer, base_state):
         """Test that timer is used as a context manager."""
         mock_orchestrator.return_value = {"strategy": "test"}
@@ -110,7 +106,7 @@ class TestMetricsLogsSmoke:
             step_055__estimate_cost,
             step_056__cost_check,
             step_057__create_provider,
-            step_058__cheaper_provider
+            step_058__cheaper_provider,
         )
 
         # Check that all modules import the required functions
@@ -125,14 +121,14 @@ class TestMetricsLogsSmoke:
             step_055__estimate_cost,
             step_056__cost_check,
             step_057__create_provider,
-            step_058__cheaper_provider
+            step_058__cheaper_provider,
         ]
 
         for module in modules:
             # Verify each module has the required imports
-            assert hasattr(module, 'rag_step_log'), f"{module.__name__} missing rag_step_log import"
-            assert hasattr(module, 'rag_step_timer'), f"{module.__name__} missing rag_step_timer import"
-            assert hasattr(module, 'STEP'), f"{module.__name__} missing STEP constant"
+            assert hasattr(module, "rag_step_log"), f"{module.__name__} missing rag_step_log import"
+            assert hasattr(module, "rag_step_timer"), f"{module.__name__} missing rag_step_timer import"
+            assert hasattr(module, "STEP"), f"{module.__name__} missing STEP constant"
 
     def test_step_constants_are_correct(self):
         """Test that STEP constants match expected values."""
@@ -147,7 +143,7 @@ class TestMetricsLogsSmoke:
             step_055__estimate_cost,
             step_056__cost_check,
             step_057__create_provider,
-            step_058__cheaper_provider
+            step_058__cheaper_provider,
         )
 
         expected_steps = {
@@ -161,8 +157,8 @@ class TestMetricsLogsSmoke:
             step_055__estimate_cost: 55,
             step_056__cost_check: 56,
             step_057__create_provider: 57,
-            step_058__cheaper_provider: 58
+            step_058__cheaper_provider: 58,
         }
 
         for module, expected_step in expected_steps.items():
-            assert module.STEP == expected_step, f"{module.__name__} has incorrect STEP constant"
+            assert expected_step == module.STEP, f"{module.__name__} has incorrect STEP constant"

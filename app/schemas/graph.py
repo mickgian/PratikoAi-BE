@@ -13,6 +13,8 @@ except ImportError:
         if isinstance(x, list) and isinstance(y, list):
             return x + y
         return y
+
+
 from pydantic import (
     BaseModel,
     Field,

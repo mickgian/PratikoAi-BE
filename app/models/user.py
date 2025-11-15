@@ -38,14 +38,14 @@ class User(BaseModel, table=True):
     hashed_password: str | None = Field(default=None)  # Nullable for OAuth users
     # Store hash of refresh token for security - allows token revocation
     refresh_token_hash: str | None = Field(default=None, index=True)
-    
+
     # OAuth and profile fields
     name: str | None = Field(default=None, max_length=255)
     avatar_url: str | None = Field(default=None, max_length=512)
     provider: str = Field(default="email", max_length=50, index=True)  # 'email', 'google', 'linkedin'
     provider_id: str | None = Field(default=None, max_length=255, index=True)  # OAuth provider user ID
-    
-    sessions: List["Session"] = Relationship(back_populates="user")
+
+    sessions: list["Session"] = Relationship(back_populates="user")
 
     def verify_password(self, password: str) -> bool:
         """Verify if the provided password matches the hash.
@@ -64,7 +64,7 @@ class User(BaseModel, table=True):
         password_bytes = password.encode("utf-8")[:72]
         salt = bcrypt.gensalt()
         return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
-    
+
     def set_refresh_token_hash(self, refresh_token: str) -> None:
         """Set the hash of the refresh token.
 
@@ -97,10 +97,10 @@ class User(BaseModel, table=True):
             return False
         token_bytes = refresh_token.encode("utf-8")[:72]
         return bcrypt.checkpw(token_bytes, self.refresh_token_hash.encode("utf-8"))
-    
+
     def revoke_refresh_token(self) -> None:
         """Revoke the current refresh token by clearing its hash.
-        
+
         This effectively invalidates all existing refresh tokens for this user.
         """
         self.refresh_token_hash = None

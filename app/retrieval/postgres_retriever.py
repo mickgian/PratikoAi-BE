@@ -1,5 +1,4 @@
-"""
-Hybrid PostgreSQL Retriever.
+"""Hybrid PostgreSQL Retriever.
 
 Combines FTS (tsvector) and vector similarity (pgvector) for retrieval.
 Applies recency boost using kb_epoch timestamp.
@@ -37,9 +36,8 @@ async def hybrid_retrieve(
     vector_weight: float = None,
     recency_weight: float = None,
     recency_days: int = 365,
-) -> List[Dict[str, Any]]:
-    """
-    Hybrid retrieval using FTS + vector + recency.
+) -> list[dict[str, Any]]:
+    """Hybrid retrieval using FTS + vector + recency.
 
     Args:
         session: Database session
@@ -171,9 +169,8 @@ async def hybrid_retrieve(
     return results
 
 
-async def fts_only_retrieve(session: AsyncSession, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
-    """
-    FTS-only retrieval (fallback when vector search unavailable).
+async def fts_only_retrieve(session: AsyncSession, query: str, top_k: int = 10) -> list[dict[str, Any]]:
+    """FTS-only retrieval (fallback when vector search unavailable).
 
     Args:
         session: Database session
@@ -241,8 +238,7 @@ async def fts_only_retrieve(session: AsyncSession, query: str, top_k: int = 10) 
 
 
 async def explain_hybrid_query(session: AsyncSession, query: str) -> str:
-    """
-    Get EXPLAIN ANALYZE output for hybrid query (diagnostics).
+    """Get EXPLAIN ANALYZE output for hybrid query (diagnostics).
 
     Args:
         session: Database session

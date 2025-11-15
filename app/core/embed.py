@@ -1,5 +1,4 @@
-"""
-Embedding utilities for hybrid RAG.
+"""Embedding utilities for hybrid RAG.
 
 Generates vector embeddings using configurable OpenAI embedding models.
 """
@@ -22,9 +21,8 @@ from app.core.config import (
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-async def generate_embedding(text: str) -> Optional[List[float]]:
-    """
-    Generate embedding for a single text.
+async def generate_embedding(text: str) -> list[float] | None:
+    """Generate embedding for a single text.
 
     Args:
         text: Input text to embed
@@ -50,9 +48,8 @@ async def generate_embedding(text: str) -> Optional[List[float]]:
         return None
 
 
-async def generate_embeddings_batch(texts: List[str], batch_size: int = 20) -> List[Optional[List[float]]]:
-    """
-    Generate embeddings for multiple texts in batches.
+async def generate_embeddings_batch(texts: list[str], batch_size: int = 20) -> list[list[float] | None]:
+    """Generate embeddings for multiple texts in batches.
 
     Args:
         texts: List of input texts
@@ -83,9 +80,8 @@ async def generate_embeddings_batch(texts: List[str], batch_size: int = 20) -> L
     return all_embeddings
 
 
-def embedding_to_pgvector(embedding: List[float]) -> Optional[str]:
-    """
-    Convert embedding list to pgvector format.
+def embedding_to_pgvector(embedding: list[float]) -> str | None:
+    """Convert embedding list to pgvector format.
 
     Args:
         embedding: 1536-d embedding vector
@@ -100,9 +96,8 @@ def embedding_to_pgvector(embedding: List[float]) -> Optional[str]:
     return "[" + ",".join(str(x) for x in embedding) + "]"
 
 
-def pgvector_to_embedding(pgvector_str: str) -> Optional[List[float]]:
-    """
-    Convert pgvector string to embedding list.
+def pgvector_to_embedding(pgvector_str: str) -> list[float] | None:
+    """Convert pgvector string to embedding list.
 
     Args:
         pgvector_str: String in format '[0.1,0.2,...]'
@@ -118,9 +113,8 @@ def pgvector_to_embedding(pgvector_str: str) -> Optional[List[float]]:
     return [float(x) for x in vector_str.split(",")]
 
 
-def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
-    """
-    Calculate cosine similarity between two vectors.
+def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
+    """Calculate cosine similarity between two vectors.
 
     Args:
         vec1: First vector
@@ -142,9 +136,8 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     return dot_product / (norm1 * norm2)
 
 
-async def embed_text_for_storage(text: str) -> Optional[str]:
-    """
-    Generate embedding and convert to pgvector format for database storage.
+async def embed_text_for_storage(text: str) -> str | None:
+    """Generate embedding and convert to pgvector format for database storage.
 
     Args:
         text: Input text
@@ -159,9 +152,8 @@ async def embed_text_for_storage(text: str) -> Optional[str]:
     return embedding_to_pgvector(embedding)
 
 
-def validate_embedding(embedding: List[float]) -> bool:
-    """
-    Validate that an embedding is correct.
+def validate_embedding(embedding: list[float]) -> bool:
+    """Validate that an embedding is correct.
 
     Args:
         embedding: Embedding vector to validate
@@ -176,7 +168,4 @@ def validate_embedding(embedding: List[float]) -> bool:
         return False
 
     # Check for NaN or inf values
-    if any(np.isnan(x) or np.isinf(x) for x in embedding):
-        return False
-
-    return True
+    return not any(np.isnan(x) or np.isinf(x) for x in embedding)

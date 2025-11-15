@@ -3,6 +3,7 @@
 # Implement thin coordination here (call services/factories), not core business logic.
 
 from contextlib import nullcontext
+from datetime import UTC
 from typing import (
     Any,
     Dict,
@@ -27,10 +28,9 @@ except Exception:  # pragma: no cover
 
 
 async def step_14__extract_facts(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 14 — AtomicFactsExtractor.extract Extract atomic facts
+    """RAG STEP 14 — AtomicFactsExtractor.extract Extract atomic facts
     ID: RAG.facts.atomicfactsextractor.extract.extract.atomic.facts
     Type: process | Category: facts | Node: ExtractFacts
 
@@ -84,10 +84,9 @@ async def step_14__extract_facts(
 
 
 async def step_16__canonicalize_facts(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 16 — AtomicFactsExtractor.canonicalize Normalize dates amounts rates
+    """RAG STEP 16 — AtomicFactsExtractor.canonicalize Normalize dates amounts rates
     ID: RAG.facts.atomicfactsextractor.canonicalize.normalize.dates.amounts.rates
     Type: process | Category: facts | Node: CanonicalizeFacts
 
@@ -147,11 +146,8 @@ async def step_16__canonicalize_facts(
     return result
 
 
-async def step_18__query_sig(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Any:
-    """
-    RAG STEP 18 — QuerySignature.compute Hash from canonical facts
+async def step_18__query_sig(*, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs) -> Any:
+    """RAG STEP 18 — QuerySignature.compute Hash from canonical facts
     ID: RAG.facts.querysignature.compute.hash.from.canonical.facts
     Type: process | Category: facts | Node: QuerySig
 
@@ -227,10 +223,9 @@ async def step_18__query_sig(
 
 
 async def step_29__pre_context_from_golden(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 29 — ContextBuilder.merge facts and KB docs and doc facts if present
+    """RAG STEP 29 — ContextBuilder.merge facts and KB docs and doc facts if present
     ID: RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.doc.facts.if.present
     Type: process | Category: facts | Node: PreContextFromGolden
 
@@ -317,10 +312,9 @@ async def step_29__pre_context_from_golden(
 
 
 async def step_40__build_context(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 40 — ContextBuilder.merge facts and KB docs and optional doc facts
+    """RAG STEP 40 — ContextBuilder.merge facts and KB docs and optional doc facts
     ID: RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.optional.doc.facts
     Type: process | Category: facts | Node: BuildContext
 
@@ -333,7 +327,6 @@ async def step_40__build_context(
         timezone,
     )
 
-    from app.core.logging import logger
     from app.services.context_builder_merge import ContextBuilderMerge
 
     with rag_step_timer(
@@ -489,7 +482,7 @@ async def step_40__build_context(
             "trace_id": trace_id,
             "request_id": request_id,
             "max_context_tokens": max_context_tokens,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "error": error,
         }
 
@@ -511,10 +504,9 @@ async def step_40__build_context(
 
 
 def step_49__route_strategy(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Dict[str, Any]:
-    """
-    RAG STEP 49 — LLMFactory.get_optimal_provider Apply routing strategy
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> dict[str, Any]:
+    """RAG STEP 49 — LLMFactory.get_optimal_provider Apply routing strategy
     ID: RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy
     Type: process | Category: facts | Node: RouteStrategy
 
@@ -530,7 +522,6 @@ def step_49__route_strategy(
         RoutingStrategy,
         get_llm_factory,
     )
-    from app.core.logging import logger
 
     with rag_step_timer(
         49, "RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy", "RouteStrategy", stage="start"
@@ -598,7 +589,7 @@ def step_49__route_strategy(
             model = getattr(provider, "model", "unknown")
 
             logger.info(
-                f"STEP 49: Routing strategy applied successfully",
+                "STEP 49: Routing strategy applied successfully",
                 extra={
                     "step": 49,
                     "routing_strategy": (
@@ -667,7 +658,7 @@ def step_49__route_strategy(
         except Exception as e:
             error_msg = str(e)
             logger.error(
-                f"STEP 49: Failed to apply routing strategy",
+                "STEP 49: Failed to apply routing strategy",
                 extra={
                     "step": 49,
                     "error": error_msg,
@@ -699,10 +690,9 @@ def step_49__route_strategy(
 
 
 async def step_95__extract_doc_facts(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 95 — Extractor.extract Structured fields
+    """RAG STEP 95 — Extractor.extract Structured fields
     ID: RAG.facts.extractor.extract.structured.fields
     Type: process | Category: facts | Node: ExtractDocFacts
 
@@ -789,10 +779,9 @@ async def step_95__extract_doc_facts(
 
 
 async def step_98__to_tool_results(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 98 — Convert to ToolMessage facts and spans
+    """RAG STEP 98 — Convert to ToolMessage facts and spans
     ID: RAG.facts.convert.to.toolmessage.facts.and.spans
     Type: process | Category: facts | Node: ToToolResults
 

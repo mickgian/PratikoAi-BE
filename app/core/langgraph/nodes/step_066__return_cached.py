@@ -1,9 +1,12 @@
 """Node wrapper for Step 66: Return Cached."""
 
-from typing import Dict, Any
+from typing import Any, Dict
+
 from app.core.langgraph.types import RAGState
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
 from app.orchestrators.cache import step_66__return_cached
@@ -11,7 +14,7 @@ from app.orchestrators.cache import step_66__return_cached
 STEP = 66
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):
@@ -29,10 +32,7 @@ async def node_step_66(state: RAGState) -> RAGState:
     rag_step_log(STEP, "enter", cache_hit=state.get("cache", {}).get("hit"))
     with rag_step_timer(STEP):
         # Call orchestrator with business inputs only
-        res = await step_66__return_cached(
-            messages=state.get("messages"),
-            ctx=dict(state)
-        )
+        res = await step_66__return_cached(messages=state.get("messages"), ctx=dict(state))
 
         # Map orchestrator outputs to canonical state keys (additive)
         cache = state.setdefault("cache", {})

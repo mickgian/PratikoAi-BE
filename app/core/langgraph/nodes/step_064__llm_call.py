@@ -1,10 +1,13 @@
 """Node wrapper for Step 64: LLM Call."""
 
-from typing import Dict, Any
+from typing import Any, Dict
+
+from app.core.langgraph.node_utils import mirror, ns
 from app.core.langgraph.types import RAGState
-from app.core.langgraph.node_utils import ns, mirror
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
 from app.orchestrators.providers import step_64__llmcall
@@ -12,7 +15,7 @@ from app.orchestrators.providers import step_64__llmcall
 STEP = 64
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):
@@ -30,10 +33,7 @@ async def node_step_64(state: RAGState) -> RAGState:
     rag_step_log(STEP, "enter", provider=state.get("provider", {}).get("selected"))
     with rag_step_timer(STEP):
         # Call orchestrator with business inputs only
-        res = await step_64__llmcall(
-            messages=state.get("messages"),
-            ctx=dict(state)
-        )
+        res = await step_64__llmcall(messages=state.get("messages"), ctx=dict(state))
 
         # Map orchestrator outputs to canonical state keys (additive)
         llm = ns(state, "llm")
@@ -63,14 +63,11 @@ async def node_step_64(state: RAGState) -> RAGState:
                 content = None
                 if isinstance(response, dict):
                     content = response.get("content")
-                elif hasattr(response, 'content'):
+                elif hasattr(response, "content"):
                     content = response.content
 
                 if content:
-                    state.setdefault("messages", []).append({
-                        "role": "assistant",
-                        "content": content
-                    })
+                    state.setdefault("messages", []).append({"role": "assistant", "content": content})
         elif "response" in res or "llm_response" in res:
             response = res.get("response", res.get("llm_response"))
             llm["response"] = response
@@ -82,14 +79,11 @@ async def node_step_64(state: RAGState) -> RAGState:
             content = None
             if isinstance(response, dict):
                 content = response.get("content")
-            elif hasattr(response, 'content'):
+            elif hasattr(response, "content"):
                 content = response.content
 
             if content:
-                state.setdefault("messages", []).append({
-                    "role": "assistant",
-                    "content": content
-                })
+                state.setdefault("messages", []).append({"role": "assistant", "content": content})
         elif "llm_success" in res:
             llm["success"] = res["llm_success"]
         else:

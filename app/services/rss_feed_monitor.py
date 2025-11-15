@@ -1,5 +1,4 @@
-"""
-RSS Feed Monitor Service for Italian Regulatory Sources.
+"""RSS Feed Monitor Service for Italian Regulatory Sources.
 
 NOTE: This module is now **health-check only**.
 Ingestion is handled elsewhere using DB-driven feeds (see app/ingest/).
@@ -15,6 +14,7 @@ No hardcoded feed URLs - all feeds are read from the database.
 import asyncio
 import hashlib
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -71,7 +71,7 @@ class RSSFeedMonitor:
         if self.session:
             await self.session.close()
 
-    async def parse_agenzia_entrate_feed(self, feed_url: str, source_type: str) -> List[Dict[str, Any]]:
+    async def parse_agenzia_entrate_feed(self, feed_url: str, source_type: str) -> list[dict[str, Any]]:
         """Parse Agenzia delle Entrate RSS feed.
 
         Args:
@@ -129,7 +129,7 @@ class RSSFeedMonitor:
             )
             return []
 
-    async def parse_inps_feed(self, feed_url: str) -> List[Dict[str, Any]]:
+    async def parse_inps_feed(self, feed_url: str) -> list[dict[str, Any]]:
         """Parse INPS RSS feed.
 
         Args:
@@ -175,7 +175,7 @@ class RSSFeedMonitor:
             logger.error("inps_feed_parse_failed", feed_url=feed_url, error=str(e), exc_info=True)
             return []
 
-    async def parse_gazzetta_ufficiale_feed(self, feed_url: str) -> List[Dict[str, Any]]:
+    async def parse_gazzetta_ufficiale_feed(self, feed_url: str) -> list[dict[str, Any]]:
         """Parse Gazzetta Ufficiale RSS feed.
 
         Args:
@@ -219,9 +219,7 @@ class RSSFeedMonitor:
             logger.error("gazzetta_ufficiale_feed_parse_failed", feed_url=feed_url, error=str(e), exc_info=True)
             return []
 
-    async def parse_feed_with_error_handling(
-        self, feed_url: str, parser: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    async def parse_feed_with_error_handling(self, feed_url: str, parser: str | None = None) -> list[dict[str, Any]]:
         """Parse any RSS feed with comprehensive error handling.
 
         Args:
@@ -265,7 +263,7 @@ class RSSFeedMonitor:
             )
             return []
 
-    async def get_all_italian_feeds(self) -> List[Dict[str, Any]]:
+    async def get_all_italian_feeds(self) -> list[dict[str, Any]]:
         """Get list of all configured Italian RSS feeds from database.
 
         REQUIRES db_session to be set. No fallback to hardcoded feeds.
@@ -278,11 +276,11 @@ class RSSFeedMonitor:
             Exception: If database query fails
         """
         if not self.db_session:
-            raise RuntimeError("Database session required. " "Initialize RSSFeedMonitor with db_session parameter.")
+            raise RuntimeError("Database session required. Initialize RSSFeedMonitor with db_session parameter.")
 
         try:
             result = await self.db_session.execute(
-                select(FeedStatus).where(FeedStatus.enabled == True)  # type: ignore[arg-type]
+                select(FeedStatus).where(FeedStatus.enabled is True)  # type: ignore[arg-type]
             )
             db_feeds = result.scalars().all()
 
@@ -305,7 +303,7 @@ class RSSFeedMonitor:
             logger.error("failed_to_load_feeds_from_database", error=str(e), exc_info=True)
             raise
 
-    async def _fetch_feed(self, feed_url: str) -> Optional[str]:
+    async def _fetch_feed(self, feed_url: str) -> str | None:
         """Fetch RSS feed content via HTTP.
 
         Args:
@@ -327,14 +325,14 @@ class RSSFeedMonitor:
                     logger.warning("feed_fetch_http_error", feed_url=feed_url, status_code=response.status)
                     return None
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("feed_fetch_timeout", feed_url=feed_url)
             return None
         except Exception as e:
             logger.error("feed_fetch_failed", feed_url=feed_url, error=str(e), exc_info=True)
             return None
 
-    def _parse_feed_date(self, date_tuple: Optional[tuple]) -> datetime:
+    def _parse_feed_date(self, date_tuple: tuple | None) -> datetime:
         """Parse RSS feed date tuple into datetime object.
 
         Args:
@@ -344,16 +342,16 @@ class RSSFeedMonitor:
             Parsed datetime (defaults to now if parsing fails)
         """
         if not date_tuple:
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
         try:
             # Convert time.struct_time to datetime
-            return datetime(*date_tuple[:6], tzinfo=timezone.utc)
+            return datetime(*date_tuple[:6], tzinfo=UTC)
         except (TypeError, ValueError):
             logger.warning("failed_to_parse_feed_date", date_tuple=date_tuple)
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
-    def _extract_document_number(self, title: str, source: str) -> Optional[str]:
+    def _extract_document_number(self, title: str, source: str) -> str | None:
         """Extract document number from title.
 
         Args:
@@ -421,7 +419,7 @@ class RSSFeedMonitor:
         else:
             return "atto_normativo"
 
-    async def _parse_generic_feed(self, feed_url: str) -> List[Dict[str, Any]]:
+    async def _parse_generic_feed(self, feed_url: str) -> list[dict[str, Any]]:
         """Parse generic RSS feed when specific parser not available.
 
         Args:
@@ -473,7 +471,7 @@ class FeedHealthMonitor:
     def __init__(self):
         self.feed_status = {}
 
-    async def check_feed_health(self, feed_url: str) -> Dict[str, Any]:
+    async def check_feed_health(self, feed_url: str) -> dict[str, Any]:
         """Check health status of an RSS feed.
 
         Args:
@@ -496,7 +494,7 @@ class FeedHealthMonitor:
                     "status": "healthy" if results else "unhealthy",
                     "response_time_seconds": response_time,
                     "items_count": len(results),
-                    "last_checked": datetime.now(timezone.utc),
+                    "last_checked": datetime.now(UTC),
                     "error": None,
                 }
 
@@ -511,7 +509,7 @@ class FeedHealthMonitor:
                 "status": "error",
                 "response_time_seconds": None,
                 "items_count": 0,
-                "last_checked": datetime.now(timezone.utc),
+                "last_checked": datetime.now(UTC),
                 "error": str(e),
             }
 
@@ -521,7 +519,7 @@ class FeedHealthMonitor:
 
             return error_status
 
-    async def check_all_italian_feeds_health(self) -> Dict[str, Dict[str, Any]]:
+    async def check_all_italian_feeds_health(self) -> dict[str, dict[str, Any]]:
         """Check health of all configured Italian RSS feeds.
 
         Returns:
@@ -549,12 +547,12 @@ class FeedHealthMonitor:
                         "url": feeds.get(feed_name, ""),
                         "status": "error",
                         "error": str(e),
-                        "last_checked": datetime.now(timezone.utc),
+                        "last_checked": datetime.now(UTC),
                     }
 
             return health_results
 
-    def get_feed_status_summary(self) -> Dict[str, Any]:
+    def get_feed_status_summary(self) -> dict[str, Any]:
         """Get summary of feed health status.
 
         Returns:
@@ -589,7 +587,7 @@ class FeedHealthMonitor:
             "unhealthy_feeds": unhealthy,
             "error_feeds": error,
             "average_response_time": round(avg_response_time, 3) if avg_response_time else None,
-            "last_updated": datetime.now(timezone.utc),
+            "last_updated": datetime.now(UTC),
         }
 
 

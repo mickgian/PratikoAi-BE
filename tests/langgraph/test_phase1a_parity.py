@@ -1,9 +1,10 @@
 """Parity tests comparing Phase 1A graph vs legacy hybrid implementation."""
 
-import pytest
 import os
-from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, Any
+from typing import Any, Dict
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from app.core.langgraph.graph import LangGraphAgent
 from app.schemas.chat import Message
@@ -22,32 +23,29 @@ class TestPhase1AParity:
         pass
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.LangGraphAgent._get_connection_pool')
-    @patch('app.orchestrators.platform.step_1__validate_request')
-    @patch('app.orchestrators.platform.step_3__valid_check')
-    @patch('app.orchestrators.privacy.step_6__privacy_check')
-    @patch('app.orchestrators.platform.step_9__piicheck')
-    @patch('app.orchestrators.cache.step_59__check_cache')
-    @patch('app.orchestrators.cache.step_62__cache_hit')
-    @patch('app.orchestrators.response.step_112__end')
-    async def test_parity_cache_hit_scenario(self, mock_end, mock_cache_hit, mock_check_cache,
-                                           mock_pii, mock_privacy, mock_valid, mock_validate,
-                                           mock_pool):
+    @patch("app.core.langgraph.graph.LangGraphAgent._get_connection_pool")
+    @patch("app.orchestrators.platform.step_1__validate_request")
+    @patch("app.orchestrators.platform.step_3__valid_check")
+    @patch("app.orchestrators.privacy.step_6__privacy_check")
+    @patch("app.orchestrators.platform.step_9__piicheck")
+    @patch("app.orchestrators.cache.step_59__check_cache")
+    @patch("app.orchestrators.cache.step_62__cache_hit")
+    @patch("app.orchestrators.response.step_112__end")
+    async def test_parity_cache_hit_scenario(
+        self, mock_end, mock_cache_hit, mock_check_cache, mock_pii, mock_privacy, mock_valid, mock_validate, mock_pool
+    ):
         """Test parity between Phase 1A and legacy for cache hit scenario."""
         # Setup consistent mocks for both paths
         mock_pool.return_value = None
-        mock_validate.return_value = {'request_valid': True, 'user_authenticated': True}
-        mock_valid.return_value = {'request_valid': True}
-        mock_privacy.return_value = {'privacy_enabled': False}
-        mock_pii.return_value = {'pii_detected': False}
+        mock_validate.return_value = {"request_valid": True, "user_authenticated": True}
+        mock_valid.return_value = {"request_valid": True}
+        mock_privacy.return_value = {"privacy_enabled": False}
+        mock_pii.return_value = {"pii_detected": False}
         mock_check_cache.return_value = {}
-        mock_cache_hit.return_value = {'cache_hit': True}
-        mock_end.return_value = {'final_response': {'content': 'cached response', 'source': 'cache'}}
+        mock_cache_hit.return_value = {"cache_hit": True}
+        mock_end.return_value = {"final_response": {"content": "cached response", "source": "cache"}}
 
-        initial_state = {
-            "messages": [{"role": "user", "content": "test query"}],
-            "session_id": self.session_id
-        }
+        initial_state = {"messages": [{"role": "user", "content": "test query"}], "session_id": self.session_id}
 
         # Phase 1A is now the default implementation
         phase1a_agent = LangGraphAgent()
@@ -60,28 +58,26 @@ class TestPhase1AParity:
         # assert legacy_result['final_response'] == phase1a_result['final_response']
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.LangGraphAgent._get_connection_pool')
+    @patch("app.core.langgraph.graph.LangGraphAgent._get_connection_pool")
     async def test_parity_error_response_format(self, mock_pool):
         """Test that error responses maintain same format between implementations."""
         mock_pool.return_value = None
 
         # Mock validation failure
-        with patch('app.orchestrators.platform.step_1__validate_request') as mock_validate, \
-             patch('app.orchestrators.platform.step_3__valid_check') as mock_valid, \
-             patch('app.orchestrators.response.step_112__end') as mock_end:
-
-            mock_validate.return_value = {'request_valid': False}
-            mock_valid.return_value = {'request_valid': False}
+        with (
+            patch("app.orchestrators.platform.step_1__validate_request") as mock_validate,
+            patch("app.orchestrators.platform.step_3__valid_check") as mock_valid,
+            patch("app.orchestrators.response.step_112__end") as mock_end,
+        ):
+            mock_validate.return_value = {"request_valid": False}
+            mock_valid.return_value = {"request_valid": False}
             mock_end.return_value = {}
 
             # Test Phase 1A error path (now default)
             agent = LangGraphAgent()
             graph = await agent.create_graph()
 
-            initial_state = {
-                "messages": [{"role": "user", "content": "invalid"}],
-                "session_id": self.session_id
-            }
+            initial_state = {"messages": [{"role": "user", "content": "invalid"}], "session_id": self.session_id}
 
             result = await graph.ainvoke(initial_state)
 
@@ -111,25 +107,22 @@ class TestPhase1AParity:
         from app.schemas.graph import GraphState
 
         # Verify RAGState is compatible with GraphState
-        state = GraphState(
-            messages=[{"role": "user", "content": "test"}],
-            session_id="test"
-        )
+        state = GraphState(messages=[{"role": "user", "content": "test"}], session_id="test")
 
         # Should be able to use GraphState as RAGState
         assert isinstance(state, GraphState)
 
         # Test state dict conversion
         state_dict = state.model_dump()
-        assert 'messages' in state_dict
-        assert 'session_id' in state_dict
+        assert "messages" in state_dict
+        assert "session_id" in state_dict
 
     @pytest.mark.asyncio
     async def test_phase1a_is_default_implementation(self):
         """Test that Phase 1A graph is now the default implementation."""
         agent = LangGraphAgent()
-        with patch.object(agent, 'create_graph_phase1a') as mock_phase1a:
-            with patch('app.core.langgraph.graph.LangGraphAgent._get_connection_pool') as mock_pool:
+        with patch.object(agent, "create_graph_phase1a") as mock_phase1a:
+            with patch("app.core.langgraph.graph.LangGraphAgent._get_connection_pool") as mock_pool:
                 mock_pool.return_value = None
                 mock_phase1a.return_value = Mock()  # Mock the Phase 1A graph
 

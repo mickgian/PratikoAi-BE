@@ -11,6 +11,7 @@ GREEN Phase: These tests should PASS after fixes
 """
 
 from datetime import (
+    UTC,
     date,
     datetime,
     timezone,
@@ -38,7 +39,7 @@ def test_search_result_datetime_serialization_deserialization():
         rank_score=1.0,
         relevance_score=1.0,
         highlight="test",
-        updated_at=datetime(2025, 11, 10, 12, 0, 0, tzinfo=timezone.utc),
+        updated_at=datetime(2025, 11, 10, 12, 0, 0, tzinfo=UTC),
         publication_date=date(2025, 11, 10),
     )
 
@@ -69,13 +70,13 @@ def test_search_result_datetime_serialization_deserialization():
     restored = SearchServiceResult(**cached_data)
 
     # BUG: updated_at is now a string, not datetime
-    assert isinstance(restored.updated_at, datetime), (
-        f"Expected datetime, got {type(restored.updated_at).__name__}. " f"Value: {restored.updated_at}"
-    )
+    assert isinstance(
+        restored.updated_at, datetime
+    ), f"Expected datetime, got {type(restored.updated_at).__name__}. Value: {restored.updated_at}"
 
-    assert isinstance(restored.publication_date, date), (
-        f"Expected date, got {type(restored.publication_date).__name__}. " f"Value: {restored.publication_date}"
-    )
+    assert isinstance(
+        restored.publication_date, date
+    ), f"Expected date, got {type(restored.publication_date).__name__}. Value: {restored.publication_date}"
 
     # Verify datetime has timezone info
     assert restored.updated_at.tzinfo is not None, "DateTime should be timezone-aware after deserialization"

@@ -1,5 +1,4 @@
-"""
-Unified Document Ingestion Core.
+"""Unified Document Ingestion Core.
 
 This module provides a single source of truth for document ingestion,
 handling both PDF and HTML content with proper extraction, chunking,
@@ -16,6 +15,7 @@ import re
 import tempfile
 import time
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -58,8 +58,7 @@ ITALIAN_MONTHS = {
 
 
 def normalize_document_text(content: str) -> str:
-    """
-    Normalize document text to improve searchability.
+    """Normalize document text to improve searchability.
 
     Fixes common PDF extraction issues:
     1. Broken years like "20 25" → "2025"
@@ -98,9 +97,8 @@ def normalize_document_text(content: str) -> str:
     return content
 
 
-async def download_and_extract_document(url: str) -> Optional[Dict[str, Any]]:
-    """
-    Download and extract content from URL (PDF or HTML).
+async def download_and_extract_document(url: str) -> dict[str, Any] | None:
+    """Download and extract content from URL (PDF or HTML).
 
     Handles both:
     - PDF documents: Downloads binary, extracts with pdfplumber + Tesseract
@@ -168,8 +166,7 @@ async def download_and_extract_document(url: str) -> Optional[Dict[str, Any]]:
 
 
 def compute_content_hash(text: str) -> str:
-    """
-    Compute SHA256 hash of text for deduplication.
+    """Compute SHA256 hash of text for deduplication.
 
     Args:
         text: Input text
@@ -186,15 +183,14 @@ async def ingest_document_with_chunks(
     url: str,
     content: str,
     extraction_method: str = "html",
-    text_quality: Optional[float] = None,
-    ocr_pages: Optional[List[Dict[str, Any]]] = None,
-    published_date: Optional[datetime] = None,
+    text_quality: float | None = None,
+    ocr_pages: list[dict[str, Any]] | None = None,
+    published_date: datetime | None = None,
     source: str = "regulatory_update",
     category: str = "regulatory_documents",
     subcategory: str = "general",
-) -> Optional[int]:
-    """
-    Ingest a single document with full chunking and embeddings.
+) -> int | None:
+    """Ingest a single document with full chunking and embeddings.
 
     This is the unified ingestion function used by all ingestion paths.
 
@@ -232,7 +228,7 @@ async def ingest_document_with_chunks(
 
         # Create knowledge item
         kb_epoch = time.time()
-        content_hash = compute_content_hash(content)
+        compute_content_hash(content)
 
         # Generate embedding for full content (truncated if needed)
         content_for_embedding = content[:30000]  # ~8k tokens
@@ -260,8 +256,8 @@ async def ingest_document_with_chunks(
             ocr_pages=ocr_pages_json,
             # Publication metadata
             publication_date=publication_date,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         session.add(knowledge_item)
@@ -297,7 +293,7 @@ async def ingest_document_with_chunks(
                 ocr_used=chunk_dict.get("ocr_used", False),
                 start_char=chunk_dict.get("start_char"),
                 end_char=chunk_dict.get("end_char"),
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
 
             session.add(knowledge_chunk)
@@ -313,8 +309,7 @@ async def ingest_document_with_chunks(
 
 
 async def check_document_exists(session: AsyncSession, url: str) -> bool:
-    """
-    Check if document already exists in knowledge_items by URL.
+    """Check if document already exists in knowledge_items by URL.
 
     Args:
         session: Database session

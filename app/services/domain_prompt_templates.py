@@ -1,5 +1,4 @@
-"""
-Domain-Action Prompt Template System for PratikoAI.
+"""Domain-Action Prompt Template System for PratikoAI.
 
 Provides professionally crafted prompt templates for each (domain, action) combination
 specifically designed for Italian tax, legal, and business professionals.
@@ -38,7 +37,6 @@ class PromptTemplateManager:
 
     def _load_templates(self):
         """Load all domain-action prompt template combinations"""
-
         # Base system prompts for each domain
         self.domain_base_prompts = {
             Domain.TAX: """Sei un Dottore Commercialista esperto in normativa fiscale italiana con oltre 20 anni di esperienza.
@@ -509,11 +507,10 @@ NON chiedere mai informazioni mancanti. Genera sempre il documento completo usan
         domain: Domain,
         action: Action,
         query: str,
-        context: Optional[Dict[str, Any]] = None,
-        document_type: Optional[str] = None,
+        context: dict[str, Any] | None = None,
+        document_type: str | None = None,
     ) -> str:
-        """
-        Get the appropriate prompt for domain-action combination.
+        """Get the appropriate prompt for domain-action combination.
 
         RAG STEP 43 — PromptTemplateManager.get_prompt Get domain-specific prompt
 
@@ -536,7 +533,6 @@ NON chiedere mai informazioni mancanti. Genera sempre il documento completo usan
         timer_attrs = {"domain": domain.value, "action": action.value}
 
         with rag_step_timer(STEP_NUM, STEP_ID, NODE_LABEL, **timer_attrs):
-
             # Get base domain prompt
             base_prompt = self.domain_base_prompts.get(domain, self.domain_base_prompts[Domain.TAX])
 
@@ -604,7 +600,7 @@ NON chiedere mai informazioni mancanti. Genera sempre il documento completo usan
 
             return formatted_prompt
 
-    def _format_context(self, context: Dict[str, Any]) -> str:
+    def _format_context(self, context: dict[str, Any]) -> str:
         """Format additional context for inclusion in prompt"""
         context_parts = []
 
@@ -627,7 +623,7 @@ NON chiedere mai informazioni mancanti. Genera sempre il documento completo usan
 
         return "\n".join(context_parts) if context_parts else "Nessun contesto aggiuntivo disponibile."
 
-    def get_available_combinations(self) -> Dict[str, list]:
+    def get_available_combinations(self) -> dict[str, list]:
         """Get all available domain-action combinations"""
         return {
             "domains": [domain.value for domain in Domain],
@@ -637,7 +633,7 @@ NON chiedere mai informazioni mancanti. Genera sempre il documento completo usan
             ],
         }
 
-    def get_template_metadata(self, domain: Domain, action: Action) -> Dict[str, Any]:
+    def get_template_metadata(self, domain: Domain, action: Action) -> dict[str, Any]:
         """Get metadata about a specific template combination"""
         action_data = self.action_templates.get(action, {})
         specific_data = self.domain_action_specifics.get((domain, action), {})

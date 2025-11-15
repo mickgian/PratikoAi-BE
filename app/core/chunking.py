@@ -1,5 +1,4 @@
-"""
-Text chunking utilities for hybrid RAG.
+"""Text chunking utilities for hybrid RAG.
 
 Splits long documents into smaller chunks suitable for:
 - Vector embedding (1536-d, ~8k tokens max)
@@ -43,8 +42,7 @@ class TextChunk:
 
 
 def estimate_tokens(text: str) -> int:
-    """
-    Estimate token count for text.
+    """Estimate token count for text.
 
     Uses a simple heuristic: ~4 characters per token for Italian text.
     This is approximate but sufficient for chunking.
@@ -59,9 +57,8 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 4
 
 
-def chunk_text(text: str, max_tokens: int = None, overlap_tokens: int = None) -> List[TextChunk]:
-    """
-    Chunk text into smaller pieces with overlap.
+def chunk_text(text: str, max_tokens: int = None, overlap_tokens: int = None) -> list[TextChunk]:
+    """Chunk text into smaller pieces with overlap.
 
     Args:
         text: Input text to chunk
@@ -146,9 +143,8 @@ def chunk_text(text: str, max_tokens: int = None, overlap_tokens: int = None) ->
     return chunks
 
 
-def split_into_sentences(text: str) -> List[str]:
-    """
-    Split text into sentences (Italian-aware).
+def split_into_sentences(text: str) -> list[str]:
+    """Split text into sentences (Italian-aware).
 
     Args:
         text: Input text
@@ -206,9 +202,8 @@ def split_into_sentences(text: str) -> List[str]:
 
 def chunk_document(
     content: str, title: str = "", max_tokens: int = None, overlap_tokens: int = None, ocr_used: bool = False
-) -> List[Dict[str, Any]]:
-    """
-    Chunk a document and prepare for database insertion with quality gates.
+) -> list[dict[str, Any]]:
+    """Chunk a document and prepare for database insertion with quality gates.
 
     Quality gates:
     - Computes quality_score for each chunk
@@ -261,9 +256,8 @@ def chunk_document(
     return chunk_dicts
 
 
-def validate_chunks(chunks: List[TextChunk], max_tokens: int = 512) -> bool:
-    """
-    Validate that chunks meet requirements.
+def validate_chunks(chunks: list[TextChunk], max_tokens: int = 512) -> bool:
+    """Validate that chunks meet requirements.
 
     Args:
         chunks: List of chunks to validate

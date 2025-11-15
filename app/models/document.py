@@ -1,23 +1,23 @@
-"""
-Document Upload and Processing Models.
+"""Document Upload and Processing Models.
 
 Database models for handling document uploads, processing, and metadata
 for Italian tax professional document analysis.
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
-from sqlmodel import SQLModel, Field, Relationship, Column
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlmodel import Column, Field, Relationship, SQLModel
 
 from app.models.base import BaseModel
 
 
 class DocumentType(str, Enum):
     """Supported document types for Italian tax professionals"""
+
     PDF = "pdf"
     EXCEL_XLSX = "xlsx"
     EXCEL_XLS = "xls"
@@ -27,6 +27,7 @@ class DocumentType(str, Enum):
 
 class ProcessingStatus(str, Enum):
     """Document processing status"""
+
     UPLOADED = "uploaded"
     VALIDATING = "validating"
     PROCESSING = "processing"
@@ -39,6 +40,7 @@ class ProcessingStatus(str, Enum):
 
 class ItalianDocumentCategory(str, Enum):
     """Italian tax document categories"""
+
     FATTURA_ELETTRONICA = "fattura_elettronica"
     F24 = "f24"
     DICHIARAZIONE_730 = "dichiarazione_730"
@@ -55,11 +57,12 @@ class ItalianDocumentCategory(str, Enum):
 
 class Document(BaseModel, table=True):
     """Document upload and processing tracking"""
+
     __tablename__ = "documents"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     user_id: int = Field(foreign_key="user.id", index=True)
-    
+
     # File metadata
     filename: str = Field(max_length=500)  # Stored filename (UUID-based)
     original_filename: str = Field(max_length=500)  # Original user filename
@@ -67,71 +70,77 @@ class Document(BaseModel, table=True):
     file_size: int = Field()  # Size in bytes
     mime_type: str = Field(max_length=100)
     file_hash: str = Field(max_length=64, index=True)  # SHA-256 hash
-    
+
     # Upload tracking
     upload_timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
-    upload_ip: Optional[str] = Field(default=None, max_length=45)  # IPv4/IPv6 address
-    
+    upload_ip: str | None = Field(default=None, max_length=45)  # IPv4/IPv6 address
+
     # Processing status
     processing_status: str = Field(default=ProcessingStatus.UPLOADED.value, max_length=20, index=True)
-    processing_started_at: Optional[datetime] = Field(default=None)
-    processing_completed_at: Optional[datetime] = Field(default=None)
-    processing_duration_seconds: Optional[int] = Field(default=None)
-    
+    processing_started_at: datetime | None = Field(default=None)
+    processing_completed_at: datetime | None = Field(default=None)
+    processing_duration_seconds: int | None = Field(default=None)
+
     # Document classification
-    document_category: Optional[str] = Field(default=None, max_length=50)  # ItalianDocumentCategory enum
-    document_confidence: Optional[int] = Field(default=None)  # 0-100 confidence score
-    
+    document_category: str | None = Field(default=None, max_length=50)  # ItalianDocumentCategory enum
+    document_confidence: int | None = Field(default=None)  # 0-100 confidence score
+
     # Extracted data
-    extracted_text: Optional[str] = Field(default=None)
-    extracted_data: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Structured data extraction
-    extracted_tables: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Tabular data from Excel/CSV
-    
+    extracted_text: str | None = Field(default=None)
+    extracted_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB))  # Structured data extraction
+    extracted_tables: dict[str, Any] | None = Field(
+        default=None, sa_column=Column(JSONB)
+    )  # Tabular data from Excel/CSV
+
     # Processing results
-    processing_log: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Processing steps and results
-    error_message: Optional[str] = Field(default=None)
-    warnings: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Non-fatal processing warnings
-    
+    processing_log: dict[str, Any] | None = Field(
+        default=None, sa_column=Column(JSONB)
+    )  # Processing steps and results
+    error_message: str | None = Field(default=None)
+    warnings: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB))  # Non-fatal processing warnings
+
     # Security and compliance
     virus_scan_status: str = Field(default="pending", max_length=20)
-    virus_scan_result: Optional[str] = Field(default=None, max_length=100)
+    virus_scan_result: str | None = Field(default=None, max_length=100)
     is_sensitive_data: bool = Field(default=False)
-    
+
     # Expiration and cleanup
     expires_at: datetime = Field(index=True)
     is_deleted: bool = Field(default=False, index=True)
-    deleted_at: Optional[datetime] = Field(default=None)
-    
+    deleted_at: datetime | None = Field(default=None)
+
     # Analytics
     analysis_count: int = Field(default=0)
-    last_analyzed_at: Optional[datetime] = Field(default=None)
-    
+    last_analyzed_at: datetime | None = Field(default=None)
+
     # Relationships
-    analyses: List["DocumentAnalysis"] = Relationship(back_populates="document", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    
+    analyses: list["DocumentAnalysis"] = Relationship(
+        back_populates="document", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not self.expires_at:
             self.expires_at = datetime.now(UTC) + timedelta(hours=48)  # 48-hour default expiration
-    
+
     @property
     def is_expired(self) -> bool:
         """Check if document has expired"""
         return datetime.now(UTC) > self.expires_at
-    
+
     @property
-    def processing_time_seconds(self) -> Optional[int]:
+    def processing_time_seconds(self) -> int | None:
         """Calculate processing time in seconds"""
         if self.processing_started_at and self.processing_completed_at:
             return int((self.processing_completed_at - self.processing_started_at).total_seconds())
         return None
-    
+
     @property
     def file_size_mb(self) -> float:
         """File size in megabytes"""
         return self.file_size / (1024 * 1024)
-    
-    def to_dict(self, include_content: bool = False) -> Dict[str, Any]:
+
+    def to_dict(self, include_content: bool = False) -> dict[str, Any]:
         """Convert document to dictionary"""
         data = {
             "id": str(self.id),
@@ -148,55 +157,60 @@ class Document(BaseModel, table=True):
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "is_expired": self.is_expired,
             "analysis_count": self.analysis_count,
-            "last_analyzed_at": self.last_analyzed_at.isoformat() if self.last_analyzed_at else None
+            "last_analyzed_at": self.last_analyzed_at.isoformat() if self.last_analyzed_at else None,
         }
-        
+
         if include_content:
-            data.update({
-                "extracted_text": self.extracted_text,
-                "extracted_data": self.extracted_data,
-                "extracted_tables": self.extracted_tables
-            })
-        
+            data.update(
+                {
+                    "extracted_text": self.extracted_text,
+                    "extracted_data": self.extracted_data,
+                    "extracted_tables": self.extracted_tables,
+                }
+            )
+
         return data
 
 
 class DocumentAnalysis(BaseModel, table=True):
     """Document analysis requests and results"""
+
     __tablename__ = "document_analyses"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     document_id: UUID = Field(foreign_key="documents.id", index=True)
     user_id: int = Field(foreign_key="user.id", index=True)
-    
+
     # Analysis request
     query: str = Field()  # User's analysis question
     analysis_type: str = Field(default="general", max_length=50)
-    
+
     # Analysis timing
     requested_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    completed_at: Optional[datetime] = Field(default=None)
-    duration_seconds: Optional[int] = Field(default=None)
-    
+    completed_at: datetime | None = Field(default=None)
+    duration_seconds: int | None = Field(default=None)
+
     # Analysis results
-    analysis_result: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Structured analysis results
-    ai_response: Optional[str] = Field(default=None)  # Natural language response
-    confidence_score: Optional[int] = Field(default=None)  # 0-100 confidence
-    
+    analysis_result: dict[str, Any] | None = Field(
+        default=None, sa_column=Column(JSONB)
+    )  # Structured analysis results
+    ai_response: str | None = Field(default=None)  # Natural language response
+    confidence_score: int | None = Field(default=None)  # 0-100 confidence
+
     # Context and metadata
-    context_used: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))  # Document excerpts used
-    llm_model: Optional[str] = Field(default=None, max_length=50)  # Model used for analysis
-    cost: Optional[int] = Field(default=None)  # Cost in micro-euros (€0.000001)
-    
+    context_used: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB))  # Document excerpts used
+    llm_model: str | None = Field(default=None, max_length=50)  # Model used for analysis
+    cost: int | None = Field(default=None)  # Cost in micro-euros (€0.000001)
+
     # Quality and validation
-    quality_score: Optional[int] = Field(default=None)  # 0-100 quality score
+    quality_score: int | None = Field(default=None)  # 0-100 quality score
     validation_status: str = Field(default="pending", max_length=20)
     expert_validated: bool = Field(default=False)
-    
+
     # Relationships
     document: Optional["Document"] = Relationship(back_populates="analyses")
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert analysis to dictionary"""
         return {
             "id": str(self.id),
@@ -211,38 +225,39 @@ class DocumentAnalysis(BaseModel, table=True):
             "confidence_score": self.confidence_score,
             "quality_score": self.quality_score,
             "cost": self.cost,
-            "expert_validated": self.expert_validated
+            "expert_validated": self.expert_validated,
         }
 
 
 class DocumentProcessingJob(BaseModel, table=True):
     """Document processing job queue"""
+
     __tablename__ = "document_processing_jobs"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     document_id: UUID = Field(foreign_key="documents.id", index=True)
-    
+
     # Job details
     job_type: str = Field(max_length=50)  # text_extraction, data_extraction, analysis
     priority: int = Field(default=50)  # 1-100, higher = more priority
-    
+
     # Job status
     status: str = Field(default="queued", max_length=20, index=True)
-    started_at: Optional[datetime] = Field(default=None)
-    completed_at: Optional[datetime] = Field(default=None)
-    
+    started_at: datetime | None = Field(default=None)
+    completed_at: datetime | None = Field(default=None)
+
     # Job execution
-    worker_id: Optional[str] = Field(default=None, max_length=100)  # Processing worker identifier
+    worker_id: str | None = Field(default=None, max_length=100)  # Processing worker identifier
     attempts: int = Field(default=0)
     max_attempts: int = Field(default=3)
-    
+
     # Results and errors
-    result: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))
-    error_message: Optional[str] = Field(default=None)
-    
+    result: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB))
+    error_message: str | None = Field(default=None)
+
     # Expiration
     expires_at: datetime = Field(index=True)
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not self.expires_at:
@@ -259,32 +274,41 @@ DOCUMENT_CONFIG = {
         "application/vnd.ms-excel": DocumentType.EXCEL_XLS,
         "text/csv": DocumentType.CSV,
         "application/xml": DocumentType.XML,
-        "text/xml": DocumentType.XML
+        "text/xml": DocumentType.XML,
     },
     "PROCESSING_TIMEOUT_SECONDS": 300,  # 5 minutes
     "CLEANUP_INTERVAL_HOURS": 1,
-    "DEFAULT_EXPIRATION_HOURS": 48
+    "DEFAULT_EXPIRATION_HOURS": 48,
 }
 
 # Italian tax document patterns for classification
 ITALIAN_DOCUMENT_PATTERNS = {
     ItalianDocumentCategory.FATTURA_ELETTRONICA: [
-        r"fattura elettronica", r"p\.iva", r"partita iva", r"codice destinatario",
-        r"progressivo invio", r"formato trasmissione"
+        r"fattura elettronica",
+        r"p\.iva",
+        r"partita iva",
+        r"codice destinatario",
+        r"progressivo invio",
+        r"formato trasmissione",
     ],
-    ItalianDocumentCategory.F24: [
-        r"modello f24", r"f24", r"codice tributo", r"versamento", r"ravvedimento"
-    ],
+    ItalianDocumentCategory.F24: [r"modello f24", r"f24", r"codice tributo", r"versamento", r"ravvedimento"],
     ItalianDocumentCategory.DICHIARAZIONE_730: [
-        r"modello 730", r"730", r"dichiarazione dei redditi", r"sostituto d'imposta"
+        r"modello 730",
+        r"730",
+        r"dichiarazione dei redditi",
+        r"sostituto d'imposta",
     ],
     ItalianDocumentCategory.DICHIARAZIONE_UNICO: [
-        r"modello unico", r"redditi pf", r"quadro r[a-z]", r"dichiarazione annuale"
+        r"modello unico",
+        r"redditi pf",
+        r"quadro r[a-z]",
+        r"dichiarazione annuale",
     ],
-    ItalianDocumentCategory.BILANCIO: [
-        r"stato patrimoniale", r"conto economico", r"bilancio", r"nota integrativa"
-    ],
+    ItalianDocumentCategory.BILANCIO: [r"stato patrimoniale", r"conto economico", r"bilancio", r"nota integrativa"],
     ItalianDocumentCategory.CERTIFICAZIONE_UNICA: [
-        r"certificazione unica", r"cu", r"sostituto d'imposta", r"redditi lavoro dipendente"
-    ]
+        r"certificazione unica",
+        r"cu",
+        r"sostituto d'imposta",
+        r"redditi lavoro dipendente",
+    ],
 }

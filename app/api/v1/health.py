@@ -1,6 +1,7 @@
 """Health check endpoints for system components."""
 
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -37,9 +38,8 @@ router = APIRouter(prefix="/health", tags=["health"])
 
 
 @router.get("/rss")
-async def rss_health_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
-    """
-    Check RSS feed collection health.
+async def rss_health_check(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+    """Check RSS feed collection health.
 
     Returns:
         - Scheduler status (enabled, last run, next run)
@@ -76,7 +76,11 @@ async def rss_health_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]
         health_status = (
             "healthy"
             if healthy_feeds == total_feeds
-            else "degraded" if healthy_feeds > 0 else "unhealthy" if total_feeds > 0 else "no_data"
+            else "degraded"
+            if healthy_feeds > 0
+            else "unhealthy"
+            if total_feeds > 0
+            else "no_data"
         )
 
         return {
@@ -130,9 +134,8 @@ async def rss_health_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]
 
 
 @router.get("/rss/feeds")
-async def get_feed_status(db: AsyncSession = Depends(get_db)) -> List[Dict[str, Any]]:
-    """
-    Get detailed status for all RSS feeds.
+async def get_feed_status(db: AsyncSession = Depends(get_db)) -> list[dict[str, Any]]:
+    """Get detailed status for all RSS feeds.
 
     Returns list of all configured feeds with their health metrics.
     """
@@ -167,9 +170,8 @@ async def get_feed_status(db: AsyncSession = Depends(get_db)) -> List[Dict[str, 
 
 
 @router.get("/rss/documents")
-async def get_document_stats(db: AsyncSession = Depends(get_db), limit: int = 20) -> Dict[str, Any]:
-    """
-    Get recent document collection statistics.
+async def get_document_stats(db: AsyncSession = Depends(get_db), limit: int = 20) -> dict[str, Any]:
+    """Get recent document collection statistics.
 
     Args:
         limit: Number of recent documents to return (default: 20)
@@ -232,10 +234,9 @@ async def get_document_stats(db: AsyncSession = Depends(get_db), limit: int = 20
 async def trigger_manual_rss_collection(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    sources: Optional[List[str]] = None,
-) -> Dict[str, Any]:
-    """
-    Manually trigger RSS feed collection.
+    sources: list[str] | None = None,
+) -> dict[str, Any]:
+    """Manually trigger RSS feed collection.
 
     This endpoint allows authenticated users to trigger RSS collection on-demand
     without waiting for the scheduled collection (which runs every 4 hours).
@@ -256,7 +257,7 @@ async def trigger_manual_rss_collection(
         This operation may take several minutes depending on feed responsiveness
         and the number of new documents to process.
     """
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.now(UTC)
 
     try:
         logger.info(
@@ -275,7 +276,7 @@ async def trigger_manual_rss_collection(
             results = await collector.collect_and_process_updates()
 
         # Calculate total statistics
-        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+        processing_time = (datetime.now(UTC) - start_time).total_seconds()
         total_feeds = len(results)
         successful_feeds = sum(1 for r in results if r.get("success", False))
         failed_feeds = total_feeds - successful_feeds
@@ -298,7 +299,7 @@ async def trigger_manual_rss_collection(
             "success": True,
             "triggered_by": {"user_id": current_user.id, "user_email": current_user.email},
             "triggered_at": start_time.isoformat(),
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "completed_at": datetime.now(UTC).isoformat(),
             "processing_time_seconds": processing_time,
             "summary": {
                 "total_feeds": total_feeds,
@@ -311,7 +312,7 @@ async def trigger_manual_rss_collection(
         }
 
     except Exception as e:
-        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+        processing_time = (datetime.now(UTC) - start_time).total_seconds()
 
         logger.error(
             "manual_rss_collection_failed",

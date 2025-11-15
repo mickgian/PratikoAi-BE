@@ -102,7 +102,7 @@ class TestWriteSSE:
             write_sse(None, frame, request_id=request_id)
 
         # Should have logged exactly 5 DEBUG messages
-        debug_calls = [call for call in mock_logger.debug.call_args_list]
+        debug_calls = list(mock_logger.debug.call_args_list)
         assert len(debug_calls) == 5, "Should log only first 5 chunks"
 
     @patch("app.core.sse_write.logger")
@@ -242,7 +242,7 @@ class TestWriteSSEThreadSafety:
 
         for _ in range(10):
             for req_id in requests:
-                frame = f'data: {{"content":"test","done":false}}\n\n'
+                frame = 'data: {"content":"test","done":false}\n\n'
                 write_sse(None, frame, request_id=req_id)
 
         # Each request should have 10 chunks tracked

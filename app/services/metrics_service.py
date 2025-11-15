@@ -1,5 +1,4 @@
-"""
-Success Metrics Monitoring Service
+"""Success Metrics Monitoring Service
 
 This service monitors and validates all technical and business success metrics
 for the NormoAI system across all environments.
@@ -26,7 +25,7 @@ from typing import (
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import Environment, settings
 from app.core.database import get_session
 from app.core.performance.database_optimizer import database_optimizer
 from app.core.performance.performance_monitor import performance_monitor
@@ -44,14 +43,6 @@ class MetricStatus(str, Enum):
     FAIL = "FAIL"
     WARNING = "WARNING"
     UNKNOWN = "UNKNOWN"
-
-
-class Environment(str, Enum):
-    """Environment enumeration."""
-
-    DEVELOPMENT = "development"
-    STAGING = "staging"
-    PRODUCTION = "production"
 
 
 @dataclass
@@ -74,11 +65,11 @@ class MetricsReport:
 
     environment: Environment
     timestamp: datetime
-    technical_metrics: List[MetricResult]
-    business_metrics: List[MetricResult]
+    technical_metrics: list[MetricResult]
+    business_metrics: list[MetricResult]
     overall_health_score: float
-    alerts: List[str]
-    recommendations: List[str]
+    alerts: list[str]
+    recommendations: list[str]
 
 
 class MetricsService:
@@ -87,7 +78,7 @@ class MetricsService:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
-    async def collect_technical_metrics(self, environment: Environment) -> List[MetricResult]:
+    async def collect_technical_metrics(self, environment: Environment) -> list[MetricResult]:
         """Collect all technical success metrics."""
         metrics = []
         current_time = datetime.utcnow()
@@ -133,7 +124,9 @@ class MetricsService:
                     status=(
                         MetricStatus.PASS
                         if cache_hit_rate > 80
-                        else MetricStatus.WARNING if cache_hit_rate > 60 else MetricStatus.FAIL
+                        else MetricStatus.WARNING
+                        if cache_hit_rate > 60
+                        else MetricStatus.FAIL
                     ),
                     unit="%",
                     description="Percentage of cache hits vs total requests",
@@ -167,7 +160,9 @@ class MetricsService:
                     status=(
                         MetricStatus.PASS
                         if test_coverage > 80
-                        else MetricStatus.WARNING if test_coverage > 70 else MetricStatus.FAIL
+                        else MetricStatus.WARNING
+                        if test_coverage > 70
+                        else MetricStatus.FAIL
                     ),
                     unit="%",
                     description="Code test coverage percentage",
@@ -222,7 +217,7 @@ class MetricsService:
 
         return metrics
 
-    async def collect_business_metrics(self, environment: Environment) -> List[MetricResult]:
+    async def collect_business_metrics(self, environment: Environment) -> list[MetricResult]:
         """Collect all business success metrics."""
         metrics = []
         current_time = datetime.utcnow()
@@ -238,7 +233,9 @@ class MetricsService:
                     status=(
                         MetricStatus.PASS
                         if avg_cost_per_user < 2.0
-                        else MetricStatus.WARNING if avg_cost_per_user < 3.0 else MetricStatus.FAIL
+                        else MetricStatus.WARNING
+                        if avg_cost_per_user < 3.0
+                        else MetricStatus.FAIL
                     ),
                     unit="EUR/month",
                     description="Average API cost per user per month",
@@ -272,7 +269,9 @@ class MetricsService:
                     status=(
                         MetricStatus.PASS
                         if system_uptime > 99.5
-                        else MetricStatus.WARNING if system_uptime > 99.0 else MetricStatus.FAIL
+                        else MetricStatus.WARNING
+                        if system_uptime > 99.0
+                        else MetricStatus.FAIL
                     ),
                     unit="%",
                     description="System uptime percentage over last 30 days",
@@ -306,7 +305,9 @@ class MetricsService:
                     status=(
                         MetricStatus.PASS
                         if user_satisfaction > 4.5
-                        else MetricStatus.WARNING if user_satisfaction > 4.0 else MetricStatus.FAIL
+                        else MetricStatus.WARNING
+                        if user_satisfaction > 4.0
+                        else MetricStatus.FAIL
                     ),
                     unit="score",
                     description="Average user satisfaction score (1-5)",
@@ -340,7 +341,9 @@ class MetricsService:
                     status=(
                         MetricStatus.PASS
                         if gdpr_compliance_score >= 95
-                        else MetricStatus.WARNING if gdpr_compliance_score >= 85 else MetricStatus.FAIL
+                        else MetricStatus.WARNING
+                        if gdpr_compliance_score >= 85
+                        else MetricStatus.FAIL
                     ),
                     unit="%",
                     description="GDPR compliance verification score",
@@ -551,7 +554,7 @@ class MetricsService:
             self.logger.error(f"Error calculating GDPR compliance: {e}")
             return 0.0
 
-    async def _generate_recommendations(self, metrics: List[MetricResult]) -> List[str]:
+    async def _generate_recommendations(self, metrics: list[MetricResult]) -> list[str]:
         """Generate recommendations based on metric results."""
         recommendations = []
 

@@ -1,6 +1,7 @@
 """Test SSE streaming happy path."""
 
 import pytest
+
 from app.core.langgraph.nodes.step_105__stream_setup import node_step_105
 from app.core.langgraph.nodes.step_106__async_gen import node_step_106
 from app.core.langgraph.nodes.step_107__single_pass import node_step_107

@@ -1,9 +1,9 @@
 """OpenAI provider implementation."""
 
 import asyncio
+from collections.abc import AsyncGenerator
 from typing import (
     Any,
-    AsyncGenerator,
     Dict,
     List,
     Optional,
@@ -79,7 +79,7 @@ class OpenAIProvider(LLMProvider):
         return LLMProviderType.OPENAI
 
     @property
-    def supported_models(self) -> Dict[str, LLMCostInfo]:
+    def supported_models(self) -> dict[str, LLMCostInfo]:
         """Get supported OpenAI models and their cost information.
 
         Costs are in EUR per 1K tokens (converted from USD).
@@ -112,7 +112,7 @@ class OpenAIProvider(LLMProvider):
             ),
         }
 
-    def _convert_messages_to_openai(self, messages: List[Message]) -> List[Dict[str, Any]]:
+    def _convert_messages_to_openai(self, messages: list[Message]) -> list[dict[str, Any]]:
         """Convert messages to OpenAI format.
 
         Args:
@@ -130,7 +130,7 @@ class OpenAIProvider(LLMProvider):
             openai_messages.append(openai_message)
         return openai_messages
 
-    def _convert_messages_to_langchain(self, messages: List[Message]) -> List[BaseMessage]:
+    def _convert_messages_to_langchain(self, messages: list[Message]) -> list[BaseMessage]:
         """Convert messages to LangChain format.
 
         Args:
@@ -155,11 +155,11 @@ class OpenAIProvider(LLMProvider):
 
     async def chat_completion(
         self,
-        messages: List[Message],
-        tools: Optional[List[Any]] = None,
+        messages: list[Message],
+        tools: list[Any] | None = None,
         temperature: float = 0.2,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        max_tokens: int | None = None,
+        **kwargs,
     ) -> LLMResponse:
         """Generate a chat completion using OpenAI.
 
@@ -209,7 +209,7 @@ class OpenAIProvider(LLMProvider):
                     messages=openai_messages,
                     temperature=temperature,
                     max_tokens=max_tokens,
-                    **kwargs
+                    **kwargs,
                 )
 
                 choice = response.choices[0]
@@ -247,12 +247,12 @@ class OpenAIProvider(LLMProvider):
 
     async def stream_completion(
         self,
-        messages: List[Message],
-        tools: Optional[List[Any]] = None,
+        messages: list[Message],
+        tools: list[Any] | None = None,
         temperature: float = 0.2,
-        max_tokens: Optional[int] = None,
-        **kwargs
-    ) -> AsyncGenerator[LLMStreamResponse, None]:
+        max_tokens: int | None = None,
+        **kwargs,
+    ) -> AsyncGenerator[LLMStreamResponse]:
         """Generate a streaming chat completion using OpenAI.
 
         Args:
@@ -276,7 +276,7 @@ class OpenAIProvider(LLMProvider):
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=True,
-                **kwargs
+                **kwargs,
             )
 
             async for chunk in stream:
@@ -315,7 +315,7 @@ class OpenAIProvider(LLMProvider):
             )
             raise
 
-    def estimate_tokens(self, messages: List[Message]) -> int:
+    def estimate_tokens(self, messages: list[Message]) -> int:
         """Estimate token count for OpenAI models.
 
         This is a rough estimation based on character count.
@@ -382,7 +382,7 @@ class OpenAIProvider(LLMProvider):
             )
             return False
 
-    def get_model_capabilities(self) -> Dict[str, bool]:
+    def get_model_capabilities(self) -> dict[str, bool]:
         """Get capabilities of the current OpenAI model.
 
         Returns:
@@ -391,16 +391,7 @@ class OpenAIProvider(LLMProvider):
         base_capabilities = super().get_model_capabilities()
 
         # Model-specific capabilities
-        if self.model in ["gpt-4o", "gpt-4o-mini"]:
-            base_capabilities.update(
-                {
-                    "supports_json_mode": True,
-                    "supports_function_calling": True,
-                    "max_context_length": 128000,
-                    "supports_vision": True,
-                }
-            )
-        elif self.model == "gpt-4-turbo":
+        if self.model in ["gpt-4o", "gpt-4o-mini"] or self.model == "gpt-4-turbo":
             base_capabilities.update(
                 {
                     "supports_json_mode": True,

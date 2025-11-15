@@ -1,4 +1,4 @@
-"""SSE (Server-Sent Events) format utility.
+r"""SSE (Server-Sent Events) format utility.
 
 This module provides utilities for formatting and validating Server-Sent Events
 to ensure compatibility with EventSource API and prevent format-related bugs.
@@ -16,7 +16,7 @@ from app.schemas.chat import StreamResponse
 
 
 def format_sse_event(response: StreamResponse) -> str:
-    """Format a StreamResponse as a valid SSE event with validation.
+    r"""Format a StreamResponse as a valid SSE event with validation.
 
     This function ensures that all SSE events follow the correct format:
     1. Starts with "data: "
@@ -51,7 +51,7 @@ def format_sse_event(response: StreamResponse) -> str:
 
 
 def format_sse_done() -> str:
-    """Format a final 'done' SSE event.
+    r"""Format a final 'done' SSE event.
 
     Returns:
         str: Properly formatted SSE done event
@@ -104,7 +104,7 @@ def _validate_sse_format(sse_event: str) -> None:
     try:
         StreamResponse(**json_obj)
     except Exception as e:
-        raise ValueError(f"SSE event JSON does not conform to StreamResponse schema: {e}. " f"JSON was: {json_obj}")
+        raise ValueError(f"SSE event JSON does not conform to StreamResponse schema: {e}. JSON was: {json_obj}")
 
 
 def is_valid_sse_event(sse_event: str) -> bool:
@@ -124,7 +124,7 @@ def is_valid_sse_event(sse_event: str) -> bool:
 
 
 def extract_content_from_sse(sse_event: str) -> str:
-    """Extract content from an SSE event.
+    r"""Extract content from an SSE event.
 
     Args:
         sse_event: Valid SSE event string

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-PratikoAI Version Registry API
+"""PratikoAI Version Registry API
 FastAPI-based REST API for managing service versions, deployments, and compatibility checks.
 
 This API provides:
@@ -11,20 +10,27 @@ This API provides:
 - Health monitoring for version consistency
 """
 
-import os
-import json
-from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any
-from fastapi import FastAPI, HTTPException, Depends, Query, BackgroundTasks, Security
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 import asyncio
+import json
 import logging
+import os
+from datetime import UTC, datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Security
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field
 
 from ..core.version_schema import (
-    ServiceVersion, ServiceType, ChangeType, Environment, 
-    CompatibilityLevel, APIContract, VersionDependency, CompatibilityRules
+    APIContract,
+    ChangeType,
+    CompatibilityLevel,
+    CompatibilityRules,
+    Environment,
+    ServiceType,
+    ServiceVersion,
+    VersionDependency,
 )
 from .database import VersionRegistryDB, init_database
 
@@ -38,7 +44,7 @@ app = FastAPI(
     description="Comprehensive version management and compatibility tracking for PratikoAI services",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # CORS middleware
@@ -54,7 +60,7 @@ app.add_middleware(
 security = HTTPBearer()
 
 # Database connection
-DB_URL = os.getenv('VERSION_REGISTRY_DB_URL', 'postgresql://user:pass@localhost/version_registry')
+DB_URL = os.getenv("VERSION_REGISTRY_DB_URL", "postgresql://user:pass@localhost/version_registry")
 registry_db = init_database(DB_URL)
 
 
@@ -64,15 +70,15 @@ class VersionRegistrationRequest(BaseModel):
     version: str
     git_commit: str
     git_branch: str
-    build_number: Optional[int] = None
+    build_number: int | None = None
     change_type: ChangeType = ChangeType.PATCH
     release_notes: str = ""
-    breaking_changes: List[str] = Field(default_factory=list)
-    new_features: List[str] = Field(default_factory=list)
-    bug_fixes: List[str] = Field(default_factory=list)
-    dependencies: List[Dict[str, Any]] = Field(default_factory=list)
-    api_contract: Optional[Dict[str, Any]] = None
-    feature_flags: Dict[str, bool] = Field(default_factory=dict)
+    breaking_changes: list[str] = Field(default_factory=list)
+    new_features: list[str] = Field(default_factory=list)
+    bug_fixes: list[str] = Field(default_factory=list)
+    dependencies: list[dict[str, Any]] = Field(default_factory=list)
+    api_contract: dict[str, Any] | None = None
+    feature_flags: dict[str, bool] = Field(default_factory=dict)
     created_by: str = "system"
 
 
@@ -82,17 +88,17 @@ class VersionResponse(BaseModel):
     version: str
     git_commit: str
     git_branch: str
-    build_number: Optional[int]
+    build_number: int | None
     change_type: ChangeType
     release_notes: str
-    breaking_changes: List[str]
-    new_features: List[str]
-    bug_fixes: List[str]
+    breaking_changes: list[str]
+    new_features: list[str]
+    bug_fixes: list[str]
     created_at: datetime
     created_by: str
-    deployments: Dict[str, datetime]
-    compatibility_matrix: Dict[str, str]
-    feature_flags: Dict[str, bool]
+    deployments: dict[str, datetime]
+    compatibility_matrix: dict[str, str]
+    feature_flags: dict[str, bool]
 
 
 class DeploymentRequest(BaseModel):
@@ -100,8 +106,8 @@ class DeploymentRequest(BaseModel):
     version: str
     environment: Environment
     deployed_by: str = "system"
-    deployment_id: Optional[str] = None
-    deployment_strategy: Optional[str] = None
+    deployment_id: str | None = None
+    deployment_strategy: str | None = None
     health_check_passed: bool = True
 
 
@@ -114,15 +120,15 @@ class CompatibilityCheckRequest(BaseModel):
 
 class CompatibilityCheckResponse(BaseModel):
     compatibility_level: CompatibilityLevel
-    breaking_changes: List[str]
-    warnings: List[str]
-    details: Dict[str, Any]
+    breaking_changes: list[str]
+    warnings: list[str]
+    details: dict[str, Any]
     checked_at: datetime
 
 
 class DeploymentStatusResponse(BaseModel):
     environment: Environment
-    services: Dict[str, Dict[str, Any]]
+    services: dict[str, dict[str, Any]]
     last_updated: datetime
 
 
@@ -130,15 +136,16 @@ class DeploymentStatusResponse(BaseModel):
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
     """Simple token-based authentication."""
     token = credentials.credentials
-    expected_token = os.getenv('VERSION_REGISTRY_TOKEN', 'dev-token')
-    
+    expected_token = os.getenv("VERSION_REGISTRY_TOKEN", "dev-token")
+
     if token != expected_token:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
-    
+
     return {"username": "api-user"}
 
 
 # API Routes
+
 
 @app.get("/health")
 async def health_check():
@@ -147,22 +154,18 @@ async def health_check():
         # Test database connection
         with registry_db.get_session() as session:
             session.execute("SELECT 1")
-        
-        return {
-            "status": "healthy",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "version": "1.0.0"
-        }
+
+        return {"status": "healthy", "timestamp": datetime.now(UTC).isoformat(), "version": "1.0.0"}
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         raise HTTPException(status_code=503, detail="Service unhealthy")
 
 
-@app.post("/api/v1/versions/register", response_model=Dict[str, str])
+@app.post("/api/v1/versions/register", response_model=dict[str, str])
 async def register_version(
     request: VersionRegistrationRequest,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """Register a new service version."""
     try:
@@ -170,11 +173,11 @@ async def register_version(
         dependencies = []
         for dep_data in request.dependencies:
             dependencies.append(VersionDependency(**dep_data))
-        
+
         api_contract = None
         if request.api_contract:
             api_contract = APIContract(**request.api_contract)
-        
+
         service_version = ServiceVersion(
             service_type=request.service_type,
             version=request.version,
@@ -189,26 +192,19 @@ async def register_version(
             dependencies=dependencies,
             api_contract=api_contract,
             feature_flags=request.feature_flags,
-            created_by=request.created_by
+            created_by=request.created_by,
         )
-        
+
         # Register version
         version_id = registry_db.register_version(service_version)
-        
+
         # Schedule background compatibility checks
-        background_tasks.add_task(
-            schedule_compatibility_checks,
-            request.service_type,
-            request.version
-        )
-        
+        background_tasks.add_task(schedule_compatibility_checks, request.service_type, request.version)
+
         logger.info(f"Registered version {request.version} for {request.service_type.value}")
-        
-        return {
-            "version_id": version_id,
-            "message": f"Version {request.version} registered successfully"
-        }
-        
+
+        return {"version_id": version_id, "message": f"Version {request.version} registered successfully"}
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -217,32 +213,24 @@ async def register_version(
 
 
 @app.get("/api/v1/versions/{service_type}/{version}", response_model=VersionResponse)
-async def get_version(
-    service_type: ServiceType,
-    version: str,
-    current_user: dict = Depends(get_current_user)
-):
+async def get_version(service_type: ServiceType, version: str, current_user: dict = Depends(get_current_user)):
     """Get a specific service version."""
     try:
         service_version = registry_db.get_version(service_type, version)
-        
+
         if not service_version:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Version {version} not found for {service_type.value}"
-            )
-        
+            raise HTTPException(status_code=404, detail=f"Version {version} not found for {service_type.value}")
+
         # Convert to response model
         deployments_dict = {
-            env.value if hasattr(env, 'value') else str(env): dt
-            for env, dt in service_version.deployments.items()
+            env.value if hasattr(env, "value") else str(env): dt for env, dt in service_version.deployments.items()
         }
-        
+
         compatibility_dict = {
-            key: level.value if hasattr(level, 'value') else str(level)
+            key: level.value if hasattr(level, "value") else str(level)
             for key, level in service_version.compatibility_matrix.items()
         }
-        
+
         return VersionResponse(
             id="generated-id",  # Would be actual ID from database
             service_type=service_version.service_type,
@@ -259,9 +247,9 @@ async def get_version(
             created_by=service_version.created_by,
             deployments=deployments_dict,
             compatibility_matrix=compatibility_dict,
-            feature_flags=service_version.feature_flags
+            feature_flags=service_version.feature_flags,
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get version: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -270,27 +258,24 @@ async def get_version(
 @app.get("/api/v1/versions/{service_type}/latest")
 async def get_latest_version(
     service_type: ServiceType,
-    environment: Optional[Environment] = Query(None),
-    current_user: dict = Depends(get_current_user)
+    environment: Environment | None = Query(None),
+    current_user: dict = Depends(get_current_user),
 ):
     """Get the latest version for a service."""
     try:
         service_version = registry_db.get_latest_version(service_type, environment)
-        
+
         if not service_version:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No versions found for {service_type.value}"
-            )
-        
+            raise HTTPException(status_code=404, detail=f"No versions found for {service_type.value}")
+
         return {
             "service_type": service_version.service_type.value,
             "version": service_version.version,
             "git_commit": service_version.git_commit,
             "created_at": service_version.created_at.isoformat(),
-            "change_type": service_version.change_type.value
+            "change_type": service_version.change_type.value,
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to get latest version: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -298,14 +283,12 @@ async def get_latest_version(
 
 @app.get("/api/v1/versions/{service_type}")
 async def list_versions(
-    service_type: ServiceType,
-    limit: int = Query(50, ge=1, le=100),
-    current_user: dict = Depends(get_current_user)
+    service_type: ServiceType, limit: int = Query(50, ge=1, le=100), current_user: dict = Depends(get_current_user)
 ):
     """List versions for a service."""
     try:
         versions = registry_db.get_versions_by_service(service_type, limit)
-        
+
         return {
             "service_type": service_type.value,
             "versions": [
@@ -315,23 +298,20 @@ async def list_versions(
                     "change_type": v.change_type.value,
                     "created_at": v.created_at.isoformat(),
                     "breaking_changes": len(v.breaking_changes) > 0,
-                    "deployments": list(v.deployments.keys())
+                    "deployments": list(v.deployments.keys()),
                 }
                 for v in versions
             ],
-            "total": len(versions)
+            "total": len(versions),
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to list versions: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.post("/api/v1/deployments", response_model=Dict[str, str])
-async def record_deployment(
-    request: DeploymentRequest,
-    current_user: dict = Depends(get_current_user)
-):
+@app.post("/api/v1/deployments", response_model=dict[str, str])
+async def record_deployment(request: DeploymentRequest, current_user: dict = Depends(get_current_user)):
     """Record a deployment."""
     try:
         deployment_id = registry_db.record_deployment(
@@ -340,16 +320,15 @@ async def record_deployment(
             environment=request.environment,
             deployed_by=request.deployed_by,
             deployment_id=request.deployment_id,
-            deployment_strategy=request.deployment_strategy
+            deployment_strategy=request.deployment_strategy,
         )
-        
-        logger.info(f"Recorded deployment of {request.service_type.value} {request.version} to {request.environment.value}")
-        
-        return {
-            "deployment_id": deployment_id,
-            "message": f"Deployment recorded successfully"
-        }
-        
+
+        logger.info(
+            f"Recorded deployment of {request.service_type.value} {request.version} to {request.environment.value}"
+        )
+
+        return {"deployment_id": deployment_id, "message": "Deployment recorded successfully"}
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -358,70 +337,58 @@ async def record_deployment(
 
 
 @app.get("/api/v1/deployments/{environment}", response_model=DeploymentStatusResponse)
-async def get_deployment_status(
-    environment: Environment,
-    current_user: dict = Depends(get_current_user)
-):
+async def get_deployment_status(environment: Environment, current_user: dict = Depends(get_current_user)):
     """Get deployment status for an environment."""
     try:
         status = registry_db.get_deployment_status(environment)
-        
-        return DeploymentStatusResponse(
-            environment=environment,
-            services=status,
-            last_updated=datetime.now(timezone.utc)
-        )
-        
+
+        return DeploymentStatusResponse(environment=environment, services=status, last_updated=datetime.now(UTC))
+
     except Exception as e:
         logger.error(f"Failed to get deployment status: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/v1/compatibility/check", response_model=CompatibilityCheckResponse)
-async def check_compatibility(
-    request: CompatibilityCheckRequest,
-    current_user: dict = Depends(get_current_user)
-):
+async def check_compatibility(request: CompatibilityCheckRequest, current_user: dict = Depends(get_current_user)):
     """Check compatibility between two service versions."""
     try:
         # Get existing compatibility check
         existing_level = registry_db.check_compatibility(
-            request.source_service, request.source_version,
-            request.target_service, request.target_version
+            request.source_service, request.source_version, request.target_service, request.target_version
         )
-        
+
         if existing_level != CompatibilityLevel.UNKNOWN:
             return CompatibilityCheckResponse(
                 compatibility_level=existing_level,
                 breaking_changes=[],
                 warnings=[],
                 details={"cached": True},
-                checked_at=datetime.now(timezone.utc)
+                checked_at=datetime.now(UTC),
             )
-        
+
         # Perform new compatibility check
         compatibility_level = CompatibilityRules.check_compatibility(
-            request.source_service, request.source_version,
-            request.target_service, request.target_version
+            request.source_service, request.source_version, request.target_service, request.target_version
         )
-        
+
         # Record the result
         registry_db.record_compatibility_check(
             source_service=request.source_service,
             source_version=request.source_version,
             target_service=request.target_service,
             target_version=request.target_version,
-            compatibility_level=compatibility_level
+            compatibility_level=compatibility_level,
         )
-        
+
         return CompatibilityCheckResponse(
             compatibility_level=compatibility_level,
             breaking_changes=[],
             warnings=[],
             details={"computed": True},
-            checked_at=datetime.now(timezone.utc)
+            checked_at=datetime.now(UTC),
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to check compatibility: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -429,25 +396,20 @@ async def check_compatibility(
 
 @app.get("/api/v1/compatibility/{service_type}/{version}")
 async def get_compatibility_matrix(
-    service_type: ServiceType,
-    version: str,
-    current_user: dict = Depends(get_current_user)
+    service_type: ServiceType, version: str, current_user: dict = Depends(get_current_user)
 ):
     """Get compatibility matrix for a service version."""
     try:
         service_version = registry_db.get_version(service_type, version)
-        
+
         if not service_version:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Version {version} not found for {service_type.value}"
-            )
-        
+            raise HTTPException(status_code=404, detail=f"Version {version} not found for {service_type.value}")
+
         return {
             "service_type": service_type.value,
             "version": version,
             "compatibility_matrix": {
-                key: level.value if hasattr(level, 'value') else str(level)
+                key: level.value if hasattr(level, "value") else str(level)
                 for key, level in service_version.compatibility_matrix.items()
             },
             "dependencies": [
@@ -457,12 +419,12 @@ async def get_compatibility_matrix(
                     "max_version": dep.max_version,
                     "exact_version": dep.exact_version,
                     "optional": dep.optional,
-                    "reason": dep.reason
+                    "reason": dep.reason,
                 }
                 for dep in service_version.dependencies
-            ]
+            ],
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to get compatibility matrix: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -470,35 +432,24 @@ async def get_compatibility_matrix(
 
 @app.post("/api/v1/validate-deployment")
 async def validate_deployment(
-    service_type: ServiceType,
-    version: str,
-    environment: Environment,
-    current_user: dict = Depends(get_current_user)
+    service_type: ServiceType, version: str, environment: Environment, current_user: dict = Depends(get_current_user)
 ):
     """Validate if a version can be safely deployed to an environment."""
     try:
         # Get the version to be deployed
         service_version = registry_db.get_version(service_type, version)
         if not service_version:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Version {version} not found for {service_type.value}"
-            )
-        
+            raise HTTPException(status_code=404, detail=f"Version {version} not found for {service_type.value}")
+
         # Get current deployment status
         current_deployments = registry_db.get_deployment_status(environment)
-        
-        validation_results = {
-            "can_deploy": True,
-            "blocking_issues": [],
-            "warnings": [],
-            "dependency_checks": []
-        }
-        
+
+        validation_results = {"can_deploy": True, "blocking_issues": [], "warnings": [], "dependency_checks": []}
+
         # Check dependencies
         for dependency in service_version.dependencies:
-            current_version = current_deployments.get(dependency.service_type.value, {}).get('version')
-            
+            current_version = current_deployments.get(dependency.service_type.value, {}).get("version")
+
             if current_version:
                 if not service_version.satisfies_dependency(dependency, current_version):
                     validation_results["blocking_issues"].append(
@@ -515,15 +466,15 @@ async def validate_deployment(
                     f"Required dependency {dependency.service_type.value} is not deployed"
                 )
                 validation_results["can_deploy"] = False
-        
+
         # Check for breaking changes in production
         if environment == Environment.PRODUCTION and service_version.breaking_changes:
             validation_results["warnings"].append(
                 f"Version contains {len(service_version.breaking_changes)} breaking changes"
             )
-        
+
         return validation_results
-        
+
     except Exception as e:
         logger.error(f"Failed to validate deployment: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -533,18 +484,18 @@ async def validate_deployment(
 async def cleanup_old_versions(
     service_type: ServiceType,
     keep_count: int = Query(50, ge=10, le=100),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """Clean up old versions, keeping only the most recent ones."""
     try:
         deleted_count = registry_db.cleanup_old_versions(service_type, keep_count)
-        
+
         return {
             "message": f"Cleaned up {deleted_count} old versions",
             "service_type": service_type.value,
-            "versions_kept": keep_count
+            "versions_kept": keep_count,
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to cleanup versions: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -556,31 +507,30 @@ async def schedule_compatibility_checks(service_type: ServiceType, version: str)
     try:
         # Get all services that might need compatibility checking
         all_service_types = list(ServiceType)
-        
+
         for target_service in all_service_types:
             if target_service == service_type:
                 continue
-            
+
             # Get latest version of target service
             latest_version = registry_db.get_latest_version(target_service)
             if latest_version:
                 # Perform compatibility check
                 compatibility_level = CompatibilityRules.check_compatibility(
-                    service_type, version,
-                    target_service, latest_version.version
+                    service_type, version, target_service, latest_version.version
                 )
-                
+
                 # Record the result
                 registry_db.record_compatibility_check(
                     source_service=service_type,
                     source_version=version,
                     target_service=target_service,
                     target_version=latest_version.version,
-                    compatibility_level=compatibility_level
+                    compatibility_level=compatibility_level,
                 )
-        
+
         logger.info(f"Completed compatibility checks for {service_type.value} {version}")
-        
+
     except Exception as e:
         logger.error(f"Failed to schedule compatibility checks: {e}")
 
@@ -590,7 +540,7 @@ async def schedule_compatibility_checks(service_type: ServiceType, version: str)
 async def startup_event():
     """Initialize application on startup."""
     logger.info("Version Registry API starting up...")
-    
+
     # Test database connection
     try:
         with registry_db.get_session() as session:
@@ -610,14 +560,8 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
-    
-    port = int(os.getenv('PORT', 8001))
-    host = os.getenv('HOST', '0.0.0.0')
-    
-    uvicorn.run(
-        "api:app",
-        host=host,
-        port=port,
-        reload=True,
-        log_level="info"
-    )
+
+    port = int(os.getenv("PORT", 8001))
+    host = os.getenv("HOST", "0.0.0.0")
+
+    uvicorn.run("api:app", host=host, port=port, reload=True, log_level="info")

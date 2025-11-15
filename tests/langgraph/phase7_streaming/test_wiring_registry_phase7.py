@@ -1,14 +1,14 @@
 """Test Phase 7 wiring registry."""
 
 import pytest
+
+# Import graph to trigger initialization
+import app.core.langgraph.graph  # noqa: F401
 from app.core.langgraph.wiring_registry import (
     PHASE7_WIRED_NODES,
     WIRED_NODES,
     get_wired_nodes_snapshot,
 )
-
-# Import graph to trigger initialization
-import app.core.langgraph.graph  # noqa: F401
 
 
 def test_phase7_nodes_registered():
@@ -52,10 +52,10 @@ def test_phase7_streaming_path_edges():
         current_node = streaming_path[i]
         next_node = streaming_path[i + 1]
 
-        assert next_node in PHASE7_WIRED_NODES[current_node]["outgoing"], \
-            f"Edge missing: {current_node} → {next_node}"
-        assert current_node in PHASE7_WIRED_NODES[next_node]["incoming"], \
-            f"Reverse edge missing: {current_node} ← {next_node}"
+        assert next_node in PHASE7_WIRED_NODES[current_node]["outgoing"], f"Edge missing: {current_node} → {next_node}"
+        assert (
+            current_node in PHASE7_WIRED_NODES[next_node]["incoming"]
+        ), f"Reverse edge missing: {current_node} ← {next_node}"
 
 
 def test_phase7_nodes_in_global_registry():

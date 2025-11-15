@@ -52,21 +52,21 @@ async def test_sse_streaming():
 
     print("\n=== Test Results ===")
     if first_chunk_time:
-        print(f"✅ SSE streaming is WORKING")
+        print("✅ SSE streaming is WORKING")
         print(f"   - First chunk arrived: {first_chunk_time:.2f}s after request")
         print(f"   - Total chunks received: {chunk_count}")
 
         if first_chunk_time < 2.0:
-            print(f"   - ✅ EXCELLENT: Chunks arrived immediately (< 2s)")
+            print("   - ✅ EXCELLENT: Chunks arrived immediately (< 2s)")
         elif first_chunk_time < 5.0:
-            print(f"   - ✅ GOOD: Chunks arrived quickly (< 5s)")
+            print("   - ✅ GOOD: Chunks arrived quickly (< 5s)")
         elif first_chunk_time < 30.0:
             print(f"   - ⚠️  WARNING: Chunks arrived slowly ({first_chunk_time:.2f}s)")
         else:
             print(f"   - ❌ FAILED: Chunks arrived too late ({first_chunk_time:.2f}s)")
             print(f"   - Expected < 5s, got {first_chunk_time:.2f}s")
     else:
-        print(f"❌ SSE streaming FAILED - No chunks received")
+        print("❌ SSE streaming FAILED - No chunks received")
 
 
 if __name__ == "__main__":

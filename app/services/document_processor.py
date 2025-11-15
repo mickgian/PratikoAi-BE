@@ -1,5 +1,4 @@
-"""
-Document Processor Service for Italian Regulatory Documents.
+"""Document Processor Service for Italian Regulatory Documents.
 
 This service handles content extraction from PDF and HTML documents
 retrieved from Italian regulatory authorities.
@@ -174,7 +173,7 @@ class DocumentProcessor:
             logger.error("xml_content_extraction_failed", xml_url=xml_url, error=str(e), exc_info=True)
             return ""
 
-    async def process_document(self, document_url: str) -> Dict[str, Any]:
+    async def process_document(self, document_url: str) -> dict[str, Any]:
         """Process document and extract content and metadata.
 
         Args:
@@ -273,7 +272,7 @@ class DocumentProcessor:
                 "success": False,
             }
 
-    async def process_documents_batch(self, document_urls: List[str], max_concurrent: int = 5) -> List[Dict[str, Any]]:
+    async def process_documents_batch(self, document_urls: list[str], max_concurrent: int = 5) -> list[dict[str, Any]]:
         """Process multiple documents concurrently.
 
         Args:
@@ -286,7 +285,7 @@ class DocumentProcessor:
         results = []
         semaphore = asyncio.Semaphore(max_concurrent)
 
-        async def process_with_semaphore(url: str) -> Dict[str, Any]:
+        async def process_with_semaphore(url: str) -> dict[str, Any]:
             async with semaphore:
                 return await self.process_document(url)
 
@@ -331,7 +330,7 @@ class DocumentProcessor:
             logger.error("batch_document_processing_error", error=str(e), exc_info=True)
             return []
 
-    async def _download_document(self, document_url: str) -> Optional[tuple[bytes, str]]:
+    async def _download_document(self, document_url: str) -> tuple[bytes, str] | None:
         """Download document content from URL.
 
         Args:
@@ -354,7 +353,7 @@ class DocumentProcessor:
                     logger.warning("document_download_http_error", url=document_url, status_code=response.status)
                     return None
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("document_download_timeout", url=document_url)
             return None
         except Exception as e:
@@ -485,14 +484,14 @@ class DocumentProcessor:
 
         # Normalize common Italian abbreviations
         replacements = {
-            "art\.": "articolo",
-            "artt\.": "articoli",
-            "lett\.": "lettera",
-            "c\.": "comma",
-            "co\.": "comma",
-            "n\.": "numero",
-            "D\.L\.": "Decreto Legge",
-            "D\.Lgs\.": "Decreto Legislativo",
+            r"art\.": "articolo",
+            r"artt\.": "articoli",
+            r"lett\.": "lettera",
+            r"c\.": "comma",
+            r"co\.": "comma",
+            r"n\.": "numero",
+            r"D\.L\.": "Decreto Legge",
+            r"D\.Lgs\.": "Decreto Legislativo",
         }
 
         for abbrev, full in replacements.items():
@@ -563,7 +562,7 @@ class DocumentProcessor:
 
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
-    def _extract_content_metadata(self, content: str, document_url: str) -> Dict[str, Any]:
+    def _extract_content_metadata(self, content: str, document_url: str) -> dict[str, Any]:
         """Extract metadata from document content.
 
         Args:

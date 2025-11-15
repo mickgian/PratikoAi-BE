@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-11-14
 **Status:** Active Development
-**Next Task ID:** DEV-92
+**Next Task ID:** DEV-BE-92
 
 ---
 
@@ -13,30 +13,31 @@ This roadmap tracks planned architectural improvements and enhancements for the 
 **Current Architecture:** See `docs/DATABASE_ARCHITECTURE.md` for detailed documentation of the production system.
 
 **Recent Completed Work:**
-- DEV-66: RSS feed setup and initial monitoring (2025-11-13)
+- DEV-BE-66: RSS feed setup and initial monitoring (2025-11-13)
 
 **Deployment Timeline Estimates:**
 
-📅 **Time to QA Environment (DEV-75):**
-- **Optimistic (parallel work):** ~2-3 weeks (15 Nov - 6 Dic)
-- **Conservative (sequential):** ~3-4 weeks (15 Nov - 10 Dic)
-- **Prerequisites:** DEV-74, DEV-69, DEV-71, DEV-68, DEV-67...
-- **Critical path:** 14 days (2.0 weeks)
+📅 **Time to QA Environment (DEV-BE-75):**
+- **Optimistic (parallel work):** ~6-7 weeks (15 Nov - 2 Gen)
+- **Conservative (sequential):** ~8-9 weeks (15 Nov - 14 Gen)
+- **Prerequisites:** DEV-BE-71, DEV-BE-68, DEV-BE-74, DEV-BE-67, DEV-BE-72...
+- **Total effort (sequential):** 41 days (5.9 weeks)
 
-📅 **Time to Preprod Environment (DEV-88):**
-- **Optimistic:** ~2-4 weeks from now (15 Nov - 13 Dic)
-- **Conservative:** ~3-5 weeks from now (15 Nov - 19 Dic)
-- **Prerequisites:** Path to QA + DEV-70, DEV-72, DEV-75
-- **Critical path:** 14 days (2.0 weeks)
+📅 **Time to Preprod Environment (DEV-BE-88):**
+- **Optimistic:** ~14-16 weeks from now (15 Nov - 9 Mar)
+- **Conservative:** ~20-22 weeks from now (15 Nov - 18 Apr)
+- **Prerequisites:** Path to QA + DEV-BE-87, DEV-BE-70, DEV-BE-69
+- **Total effort (sequential):** 100 days (14.3 weeks)
 
-📅 **Time to Production Environment (DEV-90):**
-- **Optimistic:** ~3-4.5 weeks from now (15 Nov - 17 Dic)
-- **Conservative:** ~4-8 weeks from now (15 Nov - 7 Gen)
-- **Prerequisites:** Path to Preprod + DEV-88, DEV-72, DEV-75
+📅 **Time to Production Environment (DEV-BE-90):**
+- **Optimistic:** ~16-17.1 weeks from now (15 Nov - 15 Mar)
+- **Conservative:** ~23-26 weeks from now (15 Nov - 19 Mag)
+- **Prerequisites:** Path to Preprod + DEV-BE-70, DEV-BE-91, DEV-BE-69
+- **Total effort (sequential):** 110 days (15.6 weeks)
 - **Note:** Production launch requires full GDPR compliance and payment system validation
 
 **Key Dependencies:**
-- ⚠️ **DEV-72** - Implement Expert Feedback System: Blocks QA deployment (longest task)
+- ⚠️ **DEV-BE-72** - Implement Expert Feedback System: Blocks QA deployment (longest task)
 - ⚠️ **GDPR Audits** - DEV-74, DEV-89, DEV-91: Required before each environment launch
 
 ---
@@ -109,7 +110,7 @@ uv run mypy app/
 
 ## Q1 2025 (January - March)
 
-### DEV-67: Migrate FAQ Embeddings from Pinecone to pgvector
+### DEV-BE-67: Migrate FAQ Embeddings from Pinecone to pgvector
 **Priority:** HIGH | **Effort:** 3-5 days (with Claude Code) | **Dependencies:** None
 
 **Problem:**
@@ -176,11 +177,11 @@ FAQ/Golden set embeddings currently use Pinecone (`app/orchestrators/golden.py:1
 
 ---
 
-### DEV-68: Remove Pinecone Integration Code
-**Priority:** HIGH | **Effort:** 1-2 days (with Claude Code) | **Dependencies:** DEV-67 ✅ (must complete first)
+### DEV-BE-68: Remove Pinecone Integration Code
+**Priority:** HIGH | **Effort:** 1-2 days (with Claude Code) | **Dependencies:** DEV-BE-67 ✅ (must complete first)
 
 **Problem:**
-Pinecone integration code (600+ lines) adds maintenance burden and confuses developers. After FAQ migration (DEV-67), all Pinecone code is dead code.
+Pinecone integration code (600+ lines) adds maintenance burden and confuses developers. After FAQ migration (DEV-BE-67), all Pinecone code is dead code.
 
 **Implementation Tasks:**
 
@@ -220,8 +221,8 @@ Pinecone integration code (600+ lines) adds maintenance burden and confuses deve
 
 ---
 
-### DEV-69: Expand RSS Feed Sources Beyond Agenzia delle Entrate
-**Priority:** HIGH | **Effort:** 1 week (with Claude Code) | **Dependencies:** DEV-66 ✅ (RSS infrastructure complete)
+### DEV-BE-69: Expand RSS Feed Sources Beyond Agenzia delle Entrate
+**Priority:** HIGH | **Effort:** 1 week (with Claude Code) | **Dependencies:** DEV-BE-66 ✅ (RSS infrastructure complete)
 
 **Problem:**
 Currently only 2 RSS feeds configured (both from Agenzia delle Entrate). Missing coverage of other critical Italian regulatory sources.
@@ -276,8 +277,8 @@ Currently only 2 RSS feeds configured (both from Agenzia delle Entrate). Missing
 
 ---
 
-### DEV-70: Daily RSS Collection Email Report
-**Priority:** MEDIUM | **Effort:** 2-3 days (with Claude Code) | **Dependencies:** DEV-69 ✅ (RSS feeds expanded)
+### DEV-BE-70: Daily RSS Collection Email Report
+**Priority:** MEDIUM | **Effort:** 2-3 days (with Claude Code) | **Dependencies:** DEV-BE-69 ✅ (RSS feeds expanded)
 
 **Problem:**
 No visibility into daily RSS feed ingestion. Team doesn't know if feeds are working, how many documents were added, or if there are errors.
@@ -353,7 +354,7 @@ RSS_REPORT_TIME=08:00  # Daily at 8am
 
 ---
 
-### DEV-71: Disable Emoji in LLM Responses
+### DEV-BE-71: Disable Emoji in LLM Responses
 **Priority:** MEDIUM | **Effort:** 1-2 days (with Claude Code) | **Dependencies:** None
 
 **Problem:**
@@ -406,12 +407,12 @@ Add explicit instruction to system prompts to disable emoji usage. Update all pr
 
 ---
 
-### DEV-72: Implement Expert Feedback System
+### DEV-BE-72: Implement Expert Feedback System
 **Priority:** HIGH | **Effort:** 2 weeks (with Claude Code) | **Dependencies:** None
 
 **Frontend Integration:**
-This backend task is linked to **DEV-004** in frontend roadmap:
-- **Frontend Task:** DEV-004: Implement Super Users Feedback on Answers (Expert Feedback System)
+This backend task is linked to **DEV-BE-004** in frontend roadmap:
+- **Frontend Task:** DEV-BE-004: Implement Super Users Feedback on Answers (Expert Feedback System)
 - **Location:** `/Users/micky/WebstormProjects/PratikoAiWebApp/ARCHITECTURE_ROADMAP.md`
 - **Coordination Required:** Backend APIs must be completed BEFORE frontend implementation
 - **API Endpoints:** Frontend will consume `/api/v1/feedback/*` endpoints created in this task
@@ -560,8 +561,8 @@ CREATE TABLE faq_candidates (
 
 ---
 
-### DEV-74: GDPR Compliance Audit (QA Environment)
-**Priority:** HIGH | **Effort:** 3-4 days (with Claude Code generating checklists/docs) | **Dependencies:** DEV-73 ✅ (QA environment live)
+### DEV-BE-74: GDPR Compliance Audit (QA Environment)
+**Priority:** HIGH | **Effort:** 3-4 days (with Claude Code generating checklists/docs) | **Dependencies:** DEV-BE-73 ✅ (QA environment live)
 
 **Problem:**
 Must ensure GDPR compliance before any production launch. QA environment is the first place to validate compliance features.
@@ -657,7 +658,7 @@ Comprehensive GDPR compliance audit on QA environment to validate all required f
 ---
 
 
-### DEV-75: Deploy QA Environment (Hetzner VPS)
+### DEV-BE-75: Deploy QA Environment (Hetzner VPS)
 **Priority:** HIGH | **Effort:** 1 week (mostly waiting for Hetzner approval) | **Dependencies:** None
 
 **⚠️ IMPORTANT:** Contact Hetzner support first - they have a strict onboarding process for new clients.
@@ -724,7 +725,7 @@ Deploy complete PratikoAI backend to Hetzner VPS using existing docker-compose.y
 
 ---
 
-### DEV-76: Fix Cache Key + Add Semantic Layer
+### DEV-BE-76: Fix Cache Key + Add Semantic Layer
 **Priority:** HIGH | **Effort:** 1 week (with Claude Code) | **Dependencies:** None
 
 **Problem:**
@@ -818,14 +819,14 @@ cache_key = sha256({
 - ✅ Backward compatible with Phase 1 cache
 
 **Expected Impact:**
-- **Before DEV-77:** 0-5% hit rate (broken cache)
+- **Before DEV-BE-77:** 0-5% hit rate (broken cache)
 - **After Phase 1:** 20-30% hit rate (fixed hash-based cache)
 - **After Phase 2:** 60-70% hit rate (hash + semantic)
 - **Cost savings:** At 60% hit rate, save $1,500-1,800/month in LLM costs (at 500 users × 50 queries/day)
 
 ---
 
-### DEV-77: Implement Prometheus + Grafana Monitoring
+### DEV-BE-77: Implement Prometheus + Grafana Monitoring
 **Priority:** HIGH | **Effort:** 1-2 weeks (dashboards already in docker-compose.yml) | **Dependencies:** None
 
 **Problem:**
@@ -916,7 +917,7 @@ Industry-standard observability stack: Prometheus (metrics collection) + Grafana
 
 ---
 
-### DEV-78: Cross-Encoder Reranking
+### DEV-BE-78: Cross-Encoder Reranking
 **Priority:** MEDIUM | **Effort:** 1 week (with Claude Code) | **Dependencies:** None
 
 **Problem:**
@@ -985,7 +986,7 @@ Two-stage retrieval:
 
 ## Q2 2025 (April - June)
 
-### DEV-79: Upgrade to HNSW Index
+### DEV-BE-79: Upgrade to HNSW Index
 **Priority:** MEDIUM | **Effort:** 3-5 days (with Claude Code) | **Dependencies:** None
 
 **Problem:**
@@ -1016,7 +1017,7 @@ WITH (m = 16, ef_construction = 64);
 
 ---
 
-### DEV-80: Italian Financial Dictionary
+### DEV-BE-80: Italian Financial Dictionary
 **Priority:** LOW | **Effort:** 1 week (with Claude Code generating dictionary) | **Dependencies:** None
 
 **Problem:**
@@ -1047,8 +1048,8 @@ Custom Italian financial dictionary with synonym mappings:
 
 ---
 
-### DEV-81: Expand Monitoring Dashboards
-**Priority:** LOW | **Effort:** 2-3 days (with Claude Code) | **Dependencies:** DEV-77 ✅
+### DEV-BE-81: Expand Monitoring Dashboards
+**Priority:** LOW | **Effort:** 2-3 days (with Claude Code) | **Dependencies:** DEV-BE-77 ✅
 
 **Tasks:**
 - [ ] Add "Document Ingestion" dashboard
@@ -1060,7 +1061,7 @@ Custom Italian financial dictionary with synonym mappings:
 
 ## Backlog (Q3+ or Deferred)
 
-### DEV-82: LLM Fallback to Claude/Gemini
+### DEV-BE-82: LLM Fallback to Claude/Gemini
 **Effort:** 1 week (with Claude Code) | **Priority:** MEDIUM (reduces SPOF)
 
 **Problem:** If OpenAI API fails (outage, rate limits, account issues), entire RAG system stops working. No answers for users.
@@ -1083,11 +1084,11 @@ Custom Italian financial dictionary with synonym mappings:
 - ✅ Quality comparable across providers (manual evaluation on 50 queries)
 - ✅ Grafana dashboard shows LLM provider distribution
 
-**Trigger:** After DEV-77 (monitoring) is complete
+**Trigger:** After DEV-BE-77 (monitoring) is complete
 
 ---
 
-### DEV-83: Multi-Region PostgreSQL Replica
+### DEV-BE-83: Multi-Region PostgreSQL Replica
 **Effort:** 2-3 weeks (with Claude Code for config/scripts) | **Priority:** LOW (only if needed for compliance/DR)
 
 **Problem:** Single-region PostgreSQL deployment. If region fails, complete data loss (unless backups restore, which takes hours).
@@ -1107,14 +1108,14 @@ Custom Italian financial dictionary with synonym mappings:
 
 ---
 
-### DEV-84: Multi-Tenancy Support
+### DEV-BE-84: Multi-Tenancy Support
 **Effort:** 3-4 weeks (with Claude Code) | **Priority:** LOW (only if white-label deployment needed)
 
 **Trigger:** White-label product requirement
 
 ---
 
-### DEV-85: Configure PostgreSQL High Availability
+### DEV-BE-85: Configure PostgreSQL High Availability
 **Effort:** 1 day (with Claude Code generating configs) | **Priority:** HIGH (production readiness)
 
 **What is High Availability?**
@@ -1139,7 +1140,7 @@ Set up PostgreSQL streaming replication with automatic failover using Patroni or
 
 ---
 
-### DEV-86: Automated Index Health Monitoring + Rebuild
+### DEV-BE-86: Automated Index Health Monitoring + Rebuild
 **Effort:** 2-3 days (with Claude Code generating scripts/dashboards) | **Priority:** MEDIUM
 
 **Problem:** If FTS (GIN) or pgvector (IVFFlat) indexes become corrupted, queries become extremely slow (10-100x slower). Currently requires manual detection + rebuild.
@@ -1162,16 +1163,16 @@ Set up PostgreSQL streaming replication with automatic failover using Patroni or
 - ✅ Automated rebuild script tested on QA
 - ✅ Runbook documents emergency rebuild procedure
 
-**Trigger:** After DEV-77 (Prometheus/Grafana monitoring)
+**Trigger:** After DEV-BE-77 (Prometheus/Grafana monitoring)
 
 ---
 
-### DEV-87: User Subscription & Payment Management
-**Priority:** CRITICAL | **Effort:** 2-3 weeks (with Claude Code) | **Dependencies:** DEV-73 ✅ (QA environment for testing)
+### DEV-BE-87: User Subscription & Payment Management
+**Priority:** CRITICAL | **Effort:** 2-3 weeks (with Claude Code) | **Dependencies:** DEV-BE-73 ✅ (QA environment for testing)
 
 **Frontend Integration:**
-This backend task is linked to **DEV-009** in frontend roadmap:
-- **Frontend Task:** DEV-009: Integrate User Subscription Payment (Stripe)
+This backend task is linked to **DEV-BE-009** in frontend roadmap:
+- **Frontend Task:** DEV-BE-009: Integrate User Subscription Payment (Stripe)
 - **Location:** `/Users/micky/WebstormProjects/PratikoAiWebApp/ARCHITECTURE_ROADMAP.md`
 - **Coordination Required:** Backend APIs must be completed BEFORE frontend implementation
 - **API Endpoints:** Frontend will consume `/api/v1/subscriptions/*` and `/api/v1/webhooks/stripe` endpoints
@@ -1345,8 +1346,8 @@ Implement complete subscription management system with Stripe integration, usage
 
 ---
 
-### DEV-88: Deploy Preprod Environment (Hetzner VPS)
-**Priority:** HIGH | **Effort:** 3-4 days (QA is template) | **Dependencies:** DEV-73 ✅ (QA deployment complete) + DEV-87 ✅ (payment system testable)
+### DEV-BE-88: Deploy Preprod Environment (Hetzner VPS)
+**Priority:** HIGH | **Effort:** 3-4 days (QA is template) | **Dependencies:** DEV-BE-73 ✅ (QA deployment complete) + DEV-BE-87 ✅ (payment system testable)
 
 **Problem:**
 Need production-like environment for final testing before deploying to production. QA is for feature testing, Preprod is for release validation.
@@ -1410,8 +1411,8 @@ Deploy complete PratikoAI backend to separate Hetzner VPS with production-like c
 
 ---
 
-### DEV-89: GDPR Compliance Audit (Preprod Environment)
-**Priority:** HIGH | **Effort:** 2-3 days (QA audit is template) | **Dependencies:** DEV-88 ✅ (Preprod live) + DEV-75 ✅ (QA audit complete)
+### DEV-BE-89: GDPR Compliance Audit (Preprod Environment)
+**Priority:** HIGH | **Effort:** 2-3 days (QA audit is template) | **Dependencies:** DEV-BE-88 ✅ (Preprod live) + DEV-BE-75 ✅ (QA audit complete)
 
 **Problem:**
 Need to validate GDPR compliance with production-like configuration and data before production launch.
@@ -1445,7 +1446,7 @@ Run same GDPR audit on Preprod environment with production-like data and configu
 **Implementation Tasks:**
 
 **Days 1-2: Compliance Testing**
-- [ ] Run full GDPR audit checklist from DEV-74
+- [ ] Run full GDPR audit checklist from DEV-BE-74
 - [ ] Test with production-like data volume
 - [ ] Validate all remediation from QA audit
 - [ ] Test payment data handling (GDPR Article 15 - Right to Access)
@@ -1468,8 +1469,8 @@ Run same GDPR audit on Preprod environment with production-like data and configu
 
 ---
 
-### DEV-90: Deploy Production Environment (Hetzner VPS)
-**Priority:** CRITICAL | **Effort:** 1 week (with production hardening) | **Dependencies:** DEV-88 ✅ (Preprod validated) + DEV-89 ✅ (Preprod GDPR audit passed)
+### DEV-BE-90: Deploy Production Environment (Hetzner VPS)
+**Priority:** CRITICAL | **Effort:** 1 week (with production hardening) | **Dependencies:** DEV-BE-88 ✅ (Preprod validated) + DEV-BE-89 ✅ (Preprod GDPR audit passed)
 
 **Problem:**
 Need production environment for paying customers. Must be reliable, performant, and cost-effective.
@@ -1560,8 +1561,8 @@ Deploy complete PratikoAI backend to Hetzner VPS with production configuration a
 
 ---
 
-### DEV-91: GDPR Compliance Audit (Production Environment)
-**Priority:** CRITICAL | **Effort:** 4-5 days (requires legal review) | **Dependencies:** DEV-90 ✅ (Production live) + DEV-89 ✅ (Preprod audit complete)
+### DEV-BE-91: GDPR Compliance Audit (Production Environment)
+**Priority:** CRITICAL | **Effort:** 4-5 days (requires legal review) | **Dependencies:** DEV-BE-90 ✅ (Production live) + DEV-BE-89 ✅ (Preprod audit complete)
 
 **Problem:**
 Final GDPR compliance validation required before accepting real user data in production.
@@ -1663,26 +1664,26 @@ Comprehensive production GDPR audit with security hardening and compliance docum
 
 ### Q1 2025 Targets
 
-- [ ] **Pinecone removed:** Zero Pinecone costs on billing (DEV-67, DEV-68)
-- [ ] **RSS feeds expanded:** 8+ sources configured (DEV-69)
-- [ ] **Daily RSS email reports:** Automated feed monitoring (DEV-70)
-- [ ] **No emojis in responses:** Professional, formal tone for Italian tax/legal context (DEV-71)
-- [ ] **Expert feedback system:** Complete S113-S131 flow, auto-approval for trusted experts (DEV-72)
-- [ ] **QA environment deployed:** On Hetzner (DEV-73)
-- [ ] **QA GDPR audit complete:** (DEV-75)
-- [ ] **Payment system live:** Stripe integration, subscriptions, reminders (DEV-87)
-- [ ] **All environments deployed:** Preprod, Production on Hetzner (DEV-88, DEV-90)
-- [ ] **GDPR compliance:** All audits complete and certified (DEV-75, DEV-89, DEV-91)
-- [ ] **Cache hit rate >60%:** Hash + semantic caching (DEV-76)
-- [ ] **Monitoring live:** 4 Grafana dashboards operational, alerts configured (DEV-77)
-- [ ] **Reranking deployed:** +10% precision improvement (DEV-78)
+- [ ] **Pinecone removed:** Zero Pinecone costs on billing (DEV-BE-67, DEV-BE-68)
+- [ ] **RSS feeds expanded:** 8+ sources configured (DEV-BE-69)
+- [ ] **Daily RSS email reports:** Automated feed monitoring (DEV-BE-70)
+- [ ] **No emojis in responses:** Professional, formal tone for Italian tax/legal context (DEV-BE-71)
+- [ ] **Expert feedback system:** Complete S113-S131 flow, auto-approval for trusted experts (DEV-BE-72)
+- [ ] **QA environment deployed:** On Hetzner (DEV-BE-73)
+- [ ] **QA GDPR audit complete:** (DEV-BE-75)
+- [ ] **Payment system live:** Stripe integration, subscriptions, reminders (DEV-BE-87)
+- [ ] **All environments deployed:** Preprod, Production on Hetzner (DEV-BE-88, DEV-BE-90)
+- [ ] **GDPR compliance:** All audits complete and certified (DEV-BE-75, DEV-BE-89, DEV-BE-91)
+- [ ] **Cache hit rate >60%:** Hash + semantic caching (DEV-BE-76)
+- [ ] **Monitoring live:** 4 Grafana dashboards operational, alerts configured (DEV-BE-77)
+- [ ] **Reranking deployed:** +10% precision improvement (DEV-BE-78)
 - [ ] **Query latency p95 <200ms:** With all enhancements enabled
 
 ### Q2 2025 Targets
 
-- [ ] **HNSW index deployed:** 20-30% vector search latency reduction (DEV-79)
-- [ ] **Italian dictionary live:** +5% FTS recall improvement (DEV-80)
-- [ ] **Extended dashboards:** Document ingestion + user behavior metrics (DEV-81)
+- [ ] **HNSW index deployed:** 20-30% vector search latency reduction (DEV-BE-79)
+- [ ] **Italian dictionary live:** +5% FTS recall improvement (DEV-BE-80)
+- [ ] **Extended dashboards:** Document ingestion + user behavior metrics (DEV-BE-81)
 
 ### 6-Month (End of Q2 2025)
 
@@ -1696,18 +1697,18 @@ Comprehensive production GDPR audit with security hardening and compliance docum
 
 | Date | Decision | Rationale | Task |
 |------|----------|-----------|------|
-| 2025-11-14 | Migrate FAQs to pgvector | Simplify architecture, reduce cost $150-330/month | DEV-67 |
-| 2025-11-14 | Remove Pinecone entirely | Over-engineered for current scale, never used in main KB, pgvector sufficient | DEV-68 |
-| 2025-11-14 | Expand RSS feeds | Better regulatory coverage (INPS, MEF, Corte di Cassazione, etc.) | DEV-69 |
-| 2025-11-14 | Daily RSS email reports | Proactive feed monitoring and quality tracking | DEV-70 |
-| 2025-11-14 | Disable emoji in LLM responses | Professional Italian tax/legal context requires formal tone | DEV-71 |
-| 2025-11-14 | Implement expert feedback system | Complete S113-S131 architecture flow with auto-approval | DEV-72 |
-| 2025-11-14 | Deploy to Hetzner (not AWS) | Cost: $33/month (all 3 envs) vs $330+/month AWS | DEV-73, DEV-88, DEV-90 |
-| 2025-11-14 | GDPR compliance audits | Required before production launch with real users | DEV-75, DEV-89, DEV-91 |
-| 2025-11-14 | Stripe payment integration | Enable subscription revenue, €2,440/month projected | DEV-87 |
-| 2025-11-14 | Fix cache key (remove doc_hashes) | Improve hit rate from 0-5% to 60-70%, save $1,500-1,800/month | DEV-76 |
-| 2025-11-14 | Implement Prometheus + Grafana | Industry standard monitoring, automatic alerting | DEV-77 |
-| 2025-11-14 | Add cross-encoder reranking | +10-15% precision improvement | DEV-78 |
+| 2025-11-14 | Migrate FAQs to pgvector | Simplify architecture, reduce cost $150-330/month | DEV-BE-67 |
+| 2025-11-14 | Remove Pinecone entirely | Over-engineered for current scale, never used in main KB, pgvector sufficient | DEV-BE-68 |
+| 2025-11-14 | Expand RSS feeds | Better regulatory coverage (INPS, MEF, Corte di Cassazione, etc.) | DEV-BE-69 |
+| 2025-11-14 | Daily RSS email reports | Proactive feed monitoring and quality tracking | DEV-BE-70 |
+| 2025-11-14 | Disable emoji in LLM responses | Professional Italian tax/legal context requires formal tone | DEV-BE-71 |
+| 2025-11-14 | Implement expert feedback system | Complete S113-S131 architecture flow with auto-approval | DEV-BE-72 |
+| 2025-11-14 | Deploy to Hetzner (not AWS) | Cost: $33/month (all 3 envs) vs $330+/month AWS | DEV-BE-73, DEV-BE-88, DEV-BE-90 |
+| 2025-11-14 | GDPR compliance audits | Required before production launch with real users | DEV-BE-75, DEV-BE-89, DEV-BE-91 |
+| 2025-11-14 | Stripe payment integration | Enable subscription revenue, €2,440/month projected | DEV-BE-87 |
+| 2025-11-14 | Fix cache key (remove doc_hashes) | Improve hit rate from 0-5% to 60-70%, save $1,500-1,800/month | DEV-BE-76 |
+| 2025-11-14 | Implement Prometheus + Grafana | Industry standard monitoring, automatic alerting | DEV-BE-77 |
+| 2025-11-14 | Add cross-encoder reranking | +10-15% precision improvement | DEV-BE-78 |
 | 2025-11-11 | Add publication_date to knowledge_items | Temporal filtering for regulations | Completed |
 | 2025-11-03 | Add junk detection and text_quality | Filter low-quality extractions | Completed |
 | 2025-11-03 | Implement SSE keepalive (backend) | Prevent timeout on long RAG queries (15-20s) | Completed |
@@ -1732,7 +1733,7 @@ Comprehensive production GDPR audit with security hardening and compliance docum
 
 - **Current Architecture:** `docs/DATABASE_ARCHITECTURE.md` - Detailed technical documentation
 - **Advanced Patterns:** `docs/ADVANCED_VECTOR_SEARCH.md` - pgvector query optimization guide
-- **Monitoring:** `docs/monitoring/` - Grafana dashboards and alert runbooks (after DEV-78)
+- **Monitoring:** `docs/monitoring/` - Grafana dashboards and alert runbooks (after DEV-BE-78)
 - **GDPR Compliance:** `docs/compliance/` - GDPR audit reports and compliance documentation
 - **Deployment:** `docs/deployment/` - Hetzner deployment guides for all environments
 

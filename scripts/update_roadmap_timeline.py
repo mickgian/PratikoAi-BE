@@ -8,11 +8,16 @@ This script:
 3. Updates the Deployment Timeline section
 4. Triggers email notification if new tasks detected or timelines changed
 
+Email Notification Rules:
+- Maximum 1 email per day
+- Only sent at 6:00 AM or later
+- Only sent if there are actual changes (new/removed tasks or timeline changes)
+
 Usage:
     python scripts/update_roadmap_timeline.py [--notify] [--dry-run]
 
 Arguments:
-    --notify: Send email notification to ROADMAP_NOTIFICATION_EMAIL
+    --notify: Send email notification to ROADMAP_NOTIFICATION_EMAIL (subject to daily limit)
     --dry-run: Print changes without modifying files
 """
 
@@ -110,8 +115,8 @@ class RoadmapParser:
         content = self.roadmap_path.read_text(encoding="utf-8")
         tasks = {}
 
-        # Find all DEV task sections
-        task_pattern = re.compile(r"### (DEV-\d+): (.+?)\n\*\*Priority:\*\*(.+?)(?=\n###|\Z)", re.DOTALL)
+        # Find all DEV task sections (DEV-BE-XX or DEV-FE-XX format)
+        task_pattern = re.compile(r"### (DEV-(?:BE|FE)-\d+): (.+?)\n\*\*Priority:\*\*(.+?)(?=\n###|\Z)", re.DOTALL)
 
         for match in task_pattern.finditer(content):
             task_id = match.group(1)
@@ -202,8 +207,8 @@ class RoadmapParser:
         if deps_str.lower() == "none":
             return []
 
-        # Extract all DEV-XX references
-        dep_pattern = re.compile(r"DEV-\d+")
+        # Extract all DEV-BE-XX or DEV-FE-XX references
+        dep_pattern = re.compile(r"DEV-(?:BE|FE)-\d+")
         dependencies = dep_pattern.findall(deps_str)
 
         # Filter out self-reference
@@ -222,6 +227,8 @@ class TimelineCalculator:
 
     def __init__(self, tasks: dict[str, Task]):
         self.tasks = tasks
+        # Store task IDs in roadmap order for sequential calculation
+        self.task_order = list(tasks.keys())
 
     def calculate_deployment_timelines(self) -> dict[str, dict[str, any]]:
         """
@@ -232,11 +239,26 @@ class TimelineCalculator:
         """
         timelines = {}
 
-        # QA Environment (DEV-75)
-        qa_prereqs = self._get_prerequisites("DEV-75")
-        qa_critical_path = self._calculate_critical_path(qa_prereqs)
-        qa_optimistic = qa_critical_path
-        qa_conservative = qa_optimistic * 1.3  # 30% buffer for sequential work
+        # Auto-detect repository type by checking which deployment tasks exist
+        # Backend: DEV-BE-75, DEV-BE-88, DEV-BE-90
+        # Frontend: DEV-FE-005, DEV-FE-010
+        if "DEV-BE-75" in self.tasks:
+            qa_task_id = "DEV-BE-75"
+            preprod_task_id = "DEV-BE-88"
+            prod_task_id = "DEV-BE-90"
+        elif "DEV-FE-005" in self.tasks:
+            qa_task_id = "DEV-FE-005"
+            preprod_task_id = "DEV-FE-010"
+            prod_task_id = "DEV-FE-010"  # Frontend uses same task for preprod/prod
+        else:
+            # No deployment tasks found
+            return {}
+
+        # QA Environment - Sequential sum of ALL tasks before deployment
+        qa_prereqs = self._get_prerequisites(qa_task_id)
+        qa_sequential_sum = self._calculate_sequential_sum(qa_task_id)
+        qa_optimistic = qa_sequential_sum
+        qa_conservative = qa_optimistic * 1.3  # 30% buffer for delays/blockers
 
         # Calculate date ranges
         qa_opt_start, qa_opt_end = calculate_date_range(0, qa_optimistic / 7 + 1)
@@ -246,16 +268,16 @@ class TimelineCalculator:
             "optimistic_weeks": qa_optimistic / 7,
             "conservative_weeks": qa_conservative / 7,
             "prerequisites": qa_prereqs,
-            "critical_path_days": qa_critical_path,
-            "task_id": "DEV-75",
+            "sequential_sum_days": qa_sequential_sum,
+            "task_id": qa_task_id,
             "optimistic_date_range": f"{qa_opt_start} - {qa_opt_end}",
             "conservative_date_range": f"{qa_cons_start} - {qa_cons_end}",
         }
 
-        # Preprod Environment (DEV-88)
-        preprod_prereqs = self._get_prerequisites("DEV-88")
-        preprod_critical_path = self._calculate_critical_path(preprod_prereqs)
-        preprod_optimistic = preprod_critical_path
+        # Preprod Environment - Sequential sum of ALL tasks before deployment
+        preprod_prereqs = self._get_prerequisites(preprod_task_id)
+        preprod_sequential_sum = self._calculate_sequential_sum(preprod_task_id)
+        preprod_optimistic = preprod_sequential_sum
         preprod_conservative = preprod_optimistic * 1.4  # 40% buffer
 
         # Calculate date ranges
@@ -266,16 +288,16 @@ class TimelineCalculator:
             "optimistic_weeks": preprod_optimistic / 7,
             "conservative_weeks": preprod_conservative / 7,
             "prerequisites": preprod_prereqs,
-            "critical_path_days": preprod_critical_path,
-            "task_id": "DEV-88",
+            "sequential_sum_days": preprod_sequential_sum,
+            "task_id": preprod_task_id,
             "optimistic_date_range": f"{preprod_opt_start} - {preprod_opt_end}",
             "conservative_date_range": f"{preprod_cons_start} - {preprod_cons_end}",
         }
 
-        # Production Environment (DEV-90)
-        prod_prereqs = self._get_prerequisites("DEV-90")
-        prod_critical_path = self._calculate_critical_path(prod_prereqs)
-        prod_optimistic = prod_critical_path
+        # Production Environment - Sequential sum of ALL tasks before deployment
+        prod_prereqs = self._get_prerequisites(prod_task_id)
+        prod_sequential_sum = self._calculate_sequential_sum(prod_task_id)
+        prod_optimistic = prod_sequential_sum
         prod_conservative = prod_optimistic * 1.5  # 50% buffer for production
 
         # Calculate date ranges
@@ -286,8 +308,8 @@ class TimelineCalculator:
             "optimistic_weeks": prod_optimistic / 7,
             "conservative_weeks": prod_conservative / 7,
             "prerequisites": prod_prereqs,
-            "critical_path_days": prod_critical_path,
-            "task_id": "DEV-90",
+            "sequential_sum_days": prod_sequential_sum,
+            "task_id": prod_task_id,
             "optimistic_date_range": f"{prod_opt_start} - {prod_opt_end}",
             "conservative_date_range": f"{prod_cons_start} - {prod_cons_end}",
         }
@@ -302,9 +324,13 @@ class TimelineCalculator:
         # Hard-coded logical prerequisites for deployment tasks
         # These represent the actual deployment flow dependencies
         DEPLOYMENT_PREREQUISITES = {
-            "DEV-75": ["DEV-67", "DEV-68", "DEV-69", "DEV-70", "DEV-71", "DEV-72", "DEV-74"],
-            "DEV-88": ["DEV-75", "DEV-87"],  # QA + Payment System
-            "DEV-90": ["DEV-88", "DEV-89", "DEV-91"],  # Preprod + GDPR Audits
+            # Backend deployment tasks
+            "DEV-BE-75": ["DEV-BE-67", "DEV-BE-68", "DEV-BE-69", "DEV-BE-70", "DEV-BE-71", "DEV-BE-72", "DEV-BE-74"],
+            "DEV-BE-88": ["DEV-BE-75", "DEV-BE-87"],  # QA + Payment System
+            "DEV-BE-90": ["DEV-BE-88", "DEV-BE-89", "DEV-BE-91"],  # Preprod + GDPR Audits
+            # Frontend deployment tasks
+            "DEV-FE-005": ["DEV-FE-002", "DEV-FE-003", "DEV-FE-004"],  # QA
+            "DEV-FE-010": ["DEV-FE-005", "DEV-FE-006", "DEV-FE-007", "DEV-FE-008", "DEV-FE-009"],  # Preprod/Production
         }
 
         # If this is a deployment task with known prerequisites, use those
@@ -384,28 +410,58 @@ class TimelineCalculator:
         max_path = max(longest_path(tid) for tid in task_ids if tid in self.tasks)
         return max_path
 
+    def _calculate_sequential_sum(self, deployment_task_id: str) -> float:
+        """
+        Calculate TOTAL effort by summing ALL tasks that appear BEFORE
+        the deployment task in roadmap order (sequential completion).
+
+        This gives realistic timeline: "How long until we can deploy to X environment?"
+        assuming we complete all tasks in order (no parallelization).
+        """
+        if deployment_task_id not in self.task_order:
+            return 0.0
+
+        # Find index of deployment task
+        deploy_index = self.task_order.index(deployment_task_id)
+
+        # Sum effort of ALL tasks before this deployment task
+        total_effort = 0.0
+        for i in range(deploy_index):
+            task_id = self.task_order[i]
+            if task_id in self.tasks:
+                task = self.tasks[task_id]
+                total_effort += task.effort_days_avg
+
+        # Add the deployment task itself
+        if deployment_task_id in self.tasks:
+            total_effort += self.tasks[deployment_task_id].effort_days_avg
+
+        return total_effort
+
     def identify_blockers(self) -> list[dict[str, any]]:
         """Identify critical blocker tasks."""
         blockers = []
 
-        # DEV-87 (Payment System)
-        if "DEV-87" in self.tasks:
-            task = self.tasks["DEV-87"]
+        # Payment System (Backend: DEV-BE-87, Frontend: DEV-FE-009)
+        payment_task_id = "DEV-BE-87" if "DEV-BE-87" in self.tasks else "DEV-FE-009" if "DEV-FE-009" in self.tasks else None
+        if payment_task_id:
+            task = self.tasks[payment_task_id]
             blockers.append(
                 {
-                    "id": "DEV-87",
+                    "id": payment_task_id,
                     "title": task.title,
                     "reason": "Blocks Preprod/Production deployment",
                     "effort_weeks": task.effort_days_avg / 7,
                 }
             )
 
-        # DEV-72 (Expert Feedback)
-        if "DEV-72" in self.tasks:
-            task = self.tasks["DEV-72"]
+        # Expert Feedback (Backend: DEV-BE-72, Frontend: DEV-FE-004)
+        expert_task_id = "DEV-BE-72" if "DEV-BE-72" in self.tasks else "DEV-FE-004" if "DEV-FE-004" in self.tasks else None
+        if expert_task_id:
+            task = self.tasks[expert_task_id]
             blockers.append(
                 {
-                    "id": "DEV-72",
+                    "id": expert_task_id,
                     "title": task.title,
                     "reason": "Blocks QA deployment (longest task)",
                     "effort_weeks": task.effort_days_avg / 7,
@@ -466,22 +522,23 @@ class RoadmapUpdater:
 
         content = f"""**Deployment Timeline Estimates:**
 
-📅 **Time to QA Environment (DEV-75):**
+📅 **Time to QA Environment ({qa["task_id"]}):**
 - **Optimistic (parallel work):** ~{qa["optimistic_weeks"]:.0f}-{qa["optimistic_weeks"] + 1:.0f} weeks ({qa["optimistic_date_range"]})
 - **Conservative (sequential):** ~{qa["conservative_weeks"]:.0f}-{qa["conservative_weeks"] + 1:.0f} weeks ({qa["conservative_date_range"]})
 - **Prerequisites:** {", ".join(qa["prerequisites"][:5])}{"..." if len(qa["prerequisites"]) > 5 else ""}
-- **Critical path:** {qa["critical_path_days"]:.0f} days ({qa["critical_path_days"] / 7:.1f} weeks)
+- **Total effort (sequential):** {qa["sequential_sum_days"]:.0f} days ({qa["sequential_sum_days"] / 7:.1f} weeks)
 
-📅 **Time to Preprod Environment (DEV-88):**
+📅 **Time to Preprod Environment ({preprod["task_id"]}):**
 - **Optimistic:** ~{preprod["optimistic_weeks"]:.0f}-{preprod["optimistic_weeks"] + 2:.0f} weeks from now ({preprod["optimistic_date_range"]})
 - **Conservative:** ~{preprod["conservative_weeks"]:.0f}-{preprod["conservative_weeks"] + 2:.0f} weeks from now ({preprod["conservative_date_range"]})
 - **Prerequisites:** Path to QA + {", ".join(preprod["prerequisites"][-3:])}
-- **Critical path:** {preprod["critical_path_days"]:.0f} days ({preprod["critical_path_days"] / 7:.1f} weeks)
+- **Total effort (sequential):** {preprod["sequential_sum_days"]:.0f} days ({preprod["sequential_sum_days"] / 7:.1f} weeks)
 
-📅 **Time to Production Environment (DEV-90):**
+📅 **Time to Production Environment ({prod["task_id"]}):**
 - **Optimistic:** ~{prod["optimistic_weeks"]:.0f}-{prod["optimistic_weeks"] + 1.5:.1f} weeks from now ({prod["optimistic_date_range"]})
 - **Conservative:** ~{prod["conservative_weeks"]:.0f}-{prod["conservative_weeks"] + 3:.0f} weeks from now ({prod["conservative_date_range"]})
 - **Prerequisites:** Path to Preprod + {", ".join(prod["prerequisites"][-3:])}
+- **Total effort (sequential):** {prod["sequential_sum_days"]:.0f} days ({prod["sequential_sum_days"] / 7:.1f} weeks)
 - **Note:** Production launch requires full GDPR compliance and payment system validation
 
 **Key Dependencies:**
@@ -510,11 +567,88 @@ def save_cache(data: dict) -> None:
     """Save current timeline estimates to cache file."""
     cache_path = Path(__file__).parent.parent / ".roadmap_timeline_cache.json"
     try:
+        # Preserve last_email_sent field if it exists
+        if cache_path.exists():
+            try:
+                with open(cache_path, encoding="utf-8") as f:
+                    old_cache = json.load(f)
+                    if "last_email_sent" in old_cache:
+                        data["last_email_sent"] = old_cache["last_email_sent"]
+            except Exception:
+                pass  # If we can't read old cache, just continue
+
         with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         print(f"💾 Saved cache to {cache_path}")
     except Exception as e:
         print(f"⚠️  Failed to save cache: {e}")
+
+
+def should_send_email() -> bool:
+    """
+    Check if we should send an email based on daily limit and time.
+
+    Email sending rules:
+    - Maximum 1 email per day
+    - Only send at 6:00 AM (or later if script runs after 6 AM)
+    - Track last send time in cache
+
+    Returns:
+        True if we should send email, False otherwise
+    """
+    cache_path = Path(__file__).parent.parent / ".roadmap_timeline_cache.json"
+
+    # Get current time
+    now = datetime.now()
+    current_date = now.date()
+    current_hour = now.hour
+
+    # Load last send time from cache
+    if cache_path.exists():
+        try:
+            with open(cache_path, encoding="utf-8") as f:
+                cache = json.load(f)
+                last_email_sent = cache.get("last_email_sent")
+
+                if last_email_sent:
+                    last_send_date = datetime.fromisoformat(last_email_sent).date()
+
+                    # If already sent today, skip
+                    if last_send_date == current_date:
+                        print(f"ℹ️  Email already sent today at {last_email_sent}")
+                        return False
+        except Exception as e:
+            print(f"⚠️  Failed to check last email send time: {e}")
+
+    # Check if current time is 6 AM or later
+    if current_hour < 6:
+        print(f"ℹ️  Too early to send email (current time: {now.strftime('%H:%M')}). Email will be sent at 6:00 AM or later.")
+        return False
+
+    return True
+
+
+def record_email_sent() -> None:
+    """Record the timestamp of the last email sent."""
+    cache_path = Path(__file__).parent.parent / ".roadmap_timeline_cache.json"
+
+    try:
+        # Load existing cache
+        cache = {}
+        if cache_path.exists():
+            with open(cache_path, encoding="utf-8") as f:
+                cache = json.load(f)
+
+        # Update last email sent timestamp
+        cache["last_email_sent"] = datetime.now().isoformat()
+
+        # Save back to cache
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(cache, f, indent=2, ensure_ascii=False)
+
+        print(f"📝 Recorded email send time: {cache['last_email_sent']}")
+    except Exception as e:
+        print(f"⚠️  Failed to record email send time: {e}")
 
 
 def detect_changes(old_data: dict | None, new_data: dict) -> dict[str, any]:
@@ -707,24 +841,35 @@ def main():
     # Save cache
     save_cache(new_cache)
 
-    # Send notification if requested
-    if args.notify:
-        try:
-            from roadmap_email_notifier import send_timeline_notification
+    # Send notification if requested AND there are actual changes AND within time window
+    has_changes = bool(changes["new_tasks"] or changes["removed_tasks"] or changes["timeline_changes"])
 
-            # Pass both backend and frontend data to email notifier
-            combined_data = {
-                "backend": {"timelines": backend_timelines, "blockers": backend_blockers, "tasks": backend_tasks},
-                "frontend": {"timelines": frontend_timelines, "blockers": frontend_blockers, "tasks": frontend_tasks},
-                "changes": changes,
-            }
-            send_timeline_notification(combined_data)
-            print("📧 Email notification sent")
-        except Exception as e:
-            import traceback
+    if args.notify and has_changes:
+        # Check daily email limit and time window
+        if should_send_email():
+            try:
+                from roadmap_email_notifier import send_timeline_notification
 
-            print(f"⚠️  Email notification failed: {e}", file=sys.stderr)
-            print(f"Traceback: {traceback.format_exc()}")
+                # Pass both backend and frontend data to email notifier
+                combined_data = {
+                    "backend": {"timelines": backend_timelines, "blockers": backend_blockers, "tasks": backend_tasks},
+                    "frontend": {"timelines": frontend_timelines, "blockers": frontend_blockers, "tasks": frontend_tasks},
+                    "changes": changes,
+                }
+                send_timeline_notification(combined_data)
+                print("📧 Email notification sent")
+
+                # Record that we sent an email
+                record_email_sent()
+            except Exception as e:
+                import traceback
+
+                print(f"⚠️  Email notification failed: {e}", file=sys.stderr)
+                print(f"Traceback: {traceback.format_exc()}")
+        else:
+            print("ℹ️  Email sending skipped (daily limit or time window)")
+    elif args.notify and not has_changes:
+        print("ℹ️  No changes detected - skipping email notification")
 
     return 0
 

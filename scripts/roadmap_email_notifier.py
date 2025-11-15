@@ -88,7 +88,7 @@ def send_timeline_notification(combined_data: dict[str, any], recipient_email: s
         logger.info(f"   From: {from_email}")
 
         # Generate email content
-        subject = f"🗓️ Roadmap Timeline Updated - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        subject = f"🗓️ PratikoAI Timeline Updated - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         html_content = _generate_email_html(combined_data)
         logger.info("✅ Email content generated")
 
@@ -153,7 +153,7 @@ def _generate_email_html(combined_data: dict[str, any]) -> str:
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Roadmap Timeline Update</title>
+    <title>PratikoAI Timeline Update</title>
     <style>
         body {{
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -291,7 +291,7 @@ def _generate_email_html(combined_data: dict[str, any]) -> str:
 <body>
     <div class="container">
         <div class="header">
-            <h1>🗓️ Roadmap Timeline Updated</h1>
+            <h1>🗓️ PratikoAI Timeline Updated</h1>
             <p>PratikoAI Frontend + Backend - {current_time}</p>
         </div>
         <div class="content">
@@ -371,9 +371,9 @@ def _generate_email_html(combined_data: dict[str, any]) -> str:
             <div class="section-divider">🔧 Backend Timeline</div>
 """
         for env_name, env_label in [
-            ("qa", "QA Environment (DEV-75)"),
-            ("preprod", "Preprod Environment (DEV-88)"),
-            ("production", "Production Environment (DEV-90)"),
+            ("qa", "QA Environment (DEV-BE-75)"),
+            ("preprod", "Preprod Environment (DEV-BE-88)"),
+            ("production", "Production Environment (DEV-BE-90)"),
         ]:
             if env_name in backend_timelines:
                 timeline = backend_timelines[env_name]
@@ -389,8 +389,8 @@ def _generate_email_html(combined_data: dict[str, any]) -> str:
                     <span class="timeline-value">~{timeline["conservative_weeks"]:.0f}w ({timeline.get("conservative_date_range", "N/A")})</span>
                 </div>
                 <div class="timeline-row">
-                    <span class="timeline-label">Critical path:</span>
-                    <span class="timeline-value">{timeline["critical_path_days"]:.0f} days ({timeline["critical_path_days"] / 7:.1f} weeks)</span>
+                    <span class="timeline-label">Total effort (sequential):</span>
+                    <span class="timeline-value">{timeline["sequential_sum_days"]:.0f} days ({timeline["sequential_sum_days"] / 7:.1f} weeks)</span>
                 </div>
             </div>
 """
@@ -401,9 +401,9 @@ def _generate_email_html(combined_data: dict[str, any]) -> str:
             <div class="section-divider">💻 Frontend Timeline</div>
 """
         for env_name, env_label in [
-            ("qa", "QA Environment (DEV-005)"),
-            ("preprod", "Preprod Environment (DEV-010)"),
-            ("production", "Production Environment (DEV-010)"),
+            ("qa", "QA Environment (DEV-FE-005)"),
+            ("preprod", "Preprod Environment (DEV-FE-010)"),
+            ("production", "Production Environment (DEV-FE-010)"),
         ]:
             if env_name in frontend_timelines:
                 timeline = frontend_timelines[env_name]
@@ -419,8 +419,8 @@ def _generate_email_html(combined_data: dict[str, any]) -> str:
                     <span class="timeline-value">~{timeline["conservative_weeks"]:.0f}w ({timeline.get("conservative_date_range", "N/A")})</span>
                 </div>
                 <div class="timeline-row">
-                    <span class="timeline-label">Critical path:</span>
-                    <span class="timeline-value">{timeline["critical_path_days"]:.0f} days ({timeline["critical_path_days"] / 7:.1f} weeks)</span>
+                    <span class="timeline-label">Total effort (sequential):</span>
+                    <span class="timeline-value">{timeline["sequential_sum_days"]:.0f} days ({timeline["sequential_sum_days"] / 7:.1f} weeks)</span>
                 </div>
             </div>
 """
@@ -481,37 +481,37 @@ if __name__ == "__main__":
                 "qa": {
                     "optimistic_weeks": 3.5,
                     "conservative_weeks": 5.2,
-                    "prerequisites": ["DEV-67", "DEV-68"],
-                    "critical_path_days": 24.5,
+                    "prerequisites": ["DEV-BE-67", "DEV-BE-68"],
+                    "sequential_sum_days": 24.5,
                     "optimistic_date_range": "15 Nov - 6 Dec",
                     "conservative_date_range": "15 Nov - 20 Dec",
                 },
                 "preprod": {
                     "optimistic_weeks": 6.8,
                     "conservative_weeks": 10.2,
-                    "prerequisites": ["DEV-75", "DEV-87"],
-                    "critical_path_days": 47.6,
+                    "prerequisites": ["DEV-BE-75", "DEV-BE-87"],
+                    "sequential_sum_days": 47.6,
                     "optimistic_date_range": "15 Nov - 27 Dec",
                     "conservative_date_range": "15 Nov - 24 Gen",
                 },
                 "production": {
                     "optimistic_weeks": 7.5,
                     "conservative_weeks": 11.2,
-                    "prerequisites": ["DEV-88", "DEV-89"],
-                    "critical_path_days": 52.5,
+                    "prerequisites": ["DEV-BE-88", "DEV-BE-89"],
+                    "sequential_sum_days": 52.5,
                     "optimistic_date_range": "15 Nov - 3 Gen",
                     "conservative_date_range": "15 Nov - 31 Gen",
                 },
             },
             "blockers": [
-                {"id": "DEV-87", "title": "Payment System", "reason": "Blocks Preprod/Production deployment"},
-                {"id": "DEV-72", "title": "Expert Feedback", "reason": "Blocks QA deployment"},
+                {"id": "DEV-BE-87", "title": "Payment System", "reason": "Blocks Preprod/Production deployment"},
+                {"id": "DEV-BE-72", "title": "Expert Feedback", "reason": "Blocks QA deployment"},
             ],
             "tasks": {
-                "DEV-67": MockTask("Migrate FAQ Embeddings", 14),
-                "DEV-68": MockTask("Implement RAG System", 10),
-                "DEV-75": MockTask("Deploy QA Environment", 3, is_deployment=True),
-                "DEV-87": MockTask("Payment Management", 7, priority="CRITICAL"),
+                "DEV-BE-67": MockTask("Migrate FAQ Embeddings", 14),
+                "DEV-BE-68": MockTask("Implement RAG System", 10),
+                "DEV-BE-75": MockTask("Deploy QA Environment", 3, is_deployment=True),
+                "DEV-BE-87": MockTask("Payment Management", 7, priority="CRITICAL"),
             },
         },
         "frontend": {
@@ -519,19 +519,19 @@ if __name__ == "__main__":
                 "qa": {
                     "optimistic_weeks": 2.5,
                     "conservative_weeks": 3.5,
-                    "critical_path_days": 17.5,
+                    "sequential_sum_days": 17.5,
                     "optimistic_date_range": "15 Nov - 29 Nov",
                     "conservative_date_range": "15 Nov - 6 Dec",
                 }
             },
-            "blockers": [{"id": "DEV-004", "title": "Expert Feedback UI", "reason": "Blocks QA deployment"}],
+            "blockers": [{"id": "DEV-FE-004", "title": "Expert Feedback UI", "reason": "Blocks QA deployment"}],
             "tasks": {
-                "DEV-002": MockTask("Adjust UI for Citations", 4),
-                "DEV-004": MockTask("Expert Feedback System", 7),
+                "DEV-FE-002": MockTask("Adjust UI for Citations", 4),
+                "DEV-FE-004": MockTask("Expert Feedback System", 7),
             },
         },
         "changes": {
-            "new_tasks": ["DEV-87"],
+            "new_tasks": ["DEV-BE-87"],
             "removed_tasks": [],
             "timeline_changes": {
                 "backend_qa": {

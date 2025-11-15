@@ -93,7 +93,6 @@ class TestSSEFormatter:
         assert is_valid_sse_event(event2)
 
         # Valid comment (keepalive)
-        event3 = ": keepalive\n\n"
         # Note: Comments may or may not be considered "valid" depending on implementation
         # The key is they should not break parsing
 

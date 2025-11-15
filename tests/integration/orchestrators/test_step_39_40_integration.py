@@ -69,7 +69,7 @@ async def test_knowledge_items_flow_from_step_39_to_step_40():
         "content_truncated": False,
     }
 
-    result_40 = await step_40__build_context(
+    await step_40__build_context(
         messages=[], ctx=dict(state_after_39), context_builder_service=mock_context_builder
     )
 
@@ -163,7 +163,7 @@ async def test_context_builder_receives_kb_documents():
     }
 
     # Act - Step 40
-    result = await step_40__build_context(
+    await step_40__build_context(
         messages=[], ctx=dict(state_after_39), context_builder_service=mock_context_builder
     )
 

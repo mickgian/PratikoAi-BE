@@ -20,19 +20,19 @@ This roadmap tracks planned architectural improvements and enhancements for the 
 📅 **Time to QA Environment (DEV-75):**
 - **Optimistic (parallel work):** ~2-3 weeks (15 Nov - 6 Dic)
 - **Conservative (sequential):** ~3-4 weeks (15 Nov - 10 Dic)
-- **Prerequisites:** DEV-68, DEV-67, DEV-72, DEV-74, DEV-69...
+- **Prerequisites:** DEV-71, DEV-69, DEV-74, DEV-70, DEV-68...
 - **Critical path:** 14 days (2.0 weeks)
 
 📅 **Time to Preprod Environment (DEV-88):**
 - **Optimistic:** ~2-4 weeks from now (15 Nov - 13 Dic)
 - **Conservative:** ~3-5 weeks from now (15 Nov - 19 Dic)
-- **Prerequisites:** Path to QA + DEV-69, DEV-70, DEV-75
+- **Prerequisites:** Path to QA + DEV-74, DEV-72, DEV-87
 - **Critical path:** 14 days (2.0 weeks)
 
 📅 **Time to Production Environment (DEV-90):**
 - **Optimistic:** ~3-4.5 weeks from now (15 Nov - 17 Dic)
 - **Conservative:** ~4-8 weeks from now (15 Nov - 7 Gen)
-- **Prerequisites:** Path to Preprod + DEV-69, DEV-70, DEV-71
+- **Prerequisites:** Path to Preprod + DEV-72, DEV-87, DEV-88
 - **Note:** Production launch requires full GDPR compliance and payment system validation
 
 **Key Dependencies:**

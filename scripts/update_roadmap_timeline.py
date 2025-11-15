@@ -443,7 +443,9 @@ class TimelineCalculator:
         blockers = []
 
         # Payment System (Backend: DEV-BE-87, Frontend: DEV-FE-009)
-        payment_task_id = "DEV-BE-87" if "DEV-BE-87" in self.tasks else "DEV-FE-009" if "DEV-FE-009" in self.tasks else None
+        payment_task_id = (
+            "DEV-BE-87" if "DEV-BE-87" in self.tasks else "DEV-FE-009" if "DEV-FE-009" in self.tasks else None
+        )
         if payment_task_id:
             task = self.tasks[payment_task_id]
             blockers.append(
@@ -456,7 +458,9 @@ class TimelineCalculator:
             )
 
         # Expert Feedback (Backend: DEV-BE-72, Frontend: DEV-FE-004)
-        expert_task_id = "DEV-BE-72" if "DEV-BE-72" in self.tasks else "DEV-FE-004" if "DEV-FE-004" in self.tasks else None
+        expert_task_id = (
+            "DEV-BE-72" if "DEV-BE-72" in self.tasks else "DEV-FE-004" if "DEV-FE-004" in self.tasks else None
+        )
         if expert_task_id:
             task = self.tasks[expert_task_id]
             blockers.append(
@@ -622,7 +626,9 @@ def should_send_email() -> bool:
 
     # Check if current time is 6 AM or later
     if current_hour < 6:
-        print(f"ℹ️  Too early to send email (current time: {now.strftime('%H:%M')}). Email will be sent at 6:00 AM or later.")
+        print(
+            f"ℹ️  Too early to send email (current time: {now.strftime('%H:%M')}). Email will be sent at 6:00 AM or later."
+        )
         return False
 
     return True
@@ -853,7 +859,11 @@ def main():
                 # Pass both backend and frontend data to email notifier
                 combined_data = {
                     "backend": {"timelines": backend_timelines, "blockers": backend_blockers, "tasks": backend_tasks},
-                    "frontend": {"timelines": frontend_timelines, "blockers": frontend_blockers, "tasks": frontend_tasks},
+                    "frontend": {
+                        "timelines": frontend_timelines,
+                        "blockers": frontend_blockers,
+                        "tasks": frontend_tasks,
+                    },
                     "changes": changes,
                 }
                 send_timeline_notification(combined_data)

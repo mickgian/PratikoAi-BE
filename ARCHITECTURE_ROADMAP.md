@@ -20,19 +20,19 @@ This roadmap tracks planned architectural improvements and enhancements for the 
 📅 **Time to QA Environment (DEV-BE-75):**
 - **Optimistic (parallel work):** ~6-7 weeks (15 Nov - 2 Gen)
 - **Conservative (sequential):** ~8-9 weeks (15 Nov - 14 Gen)
-- **Prerequisites:** DEV-BE-71, DEV-BE-68, DEV-BE-74, DEV-BE-67, DEV-BE-72...
+- **Prerequisites:** DEV-BE-70, DEV-BE-74, DEV-BE-68, DEV-BE-67, DEV-BE-72...
 - **Total effort (sequential):** 41 days (5.9 weeks)
 
 📅 **Time to Preprod Environment (DEV-BE-88):**
 - **Optimistic:** ~14-16 weeks from now (15 Nov - 9 Mar)
 - **Conservative:** ~20-22 weeks from now (15 Nov - 18 Apr)
-- **Prerequisites:** Path to QA + DEV-BE-87, DEV-BE-70, DEV-BE-69
+- **Prerequisites:** Path to QA + DEV-BE-72, DEV-BE-75, DEV-BE-69
 - **Total effort (sequential):** 100 days (14.3 weeks)
 
 📅 **Time to Production Environment (DEV-BE-90):**
 - **Optimistic:** ~16-17.1 weeks from now (15 Nov - 15 Mar)
 - **Conservative:** ~23-26 weeks from now (15 Nov - 19 Mag)
-- **Prerequisites:** Path to Preprod + DEV-BE-70, DEV-BE-91, DEV-BE-69
+- **Prerequisites:** Path to Preprod + DEV-BE-72, DEV-BE-71, DEV-BE-69
 - **Total effort (sequential):** 110 days (15.6 weeks)
 - **Note:** Production launch requires full GDPR compliance and payment system validation
 

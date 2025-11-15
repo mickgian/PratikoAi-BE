@@ -69,9 +69,7 @@ async def test_knowledge_items_flow_from_step_39_to_step_40():
         "content_truncated": False,
     }
 
-    await step_40__build_context(
-        messages=[], ctx=dict(state_after_39), context_builder_service=mock_context_builder
-    )
+    await step_40__build_context(messages=[], ctx=dict(state_after_39), context_builder_service=mock_context_builder)
 
     # Assert - Step 40 received knowledge_items
     # Verify context_builder_service was called with kb_results from step 39
@@ -163,9 +161,7 @@ async def test_context_builder_receives_kb_documents():
     }
 
     # Act - Step 40
-    await step_40__build_context(
-        messages=[], ctx=dict(state_after_39), context_builder_service=mock_context_builder
-    )
+    await step_40__build_context(messages=[], ctx=dict(state_after_39), context_builder_service=mock_context_builder)
 
     # Assert - Context builder received the document
     mock_context_builder.merge_context.assert_called_once()

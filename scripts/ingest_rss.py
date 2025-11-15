@@ -16,6 +16,7 @@ import argparse
 import asyncio
 import sys
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -94,7 +95,7 @@ Examples:
     try:
         async with async_session_maker() as session:
             # Query feed_status table
-            query = select(FeedStatus).where(FeedStatus.enabled == True)  # type: ignore[arg-type]
+            query = select(FeedStatus).where(FeedStatus.enabled is True)  # type: ignore[arg-type]
 
             # Apply filters
             if args.feed_id:
@@ -170,7 +171,7 @@ Examples:
 
                     # Update feed_status
                     feed.items_found = stats.get("total_items", 0)
-                    feed.last_success = datetime.now(timezone.utc)
+                    feed.last_success = datetime.now(UTC)
                     feed.consecutive_errors = 0
                     feed.status = "healthy"
                     session.add(feed)

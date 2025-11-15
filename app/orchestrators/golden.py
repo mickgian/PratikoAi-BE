@@ -3,15 +3,23 @@
 # Implement thin coordination here (call services/factories), not core business logic.
 
 from contextlib import nullcontext
+from datetime import UTC
 from typing import Any, Dict, List, Optional
 
 try:
     from app.observability.rag_logging import rag_step_log, rag_step_timer
 except Exception:  # pragma: no cover
-    def rag_step_log(**kwargs): return None
-    def rag_step_timer(*args, **kwargs): return nullcontext()
 
-async def step_20__golden_fast_gate(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+    def rag_step_log(**kwargs):
+        return None
+
+    def rag_step_timer(*args, **kwargs):
+        return nullcontext()
+
+
+async def step_20__golden_fast_gate(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
     """RAG STEP 20 — Golden fast-path eligible? no doc or quick check safe.
 
     ID: RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe
@@ -23,12 +31,24 @@ async def step_20__golden_fast_gate(*, messages: Optional[List[Any]] = None, ctx
     Receives input from Step 19 (no attachments) or Step 22 (no doc dependency).
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(20, 'RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe', 'GoldenFastGate',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=20, step_id='RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe', node_label='GoldenFastGate',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        20,
+        "RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe",
+        "GoldenFastGate",
+        request_id=request_id,
+        stage="start",
+    ):
+        rag_step_log(
+            step=20,
+            step_id="RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe",
+            node_label="GoldenFastGate",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         try:
             # Extract eligibility data from context
@@ -37,40 +57,40 @@ async def step_20__golden_fast_gate(*, messages: Optional[List[Any]] = None, ctx
             # Build result with preserved context and eligibility decision
             result = {
                 **ctx,
-                'golden_fast_path_eligible': eligibility_result['eligible'],
-                'eligibility_reason': eligibility_result['reason'],
-                'next_step': eligibility_result['next_step'],
-                'next_step_id': eligibility_result['next_step_id'],
-                'route_to': eligibility_result['route_to'],
-                'previous_step': ctx.get('rag_step'),
-                'request_id': request_id
+                "golden_fast_path_eligible": eligibility_result["eligible"],
+                "eligibility_reason": eligibility_result["reason"],
+                "next_step": eligibility_result["next_step"],
+                "next_step_id": eligibility_result["next_step_id"],
+                "route_to": eligibility_result["route_to"],
+                "previous_step": ctx.get("rag_step"),
+                "request_id": request_id,
             }
 
             # Add golden lookup params if eligible
-            if eligibility_result['eligible']:
-                result['golden_lookup_params'] = {
-                    'query_signature': ctx.get('query_signature'),
-                    'canonical_facts': ctx.get('canonical_facts', []),
-                    'confidence_scores': ctx.get('confidence_scores', {})
+            if eligibility_result["eligible"]:
+                result["golden_lookup_params"] = {
+                    "query_signature": ctx.get("query_signature"),
+                    "canonical_facts": ctx.get("canonical_facts", []),
+                    "confidence_scores": ctx.get("confidence_scores", {}),
                 }
             else:
-                result['classification_context'] = {
-                    'query_complexity': ctx.get('confidence_scores', {}).get('query_complexity', 0.0),
-                    'golden_eligible': ctx.get('confidence_scores', {}).get('golden_eligible', 0.0)
+                result["classification_context"] = {
+                    "query_complexity": ctx.get("confidence_scores", {}).get("query_complexity", 0.0),
+                    "golden_eligible": ctx.get("confidence_scores", {}).get("golden_eligible", 0.0),
                 }
                 # Also add query_complexity directly for test compatibility
-                result['query_complexity'] = ctx.get('confidence_scores', {}).get('query_complexity', 0.0)
+                result["query_complexity"] = ctx.get("confidence_scores", {}).get("query_complexity", 0.0)
 
             rag_step_log(
                 step=20,
-                step_id='RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe',
-                node_label='GoldenFastGate',
+                step_id="RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe",
+                node_label="GoldenFastGate",
                 request_id=request_id,
-                golden_fast_path_eligible=eligibility_result['eligible'],
-                eligibility_reason=eligibility_result['reason'],
-                next_step=eligibility_result['next_step'],
-                route_to=eligibility_result['route_to'],
-                processing_stage="completed"
+                golden_fast_path_eligible=eligibility_result["eligible"],
+                eligibility_reason=eligibility_result["reason"],
+                next_step=eligibility_result["next_step"],
+                route_to=eligibility_result["route_to"],
+                processing_stage="completed",
             )
 
             return result
@@ -78,17 +98,17 @@ async def step_20__golden_fast_gate(*, messages: Optional[List[Any]] = None, ctx
         except Exception as e:
             rag_step_log(
                 step=20,
-                step_id='RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe',
-                node_label='GoldenFastGate',
+                step_id="RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe",
+                node_label="GoldenFastGate",
                 request_id=request_id,
                 error=str(e),
-                processing_stage="error"
+                processing_stage="error",
             )
             # On error, default to not eligible and route to classification
             return await _handle_golden_fast_gate_error(ctx, str(e))
 
 
-async def _check_golden_fast_path_eligibility(ctx: Dict[str, Any]) -> Dict[str, Any]:
+async def _check_golden_fast_path_eligibility(ctx: dict[str, Any]) -> dict[str, Any]:
     """Helper function to determine golden fast-path eligibility based on query complexity and context.
 
     Eligibility criteria:
@@ -97,22 +117,22 @@ async def _check_golden_fast_path_eligibility(ctx: Dict[str, Any]) -> Dict[str, 
     3. Query complexity <= 0.7 (simple to moderately complex)
     4. Golden eligible score >= 0.5 (reasonable golden match potential)
     """
-    previous_step = ctx.get('rag_step')
+    previous_step = ctx.get("rag_step")
 
     # Special case: From Step 22 with no document dependency -> always eligible
-    if previous_step == 22 and ctx.get('doc_dependent') is False:
+    if previous_step == 22 and ctx.get("doc_dependent") is False:
         return {
-            'eligible': True,
-            'reason': 'no_document_dependency',
-            'next_step': 24,
-            'next_step_id': 'RAG.golden.goldenset.match.by.signature.or.semantic',
-            'route_to': 'GoldenLookup'
+            "eligible": True,
+            "reason": "no_document_dependency",
+            "next_step": 24,
+            "next_step_id": "RAG.golden.goldenset.match.by.signature.or.semantic",
+            "route_to": "GoldenLookup",
         }
 
     # Extract confidence scores for other cases
-    confidence_scores = ctx.get('confidence_scores', {})
-    query_complexity = confidence_scores.get('query_complexity', 1.0)  # Default to complex
-    golden_eligible = confidence_scores.get('golden_eligible', 0.0)    # Default to not eligible
+    confidence_scores = ctx.get("confidence_scores", {})
+    query_complexity = confidence_scores.get("query_complexity", 1.0)  # Default to complex
+    golden_eligible = confidence_scores.get("golden_eligible", 0.0)  # Default to not eligible
 
     # Check eligibility thresholds
     COMPLEXITY_THRESHOLD = 0.7
@@ -125,69 +145,71 @@ async def _check_golden_fast_path_eligibility(ctx: Dict[str, Any]) -> Dict[str, 
     # Check context-specific eligibility reasons
     if not confidence_scores:  # Missing eligibility data
         return {
-            'eligible': False,
-            'reason': 'missing_eligibility_data',
-            'next_step': 31,
-            'next_step_id': 'RAG.classify.domainactionclassifier.classify.rule.based.classification',
-            'route_to': 'ClassifyDomain'
+            "eligible": False,
+            "reason": "missing_eligibility_data",
+            "next_step": 31,
+            "next_step_id": "RAG.classify.domainactionclassifier.classify.rule.based.classification",
+            "route_to": "ClassifyDomain",
         }
 
     if not complexity_ok:  # Query too complex
         return {
-            'eligible': False,
-            'reason': 'query_too_complex',
-            'next_step': 31,
-            'next_step_id': 'RAG.classify.domainactionclassifier.classify.rule.based.classification',
-            'route_to': 'ClassifyDomain'
+            "eligible": False,
+            "reason": "query_too_complex",
+            "next_step": 31,
+            "next_step_id": "RAG.classify.domainactionclassifier.classify.rule.based.classification",
+            "route_to": "ClassifyDomain",
         }
 
     if not golden_score_ok:  # Low golden eligibility
         return {
-            'eligible': False,
-            'reason': 'low_golden_eligibility',
-            'next_step': 31,
-            'next_step_id': 'RAG.classify.domainactionclassifier.classify.rule.based.classification',
-            'route_to': 'ClassifyDomain'
+            "eligible": False,
+            "reason": "low_golden_eligibility",
+            "next_step": 31,
+            "next_step_id": "RAG.classify.domainactionclassifier.classify.rule.based.classification",
+            "route_to": "ClassifyDomain",
         }
 
     # Determine specific eligibility reason based on path
     if previous_step == 19:
         # From Step 19: no attachments present
-        eligibility_reason = 'simple_query_no_attachments'
+        eligibility_reason = "simple_query_no_attachments"
     else:
         # Generic case
-        eligibility_reason = 'threshold_criteria_met'
+        eligibility_reason = "threshold_criteria_met"
 
     # Eligible for golden fast-path
     return {
-        'eligible': True,
-        'reason': eligibility_reason,
-        'next_step': 24,
-        'next_step_id': 'RAG.golden.goldenset.match.by.signature.or.semantic',
-        'route_to': 'GoldenLookup'
+        "eligible": True,
+        "reason": eligibility_reason,
+        "next_step": 24,
+        "next_step_id": "RAG.golden.goldenset.match.by.signature.or.semantic",
+        "route_to": "GoldenLookup",
     }
 
 
-async def _handle_golden_fast_gate_error(ctx: Dict[str, Any], error_msg: str) -> Dict[str, Any]:
+async def _handle_golden_fast_gate_error(ctx: dict[str, Any], error_msg: str) -> dict[str, Any]:
     """Helper function to handle errors in golden fast gate processing.
 
     Defaults to not eligible and routes to classification for safe fallback.
     """
     return {
         **ctx,
-        'golden_fast_path_eligible': False,
-        'eligibility_reason': f'error_occurred: {error_msg}',
-        'next_step': 31,
-        'next_step_id': 'RAG.classify.domainactionclassifier.classify.rule.based.classification',
-        'route_to': 'ClassifyDomain',
-        'error': error_msg,
-        'previous_step': ctx.get('rag_step'),
-        'request_id': ctx.get('request_id', 'unknown')
+        "golden_fast_path_eligible": False,
+        "eligibility_reason": f"error_occurred: {error_msg}",
+        "next_step": 31,
+        "next_step_id": "RAG.classify.domainactionclassifier.classify.rule.based.classification",
+        "route_to": "ClassifyDomain",
+        "error": error_msg,
+        "previous_step": ctx.get("rag_step"),
+        "request_id": ctx.get("request_id", "unknown"),
     }
 
-async def step_23__require_doc_ingest(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 23 — PlannerHint.require_doc_ingest_first ingest then Golden and KB
+
+async def step_23__require_doc_ingest(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
+    """RAG STEP 23 — PlannerHint.require_doc_ingest_first ingest then Golden and KB
     ID: RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb
     Type: process | Category: golden | Node: RequireDocIngest
 
@@ -197,24 +219,29 @@ async def step_23__require_doc_ingest(*, messages: Optional[List[Any]] = None, c
     Routes to Step 31 (ClassifyDomain) to continue the workflow.
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(23, 'RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb', 'RequireDocIngest',
-                       request_id=request_id, stage="start"):
+    with rag_step_timer(
+        23,
+        "RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb",
+        "RequireDocIngest",
+        request_id=request_id,
+        stage="start",
+    ):
         rag_step_log(
             step=23,
-            step_id='RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb',
-            node_label='RequireDocIngest',
-            category='golden',
-            type='process',
+            step_id="RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb",
+            node_label="RequireDocIngest",
+            category="golden",
+            type="process",
             request_id=request_id,
-            processing_stage="started"
+            processing_stage="started",
         )
 
         # Extract context
-        user_query = ctx.get('user_query', '')
-        extracted_docs = ctx.get('extracted_docs', [])
-        document_count = ctx.get('document_count', len(extracted_docs))
+        ctx.get("user_query", "")
+        extracted_docs = ctx.get("extracted_docs", [])
+        document_count = ctx.get("document_count", len(extracted_docs))
 
         # Set planning hints for document-first workflow
         # These flags tell downstream steps to defer Golden Set and KB queries
@@ -222,44 +249,46 @@ async def step_23__require_doc_ingest(*, messages: Optional[List[Any]] = None, c
         requires_doc_ingest_first = True
         defer_golden_lookup = True
         defer_kb_search = True
-        planning_hint = 'doc_ingest_before_golden_kb'
+        planning_hint = "doc_ingest_before_golden_kb"
 
         # Build processing metadata for coordination
         processing_metadata = {
-            'requires_doc_ingest': True,
-            'workflow': 'doc_first_then_golden_kb',
-            'document_count': document_count,
-            'planning_stage': 'pre_classification'
+            "requires_doc_ingest": True,
+            "workflow": "doc_first_then_golden_kb",
+            "document_count": document_count,
+            "planning_stage": "pre_classification",
         }
 
         rag_step_log(
             step=23,
-            step_id='RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb',
-            node_label='RequireDocIngest',
+            step_id="RAG.golden.plannerhint.require.doc.ingest.first.ingest.then.golden.and.kb",
+            node_label="RequireDocIngest",
             request_id=request_id,
             planning_hint=planning_hint,
             document_count=document_count,
             requires_doc_ingest_first=requires_doc_ingest_first,
-            processing_stage="completed"
+            processing_stage="completed",
         )
 
         # Build result with planning hints and preserved context
         result = {
             **ctx,
-            'requires_doc_ingest_first': requires_doc_ingest_first,
-            'defer_golden_lookup': defer_golden_lookup,
-            'defer_kb_search': defer_kb_search,
-            'planning_hint': planning_hint,
-            'processing_metadata': processing_metadata,
-            'next_step': 'classify_domain',  # Routes to Step 31 per Mermaid
-            'request_id': request_id
+            "requires_doc_ingest_first": requires_doc_ingest_first,
+            "defer_golden_lookup": defer_golden_lookup,
+            "defer_kb_search": defer_kb_search,
+            "planning_hint": planning_hint,
+            "processing_metadata": processing_metadata,
+            "next_step": "classify_domain",  # Routes to Step 31 per Mermaid
+            "request_id": request_id,
         }
 
         return result
 
-async def step_25__golden_hit(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 25 — High confidence match? score at least 0.90
+
+async def step_25__golden_hit(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
+    """RAG STEP 25 — High confidence match? score at least 0.90
     ID: RAG.golden.high.confidence.match.score.at.least.0.90
     Type: process | Category: golden | Node: GoldenHit
 
@@ -268,18 +297,26 @@ async def step_25__golden_hit(*, messages: Optional[List[Any]] = None, ctx: Opti
     Routes to Step 26 (KBContextCheck) if high confidence, Step 23 if not.
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(25, 'RAG.golden.high.confidence.match.score.at.least.0.90', 'GoldenHit',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=25, step_id='RAG.golden.high.confidence.match.score.at.least.0.90', node_label='GoldenHit',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        25, "RAG.golden.high.confidence.match.score.at.least.0.90", "GoldenHit", request_id=request_id, stage="start"
+    ):
+        rag_step_log(
+            step=25,
+            step_id="RAG.golden.high.confidence.match.score.at.least.0.90",
+            node_label="GoldenHit",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract golden match from context
-        golden_match = ctx.get('golden_match', {})
+        golden_match = ctx.get("golden_match", {})
         # Support both 'confidence' and 'similarity_score' fields
-        confidence = golden_match.get('confidence') or golden_match.get('similarity_score', 0.0)
-        faq_id = golden_match.get('faq_id', 'unknown')
+        confidence = golden_match.get("confidence") or golden_match.get("similarity_score", 0.0)
+        faq_id = golden_match.get("faq_id", "unknown")
 
         # Check if confidence meets threshold
         HIGH_CONFIDENCE_THRESHOLD = 0.90
@@ -287,39 +324,39 @@ async def step_25__golden_hit(*, messages: Optional[List[Any]] = None, ctx: Opti
 
         rag_step_log(
             step=25,
-            step_id='RAG.golden.high.confidence.match.score.at.least.0.90',
-            node_label='GoldenHit',
+            step_id="RAG.golden.high.confidence.match.score.at.least.0.90",
+            node_label="GoldenHit",
             request_id=request_id,
             confidence=confidence,
             threshold=HIGH_CONFIDENCE_THRESHOLD,
             is_high_confidence=is_high_confidence,
             faq_id=faq_id,
-            processing_stage="completed"
+            processing_stage="completed",
         )
 
         # Build result with preserved context
         result = {
             **ctx,
-            'is_high_confidence': is_high_confidence,
-            'high_confidence_match': is_high_confidence,  # Add for test compatibility
-            'confidence': confidence,
-            'threshold': HIGH_CONFIDENCE_THRESHOLD,
-            'decision_metadata': {
-                'step': 'golden_hit',
-                'confidence': confidence,
-                'threshold': HIGH_CONFIDENCE_THRESHOLD,
-                'is_high_confidence': is_high_confidence,
-                'faq_id': faq_id
+            "is_high_confidence": is_high_confidence,
+            "high_confidence_match": is_high_confidence,  # Add for test compatibility
+            "confidence": confidence,
+            "threshold": HIGH_CONFIDENCE_THRESHOLD,
+            "decision_metadata": {
+                "step": "golden_hit",
+                "confidence": confidence,
+                "threshold": HIGH_CONFIDENCE_THRESHOLD,
+                "is_high_confidence": is_high_confidence,
+                "faq_id": faq_id,
             },
-            'next_step': 'kb_context_check' if is_high_confidence else 'require_doc_ingest',
-            'request_id': request_id
+            "next_step": "kb_context_check" if is_high_confidence else "require_doc_ingest",
+            "request_id": request_id,
         }
 
         return result
 
-async def step_27__kbdelta(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 27 — KB newer than Golden as of or conflicting tags?
+
+async def step_27__kbdelta(*, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs) -> Any:
+    """RAG STEP 27 — KB newer than Golden as of or conflicting tags?
     ID: RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags
     Type: process | Category: golden | Node: KBDelta
 
@@ -328,33 +365,46 @@ async def step_27__kbdelta(*, messages: Optional[List[Any]] = None, ctx: Optiona
     Routes to Step 36 (LLMBetter) if KB is newer/conflicts, Step 28 (ServeGolden) otherwise.
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(27, 'RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags', 'KBDelta',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=27, step_id='RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags', node_label='KBDelta',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        27,
+        "RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags",
+        "KBDelta",
+        request_id=request_id,
+        stage="start",
+    ):
+        rag_step_log(
+            step=27,
+            step_id="RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags",
+            node_label="KBDelta",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract golden match and KB context
-        golden_match = ctx.get('golden_match', {})
-        kb_context = ctx.get('kb_context', {})
+        golden_match = ctx.get("golden_match", {})
+        kb_context = ctx.get("kb_context", {})
 
         # Get timestamps
-        golden_updated = golden_match.get('updated_at')
-        kb_updated = kb_context.get('updated_at')
+        golden_updated = golden_match.get("updated_at")
+        kb_updated = kb_context.get("updated_at")
 
         # Check if KB is newer
         kb_is_newer = False
         if kb_updated and golden_updated:
             try:
                 from datetime import datetime
+
                 if isinstance(kb_updated, str):
-                    kb_dt = datetime.fromisoformat(kb_updated.replace('Z', '+00:00'))
+                    kb_dt = datetime.fromisoformat(kb_updated.replace("Z", "+00:00"))
                 else:
                     kb_dt = kb_updated
 
                 if isinstance(golden_updated, str):
-                    golden_dt = datetime.fromisoformat(golden_updated.replace('Z', '+00:00'))
+                    golden_dt = datetime.fromisoformat(golden_updated.replace("Z", "+00:00"))
                 else:
                     golden_dt = golden_updated
 
@@ -362,16 +412,16 @@ async def step_27__kbdelta(*, messages: Optional[List[Any]] = None, ctx: Optiona
             except Exception as e:
                 rag_step_log(
                     step=27,
-                    step_id='RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags',
-                    node_label='KBDelta',
+                    step_id="RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags",
+                    node_label="KBDelta",
                     request_id=request_id,
                     error=f"Error comparing timestamps: {str(e)}",
-                    processing_stage="warning"
+                    processing_stage="warning",
                 )
 
         # Check for conflicting tags
-        golden_tags = set(golden_match.get('tags', []))
-        kb_tags = set(kb_context.get('tags', []))
+        golden_tags = set(golden_match.get("tags", []))
+        kb_tags = set(kb_context.get("tags", []))
         has_conflicting_tags = bool(golden_tags & kb_tags)  # Intersection indicates conflict
 
         # Determine if KB should take precedence
@@ -379,40 +429,42 @@ async def step_27__kbdelta(*, messages: Optional[List[Any]] = None, ctx: Optiona
 
         rag_step_log(
             step=27,
-            step_id='RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags',
-            node_label='KBDelta',
+            step_id="RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags",
+            node_label="KBDelta",
             request_id=request_id,
             kb_is_newer=kb_is_newer,
             has_conflicting_tags=has_conflicting_tags,
             kb_takes_precedence=kb_takes_precedence,
             golden_updated=str(golden_updated) if golden_updated else None,
             kb_updated=str(kb_updated) if kb_updated else None,
-            processing_stage="completed"
+            processing_stage="completed",
         )
 
         # Build result with preserved context
         result = {
             **ctx,
-            'kb_is_newer': kb_is_newer,
-            'has_conflicting_tags': has_conflicting_tags,
-            'kb_takes_precedence': kb_takes_precedence,
-            'kb_has_delta': kb_takes_precedence,  # Add for test compatibility
-            'delta_metadata': {
-                'kb_updated': str(kb_updated) if kb_updated else None,
-                'golden_updated': str(golden_updated) if golden_updated else None,
-                'kb_is_newer': kb_is_newer,
-                'has_conflicting_tags': has_conflicting_tags,
-                'conflicting_tags': list(golden_tags & kb_tags) if has_conflicting_tags else []
+            "kb_is_newer": kb_is_newer,
+            "has_conflicting_tags": has_conflicting_tags,
+            "kb_takes_precedence": kb_takes_precedence,
+            "kb_has_delta": kb_takes_precedence,  # Add for test compatibility
+            "delta_metadata": {
+                "kb_updated": str(kb_updated) if kb_updated else None,
+                "golden_updated": str(golden_updated) if golden_updated else None,
+                "kb_is_newer": kb_is_newer,
+                "has_conflicting_tags": has_conflicting_tags,
+                "conflicting_tags": list(golden_tags & kb_tags) if has_conflicting_tags else [],
             },
-            'next_step': 'llm_better' if kb_takes_precedence else 'serve_golden',
-            'request_id': request_id
+            "next_step": "llm_better" if kb_takes_precedence else "serve_golden",
+            "request_id": request_id,
         }
 
         return result
 
-async def step_28__serve_golden(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 28 — Serve Golden answer with citations
+
+async def step_28__serve_golden(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
+    """RAG STEP 28 — Serve Golden answer with citations
     ID: RAG.golden.serve.golden.answer.with.citations
     Type: process | Category: golden | Node: ServeGolden
 
@@ -421,86 +473,95 @@ async def step_28__serve_golden(*, messages: Optional[List[Any]] = None, ctx: Op
     Routes to ReturnComplete to bypass LLM processing.
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(28, 'RAG.golden.serve.golden.answer.with.citations', 'ServeGolden',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=28, step_id='RAG.golden.serve.golden.answer.with.citations', node_label='ServeGolden',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        28, "RAG.golden.serve.golden.answer.with.citations", "ServeGolden", request_id=request_id, stage="start"
+    ):
+        rag_step_log(
+            step=28,
+            step_id="RAG.golden.serve.golden.answer.with.citations",
+            node_label="ServeGolden",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract golden match from context
-        golden_match = ctx.get('golden_match', {})
-        faq_id = golden_match.get('faq_id', 'unknown')
-        answer = golden_match.get('answer', '')
-        question = golden_match.get('question', '')
-        confidence = golden_match.get('confidence', 0.0)
-        metadata = golden_match.get('metadata', {})
-        updated_at = golden_match.get('updated_at')
+        golden_match = ctx.get("golden_match", {})
+        faq_id = golden_match.get("faq_id", "unknown")
+        answer = golden_match.get("answer", "")
+        question = golden_match.get("question", "")
+        confidence = golden_match.get("confidence", 0.0)
+        metadata = golden_match.get("metadata", {})
+        updated_at = golden_match.get("updated_at")
 
         # Format citations
-        citations = [{
-            'source': 'Golden Set FAQ',
-            'faq_id': faq_id,
-            'question': question,
-            'confidence': confidence,
-            'updated_at': updated_at,
-            'regulatory_refs': metadata.get('regulatory_refs', []),
-            'tags': metadata.get('tags', []),
-            'category': metadata.get('category')
-        }]
+        citations = [
+            {
+                "source": "Golden Set FAQ",
+                "faq_id": faq_id,
+                "question": question,
+                "confidence": confidence,
+                "updated_at": updated_at,
+                "regulatory_refs": metadata.get("regulatory_refs", []),
+                "tags": metadata.get("tags", []),
+                "category": metadata.get("category"),
+            }
+        ]
 
         # Build response metadata
         response_metadata = {
-            'source': 'golden_set',
-            'source_type': 'golden_set',  # Add source_type for test compatibility
-            'bypassed_llm': True,
-            'confidence': 'high' if confidence >= 0.90 else 'medium',  # Match test expectation
-            'category': golden_match.get('category'),  # Add category from golden_match
-            'faq_id': faq_id,
-            'served_at': ctx.get('timestamp', 'unknown')
+            "source": "golden_set",
+            "source_type": "golden_set",  # Add source_type for test compatibility
+            "bypassed_llm": True,
+            "confidence": "high" if confidence >= 0.90 else "medium",  # Match test expectation
+            "category": golden_match.get("category"),  # Add category from golden_match
+            "faq_id": faq_id,
+            "served_at": ctx.get("timestamp", "unknown"),
         }
 
         # Create serving metadata
         serving_metadata = {
-            'bypassed_llm': True,
-            'source': 'golden_set',  # Add source field for test
-            'served_from': 'golden_set',
-            'confidence': confidence,
-            'latency_ms': ctx.get('latency_ms', 0),
-            'served_at': ctx.get('timestamp', 'unknown')  # Add served_at for timing metadata
+            "bypassed_llm": True,
+            "source": "golden_set",  # Add source field for test
+            "served_from": "golden_set",
+            "confidence": confidence,
+            "latency_ms": ctx.get("latency_ms", 0),
+            "served_at": ctx.get("timestamp", "unknown"),  # Add served_at for timing metadata
         }
 
         rag_step_log(
             step=28,
-            step_id='RAG.golden.serve.golden.answer.with.citations',
-            node_label='ServeGolden',
+            step_id="RAG.golden.serve.golden.answer.with.citations",
+            node_label="ServeGolden",
             request_id=request_id,
             faq_id=faq_id,
             confidence=confidence,
             answer_length=len(answer),
             citations_count=len(citations),
-            processing_stage="completed"
+            processing_stage="completed",
         )
 
         # Build result with formatted response
         result = {
             **ctx,
-            'response': {
-                'answer': answer,
-                'citations': citations
-            },
-            'response_metadata': response_metadata,
-            'serving_metadata': serving_metadata,
-            'bypassed_llm': True,
-            'next_step': 'return_complete',
-            'request_id': request_id
+            "response": {"answer": answer, "citations": citations},
+            "response_metadata": response_metadata,
+            "serving_metadata": serving_metadata,
+            "bypassed_llm": True,
+            "next_step": "return_complete",
+            "request_id": request_id,
         }
 
         return result
 
-async def step_60__resolve_epochs(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 60 — EpochStamps.resolve kb_epoch golden_epoch ccnl_epoch parser_version
+
+async def step_60__resolve_epochs(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
+    """RAG STEP 60 — EpochStamps.resolve kb_epoch golden_epoch ccnl_epoch parser_version
     ID: RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version
     Type: process | Category: golden | Node: ResolveEpochs
 
@@ -509,31 +570,44 @@ async def step_60__resolve_epochs(*, messages: Optional[List[Any]] = None, ctx: 
     Routes to Step 61 (GenHash) with resolved epochs for cache key generation.
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(60, 'RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version', 'ResolveEpochs',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=60, step_id='RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version', node_label='ResolveEpochs',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        60,
+        "RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version",
+        "ResolveEpochs",
+        request_id=request_id,
+        stage="start",
+    ):
+        rag_step_log(
+            step=60,
+            step_id="RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version",
+            node_label="ResolveEpochs",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract epoch timestamps from context
-        kb_epoch = ctx.get('kb_last_updated') or ctx.get('kb_epoch')
-        golden_epoch = ctx.get('golden_last_updated') or ctx.get('golden_epoch')
-        ccnl_epoch = ctx.get('ccnl_last_updated') or ctx.get('ccnl_epoch')
-        parser_version = ctx.get('parser_version')
+        kb_epoch = ctx.get("kb_last_updated") or ctx.get("kb_epoch")
+        golden_epoch = ctx.get("golden_last_updated") or ctx.get("golden_epoch")
+        ccnl_epoch = ctx.get("ccnl_last_updated") or ctx.get("ccnl_epoch")
+        parser_version = ctx.get("parser_version")
 
         # Convert timestamps to epoch format if needed
         def to_epoch_str(timestamp):
             if timestamp is None:
                 return None
-            if isinstance(timestamp, (int, float)):
+            if isinstance(timestamp, int | float):
                 return str(int(timestamp))
             if isinstance(timestamp, str):
                 return timestamp
             try:
                 # Try to convert datetime to epoch
                 from datetime import datetime
-                if hasattr(timestamp, 'timestamp'):
+
+                if hasattr(timestamp, "timestamp"):
                     return str(int(timestamp.timestamp()))
             except Exception:
                 pass
@@ -547,52 +621,52 @@ async def step_60__resolve_epochs(*, messages: Optional[List[Any]] = None, ctx: 
         # Track which epochs were resolved
         epochs_resolved = []
         if kb_epoch:
-            epochs_resolved.append('kb')
+            epochs_resolved.append("kb")
         if golden_epoch:
-            epochs_resolved.append('golden')
+            epochs_resolved.append("golden")
         if ccnl_epoch:
-            epochs_resolved.append('ccnl')
+            epochs_resolved.append("ccnl")
         if parser_version:
-            epochs_resolved.append('parser')
+            epochs_resolved.append("parser")
 
         rag_step_log(
             step=60,
-            step_id='RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version',
-            node_label='ResolveEpochs',
+            step_id="RAG.golden.epochstamps.resolve.kb.epoch.golden.epoch.ccnl.epoch.parser.version",
+            node_label="ResolveEpochs",
             request_id=request_id,
             kb_epoch=kb_epoch,
             golden_epoch=golden_epoch,
             ccnl_epoch=ccnl_epoch,
             parser_version=parser_version,
             epochs_resolved=epochs_resolved,
-            processing_stage="completed"
+            processing_stage="completed",
         )
 
         # Build result with resolved epochs
         result = {
             **ctx,
-            'kb_epoch': kb_epoch,
-            'golden_epoch': golden_epoch,
-            'ccnl_epoch': ccnl_epoch,
-            'parser_version': parser_version,
-            'epoch_resolution_metadata': {
-                'epochs_resolved': epochs_resolved,
-                'epochs_count': len(epochs_resolved),  # Add count for test
-                'kb_epoch': kb_epoch,
-                'golden_epoch': golden_epoch,
-                'ccnl_epoch': ccnl_epoch,
-                'parser_version': parser_version,
-                'resolved_at': ctx.get('timestamp', 'unknown')  # Add for test expectation
+            "kb_epoch": kb_epoch,
+            "golden_epoch": golden_epoch,
+            "ccnl_epoch": ccnl_epoch,
+            "parser_version": parser_version,
+            "epoch_resolution_metadata": {
+                "epochs_resolved": epochs_resolved,
+                "epochs_count": len(epochs_resolved),  # Add count for test
+                "kb_epoch": kb_epoch,
+                "golden_epoch": golden_epoch,
+                "ccnl_epoch": ccnl_epoch,
+                "parser_version": parser_version,
+                "resolved_at": ctx.get("timestamp", "unknown"),  # Add for test expectation
             },
-            'next_step': 'gen_hash',
-            'request_id': request_id
+            "next_step": "gen_hash",
+            "request_id": request_id,
         }
 
         return result
 
-async def step_83__faqquery(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 83 — FAQTool.faq_query Query Golden Set
+
+async def step_83__faqquery(*, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs) -> Any:
+    """RAG STEP 83 — FAQTool.faq_query Query Golden Set
     ID: RAG.golden.faqtool.faq.query.query.golden.set
     Type: process | Category: golden | Node: FAQQuery
 
@@ -601,19 +675,27 @@ async def step_83__faqquery(*, messages: Optional[List[Any]] = None, ctx: Option
     scoring. Routes to Step 99 (ToolResults).
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(83, 'RAG.golden.faqtool.faq.query.query.golden.set', 'FAQQuery',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=83, step_id='RAG.golden.faqtool.faq.query.query.golden.set', node_label='FAQQuery',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        83, "RAG.golden.faqtool.faq.query.query.golden.set", "FAQQuery", request_id=request_id, stage="start"
+    ):
+        rag_step_log(
+            step=83,
+            step_id="RAG.golden.faqtool.faq.query.query.golden.set",
+            node_label="FAQQuery",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract tool arguments
-        tool_args = ctx.get('tool_args', {})
-        tool_call_id = ctx.get('tool_call_id')
-        query = tool_args.get('query', '')
-        max_results = tool_args.get('max_results', 3)
-        min_confidence = tool_args.get('min_confidence', 'medium')
+        tool_args = ctx.get("tool_args", {})
+        tool_call_id = ctx.get("tool_call_id")
+        query = tool_args.get("query", "")
+        max_results = tool_args.get("max_results", 3)
+        min_confidence = tool_args.get("min_confidence", "medium")
 
         # Execute FAQ query using FAQTool
         try:
@@ -624,70 +706,78 @@ async def step_83__faqquery(*, messages: Optional[List[Any]] = None, ctx: Option
                 query=query,
                 max_results=max_results,
                 min_confidence=min_confidence,
-                include_outdated=tool_args.get('include_outdated', False)
+                include_outdated=tool_args.get("include_outdated", False),
             )
 
             # Parse the JSON response
             import json
+
             try:
                 faq_result = json.loads(faq_response) if isinstance(faq_response, str) else faq_response
             except (json.JSONDecodeError, TypeError):
-                faq_result = {'success': False, 'error': 'Failed to parse FAQ response', 'raw_response': str(faq_response)}
+                faq_result = {
+                    "success": False,
+                    "error": "Failed to parse FAQ response",
+                    "raw_response": str(faq_response),
+                }
 
-            success = faq_result.get('success', False)
-            match_count = faq_result.get('match_count', 0)
+            success = faq_result.get("success", False)
+            match_count = faq_result.get("match_count", 0)
 
             rag_step_log(
                 step=83,
-                step_id='RAG.golden.faqtool.faq.query.query.golden.set',
-                node_label='FAQQuery',
+                step_id="RAG.golden.faqtool.faq.query.query.golden.set",
+                node_label="FAQQuery",
                 request_id=request_id,
-                query=query[:100] if query else '',
+                query=query[:100] if query else "",
                 match_count=match_count,
                 min_confidence=min_confidence,
                 success=success,
-                processing_stage="completed"
+                processing_stage="completed",
             )
 
         except Exception as e:
             rag_step_log(
                 step=83,
-                step_id='RAG.golden.faqtool.faq.query.query.golden.set',
-                node_label='FAQQuery',
+                step_id="RAG.golden.faqtool.faq.query.query.golden.set",
+                node_label="FAQQuery",
                 request_id=request_id,
                 error=str(e),
-                processing_stage="error"
+                processing_stage="error",
             )
             faq_result = {
-                'success': False,
-                'error': str(e),
-                'matches': [],
-                'match_count': 0,
-                'message': 'Si è verificato un errore durante la query FAQ.'
+                "success": False,
+                "error": str(e),
+                "matches": [],
+                "match_count": 0,
+                "message": "Si è verificato un errore durante la query FAQ.",
             }
 
         # Build result with preserved context
         result = {
             **ctx,
-            'faq_results': faq_result,
-            'query_result': faq_result,  # Alias for compatibility
-            'matches': faq_result.get('matches', []),
-            'match_count': faq_result.get('match_count', 0),
-            'query_metadata': {
-                'query': query,
-                'max_results': max_results,
-                'min_confidence': min_confidence,
-                'include_outdated': tool_args.get('include_outdated', False),
-                'tool_call_id': tool_call_id
+            "faq_results": faq_result,
+            "query_result": faq_result,  # Alias for compatibility
+            "matches": faq_result.get("matches", []),
+            "match_count": faq_result.get("match_count", 0),
+            "query_metadata": {
+                "query": query,
+                "max_results": max_results,
+                "min_confidence": min_confidence,
+                "include_outdated": tool_args.get("include_outdated", False),
+                "tool_call_id": tool_call_id,
             },
-            'tool_call_id': tool_call_id,
-            'next_step': 'tool_results',  # Routes to Step 99 per Mermaid (FAQQuery → ToolResults)
-            'request_id': request_id
+            "tool_call_id": tool_call_id,
+            "next_step": "tool_results",  # Routes to Step 99 per Mermaid (FAQQuery → ToolResults)
+            "request_id": request_id,
         }
 
         return result
 
-async def step_117__faqfeedback(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
+
+async def step_117__faqfeedback(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
     """RAG STEP 117 — POST /api/v1/faq/feedback.
 
     ID: RAG.golden.post.api.v1.faq.feedback
@@ -698,93 +788,97 @@ async def step_117__faqfeedback(*, messages: Optional[List[Any]] = None, ctx: Op
     Routes to ExpertFeedbackCollector (Step 119) for further processing.
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(117, 'RAG.golden.post.api.v1.faq.feedback', 'FAQFeedback',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=117, step_id='RAG.golden.post.api.v1.faq.feedback', node_label='FAQFeedback',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        117, "RAG.golden.post.api.v1.faq.feedback", "FAQFeedback", request_id=request_id, stage="start"
+    ):
+        rag_step_log(
+            step=117,
+            step_id="RAG.golden.post.api.v1.faq.feedback",
+            node_label="FAQFeedback",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract feedback data from context
-        feedback_data = ctx.get('feedback_data', {})
-        usage_log_id = feedback_data.get('usage_log_id')
-        was_helpful = feedback_data.get('was_helpful')
-        followup_needed = feedback_data.get('followup_needed', False)
-        comments = feedback_data.get('comments')
+        feedback_data = ctx.get("feedback_data", {})
+        usage_log_id = feedback_data.get("usage_log_id")
+        was_helpful = feedback_data.get("was_helpful")
+        followup_needed = feedback_data.get("followup_needed", False)
+        comments = feedback_data.get("comments")
 
         # Process feedback using IntelligentFAQService
         feedback_result = {}
         try:
-            from app.services.intelligent_faq_service import IntelligentFAQService
             from datetime import datetime, timezone
+
+            from app.services.intelligent_faq_service import IntelligentFAQService
 
             # In production, db_session would be properly injected
             faq_service = IntelligentFAQService(db_session=None)
 
             success = await faq_service.collect_feedback(
-                usage_log_id=usage_log_id,
-                was_helpful=was_helpful,
-                followup_needed=followup_needed,
-                comments=comments
+                usage_log_id=usage_log_id, was_helpful=was_helpful, followup_needed=followup_needed, comments=comments
             )
 
             feedback_result = {
-                'success': success,
-                'usage_log_id': usage_log_id,
-                'submitted_at': datetime.now(timezone.utc).isoformat()
+                "success": success,
+                "usage_log_id": usage_log_id,
+                "submitted_at": datetime.now(UTC).isoformat(),
             }
 
             if not success:
-                feedback_result['error'] = 'Usage log not found or feedback could not be recorded'
+                feedback_result["error"] = "Usage log not found or feedback could not be recorded"
 
             rag_step_log(
                 step=117,
-                step_id='RAG.golden.post.api.v1.faq.feedback',
-                node_label='FAQFeedback',
+                step_id="RAG.golden.post.api.v1.faq.feedback",
+                node_label="FAQFeedback",
                 request_id=request_id,
                 usage_log_id=usage_log_id,
                 was_helpful=was_helpful,
                 followup_needed=followup_needed,
                 success=success,
-                processing_stage="completed"
+                processing_stage="completed",
             )
 
         except Exception as e:
             rag_step_log(
                 step=117,
-                step_id='RAG.golden.post.api.v1.faq.feedback',
-                node_label='FAQFeedback',
+                step_id="RAG.golden.post.api.v1.faq.feedback",
+                node_label="FAQFeedback",
                 request_id=request_id,
                 error=str(e),
-                processing_stage="error"
+                processing_stage="error",
             )
-            feedback_result = {
-                'success': False,
-                'error': str(e),
-                'usage_log_id': usage_log_id
-            }
+            feedback_result = {"success": False, "error": str(e), "usage_log_id": usage_log_id}
 
         # Build result with preserved context
         result = {
             **ctx,
-            'feedback_result': feedback_result,
-            'feedback_type': 'faq',  # Identify as FAQ feedback for routing
-            'followup_needed': followup_needed,  # Expose for expert collector
-            'feedback_metadata': {
-                'feedback_type': 'faq',
-                'was_helpful': was_helpful,
-                'followup_needed': followup_needed,
-                'submitted_at': feedback_result.get('submitted_at')
+            "feedback_result": feedback_result,
+            "feedback_type": "faq",  # Identify as FAQ feedback for routing
+            "followup_needed": followup_needed,  # Expose for expert collector
+            "feedback_metadata": {
+                "feedback_type": "faq",
+                "was_helpful": was_helpful,
+                "followup_needed": followup_needed,
+                "submitted_at": feedback_result.get("submitted_at"),
             },
-            'next_step': 'expert_feedback_collector',  # Routes to Step 119 per Mermaid
-            'request_id': request_id
+            "next_step": "expert_feedback_collector",  # Routes to Step 119 per Mermaid
+            "request_id": request_id,
         }
 
         return result
 
-async def step_127__golden_candidate(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 127 — GoldenSetUpdater.propose_candidate from expert feedback
+
+async def step_127__golden_candidate(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
+    """RAG STEP 127 — GoldenSetUpdater.propose_candidate from expert feedback
     ID: RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback
     Type: process | Category: golden | Node: GoldenCandidate
 
@@ -793,25 +887,36 @@ async def step_127__golden_candidate(*, messages: Optional[List[Any]] = None, ct
     and routes to GoldenApproval (Step 128) for approval decision.
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(127, 'RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback', 'GoldenCandidate',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=127, step_id='RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback',
-                     node_label='GoldenCandidate',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        127,
+        "RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback",
+        "GoldenCandidate",
+        request_id=request_id,
+        stage="start",
+    ):
+        rag_step_log(
+            step=127,
+            step_id="RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback",
+            node_label="GoldenCandidate",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract expert feedback data
-        expert_feedback = ctx.get('expert_feedback', {})
-        query_text = expert_feedback.get('query_text', '')
-        expert_answer = expert_feedback.get('expert_answer', '')
-        category = expert_feedback.get('category', 'generale')
-        regulatory_refs = expert_feedback.get('regulatory_references', [])
-        confidence_score = expert_feedback.get('confidence_score', 0.0)
-        frequency = expert_feedback.get('frequency', 1)
+        expert_feedback = ctx.get("expert_feedback", {})
+        query_text = expert_feedback.get("query_text", "")
+        expert_answer = expert_feedback.get("expert_answer", "")
+        category = expert_feedback.get("category", "generale")
+        regulatory_refs = expert_feedback.get("regulatory_references", [])
+        confidence_score = expert_feedback.get("confidence_score", 0.0)
+        frequency = expert_feedback.get("frequency", 1)
 
-        expert_id = ctx.get('expert_id')
-        trust_score = ctx.get('trust_score', 0.0)
+        expert_id = ctx.get("expert_id")
+        trust_score = ctx.get("trust_score", 0.0)
 
         # Create FAQ candidate from expert feedback
         try:
@@ -827,68 +932,70 @@ async def step_127__golden_candidate(*, messages: Optional[List[Any]] = None, ct
 
             # Build FAQ candidate data structure
             faq_candidate = {
-                'question': query_text,
-                'answer': expert_answer,
-                'category': category,
-                'regulatory_references': regulatory_refs,
-                'priority_score': float(priority_score),
-                'quality_score': quality_score,
-                'source': 'expert_feedback',
-                'expert_id': expert_id,
-                'confidence_score': confidence_score,
-                'frequency': frequency
+                "question": query_text,
+                "answer": expert_answer,
+                "category": category,
+                "regulatory_references": regulatory_refs,
+                "priority_score": float(priority_score),
+                "quality_score": quality_score,
+                "source": "expert_feedback",
+                "expert_id": expert_id,
+                "confidence_score": confidence_score,
+                "frequency": frequency,
             }
 
             # Add candidate metadata for tracking
             candidate_metadata = {
-                'proposed_at': datetime.now(timezone.utc).isoformat(),
-                'source': 'expert_feedback',
-                'expert_id': expert_id,
-                'candidate_id': f"candidate_{expert_feedback.get('id', 'unknown')}",
-                'trust_score': trust_score,
-                'expert_confidence': confidence_score
+                "proposed_at": datetime.now(UTC).isoformat(),
+                "source": "expert_feedback",
+                "expert_id": expert_id,
+                "candidate_id": f"candidate_{expert_feedback.get('id', 'unknown')}",
+                "trust_score": trust_score,
+                "expert_confidence": confidence_score,
             }
 
             rag_step_log(
                 step=127,
-                step_id='RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback',
-                node_label='GoldenCandidate',
+                step_id="RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback",
+                node_label="GoldenCandidate",
                 request_id=request_id,
-                candidate_id=candidate_metadata['candidate_id'],
+                candidate_id=candidate_metadata["candidate_id"],
                 priority_score=float(priority_score),
                 quality_score=quality_score,
                 expert_confidence=confidence_score,
                 category=category,
-                processing_stage="completed"
+                processing_stage="completed",
             )
 
         except Exception as e:
             rag_step_log(
                 step=127,
-                step_id='RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback',
-                node_label='GoldenCandidate',
+                step_id="RAG.golden.goldensetupdater.propose.candidate.from.expert.feedback",
+                node_label="GoldenCandidate",
                 request_id=request_id,
                 error=str(e),
-                processing_stage="error"
+                processing_stage="error",
             )
             # On error, still route to next step with error context
-            faq_candidate = {'error': str(e)}
-            candidate_metadata = {'error': str(e)}
+            faq_candidate = {"error": str(e)}
+            candidate_metadata = {"error": str(e)}
 
         # Build result with preserved context
         result = {
             **ctx,
-            'faq_candidate': faq_candidate,
-            'candidate_metadata': candidate_metadata,
-            'next_step': 'golden_approval',  # Routes to Step 128 per Mermaid
-            'request_id': request_id
+            "faq_candidate": faq_candidate,
+            "candidate_metadata": candidate_metadata,
+            "next_step": "golden_approval",  # Routes to Step 128 per Mermaid
+            "request_id": request_id,
         }
 
         return result
 
-async def step_128__golden_approval(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 128 — Auto threshold met or manual approval?
+
+async def step_128__golden_approval(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
+    """RAG STEP 128 — Auto threshold met or manual approval?
     ID: RAG.golden.auto.threshold.met.or.manual.approval
     Type: decision | Category: golden | Node: GoldenApproval
 
@@ -897,21 +1004,28 @@ async def step_128__golden_approval(*, messages: Optional[List[Any]] = None, ctx
     FeedbackEnd (Step 115) if rejected/needs review.
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(128, 'RAG.golden.auto.threshold.met.or.manual.approval', 'GoldenApproval',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=128, step_id='RAG.golden.auto.threshold.met.or.manual.approval',
-                     node_label='GoldenApproval',
-                     category='golden', type='decision', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        128, "RAG.golden.auto.threshold.met.or.manual.approval", "GoldenApproval", request_id=request_id, stage="start"
+    ):
+        rag_step_log(
+            step=128,
+            step_id="RAG.golden.auto.threshold.met.or.manual.approval",
+            node_label="GoldenApproval",
+            category="golden",
+            type="decision",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract candidate data
-        faq_candidate = ctx.get('faq_candidate', {})
-        candidate_metadata = ctx.get('candidate_metadata', {})
+        faq_candidate = ctx.get("faq_candidate", {})
+        candidate_metadata = ctx.get("candidate_metadata", {})
 
         # Get quality score and trust score
-        quality_score = faq_candidate.get('quality_score', 0.0)
-        trust_score = ctx.get('trust_score', 0.0)
+        quality_score = faq_candidate.get("quality_score", 0.0)
+        trust_score = ctx.get("trust_score", 0.0)
 
         # Decision logic based on thresholds
         try:
@@ -919,95 +1033,98 @@ async def step_128__golden_approval(*, messages: Optional[List[Any]] = None, ctx
 
             # Import thresholds from config
             from app.models.faq_automation import FAQ_AUTOMATION_CONFIG
-            auto_approve_threshold = FAQ_AUTOMATION_CONFIG['generation']['auto_approve_threshold']  # 0.95
-            quality_threshold = FAQ_AUTOMATION_CONFIG['generation']['quality_threshold']  # 0.85
+
+            auto_approve_threshold = FAQ_AUTOMATION_CONFIG["generation"]["auto_approve_threshold"]  # 0.95
+            quality_threshold = FAQ_AUTOMATION_CONFIG["generation"]["quality_threshold"]  # 0.85
 
             # Validate quality score exists
-            if not quality_score or not isinstance(quality_score, (int, float)):
-                approval_decision = 'rejected'
-                rejection_reason = 'missing_quality_score'
-                next_step = 'feedback_end'
+            if not quality_score or not isinstance(quality_score, int | float):
+                approval_decision = "rejected"
+                rejection_reason = "missing_quality_score"
+                next_step = "feedback_end"
 
             # Auto-approve if quality score meets threshold
             elif quality_score >= auto_approve_threshold:
-                approval_decision = 'auto_approved'
-                approval_reason = 'quality_threshold_met'
-                next_step = 'publish_golden'
+                approval_decision = "auto_approved"
+                approval_reason = "quality_threshold_met"
+                next_step = "publish_golden"
                 rejection_reason = None
 
             # Reject if quality is too low
             elif quality_score < quality_threshold:
-                approval_decision = 'rejected'
-                rejection_reason = 'quality_below_threshold'
-                next_step = 'feedback_end'
+                approval_decision = "rejected"
+                rejection_reason = "quality_below_threshold"
+                next_step = "feedback_end"
                 approval_reason = None
 
             # Borderline cases require manual review (for now, treat as rejected)
             else:
-                approval_decision = 'manual_review_required'
-                rejection_reason = 'quality_requires_manual_review'
-                next_step = 'feedback_end'  # For now, route to feedback_end
+                approval_decision = "manual_review_required"
+                rejection_reason = "quality_requires_manual_review"
+                next_step = "feedback_end"  # For now, route to feedback_end
                 approval_reason = None
 
             # Add approval metadata
             approval_metadata = {
-                'decided_at': datetime.now(timezone.utc).isoformat(),
-                'decision': approval_decision,
-                'quality_score': quality_score,
-                'trust_score': trust_score,
-                'threshold_used': auto_approve_threshold,
-                'candidate_id': candidate_metadata.get('candidate_id')
+                "decided_at": datetime.now(UTC).isoformat(),
+                "decision": approval_decision,
+                "quality_score": quality_score,
+                "trust_score": trust_score,
+                "threshold_used": auto_approve_threshold,
+                "candidate_id": candidate_metadata.get("candidate_id"),
             }
 
             rag_step_log(
                 step=128,
-                step_id='RAG.golden.auto.threshold.met.or.manual.approval',
-                node_label='GoldenApproval',
+                step_id="RAG.golden.auto.threshold.met.or.manual.approval",
+                node_label="GoldenApproval",
                 request_id=request_id,
                 approval_decision=approval_decision,
                 quality_score=quality_score,
                 trust_score=trust_score,
                 threshold=auto_approve_threshold,
                 next_step=next_step,
-                processing_stage="completed"
+                processing_stage="completed",
             )
 
         except Exception as e:
             rag_step_log(
                 step=128,
-                step_id='RAG.golden.auto.threshold.met.or.manual.approval',
-                node_label='GoldenApproval',
+                step_id="RAG.golden.auto.threshold.met.or.manual.approval",
+                node_label="GoldenApproval",
                 request_id=request_id,
                 error=str(e),
-                processing_stage="error"
+                processing_stage="error",
             )
             # On error, reject for safety
-            approval_decision = 'rejected'
-            rejection_reason = f'error: {str(e)}'
-            next_step = 'feedback_end'
-            approval_metadata = {'error': str(e)}
+            approval_decision = "rejected"
+            rejection_reason = f"error: {str(e)}"
+            next_step = "feedback_end"
+            approval_metadata = {"error": str(e)}
             approval_reason = None
 
         # Build result with preserved context
         result = {
             **ctx,
-            'approval_decision': approval_decision,
-            'approval_metadata': approval_metadata,
-            'next_step': next_step,
-            'request_id': request_id
+            "approval_decision": approval_decision,
+            "approval_metadata": approval_metadata,
+            "next_step": next_step,
+            "request_id": request_id,
         }
 
         # Add reason based on decision
-        if approval_decision == 'auto_approved' and approval_reason:
-            result['approval_reason'] = approval_reason
+        if approval_decision == "auto_approved" and approval_reason:
+            result["approval_reason"] = approval_reason
         if rejection_reason:
-            result['rejection_reason'] = rejection_reason
+            result["rejection_reason"] = rejection_reason
 
         return result
 
-async def step_129__publish_golden(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 129 — GoldenSet.publish_or_update versioned entry
+
+async def step_129__publish_golden(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
+    """RAG STEP 129 — GoldenSet.publish_or_update versioned entry
     ID: RAG.golden.goldenset.publish.or.update.versioned.entry
     Type: process | Category: golden | Node: PublishGolden
 
@@ -1016,32 +1133,44 @@ async def step_129__publish_golden(*, messages: Optional[List[Any]] = None, ctx:
     and VectorReindex (Step 131) for downstream updates.
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(129, 'RAG.golden.goldenset.publish.or.update.versioned.entry', 'PublishGolden',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=129, step_id='RAG.golden.goldenset.publish.or.update.versioned.entry',
-                     node_label='PublishGolden',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        129,
+        "RAG.golden.goldenset.publish.or.update.versioned.entry",
+        "PublishGolden",
+        request_id=request_id,
+        stage="start",
+    ):
+        rag_step_log(
+            step=129,
+            step_id="RAG.golden.goldenset.publish.or.update.versioned.entry",
+            node_label="PublishGolden",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract FAQ candidate data
-        faq_candidate = ctx.get('faq_candidate', {})
-        candidate_metadata = ctx.get('candidate_metadata', {})
+        faq_candidate = ctx.get("faq_candidate", {})
+        candidate_metadata = ctx.get("candidate_metadata", {})
 
-        question = faq_candidate.get('question', '')
-        answer = faq_candidate.get('answer', '')
-        category = faq_candidate.get('category', 'generale')
-        tags = faq_candidate.get('tags', [])
-        regulatory_refs = faq_candidate.get('regulatory_references', [])
-        existing_faq_id = faq_candidate.get('existing_faq_id')
+        question = faq_candidate.get("question", "")
+        answer = faq_candidate.get("answer", "")
+        category = faq_candidate.get("category", "generale")
+        tags = faq_candidate.get("tags", [])
+        regulatory_refs = faq_candidate.get("regulatory_references", [])
+        existing_faq_id = faq_candidate.get("existing_faq_id")
 
         # Publish or update FAQ entry
         try:
             from datetime import datetime, timezone
-            from app.services.intelligent_faq_service import create_faq_entry, update_faq_entry
-            from app.models.faq import UpdateSensitivity
 
-            db_session = ctx.get('db_session')  # Would be injected via dependency injection
+            from app.models.faq import UpdateSensitivity
+            from app.services.intelligent_faq_service import create_faq_entry, update_faq_entry
+
+            db_session = ctx.get("db_session")  # Would be injected via dependency injection
 
             # Determine if this is a new entry or an update
             if existing_faq_id:
@@ -1052,9 +1181,9 @@ async def step_129__publish_golden(*, messages: Optional[List[Any]] = None, ctx:
                     question=question,
                     answer=answer,
                     tags=tags,
-                    change_reason=f"Expert feedback improvement (candidate: {candidate_metadata.get('candidate_id')})"
+                    change_reason=f"Expert feedback improvement (candidate: {candidate_metadata.get('candidate_id')})",
                 )
-                operation = 'updated'
+                operation = "updated"
             else:
                 # Create new FAQ entry
                 faq_entry = await create_faq_entry(
@@ -1063,71 +1192,73 @@ async def step_129__publish_golden(*, messages: Optional[List[Any]] = None, ctx:
                     answer=answer,
                     category=category,
                     tags=tags,
-                    update_sensitivity=UpdateSensitivity.MEDIUM
+                    update_sensitivity=UpdateSensitivity.MEDIUM,
                 )
-                operation = 'created'
+                operation = "created"
 
             # Build published FAQ data
             published_faq = {
-                'id': faq_entry.id if hasattr(faq_entry, 'id') else 'faq_published',
-                'question': faq_entry.question if hasattr(faq_entry, 'question') else question,
-                'answer': faq_entry.answer if hasattr(faq_entry, 'answer') else answer,
-                'category': faq_entry.category if hasattr(faq_entry, 'category') else category,
-                'version': faq_entry.version if hasattr(faq_entry, 'version') else 1,
-                'tags': faq_entry.tags if hasattr(faq_entry, 'tags') else tags,
-                'regulatory_refs': regulatory_refs
+                "id": faq_entry.id if hasattr(faq_entry, "id") else "faq_published",
+                "question": faq_entry.question if hasattr(faq_entry, "question") else question,
+                "answer": faq_entry.answer if hasattr(faq_entry, "answer") else answer,
+                "category": faq_entry.category if hasattr(faq_entry, "category") else category,
+                "version": faq_entry.version if hasattr(faq_entry, "version") else 1,
+                "tags": faq_entry.tags if hasattr(faq_entry, "tags") else tags,
+                "regulatory_refs": regulatory_refs,
             }
 
             # Add publication metadata
             publication_metadata = {
-                'published_at': datetime.now(timezone.utc).isoformat(),
-                'faq_id': published_faq['id'],
-                'operation': operation,
-                'candidate_id': candidate_metadata.get('candidate_id'),
-                'version': published_faq['version']
+                "published_at": datetime.now(UTC).isoformat(),
+                "faq_id": published_faq["id"],
+                "operation": operation,
+                "candidate_id": candidate_metadata.get("candidate_id"),
+                "version": published_faq["version"],
             }
 
             rag_step_log(
                 step=129,
-                step_id='RAG.golden.goldenset.publish.or.update.versioned.entry',
-                node_label='PublishGolden',
+                step_id="RAG.golden.goldenset.publish.or.update.versioned.entry",
+                node_label="PublishGolden",
                 request_id=request_id,
-                faq_id=published_faq['id'],
+                faq_id=published_faq["id"],
                 operation=operation,
-                version=published_faq['version'],
+                version=published_faq["version"],
                 category=category,
-                processing_stage="completed"
+                processing_stage="completed",
             )
 
         except Exception as e:
             rag_step_log(
                 step=129,
-                step_id='RAG.golden.goldenset.publish.or.update.versioned.entry',
-                node_label='PublishGolden',
+                step_id="RAG.golden.goldenset.publish.or.update.versioned.entry",
+                node_label="PublishGolden",
                 request_id=request_id,
                 error=str(e),
-                processing_stage="error"
+                processing_stage="error",
             )
             # On error, still route to next step with error context
-            published_faq = {'error': str(e)}
-            publication_metadata = {'error': str(e)}
-            operation = 'error'
+            published_faq = {"error": str(e)}
+            publication_metadata = {"error": str(e)}
+            operation = "error"
 
         # Build result with preserved context
         result = {
             **ctx,
-            'published_faq': published_faq,
-            'publication_metadata': publication_metadata,
-            'operation': operation,
-            'next_step': 'invalidate_faq_cache',  # Routes to Step 130 per Mermaid
-            'request_id': request_id
+            "published_faq": published_faq,
+            "publication_metadata": publication_metadata,
+            "operation": operation,
+            "next_step": "invalidate_faq_cache",  # Routes to Step 130 per Mermaid
+            "request_id": request_id,
         }
 
         return result
 
-async def step_131__vector_reindex(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 131 — VectorIndex.upsert_faq update embeddings
+
+async def step_131__vector_reindex(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
+    """RAG STEP 131 — VectorIndex.upsert_faq update embeddings
     ID: RAG.golden.vectorindex.upsert.faq.update.embeddings
     Type: process | Category: golden | Node: VectorReindex
 
@@ -1136,38 +1267,58 @@ async def step_131__vector_reindex(*, messages: Optional[List[Any]] = None, ctx:
     vector index. Provides indexing metadata for observability.
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(131, 'RAG.golden.vectorindex.upsert.faq.update.embeddings', 'VectorReindex',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=131, step_id='RAG.golden.vectorindex.upsert.faq.update.embeddings', node_label='VectorReindex',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        131,
+        "RAG.golden.vectorindex.upsert.faq.update.embeddings",
+        "VectorReindex",
+        request_id=request_id,
+        stage="start",
+    ):
+        rag_step_log(
+            step=131,
+            step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
+            node_label="VectorReindex",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract FAQ data
-        published_faq = ctx.get('published_faq', {})
-        publication_metadata = ctx.get('publication_metadata', {})
-        faq_id = published_faq.get('id')
+        published_faq = ctx.get("published_faq", {})
+        publication_metadata = ctx.get("publication_metadata", {})
+        faq_id = published_faq.get("id")
 
         if not faq_id:
             from datetime import datetime, timezone
-            rag_step_log(step=131, step_id='RAG.golden.vectorindex.upsert.faq.update.embeddings', node_label='VectorReindex',
-                        request_id=request_id, error="No FAQ ID found", processing_stage="error")
+
+            rag_step_log(
+                step=131,
+                step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
+                node_label="VectorReindex",
+                request_id=request_id,
+                error="No FAQ ID found",
+                processing_stage="error",
+            )
 
             # Build result with error
             result = {
                 **ctx,
-                'vector_index_metadata': {
-                    'success': False,
-                    'error': 'No FAQ ID found in published_faq',
-                    'indexed_at': datetime.now(timezone.utc).isoformat()
+                "vector_index_metadata": {
+                    "success": False,
+                    "error": "No FAQ ID found in published_faq",
+                    "indexed_at": datetime.now(UTC).isoformat(),
                 },
-                'request_id': request_id
+                "request_id": request_id,
             }
             return result
 
         try:
             # Import here to avoid circular imports
             from datetime import datetime, timezone
+
             from app.services.embedding_management import EmbeddingManager
 
             embedding_manager = EmbeddingManager()
@@ -1175,71 +1326,88 @@ async def step_131__vector_reindex(*, messages: Optional[List[Any]] = None, ctx:
             # Prepare FAQ content for embedding
             faq_content = f"{published_faq.get('question', '')} {published_faq.get('answer', '')}".strip()
 
-            embedding_items = [{
-                'id': faq_id,
-                'content': faq_content,
-                'metadata': {
-                    'faq_id': faq_id,
-                    'category': published_faq.get('category'),
-                    'version': published_faq.get('version', 1),
-                    'operation': publication_metadata.get('operation', 'unknown'),
-                    'regulatory_references': published_faq.get('regulatory_references', []),
-                    'quality_score': published_faq.get('quality_score'),
-                    'updated_at': publication_metadata.get('published_at'),
-                    'source_type': 'faq'
+            embedding_items = [
+                {
+                    "id": faq_id,
+                    "content": faq_content,
+                    "metadata": {
+                        "faq_id": faq_id,
+                        "category": published_faq.get("category"),
+                        "version": published_faq.get("version", 1),
+                        "operation": publication_metadata.get("operation", "unknown"),
+                        "regulatory_references": published_faq.get("regulatory_references", []),
+                        "quality_score": published_faq.get("quality_score"),
+                        "updated_at": publication_metadata.get("published_at"),
+                        "source_type": "faq",
+                    },
                 }
-            }]
+            ]
 
             # Update embeddings in vector index
-            rag_step_log(step=131, step_id='RAG.golden.vectorindex.upsert.faq.update.embeddings', node_label='VectorReindex',
-                        request_id=request_id, faq_id=faq_id, processing_stage="updating_embeddings")
-
-            batch_result = await embedding_manager.update_pinecone_embeddings(
-                items=embedding_items,
-                source_type='faq'
+            rag_step_log(
+                step=131,
+                step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
+                node_label="VectorReindex",
+                request_id=request_id,
+                faq_id=faq_id,
+                processing_stage="updating_embeddings",
             )
+
+            batch_result = await embedding_manager.update_pinecone_embeddings(items=embedding_items, source_type="faq")
 
             # Create indexing metadata
             vector_metadata = {
-                'faq_id': faq_id,
-                'embeddings_updated': batch_result.successful,
-                'total_items': batch_result.total_items,
-                'failed_items': batch_result.failed,
-                'processing_time': batch_result.processing_time_seconds,
-                'version': published_faq.get('version', 1),
-                'operation': publication_metadata.get('operation', 'unknown'),
-                'success': batch_result.successful > 0 and batch_result.failed == 0,
-                'indexed_at': datetime.now(timezone.utc).isoformat()
+                "faq_id": faq_id,
+                "embeddings_updated": batch_result.successful,
+                "total_items": batch_result.total_items,
+                "failed_items": batch_result.failed,
+                "processing_time": batch_result.processing_time_seconds,
+                "version": published_faq.get("version", 1),
+                "operation": publication_metadata.get("operation", "unknown"),
+                "success": batch_result.successful > 0 and batch_result.failed == 0,
+                "indexed_at": datetime.now(UTC).isoformat(),
             }
 
-            rag_step_log(step=131, step_id='RAG.golden.vectorindex.upsert.faq.update.embeddings', node_label='VectorReindex',
-                        request_id=request_id, faq_id=faq_id, embeddings_updated=batch_result.successful,
-                        processing_stage="completed")
+            rag_step_log(
+                step=131,
+                step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
+                node_label="VectorReindex",
+                request_id=request_id,
+                faq_id=faq_id,
+                embeddings_updated=batch_result.successful,
+                processing_stage="completed",
+            )
 
         except Exception as e:
             from datetime import datetime, timezone
-            rag_step_log(step=131, step_id='RAG.golden.vectorindex.upsert.faq.update.embeddings', node_label='VectorReindex',
-                        request_id=request_id, faq_id=faq_id, error=str(e), processing_stage="error")
+
+            rag_step_log(
+                step=131,
+                step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
+                node_label="VectorReindex",
+                request_id=request_id,
+                faq_id=faq_id,
+                error=str(e),
+                processing_stage="error",
+            )
 
             vector_metadata = {
-                'faq_id': faq_id,
-                'success': False,
-                'error': str(e),
-                'indexed_at': datetime.now(timezone.utc).isoformat()
+                "faq_id": faq_id,
+                "success": False,
+                "error": str(e),
+                "indexed_at": datetime.now(UTC).isoformat(),
             }
 
         # Build result with preserved context
-        result = {
-            **ctx,
-            'vector_index_metadata': vector_metadata,
-            'request_id': request_id
-        }
+        result = {**ctx, "vector_index_metadata": vector_metadata, "request_id": request_id}
 
         return result
 
-async def step_135__golden_rules(*, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 135 — GoldenSetUpdater.auto_rule_eval new or obsolete candidates
+
+async def step_135__golden_rules(
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+) -> Any:
+    """RAG STEP 135 — GoldenSetUpdater.auto_rule_eval new or obsolete candidates
     ID: RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates
     Type: process | Category: golden | Node: GoldenRules
 
@@ -1248,35 +1416,54 @@ async def step_135__golden_rules(*, messages: Optional[List[Any]] = None, ctx: O
     to apply rule-based evaluation criteria. Routes to GoldenCandidate (Step 127).
     """
     ctx = ctx or {}
-    request_id = ctx.get('request_id', 'unknown')
+    request_id = ctx.get("request_id", "unknown")
 
-    with rag_step_timer(135, 'RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates', 'GoldenRules',
-                       request_id=request_id, stage="start"):
-        rag_step_log(step=135, step_id='RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates', node_label='GoldenRules',
-                     category='golden', type='process', request_id=request_id, processing_stage="started")
+    with rag_step_timer(
+        135,
+        "RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates",
+        "GoldenRules",
+        request_id=request_id,
+        stage="start",
+    ):
+        rag_step_log(
+            step=135,
+            step_id="RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates",
+            node_label="GoldenRules",
+            category="golden",
+            type="process",
+            request_id=request_id,
+            processing_stage="started",
+        )
 
         # Extract knowledge updates and evaluation rules
-        knowledge_updates = ctx.get('knowledge_updates', [])
-        evaluation_rules = ctx.get('evaluation_rules', {})
+        knowledge_updates = ctx.get("knowledge_updates", [])
+        evaluation_rules = ctx.get("evaluation_rules", {})
 
         if not knowledge_updates:
             from datetime import datetime, timezone
-            rag_step_log(step=135, step_id='RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates', node_label='GoldenRules',
-                        request_id=request_id, error="No knowledge updates to process", processing_stage="error")
+
+            rag_step_log(
+                step=135,
+                step_id="RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates",
+                node_label="GoldenRules",
+                request_id=request_id,
+                error="No knowledge updates to process",
+                processing_stage="error",
+            )
 
             # Build result with no candidates
             result = {
                 **ctx,
-                'candidate_evaluation': {
-                    'new_candidates': [],
-                    'obsolete_candidates': [],
-                    'candidates_generated': 0,
-                    'obsolete_identified': 0,
-                    'success': True,
-                    'evaluated_at': datetime.now(timezone.utc).isoformat()
+                "candidate_evaluation": {
+                    "new_candidates": [],
+                    "obsolete_candidates": [],
+                    "candidates_generated": 0,
+                    "obsolete_identified": 0,
+                    "success": True,
+                    "evaluated_at": datetime.now(UTC).isoformat(),
                 },
-                'next_step': 'golden_candidate',
-                'request_id': request_id
+                "next_step": "golden_candidate",
+                "request_id": request_id,
             }
             return result
 
@@ -1285,63 +1472,73 @@ async def step_135__golden_rules(*, messages: Optional[List[Any]] = None, ctx: O
             from datetime import datetime, timezone
 
             # Apply rule-based evaluation to knowledge updates
-            evaluation_results = await evaluate_knowledge_for_candidates(
-                knowledge_updates, evaluation_rules, None
-            )
+            evaluation_results = await evaluate_knowledge_for_candidates(knowledge_updates, evaluation_rules, None)
 
             # Create evaluation metadata
             candidate_evaluation = {
-                'new_candidates': evaluation_results.get('new_candidates', []),
-                'obsolete_candidates': evaluation_results.get('obsolete_candidates', []),
-                'candidates_generated': len(evaluation_results.get('new_candidates', [])),
-                'obsolete_identified': len(evaluation_results.get('obsolete_candidates', [])),
-                'total_processed': len(knowledge_updates),
-                'filtered_out': evaluation_results.get('filtered_out', 0),
-                'processing_time': evaluation_results.get('processing_time_seconds', 0.0),
-                'success': True,
-                'evaluated_at': datetime.now(timezone.utc).isoformat(),
-                'evaluation_rules_applied': evaluation_rules
+                "new_candidates": evaluation_results.get("new_candidates", []),
+                "obsolete_candidates": evaluation_results.get("obsolete_candidates", []),
+                "candidates_generated": len(evaluation_results.get("new_candidates", [])),
+                "obsolete_identified": len(evaluation_results.get("obsolete_candidates", [])),
+                "total_processed": len(knowledge_updates),
+                "filtered_out": evaluation_results.get("filtered_out", 0),
+                "processing_time": evaluation_results.get("processing_time_seconds", 0.0),
+                "success": True,
+                "evaluated_at": datetime.now(UTC).isoformat(),
+                "evaluation_rules_applied": evaluation_rules,
             }
 
-            rag_step_log(step=135, step_id='RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates', node_label='GoldenRules',
-                        request_id=request_id, candidates_generated=candidate_evaluation['candidates_generated'],
-                        obsolete_identified=candidate_evaluation['obsolete_identified'], processing_stage="completed")
+            rag_step_log(
+                step=135,
+                step_id="RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates",
+                node_label="GoldenRules",
+                request_id=request_id,
+                candidates_generated=candidate_evaluation["candidates_generated"],
+                obsolete_identified=candidate_evaluation["obsolete_identified"],
+                processing_stage="completed",
+            )
 
         except Exception as e:
             from datetime import datetime, timezone
-            rag_step_log(step=135, step_id='RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates', node_label='GoldenRules',
-                        request_id=request_id, error=str(e), processing_stage="error")
+
+            rag_step_log(
+                step=135,
+                step_id="RAG.golden.goldensetupdater.auto.rule.eval.new.or.obsolete.candidates",
+                node_label="GoldenRules",
+                request_id=request_id,
+                error=str(e),
+                processing_stage="error",
+            )
 
             candidate_evaluation = {
-                'new_candidates': [],
-                'obsolete_candidates': [],
-                'candidates_generated': 0,
-                'obsolete_identified': 0,
-                'success': False,
-                'error': str(e),
-                'evaluated_at': datetime.now(timezone.utc).isoformat()
+                "new_candidates": [],
+                "obsolete_candidates": [],
+                "candidates_generated": 0,
+                "obsolete_identified": 0,
+                "success": False,
+                "error": str(e),
+                "evaluated_at": datetime.now(UTC).isoformat(),
             }
 
         # Build result with preserved context
         result = {
             **ctx,
-            'candidate_evaluation': candidate_evaluation,
-            'next_step': 'golden_candidate',  # Routes to Step 127 per Mermaid
-            'request_id': request_id
+            "candidate_evaluation": candidate_evaluation,
+            "next_step": "golden_candidate",  # Routes to Step 127 per Mermaid
+            "request_id": request_id,
         }
 
         return result
 
 
 async def evaluate_knowledge_for_candidates(knowledge_updates, evaluation_rules, faq_generator):
-    """
-    Helper function to evaluate knowledge updates for FAQ candidate generation.
+    """Helper function to evaluate knowledge updates for FAQ candidate generation.
 
     This function applies rule-based logic to determine which knowledge updates
     should become FAQ candidates and which existing candidates are obsolete.
     """
     import time
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     start_time = time.time()
     new_candidates = []
@@ -1349,14 +1546,14 @@ async def evaluate_knowledge_for_candidates(knowledge_updates, evaluation_rules,
     filtered_out = 0
 
     # Default evaluation rules
-    min_content_length = evaluation_rules.get('min_content_length', 100)
-    priority_categories = evaluation_rules.get('priority_categories', [])
-    min_priority_score = evaluation_rules.get('min_priority_score', 0.6)
-    recency_threshold_days = evaluation_rules.get('recency_threshold_days', 30)
+    min_content_length = evaluation_rules.get("min_content_length", 100)
+    priority_categories = evaluation_rules.get("priority_categories", [])
+    min_priority_score = evaluation_rules.get("min_priority_score", 0.6)
+    recency_threshold_days = evaluation_rules.get("recency_threshold_days", 30)
 
     for update in knowledge_updates:
-        content = update.get('content', '')
-        category = update.get('category', '')
+        content = update.get("content", "")
+        category = update.get("category", "")
 
         # Rule 1: Content length threshold
         if len(content) < min_content_length:
@@ -1369,24 +1566,24 @@ async def evaluate_knowledge_for_candidates(knowledge_updates, evaluation_rules,
             priority_score += 0.3
 
         # Rule 3: Recency boost
-        published_date = update.get('published_date')
+        published_date = update.get("published_date")
         days_old = 0  # Default for scoring calculation
         if published_date:
             try:
-                if 'T' in published_date:
-                    pub_date = datetime.fromisoformat(published_date.replace('Z', '+00:00'))
+                if "T" in published_date:
+                    pub_date = datetime.fromisoformat(published_date.replace("Z", "+00:00"))
                 else:
                     # Handle date-only format
-                    pub_date = datetime.strptime(published_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-                days_old = (datetime.now(timezone.utc) - pub_date).days
+                    pub_date = datetime.strptime(published_date, "%Y-%m-%d").replace(tzinfo=UTC)
+                days_old = (datetime.now(UTC) - pub_date).days
                 if days_old <= recency_threshold_days:
                     priority_score += 0.2
-            except Exception as e:
+            except Exception:
                 # For debugging: log the error and continue
                 pass
 
         # Rule 4: Priority keyword boost
-        priority_keywords = evaluation_rules.get('priority_keywords', [])
+        priority_keywords = evaluation_rules.get("priority_keywords", [])
         for keyword in priority_keywords:
             if keyword.lower() in content.lower():
                 priority_score += 0.1
@@ -1399,35 +1596,37 @@ async def evaluate_knowledge_for_candidates(knowledge_updates, evaluation_rules,
 
         # Generate candidate if passes all rules
         candidate = {
-            'id': f"candidate_{update['id']}",
-            'knowledge_source_id': update['id'],
-            'proposed_question': f"What are the key points about {update.get('title', 'this topic')}?",
-            'priority_score': min(priority_score, 1.0),
-            'confidence': 0.8,  # Default confidence
-            'category': category,
-            'content_preview': content[:200] + '...' if len(content) > 200 else content,
-            'evaluation_criteria_met': {
-                'content_length': len(content),
-                'priority_category': category in priority_categories,
-                'recent_content': days_old <= recency_threshold_days if published_date else False,
-                'priority_score': priority_score
-            }
+            "id": f"candidate_{update['id']}",
+            "knowledge_source_id": update["id"],
+            "proposed_question": f"What are the key points about {update.get('title', 'this topic')}?",
+            "priority_score": min(priority_score, 1.0),
+            "confidence": 0.8,  # Default confidence
+            "category": category,
+            "content_preview": content[:200] + "..." if len(content) > 200 else content,
+            "evaluation_criteria_met": {
+                "content_length": len(content),
+                "priority_category": category in priority_categories,
+                "recent_content": days_old <= recency_threshold_days if published_date else False,
+                "priority_score": priority_score,
+            },
         }
         new_candidates.append(candidate)
 
         # Check for obsolete candidates (simplified logic)
-        if update.get('supersedes_content_id'):
-            obsolete_candidates.append({
-                'knowledge_source_id': update['supersedes_content_id'],
-                'reason': 'Superseded by new content',
-                'replacement_candidate_id': candidate['id']
-            })
+        if update.get("supersedes_content_id"):
+            obsolete_candidates.append(
+                {
+                    "knowledge_source_id": update["supersedes_content_id"],
+                    "reason": "Superseded by new content",
+                    "replacement_candidate_id": candidate["id"],
+                }
+            )
 
     processing_time = time.time() - start_time
 
     return {
-        'new_candidates': new_candidates,
-        'obsolete_candidates': obsolete_candidates,
-        'filtered_out': filtered_out,
-        'processing_time_seconds': processing_time
+        "new_candidates": new_candidates,
+        "obsolete_candidates": obsolete_candidates,
+        "filtered_out": filtered_out,
+        "processing_time_seconds": processing_time,
     }

@@ -31,7 +31,6 @@ depends_on = None
 
 def upgrade():
     """Add extraction quality and junk detection fields"""
-
     # Add fields to knowledge_items
     op.execute(
         """
@@ -150,7 +149,6 @@ def upgrade():
 
 def downgrade():
     """Remove extraction quality and junk detection fields"""
-
     # Drop indexes
     op.execute("DROP INDEX IF EXISTS idx_kc_not_junk;")
     op.execute("DROP INDEX IF EXISTS idx_ki_extraction_method;")

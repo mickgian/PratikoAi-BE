@@ -78,9 +78,9 @@ class TestSSEKeepaliveDuringProcessing:
 
         # Verify keepalive format is correct
         for ka_chunk in keepalive_chunks:
-            assert ka_chunk["chunk"] == ": keepalive\n\n", (
-                f"Keepalive must be exactly ': keepalive\\n\\n', " f"got: {repr(ka_chunk['chunk'])}"
-            )
+            assert (
+                ka_chunk["chunk"] == ": keepalive\n\n"
+            ), f"Keepalive must be exactly ': keepalive\\n\\n', got: {repr(ka_chunk['chunk'])}"
 
         # Verify keepalives sent before content
         if content_chunks:
@@ -113,7 +113,9 @@ class TestSSEKeepaliveDuringProcessing:
                 "llm": {
                     "success": True,
                     "response": LLMResponse(
-                        content="A" * 500, model="gpt-4o-mini", provider="openai"  # 500 chars → ~5 chunks
+                        content="A" * 500,
+                        model="gpt-4o-mini",
+                        provider="openai",  # 500 chars → ~5 chunks
                     ),
                 },
                 "streaming": {"requested": True},
@@ -175,9 +177,9 @@ class TestSSEKeepaliveDuringProcessing:
         keepalive_chunks = [c for c in chunks if c.startswith(": keepalive")]
 
         # Fast responses should not trigger keepalive (or only 0-1)
-        assert len(keepalive_chunks) <= 1, (
-            f"Fast responses (<5s) should not send keepalives. " f"Got {len(keepalive_chunks)} keepalives"
-        )
+        assert (
+            len(keepalive_chunks) <= 1
+        ), f"Fast responses (<5s) should not send keepalives. Got {len(keepalive_chunks)} keepalives"
 
     @pytest.mark.asyncio
     async def test_keepalive_interval_approximately_5_seconds(self):
@@ -224,9 +226,7 @@ class TestSSEKeepaliveDuringProcessing:
 
             # Intervals should be approximately 5 seconds (±1s tolerance)
             for interval in intervals:
-                assert 4.0 <= interval <= 6.0, (
-                    f"Keepalive intervals should be ~5 seconds. " f"Got intervals: {intervals}"
-                )
+                assert 4.0 <= interval <= 6.0, f"Keepalive intervals should be ~5 seconds. Got intervals: {intervals}"
 
 
 if __name__ == "__main__":

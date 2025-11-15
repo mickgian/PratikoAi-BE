@@ -211,7 +211,7 @@ async def root(request: Request):
 
 @app.get("/health")
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["health"][0])
-async def health_check(request: Request) -> Dict[str, Any]:
+async def health_check(request: Request) -> dict[str, Any]:
     """Health check endpoint with environment-specific information.
 
     Returns:
@@ -252,9 +252,8 @@ async def health_check(request: Request) -> Dict[str, Any]:
 async def metrics():
     """Prometheus metrics endpoint for scraping."""
     from fastapi.responses import PlainTextResponse
-    from prometheus_client import CONTENT_TYPE_LATEST
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
     from prometheus_client import REGISTRY as DEFAULT_REGISTRY
-    from prometheus_client import generate_latest
 
     try:
         # Get metrics from both registries

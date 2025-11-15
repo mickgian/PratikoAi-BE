@@ -121,7 +121,7 @@ class TestBufferedStreamingTiming:
                 chunk_times = []
                 start_time = time.time()
 
-                async for chunk in agent.get_stream_response(messages, "test_session"):
+                async for _chunk in agent.get_stream_response(messages, "test_session"):
                     chunk_times.append(time.time() - start_time)
 
                 # Check that chunks arrive over time, not all at once
@@ -279,7 +279,7 @@ class TestBufferedStreamingRegressionProtection:
                 chunk_intervals = []
                 last_time = None
 
-                async for chunk in agent.get_stream_response(messages, "test_session"):
+                async for _chunk in agent.get_stream_response(messages, "test_session"):
                     current_time = time.time()
                     if last_time is not None:
                         interval = current_time - last_time
@@ -291,9 +291,9 @@ class TestBufferedStreamingRegressionProtection:
                     avg_interval = sum(chunk_intervals) / len(chunk_intervals)
                     # Use 0.035s threshold to account for CI timing variance
                     # (sleep is 0.05s, but CI overhead can reduce measured interval)
-                    assert avg_interval > 0.035, (
-                        f"Chunks appearing too quickly (avg {avg_interval:.4f}s), " f"asyncio.sleep likely missing!"
-                    )
+                    assert (
+                        avg_interval > 0.035
+                    ), f"Chunks appearing too quickly (avg {avg_interval:.4f}s), asyncio.sleep likely missing!"
 
 
 class TestWordBoundaryChunking:

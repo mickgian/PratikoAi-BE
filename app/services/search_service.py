@@ -1,5 +1,4 @@
-"""
-PostgreSQL Full-Text Search Service
+"""PostgreSQL Full-Text Search Service
 Implements efficient text search with Italian language support
 """
 
@@ -40,17 +39,16 @@ class SearchResult:
     rank_score: float
     relevance_score: float
     highlight: str
-    source: Optional[str] = None
-    source_url: Optional[str] = None
-    updated_at: Optional[datetime] = None
-    knowledge_item_id: Optional[int] = None  # Parent document ID for chunks
-    chunk_index: Optional[int] = None  # Chunk position in document
-    publication_date: Optional[date] = None  # Publication date from RSS/database
+    source: str | None = None
+    source_url: str | None = None
+    updated_at: datetime | None = None
+    knowledge_item_id: int | None = None  # Parent document ID for chunks
+    chunk_index: int | None = None  # Chunk position in document
+    publication_date: date | None = None  # Publication date from RSS/database
 
 
 class SearchService:
-    """
-    PostgreSQL Full-Text Search service with Italian language support.
+    """PostgreSQL Full-Text Search service with Italian language support.
 
     Features:
     - Italian language text search configuration
@@ -71,14 +69,13 @@ class SearchService:
         query: str,
         limit: int = 20,
         offset: int = 0,
-        category: Optional[str] = None,
+        category: str | None = None,
         min_rank: float = 0.01,
-        source_pattern: Optional[str] = None,
-        publication_year: Optional[int] = None,
-        title_pattern: Optional[str] = None,
-    ) -> List[SearchResult]:
-        """
-        Perform full-text search on knowledge items.
+        source_pattern: str | None = None,
+        publication_year: int | None = None,
+        title_pattern: str | None = None,
+    ) -> list[SearchResult]:
+        """Perform full-text search on knowledge items.
 
         Args:
             query: Search query string
@@ -157,12 +154,12 @@ class SearchService:
         query: str,
         limit: int,
         offset: int,
-        category: Optional[str],
+        category: str | None,
         min_rank: float,
-        source_pattern: Optional[str] = None,
-        publication_year: Optional[int] = None,
-        title_pattern: Optional[str] = None,
-    ) -> List[SearchResult]:
+        source_pattern: str | None = None,
+        publication_year: int | None = None,
+        title_pattern: str | None = None,
+    ) -> list[SearchResult]:
         """Execute the PostgreSQL full-text search query using strict AND matching"""
         # CRITICAL FIX: Use Python conditionals to build separate SQL for title vs FTS
         # This prevents tsquery evaluation in FROM clause from blocking title ILIKE matching
@@ -328,14 +325,13 @@ class SearchService:
         query: str,
         limit: int = 20,
         offset: int = 0,
-        category: Optional[str] = None,
+        category: str | None = None,
         min_rank: float = 0.01,
-        source_pattern: Optional[str] = None,
-        publication_year: Optional[int] = None,
-        title_pattern: Optional[str] = None,
-    ) -> List[SearchResult]:
-        """
-        Perform full-text search with OR matching (more relaxed than AND).
+        source_pattern: str | None = None,
+        publication_year: int | None = None,
+        title_pattern: str | None = None,
+    ) -> list[SearchResult]:
+        """Perform full-text search with OR matching (more relaxed than AND).
         Uses plainto_tsquery which creates OR queries for better recall.
 
         This is typically used as fallback when strict AND search returns no results.
@@ -512,8 +508,7 @@ class SearchService:
         return search_results
 
     def _normalize_italian_query(self, query: str) -> str:
-        """
-        Normalize Italian query for better search results.
+        """Normalize Italian query for better search results.
 
         - Remove extra whitespace
         - Handle special characters
@@ -547,9 +542,8 @@ class SearchService:
             "publication_date": result.publication_date.isoformat() if result.publication_date else None,
         }
 
-    async def update_search_vectors(self, knowledge_ids: Optional[List[str]] = None):
-        """
-        Manually update search vectors for knowledge items.
+    async def update_search_vectors(self, knowledge_ids: list[str] | None = None):
+        """Manually update search vectors for knowledge items.
 
         This is typically handled by database triggers, but can be called
         manually for maintenance or bulk updates.
@@ -582,9 +576,8 @@ class SearchService:
         # Clear search cache after vector update
         await self.cache.clear_cache("search:*")
 
-    async def get_search_suggestions(self, partial_query: str, limit: int = 5) -> List[str]:
-        """
-        Get search suggestions based on partial query.
+    async def get_search_suggestions(self, partial_query: str, limit: int = 5) -> list[str]:
+        """Get search suggestions based on partial query.
 
         Returns common terms from the knowledge base that match the partial query.
         """

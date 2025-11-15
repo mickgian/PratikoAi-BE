@@ -7,18 +7,13 @@ This module provides structured JSON logging for:
 - Violations and anomalies
 """
 
-from typing import Dict, List, Any, Optional
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
+from typing import Any, Dict, List, Optional
 
 from app.core.logging import logger
 
 
-def log_gate_decision(
-    state: str,
-    needs_retrieval: bool,
-    reasons: List[str],
-    query: Optional[str] = None
-) -> None:
+def log_gate_decision(state: str, needs_retrieval: bool, reasons: list[str], query: str | None = None) -> None:
     """Log a retrieval gate decision (S034a).
 
     Args:
@@ -32,7 +27,7 @@ def log_gate_decision(
         "state": state,
         "needs_retrieval": needs_retrieval,
         "reasons": reasons,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
     if query:
@@ -43,12 +38,7 @@ def log_gate_decision(
 
 
 def log_golden_check(
-    state: str,
-    confidence: float,
-    kb_epoch: int,
-    golden_epoch: int,
-    serve: bool,
-    reason: Optional[str] = None
+    state: str, confidence: float, kb_epoch: int, golden_epoch: int, serve: bool, reason: str | None = None
 ) -> None:
     """Log a Golden fast-path eligibility check (S027).
 
@@ -60,24 +50,22 @@ def log_golden_check(
         serve: Whether Golden answer will be served
         reason: Optional reason for the decision
     """
-    logger.info({
-        "event": "golden_check",
-        "state": state,
-        "confidence": confidence,
-        "kb_epoch": kb_epoch,
-        "golden_epoch": golden_epoch,
-        "serve": serve,
-        "reason": reason or ("epoch_mismatch" if kb_epoch > golden_epoch else "ok"),
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    })
+    logger.info(
+        {
+            "event": "golden_check",
+            "state": state,
+            "confidence": confidence,
+            "kb_epoch": kb_epoch,
+            "golden_epoch": golden_epoch,
+            "serve": serve,
+            "reason": reason or ("epoch_mismatch" if kb_epoch > golden_epoch else "ok"),
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+    )
 
 
 def log_fsm_violation(
-    state: str,
-    actual_next: str,
-    expected_next: str,
-    guard_eval: Optional[Dict[str, Any]] = None,
-    severity: str = "error"
+    state: str, actual_next: str, expected_next: str, guard_eval: dict[str, Any] | None = None, severity: str = "error"
 ) -> None:
     """Log an FSM transition violation.
 
@@ -98,7 +86,7 @@ def log_fsm_violation(
         "expected_next": expected_next,
         "guard_eval": guard_eval or {},
         "severity": severity,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
     if severity == "error":
@@ -112,9 +100,9 @@ def log_fsm_violation(
 def log_fsm_transition(
     from_state: str,
     to_state: str,
-    guard: Optional[str] = None,
-    guard_result: Optional[bool] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    guard: str | None = None,
+    guard_result: bool | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> None:
     """Log a successful FSM state transition.
 
@@ -129,7 +117,7 @@ def log_fsm_transition(
         "event": "fsm_transition",
         "from_state": from_state,
         "to_state": to_state,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
     if guard:
@@ -143,12 +131,7 @@ def log_fsm_transition(
     logger.debug(log_data)
 
 
-def log_cache_decision(
-    state: str,
-    cache_key: str,
-    hit: bool,
-    metadata: Optional[Dict[str, Any]] = None
-) -> None:
+def log_cache_decision(state: str, cache_key: str, hit: bool, metadata: dict[str, Any] | None = None) -> None:
     """Log a cache hit/miss decision.
 
     Args:
@@ -157,22 +140,19 @@ def log_cache_decision(
         hit: Whether cache was hit
         metadata: Additional metadata (epochs, provider, etc.)
     """
-    logger.info({
-        "event": "cache_decision",
-        "state": state,
-        "cache_key": cache_key[:16] + "...",  # Truncate for readability
-        "hit": hit,
-        "metadata": metadata or {},
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    })
+    logger.info(
+        {
+            "event": "cache_decision",
+            "state": state,
+            "cache_key": cache_key[:16] + "...",  # Truncate for readability
+            "hit": hit,
+            "metadata": metadata or {},
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+    )
 
 
-def log_policy_violation(
-    policy: str,
-    violation_type: str,
-    details: Dict[str, Any],
-    severity: str = "warning"
-) -> None:
+def log_policy_violation(policy: str, violation_type: str, details: dict[str, Any], severity: str = "warning") -> None:
     """Log a policy violation.
 
     Args:
@@ -187,7 +167,7 @@ def log_policy_violation(
         "violation_type": violation_type,
         "details": details,
         "severity": severity,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
     if severity == "error":

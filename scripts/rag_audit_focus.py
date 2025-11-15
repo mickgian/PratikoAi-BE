@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Focused RAG audit: audit only selected steps (much faster than full run).
 
@@ -8,11 +7,15 @@ Usage:
   python scripts/rag_audit_focus.py --steps 20,39,59,79,82,64 --verbose
   python scripts/rag_audit_focus.py --steps 20,39 --dry-run
 """
-import argparse, sys
+
+import argparse
+import sys
 from pathlib import Path
+
 
 def parse_csv_ints(s: str):
     return sorted({int(x.strip()) for x in s.split(",") if x.strip()})
+
 
 def main():
     ap = argparse.ArgumentParser(description="Focused RAG audit")
@@ -50,9 +53,10 @@ def main():
 
     print("\n📊 Summary:")
     print(f"  Total: {len(auditor.steps)}")
-    for k in ["✅","🟡","🔌","❌"]:
-        print(f"  {k}: {summary['by_status'].get(k,0)}")
+    for k in ["✅", "🟡", "🔌", "❌"]:
+        print(f"  {k}: {summary['by_status'].get(k, 0)}")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

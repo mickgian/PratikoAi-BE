@@ -1,6 +1,7 @@
 """Test StreamCheck node branching logic."""
 
 import pytest
+
 from app.core.langgraph.nodes.step_104__stream_check import node_step_104
 from app.core.langgraph.types import RAGState
 

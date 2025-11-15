@@ -4,11 +4,13 @@ Internal step - records classification metrics for monitoring.
 """
 
 from app.core.langgraph.types import RAGState
-from app.orchestrators.metrics import step_34__track_metrics
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
+from app.orchestrators.metrics import step_34__track_metrics
 
 STEP = 34
 
@@ -26,10 +28,7 @@ async def node_step_34(state: RAGState) -> RAGState:
     rag_step_log(STEP, "enter", domain=domain)
 
     with rag_step_timer(STEP):
-        res = await step_34__track_metrics(
-            messages=state.get("messages", []),
-            ctx=dict(state)
-        )
+        res = await step_34__track_metrics(messages=state.get("messages", []), ctx=dict(state))
 
         # Store metrics tracking result
         metrics = state.setdefault("metrics", {})

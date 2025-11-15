@@ -1,11 +1,12 @@
 """Unit tests for tool guardrails."""
 
 import pytest
+
 from app.core.rag.tool_guardrails import (
-    should_execute_tool_call,
-    filter_tool_calls,
     MAX_TOOL_CALLS_PER_TURN,
-    _generate_tool_call_key
+    _generate_tool_call_key,
+    filter_tool_calls,
+    should_execute_tool_call,
 )
 
 
@@ -15,37 +16,22 @@ class TestToolGuardrails:
     def test_first_tool_call_allowed(self):
         """Test that first tool call is allowed."""
         prev_calls = []
-        new_call = {
-            "function": {
-                "name": "search_kb",
-                "arguments": '{"query": "CCNL"}'
-            }
-        }
+        new_call = {"function": {"name": "search_kb", "arguments": '{"query": "CCNL"}'}}
 
         decision = should_execute_tool_call(prev_calls, new_call)
 
-        assert decision.should_execute == True
+        assert decision.should_execute is True
         assert decision.reason == "passed_guardrails"
         assert decision.tool_name == "search_kb"
 
     def test_second_tool_call_blocked(self):
         """Test that second tool call is blocked (max 1 per turn)."""
-        prev_calls = [{
-            "function": {
-                "name": "search_kb",
-                "arguments": '{"query": "CCNL"}'
-            }
-        }]
-        new_call = {
-            "function": {
-                "name": "search_ccnl",
-                "arguments": '{"query": "metalmeccanici"}'
-            }
-        }
+        prev_calls = [{"function": {"name": "search_kb", "arguments": '{"query": "CCNL"}'}}]
+        new_call = {"function": {"name": "search_ccnl", "arguments": '{"query": "metalmeccanici"}'}}
 
         decision = should_execute_tool_call(prev_calls, new_call)
 
-        assert decision.should_execute == False
+        assert decision.should_execute is False
         assert "max_calls_reached" in decision.reason
         assert decision.tool_name == "search_ccnl"
 
@@ -54,7 +40,7 @@ class TestToolGuardrails:
         # Two identical calls in the list - should be deduplicated
         tool_calls = [
             {"function": {"name": "search_kb", "arguments": '{"query": "CCNL"}'}},
-            {"function": {"name": "search_kb", "arguments": '{"query": "CCNL"}'}}  # Duplicate
+            {"function": {"name": "search_kb", "arguments": '{"query": "CCNL"}'}},  # Duplicate
         ]
 
         filtered = filter_tool_calls(tool_calls)
@@ -66,23 +52,18 @@ class TestToolGuardrails:
     def test_different_arguments_allowed(self):
         """Test that same tool with different arguments is allowed (if under limit)."""
         prev_calls = []  # Empty to test first call
-        new_call = {
-            "function": {
-                "name": "search_kb",
-                "arguments": '{"query": "IVA"}'
-            }
-        }
+        new_call = {"function": {"name": "search_kb", "arguments": '{"query": "IVA"}'}}
 
         decision = should_execute_tool_call(prev_calls, new_call)
 
-        assert decision.should_execute == True
+        assert decision.should_execute is True
 
     def test_filter_tool_calls_max_one(self):
         """Test that filter_tool_calls returns max 1 tool."""
         tool_calls = [
             {"function": {"name": "tool1", "arguments": "{}"}},
             {"function": {"name": "tool2", "arguments": "{}"}},
-            {"function": {"name": "tool3", "arguments": "{}"}}
+            {"function": {"name": "tool3", "arguments": "{}"}},
         ]
 
         filtered = filter_tool_calls(tool_calls)
@@ -94,7 +75,7 @@ class TestToolGuardrails:
         """Test that filter_tool_calls removes duplicates."""
         tool_calls = [
             {"function": {"name": "search_kb", "arguments": '{"query": "CCNL"}'}},
-            {"function": {"name": "search_kb", "arguments": '{"query": "CCNL"}'}}  # Duplicate
+            {"function": {"name": "search_kb", "arguments": '{"query": "CCNL"}'}},  # Duplicate
         ]
 
         filtered = filter_tool_calls(tool_calls)
@@ -109,12 +90,8 @@ class TestToolGuardrails:
 
     def test_filter_tool_calls_with_prev_calls(self):
         """Test filter_tool_calls with previous calls."""
-        prev_calls = [{
-            "function": {"name": "search_kb", "arguments": '{"query": "A"}'}
-        }]
-        tool_calls = [
-            {"function": {"name": "search_ccnl", "arguments": '{"query": "B"}'}}
-        ]
+        prev_calls = [{"function": {"name": "search_kb", "arguments": '{"query": "A"}'}}]
+        tool_calls = [{"function": {"name": "search_ccnl", "arguments": '{"query": "B"}'}}]
 
         filtered = filter_tool_calls(tool_calls, prev_calls)
 
@@ -143,8 +120,8 @@ class TestToolGuardrails:
 
     def test_generate_tool_call_key_different_names(self):
         """Test that _generate_tool_call_key differs for different tool names."""
-        call1 = {"function": {"name": "search_kb", "arguments": '{}'}}
-        call2 = {"function": {"name": "search_ccnl", "arguments": '{}'}}
+        call1 = {"function": {"name": "search_kb", "arguments": "{}"}}
+        call2 = {"function": {"name": "search_ccnl", "arguments": "{}"}}
 
         key1 = _generate_tool_call_key(call1)
         key2 = _generate_tool_call_key(call2)
@@ -157,7 +134,6 @@ class TestToolGuardrails:
 
     def test_invalid_tool_call_format(self):
         """Test handling of invalid tool call format."""
-        prev_calls = []
         new_call = {"invalid": "format"}
 
         # Should handle gracefully

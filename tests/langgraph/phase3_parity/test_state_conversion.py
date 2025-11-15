@@ -14,11 +14,7 @@ class TestRAGStateConversion:
 
     def test_ragstate_creation_with_data(self):
         """Test creating RAGState with data."""
-        data = {
-            "request_id": "test-123",
-            "messages": [{"role": "user", "content": "Hello"}],
-            "streaming": False
-        }
+        data = {"request_id": "test-123", "messages": [{"role": "user", "content": "Hello"}], "streaming": False}
         state = RAGState(data)
         assert state["request_id"] == "test-123"
         assert len(state["messages"]) == 1
@@ -26,10 +22,7 @@ class TestRAGStateConversion:
 
     def test_ragstate_copy(self):
         """Test RAGState copy operations."""
-        original = RAGState({
-            "request_id": "test-123",
-            "messages": [{"role": "user", "content": "Hello"}]
-        })
+        original = RAGState({"request_id": "test-123", "messages": [{"role": "user", "content": "Hello"}]})
 
         # Test copy method
         copied = original.copy()
@@ -45,10 +38,7 @@ class TestRAGStateConversion:
         """Test RAGState update operations."""
         state = RAGState({"request_id": "test-123"})
 
-        update_data = {
-            "session_id": "session-456",
-            "streaming": True
-        }
+        update_data = {"session_id": "session-456", "streaming": True}
 
         state.update(update_data)
         assert state["request_id"] == "test-123"
@@ -67,10 +57,7 @@ class TestRAGStateConversion:
 
     def test_ragstate_compatibility_with_dict(self):
         """Test RAGState compatibility with dict operations."""
-        state = RAGState({
-            "request_id": "test-123",
-            "messages": []
-        })
+        state = RAGState({"request_id": "test-123", "messages": []})
 
         # Should work with dict() conversion
         as_dict = dict(state)

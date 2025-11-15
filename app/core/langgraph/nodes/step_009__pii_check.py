@@ -1,10 +1,12 @@
 """Node wrapper for Step 9: PII Check."""
 
-from typing import Dict, Any
-from app.core.langgraph.types import RAGState
+from typing import Any, Dict
+
 from app.core.langgraph.node_utils import mirror
+from app.core.langgraph.types import RAGState
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log
+from app.observability.rag_logging import rag_step_timer_compat as rag_step_timer
 from app.orchestrators.platform import step_9__piicheck as step_9__pii_check
-from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 # Re-export for test patching
 __all__ = ["node_step_9", "step_9__pii_check"]
@@ -12,7 +14,7 @@ __all__ = ["node_step_9", "step_9__pii_check"]
 STEP = 9
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):

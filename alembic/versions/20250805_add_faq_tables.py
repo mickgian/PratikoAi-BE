@@ -33,7 +33,6 @@ depends_on = None
 
 def upgrade():
     """Add Intelligent FAQ System tables."""
-
     # Create faq_entries table
     op.create_table(
         "faq_entries",
@@ -673,7 +672,6 @@ def upgrade():
 
 def downgrade():
     """Remove Intelligent FAQ System tables."""
-
     # Drop triggers first
     op.execute("DROP TRIGGER IF EXISTS update_faq_entries_updated_at_trigger ON faq_entries;")
     op.execute("DROP TRIGGER IF EXISTS update_faq_categories_updated_at_trigger ON faq_categories;")

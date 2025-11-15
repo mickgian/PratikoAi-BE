@@ -1,5 +1,4 @@
-"""
-Query Normalizer Service
+"""Query Normalizer Service
 
 LLM-based query normalization for Italian document queries.
 Handles linguistic variations that regex cannot:
@@ -24,8 +23,7 @@ from app.core.logging import logger
 
 
 class QueryNormalizer:
-    """
-    LLM-based query normalization for Italian tax/legal document queries.
+    """LLM-based query normalization for Italian tax/legal document queries.
 
     Extracts document references (type + number) from natural language queries
     using GPT-4o-mini for maximum linguistic flexibility.
@@ -36,9 +34,8 @@ class QueryNormalizer:
         self.config = get_settings()
         self.client = AsyncOpenAI(api_key=self.config.OPENAI_API_KEY)
 
-    async def normalize(self, query: str) -> Optional[Dict[str, str]]:
-        """
-        Normalize query to extract document reference.
+    async def normalize(self, query: str) -> dict[str, str] | None:
+        """Normalize query to extract document reference.
 
         Args:
             query: Italian natural language query
@@ -112,8 +109,7 @@ class QueryNormalizer:
             return None
 
     def _get_system_prompt(self) -> str:
-        """
-        Get system prompt for LLM normalization.
+        """Get system prompt for LLM normalization.
 
         Returns structured JSON with document type and number extraction.
         """

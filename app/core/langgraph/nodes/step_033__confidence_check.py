@@ -4,11 +4,13 @@ Internal step - checks if classification confidence meets threshold.
 """
 
 from app.core.langgraph.types import RAGState
-from app.orchestrators.classify import step_33__confidence_check
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
+from app.orchestrators.classify import step_33__confidence_check
 
 STEP = 33
 
@@ -26,10 +28,7 @@ async def node_step_33(state: RAGState) -> RAGState:
     rag_step_log(STEP, "enter", confidence=confidence)
 
     with rag_step_timer(STEP):
-        res = await step_33__confidence_check(
-            messages=state.get("messages", []),
-            ctx=dict(state)
-        )
+        res = await step_33__confidence_check(messages=state.get("messages", []), ctx=dict(state))
 
         # Store confidence check result
         classification = state.setdefault("classification", {})
@@ -41,6 +40,6 @@ async def node_step_33(state: RAGState) -> RAGState:
         STEP,
         "exit",
         confidence_sufficient=classification.get("confidence_sufficient"),
-        threshold=classification.get("threshold")
+        threshold=classification.get("threshold"),
     )
     return state

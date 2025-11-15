@@ -5,18 +5,19 @@ Verifies that node wrappers correctly delegate to orchestrators
 and maintain consistent state behavior.
 """
 
-import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
-from tests.common.fixtures_state import make_state, state_needs_llm, state_with_tools
+import pytest
+
+from app.core.langgraph.nodes.step_059__check_cache import node_step_59
+from app.core.langgraph.nodes.step_064__llm_call import node_step_64
+from app.core.langgraph.nodes.step_080__kb_tool import node_step_80
 from tests.common.fakes import (
     fake_cache_check_orch,
     fake_llm_call_orch,
     fake_tool_execution_orch,
 )
-from app.core.langgraph.nodes.step_059__check_cache import node_step_59
-from app.core.langgraph.nodes.step_064__llm_call import node_step_64
-from app.core.langgraph.nodes.step_080__kb_tool import node_step_80
+from tests.common.fixtures_state import make_state, state_needs_llm, state_with_tools
 
 
 @pytest.mark.parity
@@ -57,10 +58,7 @@ class TestPhase4CacheParity:
 
     async def test_cache_wrapper_preserves_state(self):
         """Verify cache wrapper doesn't lose state fields."""
-        state = make_state(
-            messages=[{"role": "user", "content": "test"}],
-            privacy={"enabled": True}
-        )
+        state = make_state(messages=[{"role": "user", "content": "test"}], privacy={"enabled": True})
         fake_orch = fake_cache_check_orch(hit=False)
 
         with patch("app.core.langgraph.nodes.step_059__check_cache.step_59__check_cache", fake_orch):

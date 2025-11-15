@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Generate or synchronize Claude-Code–ready GitHub issues for RAG steps
 — now baseline-aware (auto investigation), functional-alignment focused,
@@ -36,12 +35,14 @@ Requirements
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
+
 import yaml
 
 # ---------- Paths ----------
@@ -63,7 +64,7 @@ STATUS_LABEL_MAP = {
     "❓": "status/unknown",
 }
 
-MASTER_GUARDRAILS = '''\
+MASTER_GUARDRAILS = """\
 **MASTER_GUARDRAILS (READ FIRST)**
 - Mermaid is the single source of truth: docs/architecture/diagrams/pratikoai_rag_hybrid.mmd
 - Steps registry: docs/architecture/rag_steps.yml
@@ -73,9 +74,9 @@ MASTER_GUARDRAILS = '''\
 - Preserve business logic. Only expose/wire coordination points. Add a parity test proving outputs unchanged before vs after.
 - Keep diffs minimal; only touch files on the PR allowlist you list in the Investigation.
 - After changes: `python scripts/rag_code_graph.py --write` and `python scripts/rag_audit.py --write`
-'''
+"""
 
-INVESTIGATION_TEMPLATE = '''\
+INVESTIGATION_TEMPLATE = """\
 ### STEP 0 — Investigation (auto-generated)
 
 **Neighbors (from Mermaid)**
@@ -96,9 +97,9 @@ INVESTIGATION_TEMPLATE = '''\
 - Minimal orchestrator/wiring changes to make reality == Mermaid (no business-logic changes):
 - Tests to add (unit + prev→this→next integration + parity):
 - Exact files to touch (allowlist):
-'''
+"""
 
-CLAUDE_CODE_SECTION = '''
+CLAUDE_CODE_SECTION = """
 ### Claude Code Instructions (Copy-Paste Ready)
 
 **Transformation Required**
@@ -113,19 +114,20 @@ CLAUDE_CODE_SECTION = '''
 ```bash
 {claude_commands}
 ```
-'''
+"""
 
-BEHAVIORAL_DOD = '''\
+BEHAVIORAL_DOD = """\
 **Behavioral Definition of Done**
 - This step must change or validate program flow/data according to the Mermaid diagram (NOT logs-only).
 - A parity test proves behavior is identical before vs after introducing the orchestrator.
 - A prev→this→next integration test shows this node is invoked in the correct position between neighbors.
-'''
+"""
 
 NEIGHBOR_CONTRACTS_HEADER = "### Neighbor Contracts (from Mermaid)"
 NEIGHBOR_ITEM_FMT = "- **{direction}**: `{node_id}` — {label}"
 
 STEP_TITLE_RE = re.compile(r"^Implement RAG STEP (\d+)\b")
+
 
 # ---------- Helpers: system ----------
 def gh_available() -> bool:
@@ -135,6 +137,7 @@ def gh_available() -> bool:
     except Exception:
         return False
 
+
 def rg_available() -> bool:
     try:
         subprocess.run(["rg", "--version"], check=True, capture_output=True)
@@ -142,30 +145,35 @@ def rg_available() -> bool:
     except Exception:
         return False
 
-def run_cmd(args: List[str]) -> subprocess.CompletedProcess:
+
+def run_cmd(args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(args, cwd=ROOT, capture_output=True, text=True)
 
+
 # ---------- Helpers: gh ----------
-def gh_json(args: List[str]) -> Any:
+def gh_json(args: list[str]) -> Any:
     res = run_cmd(["gh", *args])
     if res.returncode != 0:
         raise RuntimeError(res.stderr or res.stdout or f"gh {' '.join(args)} failed")
     return json.loads(res.stdout or "[]")
 
-def gh_text(args: List[str]) -> str:
+
+def gh_text(args: list[str]) -> str:
     res = run_cmd(["gh", *args])
     if res.returncode != 0:
         raise RuntimeError(res.stderr or res.stdout or f"gh {' '.join(args)} failed")
     return (res.stdout or "").strip()
 
+
 # ---------- Load registry & audit ----------
-def load_steps_registry() -> List[Dict]:
+def load_steps_registry() -> list[dict]:
     if not STEPS_REGISTRY.exists():
         print(f"ERROR: Steps registry missing: {STEPS_REGISTRY}")
         sys.exit(1)
     return yaml.safe_load(STEPS_REGISTRY.read_text(encoding="utf-8")).get("steps", [])
 
-def parse_step_doc(step_num: int, step_id: str) -> Tuple[str, Dict]:
+
+def parse_step_doc(step_num: int, step_id: str) -> tuple[str, dict]:
     doc_path = STEPS_DIR / f"STEP-{step_num}-{step_id}.md"
     if not doc_path.exists():
         return "", {"status": "❓", "confidence": 0.0, "suggestions": []}
@@ -190,8 +198,9 @@ def parse_step_doc(step_num: int, step_id: str) -> Tuple[str, Dict]:
                     audit["suggestions"].append(ln[2:])
     return text, audit
 
+
 # ---------- Mermaid neighbors ----------
-def parse_mermaid_neighbors() -> Tuple[Dict[str, str], Dict[str, List[str]], Dict[str, List[str]]]:
+def parse_mermaid_neighbors() -> tuple[dict[str, str], dict[str, list[str]], dict[str, list[str]]]:
     """
     Returns:
       nodes_by_id: {node_id: label}
@@ -202,7 +211,7 @@ def parse_mermaid_neighbors() -> Tuple[Dict[str, str], Dict[str, List[str]], Dic
         return {}, {}, {}
     text = MERMAID.read_text(encoding="utf-8")
 
-    nodes_by_id: Dict[str, str] = {}
+    nodes_by_id: dict[str, str] = {}
     # Node forms:  A[Label]  or  A{Label}  (we allow both)
     for m in re.finditer(r"^\s*([A-Za-z0-9_]+)\s*\[(.*?)\]", text, re.MULTILINE):
         node_id, label = m.group(1), m.group(2)
@@ -211,8 +220,8 @@ def parse_mermaid_neighbors() -> Tuple[Dict[str, str], Dict[str, List[str]], Dic
         node_id, label = m.group(1), m.group(2)
         nodes_by_id[node_id] = re.sub(r"<br/?>", " — ", label)
 
-    incoming: Dict[str, List[str]] = {}
-    outgoing: Dict[str, List[str]] = {}
+    incoming: dict[str, list[str]] = {}
+    outgoing: dict[str, list[str]] = {}
     for m in re.finditer(r"^\s*([A-Za-z0-9_]+)\s*-->\s*([A-Za-z0-9_]+)", text, re.MULTILINE):
         a, b = m.group(1), m.group(2)
         outgoing.setdefault(a, []).append(b)
@@ -220,8 +229,9 @@ def parse_mermaid_neighbors() -> Tuple[Dict[str, str], Dict[str, List[str]], Dic
 
     return nodes_by_id, incoming, outgoing
 
+
 # ---------- Baseline (evidence) ----------
-def rg(pattern: str, paths: Tuple[str, ...] = ("app", "tests")) -> List[str]:
+def rg(pattern: str, paths: tuple[str, ...] = ("app", "tests")) -> list[str]:
     if not rg_available():
         return []
     try:
@@ -230,9 +240,11 @@ def rg(pattern: str, paths: Tuple[str, ...] = ("app", "tests")) -> List[str]:
     except subprocess.CalledProcessError:
         return []
 
+
 def parse_mermaid_edges_for_neighbors():
     _, inc, out = parse_mermaid_neighbors()
     return inc, out
+
 
 def status_from_refs(has_orch: bool, has_log_anchor: bool, has_any_code: bool, wired_runtime: bool = False) -> str:
     if wired_runtime:
@@ -243,11 +255,12 @@ def status_from_refs(has_orch: bool, has_log_anchor: bool, has_any_code: bool, w
         return "implemented_logs_only"
     return "missing"
 
-def build_baseline_cache() -> Dict[str, Dict]:
+
+def build_baseline_cache() -> dict[str, dict]:
     steps = load_steps_registry()
     incoming, outgoing = parse_mermaid_edges_for_neighbors()
 
-    runtime_hits: Dict[int, int] = {}
+    runtime_hits: dict[int, int] = {}
     if RUNTIME_LOG.exists():
         for line in RUNTIME_LOG.read_text(encoding="utf-8").splitlines():
             try:
@@ -258,7 +271,7 @@ def build_baseline_cache() -> Dict[str, Dict]:
                 s = int(obj["step"])
                 runtime_hits[s] = runtime_hits.get(s, 0) + 1
 
-    idx: Dict[str, Dict] = {}
+    idx: dict[str, dict] = {}
     for s in steps:
         step = int(s["step"])
         step_id = s["id"]
@@ -271,33 +284,37 @@ def build_baseline_cache() -> Dict[str, Dict]:
         out = outgoing.get(node_id, [])
 
         # Evidence scans (robust, not relying on “nice” names)
-        refs_stepnum = rg(fr"rag_step_log\([^)]*step\s*=\s*{step}\b\)")
-        refs_stepid  = rg(re.escape(step_id)) if step_id else []
-        refs_node    = rg(fr"\b{re.escape(node_id)}\b") if node_id else []
-        refs_label   = rg(re.escape(node_label)) if node_label else []
+        refs_stepnum = rg(rf"rag_step_log\([^)]*step\s*=\s*{step}\b\)")
+        refs_stepid = rg(re.escape(step_id)) if step_id else []
+        refs_node = rg(rf"\b{re.escape(node_id)}\b") if node_id else []
+        refs_label = rg(re.escape(node_label)) if node_label else []
 
         # Orchestrator presence — match generic scaffolded stubs:
         # def step_<N>__<slug>(
-        orch_fn_hits = rg(fr"^def\s+step_{step}__\w+\s*\(", paths=("app",))
+        orch_fn_hits = rg(rf"^def\s+step_{step}__\w+\s*\(", paths=("app",))
         orch_file = orch_fn_hits[0].split(":")[0] if orch_fn_hits else None
 
-        test_hits = rg(fr"STEP[-_ ]?{step}\b", paths=("tests",))
+        test_hits = rg(rf"STEP[-_ ]?{step}\b", paths=("tests",))
 
         has_log_anchor = bool(refs_stepnum or refs_stepid)
-        has_any_code   = bool(refs_node or refs_label or orch_fn_hits)
-        wired          = step in runtime_hits
+        has_any_code = bool(refs_node or refs_label or orch_fn_hits)
+        wired = step in runtime_hits
 
         st = status_from_refs(bool(orch_fn_hits), has_log_anchor, has_any_code, wired_runtime=wired)
 
         idx[str(step)] = {
-            "step": step, "id": step_id, "node_id": node_id, "node_label": node_label,
-            "category": category, "type": type_,
+            "step": step,
+            "id": step_id,
+            "node_id": node_id,
+            "node_label": node_label,
+            "category": category,
+            "type": type_,
             "neighbors": {"incoming": inc, "outgoing": out},
             "code_refs": {
                 "by_stepnum": refs_stepnum[:20],
-                "by_stepid":  refs_stepid[:20],
-                "by_nodeid":  refs_node[:20],
-                "by_label":   refs_label[:20],
+                "by_stepid": refs_stepid[:20],
+                "by_nodeid": refs_node[:20],
+                "by_label": refs_label[:20],
             },
             "orchestrator": orch_file is not None,
             "tests_refs": test_hits[:20],
@@ -308,7 +325,8 @@ def build_baseline_cache() -> Dict[str, Dict]:
     BASELINE.write_text(json.dumps(idx, indent=2, ensure_ascii=False), encoding="utf-8")
     return idx
 
-def load_baseline(existing_ok: bool, refresh: bool) -> Dict[str, Dict]:
+
+def load_baseline(existing_ok: bool, refresh: bool) -> dict[str, dict]:
     if refresh or not BASELINE.exists():
         return build_baseline_cache()
     try:
@@ -316,26 +334,39 @@ def load_baseline(existing_ok: bool, refresh: bool) -> Dict[str, Dict]:
     except Exception:
         return build_baseline_cache()
 
-def build_code_refs_block(code_refs: Dict[str, List[str]]) -> str:
-    def fmt(lines: List[str]) -> str:
+
+def build_code_refs_block(code_refs: dict[str, list[str]]) -> str:
+    def fmt(lines: list[str]) -> str:
         if not lines:
             return "  - (none)"
         out = []
         for ln in lines[:5]:
             out.append(f"  - {ln}")
         return "\n".join(out)
-    return "\n".join([
-        f"- by_stepnum:\n{fmt(code_refs.get('by_stepnum', []))}",
-        f"- by_stepid:\n{fmt(code_refs.get('by_stepid', []))}",
-        f"- by_nodeid:\n{fmt(code_refs.get('by_nodeid', []))}",
-        f"- by_label:\n{fmt(code_refs.get('by_label', []))}",
-    ])
 
-def investigation_block_from_baseline(rec: Optional[Dict], include_neighbors: bool) -> str:
+    return "\n".join(
+        [
+            f"- by_stepnum:\n{fmt(code_refs.get('by_stepnum', []))}",
+            f"- by_stepid:\n{fmt(code_refs.get('by_stepid', []))}",
+            f"- by_nodeid:\n{fmt(code_refs.get('by_nodeid', []))}",
+            f"- by_label:\n{fmt(code_refs.get('by_label', []))}",
+        ]
+    )
+
+
+def investigation_block_from_baseline(rec: dict | None, include_neighbors: bool) -> str:
     if not rec:
         return "### STEP 0 — Investigation\n- Baseline missing. Run: `python scripts/rag_issue_prompter.py --from-baseline --refresh-baseline --dry-run`\n"
-    incoming = ", ".join(rec["neighbors"]["incoming"]) if (include_neighbors and rec["neighbors"]["incoming"]) else ("(hidden)" if not include_neighbors else "-")
-    outgoing = ", ".join(rec["neighbors"]["outgoing"]) if (include_neighbors and rec["neighbors"]["outgoing"]) else ("(hidden)" if not include_neighbors else "-")
+    incoming = (
+        ", ".join(rec["neighbors"]["incoming"])
+        if (include_neighbors and rec["neighbors"]["incoming"])
+        else ("(hidden)" if not include_neighbors else "-")
+    )
+    outgoing = (
+        ", ".join(rec["neighbors"]["outgoing"])
+        if (include_neighbors and rec["neighbors"]["outgoing"])
+        else ("(hidden)" if not include_neighbors else "-")
+    )
     code_refs = build_code_refs_block(rec.get("code_refs", {}))
     tests_refs = "\n".join([f"- {x}" for x in rec.get("tests_refs", [])[:5]]) or "- (none)"
     return INVESTIGATION_TEMPLATE.format(
@@ -345,19 +376,17 @@ def investigation_block_from_baseline(rec: Optional[Dict], include_neighbors: bo
         runtime_hits=rec.get("runtime_hits", 0),
         orchestrator="yes" if rec.get("orchestrator") else "no",
         code_refs=code_refs,
-        tests_refs=tests_refs
+        tests_refs=tests_refs,
     )
+
 
 # ---------- Issue body ----------
 def build_issue_title(step_num: int, node_label: str, step_id: str) -> str:
     return f"Implement RAG STEP {step_num} — {node_label} ({step_id})"
 
+
 def build_issue_body(
-    step: Dict,
-    audit: Dict,
-    include_guardrails: bool,
-    include_neighbors: bool,
-    baseline_rec: Optional[Dict]
+    step: dict, audit: dict, include_guardrails: bool, include_neighbors: bool, baseline_rec: dict | None
 ) -> str:
     step_num = step["step"]
     node_label = step["node_label"]
@@ -401,10 +430,10 @@ def build_issue_body(
             target_implementation=baseline_rec.get("target_implementation", "See investigation above"),
             transformation_notes=baseline_rec.get("transformation_notes", "Extract and refactor per blueprint"),
             test_requirements=test_requirements or "- See acceptance criteria",
-            claude_commands=claude_commands or "# See investigation for manual steps"
+            claude_commands=claude_commands or "# See investigation for manual steps",
         )
 
-    body = f'''\
+    body = f"""\
 {guard}**Task: Implement RAG STEP {step_num} — {node_label} (`{step_id}`)**
 
 {investigation}
@@ -459,12 +488,13 @@ def build_issue_body(
 - Type: {step_type}
 - Category: {category}
 - Node: {node_id}
-- Current doc status: {audit.get('status','❓')} (confidence: {audit.get('confidence',0.0):.2f})
-'''
+- Current doc status: {audit.get("status", "❓")} (confidence: {audit.get("confidence", 0.0):.2f})
+"""
     return body
 
+
 # ---------- Existing issues helpers ----------
-def list_all_step_issues() -> List[Dict]:
+def list_all_step_issues() -> list[dict]:
     data = gh_json(["issue", "list", "--state", "all", "--limit", "1000", "--json", "number,title,state,labels,url"])
     out = []
     for it in data:
@@ -479,11 +509,13 @@ def list_all_step_issues() -> List[Dict]:
                 break
     return out
 
-def parse_step_from_title(title: str) -> Optional[int]:
+
+def parse_step_from_title(title: str) -> int | None:
     m = STEP_TITLE_RE.search(title or "")
     return int(m.group(1)) if m else None
 
-def parse_step_from_labels(labels: List[Dict]) -> Optional[int]:
+
+def parse_step_from_labels(labels: list[dict]) -> int | None:
     for lab in labels or []:
         name = lab.get("name", "")
         if name.startswith("step/"):
@@ -493,19 +525,23 @@ def parse_step_from_labels(labels: List[Dict]) -> Optional[int]:
                 pass
     return None
 
-def find_existing_issue_for_step(issues: List[Dict], step_num: int) -> Optional[Dict]:
+
+def find_existing_issue_for_step(issues: list[dict], step_num: int) -> dict | None:
     for it in issues:
-        num = parse_step_from_title(it.get("title","")) or parse_step_from_labels(it.get("labels",[]))
+        num = parse_step_from_title(it.get("title", "")) or parse_step_from_labels(it.get("labels", []))
         if num == step_num:
             return it
     return None
 
+
 # ---------- Creation / Editing ----------
-def build_labels_for_creation(step: Dict, audit: Dict, extra_labels: List[str], force_functional_align: bool) -> List[str]:
+def build_labels_for_creation(
+    step: dict, audit: dict, extra_labels: list[str], force_functional_align: bool
+) -> list[str]:
     labels = list(DEFAULT_LABELS)
     labels.append(f"step/{step['step']}")
     labels.append(f"area/{step['category']}")
-    status_label = STATUS_LABEL_MAP.get(audit.get("status","❓"), "status/unknown")
+    status_label = STATUS_LABEL_MAP.get(audit.get("status", "❓"), "status/unknown")
     labels.append(status_label)
     if force_functional_align:
         labels.append("needs/functional-align")
@@ -519,43 +555,38 @@ def build_labels_for_creation(step: Dict, audit: Dict, extra_labels: List[str], 
             ordered.append(lab)
     return ordered
 
-def edit_issue_labels(number: int, add: List[str], remove: List[str]) -> None:
+
+def edit_issue_labels(number: int, add: list[str], remove: list[str]) -> None:
     for lab in add:
-        try:
-            gh_text(["issue","edit",str(number),"--add-label",lab])
-        except Exception:
-            pass
+        with contextlib.suppress(Exception):
+            gh_text(["issue", "edit", str(number), "--add-label", lab])
     for lab in remove:
-        try:
-            gh_text(["issue","edit",str(number),"--remove-label",lab])
-        except Exception:
-            pass
+        with contextlib.suppress(Exception):
+            gh_text(["issue", "edit", str(number), "--remove-label", lab])
 
-def reopen_if_closed(issue: Dict) -> None:
-    if (issue.get("state","").lower() == "closed"):
-        gh_text(["issue","reopen", str(issue["number"])])
 
-def close_as_superseded(old_issue: Dict, new_url: str) -> None:
+def reopen_if_closed(issue: dict) -> None:
+    if issue.get("state", "").lower() == "closed":
+        gh_text(["issue", "reopen", str(issue["number"])])
+
+
+def close_as_superseded(old_issue: dict, new_url: str) -> None:
     num = str(old_issue["number"])
-    try:
-        gh_text(["issue","comment", num, "-b", f"Superseded by: {new_url}"])
-    except Exception:
-        pass
-    try:
-        gh_text(["issue","edit", num, "--add-label", "superseded"])
-    except Exception:
-        pass
-    try:
-        gh_text(["issue","close", num])
-    except Exception:
-        pass
+    with contextlib.suppress(Exception):
+        gh_text(["issue", "comment", num, "-b", f"Superseded by: {new_url}"])
+    with contextlib.suppress(Exception):
+        gh_text(["issue", "edit", num, "--add-label", "superseded"])
+    with contextlib.suppress(Exception):
+        gh_text(["issue", "close", num])
+
 
 def write_temp_body(body: str, step_num: int) -> Path:
     tmp = ROOT / f".tmp_issue_step_{step_num}.md"
     tmp.write_text(body, encoding="utf-8")
     return tmp
 
-def create_issue(title: str, body: str, labels: List[str], assignee: Optional[str]) -> str:
+
+def create_issue(title: str, body: str, labels: list[str], assignee: str | None) -> str:
     cmd = ["gh", "issue", "create", "--title", title, "--body", body]
     if labels:
         cmd.extend(["--label", ",".join(labels)])
@@ -566,12 +597,13 @@ def create_issue(title: str, body: str, labels: List[str], assignee: Optional[st
         raise RuntimeError(res.stderr or res.stdout or "gh issue create failed")
     return (res.stdout or "").strip()
 
+
 # ---------- Arg parsing ----------
-def parse_list_arg(val: Optional[str]) -> List[str]:
+def parse_list_arg(val: str | None) -> list[str]:
     if not val:
         return []
     parts = [v.strip() for v in val.split(",") if v.strip()]
-    out: List[str] = []
+    out: list[str] = []
     for p in parts:
         if re.match(r"^\d+-\d+$", p):
             a, b = p.split("-")
@@ -580,16 +612,31 @@ def parse_list_arg(val: Optional[str]) -> List[str]:
             out.append(p)
     return out
 
+
 # ---------- Main ----------
 def main():
-    ap = argparse.ArgumentParser(description="Create or synchronize GitHub issues for RAG steps (functional alignment, baseline-aware).")
+    ap = argparse.ArgumentParser(
+        description="Create or synchronize GitHub issues for RAG steps (functional alignment, baseline-aware)."
+    )
     mode = ap.add_mutually_exclusive_group(required=False)
-    mode.add_argument("--create", action="store_true", help="Create new issues for filtered steps. Skips existing unless --recreate.")
+    mode.add_argument(
+        "--create", action="store_true", help="Create new issues for filtered steps. Skips existing unless --recreate."
+    )
     mode.add_argument("--sync", action="store_true", help="Update existing issues in-place (rewrite body).")
 
-    ap.add_argument("--recreate", action="store_true", help="If an issue exists for a step, close it as 'superseded' and create a fresh one.")
-    ap.add_argument("--update-labels", action="store_true", help="Normalize labels: add needs/functional-align, set status/partial, remove status/implemented.")
-    ap.add_argument("--reopen-closed", action="store_true", help="(When --sync) reopen matching closed issues before updating.")
+    ap.add_argument(
+        "--recreate",
+        action="store_true",
+        help="If an issue exists for a step, close it as 'superseded' and create a fresh one.",
+    )
+    ap.add_argument(
+        "--update-labels",
+        action="store_true",
+        help="Normalize labels: add needs/functional-align, set status/partial, remove status/implemented.",
+    )
+    ap.add_argument(
+        "--reopen-closed", action="store_true", help="(When --sync) reopen matching closed issues before updating."
+    )
 
     ap.add_argument("--neighbors", action="store_true", help="Enrich body with neighbor contracts from Mermaid.")
     ap.add_argument("--from-baseline", action="store_true", help="Embed STEP 0 — Investigation from baseline cache.")
@@ -598,12 +645,20 @@ def main():
 
     ap.add_argument("--steps", type=str, help="Comma-separated step numbers or ranges (e.g., 20,39,59 or 48-58,69-73)")
     ap.add_argument("--category", type=str, help="Comma-separated categories to include (e.g., golden,kb,cache)")
-    ap.add_argument("--status", type=str, help="Comma-separated doc audit statuses to include (e.g., ❌,🔌,🟡). Default excludes ✅.")
-    ap.add_argument("--include-implemented", action="store_true", help="Include ✅ steps too (default is to skip them).")
+    ap.add_argument(
+        "--status",
+        type=str,
+        help="Comma-separated doc audit statuses to include (e.g., ❌,🔌,🟡). Default excludes ✅.",
+    )
+    ap.add_argument(
+        "--include-implemented", action="store_true", help="Include ✅ steps too (default is to skip them)."
+    )
 
     ap.add_argument("--assignee", type=str, help="GitHub username to assign issues to")
     ap.add_argument("--labels", type=str, help="Comma-separated extra labels to add (e.g., priority/high,team/rag)")
-    ap.add_argument("--no-guardrails", action="store_true", help="Do not include the Master Guardrails block in the body")
+    ap.add_argument(
+        "--no-guardrails", action="store_true", help="Do not include the Master Guardrails block in the body"
+    )
     ap.add_argument("--dry-run", action="store_true", help="Preview only; do not call gh")
     args = ap.parse_args()
 
@@ -614,19 +669,19 @@ def main():
 
     # Load steps
     steps = load_steps_registry()
-    filter_steps = set(int(s) for s in parse_list_arg(args.steps)) if args.steps else None
+    filter_steps = {int(s) for s in parse_list_arg(args.steps)} if args.steps else None
     filter_cats = set(parse_list_arg(args.category)) if args.category else None
     filter_status = set(parse_list_arg(args.status)) if args.status else None
     extra_labels = parse_list_arg(args.labels)
 
     # Baseline (optional but recommended)
-    baseline: Dict[str, Dict] = {}
+    baseline: dict[str, dict] = {}
     if args.from_baseline:
         baseline = load_baseline(existing_ok=True, refresh=args.refresh_baseline)
         print(f"🔎 Baseline ready with {len(baseline)} steps.")
 
     # Build candidates
-    candidates: List[Dict] = []
+    candidates: list[dict] = []
     for step in steps:
         s_num = int(step["step"])
         s_cat = step["category"]
@@ -652,12 +707,12 @@ def main():
         return 0
 
     # Existing issues map (by step)
-    existing: Dict[int, Dict] = {}
+    existing: dict[int, dict] = {}
     if not args.dry_run:
         try:
             all_step_issues = list_all_step_issues()
             for it in all_step_issues:
-                step_num = parse_step_from_title(it.get("title","")) or parse_step_from_labels(it.get("labels",[]))
+                step_num = parse_step_from_title(it.get("title", "")) or parse_step_from_labels(it.get("labels", []))
                 if step_num:
                     existing[int(step_num)] = it
         except Exception as e:
@@ -721,18 +776,18 @@ def main():
 
             if args.dry_run:
                 note = []
-                if exists.get("state","").lower() == "closed" and args.reopen_closed:
+                if exists.get("state", "").lower() == "closed" and args.reopen_closed:
                     note.append("reopen")
                 if args.update_labels:
                     note.append("update labels")
                 print(f"♻️  Would sync body ({', '.join(note) or 'body only'}): STEP {step_num}  #{exists['number']}")
             else:
                 try:
-                    if exists.get("state","").lower() == "closed" and args.reopen_closed:
+                    if exists.get("state", "").lower() == "closed" and args.reopen_closed:
                         reopen_if_closed(exists)
                         reopened += 1
                     tmp = write_temp_body(body, step_num)
-                    gh_text(["issue","edit",str(exists["number"]), "--body-file", str(tmp)])
+                    gh_text(["issue", "edit", str(exists["number"]), "--body-file", str(tmp)])
                     if args.update_labels:
                         edit_issue_labels(
                             exists["number"],
@@ -740,17 +795,18 @@ def main():
                             remove=["status/implemented"],
                         )
                     if args.assignee:
-                        try:
-                            gh_text(["issue","edit",str(exists["number"]),"--assignee",args.assignee])
-                        except Exception:
-                            pass
+                        with contextlib.suppress(Exception):
+                            gh_text(["issue", "edit", str(exists["number"]), "--assignee", args.assignee])
                     print(f"🔧 Synced: STEP {step_num}  -> issue #{exists['number']}")
                     updated += 1
                 except Exception as e:
                     print(f"❌ Failed to sync STEP {step_num}: {e}")
 
-    print(f"\nDone. Created: {created}  |  Synced: {updated}  |  Reopened: {reopened}  |  Superseded: {superseded}  |  Skipped: {skipped}")
+    print(
+        f"\nDone. Created: {created}  |  Synced: {updated}  |  Reopened: {reopened}  |  Superseded: {superseded}  |  Skipped: {skipped}"
+    )
     return 0
+
 
 if __name__ == "__main__":
     try:

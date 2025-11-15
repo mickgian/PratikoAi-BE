@@ -147,7 +147,7 @@ class TestSSEKeepaliveTiming:
             # Simulate very long operation with periodic keepalives
             for i in range(3):
                 await asyncio.sleep(0.1)  # Shortened for test
-                yield f": processing step {i+1}\n\n"
+                yield f": processing step {i + 1}\n\n"
 
             # Finally yield content
             yield "Content after long operation"

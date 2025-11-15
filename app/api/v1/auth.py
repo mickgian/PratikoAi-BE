@@ -26,15 +26,17 @@ from app.core.logging import logger
 from app.models.session import Session
 from app.models.user import User
 from app.schemas.auth import (
+    OAuthLoginResponse,
+    OAuthTokenResponse,
     RefreshTokenRequest,
     SessionResponse,
     TokenResponse,
     UserCreate,
     UserResponse,
-    OAuthLoginResponse,
-    OAuthTokenResponse,
 )
 from app.services.database import DatabaseService
+from app.services.google_oauth_service import google_oauth_service
+from app.services.linkedin_oauth_service import linkedin_oauth_service
 from app.utils.auth import (
     create_access_token,
     create_refresh_token,
@@ -46,8 +48,6 @@ from app.utils.sanitization import (
     sanitize_string,
     validate_password_strength,
 )
-from app.services.google_oauth_service import google_oauth_service
-from app.services.linkedin_oauth_service import linkedin_oauth_service
 
 router = APIRouter()
 security = HTTPBearer()
@@ -182,19 +182,19 @@ async def register_user(request: Request, user_data: UserCreate):
         # Create both access and refresh tokens for new user
         access_token = create_access_token(str(user.id))
         refresh_token = create_refresh_token(user.id)
-        
+
         # Store refresh token hash in database for validation and revocation
         await db_service.update_user_refresh_token(user.id, refresh_token.access_token)
-        
+
         logger.info("user_registration_success", user_id=user.id, email=sanitized_email)
 
         return UserResponse(
-            id=user.id, 
-            email=user.email, 
+            id=user.id,
+            email=user.email,
             access_token=access_token.access_token,
             refresh_token=refresh_token.access_token,
             token_type="bearer",
-            expires_at=access_token.expires_at
+            expires_at=access_token.expires_at,
         )
     except ValueError as ve:
         logger.error("user_registration_validation_failed", error=str(ve), exc_info=True)
@@ -244,17 +244,17 @@ async def login(
         # Create both access and refresh tokens
         access_token = create_access_token(str(user.id))
         refresh_token = create_refresh_token(user.id)
-        
+
         # Store refresh token hash in database for validation and revocation
         await db_service.update_user_refresh_token(user.id, refresh_token.access_token)
-        
+
         logger.info("user_login_success", user_id=user.id, email=username)
-        
+
         return TokenResponse(
-            access_token=access_token.access_token, 
+            access_token=access_token.access_token,
             refresh_token=refresh_token.access_token,
-            token_type="bearer", 
-            expires_at=access_token.expires_at
+            token_type="bearer",
+            expires_at=access_token.expires_at,
         )
     except ValueError as ve:
         logger.error("login_validation_failed", error=str(ve), exc_info=True)
@@ -325,7 +325,9 @@ async def update_session_name(
         # Create a new token (not strictly necessary but maintains consistency)
         token = create_access_token(sanitized_session_id)
 
-        return SessionResponse(session_id=sanitized_session_id, name=session.name, token=token, created_at=session.created_at)
+        return SessionResponse(
+            session_id=sanitized_session_id, name=session.name, token=token, created_at=session.created_at
+        )
     except ValueError as ve:
         logger.error("session_update_validation_failed", error=str(ve), session_id=session_id, exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
@@ -360,7 +362,7 @@ async def delete_session(session_id: str, current_session: Session = Depends(get
         raise HTTPException(status_code=422, detail=str(ve))
 
 
-@router.get("/sessions", response_model=List[SessionResponse])
+@router.get("/sessions", response_model=list[SessionResponse])
 async def get_user_sessions(user: User = Depends(get_current_user)):
     """Get all session IDs for the authenticated user.
 
@@ -390,24 +392,24 @@ async def get_user_sessions(user: User = Depends(get_current_user)):
 @limiter.limit("10 per minute")  # More restrictive rate limit for refresh tokens
 async def refresh_access_token(request: Request, refresh_request: RefreshTokenRequest):
     """Exchange a refresh token for a new access token.
-    
+
     This endpoint allows clients to obtain new access tokens without re-authentication.
     The refresh token must be valid and not revoked.
-    
+
     Args:
         request: The FastAPI request object for rate limiting.
         refresh_request: Contains the refresh token to exchange.
-        
+
     Returns:
         TokenResponse: New access token and refresh token pair.
-        
+
     Raises:
         HTTPException: If the refresh token is invalid, expired, or revoked.
     """
     try:
         # Sanitize the refresh token
         refresh_token = sanitize_string(refresh_request.refresh_token)
-        
+
         # Verify the refresh token and get user ID
         user_id = verify_refresh_token(refresh_token)
         if user_id is None:
@@ -417,7 +419,7 @@ async def refresh_access_token(request: Request, refresh_request: RefreshTokenRe
                 detail="Invalid or expired refresh token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-            
+
         # Get user from database
         user = await db_service.get_user(user_id)
         if user is None:
@@ -427,7 +429,7 @@ async def refresh_access_token(request: Request, refresh_request: RefreshTokenRe
                 detail="User not found",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-            
+
         # Verify the refresh token against the stored hash
         if not user.verify_refresh_token(refresh_token):
             logger.warning("refresh_token_hash_mismatch", user_id=user_id)
@@ -436,23 +438,23 @@ async def refresh_access_token(request: Request, refresh_request: RefreshTokenRe
                 detail="Invalid refresh token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-            
+
         # Create new access and refresh tokens
         new_access_token = create_access_token(str(user_id))
         new_refresh_token = create_refresh_token(user_id)
-        
+
         # Update the stored refresh token hash
         await db_service.update_user_refresh_token(user_id, new_refresh_token.access_token)
-        
+
         logger.info("access_token_refreshed", user_id=user_id)
-        
+
         return TokenResponse(
             access_token=new_access_token.access_token,
             refresh_token=new_refresh_token.access_token,
             token_type="bearer",
-            expires_at=new_access_token.expires_at
+            expires_at=new_access_token.expires_at,
         )
-        
+
     except ValueError as ve:
         logger.error("refresh_token_validation_failed", error=str(ve), exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
@@ -462,29 +464,29 @@ async def refresh_access_token(request: Request, refresh_request: RefreshTokenRe
 @limiter.limit("20 per minute")  # Allow reasonable logout frequency
 async def logout_user(request: Request, user: User = Depends(get_current_user)):
     """Logout a user by revoking their refresh token.
-    
+
     This endpoint revokes the user's refresh token, effectively logging them out
     from all devices. Access tokens will remain valid until they expire (2 hours).
-    
+
     Args:
         request: The FastAPI request object for rate limiting.
         user: The authenticated user from the access token.
-        
+
     Returns:
         dict: Success message confirming logout.
     """
     try:
         # Revoke the user's refresh token
         success = await db_service.revoke_user_refresh_token(user.id)
-        
+
         if not success:
             logger.error("logout_failed_user_not_found", user_id=user.id)
             raise HTTPException(status_code=404, detail="User not found")
-            
+
         logger.info("user_logged_out", user_id=user.id, email=user.email)
-        
+
         return {"message": "Successfully logged out"}
-        
+
     except Exception as e:
         logger.error("logout_failed", user_id=user.id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Logout failed")
@@ -492,19 +494,20 @@ async def logout_user(request: Request, user: User = Depends(get_current_user)):
 
 # OAuth Endpoints
 
+
 @router.get("/google/login", response_model=OAuthLoginResponse)
 @limiter.limit("20 per minute")
 async def google_login(request: Request):
     """Initiate Google OAuth login flow.
-    
+
     Redirects the user to Google's OAuth authorization page.
-    
+
     Args:
         request: The FastAPI request object for rate limiting.
-        
+
     Returns:
         dict: Authorization URL for redirecting to Google OAuth.
-        
+
     Raises:
         HTTPException: If Google OAuth is not configured or redirect fails.
     """
@@ -512,20 +515,19 @@ async def google_login(request: Request):
         if not google_oauth_service.is_configured():
             logger.error("google_oauth_not_configured")
             raise HTTPException(
-                status_code=500, 
-                detail="Google OAuth is not configured. Please contact administrator."
+                status_code=500, detail="Google OAuth is not configured. Please contact administrator."
             )
-            
+
         # Generate authorization URL with frontend callback endpoint
         # For development, use localhost:3000, for production use the configured frontend URL
         frontend_base_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         redirect_uri = f"{frontend_base_url}/auth/callback"
         auth_url = google_oauth_service.get_authorization_url(redirect_uri)
-        
+
         logger.info("google_oauth_login_initiated", redirect_uri=redirect_uri)
-        
+
         return OAuthLoginResponse(authorization_url=auth_url)
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -537,17 +539,17 @@ async def google_login(request: Request):
 @limiter.limit("20 per minute")
 async def google_callback(request: Request, code: str, state: str = None):
     """Handle Google OAuth callback.
-    
+
     Processes the authorization code from Google and creates or authenticates the user.
-    
+
     Args:
         request: The FastAPI request object for rate limiting.
         code: Authorization code from Google OAuth.
         state: Optional state parameter for CSRF protection.
-        
+
     Returns:
         TokenResponse: User authentication tokens.
-        
+
     Raises:
         HTTPException: If OAuth callback processing fails.
     """
@@ -555,28 +557,27 @@ async def google_callback(request: Request, code: str, state: str = None):
         if not google_oauth_service.is_configured():
             logger.error("google_oauth_not_configured")
             raise HTTPException(
-                status_code=500,
-                detail="Google OAuth is not configured. Please contact administrator."
+                status_code=500, detail="Google OAuth is not configured. Please contact administrator."
             )
-        
+
         # Sanitize inputs
         code = sanitize_string(code)
         if state:
             state = sanitize_string(state)
-            
+
         # Handle OAuth callback
         result = await google_oauth_service.handle_callback(code, state)
-        
+
         logger.info("google_oauth_callback_success", user_id=result["user"]["id"])
-        
+
         # Return in the same format as regular login
         return TokenResponse(
             access_token=result["access_token"],
-            refresh_token=result["refresh_token"], 
+            refresh_token=result["refresh_token"],
             token_type=result["token_type"],
-            expires_at=None  # Will be set by token creation
+            expires_at=None,  # Will be set by token creation
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -588,15 +589,15 @@ async def google_callback(request: Request, code: str, state: str = None):
 @limiter.limit("20 per minute")
 async def linkedin_login(request: Request):
     """Initiate LinkedIn OAuth login flow.
-    
+
     Redirects the user to LinkedIn's OAuth authorization page.
-    
+
     Args:
         request: The FastAPI request object for rate limiting.
-        
+
     Returns:
         dict: Authorization URL for redirecting to LinkedIn OAuth.
-        
+
     Raises:
         HTTPException: If LinkedIn OAuth is not configured or redirect fails.
     """
@@ -604,20 +605,19 @@ async def linkedin_login(request: Request):
         if not linkedin_oauth_service.is_configured():
             logger.error("linkedin_oauth_not_configured")
             raise HTTPException(
-                status_code=500,
-                detail="LinkedIn OAuth is not configured. Please contact administrator."
+                status_code=500, detail="LinkedIn OAuth is not configured. Please contact administrator."
             )
-            
+
         # Generate authorization URL with frontend callback endpoint
         # For development, use localhost:3000, for production use the configured frontend URL
         frontend_base_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         redirect_uri = f"{frontend_base_url}/auth/callback"
         auth_url = linkedin_oauth_service.get_authorization_url(redirect_uri)
-        
+
         logger.info("linkedin_oauth_login_initiated", redirect_uri=redirect_uri)
-        
+
         return OAuthLoginResponse(authorization_url=auth_url)
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -629,17 +629,17 @@ async def linkedin_login(request: Request):
 @limiter.limit("20 per minute")
 async def linkedin_callback(request: Request, code: str, state: str = None):
     """Handle LinkedIn OAuth callback.
-    
+
     Processes the authorization code from LinkedIn and creates or authenticates the user.
-    
+
     Args:
         request: The FastAPI request object for rate limiting.
         code: Authorization code from LinkedIn OAuth.
         state: Optional state parameter for CSRF protection.
-        
+
     Returns:
         TokenResponse: User authentication tokens.
-        
+
     Raises:
         HTTPException: If OAuth callback processing fails.
     """
@@ -647,28 +647,27 @@ async def linkedin_callback(request: Request, code: str, state: str = None):
         if not linkedin_oauth_service.is_configured():
             logger.error("linkedin_oauth_not_configured")
             raise HTTPException(
-                status_code=500,
-                detail="LinkedIn OAuth is not configured. Please contact administrator."
+                status_code=500, detail="LinkedIn OAuth is not configured. Please contact administrator."
             )
-        
+
         # Sanitize inputs
         code = sanitize_string(code)
         if state:
             state = sanitize_string(state)
-            
+
         # Handle OAuth callback
         result = await linkedin_oauth_service.handle_callback(code, state)
-        
+
         logger.info("linkedin_oauth_callback_success", user_id=result["user"]["id"])
-        
+
         # Return in the same format as regular login
         return TokenResponse(
             access_token=result["access_token"],
             refresh_token=result["refresh_token"],
             token_type=result["token_type"],
-            expires_at=None  # Will be set by token creation
+            expires_at=None,  # Will be set by token creation
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:

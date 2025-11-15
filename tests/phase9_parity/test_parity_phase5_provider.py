@@ -5,18 +5,19 @@ Verifies that provider selection and cost estimation nodes correctly
 delegate to orchestrators.
 """
 
-import pytest
 from unittest.mock import patch
 
-from tests.common.fixtures_state import make_state
-from tests.common.fakes import (
-    fake_provider_select_orch,
-    fake_cost_estimate_orch,
-    FakeOrchestrator,
-)
+import pytest
+
 from app.core.langgraph.nodes.step_048__select_provider import node_step_48
 from app.core.langgraph.nodes.step_055__estimate_cost import node_step_55
 from app.core.langgraph.nodes.step_057__create_provider import node_step_57
+from tests.common.fakes import (
+    FakeOrchestrator,
+    fake_cost_estimate_orch,
+    fake_provider_select_orch,
+)
+from tests.common.fixtures_state import make_state
 
 
 @pytest.mark.parity
@@ -26,9 +27,7 @@ class TestPhase5ProviderParity:
 
     async def test_provider_select_delegates_to_orchestrator(self):
         """Verify provider selection delegates correctly."""
-        state = make_state(
-            route_strategy="BEST"
-        )
+        state = make_state(route_strategy="BEST")
         fake_orch = fake_provider_select_orch(provider="anthropic")
 
         with patch("app.core.langgraph.nodes.step_048__select_provider.step_48__select_provider", fake_orch):
@@ -56,7 +55,7 @@ class TestPhase5ProviderParity:
         """Verify cost estimation delegates to orchestrator."""
         state = make_state(
             provider={"name": "anthropic", "model": "claude-3-5-sonnet-20241022"},
-            messages=[{"role": "user", "content": "test query"}]
+            messages=[{"role": "user", "content": "test query"}],
         )
         fake_orch = fake_cost_estimate_orch(cost=0.015, within_budget=True)
 
@@ -78,9 +77,7 @@ class TestPhase5CostCheckParity:
 
     async def test_within_budget_delegates_correctly(self):
         """Verify within-budget scenario delegates correctly."""
-        state = make_state(
-            provider={"name": "anthropic", "model": "claude-3-5-sonnet-20241022"}
-        )
+        state = make_state(provider={"name": "anthropic", "model": "claude-3-5-sonnet-20241022"})
         fake_orch = fake_cost_estimate_orch(cost=0.01, within_budget=True)
 
         with patch("app.core.langgraph.nodes.step_055__estimate_cost.step_55__estimate_cost", fake_orch):
@@ -91,9 +88,7 @@ class TestPhase5CostCheckParity:
 
     async def test_over_budget_delegates_correctly(self):
         """Verify over-budget scenario delegates correctly."""
-        state = make_state(
-            provider={"name": "anthropic", "model": "claude-3-5-sonnet-20241022"}
-        )
+        state = make_state(provider={"name": "anthropic", "model": "claude-3-5-sonnet-20241022"})
         fake_orch = fake_cost_estimate_orch(cost=0.75, within_budget=False)
 
         with patch("app.core.langgraph.nodes.step_055__estimate_cost.step_55__estimate_cost", fake_orch):
@@ -110,17 +105,17 @@ class TestPhase5CreateProviderParity:
 
     async def test_create_provider_delegates_correctly(self):
         """Verify provider creation delegates to orchestrator."""
-        state = make_state(
-            provider={"name": "anthropic", "model": "claude-3-5-sonnet-20241022"}
+        state = make_state(provider={"name": "anthropic", "model": "claude-3-5-sonnet-20241022"})
+        fake_orch = FakeOrchestrator(
+            {
+                "provider_instance": {
+                    "name": "anthropic",
+                    "model": "claude-3-5-sonnet-20241022",
+                    "api_key": "fake-key",
+                },
+                "provider_ready": True,
+            }
         )
-        fake_orch = FakeOrchestrator({
-            "provider_instance": {
-                "name": "anthropic",
-                "model": "claude-3-5-sonnet-20241022",
-                "api_key": "fake-key"
-            },
-            "provider_ready": True
-        })
 
         with patch("app.core.langgraph.nodes.step_057__create_provider.step_57__create_provider", fake_orch):
             result = await node_step_57(state)
@@ -137,12 +132,9 @@ class TestPhase5CreateProviderParity:
         state = make_state(
             provider={"name": "anthropic", "model": "claude-3-5-sonnet-20241022"},
             cost_estimate=0.015,
-            within_budget=True
+            within_budget=True,
         )
-        fake_orch = FakeOrchestrator({
-            "provider_instance": {"name": "anthropic"},
-            "provider_ready": True
-        })
+        fake_orch = FakeOrchestrator({"provider_instance": {"name": "anthropic"}, "provider_ready": True})
 
         with patch("app.core.langgraph.nodes.step_057__create_provider.step_57__create_provider", fake_orch):
             result = await node_step_57(state)

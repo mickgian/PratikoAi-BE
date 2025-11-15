@@ -28,7 +28,9 @@ async def test_resolution_64_found_by_number(db_session: AsyncSession):
     # Note: KnowledgeSearchService creates its own SearchService internally
     # Passing search_service as vector_service param would cause errors
     knowledge_search_service = KnowledgeSearchService(
-        db_session=db_session, vector_service=None, config=None  # No vector search for this test  # Use default config
+        db_session=db_session,
+        vector_service=None,
+        config=None,  # No vector search for this test  # Use default config
     )
 
     # Execute - user asks for specific resolution by number
@@ -69,7 +71,9 @@ async def test_multi_month_aggregation_finds_all_documents(db_session: AsyncSess
     # Note: KnowledgeSearchService creates its own SearchService internally
     # Passing search_service as vector_service param would cause errors
     knowledge_search_service = KnowledgeSearchService(
-        db_session=db_session, vector_service=None, config=None  # No vector search for this test  # Use default config
+        db_session=db_session,
+        vector_service=None,
+        config=None,  # No vector search for this test  # Use default config
     )
 
     # Execute - user asks for all resolutions across multiple months
@@ -111,7 +115,9 @@ async def test_fts_only_query_still_works(db_session: AsyncSession):
     # Note: KnowledgeSearchService creates its own SearchService internally
     # Passing search_service as vector_service param would cause errors
     knowledge_search_service = KnowledgeSearchService(
-        db_session=db_session, vector_service=None, config=None  # No vector search for this test  # Use default config
+        db_session=db_session,
+        vector_service=None,
+        config=None,  # No vector search for this test  # Use default config
     )
 
     # Execute - regular FTS query (no document number)
@@ -146,7 +152,9 @@ async def test_single_month_aggregation_works(db_session: AsyncSession):
     # Note: KnowledgeSearchService creates its own SearchService internally
     # Passing search_service as vector_service param would cause errors
     knowledge_search_service = KnowledgeSearchService(
-        db_session=db_session, vector_service=None, config=None  # No vector search for this test  # Use default config
+        db_session=db_session,
+        vector_service=None,
+        config=None,  # No vector search for this test  # Use default config
     )
 
     # Execute - single month aggregation

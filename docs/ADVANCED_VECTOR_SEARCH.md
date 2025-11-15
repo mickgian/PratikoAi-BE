@@ -1,883 +1,857 @@
-# Advanced Vector Search Features for PratikoAI
+# Advanced pgvector Search Patterns for PratikoAI
+
+**Last Updated:** 2025-11-14
+**Status:** Production
+**Implementation:** `app/retrieval/postgres_retriever.py`
+
+---
 
 ## Overview
 
-The Advanced Vector Search system for PratikoAI combines PostgreSQL full-text search with Pinecone vector embeddings to boost answer quality from 65% to 85%+ and increase FAQ hit rates from 40% to 70%, all while maintaining sub-300ms search latency.
+This guide documents advanced usage patterns, optimization techniques, and best practices for PratikoAI's pgvector-based hybrid retrieval system. All examples are based on the actual production implementation.
 
-### Key Improvements
+**Prerequisites:**
+- Read `docs/DATABASE_ARCHITECTURE.md` first for architecture overview
+- PostgreSQL 15+ with pgvector extension installed
+- OpenAI API key for embeddings (text-embedding-3-small)
 
-- **Hybrid Search**: Combines keyword and semantic search for comprehensive results
-- **Italian Optimization**: Specialized query expansion for Italian tax terminology  
-- **FAQ Hit Rate**: Improved from 40% to 70%+ through semantic matching
-- **Answer Quality**: Boosted from 65% to 85%+ with multi-source context
-- **Performance**: Sub-300ms search latency maintained
+---
 
-## Architecture
+## Why pgvector (Not Pinecone/Qdrant)?
 
-### System Components
+**TL;DR:** pgvector was chosen for PratikoAI because it provides the best fit for our specific requirements: Italian language support, hybrid search, cost efficiency, and operational simplicity.
 
-```mermaid
-graph TB
-    A[User Query] --> B[Query Normalizer]
-    B --> C[Italian Query Expander]
-    C --> D[Hybrid Search Engine]
-    
-    D --> E[PostgreSQL Full-Text]
-    D --> F[Pinecone Vector Search]
-    
-    E --> G[Result Merger]
-    F --> G
-    
-    G --> H[Semantic FAQ Matcher]
-    G --> I[Context Builder]
-    
-    H --> J[FAQ Matches]
-    I --> K[Multi-Source Context]
-    
-    L[Embedding Manager] --> F
-    M[Cache Layer] --> D
-    M --> H
-```
+**Key Advantages for PratikoAI:**
 
-### Core Services
+1. **Native Italian Language Support**
+   - PostgreSQL has built-in `italian` dictionary with morphology and stemming
+   - External vector DBs require custom tokenization/preprocessing
+   - Critical for accurate keyword matching on Italian regulatory documents
 
-1. **Hybrid Search Engine** (`app/services/hybrid_search_engine.py`)
-   - Parallel execution of keyword and vector searches
-   - Advanced result merging and ranking
-   - Source-specific boosting factors
+2. **Hybrid Search in Single Query**
+   - Combine FTS + Vector Similarity + Recency in one SQL query
+   - External vector DBs require app-level fusion of two separate systems
+   - Simpler implementation, better performance, easier debugging
 
-2. **Italian Query Expander** (`app/services/query_expansion_service.py`)
-   - Tax terminology expansion (IVA → Imposta Valore Aggiunto)
-   - Professional vs casual language variations
-   - Semantic concept relationships
+3. **Cost Savings**
+   - pgvector-only: $90-265/month
+   - With Pinecone: $240-560/month
+   - **Savings: $150-295/month** (2-3x reduction)
 
-3. **Semantic FAQ Matcher** (`app/services/semantic_faq_matcher.py`)
-   - Vector similarity-based FAQ matching
-   - Confidence-level classification
-   - RSS integration for freshness checking
+4. **Operational Simplicity**
+   - One PostgreSQL connection string vs. multiple services + API keys
+   - Small team can manage single database system
+   - No cross-system synchronization complexity
 
-4. **Multi-Source Context Builder** (`app/services/context_builder.py`)
-   - Intelligent context assembly from multiple sources
-   - Token budget management
-   - Content relevance extraction
+5. **Team Familiarity**
+   - Team already knows SQL and PostgreSQL
+   - No learning curve for new vector DB APIs/SDKs
+   - Faster development and easier onboarding
 
-5. **Embedding Manager** (`app/services/embedding_management.py`)
-   - Batch embedding generation with OpenAI
-   - Pinecone vector storage and updates
-   - Performance monitoring and optimization
+6. **Performance**
+   - <100ms p95 latency meets user experience requirements
+   - Pinecone's theoretical 30-50ms improvement not worth 2-3x cost + complexity
+   - Plenty of scaling headroom (excellent up to 1M vectors)
 
-## Implementation Guide
+**When to Reconsider:**
+Only if ALL THREE conditions are met: (1) >1M vectors + >2s latency, (2) Multi-region/sub-10ms SLA required, (3) Cost equation flips
 
-### 1. Hybrid Search Configuration
+**Full Comparison:** See `docs/DATABASE_ARCHITECTURE.md` Section 9.1 for detailed comparison table
+
+---
+
+## 1. Basic Usage
+
+### 1.1 Simple Hybrid Query
 
 ```python
-from app.services.hybrid_search_engine import HybridSearchEngine
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.retrieval.postgres_retriever import hybrid_retrieve
 
-# Initialize hybrid search
-hybrid_search = HybridSearchEngine(
-    postgres_service=postgres_db,
-    pinecone_service=pinecone_client,
-    embedding_service=embedding_service,
-    normalizer=query_normalizer
-)
-
-# Configure search weights
-hybrid_search.tune_parameters(
-    keyword_weight=0.4,    # 40% keyword relevance
-    vector_weight=0.6,     # 60% semantic relevance
-    similarity_threshold=0.75
-)
-
-# Perform hybrid search
-results = await hybrid_search.search(
-    query="calcolo iva 22 percento",
-    search_types=['faq', 'regulation', 'knowledge'],
-    limit=10
-)
-```
-
-### 2. Italian Query Expansion
-
-```python
-from app.services.query_expansion_service import ItalianTaxQueryExpander
-
-# Initialize expander
-expander = ItalianTaxQueryExpander(
-    embedding_service=embedding_service,
-    cache_service=cache
-)
-
-# Expand Italian tax queries
-expansions = await expander.expand_query(
-    query="partita iva regime forfettario",
-    max_expansions=5,
-    include_semantic=True
-)
-
-# Example expansions:
-# - "p.iva"
-# - "libero professionista" 
-# - "regime semplificato"
-# - "flat tax"
-# - "coefficiente redditività"
-```
-
-### 3. Semantic FAQ Matching
-
-```python
-from app.services.semantic_faq_matcher import SemanticFAQMatcher
-
-# Initialize FAQ matcher
-faq_matcher = SemanticFAQMatcher(
-    faq_service=faq_service,
-    embedding_service=embedding_service,
-    cache_service=cache
-)
-
-# Find matching FAQs
-matches = await faq_matcher.find_matching_faqs(
-    query="come calcolare iva su fattura elettronica",
-    max_results=3,
-    min_confidence='medium'
-)
-
-# Results include:
-for match in matches:
-    print(f"Question: {match.question}")
-    print(f"Confidence: {match.confidence}")
-    print(f"Similarity: {match.similarity_score:.3f}")
-    print(f"Concepts: {match.matched_concepts}")
-```
-
-### 4. Context Assembly
-
-```python
-from app.services.context_builder import MultiSourceContextBuilder
-
-# Initialize context builder
-context_builder = MultiSourceContextBuilder(
-    hybrid_search=hybrid_search,
-    max_context_tokens=2000
-)
-
-# Build comprehensive context
-context = await context_builder.build_context(
-    query="dichiarazione redditi 730 precompilato",
-    max_sources=8,
-    source_types=['faq', 'regulation', 'circular', 'knowledge']
-)
-
-# Use context for enhanced responses
-print(f"Sources used: {context.sources_used}")
-print(f"Total tokens: {context.total_tokens}")
-print(f"Quality score: {context.context_quality_score:.2f}")
-```
-
-### 5. Embedding Management
-
-```python
-from app.services.embedding_management import EmbeddingManager
-
-# Initialize embedding manager
-embedding_manager = EmbeddingManager(
-    pinecone_client=pinecone,
-    openai_client=openai_client,
-    cache_service=cache
-)
-
-# Batch update embeddings
-items = [
-    {
-        'id': 'faq_123',
-        'content': 'Come calcolare l\'IVA al 22%?',
-        'question': 'Calcolo IVA 22%',
-        'category': 'IVA',
-        'tags': ['iva', 'calcolo', 'aliquota']
-    }
-]
-
-result = await embedding_manager.update_pinecone_embeddings(
-    items=items,
-    source_type='faq',
-    namespace='faq_embeddings'
-)
-```
-
-## Performance Optimization
-
-### Search Latency Targets
-
-| Operation | Target | Actual |
-|-----------|--------|---------|
-| Hybrid Search | <300ms | 180-250ms |
-| Query Expansion | <50ms | 15-35ms |
-| FAQ Matching | <200ms | 120-180ms |
-| Context Building | <200ms | 150-200ms |
-
-### Caching Strategy
-
-```python
-# Multi-level caching for optimal performance
-
-# 1. Embedding cache (24 hours)
-embedding_cache_key = f"embedding:{content_hash}"
-await cache.setex(embedding_cache_key, 86400, embedding)
-
-# 2. Search results cache (30 minutes)  
-search_cache_key = f"search:{query_hash}:{filters_hash}"
-await cache.setex(search_cache_key, 1800, results)
-
-# 3. FAQ matching cache (30 minutes)
-faq_cache_key = f"faq_match:{query_hash}"
-await cache.setex(faq_cache_key, 1800, matches)
-
-# 4. Context cache (1 hour)
-context_cache_key = f"context:{query_hash}:{source_types_hash}"
-await cache.setex(context_cache_key, 3600, context)
-```
-
-### Database Optimizations
-
-```sql
--- PostgreSQL full-text search indexes
-CREATE INDEX CONCURRENTLY idx_faq_search_vector 
-ON faq_entries USING GIN(search_vector);
-
-CREATE INDEX CONCURRENTLY idx_knowledge_search_vector 
-ON knowledge_articles USING GIN(search_vector);
-
-CREATE INDEX CONCURRENTLY idx_regulation_search_vector 
-ON regulatory_documents USING GIN(search_vector);
-
--- Performance indexes
-CREATE INDEX CONCURRENTLY idx_faqs_published_quality
-ON faq_entries(published, quality_score DESC, usage_count DESC)
-WHERE published = true;
-
-CREATE INDEX CONCURRENTLY idx_regulations_recent
-ON regulatory_documents(publication_date DESC, document_type)
-WHERE publication_date > NOW() - INTERVAL '2 years';
-```
-
-## Italian Language Features
-
-### Tax Terminology Expansion
-
-```python
-# Comprehensive Italian tax term mappings
-tax_expansions = {
-    'iva': [
-        'imposta valore aggiunto', 'imposta sul valore aggiunto',
-        'aliquota iva', 'regime iva', 'fatturazione iva'
-    ],
-    'irpef': [
-        'imposta reddito persone fisiche', 'imposta sul reddito',
-        'ritenuta irpef', 'scaglioni irpef', 'addizionale irpef'
-    ],
-    'partita iva': [
-        'p.iva', 'piva', 'numero iva', 'codice iva',
-        'apertura partita iva', 'chiusura partita iva'
-    ],
-    'regime forfettario': [
-        'forfettario', 'regime semplificato', 'flat tax',
-        'regime agevolato', 'contribuenti minimi'
-    ]
-}
-
-# Professional vs casual language variations
-professional_terms = {
-    'commercialista': [
-        'dottore commercialista', 'consulente fiscale',
-        'consulente tributario', 'esperto contabile'
-    ],
-    'dichiarazione': [
-        'dichiarazione fiscale', 'dichiarazione tributaria',
-        'dichiarazione redditi', 'adempimento dichiarativo'
-    ]
-}
-
-# Regional variations
-regional_variations = {
-    'tasse': ['tasse', 'tributi', 'imposte', 'balzelli'],
-    'soldi': ['denaro', 'quattrini', 'euro', 'importo'],
-    'pagare': ['versare', 'saldare', 'liquidare', 'adempiere']
-}
-```
-
-### Semantic Concept Relationships
-
-```python
-concept_relationships = {
-    'fattura': [
-        'corrispettivo', 'documento fiscale', 'prova vendita',
-        'registrazione contabile', 'detraibilità iva'
-    ],
-    'partita iva': [
-        'codice fiscale', 'regime fiscale', 'obblighi dichiarativi',
-        'versamenti periodici', 'comunicazioni telematiche'
-    ],
-    'iva': [
-        'base imponibile', 'aliquota applicabile', 'detrazione',
-        'rivalsa', 'registro iva'
-    ]
-}
-```
-
-## Quality Improvements
-
-### Answer Quality Metrics
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Overall Quality | 65% | 87% | +22% |
-| FAQ Hit Rate | 40% | 72% | +32% |
-| Context Relevance | 70% | 89% | +19% |
-| Italian Accuracy | 75% | 92% | +17% |
-
-### FAQ Confidence Classification
-
-```python
-# Confidence thresholds for FAQ matching
-confidence_thresholds = {
-    'exact': 0.95,    # Virtually identical queries
-    'high': 0.85,     # Very similar intent and terminology
-    'medium': 0.75,   # Similar concept, may need adaptation
-    'low': 0.65       # Related but requires verification
-}
-
-# Confidence-based actions
-def handle_faq_match(match):
-    if match.confidence == 'exact':
-        return match.answer  # Use directly
-    elif match.confidence == 'high':
-        return f"Basandomi su una FAQ simile: {match.answer}"
-    elif match.confidence == 'medium':
-        return f"Una FAQ correlata suggerisce: {match.answer}"
-    else:
-        return None  # Too low confidence, use full search
-```
-
-### Context Quality Scoring
-
-```python
-def calculate_context_quality(context_parts, query):
-    """Calculate overall context quality"""
-    
-    # Average relevance score (50% weight)
-    avg_relevance = sum(part.relevance_score for part in context_parts) / len(context_parts)
-    
-    # Source diversity score (30% weight)
-    source_types = set(part.source_type for part in context_parts)
-    diversity_score = min(len(source_types) / 4.0, 1.0)
-    
-    # Content coverage score (20% weight)
-    total_tokens = sum(part.token_count for part in context_parts)
-    coverage_score = min(total_tokens / 2000, 1.0)  # Target 2000 tokens
-    
-    return (avg_relevance * 0.5 + diversity_score * 0.3 + coverage_score * 0.2)
-```
-
-## API Integration
-
-### Search API Endpoint
-
-```python
-from fastapi import APIRouter, Query, Depends
-from app.services.hybrid_search_engine import HybridSearchEngine
-
-router = APIRouter(prefix="/search", tags=["Advanced Search"])
-
-@router.get("/hybrid")
-async def hybrid_search(
-    query: str = Query(..., description="Search query in Italian"),
-    sources: List[str] = Query(['faq', 'knowledge'], description="Source types"),
-    limit: int = Query(10, le=50, description="Maximum results"),
-    expand_query: bool = Query(True, description="Enable query expansion"),
-    search_engine: HybridSearchEngine = Depends(get_hybrid_search_engine)
-):
-    """Perform hybrid search across multiple sources"""
-    
-    results = await search_engine.search(
-        query=query,
-        search_types=sources,
-        limit=limit
+# Basic usage with defaults (FTS 50%, Vector 35%, Recency 15%)
+async def search_knowledge_base(session: AsyncSession, user_query: str):
+    results = await hybrid_retrieve(
+        session=session,
+        query=user_query,
+        top_k=14  # Returns top 14 results (default: CONTEXT_TOP_K from config)
     )
-    
-    return {
-        "query": query,
-        "results": [result.__dict__ for result in results],
-        "total_found": len(results),
-        "search_time_ms": results[0].metadata.get('search_time_ms') if results else 0
-    }
 
-@router.get("/faq-matches")
-async def find_faq_matches(
-    query: str = Query(..., description="Query for FAQ matching"),
-    confidence: str = Query('medium', description="Minimum confidence level"),
-    max_results: int = Query(3, le=10, description="Maximum FAQ matches"),
-    faq_matcher: SemanticFAQMatcher = Depends(get_faq_matcher)
-):
-    """Find semantically matching FAQs"""
-    
-    matches = await faq_matcher.find_matching_faqs(
-        query=query,
-        max_results=max_results,
-        min_confidence=confidence
-    )
-    
-    return {
-        "query": query,
-        "matches": [match.__dict__ for match in matches],
-        "hit_rate_achieved": len(matches) > 0,
-        "confidence_levels": [match.confidence for match in matches]
-    }
-```
+    for result in results:
+        print(f"Score: {result['combined_score']:.3f}")
+        print(f"Text: {result['chunk_text'][:200]}...")
+        print(f"Source: {result['document_title']}")
+        print("---")
 
-### Context Building API
-
-```python
-@router.post("/context")
-async def build_context(
-    query: str,
-    max_tokens: int = Query(2000, description="Maximum context tokens"),
-    source_types: List[str] = Query(['faq', 'regulation'], description="Source types"),
-    context_builder: MultiSourceContextBuilder = Depends(get_context_builder)
-):
-    """Build comprehensive context for query"""
-    
-    context = await context_builder.build_context(
-        query=query,
-        max_tokens=max_tokens,
-        source_types=source_types
-    )
-    
-    return {
-        "query": context.query,
-        "context_parts": [
-            {
-                "source_type": part.source_type,
-                "content": part.content[:500] + "..." if len(part.content) > 500 else part.content,
-                "relevance_score": part.relevance_score,
-                "token_count": part.token_count
-            }
-            for part in context.context_parts
-        ],
-        "total_tokens": context.total_tokens,
-        "sources_used": context.sources_used,
-        "quality_score": context.context_quality_score,
-        "assembly_time_ms": context.assembly_time_ms,
-        "source_distribution": context.source_distribution
-    }
-```
-
-## Monitoring and Analytics
-
-### Performance Metrics Dashboard
-
-```python
-@router.get("/analytics")
-async def get_search_analytics(
-    search_engine: HybridSearchEngine = Depends(get_hybrid_search_engine),
-    faq_matcher: SemanticFAQMatcher = Depends(get_faq_matcher),
-    embedding_manager: EmbeddingManager = Depends(get_embedding_manager)
-):
-    """Get comprehensive search analytics"""
-    
-    search_stats = await search_engine.get_search_statistics()
-    faq_stats = await faq_matcher.get_matching_statistics()
-    embedding_stats = await embedding_manager.get_embedding_statistics()
-    
-    return {
-        "search_performance": {
-            "avg_search_time_ms": search_stats.get("avg_search_time_ms", 0),
-            "cache_hit_rate": search_stats.get("cache_hit_rate", 0),
-            "performance_target_met": search_stats.get("performance_target_met", False)
-        },
-        "faq_matching": {
-            "current_hit_rate": faq_stats.get("current_hit_rate", 0),
-            "target_hit_rate": faq_stats.get("target_hit_rate", 0.70),
-            "hit_rate_achievement": faq_stats.get("hit_rate_achievement", 0),
-            "avg_similarity_score": faq_stats.get("avg_similarity_score", 0)
-        },
-        "embedding_efficiency": {
-            "total_embeddings": embedding_stats["generation_stats"]["total_embeddings_generated"],
-            "total_cost_usd": embedding_stats["generation_stats"]["total_cost_usd"],
-            "cache_hit_rate": embedding_stats["cache_stats"]["hit_rate"]
-        },
-        "quality_metrics": {
-            "answer_quality_improvement": "65% → 87% (+22%)",
-            "faq_hit_rate_improvement": "40% → 72% (+32%)",
-            "context_relevance_improvement": "70% → 89% (+19%)"
-        }
-    }
-```
-
-### Real-time Monitoring with Prometheus
-
-```python
-from prometheus_client import Counter, Histogram, Gauge
-
-# Search performance metrics
-search_requests_total = Counter('search_requests_total', 'Total search requests', ['source_type'])
-search_duration_seconds = Histogram('search_duration_seconds', 'Search duration')
-search_results_count = Histogram('search_results_count', 'Number of results returned')
-
-# FAQ matching metrics
-faq_matches_total = Counter('faq_matches_total', 'Total FAQ matches', ['confidence'])
-faq_hit_rate = Gauge('faq_hit_rate', 'Current FAQ hit rate')
-
-# Context building metrics
-context_build_duration = Histogram('context_build_duration_seconds', 'Context build time')
-context_quality_score = Histogram('context_quality_score', 'Context quality scores')
-
-# Usage in services
-async def hybrid_search_with_metrics(query: str):
-    with search_duration_seconds.time():
-        results = await hybrid_search.search(query)
-        search_requests_total.labels(source_type='hybrid').inc()
-        search_results_count.observe(len(results))
-        return results
-```
-
-## A/B Testing Configuration
-
-### Search Algorithm Testing
-
-```python
-from app.services.ab_testing import ABTestManager
-
-# Configure A/B tests for search improvements
-ab_tests = {
-    "search_weights": {
-        "control": {"keyword_weight": 0.5, "vector_weight": 0.5},
-        "treatment": {"keyword_weight": 0.4, "vector_weight": 0.6}
-    },
-    "faq_thresholds": {
-        "control": {"similarity_threshold": 0.75},
-        "treatment": {"similarity_threshold": 0.70}
-    },
-    "query_expansion": {
-        "control": {"max_expansions": 3},
-        "treatment": {"max_expansions": 5}
-    }
-}
-
-# Apply A/B test configuration
-async def search_with_ab_test(query: str, user_id: str):
-    variant = ab_test_manager.get_variant(user_id, "search_weights")
-    
-    if variant == "treatment":
-        search_engine.tune_parameters(
-            keyword_weight=0.4,
-            vector_weight=0.6
-        )
-    
-    results = await search_engine.search(query)
-    
-    # Track metrics by variant
-    ab_test_manager.track_metric(
-        user_id=user_id,
-        test_name="search_weights",
-        metric_name="search_quality",
-        value=calculate_search_quality(results)
-    )
-    
     return results
 ```
 
-## Deployment and Configuration
+### 1.2 FTS-Only Fallback
 
-### Environment Variables
-
-```bash
-# Vector Search Configuration
-PINECONE_API_KEY=your_pinecone_api_key
-PINECONE_ENVIRONMENT=us-west1-gcp
-PINECONE_INDEX_NAME=pratikoai-vectors
-
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key
-EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_BATCH_SIZE=100
-
-# Search Performance
-MAX_SEARCH_LATENCY_MS=300
-FAQ_HIT_RATE_TARGET=0.70
-HYBRID_KEYWORD_WEIGHT=0.4
-HYBRID_VECTOR_WEIGHT=0.6
-
-# Caching
-REDIS_URL=redis://localhost:6379
-EMBEDDING_CACHE_TTL=86400
-SEARCH_CACHE_TTL=1800
-
-# Italian Language
-ITALIAN_TAX_TERMS_NAMESPACE=italian_tax_terms
-QUERY_EXPANSION_MAX_TERMS=5
-PROFESSIONAL_TERM_BOOST=0.05
-```
-
-### Docker Configuration
-
-```dockerfile
-# Dockerfile for vector search services
-FROM python:3.11-slim
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set working directory
-WORKDIR /app
-
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY app/ ./app/
-COPY tests/ ./tests/
-
-# Environment variables
-ENV PYTHONPATH=/app
-ENV EMBEDDING_MODEL=text-embedding-3-small
-ENV MAX_SEARCH_LATENCY_MS=300
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-# Run application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### Production Deployment
-
-```yaml
-# docker-compose.yml for production
-version: '3.8'
-services:
-  vector-search:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - PINECONE_API_KEY=${PINECONE_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - REDIS_URL=redis://redis:6379
-      - POSTGRES_URL=postgresql://user:pass@postgres:5432/pratikoai
-    depends_on:
-      - redis
-      - postgres
-    deploy:
-      replicas: 3
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 1G
-          cpus: '0.5'
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    command: redis-server --maxmemory 1gb --maxmemory-policy allkeys-lru
-
-  postgres:
-    image: postgres:15
-    environment:
-      - POSTGRES_DB=pratikoai
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=pass
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-volumes:
-  postgres_data:
-```
-
-## Testing Strategy
-
-### Unit Tests
-
-```bash
-# Run vector search tests
-pytest tests/test_vector_search.py -v
-
-# Run specific test categories
-pytest tests/test_vector_search.py::TestHybridSearchEngine -v
-pytest tests/test_vector_search.py::TestItalianQueryExpansion -v
-pytest tests/test_vector_search.py::TestSemanticFAQMatching -v
-pytest tests/test_vector_search.py::TestPerformanceRequirements -v
-```
-
-### Integration Tests
+If embedding generation fails (API outage, network issue), the system automatically falls back to FTS-only:
 
 ```python
-# Integration test for full search pipeline
-@pytest.mark.integration
-async def test_end_to_end_search_pipeline():
-    """Test complete search pipeline from query to results"""
-    
-    # Setup services
-    hybrid_search = await setup_hybrid_search()
-    faq_matcher = await setup_faq_matcher()
-    context_builder = await setup_context_builder()
-    
-    # Test query
-    query = "calcolo iva su fattura elettronica regime forfettario"
-    
-    # Execute full pipeline
-    start_time = time.time()
-    
-    # 1. Hybrid search
-    search_results = await hybrid_search.search(query)
-    assert len(search_results) > 0
-    
-    # 2. FAQ matching
-    faq_matches = await faq_matcher.find_matching_faqs(query)
-    assert len(faq_matches) > 0
-    assert faq_matches[0].confidence in ['high', 'exact']
-    
-    # 3. Context building
-    context = await context_builder.build_context(query)
-    assert context.context_quality_score > 0.7
-    assert context.total_tokens <= 2000
-    
-    # Performance requirement
-    total_time = (time.time() - start_time) * 1000
-    assert total_time < 300, f"Pipeline took {total_time:.1f}ms, exceeds 300ms limit"
-    
-    # Quality assertions
-    assert any(result.source_type == 'faq' for result in search_results)
-    assert context.sources_used >= 2
-    assert faq_matches[0].similarity_score > 0.75
+from app.retrieval.postgres_retriever import fts_only_retrieve
+
+# Explicit FTS-only search (no vector similarity)
+results = await fts_only_retrieve(
+    session=session,
+    query="contratti locazione commerciale",
+    top_k=10
+)
 ```
 
-### Performance Testing
+**When to use FTS-only:**
+- Testing FTS performance separately
+- Debugging vector search issues
+- Emergency fallback during embedding service outage
+
+---
+
+## 2. Customizing Hybrid Weights
+
+### 2.1 Adjust Scoring Weights
+
+Tune the balance between FTS, vector similarity, and recency:
 
 ```python
-@pytest.mark.performance 
-async def test_search_performance_under_load():
-    """Test search performance under concurrent load"""
-    
-    queries = [
-        "dichiarazione redditi 730 precompilato",
-        "partita iva regime forfettario soglie 2024",
-        "calcolo iva 22% fattura elettronica",
-        "contributi inps gestione separata",
-        "detrazioni fiscali spese mediche"
-    ] * 20  # 100 total queries
-    
-    async def single_search(query):
-        start = time.time()
-        results = await hybrid_search.search(query)
-        duration = (time.time() - start) * 1000
-        return duration, len(results)
-    
-    # Execute concurrent searches
-    tasks = [single_search(query) for query in queries]
-    results = await asyncio.gather(*tasks)
-    
-    # Analyze results
-    durations = [r[0] for r in results]
-    result_counts = [r[1] for r in results]
-    
-    # Performance assertions
-    assert max(durations) < 300, f"Max duration {max(durations):.1f}ms exceeds 300ms"
-    assert np.mean(durations) < 200, f"Average duration {np.mean(durations):.1f}ms too high"
-    assert min(result_counts) > 0, "Some searches returned no results"
-    
-    print(f"Performance test: {len(queries)} queries")
-    print(f"Average duration: {np.mean(durations):.1f}ms")
-    print(f"95th percentile: {np.percentile(durations, 95):.1f}ms")
-    print(f"Average results: {np.mean(result_counts):.1f}")
+# Scenario 1: Emphasize keyword matching (legal compliance use case)
+results = await hybrid_retrieve(
+    session=session,
+    query="IVA 22% fatturazione elettronica",
+    fts_weight=0.70,      # 70% FTS (exact term matching important)
+    vector_weight=0.20,   # 20% vector
+    recency_weight=0.10   # 10% recency
+)
+
+# Scenario 2: Emphasize semantic similarity (user questions)
+results = await hybrid_retrieve(
+    session=session,
+    query="come faccio a calcolare le tasse?",
+    fts_weight=0.30,      # 30% FTS
+    vector_weight=0.60,   # 60% vector (capture user intent)
+    recency_weight=0.10   # 10% recency
+)
+
+# Scenario 3: Emphasize recency (breaking news, regulatory updates)
+results = await hybrid_retrieve(
+    session=session,
+    query="nuova circolare agenzia entrate",
+    fts_weight=0.30,      # 30% FTS
+    vector_weight=0.20,   # 20% vector
+    recency_weight=0.50   # 50% recency (recent docs heavily favored)
+)
 ```
 
-## Troubleshooting
+**Weight Tuning Guidelines:**
+- **Sum must equal 1.0** (normalized weights)
+- **FTS weight 0.4-0.7:** Good for exact term matching (legal, regulatory)
+- **Vector weight 0.3-0.6:** Good for semantic understanding (user questions)
+- **Recency weight 0.1-0.3:** Good for time-sensitive queries (news, updates)
 
-### Common Issues and Solutions
+### 2.2 Adjust Recency Decay
 
-#### 1. High Search Latency
+Control how quickly older documents lose relevance:
 
 ```python
-# Check performance bottlenecks
-search_stats = await hybrid_search.get_search_statistics()
-if search_stats["avg_search_time_ms"] > 300:
-    # Possible solutions:
-    # 1. Increase cache TTL
-    # 2. Optimize database queries
-    # 3. Reduce batch sizes
-    # 4. Check Pinecone performance
-    
-    # Optimize search parameters
-    await hybrid_search.tune_parameters(
-        similarity_threshold=0.80  # Increase to reduce results
-    )
+# Fast decay: Recent docs strongly preferred
+results = await hybrid_retrieve(
+    session=session,
+    query="circolare agenzia entrate",
+    recency_days=90,  # Docs >90 days old decay rapidly
+    recency_weight=0.30
+)
+
+# Slow decay: Older docs still relevant
+results = await hybrid_retrieve(
+    session=session,
+    query="codice civile art 1571",
+    recency_days=1825,  # 5 years (slow decay for legal texts)
+    recency_weight=0.10
+)
 ```
 
-#### 2. Low FAQ Hit Rate
-
+**Recency Decay Formula:**
 ```python
-# Analyze FAQ matching performance
-faq_stats = await faq_matcher.get_matching_statistics()
-if faq_stats["current_hit_rate"] < 0.70:
-    # Adjust thresholds
-    faq_matcher.tune_thresholds(
-        medium_threshold=0.70,  # Lower threshold
-        low_threshold=0.60
-    )
-    
-    # Check FAQ embedding quality
-    embedding_stats = await embedding_manager.get_embedding_statistics()
-    print(f"Total FAQs embedded: {embedding_stats['total_embeddings']}")
+recency_score = EXP(-age_seconds / (recency_days * 86400))
 ```
 
-#### 3. Poor Italian Query Understanding
+**Examples:**
+- Document age: 30 days, `recency_days=365` → score ≈ 0.92 (minimal decay)
+- Document age: 180 days, `recency_days=90` → score ≈ 0.13 (significant decay)
+- Document age: 1 year, `recency_days=1825` → score ≈ 0.80 (slow decay)
+
+---
+
+## 3. Italian Language Optimization
+
+### 3.1 Full-Text Search Queries
+
+**PostgreSQL FTS with Italian dictionary:**
 
 ```python
-# Check query expansion effectiveness
-expander = ItalianTaxQueryExpander(embedding_service, cache)
-expansions = await expander.expand_query("test query italiano")
-
-if not expansions:
-    # Update terminology mappings
-    expander.add_custom_expansion(
-        source_term="nuovo termine",
-        target_terms=["espansione 1", "espansione 2"],
-        category="tax"
-    )
+# Example user query: "contratti di locazione commerciale"
+# PostgreSQL processes as:
+#   websearch_to_tsquery('italian', 'contratti di locazione commerciale')
+#   → 'contratt' & 'locaz' & 'commerc'
 ```
 
-### Monitoring Alerts
+**Query Syntax:**
 
 ```python
-# Set up monitoring alerts for key metrics
-monitoring_rules = {
-    "search_latency_high": {
-        "condition": "avg_search_time_ms > 300",
-        "alert": "Search latency exceeded 300ms target",
-        "action": "Scale up search instances"
-    },
-    "faq_hit_rate_low": {
-        "condition": "faq_hit_rate < 0.70", 
-        "alert": "FAQ hit rate below 70% target",
-        "action": "Retune similarity thresholds"
-    },
-    "embedding_cost_high": {
-        "condition": "daily_embedding_cost > 50",
-        "alert": "Daily embedding costs exceeded budget",
-        "action": "Review embedding usage patterns"
-    }
-}
+# AND operator (default)
+query = "contratti locazione"  # Both terms required
+
+# OR operator
+query = "IVA OR IRPEF"  # Either term matches
+
+# Phrase search (with quotes)
+query = '"locazione commerciale"'  # Exact phrase
+
+# Negation
+query = "IVA NOT 22%"  # IVA but not 22%
+
+# Complex boolean
+query = "(IVA OR imposta) NOT regime forfettario"
+```
+
+### 3.2 Common Italian Tax Terms
+
+**Acronyms automatically stemmed:**
+- "IVA" → matches "IVA", "imposta valore aggiunto"
+- "IRPEF" → matches "IRPEF", "imposta reddito"
+- "P.IVA" → matches "partita iva", "p.iva", "PIVA"
+
+**Morphological variations handled:**
+- "contratto" / "contratti" → same stem "contratt"
+- "locazione" / "locazioni" → same stem "locaz"
+- "fattura" / "fatture" / "fatturazione" → same stem "fattur"
+
+**Accents normalized:**
+- "è" / "e" → match
+- "più" / "piu" → match
+
+### 3.3 Boosting Specific Fields
+
+The FTS search vector is weighted by field importance:
+
+```sql
+-- Defined in database schema
+search_vector =
+    setweight(to_tsvector('italian', title), 'A') ||      -- Highest weight
+    setweight(to_tsvector('italian', chunk_text), 'B') || -- Medium weight
+    setweight(to_tsvector('italian', category), 'C')      -- Lower weight
+```
+
+**Result:** Matches in title score higher than matches in body text.
+
+---
+
+## 4. Vector Similarity Optimization
+
+### 4.1 Embedding Generation
+
+**Production implementation:**
+
+```python
+from app.core.embed import generate_embedding
+
+# Generate embedding for query
+embedding = await generate_embedding("contratti di locazione")
+# Returns: List[float] of length 1536 (OpenAI text-embedding-3-small)
+```
+
+**Cost:** ~$0.000001 per query (50 tokens × $0.00002 / 1K tokens)
+
+### 4.2 Distance Metrics
+
+**Cosine distance (used in production):**
+
+```sql
+-- Raw distance (0.0 = identical, 2.0 = opposite)
+kc.embedding <=> query_embedding
+
+-- Convert to similarity (0.0 = opposite, 1.0 = identical)
+1 - (kc.embedding <=> query_embedding) AS vector_score
+```
+
+**Filtering threshold:**
+
+```sql
+-- Only consider vectors within distance 1.0
+WHERE (kc.embedding <=> CAST(:embedding AS vector)) < 1.0
+```
+
+**Threshold Guidelines:**
+- **< 0.3:** Very similar (almost identical)
+- **0.3 - 0.6:** Moderately similar (related concepts)
+- **0.6 - 1.0:** Loosely similar (broad topic match)
+- **> 1.0:** Not similar (filtered out)
+
+### 4.3 Index Performance
+
+**Current index (IVFFlat):**
+```sql
+CREATE INDEX idx_kc_embedding_ivfflat_1536
+ON knowledge_chunks
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+```
+
+**Performance characteristics:**
+- Query time: 30-50ms (for 500K vectors)
+- Recall: 85-90%
+- Build time: ~30 minutes
+
+**Future upgrade (HNSW - DEV-72):**
+```sql
+CREATE INDEX idx_kc_embedding_hnsw_1536
+ON knowledge_chunks
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+```
+
+**Expected improvements:**
+- Query time: 20-30ms (20-30% faster)
+- Recall: 90-95%
+- Build time: ~2-4 hours (slower initial build, but worth it)
+
+---
+
+## 5. Performance Optimization
+
+### 5.1 Query Diagnostics
+
+```python
+from app.retrieval.postgres_retriever import explain_hybrid_query
+
+# Get EXPLAIN ANALYZE output
+explain_output = await explain_hybrid_query(session, "contratti locazione")
+print(explain_output)
+```
+
+**Example output:**
+```
+Index Scan using idx_kc_search_vector_gin on knowledge_chunks  (cost=...)
+  Index Cond: (search_vector @@ websearch_to_tsquery('italian', 'contratti locazione'))
+  Filter: ((embedding <=> '[0.123,...]'::vector) < 1.0)
+  Rows Removed by Filter: 1523
+  Buffers: shared hit=245 read=12
+Planning Time: 2.341 ms
+Execution Time: 47.892 ms
+```
+
+**What to look for:**
+- "Index Scan" → Good (using indexes)
+- "Seq Scan" → Bad (full table scan, need index)
+- "Rows Removed by Filter" → High number OK (distance filter working)
+- "Execution Time" → Target <100ms
+
+### 5.2 Monitoring Query Performance
+
+**Add timing to your queries:**
+
+```python
+import time
+
+start = time.time()
+results = await hybrid_retrieve(session, query)
+duration_ms = (time.time() - start) * 1000
+
+print(f"Query: {query}")
+print(f"Results: {len(results)}")
+print(f"Duration: {duration_ms:.1f}ms")
+print(f"Avg score: {sum(r['combined_score'] for r in results) / len(results):.3f}")
+```
+
+**Target performance:**
+- p50 latency: <50ms
+- p95 latency: <100ms
+- p99 latency: <300ms
+
+### 5.3 Batch Queries
+
+**Don't do this (slow):**
+```python
+# BAD: Sequential queries
+for query in user_queries:
+    results = await hybrid_retrieve(session, query)  # Waits for each
+```
+
+**Do this instead (fast):**
+```python
+import asyncio
+
+# GOOD: Parallel queries
+async def batch_search(session, queries):
+    tasks = [hybrid_retrieve(session, q) for q in queries]
+    all_results = await asyncio.gather(*tasks)
+    return all_results
+
+results = await batch_search(session, ["query1", "query2", "query3"])
+```
+
+**Improvement:** 3x-5x faster for multiple queries
+
+---
+
+## 6. Quality Filtering
+
+### 6.1 Junk Detection
+
+**Exclude low-quality chunks:**
+
+```sql
+-- Built into hybrid_retrieve()
+WHERE kc.junk = FALSE
+```
+
+**Manual quality filtering:**
+
+```python
+# Filter by text quality threshold
+results = await hybrid_retrieve(session, query, top_k=30)
+high_quality = [
+    r for r in results
+    if r.get('text_quality', 0) > 0.8
+][:14]  # Take top 14 high-quality results
+```
+
+### 6.2 Source Filtering
+
+**Filter by extraction method:**
+
+```python
+# Prefer specific extraction methods
+results = await hybrid_retrieve(session, query, top_k=30)
+preferred = [
+    r for r in results
+    if r['extraction_method'] in ['docling', 'pdfplumber']
+]
+```
+
+**Filter by category:**
+
+```python
+# Only tax-related documents
+from sqlalchemy import text
+
+sql = text("""
+    SELECT ... (hybrid query with WHERE ki.category = :category)
+""")
+result = await session.execute(sql, {"category": "IVA", ...})
 ```
 
 ---
 
-This Advanced Vector Search system provides a comprehensive solution for improving answer quality and search accuracy in Italian tax and accounting domain, with proven performance improvements and robust monitoring capabilities.
+## 7. Common Query Patterns
+
+### 7.1 Regulatory Document Lookup
+
+```python
+# Find recent circulars from Agenzia delle Entrate
+results = await hybrid_retrieve(
+    session=session,
+    query="circolare agenzia entrate",
+    fts_weight=0.50,
+    vector_weight=0.20,
+    recency_weight=0.30,  # Emphasize recent circulars
+    recency_days=180,     # 6 months
+    top_k=10
+)
+```
+
+### 7.2 Conceptual Search
+
+```python
+# User asks vague question - rely more on semantic understanding
+results = await hybrid_retrieve(
+    session=session,
+    query="come calcolare le tasse per libero professionista",
+    fts_weight=0.20,
+    vector_weight=0.70,  # Emphasize semantic understanding
+    recency_weight=0.10,
+    top_k=14
+)
+```
+
+### 7.3 Exact Legal Reference
+
+```python
+# User provides specific article number - emphasize FTS
+results = await hybrid_retrieve(
+    session=session,
+    query="codice civile articolo 1571",
+    fts_weight=0.80,  # Exact term matching critical
+    vector_weight=0.10,
+    recency_weight=0.10,
+    recency_days=3650,  # 10 years (legal texts don't expire quickly)
+    top_k=5
+)
+```
+
+### 7.4 Recent News
+
+```python
+# User asks about recent changes
+results = await hybrid_retrieve(
+    session=session,
+    query="nuove detrazioni fiscali 2024",
+    fts_weight=0.40,
+    vector_weight=0.20,
+    recency_weight=0.40,  # Heavily favor recent documents
+    recency_days=60,      # 2 months
+    top_k=10
+)
+```
+
+---
+
+## 8. Troubleshooting
+
+### 8.1 No Results Returned
+
+**Problem:** `hybrid_retrieve()` returns empty list
+
+**Diagnosis:**
+```python
+# Check FTS separately
+results_fts = await fts_only_retrieve(session, query, top_k=10)
+print(f"FTS results: {len(results_fts)}")
+
+# Check if embedding generation failed
+from app.core.embed import generate_embedding
+embedding = await generate_embedding(query)
+print(f"Embedding generated: {embedding is not None}")
+```
+
+**Common causes:**
+1. **Query too specific:** No FTS matches found
+   - Solution: Broaden query, use OR operators
+2. **Embedding generation failed:** API outage
+   - Solution: System auto-falls back to FTS-only
+3. **All chunks marked as junk:** Quality filter too strict
+   - Solution: Check `junk` flag distribution in database
+
+### 8.2 Poor Result Relevance
+
+**Problem:** Results don't match user intent
+
+**Diagnosis:**
+```python
+# Inspect score breakdown
+for result in results[:5]:
+    print(f"Combined: {result['combined_score']:.3f}")
+    print(f"  FTS: {result['fts_score']:.3f}")
+    print(f"  Vector: {result['vector_score']:.3f}")
+    print(f"  Recency: {result['recency_score']:.3f}")
+    print(f"  Text: {result['chunk_text'][:100]}...")
+    print("---")
+```
+
+**Common issues:**
+1. **FTS score dominates, but wrong results:**
+   - Solution: Lower `fts_weight`, increase `vector_weight`
+2. **Recent but irrelevant docs ranking high:**
+   - Solution: Lower `recency_weight`
+3. **Vector similarity finding related but not exact matches:**
+   - Solution: Increase `fts_weight` for exact term matching
+
+### 8.3 Slow Queries
+
+**Problem:** Latency >300ms consistently
+
+**Diagnosis:**
+```python
+# Use EXPLAIN ANALYZE
+explain = await explain_hybrid_query(session, query)
+print(explain)
+```
+
+**Common causes:**
+1. **Sequential scan instead of index scan:**
+   - Solution: Check indexes exist, run `VACUUM ANALYZE`
+2. **Too many vectors within distance threshold:**
+   - Solution: Lower distance threshold from 1.0 to 0.8
+3. **Large result set:**
+   - Solution: Reduce `top_k`, add more specific filters
+
+**Optimization checklist:**
+- [ ] Indexes exist (`idx_kc_embedding_ivfflat_1536`, `idx_kc_search_vector_gin`)
+- [ ] Database statistics up to date (`VACUUM ANALYZE knowledge_chunks`)
+- [ ] Connection pool not exhausted
+- [ ] Query uses prepared statements (SQLAlchemy does this automatically)
+
+---
+
+## 9. Advanced Techniques
+
+### 9.1 Multi-Stage Retrieval
+
+**Concept:** Retrieve more broadly, then rerank for precision
+
+```python
+# Stage 1: Hybrid retrieval (broad)
+candidates = await hybrid_retrieve(
+    session=session,
+    query=query,
+    top_k=30,  # Get 30 candidates
+    fts_weight=0.50,
+    vector_weight=0.35,
+    recency_weight=0.15
+)
+
+# Stage 2: Custom reranking logic
+def custom_rerank(candidates, query):
+    # Example: Boost results with specific keywords in title
+    for candidate in candidates:
+        if "agenzia entrate" in candidate['document_title'].lower():
+            candidate['combined_score'] *= 1.2  # 20% boost
+
+    # Re-sort by adjusted score
+    return sorted(candidates, key=lambda x: x['combined_score'], reverse=True)[:14]
+
+final_results = custom_rerank(candidates, query)
+```
+
+**Note:** DEV-71 will add cross-encoder reranking to automate this.
+
+### 9.2 Query Expansion
+
+**Concept:** Expand user query with synonyms before searching
+
+```python
+# Example: User types "p.iva"
+# Expand to: "p.iva OR partita iva OR codice iva"
+
+italian_tax_synonyms = {
+    "p.iva": ["partita iva", "codice iva", "numero iva"],
+    "iva": ["imposta valore aggiunto"],
+    "irpef": ["imposta reddito persone fisiche"],
+}
+
+def expand_query(query: str) -> str:
+    for term, synonyms in italian_tax_synonyms.items():
+        if term in query.lower():
+            expanded = f"({term} OR {' OR '.join(synonyms)})"
+            query = query.replace(term, expanded)
+    return query
+
+expanded_query = expand_query("calcolo p.iva")
+# Result: "calcolo (p.iva OR partita iva OR codice iva OR numero iva)"
+
+results = await hybrid_retrieve(session, expanded_query)
+```
+
+**Note:** DEV-73 will add Italian financial dictionary for automatic expansion.
+
+### 9.3 Metadata Filtering
+
+**Filter by document metadata before hybrid search:**
+
+```python
+from sqlalchemy import text
+
+# Custom query with metadata filters
+sql = text("""
+    WITH ranked AS (
+        SELECT
+            kc.id, kc.chunk_text, kc.embedding, kc.search_vector,
+            ki.category, ki.publication_date,
+            ts_rank_cd(kc.search_vector, websearch_to_tsquery('italian', :query)) AS fts_score,
+            1 - (kc.embedding <=> CAST(:embedding AS vector)) AS vector_score
+        FROM knowledge_chunks kc
+        INNER JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id
+        WHERE
+            kc.junk = FALSE
+            AND ki.category = :category  -- Metadata filter
+            AND ki.publication_date > :min_date  -- Date filter
+            AND kc.search_vector @@ websearch_to_tsquery('italian', :query)
+    )
+    SELECT *, (0.50 * fts_score + 0.50 * vector_score) AS combined_score
+    FROM ranked
+    ORDER BY combined_score DESC
+    LIMIT :top_k;
+""")
+
+result = await session.execute(sql, {
+    "query": "fatturazione elettronica",
+    "embedding": embedding_str,
+    "category": "IVA",
+    "min_date": "2023-01-01",
+    "top_k": 14
+})
+```
+
+---
+
+## 10. Testing & Validation
+
+### 10.1 Unit Testing
+
+```python
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
+@pytest.mark.asyncio
+async def test_hybrid_retrieve_returns_results(db_session: AsyncSession):
+    """Test that hybrid_retrieve returns results for common query"""
+    results = await hybrid_retrieve(
+        session=db_session,
+        query="contratti locazione",
+        top_k=10
+    )
+
+    assert len(results) > 0
+    assert all('combined_score' in r for r in results)
+    assert results[0]['combined_score'] >= results[-1]['combined_score']  # Sorted
+
+@pytest.mark.asyncio
+async def test_custom_weights_affect_ranking(db_session: AsyncSession):
+    """Test that changing weights affects result order"""
+    query = "IVA fatturazione"
+
+    # FTS-heavy
+    results_fts = await hybrid_retrieve(
+        session=db_session,
+        query=query,
+        fts_weight=0.90,
+        vector_weight=0.10,
+        top_k=5
+    )
+
+    # Vector-heavy
+    results_vector = await hybrid_retrieve(
+        session=db_session,
+        query=query,
+        fts_weight=0.10,
+        vector_weight=0.90,
+        top_k=5
+    )
+
+    # Different weights should produce different top results
+    assert results_fts[0]['chunk_id'] != results_vector[0]['chunk_id']
+```
+
+### 10.2 Precision/Recall Evaluation
+
+```python
+# Create test set with manually labeled relevance
+test_queries = [
+    ("contratti locazione commerciale", ["doc_123", "doc_456"]),  # Relevant doc IDs
+    ("calcolo IVA 22%", ["doc_789"]),
+    # ... 50+ test queries
+]
+
+async def evaluate_precision_recall(session, test_queries):
+    total_precision = 0
+    total_recall = 0
+
+    for query, relevant_ids in test_queries:
+        results = await hybrid_retrieve(session, query, top_k=14)
+        retrieved_ids = [r['knowledge_item_id'] for r in results]
+
+        # Precision: How many retrieved are relevant?
+        relevant_retrieved = set(retrieved_ids) & set(relevant_ids)
+        precision = len(relevant_retrieved) / len(retrieved_ids) if retrieved_ids else 0
+
+        # Recall: How many relevant were retrieved?
+        recall = len(relevant_retrieved) / len(relevant_ids) if relevant_ids else 0
+
+        total_precision += precision
+        total_recall += recall
+
+    avg_precision = total_precision / len(test_queries)
+    avg_recall = total_recall / len(test_queries)
+
+    print(f"Average Precision@14: {avg_precision:.2%}")
+    print(f"Average Recall@14: {avg_recall:.2%}")
+
+    return avg_precision, avg_recall
+```
+
+---
+
+## 11. Migration Path
+
+### 11.1 From Pinecone to pgvector (If Needed)
+
+**For FAQs (DEV-67):**
+
+```python
+# Export from Pinecone
+pinecone_index = pinecone.Index("pratikoai-vectors")
+vectors = pinecone_index.query(
+    namespace="faq_embeddings",
+    top_k=10000,  # All FAQs
+    include_metadata=True,
+    include_values=True
+)
+
+# Import to PostgreSQL
+for vector in vectors['matches']:
+    await session.execute(
+        text("""
+            INSERT INTO faq_embeddings (faq_id, question, answer, embedding, metadata)
+            VALUES (:faq_id, :question, :answer, :embedding::vector, :metadata)
+        """),
+        {
+            "faq_id": vector['id'],
+            "question": vector['metadata']['question'],
+            "answer": vector['metadata']['answer'],
+            "embedding": str(vector['values']),  # Convert to pgvector format
+            "metadata": json.dumps(vector['metadata'])
+        }
+    )
+await session.commit()
+```
+
+---
+
+## 12. Production Checklist
+
+**Before deploying hybrid search changes:**
+
+- [ ] Indexes exist and are up-to-date
+  ```sql
+  SELECT indexname, idx_scan FROM pg_stat_user_indexes WHERE tablename = 'knowledge_chunks';
+  ```
+
+- [ ] Database statistics current
+  ```sql
+  VACUUM ANALYZE knowledge_chunks;
+  VACUUM ANALYZE knowledge_items;
+  ```
+
+- [ ] Test on staging with production-like data volume
+
+- [ ] Benchmark latency (p50, p95, p99)
+
+- [ ] Monitor embedding API cost (should be <$10/month)
+
+- [ ] Set up alerts for query latency >300ms (DEV-69 will add Prometheus/Grafana)
+
+- [ ] Document any custom weight configurations
+
+- [ ] Have rollback plan (revert to default weights)
+
+---
+
+## 13. Related Documentation
+
+**Core Implementation:**
+- `app/retrieval/postgres_retriever.py` - Production code (this guide)
+- `app/core/embed.py` - Embedding generation
+- `app/core/config.py` - Default weights configuration
+
+**Database Schema:**
+- `docs/DATABASE_ARCHITECTURE.md` - Full architecture documentation
+- `alembic/versions/` - Database migrations
+
+**Roadmap:**
+- `ARCHITECTURE_ROADMAP.md` - Future enhancements (cross-encoder reranking, HNSW index)
+
+---
+
+**Document Maintained By:** Engineering Team
+**Review Cycle:** Quarterly (Jan, Apr, Jul, Oct)
+**Next Review:** 2025-01-15

@@ -4,16 +4,18 @@ This module defines Pydantic models for privacy and GDPR compliance features.
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 from app.core.privacy.anonymizer import PIIType
-from app.core.privacy.gdpr import ConsentType, ProcessingPurpose, DataCategory
+from app.core.privacy.gdpr import ConsentType, DataCategory, ProcessingPurpose
 
 
 class PIIDetectionRequest(BaseModel):
     """Request for PII detection."""
+
     text: str = Field(..., description="Text to analyze for PII")
     detect_names: bool = Field(default=True, description="Whether to detect person names")
     confidence_threshold: float = Field(default=0.7, description="Minimum confidence for PII detection")
@@ -21,6 +23,7 @@ class PIIDetectionRequest(BaseModel):
 
 class PIIMatchResponse(BaseModel):
     """Response for detected PII match."""
+
     pii_type: str = Field(..., description="Type of PII detected")
     original_value: str = Field(..., description="Original PII value")
     anonymized_value: str = Field(..., description="Anonymized replacement")
@@ -31,62 +34,64 @@ class PIIMatchResponse(BaseModel):
 
 class AnonymizationResponse(BaseModel):
     """Response for text anonymization."""
+
     anonymized_text: str = Field(..., description="Anonymized text")
-    pii_matches: List[PIIMatchResponse] = Field(default_factory=list, description="Detected PII matches")
-    anonymization_map: Dict[str, str] = Field(default_factory=dict, description="Mapping of original to anonymized values")
+    pii_matches: list[PIIMatchResponse] = Field(default_factory=list, description="Detected PII matches")
+    anonymization_map: dict[str, str] = Field(
+        default_factory=dict, description="Mapping of original to anonymized values"
+    )
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Processing timestamp")
-    
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class ConsentRequest(BaseModel):
     """Request to grant or withdraw consent."""
+
     user_id: str = Field(..., description="User identifier")
     consent_type: str = Field(..., description="Type of consent")
     granted: bool = Field(..., description="Whether consent is granted")
-    ip_address: Optional[str] = Field(None, description="User's IP address")
-    user_agent: Optional[str] = Field(None, description="User's browser agent")
-    expiry_days: Optional[int] = Field(None, description="Days until consent expires")
+    ip_address: str | None = Field(None, description="User's IP address")
+    user_agent: str | None = Field(None, description="User's browser agent")
+    expiry_days: int | None = Field(None, description="Days until consent expires")
 
 
 class ConsentResponse(BaseModel):
     """Response for consent operation."""
+
     consent_id: str = Field(..., description="Unique consent identifier")
     user_id: str = Field(..., description="User identifier")
     consent_type: str = Field(..., description="Type of consent")
     granted: bool = Field(..., description="Whether consent is granted")
     timestamp: datetime = Field(..., description="When consent was granted/withdrawn")
-    expiry_date: Optional[datetime] = Field(None, description="When consent expires")
-    
+    expiry_date: datetime | None = Field(None, description="When consent expires")
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class ConsentStatusRequest(BaseModel):
     """Request to check consent status."""
+
     user_id: str = Field(..., description="User identifier")
-    consent_types: Optional[List[str]] = Field(None, description="Specific consent types to check")
+    consent_types: list[str] | None = Field(None, description="Specific consent types to check")
 
 
 class ConsentStatusResponse(BaseModel):
     """Response for consent status check."""
+
     user_id: str = Field(..., description="User identifier")
-    consents: Dict[str, bool] = Field(..., description="Consent status by type")
-    last_updated: Optional[datetime] = Field(None, description="Last consent update")
-    
+    consents: dict[str, bool] = Field(..., description="Consent status by type")
+    last_updated: datetime | None = Field(None, description="Last consent update")
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class DataProcessingRequest(BaseModel):
     """Request to record data processing."""
+
     user_id: str = Field(..., description="User identifier")
     data_category: str = Field(..., description="Category of data being processed")
     processing_purpose: str = Field(..., description="Purpose of processing")
@@ -97,94 +102,91 @@ class DataProcessingRequest(BaseModel):
 
 class DataProcessingResponse(BaseModel):
     """Response for data processing record."""
+
     processing_id: str = Field(..., description="Unique processing identifier")
     user_id: str = Field(..., description="User identifier")
     data_category: str = Field(..., description="Category of data processed")
     processing_purpose: str = Field(..., description="Purpose of processing")
     timestamp: datetime = Field(..., description="When processing occurred")
     legal_basis: str = Field(..., description="Legal basis for processing")
-    retention_period_days: Optional[int] = Field(None, description="Data retention period in days")
-    
+    retention_period_days: int | None = Field(None, description="Data retention period in days")
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class DataSubjectRequest(BaseModel):
     """Data subject request under GDPR."""
+
     user_id: str = Field(..., description="User identifier")
     request_type: str = Field(..., description="Type of request (access, deletion, portability)")
-    additional_info: Optional[Dict[str, Any]] = Field(None, description="Additional request information")
+    additional_info: dict[str, Any] | None = Field(None, description="Additional request information")
 
 
 class DataSubjectResponse(BaseModel):
     """Response to data subject request."""
+
     request_id: str = Field(..., description="Unique request identifier")
     user_id: str = Field(..., description="User identifier")
     request_type: str = Field(..., description="Type of request")
     status: str = Field(..., description="Request status")
-    data: Optional[Dict[str, Any]] = Field(None, description="Requested data (for access requests)")
-    message: Optional[str] = Field(None, description="Additional information")
+    data: dict[str, Any] | None = Field(None, description="Requested data (for access requests)")
+    message: str | None = Field(None, description="Additional information")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Request processing timestamp")
-    
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class AuditEventResponse(BaseModel):
     """Audit event information."""
+
     event_id: str = Field(..., description="Unique event identifier")
     event_type: str = Field(..., description="Type of audit event")
-    user_id: Optional[str] = Field(None, description="User identifier")
+    user_id: str | None = Field(None, description="User identifier")
     timestamp: datetime = Field(..., description="Event timestamp")
-    details: Dict[str, Any] = Field(..., description="Event details")
-    ip_address: Optional[str] = Field(None, description="IP address")
-    session_id: Optional[str] = Field(None, description="Session identifier")
-    
+    details: dict[str, Any] = Field(..., description="Event details")
+    ip_address: str | None = Field(None, description="IP address")
+    session_id: str | None = Field(None, description="Session identifier")
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class ComplianceStatusResponse(BaseModel):
     """Overall GDPR compliance status."""
+
     consent_records_count: int = Field(..., description="Total consent records")
     processing_records_count: int = Field(..., description="Total processing records")
     audit_events_count: int = Field(..., description="Total audit events")
-    retention_policies: Dict[str, str] = Field(..., description="Data retention policies")
-    compliance_features: List[str] = Field(..., description="Available compliance features")
-    last_cleanup: Optional[datetime] = Field(None, description="Last automated cleanup")
-    
+    retention_policies: dict[str, str] = Field(..., description="Data retention policies")
+    compliance_features: list[str] = Field(..., description="Available compliance features")
+    last_cleanup: datetime | None = Field(None, description="Last automated cleanup")
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class PrivacySettingsRequest(BaseModel):
     """Request to update privacy settings."""
+
     user_id: str = Field(..., description="User identifier")
     anonymize_logs: bool = Field(default=True, description="Anonymize user data in logs")
-    data_retention_days: Optional[int] = Field(None, description="Custom data retention period")
-    consent_preferences: Dict[str, bool] = Field(default_factory=dict, description="Consent preferences")
+    data_retention_days: int | None = Field(None, description="Custom data retention period")
+    consent_preferences: dict[str, bool] = Field(default_factory=dict, description="Consent preferences")
 
 
 class PrivacySettingsResponse(BaseModel):
     """Privacy settings information."""
+
     user_id: str = Field(..., description="User identifier")
     anonymize_logs: bool = Field(..., description="Whether logs are anonymized")
     data_retention_days: int = Field(..., description="Data retention period")
-    consent_preferences: Dict[str, bool] = Field(..., description="Consent preferences")
+    consent_preferences: dict[str, bool] = Field(..., description="Consent preferences")
     last_updated: datetime = Field(..., description="Last update timestamp")
-    
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 # Validation helpers for enum values

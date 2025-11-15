@@ -28,7 +28,6 @@ depends_on = None
 
 def upgrade():
     """Add database encryption infrastructure."""
-
     # Enable pgcrypto extension for encryption functions
     op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
 
@@ -507,7 +506,6 @@ def upgrade():
 
 def downgrade():
     """Remove database encryption infrastructure."""
-
     # Drop views
     op.execute("DROP VIEW IF EXISTS encryption_audit_summary_view;")
     op.execute("DROP VIEW IF EXISTS encryption_status_view;")

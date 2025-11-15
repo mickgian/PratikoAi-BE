@@ -59,7 +59,7 @@ async def test_search_uses_llm_when_canonical_facts_empty(db_session: AsyncSessi
     }
 
     # Mock QueryNormalizer to return expected extraction
-    mock_create = AsyncMock(return_value=mock_llm_response("risoluzione", "64"))
+    AsyncMock(return_value=mock_llm_response("risoluzione", "64"))
     with patch("app.services.knowledge_search_service.QueryNormalizer") as MockNormalizer:
         mock_normalizer = MagicMock()
         mock_normalizer.normalize = AsyncMock(return_value={"type": "risoluzione", "number": "64"})
@@ -71,9 +71,9 @@ async def test_search_uses_llm_when_canonical_facts_empty(db_session: AsyncSessi
         mock_normalizer.normalize.assert_called_once_with("risoluzione sessantaquattro")
 
         # Verify document was found
-        assert len(results) >= 1, (
-            "Should find Resolution 64 via LLM normalization. " "Currently FAILS because integration not implemented."
-        )
+        assert (
+            len(results) >= 1
+        ), "Should find Resolution 64 via LLM normalization. Currently FAILS because integration not implemented."
         assert any(
             "64" in r.title for r in results
         ), f"Should find document with '64' in title. Found: {[r.title[:80] for r in results]}"
@@ -182,10 +182,9 @@ async def test_search_handles_abbreviations(db_session: AsyncSession, mock_llm_r
 
         # Verify abbreviation was handled
         mock_normalizer.normalize.assert_called_once_with("ris 64")
-        assert len(results) >= 1, (
-            "Should find document with abbreviated query via LLM. "
-            "Currently FAILS because integration not implemented."
-        )
+        assert (
+            len(results) >= 1
+        ), "Should find document with abbreviated query via LLM. Currently FAILS because integration not implemented."
 
 
 @pytest.mark.asyncio
@@ -215,9 +214,9 @@ async def test_search_handles_complex_typos(db_session: AsyncSession, mock_llm_r
 
         # Verify typo was handled
         mock_normalizer.normalize.assert_called_once_with("risouzione 64")
-        assert len(results) >= 1, (
-            "Should find document with typo query via LLM. " "Currently FAILS because integration not implemented."
-        )
+        assert (
+            len(results) >= 1
+        ), "Should find document with typo query via LLM. Currently FAILS because integration not implemented."
 
 
 @pytest.mark.asyncio

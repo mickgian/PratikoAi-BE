@@ -4,19 +4,20 @@ Lane integration tests for Phase 8: Golden KB Fast-Path Lane.
 Tests end-to-end flow through golden lookup → serve or fallback paths.
 """
 
-import pytest
 from unittest.mock import patch
 
-from tests.common.fixtures_state import make_state, state_golden_eligible
-from tests.common.fakes import (
-    fake_golden_lookup_orch,
-    FakeOrchestrator,
-)
+import pytest
+
 from app.core.langgraph.nodes.step_020__golden_fast_gate import node_step_20
 from app.core.langgraph.nodes.step_024__golden_lookup import node_step_24
 from app.core.langgraph.nodes.step_025__golden_hit import node_step_25
 from app.core.langgraph.nodes.step_026__kb_context_check import node_step_26
 from app.core.langgraph.nodes.step_028__serve_golden import node_step_28
+from tests.common.fakes import (
+    FakeOrchestrator,
+    fake_golden_lookup_orch,
+)
+from tests.common.fixtures_state import make_state, state_golden_eligible
 
 
 @pytest.mark.lane
@@ -29,18 +30,17 @@ class TestPhase8GoldenFastPath:
         state = state_golden_eligible()
 
         # Step 20: Golden gate (ELIGIBLE)
-        fake_gate = FakeOrchestrator({
-            "golden_eligible": True,
-            "should_check_golden": True
-        })
+        fake_gate = FakeOrchestrator({"golden_eligible": True, "should_check_golden": True})
         with patch("app.core.langgraph.nodes.step_020__golden_fast_gate.step_20__golden_fast_gate", fake_gate):
             state = await node_step_20(state)
 
         assert state.get("golden_eligible") is True
 
         # Step 24: Golden lookup (HIGH CONFIDENCE)
-        with patch("app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
-                   fake_golden_lookup_orch(match_found=True, high_confidence=True)):
+        with patch(
+            "app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
+            fake_golden_lookup_orch(match_found=True, high_confidence=True),
+        ):
             state = await node_step_24(state)
 
         # High confidence match
@@ -49,21 +49,20 @@ class TestPhase8GoldenFastPath:
         assert state.get("similarity_score", 0) >= 0.95
 
         # Step 25: Golden hit check (routing)
-        fake_hit = FakeOrchestrator({
-            "golden_hit": True,
-            "serve_golden": True
-        })
+        fake_hit = FakeOrchestrator({"golden_hit": True, "serve_golden": True})
         with patch("app.core.langgraph.nodes.step_025__golden_hit.step_25__golden_hit", fake_hit):
             state = await node_step_25(state)
 
         assert state.get("golden_hit") is True
 
         # Step 28: Serve golden
-        fake_serve = FakeOrchestrator({
-            "golden_served": True,
-            "response": {"content": state.get("answer"), "source": "golden_kb"},
-            "complete": True
-        })
+        fake_serve = FakeOrchestrator(
+            {
+                "golden_served": True,
+                "response": {"content": state.get("answer"), "source": "golden_kb"},
+                "complete": True,
+            }
+        )
         with patch("app.core.langgraph.nodes.step_028__serve_golden.step_28__serve_golden", fake_serve):
             state = await node_step_28(state)
 
@@ -80,8 +79,10 @@ class TestPhase8GoldenFastPath:
         with patch("app.core.langgraph.nodes.step_020__golden_fast_gate.step_20__golden_fast_gate", fake_gate):
             state = await node_step_20(state)
 
-        with patch("app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
-                   fake_golden_lookup_orch(match_found=True, high_confidence=True)):
+        with patch(
+            "app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
+            fake_golden_lookup_orch(match_found=True, high_confidence=True),
+        ):
             state = await node_step_24(state)
 
         # LLM should not have been called
@@ -103,18 +104,17 @@ class TestPhase8GoldenLowConfidencePath:
             state = await node_step_20(state)
 
         # Lookup finds LOW confidence match
-        with patch("app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
-                   fake_golden_lookup_orch(match_found=True, high_confidence=False)):
+        with patch(
+            "app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
+            fake_golden_lookup_orch(match_found=True, high_confidence=False),
+        ):
             state = await node_step_24(state)
 
         assert state.get("match_found") is True
         assert state.get("high_confidence_match") is False
 
         # Step 26: KB context check
-        fake_kb_check = FakeOrchestrator({
-            "kb_context_needed": True,
-            "should_query_kb": True
-        })
+        fake_kb_check = FakeOrchestrator({"kb_context_needed": True, "should_query_kb": True})
         with patch("app.core.langgraph.nodes.step_026__kb_context_check.step_26__kb_context_check", fake_kb_check):
             state = await node_step_26(state)
 
@@ -126,17 +126,19 @@ class TestPhase8GoldenLowConfidencePath:
         state = state_golden_eligible()
 
         # Low confidence lookup
-        with patch("app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
-                   fake_golden_lookup_orch(match_found=True, high_confidence=False)):
+        with patch(
+            "app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
+            fake_golden_lookup_orch(match_found=True, high_confidence=False),
+        ):
             state = await node_step_24(state)
 
         # Step 27: KB delta (get additional context)
-        fake_delta = FakeOrchestrator({
-            "kb_docs": [{"title": "Supporting doc", "content": "Additional context"}],
-            "kb_context_added": True
-        })
+        fake_delta = FakeOrchestrator(
+            {"kb_docs": [{"title": "Supporting doc", "content": "Additional context"}], "kb_context_added": True}
+        )
         with patch("app.core.langgraph.nodes.step_027__kb_delta.step_27__kb_delta", fake_delta):
             from app.core.langgraph.nodes.step_027__kb_delta import node_step_27
+
             state = await node_step_27(state)
 
         # KB context added
@@ -144,11 +146,9 @@ class TestPhase8GoldenLowConfidencePath:
         assert len(state.get("kb_docs", [])) > 0
 
         # Still serve golden (with KB context)
-        fake_serve = FakeOrchestrator({
-            "golden_served": True,
-            "response": {"content": "Golden answer with context"},
-            "complete": True
-        })
+        fake_serve = FakeOrchestrator(
+            {"golden_served": True, "response": {"content": "Golden answer with context"}, "complete": True}
+        )
         with patch("app.core.langgraph.nodes.step_028__serve_golden.step_28__serve_golden", fake_serve):
             state = await node_step_28(state)
 
@@ -170,18 +170,17 @@ class TestPhase8GoldenMissPath:
             state = await node_step_20(state)
 
         # Lookup finds NO match
-        with patch("app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
-                   fake_golden_lookup_orch(match_found=False, high_confidence=False)):
+        with patch(
+            "app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
+            fake_golden_lookup_orch(match_found=False, high_confidence=False),
+        ):
             state = await node_step_24(state)
 
         # No match found
         assert state.get("match_found") is False
 
         # Step 25: Golden hit check (routing decision)
-        fake_hit = FakeOrchestrator({
-            "golden_hit": False,
-            "fallback_to_llm": True
-        })
+        fake_hit = FakeOrchestrator({"golden_hit": False, "fallback_to_llm": True})
         with patch("app.core.langgraph.nodes.step_025__golden_hit.step_25__golden_hit", fake_hit):
             state = await node_step_25(state)
 
@@ -191,15 +190,10 @@ class TestPhase8GoldenMissPath:
 
     async def test_golden_not_eligible_skips_lookup(self):
         """Verify non-eligible queries skip golden lookup entirely."""
-        state = make_state(
-            messages=[{"role": "user", "content": "Complex query requiring LLM reasoning"}]
-        )
+        state = make_state(messages=[{"role": "user", "content": "Complex query requiring LLM reasoning"}])
 
         # Golden gate NOT eligible
-        fake_gate = FakeOrchestrator({
-            "golden_eligible": False,
-            "should_check_golden": False
-        })
+        fake_gate = FakeOrchestrator({"golden_eligible": False, "should_check_golden": False})
         with patch("app.core.langgraph.nodes.step_020__golden_fast_gate.step_20__golden_fast_gate", fake_gate):
             state = await node_step_20(state)
 
@@ -218,19 +212,19 @@ class TestPhase8GoldenMetrics:
         state = state_golden_eligible()
 
         # High confidence match
-        with patch("app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
-                   fake_golden_lookup_orch(match_found=True, high_confidence=True)):
+        with patch(
+            "app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
+            fake_golden_lookup_orch(match_found=True, high_confidence=True),
+        ):
             state = await node_step_24(state)
 
         # FAQ ID tracked
         assert state.get("faq_id") == "faq-123"
 
         # Serve golden
-        fake_serve = FakeOrchestrator({
-            "golden_served": True,
-            "response": {"content": "Answer", "faq_id": "faq-123"},
-            "complete": True
-        })
+        fake_serve = FakeOrchestrator(
+            {"golden_served": True, "response": {"content": "Answer", "faq_id": "faq-123"}, "complete": True}
+        )
         with patch("app.core.langgraph.nodes.step_028__serve_golden.step_28__serve_golden", fake_serve):
             state = await node_step_28(state)
 
@@ -241,8 +235,10 @@ class TestPhase8GoldenMetrics:
         """Verify similarity score is preserved for analytics."""
         state = state_golden_eligible()
 
-        with patch("app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
-                   fake_golden_lookup_orch(match_found=True, high_confidence=True)):
+        with patch(
+            "app.core.langgraph.nodes.step_024__golden_lookup.step_24__golden_lookup",
+            fake_golden_lookup_orch(match_found=True, high_confidence=True),
+        ):
             state = await node_step_24(state)
 
         # Similarity score preserved

@@ -5,9 +5,9 @@
 
 import asyncio
 import traceback
+from collections.abc import AsyncGenerator
 from typing import (
     Any,
-    AsyncGenerator,
     Dict,
     List,
     Literal,
@@ -260,9 +260,9 @@ class LangGraphAgent:
         """Initialize the LangGraph Agent with necessary components."""
         # Initialize with fallback to legacy config for backward compatibility
         self.tools_by_name = {tool.name: tool for tool in tools}
-        self._connection_pool: Optional[AsyncConnectionPool] = None
-        self._graph: Optional[CompiledStateGraph] = None
-        self._current_provider: Optional[LLMProvider] = None
+        self._connection_pool: AsyncConnectionPool | None = None
+        self._graph: CompiledStateGraph | None = None
+        self._current_provider: LLMProvider | None = None
 
         # Initialize domain-action classification services
         self._domain_classifier = DomainActionClassifier()
@@ -272,18 +272,18 @@ class LangGraphAgent:
         self._response_metadata = None  # Store response metadata
 
         # Initialize tracking attributes
-        self._current_user_id: Optional[str] = None
-        self._current_session_id: Optional[str] = None
+        self._current_user_id: str | None = None
+        self._current_session_id: str | None = None
 
         logger.info("llm_agent_initialized", environment=settings.ENVIRONMENT.value)
 
-    async def _classify_user_query(self, messages: List[Message]) -> Optional[DomainActionClassification]:
+    async def _classify_user_query(self, messages: list[Message]) -> DomainActionClassification | None:
         """Classify the latest user query using domain-action classifier.
 
-            Args:
+        Args:
                 messages: List of conversation messages
 
-            Returns:
+        Returns:
                 DomainActionClassification or None if no messages
         Implements RAG STEP 8 (LangGraphAgent.get_response Initialize workflow)
         Node ID: RAG.response.langgraphagent.get.response.initialize.workflow
@@ -336,10 +336,9 @@ class LangGraphAgent:
             return None
 
     async def _check_golden_fast_path_eligibility(
-        self, messages: List[Message], session_id: str, user_id: Optional[str]
+        self, messages: list[Message], session_id: str, user_id: str | None
     ) -> EligibilityResult:
-        """
-        Check if the current query is eligible for golden fast-path processing.
+        """Check if the current query is eligible for golden fast-path processing.
 
         Args:
             messages: List of conversation messages
@@ -388,7 +387,7 @@ class LangGraphAgent:
         return await self._golden_fast_path_service.is_eligible_for_fast_path(query_data)
 
     async def _get_cached_llm_response(
-        self, provider: LLMProvider, messages: List[Message], tools: list, temperature: float, max_tokens: int
+        self, provider: LLMProvider, messages: list[Message], tools: list, temperature: float, max_tokens: int
     ):
         """Get LLM response with caching support.
 
@@ -579,7 +578,7 @@ class LangGraphAgent:
         return strategy, max_cost
 
     async def _get_system_prompt(
-        self, messages: List[Message], classification: Optional["DomainActionClassification"]
+        self, messages: list[Message], classification: Optional["DomainActionClassification"]
     ) -> str:
         """Select the appropriate system prompt via RAG Step 41 orchestrator."""
         from app.orchestrators.prompting import step_41__select_prompt
@@ -599,10 +598,10 @@ class LangGraphAgent:
 
     async def _prepare_messages_with_system_prompt(
         self,
-        messages: List[Message],
-        system_prompt: Optional[str] = None,
+        messages: list[Message],
+        system_prompt: str | None = None,
         classification: Optional["DomainActionClassification"] = None,
-    ) -> List[Message]:
+    ) -> list[Message]:
         """Ensure system message presence (RAG STEP 45 — CheckSysMsg) with backward-compatible signature."""
         if messages is None:
             messages = []
@@ -652,7 +651,7 @@ class LangGraphAgent:
             # Keep existing system message (action == "keep")
             return msgs
 
-    def _get_optimal_provider(self, messages: List[Message]) -> LLMProvider:
+    def _get_optimal_provider(self, messages: list[Message]) -> LLMProvider:
         """Get the optimal LLM provider for the given messages.
 
         Args:
@@ -825,7 +824,7 @@ class LangGraphAgent:
                     model=settings.LLM_MODEL or settings.OPENAI_MODEL,
                 )
 
-    async def _get_connection_pool(self) -> Optional[AsyncConnectionPool]:
+    async def _get_connection_pool(self) -> AsyncConnectionPool | None:
         """Get a PostgreSQL connection pool using environment-specific settings.
 
         Returns:
@@ -968,7 +967,7 @@ class LangGraphAgent:
         raise Exception(f"Failed to get a response from the LLM after {max_retries} attempts")
 
     # Define our tool node
-    async def _tool_call(self, state: GraphState) -> Dict[str, List[ToolMessage]]:
+    async def _tool_call(self, state: GraphState) -> dict[str, list[ToolMessage]]:
         """Process tool calls from the last message.
 
         Args:
@@ -1010,20 +1009,20 @@ class LangGraphAgent:
 
     # Phase 5 routing functions
     @staticmethod
-    def _route_strategy_type(state: Dict[str, Any]) -> str:
+    def _route_strategy_type(state: dict[str, Any]) -> str:
         """Route from StrategyType node based on strategy decision."""
         strategy_type = state.get("decisions", {}).get("strategy_type", "PRIMARY")
         return strategy_type
 
     @staticmethod
-    def _route_cost_check(state: Dict[str, Any]) -> str:
+    def _route_cost_check(state: dict[str, Any]) -> str:
         """Route from CostCheck node based on budget approval."""
         cost_ok = state.get("decisions", {}).get("cost_ok", True)
         return "approved" if cost_ok else "too_expensive"
 
     # Reuse existing routing functions with new names for clarity
     @staticmethod
-    def _route_cache_hit(state: Dict[str, Any]) -> str:
+    def _route_cache_hit(state: dict[str, Any]) -> str:
         """Route from CacheHit node based on cache status."""
         if state.get("cache_hit", False):
             return "hit"
@@ -1031,7 +1030,7 @@ class LangGraphAgent:
             return "miss"
 
     @staticmethod
-    def _route_llm_success(state: Dict[str, Any]) -> str:
+    def _route_llm_success(state: dict[str, Any]) -> str:
         """Route from LLMSuccess node."""
         if state.get("llm_success", True):
             return "success"
@@ -1039,7 +1038,7 @@ class LangGraphAgent:
             return "retry"
 
     @staticmethod
-    def _route_tool_check(state: Dict[str, Any]) -> str:
+    def _route_tool_check(state: dict[str, Any]) -> str:
         """Route from ToolCheck node."""
         if state.get("tool_calls") or state.get("tools", {}).get("requested", False):
             return "has_tools"
@@ -1047,14 +1046,14 @@ class LangGraphAgent:
             return "no_tools"
 
     @staticmethod
-    def _route_tool_type(state: Dict[str, Any]) -> str:
+    def _route_tool_type(state: dict[str, Any]) -> str:
         """Route from ToolType node based on tool type."""
         tool_type = state.get("tools", {}).get("type", "kb")
         mapping = {"kb": "kb", "ccnl": "ccnl", "doc": "doc", "faq": "faq"}
         return mapping.get(tool_type, "kb")
 
     @staticmethod
-    def _route_prod_check(state: Dict[str, Any]) -> str:
+    def _route_prod_check(state: dict[str, Any]) -> str:
         """Route from ProdCheck node."""
         if state.get("llm", {}).get("should_failover", False):
             return "failover"
@@ -1062,7 +1061,7 @@ class LangGraphAgent:
             return "retry_same"
 
     @staticmethod
-    def _route_from_valid_check(state: Dict[str, Any]) -> str:
+    def _route_from_valid_check(state: dict[str, Any]) -> str:
         """Route from ValidCheck node based on request validity."""
         # Check in both root and decisions dict
         decisions = state.get("decisions", {})
@@ -1088,7 +1087,7 @@ class LangGraphAgent:
             return "Error400"  # Invalid request goes to Error400 (Step 5)
 
     @staticmethod
-    def _route_from_privacy_check(_state: Dict[str, Any]) -> str:
+    def _route_from_privacy_check(_state: dict[str, Any]) -> str:
         """Route from PrivacyCheck node - always goes to PIICheck."""
         logger.debug(
             "routing_decision",
@@ -1101,7 +1100,7 @@ class LangGraphAgent:
         return "PIICheck"
 
     @staticmethod
-    def _route_from_pii_check(_state: Dict[str, Any]) -> str:
+    def _route_from_pii_check(_state: dict[str, Any]) -> str:
         """Route from PIICheck node - goes to cache spine."""
         logger.debug(
             "routing_decision",
@@ -1114,7 +1113,7 @@ class LangGraphAgent:
         return "CheckCache"
 
     @staticmethod
-    def _route_from_cache_hit(state: Dict[str, Any]) -> str:
+    def _route_from_cache_hit(state: dict[str, Any]) -> str:
         """Route from CacheHit node based on cache status."""
         cache_hit = state.get("cache_hit", False)
         branch = "End" if cache_hit else "LLMCall"
@@ -1132,7 +1131,7 @@ class LangGraphAgent:
             return "LLMCall"
 
     @staticmethod
-    def _route_from_llm_success(_state: Dict[str, Any]) -> str:
+    def _route_from_llm_success(_state: dict[str, Any]) -> str:
         """Route from LLMSuccess node - simplified for Phase 1A."""
         logger.debug(
             "routing_decision",
@@ -1146,7 +1145,7 @@ class LangGraphAgent:
 
     # Phase 4 routing functions
     @staticmethod
-    def _route_from_cache_hit_phase4(state: Dict[str, Any]) -> str:
+    def _route_from_cache_hit_phase4(state: dict[str, Any]) -> str:
         """Route from CacheHit node in Phase 4 based on cache status."""
         cache_hit = state.get("cache_hit_decision", False)
         branch = "ReturnCached" if cache_hit else "LLMCall"
@@ -1164,7 +1163,7 @@ class LangGraphAgent:
             return "LLMCall"
 
     @staticmethod
-    def _route_from_llm_success_phase4(state: Dict[str, Any]) -> str:
+    def _route_from_llm_success_phase4(state: dict[str, Any]) -> str:
         """Route from LLMSuccess node in Phase 4."""
         llm_success = state.get("llm_success_decision", True)
         branch = "CacheResponse" if llm_success else "RetryCheck"
@@ -1182,7 +1181,7 @@ class LangGraphAgent:
             return "RetryCheck"
 
     @staticmethod
-    def _route_from_retry_check(state: Dict[str, Any]) -> str:
+    def _route_from_retry_check(state: dict[str, Any]) -> str:
         """Route from RetryCheck node."""
         retry_allowed = state.get("llm", {}).get("retry_allowed", False)
         branch = "ProdCheck" if retry_allowed else "End"
@@ -1200,7 +1199,7 @@ class LangGraphAgent:
             return "End"
 
     @staticmethod
-    def _route_from_prod_check(state: Dict[str, Any]) -> str:
+    def _route_from_prod_check(state: dict[str, Any]) -> str:
         """Route from ProdCheck node."""
         should_failover = state.get("llm", {}).get("should_failover", False)
         branch = "FailoverProvider" if should_failover else "RetrySame"
@@ -1218,7 +1217,7 @@ class LangGraphAgent:
             return "RetrySame"
 
     @staticmethod
-    def _route_from_tool_check(state: Dict[str, Any]) -> str:
+    def _route_from_tool_check(state: dict[str, Any]) -> str:
         """Route from ToolCheck node."""
         tools_requested = state.get("tools", {}).get("requested", False)
         branch = "ToolType" if tools_requested else "StreamCheck"
@@ -1236,7 +1235,7 @@ class LangGraphAgent:
             return "StreamCheck"
 
     @staticmethod
-    def _route_from_tool_type(state: Dict[str, Any]) -> str:
+    def _route_from_tool_type(state: dict[str, Any]) -> str:
         """Route from ToolType node based on tool type."""
         tool_type = state.get("tools", {}).get("type", "kb")
         mapping = {"kb": "KBTool", "ccnl": "CCNLTool", "doc": "DocIngestTool", "faq": "FAQTool"}
@@ -1253,7 +1252,7 @@ class LangGraphAgent:
 
     # Unified graph routing functions
     @staticmethod
-    def _route_from_privacy_check_unified(state: Dict[str, Any]) -> str:
+    def _route_from_privacy_check_unified(state: dict[str, Any]) -> str:
         """Route from PrivacyCheck in unified graph."""
         anonymize_enabled = state.get("privacy", {}).get("anonymize_enabled", False)
         branch = "AnonymizeText" if anonymize_enabled else "InitAgent"
@@ -1271,7 +1270,7 @@ class LangGraphAgent:
             return "InitAgent"
 
     @staticmethod
-    def _route_from_pii_check_unified(state: Dict[str, Any]) -> str:
+    def _route_from_pii_check_unified(state: dict[str, Any]) -> str:
         """Route from PIICheck in unified graph."""
         pii_detected = state.get("privacy", {}).get("pii_detected", False)
         branch = "LogPII" if pii_detected else "InitAgent"
@@ -1289,7 +1288,7 @@ class LangGraphAgent:
             return "InitAgent"
 
     @staticmethod
-    def _route_from_golden_fast_gate(state: Dict[str, Any]) -> str:
+    def _route_from_golden_fast_gate(state: dict[str, Any]) -> str:
         """Route from GoldenFastGate - check if golden lookup is eligible."""
         eligible = state.get("golden", {}).get("eligible", False)
         branch = "GoldenLookup" if eligible else "ClassifyDomain"
@@ -1307,7 +1306,7 @@ class LangGraphAgent:
             return "ClassifyDomain"
 
     @staticmethod
-    def _route_from_golden_hit(state: Dict[str, Any]) -> str:
+    def _route_from_golden_hit(state: dict[str, Any]) -> str:
         """Route from GoldenHit - check if high confidence match found."""
         golden_hit = state.get("golden", {}).get("hit", False)
         branch = "KBContextCheck" if golden_hit else "ClassifyDomain"
@@ -1325,7 +1324,7 @@ class LangGraphAgent:
             return "ClassifyDomain"
 
     @staticmethod
-    def _route_from_kb_delta(state: Dict[str, Any]) -> str:
+    def _route_from_kb_delta(state: dict[str, Any]) -> str:
         """Route from KBDelta - check if KB is newer than golden."""
         kb_newer = state.get("golden", {}).get("kb_newer", False)
         branch = "ClassifyDomain" if kb_newer else "ServeGolden"
@@ -1343,7 +1342,7 @@ class LangGraphAgent:
             return "ServeGolden"  # Golden answer is still fresh
 
     @staticmethod
-    def _route_from_confidence_check(state: Dict[str, Any]) -> str:
+    def _route_from_confidence_check(state: dict[str, Any]) -> str:
         """Route from ConfidenceCheck - check if classification confidence is sufficient."""
         confidence_sufficient = state.get("classification", {}).get("confidence_sufficient", False)
         branch = "TrackMetrics" if confidence_sufficient else "LLMFallback"
@@ -1361,7 +1360,7 @@ class LangGraphAgent:
             return "LLMFallback"
 
     @staticmethod
-    def _route_from_llm_better(state: Dict[str, Any]) -> str:
+    def _route_from_llm_better(state: dict[str, Any]) -> str:
         """Route from LLMBetter - check if LLM classification is better than rule-based."""
         llm_is_better = state.get("classification", {}).get("llm_is_better", False)
         branch = "UseLLM" if llm_is_better else "UseRuleBased"
@@ -1379,7 +1378,7 @@ class LangGraphAgent:
             return "UseRuleBased"
 
     @staticmethod
-    def _route_from_class_confidence(state: Dict[str, Any]) -> str:
+    def _route_from_class_confidence(state: dict[str, Any]) -> str:
         """Route from ClassConfidence - check if classification confidence is sufficient for domain prompt."""
         confidence_check = state.get("confidence_check", {})
         confidence_sufficient = confidence_check.get("confidence_sufficient", False)
@@ -1398,7 +1397,7 @@ class LangGraphAgent:
             return "DefaultSysPrompt"
 
     @staticmethod
-    def _route_from_check_sys_msg(state: Dict[str, Any]) -> str:
+    def _route_from_check_sys_msg(state: dict[str, Any]) -> str:
         """Route from CheckSysMsg - check if system message already exists."""
         sys_msg_exists = state.get("sys_msg_exists", False)
         branch = "ReplaceMsg" if sys_msg_exists else "InsertMsg"
@@ -1416,7 +1415,7 @@ class LangGraphAgent:
             return "InsertMsg"
 
     @staticmethod
-    def _route_from_strategy_type(state: Dict[str, Any]) -> str:
+    def _route_from_strategy_type(state: dict[str, Any]) -> str:
         """Route from StrategyType based on routing strategy."""
         strategy = state.get("provider", {}).get("routing_strategy", "PRIMARY")
         mapping = {
@@ -1438,7 +1437,7 @@ class LangGraphAgent:
         return branch
 
     @staticmethod
-    def _route_from_cost_check(state: Dict[str, Any]) -> str:
+    def _route_from_cost_check(state: dict[str, Any]) -> str:
         """Route from CostCheck - check if cost within budget."""
         cost_ok = state.get("provider", {}).get("cost_ok", True)
         branch = "CreateProvider" if cost_ok else "CheaperProvider"
@@ -1456,7 +1455,7 @@ class LangGraphAgent:
             return "CheaperProvider"
 
     @staticmethod
-    def _route_from_cache_hit_unified(state: Dict[str, Any]) -> str:
+    def _route_from_cache_hit_unified(state: dict[str, Any]) -> str:
         """Route from CacheHit in unified graph."""
         cache_hit = state.get("cache", {}).get("hit", False)
         branch = "ReturnCached" if cache_hit else "LLMCall"
@@ -1474,7 +1473,7 @@ class LangGraphAgent:
             return "LLMCall"
 
     @staticmethod
-    def _route_from_llm_success_unified(state: Dict[str, Any]) -> str:
+    def _route_from_llm_success_unified(state: dict[str, Any]) -> str:
         """Route from LLMSuccess in unified graph."""
         llm = state.get("llm", {})
         llm_success = llm.get("success", True)
@@ -1513,7 +1512,7 @@ class LangGraphAgent:
         return branch
 
     @staticmethod
-    def _route_from_stream_check(state: Dict[str, Any]) -> str:
+    def _route_from_stream_check(state: dict[str, Any]) -> str:
         """Route from StreamCheck - check if streaming requested."""
         streaming_requested = state.get("streaming", {}).get("requested", False)
         branch = "StreamSetup" if streaming_requested else "CollectMetrics"
@@ -1530,7 +1529,7 @@ class LangGraphAgent:
         else:
             return "CollectMetrics"
 
-    async def create_graph_phase1a(self) -> Optional[CompiledStateGraph]:
+    async def create_graph_phase1a(self) -> CompiledStateGraph | None:
         """Create Phase 1A graph with explicit RAG nodes.
 
         Returns:
@@ -1600,7 +1599,7 @@ class LangGraphAgent:
                 return None
             raise e
 
-    async def create_graph_phase4_lane(self) -> Optional[CompiledStateGraph]:
+    async def create_graph_phase4_lane(self) -> CompiledStateGraph | None:
         """Create Phase 4 graph with Cache → LLM → Tools lane.
 
         Returns:
@@ -1765,7 +1764,7 @@ class LangGraphAgent:
                 return None
             raise e
 
-    async def create_graph_provider_lane(self) -> Optional[CompiledStateGraph]:
+    async def create_graph_provider_lane(self) -> CompiledStateGraph | None:
         """Create Phase 5 graph with Provider Governance Lane.
 
         Implements: 48 SelectProvider → 49 RouteStrategy → 50 StrategyType → (51/52/53/54) → 55 EstimateCost → 56 CostCheck → (57 CreateProvider | 58 CheaperProvider)
@@ -1908,7 +1907,7 @@ class LangGraphAgent:
                 return None
             raise e
 
-    async def create_graph_phase7_streaming(self) -> Optional[CompiledStateGraph]:
+    async def create_graph_phase7_streaming(self) -> CompiledStateGraph | None:
         """Create Phase 7 graph with Streaming/Response lane.
 
         This graph includes all lanes (1-7) with the streaming/response lane wired.
@@ -2005,7 +2004,7 @@ class LangGraphAgent:
                 return None
             raise e
 
-    async def create_graph_unified(self) -> Optional[CompiledStateGraph]:
+    async def create_graph_unified(self) -> CompiledStateGraph | None:
         """Create unified graph connecting all 8 lanes.
 
         This implements the full RAG flow as specified in pratikoai_rag_hybrid.mmd diagram.
@@ -2338,7 +2337,7 @@ class LangGraphAgent:
                 return None
             raise e
 
-    async def create_graph(self) -> Optional[CompiledStateGraph]:
+    async def create_graph(self) -> CompiledStateGraph | None:
         """Create and configure the LangGraph workflow.
 
         Returns:
@@ -2355,7 +2354,7 @@ class LangGraphAgent:
         self,
         messages: list[Message],
         session_id: str,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
     ) -> list[Message]:
         """Get a response from the LLM.
 
@@ -2398,7 +2397,7 @@ class LangGraphAgent:
             self._current_session_id = None
 
     @staticmethod
-    def _needs_complex_workflow(classification: Optional[DomainActionClassification]) -> bool:
+    def _needs_complex_workflow(classification: DomainActionClassification | None) -> bool:
         """Determine if query needs tools/complex workflow based on classification.
 
         Args:
@@ -2431,8 +2430,8 @@ class LangGraphAgent:
         return needs_complex
 
     async def get_stream_response(
-        self, messages: list[Message], session_id: str, user_id: Optional[str] = None
-    ) -> AsyncGenerator[str, None]:
+        self, messages: list[Message], session_id: str, user_id: str | None = None
+    ) -> AsyncGenerator[str]:
         """Get a hybrid stream response using unified graph for pre-LLM steps.
 
         Phase 4 Implementation: Uses the unified graph to execute all steps (1-63)
@@ -2569,7 +2568,7 @@ class LangGraphAgent:
                         await asyncio.wait_for(asyncio.shield(ainvoke_task), timeout=keepalive_interval)
                         # Task completed within interval
                         break
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # Timeout reached, send keepalive and continue waiting
                         logger.debug("sending_keepalive_during_rag", session_id=session_id)
                         yield ": keepalive\n\n"
@@ -2727,7 +2726,7 @@ class LangGraphAgent:
                 # Check if this is an error response
                 is_error = (
                     final_response.get("type") == "error"
-                    or state.get("workflow_terminated") == True
+                    or state.get("workflow_terminated") is True
                     or state.get("status_code", 200) >= 400
                 )
 
@@ -2928,8 +2927,8 @@ class LangGraphAgent:
             )
 
             # Use provider from state if available, otherwise get one
-            provider: Optional[LLMProvider] = state.get("provider", {}).get("selected")
-            processed_messages: List[Message] = state.get("processed_messages", messages)
+            provider: LLMProvider | None = state.get("provider", {}).get("selected")
+            processed_messages: list[Message] = state.get("processed_messages", messages)
 
             if not provider:
                 # Fallback: classify and get provider directly
@@ -2988,7 +2987,7 @@ class LangGraphAgent:
             self._current_session_id = None
             self._current_classification = None
 
-    async def _stream_with_direct_llm(self, messages: list[Message], session_id: str) -> AsyncGenerator[str, None]:
+    async def _stream_with_direct_llm(self, messages: list[Message], session_id: str) -> AsyncGenerator[str]:
         """Stream directly from LLM provider for simple queries (no tools).
 
         Args:
@@ -3054,9 +3053,7 @@ class LangGraphAgent:
             )
             raise
 
-    async def _stream_with_langgraph_workflow(
-        self, messages: list[Message], session_id: str
-    ) -> AsyncGenerator[str, None]:
+    async def _stream_with_langgraph_workflow(self, messages: list[Message], session_id: str) -> AsyncGenerator[str]:
         """Stream using LangGraph workflow for complex queries (with tools).
 
         Args:

@@ -4,9 +4,10 @@ Outputs a JSON of wired nodes so the audit can trust runtime graph truth.
 This script imports only from wiring_registry (no heavy graph dependencies)
 to provide fast introspection of the node registry for audit tooling.
 """
+
 import json
-import sys
 import os
+import sys
 
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,6 +21,7 @@ from app.core.langgraph.wiring_registry import (
     initialize_phase7_registry,
     initialize_phase8_registry,
 )
+
 
 def main():
     # Initialize all phase registries
@@ -36,6 +38,7 @@ def main():
     json_snapshot = {str(k): v for k, v in snapshot.items()}
 
     print(json.dumps({"wired_nodes": json_snapshot}, indent=2, ensure_ascii=False))
+
 
 if __name__ == "__main__":
     main()

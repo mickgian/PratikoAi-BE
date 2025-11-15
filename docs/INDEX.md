@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2025-11-13 12:41:03
+**Auto-generated:** 2025-11-15 13:45:46
 
-> 💡 This directory contains 18 technical documentation files plus 146 architecture documents.
+> 💡 This directory contains 19 technical documentation files plus 146 architecture documents.
 
 ---
 
@@ -40,12 +40,14 @@
 
 ## 🗄️ Database & Search
 
-- **[Advanced Vector Search Features for PratikoAI](ADVANCED_VECTOR_SEARCH.md)** ✅ Current
-  - The Advanced Vector Search system for PratikoAI combines PostgreSQL full-text search with Pinecone vector embeddings to boost answer quality from 6...
+- **[Advanced pgvector Search Patterns for PratikoAI](ADVANCED_VECTOR_SEARCH.md)** ✅ Current
+  - **Last Updated:** 2025-11-14 **Status:** Production
 - **[PostgreSQL Full-Text Search Implementation](PostgreSQL_Full_Text_Search.md)** ✅ Current
   - This document provides comprehensive information about the PostgreSQL Full-Text Search (FTS) implementation for PratikoAI knowledge base.
 - **[PostgreSQL RAG Schema Report](schema_report.md)** ⚠️ Deprecated
   - **Generated:** 2025-11-03T10:11:28.432068Z **Database:** `POSTGRES_URL`
+- **[PratikoAi Backend - Database & Vector Search Architecture](DATABASE_ARCHITECTURE.md)** ✅ Current
+  - **Last Updated:** 2025-11-14 **Status:** Production
 - **[Quality Analysis System with Expert Feedback Loop](QUALITY_ANALYSIS_SYSTEM.md)** ✅ Current
   - The Quality Analysis System for PratikoAI provides a comprehensive expert feedback loop and advanced prompt engineering solution specifically desig...
 
@@ -59,7 +61,7 @@
 ## 📚 Other
 
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2025-11-13 12:40:25
+  - **Auto-generated:** 2025-11-15 13:43:07
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
 - **[Pinecone Guardrails Implementation](pinecone-guardrails.md)** ✅ Current
@@ -72,11 +74,11 @@
 ## 📊 Statistics
 
 - **Feature Docs:** 9
-- **Database/Search:** 4
+- **Database/Search:** 5
 - **Operations:** 2
 - **Architecture:** 146
-- **Total:** 164
+- **Total:** 165
 
 ---
 
-**Last Updated:** 2025-11-13 12:41:03
+**Last Updated:** 2025-11-15 13:45:46

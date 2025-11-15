@@ -62,7 +62,7 @@ class CostCalculator:
             "high": 0.020,  # < €0.020 - use basic models only
         }
 
-    def classify_query_complexity(self, messages: List[Message]) -> QueryComplexity:
+    def classify_query_complexity(self, messages: list[Message]) -> QueryComplexity:
         """Classify the complexity of a query based on content analysis.
 
         Args:
@@ -137,7 +137,7 @@ class CostCalculator:
         else:
             return QueryComplexity.SIMPLE
 
-    def estimate_output_tokens(self, input_tokens: int, complexity: QueryComplexity) -> Tuple[int, float]:
+    def estimate_output_tokens(self, input_tokens: int, complexity: QueryComplexity) -> tuple[int, float]:
         """Estimate output tokens based on input and complexity.
 
         Args:
@@ -169,7 +169,7 @@ class CostCalculator:
         return estimated_tokens, confidence
 
     def calculate_cost_estimate(
-        self, provider: LLMProvider, messages: List[Message], complexity: Optional[QueryComplexity] = None
+        self, provider: LLMProvider, messages: list[Message], complexity: QueryComplexity | None = None
     ) -> CostEstimate:
         """Calculate cost estimate for a query with a specific provider.
 
@@ -200,11 +200,11 @@ class CostCalculator:
 
     def find_optimal_provider(
         self,
-        providers: List[LLMProvider],
-        messages: List[Message],
-        max_cost_eur: Optional[float] = None,
-        min_tier: Optional[LLMModelTier] = None,
-    ) -> Tuple[LLMProvider, CostEstimate]:
+        providers: list[LLMProvider],
+        messages: list[Message],
+        max_cost_eur: float | None = None,
+        min_tier: LLMModelTier | None = None,
+    ) -> tuple[LLMProvider, CostEstimate]:
         """Find the optimal provider based on cost and capability requirements.
 
         Args:

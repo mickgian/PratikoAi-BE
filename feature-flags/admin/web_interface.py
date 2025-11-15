@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
-"""
-PratikoAI Feature Flag Admin Web Interface
+"""PratikoAI Feature Flag Admin Web Interface
 
 Advanced web-based admin interface for managing feature flags with real-time updates,
 gradual rollout controls, user targeting, and emergency flag toggling.
 """
 
-import os
-import json
 import asyncio
+import contextlib
+import json
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Optional, Any, Union
+import os
 from dataclasses import asdict
+from datetime import UTC, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Union
 
-from fastapi import FastAPI, HTTPException, Depends, Request, Form, status
+import httpx
+import uvicorn
+import websockets
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import uvicorn
-from pydantic import BaseModel
-import httpx
 from jinja2 import Environment, FileSystemLoader
-import websockets
+from pydantic import BaseModel
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 app = FastAPI(
     title="PratikoAI Feature Flag Admin",
     description="Advanced admin interface for feature flag management",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # CORS middleware
@@ -59,17 +59,14 @@ security = HTTPBearer()
 
 # HTTP client for API calls
 http_client = httpx.AsyncClient(
-    timeout=30,
-    headers={
-        "Authorization": f"Bearer {ADMIN_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    timeout=30, headers={"Authorization": f"Bearer {ADMIN_API_KEY}", "Content-Type": "application/json"}
 )
+
 
 # WebSocket connections for real-time updates
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -89,6 +86,7 @@ class ConnectionManager:
                 # Remove broken connections
                 self.active_connections.remove(connection)
 
+
 manager = ConnectionManager()
 
 
@@ -107,8 +105,8 @@ class RolloutUpdateRequest(BaseModel):
 
 class TargetingRuleRequest(BaseModel):
     name: str
-    description: Optional[str]
-    conditions: List[Dict[str, Any]]
+    description: str | None
+    conditions: list[dict[str, Any]]
     value: Any
     percentage: float = 100.0
     enabled: bool = True
@@ -145,8 +143,7 @@ async def toggle_flag(flag_id: str, environment: str, enabled: bool):
     """Toggle a flag on/off."""
     params = {"enabled": enabled}
     response = await http_client.post(
-        f"{FEATURE_FLAG_API_URL}/api/v1/flags/{flag_id}/toggle/{environment}",
-        params=params
+        f"{FEATURE_FLAG_API_URL}/api/v1/flags/{flag_id}/toggle/{environment}", params=params
     )
     response.raise_for_status()
     return response.json()
@@ -155,8 +152,7 @@ async def toggle_flag(flag_id: str, environment: str, enabled: bool):
 async def update_flag_environment(flag_id: str, environment: str, config: dict):
     """Update flag configuration for environment."""
     response = await http_client.put(
-        f"{FEATURE_FLAG_API_URL}/api/v1/flags/{flag_id}/environments/{environment}",
-        json=config
+        f"{FEATURE_FLAG_API_URL}/api/v1/flags/{flag_id}/environments/{environment}", json=config
     )
     response.raise_for_status()
     return response.json()
@@ -170,7 +166,7 @@ async def get_flag_metrics(flag_id: str = None, environment: str = None, hours: 
     if environment:
         params["environment"] = environment
     params["hours"] = hours
-    
+
     response = await http_client.get(f"{FEATURE_FLAG_API_URL}/api/v1/metrics/evaluations", params=params)
     response.raise_for_status()
     return response.json()
@@ -191,20 +187,20 @@ async def dashboard(request: Request):
     try:
         flags_data = await get_all_flags()
         metrics_data = await get_flag_metrics()
-        
-        return templates.TemplateResponse("dashboard.html", {
-            "request": request,
-            "flags": flags_data.get("flags", []),
-            "metrics": metrics_data,
-            "total_flags": len(flags_data.get("flags", [])),
-            "active_flags": len([f for f in flags_data.get("flags", []) if f.get("is_active", True)])
-        })
+
+        return templates.TemplateResponse(
+            "dashboard.html",
+            {
+                "request": request,
+                "flags": flags_data.get("flags", []),
+                "metrics": metrics_data,
+                "total_flags": len(flags_data.get("flags", [])),
+                "active_flags": len([f for f in flags_data.get("flags", []) if f.get("is_active", True)]),
+            },
+        )
     except Exception as e:
         logger.error(f"Dashboard error: {e}")
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": "Failed to load dashboard data"
-        })
+        return templates.TemplateResponse("error.html", {"request": request, "error": "Failed to load dashboard data"})
 
 
 @app.get("/flags", response_class=HTMLResponse)
@@ -212,19 +208,19 @@ async def flags_list(request: Request, environment: str = "production"):
     """List all flags with filtering."""
     try:
         flags_data = await get_all_flags(environment)
-        
-        return templates.TemplateResponse("flags_list.html", {
-            "request": request,
-            "flags": flags_data.get("flags", []),
-            "current_environment": environment,
-            "environments": ["development", "staging", "production"]
-        })
+
+        return templates.TemplateResponse(
+            "flags_list.html",
+            {
+                "request": request,
+                "flags": flags_data.get("flags", []),
+                "current_environment": environment,
+                "environments": ["development", "staging", "production"],
+            },
+        )
     except Exception as e:
         logger.error(f"Flags list error: {e}")
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": "Failed to load flags"
-        })
+        return templates.TemplateResponse("error.html", {"request": request, "error": "Failed to load flags"})
 
 
 @app.get("/flags/{flag_id}", response_class=HTMLResponse)
@@ -234,20 +230,22 @@ async def flag_details(request: Request, flag_id: str):
         flag_data = await get_flag_details(flag_id)
         metrics_data = await get_flag_metrics(flag_id)
         audit_data = await get_audit_log(flag_id)
-        
-        return templates.TemplateResponse("flag_details.html", {
-            "request": request,
-            "flag": flag_data,
-            "metrics": metrics_data,
-            "audit_log": audit_data.get("audit_log", []),
-            "environments": ["development", "staging", "production"]
-        })
+
+        return templates.TemplateResponse(
+            "flag_details.html",
+            {
+                "request": request,
+                "flag": flag_data,
+                "metrics": metrics_data,
+                "audit_log": audit_data.get("audit_log", []),
+                "environments": ["development", "staging", "production"],
+            },
+        )
     except Exception as e:
         logger.error(f"Flag details error: {e}")
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": f"Failed to load flag details: {e}"
-        })
+        return templates.TemplateResponse(
+            "error.html", {"request": request, "error": f"Failed to load flag details: {e}"}
+        )
 
 
 @app.get("/rollout/{flag_id}", response_class=HTMLResponse)
@@ -256,19 +254,21 @@ async def rollout_controls(request: Request, flag_id: str):
     try:
         flag_data = await get_flag_details(flag_id)
         metrics_data = await get_flag_metrics(flag_id, hours=168)  # 7 days
-        
-        return templates.TemplateResponse("rollout_controls.html", {
-            "request": request,
-            "flag": flag_data,
-            "metrics": metrics_data,
-            "environments": ["development", "staging", "production"]
-        })
+
+        return templates.TemplateResponse(
+            "rollout_controls.html",
+            {
+                "request": request,
+                "flag": flag_data,
+                "metrics": metrics_data,
+                "environments": ["development", "staging", "production"],
+            },
+        )
     except Exception as e:
         logger.error(f"Rollout controls error: {e}")
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": f"Failed to load rollout controls: {e}"
-        })
+        return templates.TemplateResponse(
+            "error.html", {"request": request, "error": f"Failed to load rollout controls: {e}"}
+        )
 
 
 @app.get("/targeting/{flag_id}", response_class=HTMLResponse)
@@ -276,31 +276,33 @@ async def targeting_rules(request: Request, flag_id: str, environment: str = "pr
     """User targeting rules management."""
     try:
         flag_data = await get_flag_details(flag_id)
-        
-        return templates.TemplateResponse("targeting_rules.html", {
-            "request": request,
-            "flag": flag_data,
-            "current_environment": environment,
-            "environments": ["development", "staging", "production"],
-            "operators": [
-                {"value": "equals", "label": "Equals"},
-                {"value": "not_equals", "label": "Not Equals"},
-                {"value": "in", "label": "In List"},
-                {"value": "not_in", "label": "Not In List"},
-                {"value": "contains", "label": "Contains"},
-                {"value": "starts_with", "label": "Starts With"},
-                {"value": "ends_with", "label": "Ends With"},
-                {"value": "greater_than", "label": "Greater Than"},
-                {"value": "less_than", "label": "Less Than"},
-                {"value": "regex_match", "label": "Regex Match"}
-            ]
-        })
+
+        return templates.TemplateResponse(
+            "targeting_rules.html",
+            {
+                "request": request,
+                "flag": flag_data,
+                "current_environment": environment,
+                "environments": ["development", "staging", "production"],
+                "operators": [
+                    {"value": "equals", "label": "Equals"},
+                    {"value": "not_equals", "label": "Not Equals"},
+                    {"value": "in", "label": "In List"},
+                    {"value": "not_in", "label": "Not In List"},
+                    {"value": "contains", "label": "Contains"},
+                    {"value": "starts_with", "label": "Starts With"},
+                    {"value": "ends_with", "label": "Ends With"},
+                    {"value": "greater_than", "label": "Greater Than"},
+                    {"value": "less_than", "label": "Less Than"},
+                    {"value": "regex_match", "label": "Regex Match"},
+                ],
+            },
+        )
     except Exception as e:
         logger.error(f"Targeting rules error: {e}")
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": f"Failed to load targeting rules: {e}"
-        })
+        return templates.TemplateResponse(
+            "error.html", {"request": request, "error": f"Failed to load targeting rules: {e}"}
+        )
 
 
 @app.get("/analytics", response_class=HTMLResponse)
@@ -309,33 +311,33 @@ async def analytics_dashboard(request: Request, hours: int = 24):
     try:
         overall_metrics = await get_flag_metrics(hours=hours)
         flags_data = await get_all_flags()
-        
+
         # Get metrics for each flag
         flag_metrics = {}
         for flag in flags_data.get("flags", [])[:10]:  # Limit to top 10 for performance
-            try:
+            with contextlib.suppress(Exception):
                 flag_metrics[flag["flag_id"]] = await get_flag_metrics(flag["flag_id"], hours=hours)
-            except:
-                pass
-        
-        return templates.TemplateResponse("analytics.html", {
-            "request": request,
-            "overall_metrics": overall_metrics,
-            "flag_metrics": flag_metrics,
-            "hours": hours,
-            "time_ranges": [
-                {"value": 1, "label": "Last Hour"},
-                {"value": 24, "label": "Last Day"},
-                {"value": 168, "label": "Last Week"},
-                {"value": 720, "label": "Last Month"}
-            ]
-        })
+
+        return templates.TemplateResponse(
+            "analytics.html",
+            {
+                "request": request,
+                "overall_metrics": overall_metrics,
+                "flag_metrics": flag_metrics,
+                "hours": hours,
+                "time_ranges": [
+                    {"value": 1, "label": "Last Hour"},
+                    {"value": 24, "label": "Last Day"},
+                    {"value": 168, "label": "Last Week"},
+                    {"value": 720, "label": "Last Month"},
+                ],
+            },
+        )
     except Exception as e:
         logger.error(f"Analytics error: {e}")
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": f"Failed to load analytics: {e}"
-        })
+        return templates.TemplateResponse(
+            "error.html", {"request": request, "error": f"Failed to load analytics: {e}"}
+        )
 
 
 # API routes for AJAX calls
@@ -344,17 +346,17 @@ async def api_toggle_flag(request: FlagToggleRequest):
     """Toggle flag via API."""
     try:
         result = await toggle_flag(request.flag_id, request.environment, request.enabled)
-        
+
         # Broadcast update to connected clients
         update_message = {
             "type": "flag_toggled",
             "flag_id": request.flag_id,
             "environment": request.environment,
             "enabled": request.enabled,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         await manager.broadcast(json.dumps(update_message))
-        
+
         return {"success": True, "message": result.get("message", "Flag toggled successfully")}
     except Exception as e:
         logger.error(f"Toggle flag error: {e}")
@@ -369,21 +371,21 @@ async def api_update_rollout(request: RolloutUpdateRequest):
             "flag_id": request.flag_id,
             "environment": request.environment,
             "rollout_percentage": request.percentage,
-            "enabled": True
+            "enabled": True,
         }
-        
-        result = await update_flag_environment(request.flag_id, request.environment, config)
-        
+
+        await update_flag_environment(request.flag_id, request.environment, config)
+
         # Broadcast update
         update_message = {
             "type": "rollout_updated",
             "flag_id": request.flag_id,
             "environment": request.environment,
             "percentage": request.percentage,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         await manager.broadcast(json.dumps(update_message))
-        
+
         return {"success": True, "message": "Rollout percentage updated"}
     except Exception as e:
         logger.error(f"Update rollout error: {e}")
@@ -391,12 +393,12 @@ async def api_update_rollout(request: RolloutUpdateRequest):
 
 
 @app.post("/api/emergency-disable", dependencies=[Depends(verify_admin_auth)])
-async def api_emergency_disable(flag_id: str, environments: List[str] = None):
+async def api_emergency_disable(flag_id: str, environments: list[str] = None):
     """Emergency disable flag across environments."""
     try:
         if not environments:
             environments = ["development", "staging", "production"]
-        
+
         results = []
         for env in environments:
             try:
@@ -404,16 +406,16 @@ async def api_emergency_disable(flag_id: str, environments: List[str] = None):
                 results.append({"environment": env, "success": True, "result": result})
             except Exception as e:
                 results.append({"environment": env, "success": False, "error": str(e)})
-        
+
         # Broadcast emergency disable
         update_message = {
             "type": "emergency_disable",
             "flag_id": flag_id,
             "environments": environments,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         await manager.broadcast(json.dumps(update_message))
-        
+
         return {"success": True, "results": results}
     except Exception as e:
         logger.error(f"Emergency disable error: {e}")
@@ -432,28 +434,28 @@ async def api_flag_metrics(flag_id: str, hours: int = 24):
 
 
 @app.post("/api/targeting/{flag_id}", dependencies=[Depends(verify_admin_auth)])
-async def api_update_targeting(flag_id: str, environment: str, rules: List[TargetingRuleRequest]):
+async def api_update_targeting(flag_id: str, environment: str, rules: list[TargetingRuleRequest]):
     """Update targeting rules."""
     try:
         config = {
             "flag_id": flag_id,
             "environment": environment,
             "targeting_rules": [asdict(rule) for rule in rules],
-            "enabled": True
+            "enabled": True,
         }
-        
-        result = await update_flag_environment(flag_id, environment, config)
-        
+
+        await update_flag_environment(flag_id, environment, config)
+
         # Broadcast update
         update_message = {
             "type": "targeting_updated",
             "flag_id": flag_id,
             "environment": environment,
             "rules_count": len(rules),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         await manager.broadcast(json.dumps(update_message))
-        
+
         return {"success": True, "message": "Targeting rules updated"}
     except Exception as e:
         logger.error(f"Update targeting error: {e}")
@@ -481,18 +483,14 @@ async def health_check():
         # Test connection to feature flag service
         response = await http_client.get(f"{FEATURE_FLAG_API_URL}/health")
         api_healthy = response.status_code == 200
-        
+
         return {
             "status": "healthy" if api_healthy else "degraded",
             "api_connection": "healthy" if api_healthy else "failed",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e),
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+        return {"status": "unhealthy", "error": str(e), "timestamp": datetime.now(UTC).isoformat()}
 
 
 # Startup and shutdown events
@@ -513,11 +511,5 @@ if __name__ == "__main__":
     # Create templates directory if it doesn't exist
     os.makedirs("templates", exist_ok=True)
     os.makedirs("static", exist_ok=True)
-    
-    uvicorn.run(
-        "web_interface:app",
-        host="0.0.0.0",
-        port=8002,
-        reload=True,
-        log_level="info"
-    )
+
+    uvicorn.run("web_interface:app", host="0.0.0.0", port=8002, reload=True, log_level="info")

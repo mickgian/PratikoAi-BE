@@ -1,15 +1,17 @@
 """Node wrapper for Step 107: Single Pass Stream."""
 
-from typing import Dict, Any
-from app.core.langgraph.types import RAGState
+from typing import Any, Dict
+
 from app.core.langgraph.node_utils import mirror
+from app.core.langgraph.types import RAGState
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log
+from app.observability.rag_logging import rag_step_timer_compat as rag_step_timer
 from app.orchestrators.preflight import step_107__single_pass
-from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 STEP = 107
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):

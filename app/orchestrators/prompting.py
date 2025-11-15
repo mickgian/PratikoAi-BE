@@ -3,6 +3,7 @@
 # Implement thin coordination here (call services/factories), not core business logic.
 
 from contextlib import nullcontext
+from datetime import UTC
 from typing import (
     Any,
     Dict,
@@ -24,9 +25,8 @@ except Exception:  # pragma: no cover
         return nullcontext()
 
 
-async def step_15__default_prompt(*, ctx: Optional[Dict[str, Any]] = None, **kwargs) -> Any:
-    """
-    RAG STEP 15 — Continue without classification
+async def step_15__default_prompt(*, ctx: dict[str, Any] | None = None, **kwargs) -> Any:
+    """RAG STEP 15 — Continue without classification
     ID: RAG.prompting.continue.without.classification
     Type: process | Category: prompting | Node: DefaultPrompt
 
@@ -60,7 +60,7 @@ async def step_15__default_prompt(*, ctx: Optional[Dict[str, Any]] = None, **kwa
 
         # Initialize result structure
         result = {
-            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "default_prompt_applied": False,
             "classification_bypassed": False,
             "prompt_strategy": "default",
@@ -184,7 +184,7 @@ async def step_15__default_prompt(*, ctx: Optional[Dict[str, Any]] = None, **kwa
             return result
 
 
-async def _analyze_user_query(user_query: str) -> Dict[str, Any]:
+async def _analyze_user_query(user_query: str) -> dict[str, Any]:
     """Analyze user query characteristics for prompt selection."""
     if not user_query:
         return {"length": 0, "complexity": "simple", "type": "unknown", "requires_context": False}
@@ -216,7 +216,7 @@ async def _analyze_user_query(user_query: str) -> Dict[str, Any]:
     return {"length": length, "complexity": complexity, "type": query_type, "requires_context": requires_context}
 
 
-async def _get_default_system_prompt(query_analysis: Dict[str, Any], context: Dict[str, Any]) -> str:
+async def _get_default_system_prompt(query_analysis: dict[str, Any], context: dict[str, Any]) -> str:
     """Get appropriate default system prompt based on query analysis and inject context."""
     from app.core.prompts import SYSTEM_PROMPT
 
@@ -233,10 +233,9 @@ async def _get_default_system_prompt(query_analysis: Dict[str, Any], context: Di
 
 
 async def step_41__select_prompt(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 41 — LangGraphAgent._get_system_prompt Select appropriate prompt
+    """RAG STEP 41 — LangGraphAgent._get_system_prompt Select appropriate prompt
     ID: RAG.prompting.langgraphagent.get.system.prompt.select.appropriate.prompt
     Type: process | Category: prompting | Node: SelectPrompt
 
@@ -485,7 +484,7 @@ async def step_41__select_prompt(
             "action": action,
             "user_query": user_query,
             "request_id": request_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "error": error,
         }
 
@@ -513,10 +512,9 @@ async def step_41__select_prompt(
 
 
 def step_44__default_sys_prompt(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
+    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
-    """
-    RAG STEP 44 — Use default SYSTEM_PROMPT
+    """RAG STEP 44 — Use default SYSTEM_PROMPT
     ID: RAG.prompting.use.default.system.prompt
     Type: process | Category: prompting | Node: DefaultSysPrompt
 
@@ -545,17 +543,23 @@ def step_44__default_sys_prompt(
     conf = (
         getattr(classification, "confidence", None)
         if hasattr(classification, "confidence")
-        else classification.get("confidence") if isinstance(classification, dict) else None
+        else classification.get("confidence")
+        if isinstance(classification, dict)
+        else None
     )
     domain = (
         getattr(classification, "domain", None)
         if hasattr(classification, "domain")
-        else classification.get("domain") if isinstance(classification, dict) else None
+        else classification.get("domain")
+        if isinstance(classification, dict)
+        else None
     )
     action = (
         getattr(classification, "action", None)
         if hasattr(classification, "action")
-        else classification.get("action") if isinstance(classification, dict) else None
+        else classification.get("action")
+        if isinstance(classification, dict)
+        else None
     )
     threshold = getattr(settings, "CLASSIFICATION_CONFIDENCE_THRESHOLD", 0.6)
 
@@ -653,11 +657,8 @@ def step_44__default_sys_prompt(
         return prompt
 
 
-def step_45__check_sys_msg(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Any:
-    """
-    RAG STEP 45 — System message exists?
+def step_45__check_sys_msg(*, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs) -> Any:
+    """RAG STEP 45 — System message exists?
     ID: RAG.prompting.system.message.exists
     Type: decision | Category: prompting | Node: CheckSysMsg
 
@@ -673,7 +674,7 @@ def step_45__check_sys_msg(
 
     # Extract parameters from context
     classification = kwargs.get("classification") or (ctx or {}).get("classification")
-    system_prompt = kwargs.get("system_prompt") or (ctx or {}).get("system_prompt")
+    kwargs.get("system_prompt") or (ctx or {}).get("system_prompt")
 
     # Check system message existence
     original_count = len(messages)
@@ -685,17 +686,23 @@ def step_45__check_sys_msg(
     conf = (
         getattr(classification, "confidence", None)
         if hasattr(classification, "confidence")
-        else classification.get("confidence") if isinstance(classification, dict) else None
+        else classification.get("confidence")
+        if isinstance(classification, dict)
+        else None
     )
     domain = (
         getattr(classification, "domain", None)
         if hasattr(classification, "domain")
-        else classification.get("domain") if isinstance(classification, dict) else None
+        else classification.get("domain")
+        if isinstance(classification, dict)
+        else None
     )
     action = (
         getattr(classification, "action", None)
         if hasattr(classification, "action")
-        else classification.get("action") if isinstance(classification, dict) else None
+        else classification.get("action")
+        if isinstance(classification, dict)
+        else None
     )
 
     # Convert domain enum to string if needed
@@ -769,11 +776,8 @@ def step_45__check_sys_msg(
         }
 
 
-def step_46__replace_msg(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Any:
-    """
-    RAG STEP 46 — Replace system message
+def step_46__replace_msg(*, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs) -> Any:
+    """RAG STEP 46 — Replace system message
     ID: RAG.prompting.replace.system.message
     Type: process | Category: prompting | Node: ReplaceMsg
 
@@ -822,17 +826,23 @@ def step_46__replace_msg(
             conf = (
                 getattr(classification, "confidence", None)
                 if hasattr(classification, "confidence")
-                else classification.get("confidence") if isinstance(classification, dict) else None
+                else classification.get("confidence")
+                if isinstance(classification, dict)
+                else None
             )
             domain = (
                 getattr(classification, "domain", None)
                 if hasattr(classification, "domain")
-                else classification.get("domain") if isinstance(classification, dict) else None
+                else classification.get("domain")
+                if isinstance(classification, dict)
+                else None
             )
             action = (
                 getattr(classification, "action", None)
                 if hasattr(classification, "action")
-                else classification.get("action") if isinstance(classification, dict) else None
+                else classification.get("action")
+                if isinstance(classification, dict)
+                else None
             )
 
             # Convert domain enum to string if needed
@@ -883,11 +893,8 @@ def step_46__replace_msg(
             return messages
 
 
-def step_47__insert_msg(
-    *, messages: Optional[List[Any]] = None, ctx: Optional[Dict[str, Any]] = None, **kwargs
-) -> Any:
-    """
-    RAG STEP 47 — Insert system message
+def step_47__insert_msg(*, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs) -> Any:
+    """RAG STEP 47 — Insert system message
     ID: RAG.prompting.insert.system.message
     Type: process | Category: prompting | Node: InsertMsg
 
@@ -937,17 +944,23 @@ def step_47__insert_msg(
             conf = (
                 getattr(classification, "confidence", None)
                 if hasattr(classification, "confidence")
-                else classification.get("confidence") if isinstance(classification, dict) else None
+                else classification.get("confidence")
+                if isinstance(classification, dict)
+                else None
             )
             domain = (
                 getattr(classification, "domain", None)
                 if hasattr(classification, "domain")
-                else classification.get("domain") if isinstance(classification, dict) else None
+                else classification.get("domain")
+                if isinstance(classification, dict)
+                else None
             )
             action = (
                 getattr(classification, "action", None)
                 if hasattr(classification, "action")
-                else classification.get("action") if isinstance(classification, dict) else None
+                else classification.get("action")
+                if isinstance(classification, dict)
+                else None
             )
 
             # Convert domain enum to string if needed

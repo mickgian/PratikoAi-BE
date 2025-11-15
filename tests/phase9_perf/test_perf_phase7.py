@@ -4,25 +4,26 @@ Performance tests for Phase 7: Streaming wrappers.
 Tests that streaming wrapper overhead meets P95 budget requirements.
 """
 
-import pytest
 import time
 from unittest.mock import patch
 
-from tests.common.fixtures_state import make_state, state_streaming_enabled
-from tests.common.fakes import (
-    fake_stream_setup_orch,
-    FakeOrchestrator,
-)
-from tests.common.budgets import (
-    should_skip_perf_tests,
-    get_stream_budget,
-    calculate_p95,
-    assert_within_budget,
-)
+import pytest
+
 from app.core.langgraph.nodes.step_104__stream_check import node_step_104
 from app.core.langgraph.nodes.step_105__stream_setup import node_step_105
-from app.core.langgraph.nodes.step_108__write_sse import node_step_108
 from app.core.langgraph.nodes.step_107__single_pass import node_step_107
+from app.core.langgraph.nodes.step_108__write_sse import node_step_108
+from tests.common.budgets import (
+    assert_within_budget,
+    calculate_p95,
+    get_stream_budget,
+    should_skip_perf_tests,
+)
+from tests.common.fakes import (
+    FakeOrchestrator,
+    fake_stream_setup_orch,
+)
+from tests.common.fixtures_state import make_state, state_streaming_enabled
 
 
 @pytest.mark.perf
@@ -34,10 +35,7 @@ class TestPhase7StreamCheckPerformance:
     async def test_stream_check_enabled_performance(self):
         """Verify stream check (enabled) wrapper meets P95 budget."""
         state = make_state(streaming={"requested": True, "enabled": False})
-        fake_orch = FakeOrchestrator({
-            "streaming_enabled": True,
-            "stream_requested": True
-        })
+        fake_orch = FakeOrchestrator({"streaming_enabled": True, "stream_requested": True})
 
         iterations = 10
         durations = []
@@ -59,10 +57,7 @@ class TestPhase7StreamCheckPerformance:
     async def test_stream_check_disabled_performance(self):
         """Verify stream check (disabled) wrapper meets P95 budget."""
         state = make_state(streaming={"requested": False, "enabled": False})
-        fake_orch = FakeOrchestrator({
-            "streaming_enabled": False,
-            "stream_requested": False
-        })
+        fake_orch = FakeOrchestrator({"streaming_enabled": False, "stream_requested": False})
 
         iterations = 10
         durations = []
@@ -122,10 +117,7 @@ class TestPhase7SSEWritePerformance:
         state = state_streaming_enabled()
         state["response"] = {"content": "Small response text", "complete": True}
 
-        fake_orch = FakeOrchestrator({
-            "chunks_written": 1,
-            "write_success": True
-        })
+        fake_orch = FakeOrchestrator({"chunks_written": 1, "write_success": True})
 
         iterations = 10
         durations = []
@@ -148,15 +140,9 @@ class TestPhase7SSEWritePerformance:
         """Verify SSE write wrapper with large response meets P95 budget."""
         state = state_streaming_enabled()
         # Simulate large response (multiple chunks)
-        state["response"] = {
-            "content": " ".join([f"chunk{i}" for i in range(100)]),
-            "complete": True
-        }
+        state["response"] = {"content": " ".join([f"chunk{i}" for i in range(100)]), "complete": True}
 
-        fake_orch = FakeOrchestrator({
-            "chunks_written": 100,
-            "write_success": True
-        })
+        fake_orch = FakeOrchestrator({"chunks_written": 100, "write_success": True})
 
         iterations = 10
         durations = []
@@ -185,14 +171,10 @@ class TestPhase7SinglePassPerformance:
     async def test_single_pass_wrapper_performance(self):
         """Verify single-pass (non-streaming) wrapper meets P95 budget."""
         state = make_state(
-            streaming={"enabled": False},
-            response={"content": "Complete response text", "complete": True}
+            streaming={"enabled": False}, response={"content": "Complete response text", "complete": True}
         )
 
-        fake_orch = FakeOrchestrator({
-            "response_complete": True,
-            "response_sent": True
-        })
+        fake_orch = FakeOrchestrator({"response_complete": True, "response_sent": True})
 
         iterations = 10
         durations = []
@@ -223,10 +205,7 @@ class TestPhase7StreamingGenerator:
         state = state_streaming_enabled()
         state["response"] = {"content": "word1 word2 word3 word4 word5", "complete": False}
 
-        fake_orch = FakeOrchestrator({
-            "generator_ready": True,
-            "chunk_count": 5
-        })
+        fake_orch = FakeOrchestrator({"generator_ready": True, "chunk_count": 5})
 
         iterations = 10
         durations = []
@@ -259,10 +238,7 @@ class TestPhase7StreamingCompletion:
         state = state_streaming_enabled()
         state["response"] = {"complete": True}
 
-        fake_orch = FakeOrchestrator({
-            "done_sent": True,
-            "stream_complete": True
-        })
+        fake_orch = FakeOrchestrator({"done_sent": True, "stream_complete": True})
 
         iterations = 10
         durations = []
@@ -287,10 +263,7 @@ class TestPhase7StreamingCompletion:
         """Verify stream response wrapper meets P95 budget."""
         state = state_streaming_enabled()
 
-        fake_orch = FakeOrchestrator({
-            "streaming_in_progress": True,
-            "chunks_sent": 10
-        })
+        fake_orch = FakeOrchestrator({"streaming_in_progress": True, "chunks_sent": 10})
 
         iterations = 10
         durations = []
@@ -321,17 +294,9 @@ class TestPhase7MetricsCollection:
     async def test_collect_metrics_wrapper_performance(self):
         """Verify collect metrics wrapper meets P95 budget."""
         state = state_streaming_enabled()
-        state["metrics"] = {
-            "total_duration_ms": 523,
-            "llm_calls": 1,
-            "cache_hits": 0,
-            "tool_calls": 0
-        }
+        state["metrics"] = {"total_duration_ms": 523, "llm_calls": 1, "cache_hits": 0, "tool_calls": 0}
 
-        fake_orch = FakeOrchestrator({
-            "metrics_collected": True,
-            "metric_count": 10
-        })
+        fake_orch = FakeOrchestrator({"metrics_collected": True, "metric_count": 10})
 
         iterations = 10
         durations = []

@@ -1,10 +1,13 @@
 """Node wrapper for Step 57: Create Provider."""
 
-from typing import Dict, Any
-from app.core.langgraph.types import RAGState
+from typing import Any, Dict
+
 from app.core.langgraph.node_utils import mirror
+from app.core.langgraph.types import RAGState
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
 from app.orchestrators.providers import step_57__create_provider
@@ -12,7 +15,7 @@ from app.orchestrators.providers import step_57__create_provider
 STEP = 57
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):
@@ -43,7 +46,11 @@ async def node_step_57(state: RAGState) -> RAGState:
             provider["created"] = res["created"]
         elif "provider_ready" in res:
             provider["created"] = res["provider_ready"]
-        mirror(state, "provider_ready", bool(res.get("provider_ready", res.get("created", res.get("provider_created", False)))))
+        mirror(
+            state,
+            "provider_ready",
+            bool(res.get("provider_ready", res.get("created", res.get("provider_created", False)))),
+        )
 
         # DON'T store provider_instance object (has circular refs)
         # Provider metadata (type, model) is already in provider dict from step 54

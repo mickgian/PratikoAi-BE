@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-import subprocess
 import json
-import time
+import subprocess
 import sys
+import time
+
 
 def run_command(command, description):
     """Run a command and return success/failure"""
@@ -13,8 +14,9 @@ def run_command(command, description):
         print(f"❌ Error: {result.stderr}")
         return False
     else:
-        print(f"✅ Success")
+        print("✅ Success")
         return True
+
 
 def main():
     print("🔄 Regenerating RAG Step Issues with Updated Investigation Data")
@@ -23,15 +25,17 @@ def main():
     # Step 1: Get all RAG step issue numbers
     print("\n📋 Step 1: Collecting RAG step issue numbers...")
     result = subprocess.run(
-        'gh issue list --limit 1000 --json number,title | jq -r \'.[] | select(.title | test("RAG STEP [0-9]+")) | .number\'',
-        shell=True, capture_output=True, text=True
+        "gh issue list --limit 1000 --json number,title | jq -r '.[] | select(.title | test(\"RAG STEP [0-9]+\")) | .number'",
+        shell=True,
+        capture_output=True,
+        text=True,
     )
 
     if result.returncode != 0:
         print(f"❌ Failed to get issue list: {result.stderr}")
         return False
 
-    issue_numbers = [num.strip() for num in result.stdout.strip().split('\n') if num.strip()]
+    issue_numbers = [num.strip() for num in result.stdout.strip().split("\n") if num.strip()]
     print(f"📊 Found {len(issue_numbers)} RAG step issues to delete")
 
     if len(issue_numbers) == 0:
@@ -44,8 +48,7 @@ def main():
         for i, issue_num in enumerate(issue_numbers, 1):
             print(f"  Deleting issue #{issue_num} ({i}/{len(issue_numbers)})")
             delete_result = subprocess.run(
-                f'gh issue delete {issue_num} --yes',
-                shell=True, capture_output=True, text=True
+                f"gh issue delete {issue_num} --yes", shell=True, capture_output=True, text=True
             )
 
             if delete_result.returncode != 0:
@@ -83,8 +86,7 @@ def main():
     # Step 5: Verify the new issues were created
     print("\n🔍 Step 4: Verifying new issues were created...")
     verify_result = subprocess.run(
-        'gh issue list --limit 200 | grep -E "RAG STEP [0-9]+" | wc -l',
-        shell=True, capture_output=True, text=True
+        'gh issue list --limit 200 | grep -E "RAG STEP [0-9]+" | wc -l', shell=True, capture_output=True, text=True
     )
 
     if verify_result.returncode == 0:
@@ -106,6 +108,7 @@ def main():
     print("3. Follow the TDD approach with the generated unit tests")
 
     return True
+
 
 if __name__ == "__main__":
     success = main()

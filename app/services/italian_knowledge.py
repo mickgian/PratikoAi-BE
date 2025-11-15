@@ -1,52 +1,60 @@
 """Italian knowledge service for tax calculations and legal compliance."""
 
 import re
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Optional, Dict, Any, List, Tuple
-from sqlmodel import select
+from typing import Any, Dict, List, Optional, Tuple
+
 from sqlalchemy.exc import NoResultFound
+from sqlmodel import select
 
 from app.core.logging import logger
+from app.models.italian_data import (
+    ComplianceCheck,
+    ComplianceStatus,
+    DocumentCategory,
+    DocumentType,
+    ItalianKnowledgeSource,
+    ItalianLegalTemplate,
+    ItalianOfficialDocument,
+    ItalianRegulation,
+    ItalianTaxRate,
+    TaxCalculation,
+    TaxType,
+)
 from app.services.database import database_service
 from app.services.vector_service import vector_service
-from app.models.italian_data import (
-    ItalianTaxRate, ItalianLegalTemplate, ItalianRegulation, 
-    TaxCalculation, ComplianceCheck, ItalianKnowledgeSource,
-    ItalianOfficialDocument, DocumentCategory,
-    TaxType, DocumentType, ComplianceStatus
-)
 
 
 class ItalianTaxCalculator:
     """Italian tax calculation utilities."""
-    
+
     # 2024 IRPEF (Income Tax) brackets for individuals
     IRPEF_BRACKETS_2024 = [
         {"min": 0, "max": 15000, "rate": 0.23},
         {"min": 15001, "max": 28000, "rate": 0.25},
         {"min": 28001, "max": 50000, "rate": 0.35},
-        {"min": 50001, "max": float('inf'), "rate": 0.43}
+        {"min": 50001, "max": float("inf"), "rate": 0.43},
     ]
-    
+
     # Standard VAT rates
     VAT_RATES = {
         "standard": 0.22,  # 22%
-        "reduced": 0.10,   # 10%
+        "reduced": 0.10,  # 10%
         "super_reduced": 0.04,  # 4%
-        "zero": 0.00       # 0%
+        "zero": 0.00,  # 0%
     }
-    
+
     # Regional IRAP rates (approximate, varies by region)
     IRAP_RATE_DEFAULT = 0.0398  # 3.98%
-    
-    def calculate_vat(self, amount: float, vat_type: str = "standard") -> Dict[str, Any]:
+
+    def calculate_vat(self, amount: float, vat_type: str = "standard") -> dict[str, Any]:
         """Calculate Italian VAT (IVA).
-        
+
         Args:
             amount: Net amount before VAT
             vat_type: VAT rate type (standard, reduced, super_reduced, zero)
-            
+
         Returns:
             Dictionary with VAT calculation details
         """
@@ -54,7 +62,7 @@ class ItalianTaxCalculator:
             rate = self.VAT_RATES.get(vat_type, self.VAT_RATES["standard"])
             vat_amount = Decimal(str(amount)) * Decimal(str(rate))
             gross_amount = Decimal(str(amount)) + vat_amount
-            
+
             return {
                 "net_amount": float(amount),
                 "vat_rate": rate,
@@ -62,49 +70,53 @@ class ItalianTaxCalculator:
                 "gross_amount": float(gross_amount),
                 "vat_type": vat_type,
                 "calculation_date": datetime.utcnow().isoformat(),
-                "legal_reference": "DPR 633/1972 - Italian VAT Law"
+                "legal_reference": "DPR 633/1972 - Italian VAT Law",
             }
-            
+
         except Exception as e:
             logger.error("vat_calculation_failed", error=str(e), amount=amount, vat_type=vat_type)
             raise ValueError(f"VAT calculation failed: {str(e)}")
-    
-    def calculate_irpef(self, income: float, deductions: float = 0) -> Dict[str, Any]:
+
+    def calculate_irpef(self, income: float, deductions: float = 0) -> dict[str, Any]:
         """Calculate Italian personal income tax (IRPEF).
-        
+
         Args:
             income: Annual gross income
             deductions: Total deductions
-            
+
         Returns:
             Dictionary with IRPEF calculation details
         """
         try:
             taxable_income = max(0, income - deductions)
-            total_tax = Decimal('0')
+            total_tax = Decimal("0")
             breakdown = []
-            
+
             for bracket in self.IRPEF_BRACKETS_2024:
                 if taxable_income <= bracket["min"]:
                     break
-                    
+
                 bracket_max = min(taxable_income, bracket["max"])
                 bracket_income = bracket_max - bracket["min"] + 1
                 bracket_tax = Decimal(str(bracket_income)) * Decimal(str(bracket["rate"]))
                 total_tax += bracket_tax
-                
-                breakdown.append({
-                    "bracket": f"€{bracket['min']:,} - €{bracket['max']:,}" if bracket['max'] != float('inf') else f"€{bracket['min']:,}+",
-                    "rate": bracket["rate"],
-                    "taxable_amount": float(bracket_income),
-                    "tax_amount": float(bracket_tax)
-                })
-                
+
+                breakdown.append(
+                    {
+                        "bracket": f"€{bracket['min']:,} - €{bracket['max']:,}"
+                        if bracket["max"] != float("inf")
+                        else f"€{bracket['min']:,}+",
+                        "rate": bracket["rate"],
+                        "taxable_amount": float(bracket_income),
+                        "tax_amount": float(bracket_tax),
+                    }
+                )
+
                 if taxable_income <= bracket["max"]:
                     break
-            
+
             effective_rate = float(total_tax / Decimal(str(taxable_income))) if taxable_income > 0 else 0
-            
+
             return {
                 "gross_income": income,
                 "deductions": deductions,
@@ -113,20 +125,20 @@ class ItalianTaxCalculator:
                 "effective_rate": effective_rate,
                 "breakdown": breakdown,
                 "calculation_date": datetime.utcnow().isoformat(),
-                "legal_reference": "TUIR (Testo Unico Imposte sui Redditi) - DPR 917/1986"
+                "legal_reference": "TUIR (Testo Unico Imposte sui Redditi) - DPR 917/1986",
             }
-            
+
         except Exception as e:
             logger.error("irpef_calculation_failed", error=str(e), income=income, deductions=deductions)
             raise ValueError(f"IRPEF calculation failed: {str(e)}")
-    
-    def calculate_withholding_tax(self, amount: float, tax_type: str = "professional") -> Dict[str, Any]:
+
+    def calculate_withholding_tax(self, amount: float, tax_type: str = "professional") -> dict[str, Any]:
         """Calculate Italian withholding tax (Ritenuta d'acconto).
-        
+
         Args:
             amount: Gross amount subject to withholding
             tax_type: Type of withholding (professional, employment, etc.)
-            
+
         Returns:
             Dictionary with withholding tax calculation
         """
@@ -134,16 +146,16 @@ class ItalianTaxCalculator:
             # Standard rates for different types
             rates = {
                 "professional": 0.20,  # 20% for professionals
-                "employment": 0.23,    # 23% for employment (varies by bracket)
-                "rental": 0.21,        # 21% for rental income
-                "interest": 0.26,      # 26% for interest income
-                "dividends": 0.26      # 26% for dividends
+                "employment": 0.23,  # 23% for employment (varies by bracket)
+                "rental": 0.21,  # 21% for rental income
+                "interest": 0.26,  # 26% for interest income
+                "dividends": 0.26,  # 26% for dividends
             }
-            
+
             rate = rates.get(tax_type, rates["professional"])
             withholding_amount = Decimal(str(amount)) * Decimal(str(rate))
             net_amount = Decimal(str(amount)) - withholding_amount
-            
+
             return {
                 "gross_amount": amount,
                 "withholding_rate": rate,
@@ -151,20 +163,20 @@ class ItalianTaxCalculator:
                 "net_amount": float(net_amount),
                 "tax_type": tax_type,
                 "calculation_date": datetime.utcnow().isoformat(),
-                "legal_reference": "DPR 600/1973 - Italian Withholding Tax Regulation"
+                "legal_reference": "DPR 600/1973 - Italian Withholding Tax Regulation",
             }
-            
+
         except Exception as e:
             logger.error("withholding_calculation_failed", error=str(e), amount=amount, tax_type=tax_type)
             raise ValueError(f"Withholding tax calculation failed: {str(e)}")
-    
-    def calculate_social_contributions(self, income: float, category: str = "employee") -> Dict[str, Any]:
+
+    def calculate_social_contributions(self, income: float, category: str = "employee") -> dict[str, Any]:
         """Calculate Italian social security contributions.
-        
+
         Args:
             income: Annual income
             category: Contributor category (employee, self_employed, etc.)
-            
+
         Returns:
             Dictionary with social contributions calculation
         """
@@ -172,38 +184,38 @@ class ItalianTaxCalculator:
             # 2024 contribution rates (approximate)
             rates = {
                 "employee": {
-                    "pension": 0.0919,      # 9.19%
+                    "pension": 0.0919,  # 9.19%
                     "unemployment": 0.0068,  # 0.68%
-                    "health": 0.0,          # Covered by employer
-                    "total": 0.0987         # Total employee contribution
+                    "health": 0.0,  # Covered by employer
+                    "total": 0.0987,  # Total employee contribution
                 },
                 "employer": {
-                    "pension": 0.2340,      # 23.40%
+                    "pension": 0.2340,  # 23.40%
                     "unemployment": 0.0141,  # 1.41%
-                    "health": 0.0734,       # 7.34%
-                    "inail": 0.0016,        # 0.16% (varies by sector)
-                    "total": 0.3231         # Total employer contribution
+                    "health": 0.0734,  # 7.34%
+                    "inail": 0.0016,  # 0.16% (varies by sector)
+                    "total": 0.3231,  # Total employer contribution
                 },
                 "self_employed": {
-                    "pension": 0.2475,      # 24.75%
-                    "health": 0.0734,       # 7.34%
-                    "total": 0.3209         # Total self-employed contribution
-                }
+                    "pension": 0.2475,  # 24.75%
+                    "health": 0.0734,  # 7.34%
+                    "total": 0.3209,  # Total self-employed contribution
+                },
             }
-            
+
             if category not in rates:
                 raise ValueError(f"Unknown contributor category: {category}")
-            
+
             category_rates = rates[category]
             contributions = {}
-            total_contribution = Decimal('0')
-            
+            total_contribution = Decimal("0")
+
             for contrib_type, rate in category_rates.items():
                 if contrib_type != "total":
                     amount = Decimal(str(income)) * Decimal(str(rate))
                     contributions[contrib_type] = float(amount)
                     total_contribution += amount
-            
+
             return {
                 "income": income,
                 "category": category,
@@ -211,9 +223,9 @@ class ItalianTaxCalculator:
                 "total_contribution": float(total_contribution),
                 "net_income": income - float(total_contribution),
                 "calculation_date": datetime.utcnow().isoformat(),
-                "legal_reference": "Law 335/1995 - Italian Social Security Reform"
+                "legal_reference": "Law 335/1995 - Italian Social Security Reform",
             }
-            
+
         except Exception as e:
             logger.error("social_contributions_calculation_failed", error=str(e), income=income, category=category)
             raise ValueError(f"Social contributions calculation failed: {str(e)}")
@@ -221,44 +233,44 @@ class ItalianTaxCalculator:
 
 class ItalianLegalService:
     """Italian legal document and compliance service."""
-    
+
     def __init__(self):
         self.tax_calculator = ItalianTaxCalculator()
-    
-    async def get_tax_rates(self, tax_type: TaxType, date_ref: Optional[date] = None) -> List[ItalianTaxRate]:
+
+    async def get_tax_rates(self, tax_type: TaxType, date_ref: date | None = None) -> list[ItalianTaxRate]:
         """Get current tax rates for a specific tax type.
-        
+
         Args:
             tax_type: Type of tax
             date_ref: Reference date (default: current date)
-            
+
         Returns:
             List of applicable tax rates
         """
         try:
             if date_ref is None:
                 date_ref = date.today()
-            
+
             async with database_service.get_db() as db:
                 query = select(ItalianTaxRate).where(
                     ItalianTaxRate.tax_type == tax_type,
                     ItalianTaxRate.valid_from <= date_ref,
-                    (ItalianTaxRate.valid_to >= date_ref) | (ItalianTaxRate.valid_to == None)
+                    (ItalianTaxRate.valid_to >= date_ref) | (ItalianTaxRate.valid_to is None),
                 )
-                
+
                 result = await db.execute(query)
                 return result.scalars().all()
-                
+
         except Exception as e:
             logger.error("tax_rates_retrieval_failed", tax_type=tax_type.value, error=str(e))
             return []
-    
-    async def get_legal_template(self, template_code: str) -> Optional[ItalianLegalTemplate]:
+
+    async def get_legal_template(self, template_code: str) -> ItalianLegalTemplate | None:
         """Get a legal document template by code.
-        
+
         Args:
             template_code: Unique template code
-            
+
         Returns:
             Template if found, None otherwise
         """
@@ -267,24 +279,26 @@ class ItalianLegalService:
                 query = select(ItalianLegalTemplate).where(
                     ItalianLegalTemplate.template_code == template_code,
                     ItalianLegalTemplate.valid_from <= date.today(),
-                    (ItalianLegalTemplate.valid_to >= date.today()) | (ItalianLegalTemplate.valid_to == None)
+                    (ItalianLegalTemplate.valid_to >= date.today()) | (ItalianLegalTemplate.valid_to is None),
                 )
-                
+
                 result = await db.execute(query)
                 return result.scalar_one_or_none()
-                
+
         except Exception as e:
             logger.error("legal_template_retrieval_failed", template_code=template_code, error=str(e))
             return None
-    
-    async def search_regulations(self, keywords: List[str], subjects: Optional[List[str]] = None, use_semantic: bool = True) -> List[ItalianRegulation]:
+
+    async def search_regulations(
+        self, keywords: list[str], subjects: list[str] | None = None, use_semantic: bool = True
+    ) -> list[ItalianRegulation]:
         """Search Italian regulations by keywords and subjects.
-        
+
         Args:
             keywords: Search keywords
             subjects: Subject matter filters
             use_semantic: Whether to use semantic search
-            
+
         Returns:
             List of matching regulations
         """
@@ -293,76 +307,76 @@ class ItalianLegalService:
             if use_semantic and vector_service.is_available() and keywords:
                 # Create search query from keywords
                 search_query = " ".join(keywords)
-                
+
                 # Perform semantic search
                 semantic_results = vector_service.search_italian_knowledge(
-                    query=search_query,
-                    knowledge_type="regulation"
+                    query=search_query, knowledge_type="regulation"
                 )
-                
+
                 # Extract regulation IDs from semantic results
                 regulation_ids = []
                 for result in semantic_results:
                     if result.get("regulation_id"):
                         regulation_ids.append(result["regulation_id"])
-                
+
                 # Fetch full regulation objects
                 if regulation_ids:
                     async with database_service.get_db() as db:
-                        query = select(ItalianRegulation).where(
-                            ItalianRegulation.id.in_(regulation_ids)
-                        )
+                        query = select(ItalianRegulation).where(ItalianRegulation.id.in_(regulation_ids))
                         result = await db.execute(query)
                         regulations = result.scalars().all()
-                        
+
                         # Sort by semantic search order
                         id_to_regulation = {reg.id: reg for reg in regulations}
                         sorted_regulations = []
                         for reg_id in regulation_ids:
                             if reg_id in id_to_regulation:
                                 sorted_regulations.append(id_to_regulation[reg_id])
-                        
+
                         return sorted_regulations[:50]
-            
+
             # Fallback to keyword search
             async with database_service.get_db() as db:
                 query = select(ItalianRegulation).where(
-                    ItalianRegulation.repealed_date == None  # Only active regulations
+                    ItalianRegulation.repealed_date is None  # Only active regulations
                 )
-                
+
                 # Add keyword filtering
                 if keywords:
                     keyword_filter = None
                     for keyword in keywords:
-                        condition = ItalianRegulation.title.contains(keyword) | \
-                                   ItalianRegulation.summary.contains(keyword)
+                        condition = ItalianRegulation.title.contains(keyword) | ItalianRegulation.summary.contains(
+                            keyword
+                        )
                         keyword_filter = condition if keyword_filter is None else keyword_filter | condition
-                    
+
                     if keyword_filter is not None:
                         query = query.where(keyword_filter)
-                
+
                 # Add subject filtering
                 if subjects:
                     # This would use array operations in PostgreSQL
                     pass  # Simplified for now
-                
+
                 query = query.order_by(ItalianRegulation.enacted_date.desc()).limit(50)
-                
+
                 result = await db.execute(query)
                 return result.scalars().all()
-                
+
         except Exception as e:
             logger.error("regulation_search_failed", keywords=keywords, error=str(e))
             return []
-    
-    async def perform_tax_calculation(self, user_id: str, session_id: str, calculation_request: Dict[str, Any]) -> TaxCalculation:
+
+    async def perform_tax_calculation(
+        self, user_id: str, session_id: str, calculation_request: dict[str, Any]
+    ) -> TaxCalculation:
         """Perform a tax calculation and store the result.
-        
+
         Args:
             user_id: User performing calculation
             session_id: Session ID
             calculation_request: Calculation parameters
-            
+
         Returns:
             Tax calculation record
         """
@@ -370,26 +384,21 @@ class ItalianLegalService:
             tax_type = TaxType(calculation_request["tax_type"])
             base_amount = float(calculation_request["amount"])
             tax_year = calculation_request.get("tax_year", date.today().year)
-            
+
             # Perform calculation based on tax type
             if tax_type == TaxType.VAT:
                 result = self.tax_calculator.calculate_vat(
-                    base_amount, 
-                    calculation_request.get("vat_type", "standard")
+                    base_amount, calculation_request.get("vat_type", "standard")
                 )
             elif tax_type == TaxType.INCOME_TAX:
-                result = self.tax_calculator.calculate_irpef(
-                    base_amount,
-                    calculation_request.get("deductions", 0)
-                )
+                result = self.tax_calculator.calculate_irpef(base_amount, calculation_request.get("deductions", 0))
             elif tax_type == TaxType.WITHHOLDING_TAX:
                 result = self.tax_calculator.calculate_withholding_tax(
-                    base_amount,
-                    calculation_request.get("withholding_type", "professional")
+                    base_amount, calculation_request.get("withholding_type", "professional")
                 )
             else:
                 raise ValueError(f"Unsupported tax type: {tax_type}")
-            
+
             # Store calculation record
             calculation = TaxCalculation(
                 user_id=user_id,
@@ -398,59 +407,63 @@ class ItalianLegalService:
                 base_amount=Decimal(str(base_amount)),
                 tax_year=tax_year,
                 input_parameters=calculation_request,
-                tax_amount=Decimal(str(result.get("tax_amount", result.get("vat_amount", result.get("total_tax", 0))))),
+                tax_amount=Decimal(
+                    str(result.get("tax_amount", result.get("vat_amount", result.get("total_tax", 0))))
+                ),
                 effective_rate=Decimal(str(result.get("effective_rate", result.get("vat_rate", 0)))),
                 breakdown=result,
                 regulations_used=[],  # Would be populated with actual regulation IDs
-                tax_rates_used=[],    # Would be populated with actual tax rate IDs
+                tax_rates_used=[],  # Would be populated with actual tax rate IDs
                 calculation_method="built_in_calculator",
-                confidence_score=0.95
+                confidence_score=0.95,
             )
-            
+
             async with database_service.get_db() as db:
                 db.add(calculation)
                 await db.commit()
                 await db.refresh(calculation)
-            
+
             logger.info(
                 "tax_calculation_completed",
                 user_id=user_id,
                 tax_type=tax_type.value,
                 amount=base_amount,
-                result_amount=float(calculation.tax_amount)
+                result_amount=float(calculation.tax_amount),
             )
-            
+
             return calculation
-            
+
         except Exception as e:
             logger.error(
                 "tax_calculation_failed",
                 user_id=user_id,
                 calculation_request=calculation_request,
                 error=str(e),
-                exc_info=True
+                exc_info=True,
             )
             raise ValueError(f"Tax calculation failed: {str(e)}")
-    
-    async def check_document_compliance(self, user_id: str, session_id: str, document: Dict[str, Any]) -> ComplianceCheck:
+
+    async def check_document_compliance(
+        self, user_id: str, session_id: str, document: dict[str, Any]
+    ) -> ComplianceCheck:
         """Check document compliance with Italian regulations.
-        
+
         Args:
             user_id: User requesting check
             session_id: Session ID
             document: Document data to check
-            
+
         Returns:
             Compliance check record
         """
         try:
             document_type = DocumentType(document.get("type", DocumentType.FORM))
             document_content = document.get("content", "")
-            
+
             # Perform basic compliance checks
             findings = []
             compliance_score = 1.0
-            
+
             # Check for required elements based on document type
             if document_type == DocumentType.CONTRACT:
                 findings.extend(self._check_contract_compliance(document_content))
@@ -458,13 +471,13 @@ class ItalianLegalService:
                 findings.extend(self._check_invoice_compliance(document_content))
             elif document_type == DocumentType.PRIVACY_POLICY:
                 findings.extend(self._check_privacy_policy_compliance(document_content))
-            
+
             # Calculate overall compliance score
             critical_issues = len([f for f in findings if f.get("severity") == "critical"])
             warning_issues = len([f for f in findings if f.get("severity") == "warning"])
-            
+
             compliance_score = max(0, 1.0 - (critical_issues * 0.3) - (warning_issues * 0.1))
-            
+
             # Determine overall status
             if compliance_score >= 0.9:
                 status = ComplianceStatus.COMPLIANT
@@ -474,10 +487,10 @@ class ItalianLegalService:
                 status = ComplianceStatus.NEEDS_REVIEW
             else:
                 status = ComplianceStatus.NON_COMPLIANT
-            
+
             # Generate recommendations
             recommendations = self._generate_recommendations(findings)
-            
+
             # Store compliance check record
             check = ComplianceCheck(
                 user_id=user_id,
@@ -491,40 +504,34 @@ class ItalianLegalService:
                 findings=findings,
                 recommendations=recommendations,
                 regulations_checked=[],  # Would be populated with actual regulation IDs
-                citations=[],            # Would be populated with legal citations
+                citations=[],  # Would be populated with legal citations
                 check_method="rule_based_checker",
-                follow_up_required=status in [ComplianceStatus.NON_COMPLIANT, ComplianceStatus.NEEDS_REVIEW]
+                follow_up_required=status in [ComplianceStatus.NON_COMPLIANT, ComplianceStatus.NEEDS_REVIEW],
             )
-            
+
             async with database_service.get_db() as db:
                 db.add(check)
                 await db.commit()
                 await db.refresh(check)
-            
+
             logger.info(
                 "compliance_check_completed",
                 user_id=user_id,
                 document_type=document_type.value,
                 compliance_score=compliance_score,
-                status=status.value
+                status=status.value,
             )
-            
+
             return check
-            
+
         except Exception as e:
-            logger.error(
-                "compliance_check_failed",
-                user_id=user_id,
-                document=document,
-                error=str(e),
-                exc_info=True
-            )
+            logger.error("compliance_check_failed", user_id=user_id, document=document, error=str(e), exc_info=True)
             raise ValueError(f"Compliance check failed: {str(e)}")
-    
-    def _check_contract_compliance(self, content: str) -> List[Dict[str, Any]]:
+
+    def _check_contract_compliance(self, content: str) -> list[dict[str, Any]]:
         """Check contract-specific compliance requirements."""
         findings = []
-        
+
         # Check for required contract elements
         required_elements = [
             ("parties identification", r"(nome|denominazione|ragione sociale)", "critical"),
@@ -533,22 +540,24 @@ class ItalianLegalService:
             ("signatures", r"(firma|sottoscrizione)", "warning"),
             ("date", r"\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}", "warning"),
         ]
-        
+
         for element, pattern, severity in required_elements:
             if not re.search(pattern, content, re.IGNORECASE):
-                findings.append({
-                    "element": element,
-                    "severity": severity,
-                    "message": f"Missing or unclear {element}",
-                    "regulation": "Art. 1321 Codice Civile"
-                })
-        
+                findings.append(
+                    {
+                        "element": element,
+                        "severity": severity,
+                        "message": f"Missing or unclear {element}",
+                        "regulation": "Art. 1321 Codice Civile",
+                    }
+                )
+
         return findings
-    
-    def _check_invoice_compliance(self, content: str) -> List[Dict[str, Any]]:
+
+    def _check_invoice_compliance(self, content: str) -> list[dict[str, Any]]:
         """Check invoice-specific compliance requirements."""
         findings = []
-        
+
         # Check for required invoice elements (Italian tax requirements)
         required_elements = [
             ("invoice number", r"(numero|n\.|fattura n)", "critical"),
@@ -557,22 +566,24 @@ class ItalianLegalService:
             ("tax code", r"(codice fiscale|c\.f\.)", "warning"),
             ("VAT amount", r"(iva|imposta)", "critical"),
         ]
-        
+
         for element, pattern, severity in required_elements:
             if not re.search(pattern, content, re.IGNORECASE):
-                findings.append({
-                    "element": element,
-                    "severity": severity,
-                    "message": f"Missing {element}",
-                    "regulation": "DPR 633/1972 - Art. 21"
-                })
-        
+                findings.append(
+                    {
+                        "element": element,
+                        "severity": severity,
+                        "message": f"Missing {element}",
+                        "regulation": "DPR 633/1972 - Art. 21",
+                    }
+                )
+
         return findings
-    
-    def _check_privacy_policy_compliance(self, content: str) -> List[Dict[str, Any]]:
+
+    def _check_privacy_policy_compliance(self, content: str) -> list[dict[str, Any]]:
         """Check privacy policy GDPR compliance."""
         findings = []
-        
+
         # Check GDPR requirements
         gdpr_elements = [
             ("data controller", r"(titolare|controller)", "critical"),
@@ -581,43 +592,45 @@ class ItalianLegalService:
             ("data retention", r"(conservazione|retention)", "warning"),
             ("contact information", r"(contatto|contact)", "warning"),
         ]
-        
+
         for element, pattern, severity in gdpr_elements:
             if not re.search(pattern, content, re.IGNORECASE):
-                findings.append({
-                    "element": element,
-                    "severity": severity,
-                    "message": f"Missing GDPR requirement: {element}",
-                    "regulation": "GDPR Art. 13-14"
-                })
-        
+                findings.append(
+                    {
+                        "element": element,
+                        "severity": severity,
+                        "message": f"Missing GDPR requirement: {element}",
+                        "regulation": "GDPR Art. 13-14",
+                    }
+                )
+
         return findings
-    
-    def _generate_recommendations(self, findings: List[Dict[str, Any]]) -> List[str]:
+
+    def _generate_recommendations(self, findings: list[dict[str, Any]]) -> list[str]:
         """Generate recommendations based on compliance findings."""
         recommendations = []
-        
+
         critical_findings = [f for f in findings if f.get("severity") == "critical"]
         warning_findings = [f for f in findings if f.get("severity") == "warning"]
-        
+
         if critical_findings:
             recommendations.append("Address critical compliance issues immediately to ensure legal validity")
-            
+
         if warning_findings:
             recommendations.append("Review and improve document to address warnings")
-            
+
         if len(findings) > 5:
             recommendations.append("Consider consulting with a legal professional for comprehensive review")
-            
+
         return recommendations
-    
-    async def generate_document_from_template(self, template_code: str, variables: Dict[str, Any]) -> Optional[str]:
+
+    async def generate_document_from_template(self, template_code: str, variables: dict[str, Any]) -> str | None:
         """Generate a document from a legal template.
-        
+
         Args:
             template_code: Template code
             variables: Variables to substitute in template
-            
+
         Returns:
             Generated document content
         """
@@ -625,43 +638,37 @@ class ItalianLegalService:
             template = await self.get_legal_template(template_code)
             if not template:
                 return None
-            
+
             content = template.content
-            
+
             # Simple variable substitution (would be more sophisticated in production)
             for key, value in variables.items():
                 placeholder = f"{{{key}}}"
                 content = content.replace(placeholder, str(value))
-            
+
             logger.info(
-                "document_generated_from_template",
-                template_code=template_code,
-                variables_count=len(variables)
+                "document_generated_from_template", template_code=template_code, variables_count=len(variables)
             )
-            
+
             return content
-            
+
         except Exception as e:
-            logger.error(
-                "document_generation_failed",
-                template_code=template_code,
-                error=str(e)
-            )
+            logger.error("document_generation_failed", template_code=template_code, error=str(e))
             return None
-    
+
     async def search_official_documents(
-        self, 
-        keywords: List[str], 
-        authority: Optional[str] = None,
-        category: Optional[DocumentCategory] = None,
-        tax_types: Optional[List[str]] = None,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
+        self,
+        keywords: list[str],
+        authority: str | None = None,
+        category: DocumentCategory | None = None,
+        tax_types: list[str] | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
         use_semantic: bool = True,
-        limit: int = 20
-    ) -> List[ItalianOfficialDocument]:
+        limit: int = 20,
+    ) -> list[ItalianOfficialDocument]:
         """Search official Italian documents collected from RSS feeds.
-        
+
         Args:
             keywords: Search keywords
             authority: Filter by issuing authority
@@ -671,7 +678,7 @@ class ItalianLegalService:
             date_to: Filter documents until this date
             use_semantic: Whether to use semantic search
             limit: Maximum results to return
-            
+
         Returns:
             List of matching official documents
         """
@@ -680,14 +687,14 @@ class ItalianLegalService:
             if use_semantic and vector_service and keywords:
                 # Create search query from keywords
                 search_query = " ".join(keywords)
-                
+
                 # Perform semantic search in Italian documents namespace
                 semantic_results = await vector_service.search(
                     query=search_query,
                     namespace="italian_documents",
-                    top_k=limit * 2  # Get more results for filtering
+                    top_k=limit * 2,  # Get more results for filtering
                 )
-                
+
                 # Extract document IDs and get full documents
                 if semantic_results:
                     document_ids = []
@@ -695,14 +702,14 @@ class ItalianLegalService:
                         if result.get("metadata", {}).get("document_id"):
                             # Match document by document_id not database id
                             document_ids.append(result["metadata"]["document_id"])
-                    
+
                     if document_ids:
                         async with database_service.get_session() as session:
                             query = select(ItalianOfficialDocument).where(
                                 ItalianOfficialDocument.document_id.in_(document_ids),
-                                ItalianOfficialDocument.processing_status == "completed"
+                                ItalianOfficialDocument.processing_status == "completed",
                             )
-                            
+
                             # Apply filters
                             if authority:
                                 query = query.where(ItalianOfficialDocument.authority == authority)
@@ -712,44 +719,45 @@ class ItalianLegalService:
                                 query = query.where(ItalianOfficialDocument.publication_date >= date_from)
                             if date_to:
                                 query = query.where(ItalianOfficialDocument.publication_date <= date_to)
-                            
+
                             result = await session.exec(query)
                             documents = list(result)
-                            
+
                             # Filter by tax types if specified
                             if tax_types:
-                                documents = [doc for doc in documents 
-                                           if any(tax_type in doc.tax_types for tax_type in tax_types)]
-                            
+                                documents = [
+                                    doc
+                                    for doc in documents
+                                    if any(tax_type in doc.tax_types for tax_type in tax_types)
+                                ]
+
                             # Sort by semantic search order
                             doc_id_to_document = {doc.document_id: doc for doc in documents}
                             sorted_documents = []
                             for doc_id in document_ids:
                                 if doc_id in doc_id_to_document:
                                     sorted_documents.append(doc_id_to_document[doc_id])
-                            
+
                             return sorted_documents[:limit]
-            
+
             # Fallback to keyword search
             async with database_service.get_session() as session:
-                query = select(ItalianOfficialDocument).where(
-                    ItalianOfficialDocument.processing_status == "completed"
-                )
-                
+                query = select(ItalianOfficialDocument).where(ItalianOfficialDocument.processing_status == "completed")
+
                 # Add keyword filtering
                 if keywords:
                     keyword_filter = None
                     for keyword in keywords:
                         condition = (
-                            ItalianOfficialDocument.title.contains(keyword) |
-                            ItalianOfficialDocument.summary.contains(keyword) |
-                            ItalianOfficialDocument.full_content.contains(keyword)
+                            ItalianOfficialDocument.title.contains(keyword)
+                            | ItalianOfficialDocument.summary.contains(keyword)
+                            | ItalianOfficialDocument.full_content.contains(keyword)
                         )
                         keyword_filter = condition if keyword_filter is None else keyword_filter | condition
-                    
+
                     if keyword_filter is not None:
                         query = query.where(keyword_filter)
-                
+
                 # Apply other filters
                 if authority:
                     query = query.where(ItalianOfficialDocument.authority == authority)
@@ -759,118 +767,112 @@ class ItalianLegalService:
                     query = query.where(ItalianOfficialDocument.publication_date >= date_from)
                 if date_to:
                     query = query.where(ItalianOfficialDocument.publication_date <= date_to)
-                
+
                 query = query.order_by(ItalianOfficialDocument.publication_date.desc()).limit(limit)
-                
+
                 result = await session.exec(query)
                 documents = list(result)
-                
+
                 # Filter by tax types if specified
                 if tax_types:
-                    documents = [doc for doc in documents 
-                               if any(tax_type in doc.tax_types for tax_type in tax_types)]
-                
+                    documents = [doc for doc in documents if any(tax_type in doc.tax_types for tax_type in tax_types)]
+
                 return documents[:limit]
-                
+
         except Exception as e:
             logger.error("official_documents_search_failed", keywords=keywords, error=str(e))
             return []
-    
+
     async def get_latest_documents(
-        self, 
-        authority: Optional[str] = None,
-        category: Optional[DocumentCategory] = None,
-        limit: int = 10
-    ) -> List[ItalianOfficialDocument]:
+        self, authority: str | None = None, category: DocumentCategory | None = None, limit: int = 10
+    ) -> list[ItalianOfficialDocument]:
         """Get the latest official Italian documents.
-        
+
         Args:
             authority: Filter by issuing authority
-            category: Filter by document category  
+            category: Filter by document category
             limit: Maximum results to return
-            
+
         Returns:
             List of latest documents
         """
         try:
             async with database_service.get_session() as session:
-                query = select(ItalianOfficialDocument).where(
-                    ItalianOfficialDocument.processing_status == "completed"
-                )
-                
+                query = select(ItalianOfficialDocument).where(ItalianOfficialDocument.processing_status == "completed")
+
                 if authority:
                     query = query.where(ItalianOfficialDocument.authority == authority)
                 if category:
                     query = query.where(ItalianOfficialDocument.category == category)
-                
+
                 query = query.order_by(ItalianOfficialDocument.publication_date.desc()).limit(limit)
-                
+
                 result = await session.exec(query)
                 return list(result)
-                
+
         except Exception as e:
             logger.error("latest_documents_retrieval_failed", error=str(e))
             return []
-    
-    async def get_document_by_id(self, document_id: str) -> Optional[ItalianOfficialDocument]:
+
+    async def get_document_by_id(self, document_id: str) -> ItalianOfficialDocument | None:
         """Get an official document by its document ID.
-        
+
         Args:
             document_id: Unique document identifier
-            
+
         Returns:
             Document if found, None otherwise
         """
         try:
             async with database_service.get_session() as session:
-                query = select(ItalianOfficialDocument).where(
-                    ItalianOfficialDocument.document_id == document_id
-                )
-                
+                query = select(ItalianOfficialDocument).where(ItalianOfficialDocument.document_id == document_id)
+
                 result = await session.exec(query)
                 return result.first()
-                
+
         except Exception as e:
             logger.error("document_retrieval_failed", document_id=document_id, error=str(e))
             return None
-    
+
     async def get_documents_by_tax_type(
-        self, 
-        tax_type: str, 
-        limit: int = 20,
-        days_back: int = 90
-    ) -> List[ItalianOfficialDocument]:
+        self, tax_type: str, limit: int = 20, days_back: int = 90
+    ) -> list[ItalianOfficialDocument]:
         """Get documents related to a specific tax type.
-        
+
         Args:
             tax_type: Tax type to search for
             limit: Maximum results to return
             days_back: How many days back to search
-            
+
         Returns:
             List of tax-related documents
         """
         try:
             cutoff_date = datetime.utcnow() - timedelta(days=days_back)
-            
+
             async with database_service.get_session() as session:
                 # Note: This uses JSON containment which works in PostgreSQL
-                query = select(ItalianOfficialDocument).where(
-                    ItalianOfficialDocument.processing_status == "completed",
-                    ItalianOfficialDocument.publication_date >= cutoff_date,
-                    ItalianOfficialDocument.tax_types.contains([tax_type])
-                ).order_by(ItalianOfficialDocument.publication_date.desc()).limit(limit)
-                
+                query = (
+                    select(ItalianOfficialDocument)
+                    .where(
+                        ItalianOfficialDocument.processing_status == "completed",
+                        ItalianOfficialDocument.publication_date >= cutoff_date,
+                        ItalianOfficialDocument.tax_types.contains([tax_type]),
+                    )
+                    .order_by(ItalianOfficialDocument.publication_date.desc())
+                    .limit(limit)
+                )
+
                 result = await session.exec(query)
                 return list(result)
-                
+
         except Exception as e:
             logger.error("tax_documents_retrieval_failed", tax_type=tax_type, error=str(e))
             return []
-    
-    async def get_collection_statistics(self) -> Dict[str, Any]:
+
+    async def get_collection_statistics(self) -> dict[str, Any]:
         """Get statistics about the document collection.
-        
+
         Returns:
             Dictionary with collection statistics
         """
@@ -880,25 +882,26 @@ class ItalianLegalService:
                 total_query = select(ItalianOfficialDocument)
                 total_result = await session.exec(total_query)
                 total_docs = len(list(total_result))
-                
+
                 # Documents by authority
                 authorities = {}
-                for authority in ["Agenzia delle Entrate", "INPS", "Ministero dell'Economia e delle Finanze", "Gazzetta Ufficiale"]:
-                    auth_query = select(ItalianOfficialDocument).where(
-                        ItalianOfficialDocument.authority == authority
-                    )
+                for authority in [
+                    "Agenzia delle Entrate",
+                    "INPS",
+                    "Ministero dell'Economia e delle Finanze",
+                    "Gazzetta Ufficiale",
+                ]:
+                    auth_query = select(ItalianOfficialDocument).where(ItalianOfficialDocument.authority == authority)
                     auth_result = await session.exec(auth_query)
                     authorities[authority] = len(list(auth_result))
-                
+
                 # Documents by category
                 categories = {}
                 for category in DocumentCategory:
-                    cat_query = select(ItalianOfficialDocument).where(
-                        ItalianOfficialDocument.category == category
-                    )
+                    cat_query = select(ItalianOfficialDocument).where(ItalianOfficialDocument.category == category)
                     cat_result = await session.exec(cat_query)
                     categories[category.value] = len(list(cat_result))
-                
+
                 # Recent documents (last 30 days)
                 recent_cutoff = datetime.utcnow() - timedelta(days=30)
                 recent_query = select(ItalianOfficialDocument).where(
@@ -906,7 +909,7 @@ class ItalianLegalService:
                 )
                 recent_result = await session.exec(recent_query)
                 recent_docs = len(list(recent_result))
-                
+
                 # Processing status
                 status_counts = {}
                 for status in ["pending", "completed", "failed"]:
@@ -915,16 +918,16 @@ class ItalianLegalService:
                     )
                     status_result = await session.exec(status_query)
                     status_counts[status] = len(list(status_result))
-                
+
                 return {
                     "total_documents": total_docs,
                     "by_authority": authorities,
                     "by_category": categories,
                     "recent_documents_30d": recent_docs,
                     "processing_status": status_counts,
-                    "last_updated": datetime.utcnow().isoformat()
+                    "last_updated": datetime.utcnow().isoformat(),
                 }
-                
+
         except Exception as e:
             logger.error("collection_statistics_failed", error=str(e))
             return {}

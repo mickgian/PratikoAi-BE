@@ -7,7 +7,6 @@ import httpx
 
 async def test_year_filtering():
     """Test search with year in query."""
-
     # Test query with year
     query = "fammi un riassunto di tutte le risoluzioni dell'agenzia delle entrate di ottobre e novembre 2025"
 
@@ -42,7 +41,7 @@ async def test_year_filtering():
             if missing:
                 print(f"⚠️  Missing risoluzioni: {missing}")
             else:
-                print(f"✅ All 5 risoluzioni found!")
+                print("✅ All 5 risoluzioni found!")
 
         else:
             print(f"❌ Error: {response.status_code}")

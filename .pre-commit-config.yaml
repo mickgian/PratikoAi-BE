@@ -25,17 +25,30 @@ repos:
       - id: check-merge-conflict
       - id: detect-private-key
 
-  # Python specific
-  - repo: https://github.com/psf/black
-    rev: 24.1.1
+  # Python linting & formatting with Ruff (replaces: black, isort, flake8, pylint, pyupgrade)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
     hooks:
-      - id: black
+      # Run Ruff linter (checks for errors, unused imports, code smells)
+      # Using --exit-zero to show warnings without blocking commits (gradual adoption)
+      - id: ruff
+        args: [--fix, --exit-zero]  # Auto-fix and don't block commit
+      # Run Ruff formatter (enforces consistent code style)
+      - id: ruff-format
 
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+  # Type checking with MyPy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
     hooks:
-      - id: isort
-        args: ["--profile", "black"]
+      - id: mypy
+        args: [--config-file=pyproject.toml]
+        additional_dependencies:
+          - types-requests
+          - types-python-dateutil
+        # Allow mypy to fail without blocking commit (for gradual adoption)
+        verbose: true
+        # Use warn_unused_ignores but don't fail on it
+        stages: [pre-commit]
 
   # Security checks
   - repo: https://github.com/Yelp/detect-secrets
@@ -78,6 +91,18 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+  # Run all tests with coverage check before commit
+  # This enforces minimum coverage thresholds (69.5% lines, matching frontend jest.config.js)
+  - repo: local
+    hooks:
+      - id: test-coverage
+        name: Run tests with coverage threshold check
+        entry: bash -c 'source scripts/set_env.sh development && uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=69.5 --cov-branch -v --tb=line'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
   # Auto-regenerate documentation indexes when markdown files change
   - repo: local
     hooks:
@@ -86,5 +111,16 @@ repos:
         entry: python scripts/generate_docs_index.py
         language: system
         files: \.md$
+        pass_filenames: false
+        stages: [pre-commit]
+
+  # Update roadmap deployment timeline estimates when roadmap changes
+  - repo: local
+    hooks:
+      - id: update-roadmap-timeline
+        name: Update roadmap deployment timeline estimates
+        entry: python scripts/update_roadmap_timeline.py --notify
+        language: system
+        files: ^ARCHITECTURE_ROADMAP\.md$
         pass_filenames: false
         stages: [pre-commit]

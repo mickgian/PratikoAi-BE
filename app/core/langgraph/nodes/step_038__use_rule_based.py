@@ -4,11 +4,13 @@ Internal step - adopts rule-based classification as final result.
 """
 
 from app.core.langgraph.types import RAGState
-from app.orchestrators.platform import step_38__use_rule_based
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
+from app.orchestrators.platform import step_38__use_rule_based
 
 STEP = 38
 
@@ -25,10 +27,7 @@ async def node_step_38(state: RAGState) -> RAGState:
     rag_step_log(STEP, "enter", using_rule_based=True)
 
     with rag_step_timer(STEP):
-        res = await step_38__use_rule_based(
-            messages=state.get("messages", []),
-            ctx=dict(state)
-        )
+        res = await step_38__use_rule_based(messages=state.get("messages", []), ctx=dict(state))
 
         # Keep rule-based classification as final
         classification = state.setdefault("classification", {})
@@ -38,10 +37,5 @@ async def node_step_38(state: RAGState) -> RAGState:
         classification["method_used"] = "rule_based"
         classification["fallback_used"] = False
 
-    rag_step_log(
-        STEP,
-        "exit",
-        domain=classification.get("domain"),
-        confidence=classification.get("confidence")
-    )
+    rag_step_log(STEP, "exit", domain=classification.get("domain"), confidence=classification.get("confidence"))
     return state

@@ -1,5 +1,4 @@
-"""
-Per-request RAG step tracing for development debugging.
+"""Per-request RAG step tracing for development debugging.
 
 This module provides request-scoped logging that captures only RAG step logs
 into dedicated per-request files, making it easy to trace through all 135 steps
@@ -26,8 +25,8 @@ import json
 import logging
 import re
 import time
-from contextlib import contextmanager
-from datetime import datetime, timezone
+from contextlib import contextmanager, suppress
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -42,16 +41,14 @@ TRACE_ENABLED_ENVIRONMENTS = {
 
 
 class RAGTraceHandler(logging.Handler):
-    """
-    Custom logging handler that captures only RAG step logs to a request-specific file.
+    """Custom logging handler that captures only RAG step logs to a request-specific file.
 
     Filters for logs from the "rag" logger and writes them to a dedicated JSONL file
     for the duration of a single request.
     """
 
     def __init__(self, trace_file: Path, request_id: str):
-        """
-        Initialize the RAG trace handler.
+        """Initialize the RAG trace handler.
 
         Args:
             trace_file: Path to the trace file where logs will be written
@@ -71,13 +68,10 @@ class RAGTraceHandler(logging.Handler):
             self.file_handle = open(trace_file, "w", encoding="utf-8")
         except Exception as e:
             # If we can't create the trace file, log error but don't crash
-            logging.getLogger(__name__).error(
-                f"Failed to create RAG trace file {trace_file}: {e}"
-            )
+            logging.getLogger(__name__).error(f"Failed to create RAG trace file {trace_file}: {e}")
 
     def emit(self, record: logging.LogRecord) -> None:
-        """
-        Emit a log record to the trace file.
+        """Emit a log record to the trace file.
 
         Only processes records from the "rag" logger (RAG step logs).
         """
@@ -95,18 +89,18 @@ class RAGTraceHandler(logging.Handler):
             if level == "INFO" and hasattr(record, "extra"):
                 extra = record.extra if hasattr(record, "extra") else {}
                 # Look for error indicators in extra fields
-                if extra.get("error") and extra.get("error") not in ["", None]:
-                    level = "ERROR"
-                elif any(extra.get(key) == "failed" for key in ["processing_stage", "status"]):
-                    level = "ERROR"
-                elif extra.get("classification_event") == "rule_based_classification_failed":
-                    level = "ERROR"
-                elif "failed" in str(extra.get("processing_stage", "")).lower():
+                if (
+                    extra.get("error")
+                    and extra.get("error") not in ["", None]
+                    or any(extra.get(key) == "failed" for key in ["processing_stage", "status"])
+                    or extra.get("classification_event") == "rule_based_classification_failed"
+                    or "failed" in str(extra.get("processing_stage", "")).lower()
+                ):
                     level = "ERROR"
 
             # Build log entry matching the daily log format
             log_entry = {
-                "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+                "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
                 "level": level,  # Use upgraded level if error detected
                 "message": record.getMessage(),
                 "module": record.module,
@@ -128,24 +122,21 @@ class RAGTraceHandler(logging.Handler):
             self.file_handle.flush()  # Ensure immediate write
             self.steps_logged += 1
 
-        except Exception as e:
+        except Exception:
             # If logging fails, continue without crashing
             self.handleError(record)
 
     def close(self) -> None:
         """Close the trace file handle."""
         if self.file_handle:
-            try:
+            with suppress(Exception):
                 self.file_handle.close()
-            except Exception:
-                pass
             self.file_handle = None
         super().close()
 
 
 def _get_trace_filename(request_id: str) -> Path:
-    """
-    Generate a trace filename for a given request.
+    """Generate a trace filename for a given request.
 
     Format: trace_{request_id}_{timestamp}.jsonl
 
@@ -156,7 +147,7 @@ def _get_trace_filename(request_id: str) -> Path:
         Path to the trace file
     """
     # Use ISO format timestamp for sortability
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
 
     # Sanitize request_id to remove problematic characters
     safe_request_id = "".join(c if c.isalnum() or c in "-_" else "_" for c in request_id)
@@ -170,8 +161,7 @@ def _get_trace_filename(request_id: str) -> Path:
 
 
 def _write_trace_header(file_handle, request_id: str, user_query: str) -> None:
-    """
-    Write metadata header and placeholder summary at start of trace file.
+    """Write metadata header and placeholder summary at start of trace file.
 
     Args:
         file_handle: Open file handle
@@ -196,7 +186,7 @@ def _write_trace_header(file_handle, request_id: str, user_query: str) -> None:
             "trace_type": "rag_request",
             "session_id": request_id,
             "user_query": user_query[:200] if user_query else "N/A",  # Truncate long queries
-            "timestamp_start": datetime.now(timezone.utc).isoformat(),
+            "timestamp_start": datetime.now(UTC).isoformat(),
             "environment": settings.ENVIRONMENT.value,
         }
         file_handle.write(json.dumps(header, ensure_ascii=False, indent=2) + "\n")
@@ -205,9 +195,8 @@ def _write_trace_header(file_handle, request_id: str, user_query: str) -> None:
         logging.getLogger(__name__).error(f"Failed to write trace header: {e}")
 
 
-def _parse_diagram_flow() -> Tuple[Dict[str, List[Tuple[Optional[str], str]]], Dict[str, str], Set[str], Set[str]]:
-    """
-    Parse pratikoai_rag_hybrid.mmd to extract expected step transitions, descriptions, and classifications.
+def _parse_diagram_flow() -> tuple[dict[str, list[tuple[str | None, str]]], dict[str, str], set[str], set[str]]:
+    """Parse pratikoai_rag_hybrid.mmd to extract expected step transitions, descriptions, and classifications.
 
     Returns:
         Tuple of (flow_map, step_descriptions, canonical_steps, internal_steps):
@@ -223,10 +212,10 @@ def _parse_diagram_flow() -> Tuple[Dict[str, List[Tuple[Optional[str], str]]], D
     # Get project root (4 levels up from this file: app/observability/rag_trace.py)
     project_root = Path(__file__).parent.parent.parent
     diagram_path = project_root / "docs/architecture/diagrams/pratikoai_rag_hybrid.mmd"
-    flow_map: Dict[str, List[Tuple[Optional[str], str]]] = {}
-    step_descriptions: Dict[str, str] = {}
-    canonical_steps: Set[str] = set()
-    internal_steps: Set[str] = set()
+    flow_map: dict[str, list[tuple[str | None, str]]] = {}
+    step_descriptions: dict[str, str] = {}
+    canonical_steps: set[str] = set()
+    internal_steps: set[str] = set()
 
     try:
         # Check if diagram file exists before trying to open it
@@ -238,12 +227,12 @@ def _parse_diagram_flow() -> Tuple[Dict[str, List[Tuple[Optional[str], str]]], D
             )
             return flow_map, step_descriptions, canonical_steps, internal_steps
 
-        with open(diagram_path, "r", encoding="utf-8") as f:
+        with open(diagram_path, encoding="utf-8") as f:
             content = f.read()
 
         # Special case: Match Start node with embedded S001
         # Pattern: Start([S001 · Description]) --> S002
-        start_pattern = r'Start\(\[(S\d+)\s*·\s*([^\]]+)\]\)\s*-->\s*(S\d+)'
+        start_pattern = r"Start\(\[(S\d+)\s*·\s*([^\]]+)\]\)\s*-->\s*(S\d+)"
         start_match = re.search(start_pattern, content)
         if start_match:
             start_step = start_match.group(1)  # S001
@@ -254,17 +243,17 @@ def _parse_diagram_flow() -> Tuple[Dict[str, List[Tuple[Optional[str], str]]], D
 
         # Match regular nodes with descriptions
         # Pattern: S001[S001 · Description] or S001{S001 · Description}
-        node_pattern = r'(S\d+)[\[\{](S\d+)\s*·\s*([^\]\}]+)[\]\}]'
+        node_pattern = r"(S\d+)[\[\{](S\d+)\s*·\s*([^\]\}]+)[\]\}]"
         for match in re.finditer(node_pattern, content):
             step_id = match.group(2)  # S002, S003, etc.
             description = match.group(3).strip()
             # Clean up HTML tags like <br/>
-            description = re.sub(r'<br\s*/?>', ' ', description)
+            description = re.sub(r"<br\s*/?>", " ", description)
             step_descriptions[step_id] = description
 
         # Match edges: S001 --> S003 or S003 -->|Yes| S004
         # Also match edges involving database nodes: S059 --> RedisCache or RedisCache --> S062
-        edge_pattern = r'(S\d+|[\w]+)\s*-->\s*(?:\|([^|]+)\|)?\s*(S\d+|[\w]+)'
+        edge_pattern = r"(S\d+|[\w]+)\s*-->\s*(?:\|([^|]+)\|)?\s*(S\d+|[\w]+)"
 
         for match in re.finditer(edge_pattern, content):
             from_node = match.group(1)
@@ -272,32 +261,32 @@ def _parse_diagram_flow() -> Tuple[Dict[str, List[Tuple[Optional[str], str]]], D
             to_node = match.group(3)
 
             # Only store edges involving at least one S### step
-            if from_node.startswith('S') or to_node.startswith('S'):
+            if from_node.startswith("S") or to_node.startswith("S"):
                 if from_node not in flow_map:
                     flow_map[from_node] = []
                 flow_map[from_node].append((condition, to_node))
 
         # Parse step classifications (Canonical vs Internal)
         # Pattern: class S001,S002,S003 canonicalNode
-        canonical_pattern = r'class\s+([\w,]+)\s+canonicalNode'
+        canonical_pattern = r"class\s+([\w,]+)\s+canonicalNode"
         canonical_match = re.search(canonical_pattern, content)
         if canonical_match:
             step_list = canonical_match.group(1)
             # Split by comma and filter for S### pattern
-            for step in step_list.split(','):
+            for step in step_list.split(","):
                 step = step.strip()
-                if re.match(r'S\d+', step):
+                if re.match(r"S\d+", step):
                     canonical_steps.add(step)
 
         # Pattern: class Start,S001,S004 internalNode
-        internal_pattern = r'class\s+([\w,]+)\s+internalNode'
+        internal_pattern = r"class\s+([\w,]+)\s+internalNode"
         internal_match = re.search(internal_pattern, content)
         if internal_match:
             step_list = internal_match.group(1)
             # Split by comma and filter for S### pattern
-            for step in step_list.split(','):
+            for step in step_list.split(","):
                 step = step.strip()
-                if re.match(r'S\d+', step):
+                if re.match(r"S\d+", step):
                     internal_steps.add(step)
 
         # Log success for debugging
@@ -308,21 +297,16 @@ def _parse_diagram_flow() -> Tuple[Dict[str, List[Tuple[Optional[str], str]]], D
 
     except Exception as e:
         logging.getLogger(__name__).error(
-            f"Failed to parse diagram flow from {diagram_path}: {type(e).__name__}: {e}",
-            exc_info=True
+            f"Failed to parse diagram flow from {diagram_path}: {type(e).__name__}: {e}", exc_info=True
         )
 
     return flow_map, step_descriptions, canonical_steps, internal_steps
 
 
 def _find_path_between_steps(
-    from_step: str,
-    to_step: str,
-    flow_map: Dict[str, List[Tuple[Optional[str], str]]],
-    max_depth: int = 50
-) -> Optional[List[str]]:
-    """
-    Find the path between two steps in the flow diagram using BFS.
+    from_step: str, to_step: str, flow_map: dict[str, list[tuple[str | None, str]]], max_depth: int = 50
+) -> list[str] | None:
+    """Find the path between two steps in the flow diagram using BFS.
 
     Args:
         from_step: Starting step ID (e.g., "S059")
@@ -358,12 +342,8 @@ def _find_path_between_steps(
     return None
 
 
-def _is_internal_only_path(
-    intermediate_steps: List[str],
-    internal_steps: Set[str]
-) -> bool:
-    """
-    Check if all steps in the path are Internal steps (or database nodes).
+def _is_internal_only_path(intermediate_steps: list[str], internal_steps: set[str]) -> bool:
+    """Check if all steps in the path are Internal steps (or database nodes).
 
     Args:
         intermediate_steps: List of step IDs/node names between from→to
@@ -372,17 +352,11 @@ def _is_internal_only_path(
     Returns:
         True if all intermediate steps are Internal or database nodes, False otherwise
     """
-    for step in intermediate_steps:
-        # Allow database nodes (don't start with 'S') and Internal steps
-        if step.startswith('S') and step not in internal_steps:
-            # It's a Canonical step, not allowed
-            return False
-    return True
+    return all(not (step.startswith("S") and step not in internal_steps) for step in intermediate_steps)
 
 
-def _analyze_trace_execution(trace_file_path: Path) -> Tuple[List[str], List[Tuple[str, str]], Dict[str, float]]:
-    """
-    Analyze trace file to extract actual step execution sequence and timing data.
+def _analyze_trace_execution(trace_file_path: Path) -> tuple[list[str], list[tuple[str, str]], dict[str, float]]:
+    """Analyze trace file to extract actual step execution sequence and timing data.
 
     Args:
         trace_file_path: Path to the trace file
@@ -393,20 +367,20 @@ def _analyze_trace_execution(trace_file_path: Path) -> Tuple[List[str], List[Tup
         - transitions: List of (from_step, to_step) tuples [("S001", "S004"), ...]
         - step_timings: Dict mapping step IDs to latency in ms {"S008": 1.19, ...}
     """
-    step_sequence: List[str] = []
-    step_timings: Dict[str, float] = {}
-    active_wrappers: Set[str] = set()  # Track steps currently inside .enter/.exit
-    steps_with_enter_logs: Set[str] = set()  # Track which steps have .enter logs
-    steps_counted_via_orchestrator: Set[str] = set()  # Track steps already counted via orchestrator logs
+    step_sequence: list[str] = []
+    step_timings: dict[str, float] = {}
+    active_wrappers: set[str] = set()  # Track steps currently inside .enter/.exit
+    steps_with_enter_logs: set[str] = set()  # Track which steps have .enter logs
+    steps_counted_via_orchestrator: set[str] = set()  # Track steps already counted via orchestrator logs
     reached_end_step = False  # Track when S112 (END) is reached
 
     # PASS 1: Scan file to identify which steps have .enter logs
     # This prevents double-counting when orchestrator logs appear before .enter logs
     try:
-        with open(trace_file_path, "r", encoding="utf-8") as f:
+        with open(trace_file_path, encoding="utf-8") as f:
             for line in f:
-                if 'RAG STEP' in line and '.enter' in line:
-                    step_match = re.search(r'RAG STEP (\d+)', line)
+                if "RAG STEP" in line and ".enter" in line:
+                    step_match = re.search(r"RAG STEP (\d+)", line)
                     if step_match:
                         step_num = int(step_match.group(1))
                         step_id = f"S{step_num:03d}"
@@ -416,7 +390,7 @@ def _analyze_trace_execution(trace_file_path: Path) -> Tuple[List[str], List[Tup
 
     # PASS 2: Analyze execution sequence
     try:
-        with open(trace_file_path, "r", encoding="utf-8") as f:
+        with open(trace_file_path, encoding="utf-8") as f:
             in_comment = False
             json_buffer = []
 
@@ -449,7 +423,7 @@ def _analyze_trace_execution(trace_file_path: Path) -> Tuple[List[str], List[Tup
 
                         # Extract step number from RAG STEP logs
                         message = log_entry.get("message", "")
-                        step_match = re.search(r'RAG STEP (\d+)', message)
+                        step_match = re.search(r"RAG STEP (\d+)", message)
 
                         if step_match:
                             step_num = int(step_match.group(1))
@@ -462,7 +436,9 @@ def _analyze_trace_execution(trace_file_path: Path) -> Tuple[List[str], List[Tup
                             # Check if this is a node wrapper log (has .enter/.exit/no suffix)
                             is_node_enter = ".enter" in message
                             is_node_exit = ".exit" in message
-                            is_node_summary = re.search(r'step_\d+\s*\|', message) and not is_node_enter and not is_node_exit
+                            is_node_summary = (
+                                re.search(r"step_\d+\s*\|", message) and not is_node_enter and not is_node_exit
+                            )
 
                             # Track node wrapper state for stateful filtering
                             if is_node_enter:
@@ -471,10 +447,9 @@ def _analyze_trace_execution(trace_file_path: Path) -> Tuple[List[str], List[Tup
                                 active_wrappers.discard(step_id)
 
                             # For orchestrator logs (without .enter/.exit pattern), parse attributes
-                            attrs_match = re.search(r'attrs=(\{.*\})', message)
+                            attrs_match = re.search(r"attrs=(\{.*\})", message)
                             is_timing_log = False
                             has_processing_stage = False
-                            processing_stage_value = None
 
                             if attrs_match:
                                 try:
@@ -486,7 +461,7 @@ def _analyze_trace_execution(trace_file_path: Path) -> Tuple[List[str], List[Tup
                                     has_latency = "latency_ms" in attrs
                                     has_stage = "stage" in attrs
                                     has_processing_stage = "processing_stage" in attrs
-                                    processing_stage_value = attrs.get("processing_stage")
+                                    attrs.get("processing_stage")
 
                                     # Timing log = has both latency_ms and stage, but NOT processing_stage
                                     is_timing_log = has_latency and has_stage and not has_processing_stage
@@ -509,7 +484,10 @@ def _analyze_trace_execution(trace_file_path: Path) -> Tuple[List[str], List[Tup
                                 # 2. No .enter log exists for this step (orchestrator-only step)
                                 # 3. Not already counted via orchestrator log (first occurrence only)
                                 if has_processing_stage:
-                                    if step_id not in steps_with_enter_logs and step_id not in steps_counted_via_orchestrator:
+                                    if (
+                                        step_id not in steps_with_enter_logs
+                                        and step_id not in steps_counted_via_orchestrator
+                                    ):
                                         should_count = True
                                         steps_counted_via_orchestrator.add(step_id)
 
@@ -525,7 +503,7 @@ def _analyze_trace_execution(trace_file_path: Path) -> Tuple[List[str], List[Tup
 
                             # Extract timing data from attrs JSON in message
                             # Message format: "RAG STEP X (...): ... | attrs={...}"
-                            attrs_match = re.search(r'attrs=(\{.*\})', message)
+                            attrs_match = re.search(r"attrs=(\{.*\})", message)
                             if attrs_match:
                                 try:
                                     attrs = json.loads(attrs_match.group(1))
@@ -550,22 +528,21 @@ def _analyze_trace_execution(trace_file_path: Path) -> Tuple[List[str], List[Tup
     # Build transitions from sequence
     transitions = []
     for i in range(len(step_sequence) - 1):
-        transitions.append((step_sequence[i], step_sequence[i+1]))
+        transitions.append((step_sequence[i], step_sequence[i + 1]))
 
     return step_sequence, transitions, step_timings
 
 
 def _generate_flow_summary(
-    step_sequence: List[str],
-    transitions: List[Tuple[str, str]],
-    expected_flow: Dict[str, List[Tuple[Optional[str], str]]],
-    step_timings: Dict[str, float],
-    step_descriptions: Dict[str, str],
-    canonical_steps: Set[str],
-    internal_steps: Set[str]
+    step_sequence: list[str],
+    transitions: list[tuple[str, str]],
+    expected_flow: dict[str, list[tuple[str | None, str]]],
+    step_timings: dict[str, float],
+    step_descriptions: dict[str, str],
+    canonical_steps: set[str],
+    internal_steps: set[str],
 ) -> str:
-    """
-    Generate human-readable flow summary with conformance checking, timing data, and step descriptions.
+    """Generate human-readable flow summary with conformance checking, timing data, and step descriptions.
 
     Args:
         step_sequence: Actual execution sequence
@@ -615,10 +592,7 @@ def _generate_flow_summary(
                 # Non-conforming transition
                 non_conforming.append((from_step, to_step, expected_steps))
 
-    conformance_pct = (
-        round(100 * conforming_transitions / total_transitions)
-        if total_transitions > 0 else 100
-    )
+    conformance_pct = round(100 * conforming_transitions / total_transitions) if total_transitions > 0 else 100
 
     lines.append(f"Steps Executed: {total_steps_executed}")
     lines.append(f"Transitions: {total_transitions}")
@@ -640,7 +614,9 @@ def _generate_flow_summary(
         to_desc = step_descriptions.get(to_step, "")[:25]
 
         # Determine step type labels
-        from_type = "(INTERNAL)" if from_step in internal_steps else "(CANONICAL)" if from_step in canonical_steps else ""
+        from_type = (
+            "(INTERNAL)" if from_step in internal_steps else "(CANONICAL)" if from_step in canonical_steps else ""
+        )
         to_type = "(INTERNAL)" if to_step in internal_steps else "(CANONICAL)" if to_step in canonical_steps else ""
 
         # Format step labels with type and descriptions
@@ -671,7 +647,9 @@ def _generate_flow_summary(
             if intermediate_path is not None and _is_internal_only_path(intermediate_path, internal_steps):
                 # Valid transition - skipped only Internal steps
                 internal_names = ", ".join(intermediate_path)
-                lines.append(f"✅ {from_label} → {to_label} (via internal: {internal_names}) {timing_str}{end_annotation}")
+                lines.append(
+                    f"✅ {from_label} → {to_label} (via internal: {internal_names}) {timing_str}{end_annotation}"
+                )
             else:
                 # Invalid transition
                 expected_str = ", ".join(expected_steps) if expected_steps else "END"
@@ -701,11 +679,8 @@ def _generate_flow_summary(
     return "\n".join(lines)
 
 
-def _write_trace_footer(
-    file_handle, request_id: str, start_time: float, steps_logged: int
-) -> None:
-    """
-    Write completion metadata as last line of trace file.
+def _write_trace_footer(file_handle, request_id: str, start_time: float, steps_logged: int) -> None:
+    """Write completion metadata as last line of trace file.
 
     Args:
         file_handle: Open file handle
@@ -718,7 +693,7 @@ def _write_trace_footer(
         footer = {
             "trace_type": "rag_request_complete",
             "session_id": request_id,
-            "timestamp_end": datetime.now(timezone.utc).isoformat(),
+            "timestamp_end": datetime.now(UTC).isoformat(),
             "duration_ms": duration_ms,
             "steps_logged": steps_logged,
         }
@@ -729,9 +704,8 @@ def _write_trace_footer(
 
 
 @contextmanager
-def rag_trace_context(request_id: str, user_query: Optional[str] = None):
-    """
-    Context manager for per-request RAG step tracing.
+def rag_trace_context(request_id: str, user_query: str | None = None):
+    """Context manager for per-request RAG step tracing.
 
     Creates a dedicated log file for this request containing only RAG step logs.
     Automatically attaches and detaches a custom handler from the "rag" logger.
@@ -787,9 +761,7 @@ def rag_trace_context(request_id: str, user_query: Optional[str] = None):
         if handler:
             # Write metadata footer
             if handler.file_handle:
-                _write_trace_footer(
-                    handler.file_handle, request_id, start_time, handler.steps_logged
-                )
+                _write_trace_footer(handler.file_handle, request_id, start_time, handler.steps_logged)
 
             # Detach from logger
             rag_logger.removeHandler(handler)
@@ -808,13 +780,18 @@ def rag_trace_context(request_id: str, user_query: Optional[str] = None):
 
                     # Generate summary with timing info, descriptions, and step classifications
                     summary = _generate_flow_summary(
-                        step_sequence, transitions, expected_flow, step_timings, step_descriptions,
-                        canonical_steps, internal_steps
+                        step_sequence,
+                        transitions,
+                        expected_flow,
+                        step_timings,
+                        step_descriptions,
+                        canonical_steps,
+                        internal_steps,
                     )
 
                     # Replace placeholder with actual summary
                     # Read existing content
-                    with open(trace_file, "r", encoding="utf-8") as f:
+                    with open(trace_file, encoding="utf-8") as f:
                         existing_content = f.read()
 
                     # Find and replace the placeholder summary
@@ -824,9 +801,11 @@ def rag_trace_context(request_id: str, user_query: Optional[str] = None):
                     if placeholder_start != -1 and placeholder_end > placeholder_start:
                         # Replace placeholder with actual summary
                         new_content = (
-                            existing_content[:placeholder_start] +
-                            "/*\n" + summary + "*/\n\n" +
-                            existing_content[placeholder_end:]
+                            existing_content[:placeholder_start]
+                            + "/*\n"
+                            + summary
+                            + "*/\n\n"
+                            + existing_content[placeholder_end:]
                         )
 
                         # Write updated content
@@ -834,12 +813,9 @@ def rag_trace_context(request_id: str, user_query: Optional[str] = None):
                             f.write(new_content)
 
                 except Exception as e:
-                    logging.getLogger(__name__).warning(
-                        f"Failed to generate flow summary for {trace_file.name}: {e}"
-                    )
+                    logging.getLogger(__name__).warning(f"Failed to generate flow summary for {trace_file.name}: {e}")
 
                 # Log summary (to daily logs, not trace file)
                 logging.getLogger(__name__).info(
-                    f"RAG trace completed: {trace_file.name} "
-                    f"({handler.steps_logged} steps logged)"
+                    f"RAG trace completed: {trace_file.name} ({handler.steps_logged} steps logged)"
                 )

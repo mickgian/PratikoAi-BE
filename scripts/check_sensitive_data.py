@@ -70,7 +70,7 @@ EXCLUDED_PATTERNS = [
 ]
 
 
-def get_staged_files() -> List[str]:
+def get_staged_files() -> list[str]:
     """Get list of files staged for commit."""
     try:
         result = subprocess.run(["git", "diff", "--cached", "--name-only"], capture_output=True, text=True, check=True)
@@ -93,12 +93,12 @@ def should_check_file(filepath: str) -> bool:
     return path.suffix.lower() in CHECKED_EXTENSIONS
 
 
-def check_file_for_sensitive_data(filepath: str) -> List[Tuple[int, str, str]]:
+def check_file_for_sensitive_data(filepath: str) -> list[tuple[int, str, str]]:
     """Check a file for sensitive data patterns."""
     issues = []
 
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             for line_num, line in enumerate(f, 1):
                 # Skip lines with pragma allowlist comment
                 if "pragma: allowlist secret" in line:

@@ -25,7 +25,6 @@ depends_on = None
 
 def upgrade():
     """Add full-text search support to knowledge_items table"""
-
     # Add search_vector column with tsvector type (if it doesn't exist)
     op.execute(
         """
@@ -156,7 +155,6 @@ def upgrade():
 
 def downgrade():
     """Remove full-text search support"""
-
     # Drop custom functions
     op.execute("DROP FUNCTION IF EXISTS websearch_to_tsquery_italian(text) CASCADE;")
     op.execute("DROP FUNCTION IF EXISTS update_knowledge_search_vector() CASCADE;")

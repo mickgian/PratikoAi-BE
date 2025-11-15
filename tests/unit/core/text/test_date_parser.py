@@ -272,7 +272,7 @@ class TestItalianMonthsMapping:
             "dicembre": 12,
         }
 
-        assert ITALIAN_MONTHS == expected_mapping
+        assert expected_mapping == ITALIAN_MONTHS
 
     def test_lowercase_keys(self):
         """Test that all keys are lowercase."""

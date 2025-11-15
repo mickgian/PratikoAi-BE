@@ -1,6 +1,7 @@
 """Tests for Italian document collection scheduler integration."""
 
 from datetime import (
+    UTC,
     datetime,
     timedelta,
     timezone,
@@ -218,7 +219,7 @@ class TestSchedulerItalianIntegration:
             executed = True
 
         # Create task that's due to run (past next_run time)
-        past_time = datetime.now(timezone.utc) - timedelta(minutes=1)
+        past_time = datetime.now(UTC) - timedelta(minutes=1)
         rss_task = ScheduledTask(
             name="rss_feeds_4h",
             interval=ScheduleInterval.EVERY_4_HOURS,
@@ -252,7 +253,7 @@ class TestSchedulerItalianIntegration:
 
         # Verify next_run was calculated
         assert rss_task.next_run is not None
-        assert rss_task.next_run > datetime.now(timezone.utc)
+        assert rss_task.next_run > datetime.now(UTC)
 
     @patch("app.services.scheduler_service.collect_rss_feeds_task")
     async def test_scheduler_integration_with_real_task_function(self, mock_collect_task):

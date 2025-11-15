@@ -5,11 +5,13 @@ the results to RAGState under the 'classification' key.
 """
 
 from app.core.langgraph.types import RAGState
-from app.orchestrators.classify import step_31__classify_domain
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
+from app.orchestrators.classify import step_31__classify_domain
 
 STEP = 31
 
@@ -31,10 +33,7 @@ async def node_step_31(state: RAGState) -> RAGState:
 
     with rag_step_timer(STEP):
         # Call orchestrator with context from state
-        res = await step_31__classify_domain(
-            messages=state.get("messages", []),
-            ctx=dict(state)
-        )
+        res = await step_31__classify_domain(messages=state.get("messages", []), ctx=dict(state))
 
         # Map orchestrator output to canonical state key
         state["classification"] = {
@@ -44,7 +43,7 @@ async def node_step_31(state: RAGState) -> RAGState:
             "confidence": res.get("confidence", 0.0),
             "fallback_used": res.get("fallback_used", False),
             "query_length": res.get("query_length", 0),
-            "error": res.get("error")
+            "error": res.get("error"),
         }
 
         # Also store the nested classification dict if present and valid
@@ -55,6 +54,6 @@ async def node_step_31(state: RAGState) -> RAGState:
         STEP,
         "exit",
         domain=state["classification"].get("domain"),
-        confidence=state["classification"].get("confidence")
+        confidence=state["classification"].get("confidence"),
     )
     return state

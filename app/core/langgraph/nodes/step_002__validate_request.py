@@ -1,10 +1,13 @@
 """Node wrapper for Step 2: Validate Request."""
 
-from typing import Dict, Any
-from app.core.langgraph.types import RAGState
+from typing import Any, Dict
+
 from app.core.langgraph.node_utils import mirror
+from app.core.langgraph.types import RAGState
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
 from app.orchestrators.platform import step_2__validate_request
@@ -12,7 +15,7 @@ from app.orchestrators.platform import step_2__validate_request
 STEP = 2
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):
@@ -30,10 +33,7 @@ async def node_step_2(state: RAGState) -> RAGState:
     rag_step_log(STEP, "enter", request_id=state.get("request_id"))
     with rag_step_timer(STEP):
         # Call orchestrator with business inputs only
-        res = await step_2__validate_request(
-            ctx=dict(state),
-            messages=state.get("messages")
-        )
+        res = await step_2__validate_request(ctx=dict(state), messages=state.get("messages"))
 
         # Map orchestrator outputs to canonical state keys (additive)
         privacy = state.setdefault("privacy", {})

@@ -1,16 +1,16 @@
 """Privacy and GDPR compliance utilities."""
 
-from .anonymizer import PIIAnonymizer, PIIType, PIIMatch, AnonymizationResult, anonymizer
-from .gdpr import GDPRCompliance, ConsentManager, DataProcessor, AuditLogger
+from .anonymizer import AnonymizationResult, PIIAnonymizer, PIIMatch, PIIType, anonymizer
+from .gdpr import AuditLogger, ConsentManager, DataProcessor, GDPRCompliance
 
 __all__ = [
     "PIIAnonymizer",
-    "PIIType", 
+    "PIIType",
     "PIIMatch",
     "AnonymizationResult",
     "anonymizer",
     "GDPRCompliance",
-    "ConsentManager", 
+    "ConsentManager",
     "DataProcessor",
     "AuditLogger",
 ]

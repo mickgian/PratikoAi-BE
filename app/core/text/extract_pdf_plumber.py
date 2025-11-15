@@ -1,5 +1,4 @@
-"""
-PDF text extraction using pdfplumber + Tesseract OCR (MIT/Apache-2.0 licenses).
+"""PDF text extraction using pdfplumber + Tesseract OCR (MIT/Apache-2.0 licenses).
 
 This module provides quality-aware PDF extraction using:
 - Primary: pdfplumber (MIT) for fast, high-quality text extraction
@@ -80,12 +79,11 @@ class PageOutput:
     page: int
     text: str
     ocr_used: bool
-    quality: Dict[str, Any]
+    quality: dict[str, Any]
 
 
 def _clean_text(text: str) -> str:
-    """
-    Clean extracted text by normalizing whitespace.
+    """Clean extracted text by normalizing whitespace.
 
     Args:
         text: Raw text
@@ -101,8 +99,7 @@ def _clean_text(text: str) -> str:
 
 
 def _rasterize_page(pdf_path: str, page_index: int, min_width: int = OCR_MIN_PAGE_WIDTH) -> Image.Image:
-    """
-    Rasterize a single PDF page for OCR using pdf2image.
+    """Rasterize a single PDF page for OCR using pdf2image.
 
     Args:
         pdf_path: Path to PDF file
@@ -150,8 +147,7 @@ def _rasterize_page(pdf_path: str, page_index: int, min_width: int = OCR_MIN_PAG
 
 
 def _ocr_page(image: Image.Image, lang: str = OCR_LANGUAGES) -> str:
-    """
-    OCR a single page image using Tesseract.
+    """OCR a single page image using Tesseract.
 
     Args:
         image: PIL Image to OCR
@@ -183,9 +179,8 @@ def _ocr_page(image: Image.Image, lang: str = OCR_LANGUAGES) -> str:
         return ""
 
 
-def extract_pdf_with_ocr_fallback_plumber(pdf_path: str) -> Dict[str, Any]:
-    """
-    Extract PDF text with intelligent OCR fallback for low-quality pages using pdfplumber.
+def extract_pdf_with_ocr_fallback_plumber(pdf_path: str) -> dict[str, Any]:
+    """Extract PDF text with intelligent OCR fallback for low-quality pages using pdfplumber.
 
     Process:
     1. Extract all pages using pdfplumber
@@ -217,9 +212,9 @@ def extract_pdf_with_ocr_fallback_plumber(pdf_path: str) -> Dict[str, Any]:
     if not PDFPLUMBER_AVAILABLE:
         raise RuntimeError("pdfplumber not available. Install: pip install pdfplumber")
 
-    pages: List[PageOutput] = []
-    ocr_pages_list: List[Dict[str, Any]] = []
-    needs_ocr_flags: List[bool] = []
+    pages: list[PageOutput] = []
+    ocr_pages_list: list[dict[str, Any]] = []
+    needs_ocr_flags: list[bool] = []
 
     # Step 1: Extract all pages using pdfplumber
     try:
@@ -256,7 +251,7 @@ def extract_pdf_with_ocr_fallback_plumber(pdf_path: str) -> Dict[str, Any]:
     sample_size = min(OCR_PAGE_SAMPLE, len(needs_ocr_flags))
     sample_needs_ocr = any(needs_ocr_flags[:sample_size])
 
-    logger.info(f"PDF {pdf_path.name}: sampled {sample_size} pages, " f"OCR needed: {sample_needs_ocr}")
+    logger.info(f"PDF {pdf_path.name}: sampled {sample_size} pages, OCR needed: {sample_needs_ocr}")
 
     did_ocr_any = False
 
@@ -293,9 +288,7 @@ def extract_pdf_with_ocr_fallback_plumber(pdf_path: str) -> Dict[str, Any]:
                         did_ocr_any = True
                         ocr_budget -= 1
 
-                        logger.info(
-                            f"OCR improved page {page_out.page}: " f"quality {ocr_metrics['quality_score']:.2f}"
-                        )
+                        logger.info(f"OCR improved page {page_out.page}: quality {ocr_metrics['quality_score']:.2f}")
                     else:
                         logger.info(f"OCR did not improve page {page_out.page}, keeping original")
 

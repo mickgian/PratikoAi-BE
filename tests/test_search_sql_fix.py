@@ -99,11 +99,11 @@ async def test_title_pattern_with_invalid_tsquery_terms(db_session: AsyncSession
         limit=20,
     )
 
-    assert len(results) >= 1, (
-        f"Title pattern failed for query='64', pattern='n. 64'. " f"Expected ≥1 results, got {len(results)}"
-    )
+    assert (
+        len(results) >= 1
+    ), f"Title pattern failed for query='64', pattern='n. 64'. Expected ≥1 results, got {len(results)}"
 
-    print(f"✓ Edge case passed: title pattern handles FTS-breaking terms (pure numbers)")
+    print("✓ Edge case passed: title pattern handles FTS-breaking terms (pure numbers)")
 
 
 @pytest.mark.asyncio

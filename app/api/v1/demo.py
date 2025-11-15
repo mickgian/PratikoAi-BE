@@ -1,14 +1,14 @@
-"""
-Demo endpoints for document upload functionality.
+"""Demo endpoints for document upload functionality.
 
 Provides a simple web interface to demonstrate the drag & drop
 document upload and analysis capabilities.
 """
 
+from pathlib import Path
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from pathlib import Path
 
 # Get templates directory
 templates_dir = Path(__file__).parent.parent.parent.parent / "templates"
@@ -19,22 +19,17 @@ router = APIRouter(prefix="/demo", tags=["demo"])
 
 @router.get("/document-upload", response_class=HTMLResponse)
 async def demo_document_upload(request: Request):
-  """
-  Demo page for document upload functionality.
-  
-  Shows the drag & drop interface for Italian tax document upload and analysis.
-  """
-  return templates.TemplateResponse(
-    "document_upload.html", 
-    {"request": request}
-  )
+    """Demo page for document upload functionality.
+
+    Shows the drag & drop interface for Italian tax document upload and analysis.
+    """
+    return templates.TemplateResponse("document_upload.html", {"request": request})
 
 
 @router.get("/", response_class=HTMLResponse)
 async def demo_index(request: Request):
-  """Demo index page with links to all demo features."""
-  
-  html_content = """
+    """Demo index page with links to all demo features."""
+    html_content = """
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -126,7 +121,7 @@ async def demo_index(request: Request):
             <h1>🚀 PratikoAI Demo</h1>
             <p>Esplora le funzionalità avanzate per professionisti fiscali italiani</p>
         </div>
-        
+
         <div class="content">
             <div class="feature-card" onclick="window.open('/api/v1/demo/document-upload', '_blank')">
                 <div class="feature-title">
@@ -139,7 +134,7 @@ async def demo_index(request: Request):
                     Supporta fatture elettroniche, F24, bilanci e registri IVA con analisi AI automatica.
                 </div>
                 <a href="/api/v1/demo/document-upload" class="feature-link" target="_blank">
-                    🔗 Prova la Demo → 
+                    🔗 Prova la Demo →
                 </a>
             </div>
 
@@ -154,7 +149,7 @@ async def demo_index(request: Request):
                     Risponde a domande su IVA, imposte, adempimenti e pianificazione fiscale.
                 </div>
                 <a href="/docs#/chatbot" class="feature-link">
-                    🔗 Vedi API Docs → 
+                    🔗 Vedi API Docs →
                 </a>
             </div>
 
@@ -169,7 +164,7 @@ async def demo_index(request: Request):
                     Risultati contestualizzati e aggiornati in tempo reale.
                 </div>
                 <a href="/docs#/regulatory" class="feature-link">
-                    🔗 Vedi API Docs → 
+                    🔗 Vedi API Docs →
                 </a>
             </div>
 
@@ -184,7 +179,7 @@ async def demo_index(request: Request):
                     Supporta aliquote aggiornate e detrazioni specifiche per regione.
                 </div>
                 <a href="/docs#/regional-taxes" class="feature-link">
-                    🔗 Vedi API Docs → 
+                    🔗 Vedi API Docs →
                 </a>
             </div>
 
@@ -199,7 +194,7 @@ async def demo_index(request: Request):
                     monitoring degli errori e analisi dell'utilizzo.
                 </div>
                 <a href="/docs#/monitoring" class="feature-link">
-                    🔗 Vedi API Docs → 
+                    🔗 Vedi API Docs →
                 </a>
             </div>
 
@@ -214,7 +209,7 @@ async def demo_index(request: Request):
                     cancellazione sicura e audit trail completo.
                 </div>
                 <a href="/docs#/data-export" class="feature-link">
-                    🔗 Vedi API Docs → 
+                    🔗 Vedi API Docs →
                 </a>
             </div>
 
@@ -226,5 +221,5 @@ async def demo_index(request: Request):
     </div>
 </body>
 </html>"""
-  
-  return HTMLResponse(content=html_content)
+
+    return HTMLResponse(content=html_content)

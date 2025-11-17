@@ -1,6 +1,6 @@
 # RAG Architecture Documentation
 
-**Auto-generated:** 2025-11-15 15:19:36
+**Auto-generated:** 2025-11-17 16:46:26
 
 > 💡 Complete documentation of the RAG (Retrieval-Augmented Generation) system architecture.
 
@@ -36,10 +36,12 @@ This directory contains comprehensive documentation of the RAG system, including
 
 ## 📋 Other Architecture Docs
 
+- **[Architectural Decision Records (ADRs)](decisions.md)** ✅ Current
+  - | ADR | Date | Status | Title | |-----|------|--------|-------|
 - **[PratikoAI RAG — Multi-Sprint Plan](rag_sprints.md)** ✅ Current
   - This plan sequences the 135 RAG steps into pragmatic sprints with clear scope and commands to open/issues per sprint.
 - **[RAG Architecture Documentation](INDEX.md)** 📚 Historical
-  - **Auto-generated:** 2025-11-15 13:56:50
+  - **Auto-generated:** 2025-11-15 15:19:36
 - **[RAG Conformance Dashboard](rag_conformance.md)** ✅ Current
   - This dashboard tracks the implementation status of each step in the PratikoAI RAG blueprint. It is automatically generated from the Mermaid diagram...
 - **[RAG Implementation Sprint Plan](rag_sprint_plan.md)** ✅ Current
@@ -63,10 +65,10 @@ The steps directory contains detailed documentation for every step in the RAG pi
 
 ## 📊 Statistics
 
-- **Overview Docs:** 12
+- **Overview Docs:** 13
 - **Detailed Steps:** 134
-- **Total Architecture Docs:** 146
+- **Total Architecture Docs:** 147
 
 ---
 
-**Last Updated:** 2025-11-15 15:19:36
+**Last Updated:** 2025-11-17 16:46:26

@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2025-11-15 15:19:36
+**Auto-generated:** 2025-11-17 16:46:26
 
-> 💡 This directory contains 19 technical documentation files plus 146 architecture documents.
+> 💡 This directory contains 19 technical documentation files plus 147 architecture documents.
 
 ---
 
@@ -13,7 +13,7 @@
 - **[Architecture Overview](architecture/INDEX.md)** - Main architecture index
   - RAG flow implementation documents
   - Policy gated autonomy
-  - 146 total architecture documents including 135 detailed steps
+  - 147 total architecture documents including 135 detailed steps
 
 ---
 
@@ -61,7 +61,7 @@
 ## 📚 Other
 
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2025-11-15 13:56:50
+  - **Auto-generated:** 2025-11-15 15:19:36
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
 - **[Pinecone Guardrails Implementation](pinecone-guardrails.md)** ✅ Current
@@ -76,9 +76,9 @@
 - **Feature Docs:** 9
 - **Database/Search:** 5
 - **Operations:** 2
-- **Architecture:** 146
-- **Total:** 165
+- **Architecture:** 147
+- **Total:** 166
 
 ---
 
-**Last Updated:** 2025-11-15 15:19:36
+**Last Updated:** 2025-11-17 16:46:26

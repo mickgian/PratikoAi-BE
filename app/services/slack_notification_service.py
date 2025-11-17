@@ -1,5 +1,4 @@
-"""
-Slack Notification Service for PratikoAI Subagent System.
+"""Slack Notification Service for PratikoAI Subagent System.
 
 This service handles all Slack notifications for the multi-agent system:
 - Architect veto alerts (immediate, high priority)
@@ -39,8 +38,7 @@ class SlackNotificationService:
         scrum_webhook_url: str,
         enabled: bool = True,
     ):
-        """
-        Initialize Slack notification service.
+        """Initialize Slack notification service.
 
         Modern Slack app webhooks require separate webhooks for each channel.
         The "channel" parameter in payloads is ignored by modern webhooks.
@@ -63,8 +61,7 @@ class SlackNotificationService:
         }
 
     async def _send_slack_message(self, payload: dict[str, Any], webhook_url: str) -> bool:
-        """
-        Send message to Slack via webhook.
+        """Send message to Slack via webhook.
 
         Args:
             payload: Slack message payload
@@ -109,8 +106,7 @@ class SlackNotificationService:
         risk_introduced: str,
         alternative_approach: str | None = None,
     ) -> bool:
-        """
-        Send Architect veto alert to Slack.
+        """Send Architect veto alert to Slack.
 
         Args:
             task_id: Task identifier (e.g., DEV-BE-67)
@@ -164,8 +160,7 @@ class SlackNotificationService:
         velocity: str | None = None,
         sprint_status: str = "ON TRACK",
     ) -> bool:
-        """
-        Send Scrum Master progress update to Slack (every 2 hours).
+        """Send Scrum Master progress update to Slack (every 2 hours).
 
         Args:
             sprint_name: Sprint identifier (e.g., "Sprint 1")
@@ -186,7 +181,9 @@ class SlackNotificationService:
             in_progress_text += f"• {task['id']}: {task['description']} ({task['assignee']}) - {task['progress']}\n"
 
         # Format completed tasks
-        completed_text = "\n".join([f"• {task}" for task in tasks_completed_today]) if tasks_completed_today else "None"
+        completed_text = (
+            "\n".join([f"• {task}" for task in tasks_completed_today]) if tasks_completed_today else "None"
+        )
 
         # Format next tasks
         next_up_text = "\n".join([f"• {task}" for task in tasks_next_up]) if tasks_next_up else "None"
@@ -236,8 +233,7 @@ class SlackNotificationService:
         return await self._send_slack_message(payload, self.scrum_webhook_url)
 
     async def send_task_completion(self, task_id: str, task_description: str, assigned_to: str, duration: str) -> bool:
-        """
-        Send task completion notification to Slack.
+        """Send task completion notification to Slack.
 
         Args:
             task_id: Task identifier (e.g., DEV-BE-67)
@@ -273,11 +269,8 @@ class SlackNotificationService:
 
         return await self._send_slack_message(payload, self.scrum_webhook_url)
 
-    async def send_blocker_alert(
-        self, task_id: str, blocker_description: str, escalated_to: str, impact: str
-    ) -> bool:
-        """
-        Send blocker alert to Slack.
+    async def send_blocker_alert(self, task_id: str, blocker_description: str, escalated_to: str, impact: str) -> bool:
+        """Send blocker alert to Slack.
 
         Args:
             task_id: Blocked task identifier
@@ -326,8 +319,7 @@ class SlackNotificationService:
         blockers_encountered: list[str],
         lessons_learned: list[str],
     ) -> bool:
-        """
-        Send weekly sprint summary to Slack.
+        """Send weekly sprint summary to Slack.
 
         Args:
             sprint_name: Sprint identifier
@@ -348,7 +340,11 @@ class SlackNotificationService:
         fields = [
             {"title": "Sprint", "value": sprint_name, "short": True},
             {"title": "Duration", "value": sprint_dates, "short": True},
-            {"title": "Completion Rate", "value": f"{tasks_completed}/{tasks_total} ({completion_rate}%)", "short": True},
+            {
+                "title": "Completion Rate",
+                "value": f"{tasks_completed}/{tasks_total} ({completion_rate}%)",
+                "short": True,
+            },
             {"title": "Velocity", "value": velocity, "short": True},
             {
                 "title": "✅ Completed Tasks",
@@ -407,8 +403,7 @@ class SlackNotificationService:
         sprint_day: int = 1,
         sprint_progress: str = "0%",
     ) -> bool:
-        """
-        Send daily standup summary to Slack (every morning at 08:00).
+        """Send daily standup summary to Slack (every morning at 08:00).
 
         Args:
             sprint_name: Sprint identifier

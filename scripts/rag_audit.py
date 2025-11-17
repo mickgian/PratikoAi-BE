@@ -16,31 +16,52 @@ import argparse
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Optional
-
+from typing import Dict, List, Optional, Set
 
 # Canonical Node steps from RAG-architecture-mode.md (lines 61-101)
 # These are the ~35 steps that should be LangGraph Nodes
 CANONICAL_NODE_STEPS = {
     # Request / Privacy
-    1, 3, 6, 9,
+    1,
+    3,
+    6,
+    9,
     # Golden / Cache
-    20, 24, 26, 59, 62,
+    20,
+    24,
+    26,
+    59,
+    62,
     # Classification / Routing
-    31, 42, 48, 50, 55, 56,
+    31,
+    42,
+    48,
+    50,
+    55,
+    56,
     # LLM / Tools
-    64, 67, 75, 79, 80, 81, 82, 83,
+    64,
+    67,
+    75,
+    79,
+    80,
+    81,
+    82,
+    83,
     # Response / Streaming
-    104, 105, 109, 112
+    104,
+    105,
+    109,
+    112,
 }
 
 
-def _canonical_node_steps() -> Set[int]:
+def _canonical_node_steps() -> set[int]:
     """Return the canonical set of Node steps from architecture doc."""
     return CANONICAL_NODE_STEPS
 
 
-def _load_wiring_registry() -> Dict[int, Dict]:
+def _load_wiring_registry() -> dict[int, dict]:
     """
     Load wiring registry directly from wiring_registry module.
 
@@ -48,8 +69,8 @@ def _load_wiring_registry() -> Dict[int, Dict]:
     Initializes all phases to get complete registry.
     """
     try:
-        import sys
         import os
+        import sys
 
         # Add project root to path
         project_root = Path(__file__).parent.parent
@@ -83,7 +104,7 @@ def _determine_role(step_num: int) -> str:
     return "Node" if step_num in CANONICAL_NODE_STEPS else "Internal"
 
 
-def _determine_status(step_num: int, role: str, registry: Dict[int, Dict]) -> str:
+def _determine_status(step_num: int, role: str, registry: dict[int, dict]) -> str:
     """
     Determine implementation status based on role and wiring.
 
@@ -121,7 +142,7 @@ def _determine_status(step_num: int, role: str, registry: Dict[int, Dict]) -> st
         return "🔌"
 
 
-def _parse_step_doc(doc_path: Path) -> Dict:
+def _parse_step_doc(doc_path: Path) -> dict:
     """
     Parse step documentation to extract current Role and Status.
 
@@ -133,18 +154,25 @@ def _parse_step_doc(doc_path: Path) -> Dict:
     content = doc_path.read_text()
 
     # Extract Role
-    role_match = re.search(r'- \*\*Role:\*\* (Node|Internal)', content)
+    role_match = re.search(r"- \*\*Role:\*\* (Node|Internal)", content)
     role = role_match.group(1) if role_match else None
 
     # Extract Status from AUTO-AUDIT block
-    status_match = re.search(r'Status: ([✅🔌🟡❌])', content)
+    status_match = re.search(r"Status: ([✅🔌🟡❌])", content)
     status = status_match.group(1) if status_match else None
 
     return {"role": role, "status": status}
 
 
-def _update_step_doc(step_num: int, step_id: str, role: str, status: str,
-                     registry: Dict[int, Dict], steps_dir: Path, verbose: bool = False) -> bool:
+def _update_step_doc(
+    step_num: int,
+    step_id: str,
+    role: str,
+    status: str,
+    registry: dict[int, dict],
+    steps_dir: Path,
+    verbose: bool = False,
+) -> bool:
     """
     Update step documentation with Role and Status.
 
@@ -173,18 +201,18 @@ def _update_step_doc(step_num: int, step_id: str, role: str, status: str,
     original_content = content
 
     # Update Role in front-matter (## Current Implementation section)
-    role_pattern = r'(- \*\*Role:\*\* )(Node|Internal)'
+    role_pattern = r"(- \*\*Role:\*\* )(Node|Internal)"
     if re.search(role_pattern, content):
-        content = re.sub(role_pattern, rf'\1{role}', content)
+        content = re.sub(role_pattern, rf"\1{role}", content)
     else:
         # Insert Role if not present (after Status line)
-        status_line_pattern = r'(- \*\*Status:\*\* [^\n]+\n)'
+        status_line_pattern = r"(- \*\*Status:\*\* [^\n]+\n)"
         if re.search(status_line_pattern, content):
-            content = re.sub(status_line_pattern, rf'\1- **Role:** {role}\n', content)
+            content = re.sub(status_line_pattern, rf"\1- **Role:** {role}\n", content)
 
     # Update Status
-    status_pattern = r'(- \*\*Status:\*\* )([^\n]+)'
-    content = re.sub(status_pattern, rf'\1{status}', content)
+    status_pattern = r"(- \*\*Status:\*\* )([^\n]+)"
+    content = re.sub(status_pattern, rf"\1{status}", content)
 
     # Generate status explanation
     if role == "Node":
@@ -204,7 +232,7 @@ def _update_step_doc(step_num: int, step_id: str, role: str, status: str,
     audit_lines = [
         "<!-- AUTO-AUDIT:BEGIN -->",
         f"Role: {role}  |  Status: {status} ({status_explanation})  |  Registry: {'✅ Wired' if step_num in registry else '❌ Not in registry'}",
-        ""
+        "",
     ]
 
     # Add wiring details if wired
@@ -212,13 +240,15 @@ def _update_step_doc(step_num: int, step_id: str, role: str, status: str,
         node_info = registry[step_num]
         incoming = node_info.get("incoming", [])
         outgoing = node_info.get("outgoing", [])
-        audit_lines.extend([
-            "Wiring information:",
-            f"- Node name: {node_info.get('name', 'unknown')}",
-            f"- Incoming edges: {incoming if incoming else 'none'}",
-            f"- Outgoing edges: {outgoing if outgoing else 'none'}",
-            ""
-        ])
+        audit_lines.extend(
+            [
+                "Wiring information:",
+                f"- Node name: {node_info.get('name', 'unknown')}",
+                f"- Incoming edges: {incoming if incoming else 'none'}",
+                f"- Outgoing edges: {outgoing if outgoing else 'none'}",
+                "",
+            ]
+        )
 
     # Add notes based on status
     audit_lines.append("Notes:")
@@ -237,7 +267,7 @@ def _update_step_doc(step_num: int, step_id: str, role: str, status: str,
 
     # Replace or add AUTO-AUDIT block
     if "<!-- AUTO-AUDIT:BEGIN -->" in content:
-        pattern = r'<!-- AUTO-AUDIT:BEGIN -->.*?<!-- AUTO-AUDIT:END -->'
+        pattern = r"<!-- AUTO-AUDIT:BEGIN -->.*?<!-- AUTO-AUDIT:END -->"
         content = re.sub(pattern, audit_block, content, flags=re.DOTALL)
     else:
         # Add at end of file
@@ -255,7 +285,7 @@ def _update_step_doc(step_num: int, step_id: str, role: str, status: str,
         return False
 
 
-def _get_all_steps(steps_dir: Path) -> List[Dict]:
+def _get_all_steps(steps_dir: Path) -> list[dict]:
     """
     Get all steps by scanning step documentation files.
 
@@ -265,7 +295,7 @@ def _get_all_steps(steps_dir: Path) -> List[Dict]:
     for doc_path in sorted(steps_dir.glob("STEP-*.md")):
         # Parse filename: STEP-{num}-{id}.md
         filename = doc_path.stem
-        match = re.match(r'STEP-(\d+)-(.+)', filename)
+        match = re.match(r"STEP-(\d+)-(.+)", filename)
         if match:
             step_num = int(match.group(1))
             step_id = match.group(2)
@@ -273,7 +303,7 @@ def _get_all_steps(steps_dir: Path) -> List[Dict]:
     return steps
 
 
-def _calculate_statistics(steps: List[Dict], registry: Dict[int, Dict]) -> Dict:
+def _calculate_statistics(steps: list[dict], registry: dict[int, dict]) -> dict:
     """
     Calculate audit statistics.
 
@@ -282,7 +312,7 @@ def _calculate_statistics(steps: List[Dict], registry: Dict[int, Dict]) -> Dict:
     stats = {
         "node": {"✅": 0, "🔌": 0, "❌": 0, "total": 0},
         "internal": {"🔌": 0, "❌": 0, "total": 0},
-        "overall": {"✅": 0, "🔌": 0, "❌": 0, "total": 0}
+        "overall": {"✅": 0, "🔌": 0, "❌": 0, "total": 0},
     }
 
     for step in steps:
@@ -303,7 +333,7 @@ def _calculate_statistics(steps: List[Dict], registry: Dict[int, Dict]) -> Dict:
     return stats
 
 
-def _write_conformance_summary(stats: Dict, conformance_path: Path, verbose: bool = False):
+def _write_conformance_summary(stats: dict, conformance_path: Path, verbose: bool = False):
     """
     Update the conformance dashboard summary with current statistics.
 
@@ -376,25 +406,10 @@ def _write_conformance_summary(stats: Dict, conformance_path: Path, verbose: boo
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description='Audit RAG steps using wiring registry'
-    )
-    parser.add_argument(
-        '--write',
-        action='store_true',
-        default=True,
-        help='Update documentation (default)'
-    )
-    parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Preview without writing'
-    )
-    parser.add_argument(
-        '--verbose',
-        action='store_true',
-        help='Enable verbose output'
-    )
+    parser = argparse.ArgumentParser(description="Audit RAG steps using wiring registry")
+    parser.add_argument("--write", action="store_true", default=True, help="Update documentation (default)")
+    parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
@@ -436,8 +451,7 @@ def main():
             role = _determine_role(step_num)
             status = _determine_status(step_num, role, registry)
 
-            if _update_step_doc(step_num, step_id, role, status, registry,
-                               steps_dir, verbose):
+            if _update_step_doc(step_num, step_id, role, status, registry, steps_dir, verbose):
                 updated_count += 1
 
         print(f"✅ Updated {updated_count} step documents")
@@ -453,32 +467,32 @@ def main():
         _write_conformance_summary(stats, conformance_path, verbose)
 
     # Print summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("📊 AUDIT SUMMARY")
-    print("="*60)
-    print(f"\n🎯 Node Steps (must be wired in LangGraph):")
+    print("=" * 60)
+    print("\n🎯 Node Steps (must be wired in LangGraph):")
     print(f"   ✅ Wired:     {stats['node']['✅']:3d} / {stats['node']['total']}")
     print(f"   🔌 Not wired: {stats['node']['🔌']:3d} / {stats['node']['total']}")
     print(f"   ❌ Missing:   {stats['node']['❌']:3d} / {stats['node']['total']}")
 
-    print(f"\n🔧 Internal Steps (implementation only):")
+    print("\n🔧 Internal Steps (implementation only):")
     print(f"   🔌 Implemented: {stats['internal']['🔌']:3d} / {stats['internal']['total']}")
     print(f"   ❌ Missing:     {stats['internal']['❌']:3d} / {stats['internal']['total']}")
 
-    print(f"\n📈 Overall:")
+    print("\n📈 Overall:")
     print(f"   ✅ Fully functional: {stats['overall']['✅']:3d} / {stats['overall']['total']}")
     print(f"   🔌 Partial/Internal: {stats['overall']['🔌']:3d} / {stats['overall']['total']}")
     print(f"   ❌ Missing:          {stats['overall']['❌']:3d} / {stats['overall']['total']}")
 
     # Calculate percentages
-    if stats['node']['total'] > 0:
-        wired_pct = (stats['node']['✅'] / stats['node']['total']) * 100
+    if stats["node"]["total"] > 0:
+        wired_pct = (stats["node"]["✅"] / stats["node"]["total"]) * 100
         print(f"\n🎉 Node wiring progress: {wired_pct:.1f}%")
 
-    print("="*60)
+    print("=" * 60)
 
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

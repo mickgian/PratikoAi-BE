@@ -1,5 +1,4 @@
-"""
-FAQTool for LangGraph - On-demand FAQ/Golden Set Queries
+"""FAQTool for LangGraph - On-demand FAQ/Golden Set Queries
 
 This tool provides semantic FAQ matching for the RAG pipeline, enabling the LLM
 to query the Golden Set (FAQ database) when needed.
@@ -11,14 +10,14 @@ injection.
 
 import json
 from typing import Optional
+
 from langchain_core.tools import BaseTool
 
 from app.core.logging import logger
 
 
 class FAQTool(BaseTool):
-    """
-    Tool for querying the FAQ/Golden Set with semantic search.
+    """Tool for querying the FAQ/Golden Set with semantic search.
 
     Provides semantic FAQ matching using the SemanticFAQMatcher service,
     supporting Italian language queries with confidence-based filtering.
@@ -46,13 +45,12 @@ class FAQTool(BaseTool):
     async def _arun(
         self,
         query: str,
-        max_results: Optional[int] = 3,
-        min_confidence: Optional[str] = 'medium',
-        include_outdated: Optional[bool] = False,
-        **kwargs
+        max_results: int | None = 3,
+        min_confidence: str | None = "medium",
+        include_outdated: bool | None = False,
+        **kwargs,
     ) -> str:
-        """
-        Execute FAQ query asynchronously.
+        """Execute FAQ query asynchronously.
 
         Args:
             query: User query in Italian
@@ -75,16 +73,18 @@ class FAQTool(BaseTool):
             # Simulate finding some FAQ matches based on query
             if query and len(query) > 0:
                 # Create a mock match for demonstration
-                matches = [{
-                    "faq_id": "mock_faq_001",
-                    "question": f"Mock FAQ question related to: {query[:50]}",
-                    "answer": "Questa è una risposta FAQ di esempio. In produzione, questo utilizzerebbe il SemanticFAQMatcher per trovare FAQ corrispondenti.",
-                    "similarity_score": 0.85,
-                    "confidence": min_confidence or "medium",
-                    "needs_update": False,
-                    "matched_concepts": ["test", "mock"],
-                    "source_metadata": {}
-                }]
+                matches = [
+                    {
+                        "faq_id": "mock_faq_001",
+                        "question": f"Mock FAQ question related to: {query[:50]}",
+                        "answer": "Questa è una risposta FAQ di esempio. In produzione, questo utilizzerebbe il SemanticFAQMatcher per trovare FAQ corrispondenti.",
+                        "similarity_score": 0.85,
+                        "confidence": min_confidence or "medium",
+                        "needs_update": False,
+                        "matched_concepts": ["test", "mock"],
+                        "source_metadata": {},
+                    }
+                ]
 
             # Format results
             if not matches:
@@ -92,7 +92,7 @@ class FAQTool(BaseTool):
                     "success": True,
                     "matches": [],
                     "match_count": 0,
-                    "message": "Nessuna FAQ corrispondente trovata. Posso aiutarti con una ricerca più ampia."
+                    "message": "Nessuna FAQ corrispondente trovata. Posso aiutarti con una ricerca più ampia.",
                 }
             else:
                 # Matches are already formatted as dictionaries
@@ -102,7 +102,7 @@ class FAQTool(BaseTool):
                     "match_count": len(matches),
                     "query": query,
                     "min_confidence": min_confidence,
-                    "message": f"Trovate {len(matches)} FAQ corrispondenti."
+                    "message": f"Trovate {len(matches)} FAQ corrispondenti.",
                 }
 
             logger.info(f"FAQTool: Found {len(matches)} FAQ matches for query")
@@ -115,7 +115,7 @@ class FAQTool(BaseTool):
                 "error": str(e),
                 "matches": [],
                 "match_count": 0,
-                "message": "Si è verificato un errore durante la ricerca FAQ."
+                "message": "Si è verificato un errore durante la ricerca FAQ.",
             }
             return json.dumps(error_response, ensure_ascii=False, indent=2)
 

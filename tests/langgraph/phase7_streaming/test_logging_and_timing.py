@@ -1,7 +1,9 @@
 """Test logging and timing for Phase 7 nodes."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from app.core.langgraph.nodes.step_104__stream_check import node_step_104
 from app.core.langgraph.nodes.step_105__stream_setup import node_step_105
 from app.core.langgraph.nodes.step_111__collect_metrics import node_step_111
@@ -109,6 +111,7 @@ async def test_all_phase7_nodes_have_logging():
     for node_func in phase7_nodes:
         # Verify function has rag_step_log and rag_step_timer in source
         import inspect
+
         source = inspect.getsource(node_func)
         assert "rag_step_log" in source, f"{node_func.__name__} missing rag_step_log"
         assert "rag_step_timer" in source, f"{node_func.__name__} missing rag_step_timer"

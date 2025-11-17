@@ -60,11 +60,11 @@ class QueryClassificationMetadata(BaseModel):
     domain: str = Field(..., description="The classified professional domain")
     action: str = Field(..., description="The classified user action/intent")
     confidence: float = Field(..., description="Classification confidence score (0-1)")
-    sub_domain: Optional[str] = Field(None, description="Specific sub-domain if detected")
-    document_type: Optional[str] = Field(None, description="Document type for generation requests")
+    sub_domain: str | None = Field(None, description="Specific sub-domain if detected")
+    document_type: str | None = Field(None, description="Document type for generation requests")
     fallback_used: bool = Field(False, description="Whether LLM fallback was used")
     domain_prompt_used: bool = Field(False, description="Whether domain-specific prompt was used")
-    reasoning: Optional[str] = Field(None, description="Classification reasoning")
+    reasoning: str | None = Field(None, description="Classification reasoning")
 
 
 class ResponseMetadata(BaseModel):
@@ -73,9 +73,9 @@ class ResponseMetadata(BaseModel):
     model_used: str = Field(..., description="LLM model that generated the response")
     provider: str = Field(..., description="LLM provider used")
     strategy: str = Field(..., description="Routing strategy applied")
-    cost_eur: Optional[float] = Field(None, description="Estimated cost in EUR")
-    processing_time_ms: Optional[int] = Field(None, description="Total processing time in milliseconds")
-    classification: Optional[QueryClassificationMetadata] = Field(None, description="Query classification metadata")
+    cost_eur: float | None = Field(None, description="Estimated cost in EUR")
+    processing_time_ms: int | None = Field(None, description="Total processing time in milliseconds")
+    classification: QueryClassificationMetadata | None = Field(None, description="Query classification metadata")
 
 
 class ChatRequest(BaseModel):
@@ -85,7 +85,7 @@ class ChatRequest(BaseModel):
         messages: List of messages in the conversation.
     """
 
-    messages: List[Message] = Field(
+    messages: list[Message] = Field(
         ...,
         description="List of messages in the conversation",
         min_length=1,
@@ -100,8 +100,8 @@ class ChatResponse(BaseModel):
         metadata: Optional response metadata for debugging and monitoring.
     """
 
-    messages: List[Message] = Field(..., description="List of messages in the conversation")
-    metadata: Optional[ResponseMetadata] = Field(None, description="Response metadata for debugging and monitoring")
+    messages: list[Message] = Field(..., description="List of messages in the conversation")
+    metadata: ResponseMetadata | None = Field(None, description="Response metadata for debugging and monitoring")
 
 
 class StreamResponse(BaseModel):

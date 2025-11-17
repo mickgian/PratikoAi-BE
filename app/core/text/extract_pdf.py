@@ -1,5 +1,4 @@
-"""
-PDF text extraction quality metrics (shared utilities).
+"""PDF text extraction quality metrics (shared utilities).
 
 This module provides text quality metrics used by PDF extractors.
 The actual extraction logic has moved to extract_pdf_plumber.py (pdfplumber + Tesseract).
@@ -35,9 +34,8 @@ from app.core.config import (
 logger = logging.getLogger(__name__)
 
 
-def text_metrics(text: str) -> Dict[str, Any]:
-    """
-    Compute quality metrics for text content.
+def text_metrics(text: str) -> dict[str, Any]:
+    """Compute quality metrics for text content.
 
     Args:
         text: Text content to analyze

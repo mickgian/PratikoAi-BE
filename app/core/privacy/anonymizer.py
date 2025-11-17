@@ -56,8 +56,8 @@ class AnonymizationResult:
     """Result of anonymization process."""
 
     anonymized_text: str
-    pii_matches: List[PIIMatch] = field(default_factory=list)
-    anonymization_map: Dict[str, str] = field(default_factory=dict)
+    pii_matches: list[PIIMatch] = field(default_factory=list)
+    anonymization_map: dict[str, str] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
@@ -68,9 +68,9 @@ class PIIAnonymizer:
         """Initialize the anonymizer with Italian-specific patterns."""
         self._patterns = self._build_patterns()
         self._name_patterns = self._build_name_patterns()
-        self._anonymization_cache: Dict[str, str] = {}
+        self._anonymization_cache: dict[str, str] = {}
 
-    def _build_patterns(self) -> Dict[PIIType, List[re.Pattern]]:
+    def _build_patterns(self) -> dict[PIIType, list[re.Pattern]]:
         """Build regex patterns for PII detection."""
         patterns = {
             PIIType.EMAIL: [re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", re.IGNORECASE)],
@@ -126,7 +126,7 @@ class PIIAnonymizer:
 
         return patterns
 
-    def _build_name_patterns(self) -> List[re.Pattern]:
+    def _build_name_patterns(self) -> list[re.Pattern]:
         """Build patterns for Italian names detection."""
         # Common Italian name prefixes and suffixes
         italian_prefixes = [
@@ -231,7 +231,7 @@ class PIIAnonymizer:
 
         return any(indicator in context for indicator in document_indicators)
 
-    def detect_pii(self, text: str) -> List[PIIMatch]:
+    def detect_pii(self, text: str) -> list[PIIMatch]:
         """Detect PII in text and return matches."""
         matches = []
 
@@ -381,10 +381,7 @@ class PIIAnonymizer:
             return False
 
         # Must start with capital letter and be reasonable length
-        if not text[0].isupper() or len(text) < 2 or len(text) > 50:
-            return False
-
-        return True
+        return not (not text[0].isupper() or len(text) < 2 or len(text) > 50)
 
     def anonymize_text(self, text: str, preserve_structure: bool = True) -> AnonymizationResult:
         """Anonymize PII in text while preserving structure."""
@@ -423,7 +420,7 @@ class PIIAnonymizer:
             anonymized_text=anonymized_text, pii_matches=matches, anonymization_map=anonymization_map
         )
 
-    def anonymize_structured_data(self, data: Dict) -> Tuple[Dict, AnonymizationResult]:
+    def anonymize_structured_data(self, data: dict) -> tuple[dict, AnonymizationResult]:
         """Anonymize PII in structured data (dictionaries)."""
         anonymized_data = {}
         all_matches = []
@@ -471,7 +468,7 @@ class PIIAnonymizer:
 
         return anonymized_data, result
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         """Get anonymization statistics."""
         return {
             "cached_anonymizations": len(self._anonymization_cache),

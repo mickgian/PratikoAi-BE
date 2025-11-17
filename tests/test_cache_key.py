@@ -1,6 +1,7 @@
 """Unit tests for hardened cache key generation."""
 
 import pytest
+
 from app.services.cache import CacheService
 
 
@@ -21,7 +22,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=True
+            tools_used=True,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -32,7 +33,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=True
+            tools_used=True,
         )
 
         assert key1 == key2
@@ -47,7 +48,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -58,7 +59,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         assert key1 != key2
@@ -73,7 +74,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -84,7 +85,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         assert key1 != key2
@@ -99,7 +100,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -110,7 +111,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         assert key1 != key2
@@ -125,7 +126,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -136,7 +137,7 @@ class TestHardenedCacheKey:
             provider="anthropic",  # Different
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         assert key1 != key2
@@ -151,7 +152,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -162,7 +163,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o",  # Different
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         assert key1 != key2
@@ -177,7 +178,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -188,7 +189,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.5,  # Different
-            tools_used=False
+            tools_used=False,
         )
 
         assert key1 != key2
@@ -203,7 +204,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -214,7 +215,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=True  # Different
+            tools_used=True,  # Different
         )
 
         assert key1 != key2
@@ -229,7 +230,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -240,7 +241,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         assert key1 != key2
@@ -255,7 +256,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -266,7 +267,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         # Should be the same because docs are sorted
@@ -282,7 +283,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -293,7 +294,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         # Should be the same
@@ -309,7 +310,7 @@ class TestHardenedCacheKey:
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         assert len(key) == 64
@@ -320,17 +321,12 @@ class TestHardenedCacheKey:
         key1 = self.cache._generate_hardened_response_key(
             query_signature="abc123",
             doc_hashes=None,
-            epochs={
-                "kb_epoch": 100,
-                "golden_epoch": 95,
-                "ccnl_epoch": 50,
-                "parser_version": 3
-            },
+            epochs={"kb_epoch": 100, "golden_epoch": 95, "ccnl_epoch": 50, "parser_version": 3},
             prompt_version="v1.0",
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         key2 = self.cache._generate_hardened_response_key(
@@ -340,13 +336,13 @@ class TestHardenedCacheKey:
                 "kb_epoch": 100,
                 "golden_epoch": 95,
                 "ccnl_epoch": 51,  # Different
-                "parser_version": 3
+                "parser_version": 3,
             },
             prompt_version="v1.0",
             provider="openai",
             model="gpt-4o-mini",
             temperature=0.2,
-            tools_used=False
+            tools_used=False,
         )
 
         assert key1 != key2

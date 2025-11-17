@@ -5,27 +5,28 @@ Tests that wrapper overhead meets P95 budget requirements.
 Uses time.perf_counter() for precise timing.
 """
 
-import pytest
 import time
 from unittest.mock import patch
 
-from tests.common.fixtures_state import make_state, state_needs_llm, state_with_tools
+import pytest
+
+from app.core.langgraph.nodes.step_059__check_cache import node_step_59
+from app.core.langgraph.nodes.step_064__llm_call import node_step_64
+from app.core.langgraph.nodes.step_080__kb_tool import node_step_80
+from tests.common.budgets import (
+    assert_within_budget,
+    calculate_p95,
+    get_cache_budget,
+    get_llm_budget,
+    get_tools_budget,
+    should_skip_perf_tests,
+)
 from tests.common.fakes import (
     fake_cache_check_orch,
     fake_llm_call_orch,
     fake_tool_execution_orch,
 )
-from tests.common.budgets import (
-    should_skip_perf_tests,
-    get_cache_budget,
-    get_llm_budget,
-    get_tools_budget,
-    calculate_p95,
-    assert_within_budget,
-)
-from app.core.langgraph.nodes.step_059__check_cache import node_step_59
-from app.core.langgraph.nodes.step_064__llm_call import node_step_64
-from app.core.langgraph.nodes.step_080__kb_tool import node_step_80
+from tests.common.fixtures_state import make_state, state_needs_llm, state_with_tools
 
 
 @pytest.mark.perf

@@ -19,7 +19,7 @@ from app.schemas.auth import Token
 from app.utils.sanitization import sanitize_string
 
 
-def create_access_token(thread_id: str, expires_delta: Optional[timedelta] = None) -> Token:
+def create_access_token(thread_id: str, expires_delta: timedelta | None = None) -> Token:
     """Create a new access token for a thread.
 
     Creates a JWT access token with a 2-hour expiration time by default.
@@ -52,7 +52,7 @@ def create_access_token(thread_id: str, expires_delta: Optional[timedelta] = Non
     return Token(access_token=encoded_jwt, expires_at=expire)
 
 
-def create_refresh_token(user_id: int, expires_delta: Optional[timedelta] = None) -> Token:
+def create_refresh_token(user_id: int, expires_delta: timedelta | None = None) -> Token:
     """Create a new refresh token for a user.
 
     Creates a JWT refresh token with a 7-day expiration time by default.
@@ -86,7 +86,7 @@ def create_refresh_token(user_id: int, expires_delta: Optional[timedelta] = None
     return Token(access_token=encoded_jwt, expires_at=expire)
 
 
-def verify_token(token: str) -> Optional[str]:
+def verify_token(token: str) -> str | None:
     """Verify a JWT access token and return the thread ID.
 
     Verifies the token signature, expiration, and format.
@@ -113,13 +113,13 @@ def verify_token(token: str) -> Optional[str]:
 
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        
+
         # Ensure this is not a refresh token
         token_type = payload.get("type")
         if token_type == "refresh":
             logger.warning("refresh_token_used_as_access_token")
             return None
-            
+
         thread_id: str = payload.get("sub")
         if thread_id is None:
             logger.warning("token_missing_thread_id")
@@ -133,7 +133,7 @@ def verify_token(token: str) -> Optional[str]:
         return None
 
 
-def verify_refresh_token(token: str) -> Optional[int]:
+def verify_refresh_token(token: str) -> int | None:
     """Verify a JWT refresh token and return the user ID.
 
     Verifies the token signature, expiration, and ensures it's a refresh token.
@@ -160,13 +160,13 @@ def verify_refresh_token(token: str) -> Optional[int]:
 
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        
+
         # Ensure this is a refresh token
         token_type = payload.get("type")
         if token_type != "refresh":
             logger.warning("access_token_used_as_refresh_token")
             return None
-            
+
         user_id_str: str = payload.get("sub")
         if user_id_str is None:
             logger.warning("refresh_token_missing_user_id")

@@ -1,8 +1,8 @@
 """Anthropic Claude provider implementation."""
 
+from collections.abc import AsyncGenerator
 from typing import (
     Any,
-    AsyncGenerator,
     Dict,
     List,
     Optional,
@@ -67,7 +67,7 @@ class AnthropicProvider(LLMProvider):
         return LLMProviderType.ANTHROPIC
 
     @property
-    def supported_models(self) -> Dict[str, LLMCostInfo]:
+    def supported_models(self) -> dict[str, LLMCostInfo]:
         """Get supported Anthropic models and their cost information.
 
         Costs are in EUR per 1K tokens (converted from USD).
@@ -94,7 +94,7 @@ class AnthropicProvider(LLMProvider):
             ),
         }
 
-    def _convert_messages_to_anthropic(self, messages: List[Message]) -> tuple[str, List[Dict[str, Any]]]:
+    def _convert_messages_to_anthropic(self, messages: list[Message]) -> tuple[str, list[dict[str, Any]]]:
         """Convert messages to Anthropic format.
 
         Args:
@@ -117,7 +117,7 @@ class AnthropicProvider(LLMProvider):
 
         return system_prompt, conversation_messages
 
-    def _convert_tools_to_anthropic(self, tools: Optional[List[Any]]) -> Optional[List[Dict[str, Any]]]:
+    def _convert_tools_to_anthropic(self, tools: list[Any] | None) -> list[dict[str, Any]] | None:
         """Convert tools to Anthropic format.
 
         Args:
@@ -156,11 +156,11 @@ class AnthropicProvider(LLMProvider):
 
     async def chat_completion(
         self,
-        messages: List[Message],
-        tools: Optional[List[Any]] = None,
+        messages: list[Message],
+        tools: list[Any] | None = None,
         temperature: float = 0.2,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        max_tokens: int | None = None,
+        **kwargs,
     ) -> LLMResponse:
         """Generate a chat completion using Anthropic Claude.
 
@@ -244,12 +244,12 @@ class AnthropicProvider(LLMProvider):
 
     async def stream_completion(
         self,
-        messages: List[Message],
-        tools: Optional[List[Any]] = None,
+        messages: list[Message],
+        tools: list[Any] | None = None,
         temperature: float = 0.2,
-        max_tokens: Optional[int] = None,
-        **kwargs
-    ) -> AsyncGenerator[LLMStreamResponse, None]:
+        max_tokens: int | None = None,
+        **kwargs,
+    ) -> AsyncGenerator[LLMStreamResponse]:
         """Generate a streaming chat completion using Anthropic Claude.
 
         Args:
@@ -317,7 +317,7 @@ class AnthropicProvider(LLMProvider):
             )
             raise
 
-    def estimate_tokens(self, messages: List[Message]) -> int:
+    def estimate_tokens(self, messages: list[Message]) -> int:
         """Estimate token count for Anthropic models.
 
         This is a rough estimation based on character count.
@@ -384,7 +384,7 @@ class AnthropicProvider(LLMProvider):
             )
             return False
 
-    def get_model_capabilities(self) -> Dict[str, bool]:
+    def get_model_capabilities(self) -> dict[str, bool]:
         """Get capabilities of the current Anthropic model.
 
         Returns:
@@ -393,25 +393,11 @@ class AnthropicProvider(LLMProvider):
         base_capabilities = super().get_model_capabilities()
 
         # Model-specific capabilities
-        if self.model == "claude-3-haiku-20240307":
-            base_capabilities.update(
-                {
-                    "supports_json_mode": False,
-                    "supports_function_calling": True,
-                    "max_context_length": 200000,
-                    "supports_vision": True,
-                }
-            )
-        elif self.model == "claude-3-sonnet-20241022":
-            base_capabilities.update(
-                {
-                    "supports_json_mode": False,
-                    "supports_function_calling": True,
-                    "max_context_length": 200000,
-                    "supports_vision": True,
-                }
-            )
-        elif self.model == "claude-3-opus-20240229":
+        if (
+            self.model == "claude-3-haiku-20240307"
+            or self.model == "claude-3-sonnet-20241022"
+            or self.model == "claude-3-opus-20240229"
+        ):
             base_capabilities.update(
                 {
                     "supports_json_mode": False,

@@ -1,5 +1,4 @@
-"""
-End-to-End Acceptance Test for LLM Query Normalization
+"""End-to-End Acceptance Test for LLM Query Normalization
 
 This script tests the complete flow:
 1. User query with linguistic variation (written numbers, abbreviations, typos)
@@ -16,7 +15,6 @@ from app.services.query_normalizer import QueryNormalizer
 
 async def test_query_variations():
     """Test various query formats that should all resolve to the same document."""
-
     normalizer = QueryNormalizer()
 
     test_cases = [
@@ -74,7 +72,6 @@ async def test_query_variations():
 
 async def test_original_failing_query():
     """Test the original failing query from the user's bug report."""
-
     print()
     print("=" * 80)
     print("ORIGINAL FAILING QUERY TEST")
@@ -103,7 +100,6 @@ async def test_original_failing_query():
 
 async def main():
     """Run all acceptance tests."""
-
     # Test 1: Query variations
     passed, failed = await test_query_variations()
 

@@ -2,13 +2,15 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Dict, Any
-from sqlmodel import Field, SQLModel, Column, JSON
+from typing import Any, Dict, Optional
+
 from sqlalchemy import Index
+from sqlmodel import JSON, Column, Field, SQLModel
 
 
 class SubscriptionStatus(str, Enum):
     """Subscription status types."""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     PAST_DUE = "past_due"
@@ -21,6 +23,7 @@ class SubscriptionStatus(str, Enum):
 
 class PaymentStatus(str, Enum):
     """Payment status types."""
+
     PENDING = "pending"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
@@ -30,6 +33,7 @@ class PaymentStatus(str, Enum):
 
 class PlanType(str, Enum):
     """Subscription plan types."""
+
     TRIAL = "trial"
     MONTHLY = "monthly"
     YEARLY = "yearly"
@@ -38,40 +42,40 @@ class PlanType(str, Enum):
 
 class Subscription(SQLModel, table=True):
     """User subscription model."""
-    
+
     __tablename__ = "subscriptions"
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
+
+    id: int | None = Field(default=None, primary_key=True)
     user_id: str = Field(..., description="User ID from session")
-    
+
     # Stripe-specific fields
     stripe_subscription_id: str = Field(..., description="Stripe subscription ID")
     stripe_customer_id: str = Field(..., description="Stripe customer ID")
     stripe_price_id: str = Field(..., description="Stripe price ID")
-    
+
     # Subscription details
     status: SubscriptionStatus = Field(default=SubscriptionStatus.INACTIVE)
     plan_type: PlanType = Field(default=PlanType.MONTHLY)
     amount_eur: float = Field(..., description="Monthly amount in EUR")
     currency: str = Field(default="eur", description="Currency code")
-    
+
     # Billing cycle
     current_period_start: datetime = Field(..., description="Current billing period start")
     current_period_end: datetime = Field(..., description="Current billing period end")
-    
+
     # Trial information
-    trial_start: Optional[datetime] = Field(default=None, description="Trial period start")
-    trial_end: Optional[datetime] = Field(default=None, description="Trial period end")
-    
+    trial_start: datetime | None = Field(default=None, description="Trial period start")
+    trial_end: datetime | None = Field(default=None, description="Trial period end")
+
     # Subscription lifecycle
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    canceled_at: Optional[datetime] = Field(default=None, description="Cancellation timestamp")
-    ended_at: Optional[datetime] = Field(default=None, description="End timestamp")
-    
+    canceled_at: datetime | None = Field(default=None, description="Cancellation timestamp")
+    ended_at: datetime | None = Field(default=None, description="End timestamp")
+
     # Additional data
-    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
-    
+    extra_data: dict[str, Any] | None = Field(default_factory=dict, sa_column=Column(JSON))
+
     __table_args__ = (
         Index("idx_subscription_user_id", "user_id"),
         Index("idx_subscription_stripe_id", "stripe_subscription_id"),
@@ -82,41 +86,41 @@ class Subscription(SQLModel, table=True):
 
 class Payment(SQLModel, table=True):
     """Payment transaction model."""
-    
+
     __tablename__ = "payments"
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
+
+    id: int | None = Field(default=None, primary_key=True)
     user_id: str = Field(..., description="User ID from session")
-    subscription_id: Optional[int] = Field(default=None, foreign_key="subscriptions.id")
-    
+    subscription_id: int | None = Field(default=None, foreign_key="subscriptions.id")
+
     # Stripe-specific fields
     stripe_payment_intent_id: str = Field(..., description="Stripe payment intent ID")
-    stripe_invoice_id: Optional[str] = Field(default=None, description="Stripe invoice ID")
-    stripe_charge_id: Optional[str] = Field(default=None, description="Stripe charge ID")
-    
+    stripe_invoice_id: str | None = Field(default=None, description="Stripe invoice ID")
+    stripe_charge_id: str | None = Field(default=None, description="Stripe charge ID")
+
     # Payment details
     amount_eur: float = Field(..., description="Payment amount in EUR")
     currency: str = Field(default="eur", description="Currency code")
     status: PaymentStatus = Field(default=PaymentStatus.PENDING)
-    
+
     # Payment method
-    payment_method_type: Optional[str] = Field(default=None, description="e.g., card, sepa_debit")
-    payment_method_last4: Optional[str] = Field(default=None, description="Last 4 digits of payment method")
-    payment_method_brand: Optional[str] = Field(default=None, description="e.g., visa, mastercard")
-    
+    payment_method_type: str | None = Field(default=None, description="e.g., card, sepa_debit")
+    payment_method_last4: str | None = Field(default=None, description="Last 4 digits of payment method")
+    payment_method_brand: str | None = Field(default=None, description="e.g., visa, mastercard")
+
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    paid_at: Optional[datetime] = Field(default=None, description="Payment completion timestamp")
-    failed_at: Optional[datetime] = Field(default=None, description="Payment failure timestamp")
-    
+    paid_at: datetime | None = Field(default=None, description="Payment completion timestamp")
+    failed_at: datetime | None = Field(default=None, description="Payment failure timestamp")
+
     # Failure information
-    failure_reason: Optional[str] = Field(default=None, description="Reason for payment failure")
-    failure_code: Optional[str] = Field(default=None, description="Stripe failure code")
-    
+    failure_reason: str | None = Field(default=None, description="Reason for payment failure")
+    failure_code: str | None = Field(default=None, description="Stripe failure code")
+
     # Additional data
-    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
-    
+    extra_data: dict[str, Any] | None = Field(default_factory=dict, sa_column=Column(JSON))
+
     __table_args__ = (
         Index("idx_payment_user_id", "user_id"),
         Index("idx_payment_subscription_id", "subscription_id"),
@@ -128,45 +132,45 @@ class Payment(SQLModel, table=True):
 
 class Invoice(SQLModel, table=True):
     """Invoice model for billing history."""
-    
+
     __tablename__ = "invoices"
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
+
+    id: int | None = Field(default=None, primary_key=True)
     user_id: str = Field(..., description="User ID from session")
-    subscription_id: Optional[int] = Field(default=None, foreign_key="subscriptions.id")
-    payment_id: Optional[int] = Field(default=None, foreign_key="payments.id")
-    
+    subscription_id: int | None = Field(default=None, foreign_key="subscriptions.id")
+    payment_id: int | None = Field(default=None, foreign_key="payments.id")
+
     # Stripe-specific fields
     stripe_invoice_id: str = Field(..., description="Stripe invoice ID")
-    stripe_subscription_id: Optional[str] = Field(default=None, description="Associated Stripe subscription")
-    
+    stripe_subscription_id: str | None = Field(default=None, description="Associated Stripe subscription")
+
     # Invoice details
     invoice_number: str = Field(..., description="Human-readable invoice number")
     amount_eur: float = Field(..., description="Invoice amount in EUR")
     tax_eur: float = Field(default=0.0, description="Tax amount in EUR")
     total_eur: float = Field(..., description="Total amount including tax")
     currency: str = Field(default="eur", description="Currency code")
-    
+
     # Invoice status
     status: str = Field(..., description="Invoice status (draft, open, paid, void, uncollectible)")
     paid: bool = Field(default=False, description="Whether invoice is paid")
-    
+
     # Billing period
     period_start: datetime = Field(..., description="Billing period start")
     period_end: datetime = Field(..., description="Billing period end")
-    
+
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    due_date: Optional[datetime] = Field(default=None, description="Invoice due date")
-    paid_at: Optional[datetime] = Field(default=None, description="Payment timestamp")
-    
+    due_date: datetime | None = Field(default=None, description="Invoice due date")
+    paid_at: datetime | None = Field(default=None, description="Payment timestamp")
+
     # Download URLs
-    invoice_pdf_url: Optional[str] = Field(default=None, description="URL to download PDF")
-    hosted_invoice_url: Optional[str] = Field(default=None, description="Stripe hosted invoice URL")
-    
+    invoice_pdf_url: str | None = Field(default=None, description="URL to download PDF")
+    hosted_invoice_url: str | None = Field(default=None, description="Stripe hosted invoice URL")
+
     # Additional data
-    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
-    
+    extra_data: dict[str, Any] | None = Field(default_factory=dict, sa_column=Column(JSON))
+
     __table_args__ = (
         Index("idx_invoice_user_id", "user_id"),
         Index("idx_invoice_subscription_id", "subscription_id"),
@@ -178,38 +182,38 @@ class Invoice(SQLModel, table=True):
 
 class Customer(SQLModel, table=True):
     """Stripe customer model."""
-    
+
     __tablename__ = "customers"
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
+
+    id: int | None = Field(default=None, primary_key=True)
     user_id: str = Field(..., unique=True, description="User ID from session")
-    
+
     # Stripe-specific fields
     stripe_customer_id: str = Field(..., unique=True, description="Stripe customer ID")
-    
+
     # Customer details
     email: str = Field(..., description="Customer email")
-    name: Optional[str] = Field(default=None, description="Customer name")
-    
+    name: str | None = Field(default=None, description="Customer name")
+
     # Billing address
-    address_line1: Optional[str] = Field(default=None)
-    address_line2: Optional[str] = Field(default=None)
-    address_city: Optional[str] = Field(default=None)
-    address_state: Optional[str] = Field(default=None)
-    address_postal_code: Optional[str] = Field(default=None)
-    address_country: Optional[str] = Field(default=None)
-    
+    address_line1: str | None = Field(default=None)
+    address_line2: str | None = Field(default=None)
+    address_city: str | None = Field(default=None)
+    address_state: str | None = Field(default=None)
+    address_postal_code: str | None = Field(default=None)
+    address_country: str | None = Field(default=None)
+
     # Tax information
-    tax_id: Optional[str] = Field(default=None, description="VAT number or tax ID")
+    tax_id: str | None = Field(default=None, description="VAT number or tax ID")
     tax_exempt: bool = Field(default=False, description="Tax exemption status")
-    
+
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Additional data
-    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSON))
-    
+    extra_data: dict[str, Any] | None = Field(default_factory=dict, sa_column=Column(JSON))
+
     __table_args__ = (
         Index("idx_customer_user_id", "user_id"),
         Index("idx_customer_stripe_id", "stripe_customer_id"),
@@ -219,29 +223,29 @@ class Customer(SQLModel, table=True):
 
 class WebhookEvent(SQLModel, table=True):
     """Stripe webhook event log."""
-    
+
     __tablename__ = "webhook_events"
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
-    
+
+    id: int | None = Field(default=None, primary_key=True)
+
     # Stripe event details
     stripe_event_id: str = Field(..., unique=True, description="Stripe event ID")
     event_type: str = Field(..., description="Event type (e.g., invoice.payment_succeeded)")
-    
+
     # Processing status
     processed: bool = Field(default=False, description="Whether event was processed")
-    processed_at: Optional[datetime] = Field(default=None, description="Processing timestamp")
-    
+    processed_at: datetime | None = Field(default=None, description="Processing timestamp")
+
     # Error handling
     error_count: int = Field(default=0, description="Number of processing errors")
-    last_error: Optional[str] = Field(default=None, description="Last processing error")
-    last_error_at: Optional[datetime] = Field(default=None, description="Last error timestamp")
-    
+    last_error: str | None = Field(default=None, description="Last processing error")
+    last_error_at: datetime | None = Field(default=None, description="Last error timestamp")
+
     # Event data
-    event_data: Dict[str, Any] = Field(..., sa_column=Column(JSON), description="Full event data")
-    
+    event_data: dict[str, Any] = Field(..., sa_column=Column(JSON), description="Full event data")
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     __table_args__ = (
         Index("idx_webhook_stripe_event_id", "stripe_event_id"),
         Index("idx_webhook_event_type", "event_type"),

@@ -26,7 +26,6 @@ depends_on = None
 
 def upgrade():
     """Improve FTS with unaccent and weighted search"""
-
     # Enable unaccent extension (idempotent)
     op.execute("CREATE EXTENSION IF NOT EXISTS unaccent;")
 
@@ -128,7 +127,6 @@ def upgrade():
 
 def downgrade():
     """Revert FTS improvements"""
-
     # Drop triggers
     op.execute("DROP TRIGGER IF EXISTS trg_ki_tsv ON knowledge_items;")
     op.execute("DROP TRIGGER IF EXISTS trg_kc_tsv ON knowledge_chunks;")

@@ -1,22 +1,22 @@
-"""
-Italian Tax Deduction Rules and Timelines Engine.
+"""Italian Tax Deduction Rules and Timelines Engine.
 
 This module provides comprehensive handling of Italian tax deductions with specific
 rules, eligibility criteria, documentation requirements, and submission timelines.
 """
 
-from datetime import date, datetime, timedelta
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Dict, List, Optional, Any, Tuple
-from enum import Enum
 from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
-from app.core.tax_constants import TAX_DEDUCTIONS_2024, TAX_CALENDAR_2024
 from app.core.logging import logger
+from app.core.tax_constants import TAX_CALENDAR_2024, TAX_DEDUCTIONS_2024
 
 
 class DeductionCategory(str, Enum):
     """Categories of tax deductions."""
+
     WORK_RELATED = "work_related"
     FAMILY = "family"
     HEALTH = "health"
@@ -30,6 +30,7 @@ class DeductionCategory(str, Enum):
 
 class DeductionType(str, Enum):
     """Types of deduction calculations."""
+
     FIXED_AMOUNT = "fixed_amount"
     PERCENTAGE = "percentage"
     PROGRESSIVE = "progressive"
@@ -38,6 +39,7 @@ class DeductionType(str, Enum):
 
 class DocumentType(str, Enum):
     """Required documentation types."""
+
     RECEIPT = "receipt"
     INVOICE = "invoice"
     CERTIFICATE = "certificate"
@@ -50,52 +52,53 @@ class DocumentType(str, Enum):
 @dataclass
 class DeductionRule:
     """Complete deduction rule with eligibility and timeline."""
+
     id: str
     name: str
     category: DeductionCategory
     deduction_type: DeductionType
-    
+
     # Financial parameters
-    max_amount: Optional[Decimal]
-    rate: Optional[Decimal]
-    threshold: Optional[Decimal]
-    income_cap: Optional[Decimal]
-    
+    max_amount: Decimal | None
+    rate: Decimal | None
+    threshold: Decimal | None
+    income_cap: Decimal | None
+
     # Timeline requirements
     expense_period_start: date
     expense_period_end: date
     submission_deadline: date
-    payment_deadline: Optional[date]
-    
+    payment_deadline: date | None
+
     # Eligibility criteria
-    min_income: Optional[Decimal]
-    max_income: Optional[Decimal]
-    age_restrictions: Optional[Tuple[int, int]]
-    family_status_required: Optional[str]
-    
+    min_income: Decimal | None
+    max_income: Decimal | None
+    age_restrictions: tuple[int, int] | None
+    family_status_required: str | None
+
     # Documentation requirements
-    required_documents: List[DocumentType]
+    required_documents: list[DocumentType]
     retention_period_years: int
-    
+
     # Special conditions
-    conditions: List[str]
-    exclusions: List[str]
-    
+    conditions: list[str]
+    exclusions: list[str]
+
     description: str
     legal_reference: str
 
 
 class ItalianTaxDeductionEngine:
     """Comprehensive engine for Italian tax deductions with rules and timelines."""
-    
+
     def __init__(self):
         self.deduction_rules = self._initialize_deduction_rules()
         self.current_year = datetime.now().year
-        
-    def _initialize_deduction_rules(self) -> Dict[str, DeductionRule]:
+
+    def _initialize_deduction_rules(self) -> dict[str, DeductionRule]:
         """Initialize comprehensive deduction rules for 2024."""
         rules = {}
-        
+
         # Medical Expenses Deductions
         rules["medical_basic"] = DeductionRule(
             id="medical_basic",
@@ -119,16 +122,16 @@ class ItalianTaxDeductionEngine:
             conditions=[
                 "Spese sostenute per sé, coniuge e familiari a carico",
                 "Franchise di €129.11 applicabile",
-                "Include: visite mediche, esami, medicine, protesi, occhiali"
+                "Include: visite mediche, esami, medicine, protesi, occhiali",
             ],
             exclusions=[
                 "Spese rimborsate da assicurazioni o SSN",
-                "Medicine senza prescrizione medica (salvo casi specifici)"
+                "Medicine senza prescrizione medica (salvo casi specifici)",
             ],
             description="Detrazioni per spese mediche e sanitarie con detrazione 19%",
-            legal_reference="Art. 15, comma 1, lett. c) TUIR"
+            legal_reference="Art. 15, comma 1, lett. c) TUIR",
         )
-        
+
         # Home Renovation Deductions
         rules["ecobonus_65"] = DeductionRule(
             id="ecobonus_65",
@@ -147,26 +150,19 @@ class ItalianTaxDeductionEngine:
             max_income=None,
             age_restrictions=None,
             family_status_required=None,
-            required_documents=[
-                DocumentType.INVOICE,
-                DocumentType.BANK_STATEMENT,
-                DocumentType.CERTIFICATE
-            ],
+            required_documents=[DocumentType.INVOICE, DocumentType.BANK_STATEMENT, DocumentType.CERTIFICATE],
             retention_period_years=10,
             conditions=[
                 "Interventi su unità immobiliari esistenti",
                 "Comunicazione ENEA entro 90 giorni",
                 "Pagamento tramite bonifico parlante",
-                "Asseverazione tecnica obbligatoria"
+                "Asseverazione tecnica obbligatoria",
             ],
-            exclusions=[
-                "Immobili di nuova costruzione",
-                "Lavori iniziati prima del 1° gennaio 2024"
-            ],
+            exclusions=["Immobili di nuova costruzione", "Lavori iniziati prima del 1° gennaio 2024"],
             description="Detrazione 65% per interventi di efficienza energetica",
-            legal_reference="Art. 14 D.L. 63/2013, L. 90/2013"
+            legal_reference="Art. 14 D.L. 63/2013, L. 90/2013",
         )
-        
+
         rules["superbonus_90"] = DeductionRule(
             id="superbonus_90",
             name="Superbonus 90% - Anno 2024",
@@ -184,28 +180,24 @@ class ItalianTaxDeductionEngine:
             max_income=Decimal("25000"),
             age_restrictions=None,
             family_status_required=None,
-            required_documents=[
-                DocumentType.INVOICE,
-                DocumentType.BANK_STATEMENT,
-                DocumentType.CERTIFICATE
-            ],
+            required_documents=[DocumentType.INVOICE, DocumentType.BANK_STATEMENT, DocumentType.CERTIFICATE],
             retention_period_years=10,
             conditions=[
                 "ISEE non superiore a €25.000 per unifamiliari",
                 "Interventi trainanti + trainati",
                 "Miglioramento di almeno 2 classi energetiche",
                 "Comunicazione ENEA entro 90 giorni",
-                "Asseverazione tecnica e visto conformità obbligatori"
+                "Asseverazione tecnica e visto conformità obbligatori",
             ],
             exclusions=[
                 "Seconde case (salvo condomini)",
                 "ISEE superiore a €25.000",
-                "Immobili di lusso categorie A/1, A/8, A/9"
+                "Immobili di lusso categorie A/1, A/8, A/9",
             ],
             description="Superbonus 90% per efficienza energetica e sismica (2024)",
-            legal_reference="Art. 119 D.L. 34/2020"
+            legal_reference="Art. 119 D.L. 34/2020",
         )
-        
+
         # Education Deductions
         rules["university_fees"] = DeductionRule(
             id="university_fees",
@@ -230,16 +222,13 @@ class ItalianTaxDeductionEngine:
                 "Tasse e contributi obbligatori",
                 "Università statali: importo effettivo",
                 "Università non statali: max €3.700",
-                "Master e corsi post-laurea inclusi"
+                "Master e corsi post-laurea inclusi",
             ],
-            exclusions=[
-                "Tasse per esami integrativi",
-                "Spese per alloggi e vitto"
-            ],
+            exclusions=["Tasse per esami integrativi", "Spese per alloggi e vitto"],
             description="Detrazione 19% per spese universitarie",
-            legal_reference="Art. 15, comma 1, lett. e) TUIR"
+            legal_reference="Art. 15, comma 1, lett. e) TUIR",
         )
-        
+
         # Charity Donations
         rules["charity_donations"] = DeductionRule(
             id="charity_donations",
@@ -263,17 +252,13 @@ class ItalianTaxDeductionEngine:
             conditions=[
                 "ONLUS, OdV, APS, enti religiosi riconosciuti",
                 "Versamento tramite banca, posta, carte di pagamento",
-                "Ricevuta con codice fiscale dell'ente"
+                "Ricevuta con codice fiscale dell'ente",
             ],
-            exclusions=[
-                "Donazioni in contanti",
-                "Enti non qualificati",
-                "Donazioni a partiti politici"
-            ],
+            exclusions=["Donazioni in contanti", "Enti non qualificati", "Donazioni a partiti politici"],
             description="Detrazione 30% per donazioni a ONLUS ed enti benefici",
-            legal_reference="Art. 15, comma 1.1 TUIR"
+            legal_reference="Art. 15, comma 1.1 TUIR",
         )
-        
+
         # Family Deductions with Complex Rules
         rules["dependent_children"] = DeductionRule(
             id="dependent_children",
@@ -299,16 +284,13 @@ class ItalianTaxDeductionEngine:
                 "Base: €950 per figlio",
                 "Maggiorazione €270 se età < 3 anni",
                 "Maggiorazione €400 se disabile",
-                "Detrazione spetta al 50% per ciascun genitore"
+                "Detrazione spetta al 50% per ciascun genitore",
             ],
-            exclusions=[
-                "Reddito genitori > €95.000",
-                "Figlio con reddito superiore ai limiti"
-            ],
+            exclusions=["Reddito genitori > €95.000", "Figlio con reddito superiore ai limiti"],
             description="Detrazioni per figli fiscalmente a carico",
-            legal_reference="Art. 12 TUIR"
+            legal_reference="Art. 12 TUIR",
         )
-        
+
         # Professional Expenses
         rules["professional_training"] = DeductionRule(
             id="professional_training",
@@ -333,76 +315,58 @@ class ItalianTaxDeductionEngine:
                 "Corsi di formazione, aggiornamento, qualificazione",
                 "Finalizzati all'attività lavorativa",
                 "Enti riconosciuti o università",
-                "Include spese di iscrizione e frequenza"
+                "Include spese di iscrizione e frequenza",
             ],
-            exclusions=[
-                "Corsi non inerenti l'attività professionale",
-                "Spese per hobby o svago"
-            ],
+            exclusions=["Corsi non inerenti l'attività professionale", "Spese per hobby o svago"],
             description="Detrazione 19% per spese di formazione professionale",
-            legal_reference="Art. 15, comma 1, lett. i-octies) TUIR"
+            legal_reference="Art. 15, comma 1, lett. i-octies) TUIR",
         )
-        
+
         return rules
-    
+
     def get_eligible_deductions(
-        self,
-        income: Decimal,
-        family_status: str = "single",
-        age: int = 35,
-        has_dependents: bool = False
-    ) -> List[DeductionRule]:
+        self, income: Decimal, family_status: str = "single", age: int = 35, has_dependents: bool = False
+    ) -> list[DeductionRule]:
         """Get all eligible deductions based on taxpayer profile."""
         eligible = []
-        
+
         for rule in self.deduction_rules.values():
             if self._check_eligibility(rule, income, family_status, age, has_dependents):
                 eligible.append(rule)
-        
+
         return eligible
-    
+
     def _check_eligibility(
-        self,
-        rule: DeductionRule,
-        income: Decimal,
-        family_status: str,
-        age: int,
-        has_dependents: bool
+        self, rule: DeductionRule, income: Decimal, family_status: str, age: int, has_dependents: bool
     ) -> bool:
         """Check if taxpayer is eligible for specific deduction."""
-        
         # Income checks
         if rule.min_income and income < rule.min_income:
             return False
         if rule.max_income and income > rule.max_income:
             return False
-        
+
         # Age restrictions
         if rule.age_restrictions:
             min_age, max_age = rule.age_restrictions
             if age < min_age or age > max_age:
                 return False
-        
+
         # Family status requirements
         if rule.family_status_required:
             if family_status != rule.family_status_required:
                 return False
-        
+
         return True
-    
+
     def calculate_deduction_amount(
-        self,
-        rule_id: str,
-        expense_amount: Decimal,
-        income: Decimal = None,
-        additional_params: Dict[str, Any] = None
-    ) -> Dict[str, Any]:
+        self, rule_id: str, expense_amount: Decimal, income: Decimal = None, additional_params: dict[str, Any] = None
+    ) -> dict[str, Any]:
         """Calculate the actual deduction amount for a specific rule."""
-        
         rule = self.deduction_rules.get(rule_id)
         if not rule:
             raise ValueError(f"Deduction rule {rule_id} not found")
-        
+
         result = {
             "rule_id": rule_id,
             "rule_name": rule.name,
@@ -413,9 +377,9 @@ class ItalianTaxDeductionEngine:
             "applicable_rate": rule.rate,
             "conditions_met": True,
             "warnings": [],
-            "next_deadline": None
+            "next_deadline": None,
         }
-        
+
         # Apply threshold if exists
         if rule.threshold:
             if expense_amount <= rule.threshold:
@@ -424,7 +388,7 @@ class ItalianTaxDeductionEngine:
                 result["warnings"].append(f"Expense below threshold of €{rule.threshold}")
                 return result
             expense_amount = expense_amount - rule.threshold
-        
+
         # Calculate based on deduction type
         if rule.deduction_type == DeductionType.PERCENTAGE:
             deductible = expense_amount * (rule.rate / 100)
@@ -434,47 +398,43 @@ class ItalianTaxDeductionEngine:
             deductible = expense_amount * (rule.rate / 100)
         else:  # Progressive
             deductible = self._calculate_progressive_deduction(rule, expense_amount, additional_params)
-        
+
         # Apply maximum cap
         if rule.max_amount and deductible > rule.max_amount:
             deductible = rule.max_amount
             result["warnings"].append(f"Deduction capped at maximum €{rule.max_amount}")
-        
-        result["deductible_amount"] = float(deductible.quantize(Decimal('0.01'), ROUND_HALF_UP))
-        
+
+        result["deductible_amount"] = float(deductible.quantize(Decimal("0.01"), ROUND_HALF_UP))
+
         # Calculate tax savings (assuming average 35% marginal rate)
         marginal_rate = self._estimate_marginal_rate(income) if income else Decimal("35")
-        result["tax_savings"] = float((deductible * marginal_rate / 100).quantize(Decimal('0.01'), ROUND_HALF_UP))
-        
+        result["tax_savings"] = float((deductible * marginal_rate / 100).quantize(Decimal("0.01"), ROUND_HALF_UP))
+
         # Add timeline information
         result["next_deadline"] = rule.submission_deadline.isoformat()
-        
+
         return result
-    
+
     def _calculate_progressive_deduction(
-        self,
-        rule: DeductionRule,
-        expense_amount: Decimal,
-        additional_params: Dict[str, Any]
+        self, rule: DeductionRule, expense_amount: Decimal, additional_params: dict[str, Any]
     ) -> Decimal:
         """Calculate progressive deduction (complex family deductions)."""
-        
         if rule.id == "dependent_children":
             # Base deduction
             base_deduction = Decimal("950")
-            
+
             # Age bonus
             if additional_params and additional_params.get("child_age", 0) < 3:
                 base_deduction += Decimal("270")
-            
+
             # Disability bonus
             if additional_params and additional_params.get("disabled", False):
                 base_deduction += Decimal("400")
-            
+
             return base_deduction
-        
+
         return expense_amount * (rule.rate / 100) if rule.rate else Decimal("0")
-    
+
     def _estimate_marginal_rate(self, income: Decimal) -> Decimal:
         """Estimate marginal tax rate based on income."""
         if income <= 15000:
@@ -485,34 +445,36 @@ class ItalianTaxDeductionEngine:
             return Decimal("35")
         else:
             return Decimal("43")
-    
-    def get_upcoming_deadlines(self, days_ahead: int = 90) -> List[Dict[str, Any]]:
+
+    def get_upcoming_deadlines(self, days_ahead: int = 90) -> list[dict[str, Any]]:
         """Get upcoming deduction-related deadlines."""
         cutoff_date = datetime.now().date() + timedelta(days=days_ahead)
         deadlines = []
-        
+
         for rule in self.deduction_rules.values():
             if rule.submission_deadline <= cutoff_date:
                 days_left = (rule.submission_deadline - datetime.now().date()).days
-                
-                deadlines.append({
-                    "rule_id": rule.id,
-                    "rule_name": rule.name,
-                    "deadline": rule.submission_deadline.isoformat(),
-                    "days_left": days_left,
-                    "category": rule.category.value,
-                    "urgency": "urgent" if days_left <= 30 else "moderate" if days_left <= 60 else "normal",
-                    "required_documents": [doc.value for doc in rule.required_documents]
-                })
-        
+
+                deadlines.append(
+                    {
+                        "rule_id": rule.id,
+                        "rule_name": rule.name,
+                        "deadline": rule.submission_deadline.isoformat(),
+                        "days_left": days_left,
+                        "category": rule.category.value,
+                        "urgency": "urgent" if days_left <= 30 else "moderate" if days_left <= 60 else "normal",
+                        "required_documents": [doc.value for doc in rule.required_documents],
+                    }
+                )
+
         return sorted(deadlines, key=lambda x: x["days_left"])
-    
-    def get_deduction_documentation_requirements(self, rule_id: str) -> Dict[str, Any]:
+
+    def get_deduction_documentation_requirements(self, rule_id: str) -> dict[str, Any]:
         """Get detailed documentation requirements for a deduction."""
         rule = self.deduction_rules.get(rule_id)
         if not rule:
             return {"error": "Rule not found"}
-        
+
         return {
             "rule_name": rule.name,
             "required_documents": [doc.value for doc in rule.required_documents],
@@ -521,81 +483,70 @@ class ItalianTaxDeductionEngine:
             "conditions": rule.conditions,
             "exclusions": rule.exclusions,
             "legal_reference": rule.legal_reference,
-            "documentation_tips": self._get_documentation_tips(rule)
+            "documentation_tips": self._get_documentation_tips(rule),
         }
-    
-    def _get_documentation_tips(self, rule: DeductionRule) -> List[str]:
+
+    def _get_documentation_tips(self, rule: DeductionRule) -> list[str]:
         """Get documentation tips for a specific deduction."""
         tips = []
-        
+
         if DocumentType.RECEIPT in rule.required_documents:
             tips.append("Conservare ricevute fiscali originali con data, importo e causale")
-        
+
         if DocumentType.BANK_STATEMENT in rule.required_documents:
             tips.append("Utilizzare bonifico parlante con causale specifica per lavori edilizi")
-        
+
         if DocumentType.MEDICAL_PRESCRIPTION in rule.required_documents:
             tips.append("Necessaria prescrizione medica per farmaci e dispositivi medici")
-        
+
         if rule.category == DeductionCategory.HOME_RENOVATIONS:
-            tips.extend([
-                "Comunicazione ENEA entro 90 giorni dalla fine lavori",
-                "Asseverazione tecnica obbligatoria per alcuni interventi",
-                "Fatture elettroniche obbligatorie"
-            ])
-        
+            tips.extend(
+                [
+                    "Comunicazione ENEA entro 90 giorni dalla fine lavori",
+                    "Asseverazione tecnica obbligatoria per alcuni interventi",
+                    "Fatture elettroniche obbligatorie",
+                ]
+            )
+
         return tips
-    
+
     def validate_deduction_claim(
-        self,
-        rule_id: str,
-        expense_amount: Decimal,
-        expense_date: date,
-        taxpayer_profile: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, rule_id: str, expense_amount: Decimal, expense_date: date, taxpayer_profile: dict[str, Any]
+    ) -> dict[str, Any]:
         """Validate a deduction claim against rules and deadlines."""
         rule = self.deduction_rules.get(rule_id)
         if not rule:
             return {"valid": False, "error": "Rule not found"}
-        
-        validation_result = {
-            "valid": True,
-            "warnings": [],
-            "errors": [],
-            "suggestions": []
-        }
-        
+
+        validation_result = {"valid": True, "warnings": [], "errors": [], "suggestions": []}
+
         # Date validation
         if expense_date < rule.expense_period_start or expense_date > rule.expense_period_end:
             validation_result["errors"].append(
                 f"Expense date must be between {rule.expense_period_start} and {rule.expense_period_end}"
             )
             validation_result["valid"] = False
-        
+
         # Submission deadline
         if datetime.now().date() > rule.submission_deadline:
-            validation_result["errors"].append(
-                f"Submission deadline ({rule.submission_deadline}) has passed"
-            )
+            validation_result["errors"].append(f"Submission deadline ({rule.submission_deadline}) has passed")
             validation_result["valid"] = False
-        
+
         # Amount validation
         if rule.max_amount and expense_amount > rule.max_amount:
-            validation_result["warnings"].append(
-                f"Expense exceeds maximum deductible amount of €{rule.max_amount}"
-            )
-        
+            validation_result["warnings"].append(f"Expense exceeds maximum deductible amount of €{rule.max_amount}")
+
         # Eligibility check
         if not self._check_eligibility(
             rule,
             taxpayer_profile.get("income", Decimal("0")),
             taxpayer_profile.get("family_status", "single"),
             taxpayer_profile.get("age", 35),
-            taxpayer_profile.get("has_dependents", False)
+            taxpayer_profile.get("has_dependents", False),
         ):
             validation_result["errors"].append("Taxpayer not eligible for this deduction")
             validation_result["valid"] = False
-        
+
         return validation_result
 
 

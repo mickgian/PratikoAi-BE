@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 next_issue.py — Print the "next" open RAG issue (by ascending number) and a mini checklist.
 Requires: GitHub CLI `gh` (authenticated)
@@ -30,7 +29,7 @@ def have_gh() -> bool:
     return shutil.which("gh") is not None
 
 
-def gh_json(args: List[str]) -> Any:
+def gh_json(args: list[str]) -> Any:
     """Run `gh` with args and parse JSON output."""
     try:
         res = subprocess.run(
@@ -53,13 +52,22 @@ def gh_json(args: List[str]) -> Any:
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Show the next RAG issue and a ready-to-run checklist.")
-    ap.add_argument("--labels", type=str, help="Comma-separated labels to filter (default from env RAG_LABELS or 'rag,team/rag,priority/high').")
-    ap.add_argument("--state", type=str, choices=["open", "closed", "all"], help="Issue state (default from env RAG_STATE or 'open').")
+    ap.add_argument(
+        "--labels",
+        type=str,
+        help="Comma-separated labels to filter (default from env RAG_LABELS or 'rag,team/rag,priority/high').",
+    )
+    ap.add_argument(
+        "--state",
+        type=str,
+        choices=["open", "closed", "all"],
+        help="Issue state (default from env RAG_STATE or 'open').",
+    )
     ap.add_argument("--repo", type=str, help="Override repo (e.g., owner/repo). Default: current git repo.")
     return ap.parse_args()
 
 
-def split_csv(val: Optional[str]) -> List[str]:
+def split_csv(val: str | None) -> list[str]:
     if not val:
         return []
     return [x.strip() for x in val.split(",") if x.strip()]
@@ -112,7 +120,7 @@ def main() -> int:
     title: str = issue.get("title") or ""
     body: str = issue.get("body") or ""
     url: str = issue.get("url") or ""
-    labels_str = ", ".join((lab.get("name") for lab in issue.get("labels", []) if isinstance(lab, dict)))
+    labels_str = ", ".join(lab.get("name") for lab in issue.get("labels", []) if isinstance(lab, dict))
 
     # Extract step number and step id from title
     # Expected: "Implement RAG STEP N — ... (RAG.something...)"
@@ -151,7 +159,7 @@ def main() -> int:
     # Mini checklist block
     print("MINI CHECKLIST (copy & run)")
     print("-----------------------------------------------")
-    print(f"# 0) Inspect full issue:")
+    print("# 0) Inspect full issue:")
     if repo:
         print(f"gh issue view {num} --web --repo {repo}")
     else:
@@ -171,7 +179,9 @@ def main() -> int:
     print("\n# 3) Implement minimal code to pass tests.")
     print("#    Add structured logging at the step boundary:")
     print("#      from app.observability.rag_logging import rag_step_log, rag_step_timer")
-    print(f'#      rag_step_log(step={step_str if step_num else 0}, id="{sid_disp}", node="...", msg="...", attrs={{...}})')
+    print(
+        f'#      rag_step_log(step={step_str if step_num else 0}, id="{sid_disp}", node="...", msg="...", attrs={{...}})'
+    )
 
     # Re-run audit
     print("\n# 4) Re-run audit:")
@@ -186,9 +196,13 @@ def main() -> int:
     print("\n# 6) Push & open PR:")
     print(f'git push -u origin "rag/step-{step_str}-{short_slug}"')
     if repo:
-        print(f'gh pr create --title "RAG STEP {step_str}: {title}" --body "Implements STEP {step_str}. See issue #{num}." --repo {repo}')
+        print(
+            f'gh pr create --title "RAG STEP {step_str}: {title}" --body "Implements STEP {step_str}. See issue #{num}." --repo {repo}'
+        )
     else:
-        print(f'gh pr create --title "RAG STEP {step_str}: {title}" --body "Implements STEP {step_str}. See issue #{num}."')
+        print(
+            f'gh pr create --title "RAG STEP {step_str}: {title}" --body "Implements STEP {step_str}. See issue #{num}."'
+        )
 
     print("\n# 7) Merge when green:")
     if repo:

@@ -1,5 +1,4 @@
-"""
-Dynamic Knowledge Collection System (DKCS) - Main Coordinator.
+"""Dynamic Knowledge Collection System (DKCS) - Main Coordinator.
 
 This is the main service that coordinates RSS feed monitoring, document processing,
 and knowledge base integration for Italian regulatory sources.
@@ -7,6 +6,7 @@ and knowledge base integration for Italian regulatory sources.
 
 import asyncio
 from datetime import (
+    UTC,
     datetime,
     timedelta,
     timezone,
@@ -59,20 +59,19 @@ class DynamicKnowledgeCollector:
             "processing_time_seconds": 0.0,
         }
 
-    async def collect_and_process_updates(self) -> List[Dict[str, Any]]:
+    async def collect_and_process_updates(self) -> list[dict[str, Any]]:
         """Main entry point for collecting and processing regulatory updates.
 
         Returns:
             List of processing results for each source
         """
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
 
         try:
             logger.info("dynamic_knowledge_collection_started", start_time=start_time)
 
             # Initialize services with async context managers
             async with RSSFeedMonitor(db_session=self.db) as rss_monitor, DocumentProcessor() as document_processor:
-
                 self.rss_monitor = rss_monitor
                 self.document_processor = document_processor
 
@@ -83,7 +82,7 @@ class DynamicKnowledgeCollector:
                 results = await self.process_all_feeds_parallel(feeds)
 
                 # Calculate total processing time
-                processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+                processing_time = (datetime.now(UTC) - start_time).total_seconds()
                 self.stats["processing_time_seconds"] = processing_time
 
                 # Log summary
@@ -98,7 +97,7 @@ class DynamicKnowledgeCollector:
                 return results
 
         except Exception as e:
-            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            processing_time = (datetime.now(UTC) - start_time).total_seconds()
             self.stats["processing_time_seconds"] = processing_time
             self.stats["errors"] += 1
 
@@ -113,7 +112,7 @@ class DynamicKnowledgeCollector:
                 {"success": False, "error": str(e), "source": "system", "processing_time_seconds": processing_time}
             ]
 
-    async def process_all_feeds_parallel(self, feeds: Dict[str, str], max_concurrent: int = 5) -> List[Dict[str, Any]]:
+    async def process_all_feeds_parallel(self, feeds: dict[str, str], max_concurrent: int = 5) -> list[dict[str, Any]]:
         """Process multiple RSS feeds concurrently.
 
         Args:
@@ -126,7 +125,7 @@ class DynamicKnowledgeCollector:
         results = []
         semaphore = asyncio.Semaphore(max_concurrent)
 
-        async def process_feed_with_semaphore(feed_name: str, feed_url: str) -> Dict[str, Any]:
+        async def process_feed_with_semaphore(feed_name: str, feed_url: str) -> dict[str, Any]:
             async with semaphore:
                 return await self.process_single_feed(feed_name, feed_url)
 
@@ -172,7 +171,7 @@ class DynamicKnowledgeCollector:
             logger.error("parallel_feed_processing_failed", error=str(e), exc_info=True)
             return []
 
-    async def process_single_feed(self, feed_name: str, feed_url: str) -> Dict[str, Any]:
+    async def process_single_feed(self, feed_name: str, feed_url: str) -> dict[str, Any]:
         """Process a single RSS feed.
 
         Args:
@@ -182,7 +181,7 @@ class DynamicKnowledgeCollector:
         Returns:
             Processing results for this feed
         """
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
 
         try:
             logger.info("processing_single_feed", feed_name=feed_name, feed_url=feed_url)
@@ -197,7 +196,7 @@ class DynamicKnowledgeCollector:
                     "source": feed_name,
                     "new_documents": [],
                     "message": "No items found in feed",
-                    "processing_time_seconds": (datetime.now(timezone.utc) - start_time).total_seconds(),
+                    "processing_time_seconds": (datetime.now(UTC) - start_time).total_seconds(),
                 }
 
             # Filter for new documents
@@ -210,13 +209,13 @@ class DynamicKnowledgeCollector:
                     "source": feed_name,
                     "new_documents": [],
                     "message": f"No new documents from {len(feed_items)} feed items",
-                    "processing_time_seconds": (datetime.now(timezone.utc) - start_time).total_seconds(),
+                    "processing_time_seconds": (datetime.now(UTC) - start_time).total_seconds(),
                 }
 
             # Process new documents
             processed_documents = await self.process_document_batch(new_documents)
 
-            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            processing_time = (datetime.now(UTC) - start_time).total_seconds()
 
             logger.info(
                 "single_feed_processing_completed",
@@ -236,7 +235,7 @@ class DynamicKnowledgeCollector:
             }
 
         except Exception as e:
-            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            processing_time = (datetime.now(UTC) - start_time).total_seconds()
 
             logger.error(
                 "single_feed_processing_failed",
@@ -255,7 +254,7 @@ class DynamicKnowledgeCollector:
                 "processing_time_seconds": processing_time,
             }
 
-    async def filter_new_documents(self, feed_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def filter_new_documents(self, feed_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Filter feed items to find only new documents.
 
         Args:
@@ -282,8 +281,8 @@ class DynamicKnowledgeCollector:
         return new_documents
 
     async def process_document_batch(
-        self, documents: List[Dict[str, Any]], max_concurrent: int = 3
-    ) -> List[Dict[str, Any]]:
+        self, documents: list[dict[str, Any]], max_concurrent: int = 3
+    ) -> list[dict[str, Any]]:
         """Process a batch of documents (extract content and integrate into knowledge base).
 
         Args:
@@ -296,7 +295,7 @@ class DynamicKnowledgeCollector:
         results = []
         semaphore = asyncio.Semaphore(max_concurrent)
 
-        async def process_document_with_semaphore(doc: Dict[str, Any]) -> Dict[str, Any]:
+        async def process_document_with_semaphore(doc: dict[str, Any]) -> dict[str, Any]:
             async with semaphore:
                 return await self.process_single_document(doc)
 
@@ -325,7 +324,7 @@ class DynamicKnowledgeCollector:
             logger.error("document_batch_processing_failed", error=str(e), exc_info=True)
             return []
 
-    async def process_single_document(self, document_meta: Dict[str, Any]) -> Dict[str, Any]:
+    async def process_single_document(self, document_meta: dict[str, Any]) -> dict[str, Any]:
         """Process a single document (extract content and integrate into knowledge base).
 
         Args:
@@ -334,7 +333,7 @@ class DynamicKnowledgeCollector:
         Returns:
             Processing result
         """
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
         url = document_meta.get("url", "")
 
         try:
@@ -357,7 +356,7 @@ class DynamicKnowledgeCollector:
                     "success": False,
                     "url": url,
                     "error": "Content extraction failed",
-                    "processing_time_seconds": (datetime.now(timezone.utc) - start_time).total_seconds(),
+                    "processing_time_seconds": (datetime.now(UTC) - start_time).total_seconds(),
                 }
 
             # Combine metadata with extracted content
@@ -372,7 +371,7 @@ class DynamicKnowledgeCollector:
             # Integrate into knowledge base
             integration_result = await self.knowledge_integrator.update_knowledge_base(document_data)
 
-            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            processing_time = (datetime.now(UTC) - start_time).total_seconds()
 
             if integration_result["success"]:
                 await self._log_processing_success(document_meta, processing_time)
@@ -402,7 +401,7 @@ class DynamicKnowledgeCollector:
                 }
 
         except Exception as e:
-            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            processing_time = (datetime.now(UTC) - start_time).total_seconds()
 
             await self._log_processing_error(document_meta, str(e))
 
@@ -416,7 +415,7 @@ class DynamicKnowledgeCollector:
 
             return {"success": False, "url": url, "error": str(e), "processing_time_seconds": processing_time}
 
-    async def collect_with_resilience(self) -> List[Dict[str, Any]]:
+    async def collect_with_resilience(self) -> list[dict[str, Any]]:
         """Collect knowledge with resilience to feed failures.
 
         Returns:
@@ -430,7 +429,7 @@ class DynamicKnowledgeCollector:
             logger.error("resilient_collection_failed", error=str(e), exc_info=True)
             return [{"success": False, "error": str(e), "source": "system_resilience"}]
 
-    async def collect_from_specific_sources(self, sources: List[str]) -> List[Dict[str, Any]]:
+    async def collect_from_specific_sources(self, sources: list[str]) -> list[dict[str, Any]]:
         """Collect from specific sources only.
 
         Args:
@@ -441,7 +440,6 @@ class DynamicKnowledgeCollector:
         """
         try:
             async with RSSFeedMonitor(db_session=self.db) as rss_monitor, DocumentProcessor() as document_processor:
-
                 self.rss_monitor = rss_monitor
                 self.document_processor = document_processor
 
@@ -483,7 +481,7 @@ class DynamicKnowledgeCollector:
             Number of records deleted
         """
         try:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
+            cutoff_date = datetime.now(UTC) - timedelta(days=retention_days)
 
             # Delete old feed status records
             delete_query = delete(FeedStatus).where(FeedStatus.created_at < cutoff_date)
@@ -512,7 +510,7 @@ class DynamicKnowledgeCollector:
             Number of records deleted
         """
         try:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
+            cutoff_date = datetime.now(UTC) - timedelta(days=retention_days)
 
             # Delete old processing log records
             delete_query = delete(DocumentProcessingLog).where(DocumentProcessingLog.created_at < cutoff_date)
@@ -543,7 +541,7 @@ class DynamicKnowledgeCollector:
             Number of documents archived
         """
         try:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
+            cutoff_date = datetime.now(UTC) - timedelta(days=retention_days)
 
             # Find old superseded documents
             query = select(RegulatoryDocument).where(
@@ -557,7 +555,7 @@ class DynamicKnowledgeCollector:
             archived_count = 0
             for doc in old_docs:
                 doc.status = "archived"
-                doc.archived_at = datetime.now(timezone.utc)
+                doc.archived_at = datetime.now(UTC)
                 doc.archive_reason = f"Auto-archived after {retention_days} days"
                 archived_count += 1
 
@@ -578,7 +576,7 @@ class DynamicKnowledgeCollector:
             )
             return 0
 
-    async def _log_processing_start(self, document_meta: Dict[str, Any]) -> None:
+    async def _log_processing_start(self, document_meta: dict[str, Any]) -> None:
         """Log the start of document processing.
 
         Args:
@@ -599,7 +597,7 @@ class DynamicKnowledgeCollector:
         except Exception as e:
             logger.warning("processing_log_creation_failed", url=document_meta.get("url", ""), error=str(e))
 
-    async def _log_processing_success(self, document_meta: Dict[str, Any], processing_time: float) -> None:
+    async def _log_processing_success(self, document_meta: dict[str, Any], processing_time: float) -> None:
         """Log successful document processing.
 
         Args:
@@ -622,7 +620,7 @@ class DynamicKnowledgeCollector:
         except Exception as e:
             logger.warning("processing_success_log_failed", url=document_meta.get("url", ""), error=str(e))
 
-    async def _log_processing_error(self, document_meta: Dict[str, Any], error_message: str) -> None:
+    async def _log_processing_error(self, document_meta: dict[str, Any], error_message: str) -> None:
         """Log processing error.
 
         Args:
@@ -645,13 +643,13 @@ class DynamicKnowledgeCollector:
         except Exception as e:
             logger.warning("processing_error_log_failed", url=document_meta.get("url", ""), error=str(e))
 
-    def get_processing_stats(self) -> Dict[str, Any]:
+    def get_processing_stats(self) -> dict[str, Any]:
         """Get current processing statistics.
 
         Returns:
             Dictionary with processing statistics
         """
-        return {**self.stats, "timestamp": datetime.now(timezone.utc).isoformat()}
+        return {**self.stats, "timestamp": datetime.now(UTC).isoformat()}
 
 
 # Convenience function for scheduled task integration

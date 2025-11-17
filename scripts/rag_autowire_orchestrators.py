@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Config-driven autowiring of orchestrator calls into real code.
 
@@ -23,7 +22,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
@@ -37,33 +36,38 @@ SCAFFOLDER = ROOT / "scripts" / "rag_orchestrator_scaffold.py"
 # Utils
 # --------------------------------------------------------------------------------------
 
-def run(cmd: List[str]) -> str:
+
+def run(cmd: list[str]) -> str:
     res = subprocess.run(cmd, cwd=str(ROOT), text=True, capture_output=True)
     if res.returncode != 0:
         raise RuntimeError(res.stderr or res.stdout or f"Command failed: {' '.join(cmd)}")
     return res.stdout
+
 
 def snakeify(s: str) -> str:
     s = re.sub(r"[^a-zA-Z0-9]+", "_", s).strip("_")
     s = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s)
     return (s or "node").lower()
 
-def load_steps_registry() -> Dict[int, Dict[str, Any]]:
+
+def load_steps_registry() -> dict[int, dict[str, Any]]:
     data = yaml.safe_load(STEPS_YML.read_text(encoding="utf-8")) or {}
-    bynum: Dict[int, Dict[str, Any]] = {}
+    bynum: dict[int, dict[str, Any]] = {}
     for st in data.get("steps", []):
         step = int(st["step"])
         st.setdefault("node_label", st.get("node_label") or st.get("label") or "")
-        st.setdefault("node_id", st.get("node_id") or snakeify(st.get("node_label","")))
+        st.setdefault("node_id", st.get("node_id") or snakeify(st.get("node_label", "")))
         st.setdefault("category", st.get("category") or "misc")
         st.setdefault("type", st.get("type") or "process")
         bynum[step] = st
     return bynum
 
-def load_autoroute() -> Dict[str, Any]:
+
+def load_autoroute() -> dict[str, Any]:
     if not AUTOROUTE_YML.exists():
         raise SystemExit(f"Missing autoroute config: {AUTOROUTE_YML}")
     return yaml.safe_load(AUTOROUTE_YML.read_text(encoding="utf-8")) or {}
+
 
 def ensure_scaffold(dry: bool):
     if not SCAFFOLDER.exists():
@@ -74,12 +78,13 @@ def ensure_scaffold(dry: bool):
         return
     run([sys.executable, str(SCAFFOLDER)])
 
-def parse_step_specs(specs: List[Any]) -> List[int]:
+
+def parse_step_specs(specs: list[Any]) -> list[int]:
     """
     Accepts: [51, "52-58", "41,42,43", " 60 - 61 "]
     Returns: [51, 52, 53, ..., 61] (deduped, sorted)
     """
-    out: List[int] = []
+    out: list[int] = []
     for spec in specs or []:
         if isinstance(spec, int):
             out.append(spec)
@@ -102,6 +107,7 @@ def parse_step_specs(specs: List[Any]) -> List[int]:
     # dedupe + sort
     return sorted(set(out))
 
+
 def ensure_orchestrators_import(text: str) -> str:
     if "from app import orchestrators as ORCH" in text:
         return text
@@ -114,7 +120,8 @@ def ensure_orchestrators_import(text: str) -> str:
     lines.insert(insert_at, "from app import orchestrators as ORCH  # auto-wired by rag_autowire_orchestrators")
     return "\n".join(lines) + "\n"
 
-def find_function_block(text: str, func_name: str) -> Optional[Tuple[int, int, str]]:
+
+def find_function_block(text: str, func_name: str) -> tuple[int, int, str] | None:
     """
     Returns (start_index, end_index, body_indent) for a def func_name(...):
     body_indent is the indent to use inside the function.
@@ -124,19 +131,20 @@ def find_function_block(text: str, func_name: str) -> Optional[Tuple[int, int, s
         return None
     start = m.start()
     # naive function end: next def/class at col 0 or EOF
-    search_region = text[m.end():]
+    search_region = text[m.end() :]
     end = len(text)
     next_def = re.search(r"^(def |class )", search_region, re.MULTILINE)
     if next_def:
         end = m.end() + next_def.start()
 
     # compute indent of body
-    header_line = text[start:text.find("\n", start)+1]
+    header_line = text[start : text.find("\n", start) + 1]
     header_indent = re.match(r"^(\s*)", header_line).group(1)
     body_indent = header_indent + " " * 4
     return (start, end, body_indent)
 
-def split_header_body(func_text: str, body_indent: str) -> Tuple[str, str]:
+
+def split_header_body(func_text: str, body_indent: str) -> tuple[str, str]:
     """
     Split function text into header + body (keeping docstring together).
     Insertions will go at the top of the body.
@@ -154,7 +162,8 @@ def split_header_body(func_text: str, body_indent: str) -> Tuple[str, str]:
     body = "\n".join(lines[body_start_idx:])
     return header, body
 
-def build_block(slice_name: str, steps: List[int], bynum: Dict[int, Dict[str, Any]], indent: str) -> str:
+
+def build_block(slice_name: str, steps: list[int], bynum: dict[int, dict[str, Any]], indent: str) -> str:
     start_mark = f"# [AUTO-ORCH {slice_name} START]"
     end_mark = f"# [AUTO-ORCH {slice_name} END]"
     lines = [
@@ -180,7 +189,10 @@ def build_block(slice_name: str, steps: List[int], bynum: Dict[int, Dict[str, An
     ]
     return "\n".join(lines)
 
-def inject_slice(target_file: Path, func_name: str, slice_name: str, steps: List[int], bynum: Dict[int, Dict[str, Any]], dry: bool) -> bool:
+
+def inject_slice(
+    target_file: Path, func_name: str, slice_name: str, steps: list[int], bynum: dict[int, dict[str, Any]], dry: bool
+) -> bool:
     text = target_file.read_text(encoding="utf-8")
 
     loc = find_function_block(text, func_name)
@@ -221,13 +233,18 @@ def inject_slice(target_file: Path, func_name: str, slice_name: str, steps: List
     print(f"  ✅ Injected {slice_name} ({len(steps)} steps) into {target_file}:{func_name}")
     return True
 
+
 # --------------------------------------------------------------------------------------
 # Main
 # --------------------------------------------------------------------------------------
 
+
 def main():
     ap = argparse.ArgumentParser(description="Autowire orchestrator calls into real code, from autoroute.yml.")
-    ap.add_argument("--slice", help="Name of a slice in autoroute.yml to process (e.g., providers, cache, retry, entry, prompting, tools, docs, response, feedback, rss)")
+    ap.add_argument(
+        "--slice",
+        help="Name of a slice in autoroute.yml to process (e.g., providers, cache, retry, entry, prompting, tools, docs, response, feedback, rss)",
+    )
     ap.add_argument("--all", action="store_true", help="Process all slices from autoroute.yml")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -280,8 +297,11 @@ def main():
         if ok:
             total += len(steps)
 
-    print(f"\nDone. {'Previewed' if args.dry_run else 'Processed'} {len(to_run)} slice(s); wired {total} step call(s).")
+    print(
+        f"\nDone. {'Previewed' if args.dry_run else 'Processed'} {len(to_run)} slice(s); wired {total} step call(s)."
+    )
     return 0
+
 
 if __name__ == "__main__":
     try:

@@ -6,11 +6,13 @@ This test suite validates the fix for duplicate LLM API calls during streaming:
 - Expected: Only 1 LLM API call per streaming request
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from app.core.langgraph.graph import LangGraphAgent
-from app.schemas.chat import Message
 from app.core.llm.base import LLMResponse
+from app.schemas.chat import Message
 
 
 @pytest.mark.asyncio
@@ -31,25 +33,22 @@ async def test_streaming_uses_buffered_response_no_duplicate_call():
         model="gpt-4o-mini",
         provider="openai",
         tokens_used=50,
-        cost_estimate=0.0001
+        cost_estimate=0.0001,
     )
 
     # Mock graph to return state with completed LLM response
     mock_state = {
-        "llm": {
-            "success": True,
-            "response": buffered_response
-        },
+        "llm": {"success": True, "response": buffered_response},
         "streaming": {"requested": True},
         "messages": [
             {"role": "user", "content": "Test query"},
-            {"role": "assistant", "content": buffered_response.content}
-        ]
+            {"role": "assistant", "content": buffered_response.content},
+        ],
     }
 
-    with patch.object(agent._graph, 'ainvoke', return_value=mock_state) as mock_ainvoke:
+    with patch.object(agent._graph, "ainvoke", return_value=mock_state) as mock_ainvoke:
         # Mock provider to track if second call made
-        with patch('app.core.llm.factory.get_llm_factory') as mock_factory_getter:
+        with patch("app.core.llm.factory.get_llm_factory") as mock_factory_getter:
             mock_factory = MagicMock()
             mock_provider = AsyncMock()
             mock_factory.create_provider.return_value = mock_provider
@@ -63,8 +62,9 @@ async def test_streaming_uses_buffered_response_no_duplicate_call():
             # Assertions
             assert len(chunks) > 0, "Should yield chunks"
             full_response = "".join(chunks)
-            assert "Complete LLM response from Step 64" in full_response, \
-                "Streamed content should match buffered response"
+            assert (
+                "Complete LLM response from Step 64" in full_response
+            ), "Streamed content should match buffered response"
 
             # Critical: Provider's stream_completion should NOT be called (no duplicate call)
             mock_provider.stream_completion.assert_not_called()
@@ -84,19 +84,12 @@ async def test_streaming_chunks_buffered_response_properly():
     messages = [Message(role="user", content="Test")]
 
     test_content = "12345678901234567890"  # 20 chars
-    buffered_response = LLMResponse(
-        content=test_content,
-        model="gpt-4o-mini",
-        provider="openai"
-    )
+    buffered_response = LLMResponse(content=test_content, model="gpt-4o-mini", provider="openai")
 
-    mock_state = {
-        "llm": {"success": True, "response": buffered_response},
-        "streaming": {"requested": True}
-    }
+    mock_state = {"llm": {"success": True, "response": buffered_response}, "streaming": {"requested": True}}
 
-    with patch.object(agent._graph, 'ainvoke', return_value=mock_state):
-        with patch('app.core.llm.factory.get_llm_factory'):
+    with patch.object(agent._graph, "ainvoke", return_value=mock_state):
+        with patch("app.core.llm.factory.get_llm_factory"):
             chunks = []
             async for chunk in agent.get_stream_response(messages, "test_session"):
                 chunks.append(chunk)
@@ -119,15 +112,12 @@ async def test_streaming_handles_dict_format_response():
 
     # Some parts of codebase might return dict format
     mock_state = {
-        "llm": {
-            "success": True,
-            "response": {"content": "Response in dict format"}
-        },
-        "streaming": {"requested": True}
+        "llm": {"success": True, "response": {"content": "Response in dict format"}},
+        "streaming": {"requested": True},
     }
 
-    with patch.object(agent._graph, 'ainvoke', return_value=mock_state):
-        with patch('app.core.llm.factory.get_llm_factory'):
+    with patch.object(agent._graph, "ainvoke", return_value=mock_state):
+        with patch("app.core.llm.factory.get_llm_factory"):
             chunks = []
             async for chunk in agent.get_stream_response(messages, "test_session"):
                 chunks.append(chunk)
@@ -152,11 +142,11 @@ async def test_streaming_falls_back_when_no_buffered_response():
     mock_state = {
         "llm": {"success": False},
         "streaming": {"requested": True},
-        "messages": [{"role": "user", "content": "Test query"}]
+        "messages": [{"role": "user", "content": "Test query"}],
     }
 
-    with patch.object(agent._graph, 'ainvoke', return_value=mock_state):
-        with patch('app.core.llm.factory.get_llm_factory') as mock_factory_getter:
+    with patch.object(agent._graph, "ainvoke", return_value=mock_state):
+        with patch("app.core.llm.factory.get_llm_factory") as mock_factory_getter:
             mock_factory = MagicMock()
             mock_provider = AsyncMock()
 
@@ -195,14 +185,14 @@ async def test_streaming_handles_empty_buffered_content():
             "response": LLMResponse(
                 content="",  # Empty content
                 model="gpt-4o-mini",
-                provider="openai"
-            )
+                provider="openai",
+            ),
         },
-        "streaming": {"requested": True}
+        "streaming": {"requested": True},
     }
 
-    with patch.object(agent._graph, 'ainvoke', return_value=mock_state):
-        with patch('app.core.llm.factory.get_llm_factory') as mock_factory_getter:
+    with patch.object(agent._graph, "ainvoke", return_value=mock_state):
+        with patch("app.core.llm.factory.get_llm_factory") as mock_factory_getter:
             mock_factory = MagicMock()
             mock_provider = AsyncMock()
 
@@ -231,25 +221,17 @@ async def test_streaming_logs_buffered_response_usage():
     agent = LangGraphAgent()
     messages = [Message(role="user", content="Test")]
 
-    buffered_response = LLMResponse(
-        content="Test content",
-        model="gpt-4o-mini",
-        provider="openai"
-    )
+    buffered_response = LLMResponse(content="Test content", model="gpt-4o-mini", provider="openai")
 
-    mock_state = {
-        "llm": {"success": True, "response": buffered_response},
-        "streaming": {"requested": True}
-    }
+    mock_state = {"llm": {"success": True, "response": buffered_response}, "streaming": {"requested": True}}
 
-    with patch.object(agent._graph, 'ainvoke', return_value=mock_state):
-        with patch('app.core.llm.factory.get_llm_factory'):
-            with patch('app.core.langgraph.graph.logger') as mock_logger:
+    with patch.object(agent._graph, "ainvoke", return_value=mock_state):
+        with patch("app.core.llm.factory.get_llm_factory"):
+            with patch("app.core.langgraph.graph.logger") as mock_logger:
                 chunks = []
                 async for chunk in agent.get_stream_response(messages, "test_session"):
                     chunks.append(chunk)
 
                 # Should log that buffered response is being used
-                log_calls = [call for call in mock_logger.info.call_args_list
-                           if 'buffered' in str(call).lower()]
+                log_calls = [call for call in mock_logger.info.call_args_list if "buffered" in str(call).lower()]
                 assert len(log_calls) > 0, "Should log buffered response usage"

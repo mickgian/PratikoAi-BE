@@ -1,5 +1,4 @@
-"""
-Atomic Facts Extraction System for PratikoAI.
+"""Atomic Facts Extraction System for PratikoAI.
 
 This module extracts and canonicalizes atomic facts from Italian professional queries
 to improve classification accuracy, cache hit rates, and search relevance.
@@ -42,7 +41,7 @@ class MonetaryAmount:
     is_percentage: bool = False
     confidence: float = 0.0
     original_text: str = ""
-    span: Optional[ExtractionSpan] = None
+    span: ExtractionSpan | None = None
 
     def __post_init__(self):
         """Validate monetary amount after initialization."""
@@ -59,21 +58,21 @@ class DateFact:
     date_type: str  # "specific", "relative", "tax_year", "duration", "deadline"
     original_text: str = ""
     confidence: float = 0.0
-    span: Optional[ExtractionSpan] = None
+    span: ExtractionSpan | None = None
 
     # Specific date fields
-    iso_date: Optional[str] = None
+    iso_date: str | None = None
 
     # Relative date fields
-    relative_expression: Optional[str] = None
+    relative_expression: str | None = None
 
     # Tax year fields
-    tax_year: Optional[int] = None
+    tax_year: int | None = None
 
     # Duration fields
-    duration_text: Optional[str] = None
-    duration_value: Optional[int] = None
-    duration_unit: Optional[str] = None  # "days", "months", "years"
+    duration_text: str | None = None
+    duration_value: int | None = None
+    duration_unit: str | None = None  # "days", "months", "years"
 
     def __post_init__(self):
         """Validate date fact after initialization."""
@@ -88,9 +87,9 @@ class LegalEntity:
     entity_type: str  # "codice_fiscale", "partita_iva", "company_type", "document_type", "legal_reference"
     original_text: str = ""
     canonical_form: str = ""
-    identifier: Optional[str] = None
+    identifier: str | None = None
     confidence: float = 0.0
-    span: Optional[ExtractionSpan] = None
+    span: ExtractionSpan | None = None
 
     def __post_init__(self):
         """Validate legal entity after initialization."""
@@ -105,16 +104,16 @@ class ProfessionalCategory:
     category_type: str  # "ccnl_sector", "job_level", "contract_type"
     original_text: str = ""
     confidence: float = 0.0
-    span: Optional[ExtractionSpan] = None
+    span: ExtractionSpan | None = None
 
     # CCNL sector fields
-    sector: Optional[str] = None
+    sector: str | None = None
 
     # Job level fields
-    level: Optional[str] = None
+    level: str | None = None
 
     # Contract type fields
-    contract_type: Optional[str] = None
+    contract_type: str | None = None
 
     def __post_init__(self):
         """Validate professional category after initialization."""
@@ -129,12 +128,12 @@ class GeographicInfo:
     geo_type: str  # "region", "city", "area"
     original_text: str = ""
     confidence: float = 0.0
-    span: Optional[ExtractionSpan] = None
+    span: ExtractionSpan | None = None
 
     # Geographic fields
-    region: Optional[str] = None
-    city: Optional[str] = None
-    area: Optional[str] = None  # "Nord", "Centro", "Sud"
+    region: str | None = None
+    city: str | None = None
+    area: str | None = None  # "Nord", "Centro", "Sud"
 
     def __post_init__(self):
         """Validate geographic info after initialization."""
@@ -146,11 +145,11 @@ class GeographicInfo:
 class AtomicFacts:
     """Container for all extracted atomic facts from a query."""
 
-    monetary_amounts: List[MonetaryAmount] = field(default_factory=list)
-    dates: List[DateFact] = field(default_factory=list)
-    legal_entities: List[LegalEntity] = field(default_factory=list)
-    professional_categories: List[ProfessionalCategory] = field(default_factory=list)
-    geographic_info: List[GeographicInfo] = field(default_factory=list)
+    monetary_amounts: list[MonetaryAmount] = field(default_factory=list)
+    dates: list[DateFact] = field(default_factory=list)
+    legal_entities: list[LegalEntity] = field(default_factory=list)
+    professional_categories: list[ProfessionalCategory] = field(default_factory=list)
+    geographic_info: list[GeographicInfo] = field(default_factory=list)
 
     # Metadata
     extraction_time_ms: float = 0.0
@@ -176,7 +175,7 @@ class AtomicFacts:
             + len(self.geographic_info)
         )
 
-    def get_summary(self) -> Dict[str, int]:
+    def get_summary(self) -> dict[str, int]:
         """Get a summary of extracted fact types and counts."""
         return {
             "monetary_amounts": len(self.monetary_amounts),
@@ -187,9 +186,8 @@ class AtomicFacts:
             "total": self.fact_count(),
         }
 
-    def to_canonical_strings(self) -> List[str]:
-        """
-        Convert extracted facts to canonical string representations for search.
+    def to_canonical_strings(self) -> list[str]:
+        """Convert extracted facts to canonical string representations for search.
 
         Returns list of canonical strings that represent key information:
         - Document references: "risoluzione 56"
@@ -218,8 +216,7 @@ class AtomicFacts:
 
 
 class AtomicFactsExtractor:
-    """
-    Extracts and canonicalizes atomic facts from Italian professional queries.
+    """Extracts and canonicalizes atomic facts from Italian professional queries.
 
     This system processes user queries before classification to extract, normalize,
     and structure key information including monetary amounts, dates, legal entities,
@@ -233,7 +230,6 @@ class AtomicFactsExtractor:
 
     def _load_patterns(self):
         """Load regex patterns for extracting different types of facts."""
-
         # Monetary amount patterns
         self.monetary_patterns = {
             # Euro amounts - numeric format
@@ -386,7 +382,6 @@ class AtomicFactsExtractor:
 
     def _load_canonicalization_rules(self):
         """Load rules for canonicalizing extracted facts."""
-
         # Number word to digit mappings for Italian
         self.italian_numbers = {
             "zero": 0,
@@ -475,8 +470,7 @@ class AtomicFactsExtractor:
         }
 
     def extract(self, query: str) -> AtomicFacts:
-        """
-        Extract atomic facts from an Italian professional query.
+        """Extract atomic facts from an Italian professional query.
 
         Args:
             query: The user query to process
@@ -514,7 +508,7 @@ class AtomicFactsExtractor:
 
         return facts
 
-    def _extract_monetary_amounts(self, query: str) -> List[MonetaryAmount]:
+    def _extract_monetary_amounts(self, query: str) -> list[MonetaryAmount]:
         """Extract monetary amounts and percentages from the query."""
         amounts = []
 
@@ -646,7 +640,7 @@ class AtomicFactsExtractor:
 
         return amounts
 
-    def _extract_dates(self, query: str) -> List[DateFact]:
+    def _extract_dates(self, query: str) -> list[DateFact]:
         """Extract dates, durations, and time-related facts from the query."""
         dates = []
         used_spans = set()
@@ -797,7 +791,7 @@ class AtomicFactsExtractor:
 
         return dates
 
-    def _extract_legal_entities(self, query: str) -> List[LegalEntity]:
+    def _extract_legal_entities(self, query: str) -> list[LegalEntity]:
         """Extract legal entities, tax codes, and document types."""
         entities = []
 
@@ -887,7 +881,7 @@ class AtomicFactsExtractor:
 
         return entities
 
-    def _extract_professional_categories(self, query: str) -> List[ProfessionalCategory]:
+    def _extract_professional_categories(self, query: str) -> list[ProfessionalCategory]:
         """Extract professional categories, job levels, and contract types."""
         categories = []
 
@@ -933,7 +927,7 @@ class AtomicFactsExtractor:
 
         return categories
 
-    def _extract_geographic_info(self, query: str) -> List[GeographicInfo]:
+    def _extract_geographic_info(self, query: str) -> list[GeographicInfo]:
         """Extract geographic information like regions, cities, and areas."""
         geo_info = []
 
@@ -980,7 +974,7 @@ class AtomicFactsExtractor:
 
     # === CANONICALIZATION HELPER METHODS ===
 
-    def _parse_italian_compound_number(self, written_text: str) -> Optional[float]:
+    def _parse_italian_compound_number(self, written_text: str) -> float | None:
         """Parse compound Italian numbers like 'ventimila cinquecento'."""
         words = written_text.strip().split()
         if not words:

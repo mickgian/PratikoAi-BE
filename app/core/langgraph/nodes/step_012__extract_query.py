@@ -3,6 +3,8 @@
 from app.core.langgraph.types import RAGState
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
 from app.orchestrators.classify import step_12__extract_query

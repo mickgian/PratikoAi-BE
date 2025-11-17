@@ -7,133 +7,118 @@ particularly for LLM responses and database queries.
 import functools
 import hashlib
 import json
-from typing import Any, Callable, Optional, Union, List
+from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import Any, List, Optional, Union
 
-from app.core.logging import logger
-from app.services.cache import cache_service
-from app.schemas.chat import Message
 from app.core.llm.base import LLMResponse
+from app.core.logging import logger
+from app.schemas.chat import Message
+from app.services.cache import cache_service
 
 
-def cache_llm_response(
-    ttl: Optional[int] = None,
-    include_temperature: bool = True,
-    max_query_size: Optional[int] = None
-):
+def cache_llm_response(ttl: int | None = None, include_temperature: bool = True, max_query_size: int | None = None):
     """Decorator to cache LLM responses based on messages and model.
-    
+
     Args:
         ttl: Time to live in seconds (uses default if None)
         include_temperature: Whether to include temperature in cache key
         max_query_size: Maximum query size to cache (uses config default if None)
-    
+
     Usage:
         @cache_llm_response(ttl=3600)
         async def get_llm_response(messages: List[Message], model: str, temperature: float = 0.2) -> LLMResponse:
             # Your LLM call logic here
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> LLMResponse:
             # Extract parameters for caching
-            messages = kwargs.get('messages') or (args[0] if args else None)
-            model = kwargs.get('model') or (args[1] if len(args) > 1 else None)
-            temperature = kwargs.get('temperature', 0.2)
-            
+            messages = kwargs.get("messages") or (args[0] if args else None)
+            model = kwargs.get("model") or (args[1] if len(args) > 1 else None)
+            temperature = kwargs.get("temperature", 0.2)
+
             if not messages or not model:
                 logger.warning(
                     "cache_decorator_missing_params",
                     function=func.__name__,
                     has_messages=bool(messages),
-                    has_model=bool(model)
+                    has_model=bool(model),
                 )
                 return await func(*args, **kwargs)
-            
+
             # Try to get cached response
             try:
                 cache_kwargs = {"messages": messages, "model": model}
                 if include_temperature:
                     cache_kwargs["temperature"] = temperature
-                    
+
                 cached_response = await cache_service.get_cached_response(**cache_kwargs)
                 if cached_response:
                     logger.info(
                         "cache_decorator_hit",
                         function=func.__name__,
                         model=model,
-                        message_count=len(messages) if isinstance(messages, list) else 1
+                        message_count=len(messages) if isinstance(messages, list) else 1,
                     )
                     return cached_response
             except Exception as e:
-                logger.error(
-                    "cache_decorator_get_failed",
-                    function=func.__name__,
-                    error=str(e)
-                )
-            
+                logger.error("cache_decorator_get_failed", function=func.__name__, error=str(e))
+
             # Call original function
             response = await func(*args, **kwargs)
-            
+
             # Cache the response
             if isinstance(response, LLMResponse):
                 try:
-                    cache_kwargs = {
-                        "messages": messages,
-                        "model": model,
-                        "response": response
-                    }
+                    cache_kwargs = {"messages": messages, "model": model, "response": response}
                     if include_temperature:
                         cache_kwargs["temperature"] = temperature
                     if ttl:
                         cache_kwargs["ttl"] = ttl
-                        
+
                     await cache_service.cache_response(**cache_kwargs)
                     logger.info(
                         "cache_decorator_set",
                         function=func.__name__,
                         model=model,
-                        response_length=len(response.content)
+                        response_length=len(response.content),
                     )
                 except Exception as e:
-                    logger.error(
-                        "cache_decorator_set_failed",
-                        function=func.__name__,
-                        error=str(e)
-                    )
-            
+                    logger.error("cache_decorator_set_failed", function=func.__name__, error=str(e))
+
             return response
-        
+
         return wrapper
+
     return decorator
 
 
-def cache_conversation(ttl: Optional[int] = None):
+def cache_conversation(ttl: int | None = None):
     """Decorator to cache conversation history.
-    
+
     Args:
         ttl: Time to live in seconds (uses default if None)
-    
+
     Usage:
         @cache_conversation(ttl=7200)
         async def get_conversation(session_id: str) -> List[Message]:
             # Your conversation retrieval logic here
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        async def wrapper(*args, **kwargs) -> List[Message]:
+        async def wrapper(*args, **kwargs) -> list[Message]:
             # Extract session_id for caching
-            session_id = kwargs.get('session_id') or (args[0] if args else None)
-            
+            session_id = kwargs.get("session_id") or (args[0] if args else None)
+
             if not session_id:
-                logger.warning(
-                    "cache_conversation_decorator_no_session",
-                    function=func.__name__
-                )
+                logger.warning("cache_conversation_decorator_no_session", function=func.__name__)
                 return await func(*args, **kwargs)
-            
+
             # Try to get cached conversation
             try:
                 cached_messages = await cache_service.get_conversation_cache(session_id)
@@ -142,7 +127,7 @@ def cache_conversation(ttl: Optional[int] = None):
                         "cache_conversation_decorator_hit",
                         function=func.__name__,
                         session_id=session_id,
-                        message_count=len(cached_messages)
+                        message_count=len(cached_messages),
                     )
                     return cached_messages
             except Exception as e:
@@ -150,61 +135,56 @@ def cache_conversation(ttl: Optional[int] = None):
                     "cache_conversation_decorator_get_failed",
                     function=func.__name__,
                     error=str(e),
-                    session_id=session_id
+                    session_id=session_id,
                 )
-            
+
             # Call original function
             messages = await func(*args, **kwargs)
-            
+
             # Cache the conversation
             if isinstance(messages, list):
                 try:
-                    cache_kwargs = {
-                        "session_id": session_id,
-                        "messages": messages
-                    }
+                    cache_kwargs = {"session_id": session_id, "messages": messages}
                     if ttl:
                         cache_kwargs["ttl"] = ttl
-                        
+
                     await cache_service.cache_conversation(**cache_kwargs)
                     logger.info(
                         "cache_conversation_decorator_set",
                         function=func.__name__,
                         session_id=session_id,
-                        message_count=len(messages)
+                        message_count=len(messages),
                     )
                 except Exception as e:
                     logger.error(
                         "cache_conversation_decorator_set_failed",
                         function=func.__name__,
                         error=str(e),
-                        session_id=session_id
+                        session_id=session_id,
                     )
-            
+
             return messages
-        
+
         return wrapper
+
     return decorator
 
 
-def cache_result(
-    key_func: Optional[Callable] = None,
-    ttl: int = 3600,
-    namespace: str = "general"
-):
+def cache_result(key_func: Callable | None = None, ttl: int = 3600, namespace: str = "general"):
     """Generic caching decorator for any function result.
-    
+
     Args:
         key_func: Function to generate cache key from args/kwargs
         ttl: Time to live in seconds
         namespace: Cache namespace to avoid key collisions
-    
+
     Usage:
         @cache_result(key_func=lambda user_id: f"user_data_{user_id}", ttl=1800)
         async def get_user_data(user_id: str) -> dict:
             # Your expensive operation here
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
@@ -213,25 +193,17 @@ def cache_result(
                 try:
                     cache_key = key_func(*args, **kwargs)
                 except Exception as e:
-                    logger.error(
-                        "cache_result_key_generation_failed",
-                        function=func.__name__,
-                        error=str(e)
-                    )
+                    logger.error("cache_result_key_generation_failed", function=func.__name__, error=str(e))
                     return await func(*args, **kwargs)
             else:
                 # Generate key from function name and args
-                key_data = {
-                    "function": func.__name__,
-                    "args": str(args),
-                    "kwargs": str(sorted(kwargs.items()))
-                }
+                key_data = {"function": func.__name__, "args": str(args), "kwargs": str(sorted(kwargs.items()))}
                 key_string = json.dumps(key_data, sort_keys=True)
                 cache_key = hashlib.sha256(key_string.encode()).hexdigest()[:16]
-            
+
             # Add namespace
             full_cache_key = f"{namespace}:{cache_key}"
-            
+
             # Try to get cached result
             redis_client = await cache_service._get_redis()
             if redis_client:
@@ -244,7 +216,7 @@ def cache_result(
                                 "cache_result_decorator_hit",
                                 function=func.__name__,
                                 cache_key=cache_key,
-                                namespace=namespace
+                                namespace=namespace,
                             )
                             return result
                         except json.JSONDecodeError as e:
@@ -252,21 +224,16 @@ def cache_result(
                                 "cache_result_deserialize_failed",
                                 function=func.__name__,
                                 error=str(e),
-                                cache_key=cache_key
+                                cache_key=cache_key,
                             )
                             # Remove corrupted cache entry
                             await redis_client.delete(full_cache_key)
                 except Exception as e:
-                    logger.error(
-                        "cache_result_get_failed",
-                        function=func.__name__,
-                        error=str(e),
-                        cache_key=cache_key
-                    )
-            
+                    logger.error("cache_result_get_failed", function=func.__name__, error=str(e), cache_key=cache_key)
+
             # Call original function
             result = await func(*args, **kwargs)
-            
+
             # Cache the result
             if redis_client and result is not None:
                 try:
@@ -278,39 +245,29 @@ def cache_result(
                         function=func.__name__,
                         cache_key=cache_key,
                         namespace=namespace,
-                        ttl=ttl
+                        ttl=ttl,
                     )
                 except (TypeError, json.JSONEncodeError) as e:
                     logger.warning(
-                        "cache_result_serialize_failed",
-                        function=func.__name__,
-                        error=str(e),
-                        cache_key=cache_key
+                        "cache_result_serialize_failed", function=func.__name__, error=str(e), cache_key=cache_key
                     )
                 except Exception as e:
-                    logger.error(
-                        "cache_result_set_failed",
-                        function=func.__name__,
-                        error=str(e),
-                        cache_key=cache_key
-                    )
-            
+                    logger.error("cache_result_set_failed", function=func.__name__, error=str(e), cache_key=cache_key)
+
             return result
-        
+
         return wrapper
+
     return decorator
 
 
-def invalidate_cache_on_update(
-    cache_keys_func: Callable,
-    namespace: str = "general"
-):
+def invalidate_cache_on_update(cache_keys_func: Callable, namespace: str = "general"):
     """Decorator to invalidate cache entries when data is updated.
-    
+
     Args:
         cache_keys_func: Function to generate cache keys to invalidate
         namespace: Cache namespace
-    
+
     Usage:
         @invalidate_cache_on_update(
             cache_keys_func=lambda user_id: [f"user_data_{user_id}", f"user_profile_{user_id}"]
@@ -319,12 +276,13 @@ def invalidate_cache_on_update(
             # Your update logic here
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
             # Call original function first
             result = await func(*args, **kwargs)
-            
+
             # Invalidate cache entries
             redis_client = await cache_service._get_redis()
             if redis_client:
@@ -332,7 +290,7 @@ def invalidate_cache_on_update(
                     cache_keys = cache_keys_func(*args, **kwargs)
                     if isinstance(cache_keys, str):
                         cache_keys = [cache_keys]
-                    
+
                     full_cache_keys = [f"{namespace}:{key}" for key in cache_keys]
                     if full_cache_keys:
                         deleted = await redis_client.delete(*full_cache_keys)
@@ -341,16 +299,13 @@ def invalidate_cache_on_update(
                             function=func.__name__,
                             keys_deleted=deleted,
                             cache_keys=cache_keys,
-                            namespace=namespace
+                            namespace=namespace,
                         )
                 except Exception as e:
-                    logger.error(
-                        "cache_invalidation_failed",
-                        function=func.__name__,
-                        error=str(e)
-                    )
-            
+                    logger.error("cache_invalidation_failed", function=func.__name__, error=str(e))
+
             return result
-        
+
         return wrapper
+
     return decorator

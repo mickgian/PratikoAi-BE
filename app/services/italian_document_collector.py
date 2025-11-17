@@ -1,5 +1,4 @@
-"""
-Italian Document Collector Service
+"""Italian Document Collector Service
 
 Automated collection of official Italian government documents from RSS feeds and web sources.
 Implements the dynamic knowledge pipeline: Official Sources → RSS/Scraping → Processing → Vector DB
@@ -10,6 +9,7 @@ import hashlib
 import logging
 import re
 from datetime import (
+    UTC,
     datetime,
     timedelta,
     timezone,
@@ -98,7 +98,7 @@ class ItalianDocumentCollector:
         )
         self.logger = logging.getLogger(__name__)
 
-    async def collect_all_documents(self) -> Dict[str, Any]:
+    async def collect_all_documents(self) -> dict[str, Any]:
         """Collect documents from all configured RSS feeds."""
         self.logger.info("Starting Italian document collection from all RSS feeds")
 
@@ -161,7 +161,7 @@ class ItalianDocumentCollector:
 
         return collection_results
 
-    async def _process_rss_feed(self, feed_url: str, authority: str, feed_type: str) -> Dict[str, Any]:
+    async def _process_rss_feed(self, feed_url: str, authority: str, feed_type: str) -> dict[str, Any]:
         """Process a single RSS feed and extract documents."""
         self.logger.info(f"Processing RSS feed: {feed_url}")
 
@@ -214,9 +214,8 @@ class ItalianDocumentCollector:
 
     async def _process_rss_entry(
         self, entry: Any, authority: str, feed_type: str, feed_url: str
-    ) -> Optional[ItalianOfficialDocument]:
+    ) -> ItalianOfficialDocument | None:
         """Process a single RSS entry and create document record."""
-
         try:
             # Extract basic information
             title = entry.get("title", "").strip()
@@ -232,7 +231,7 @@ class ItalianDocumentCollector:
             publication_date = self._parse_date(pub_date_str)
 
             if not publication_date:
-                publication_date = datetime.now(timezone.utc)
+                publication_date = datetime.now(UTC)
                 self.logger.warning(f"Could not parse publication date for {title}, using current time")
 
             # Generate document ID and check for duplicates
@@ -328,10 +327,10 @@ class ItalianDocumentCollector:
 
                     if vector_id:
                         document.vector_id = vector_id
-                        document.indexed_at = datetime.now(timezone.utc)
+                        document.indexed_at = datetime.now(UTC)
 
                 document.processing_status = "completed"
-                document.last_updated = datetime.now(timezone.utc)
+                document.last_updated = datetime.now(UTC)
 
                 await session.commit()
 
@@ -350,7 +349,7 @@ class ItalianDocumentCollector:
             except Exception:
                 pass
 
-    async def _fetch_document_content(self, url: str) -> Optional[str]:
+    async def _fetch_document_content(self, url: str) -> str | None:
         """Fetch full document content from URL."""
         try:
             response = self.session.get(url, timeout=30)
@@ -381,7 +380,7 @@ class ItalianDocumentCollector:
             self.logger.warning(f"Could not fetch content from {url}: {str(e)}")
             return None
 
-    def _parse_date(self, date_str: str) -> Optional[datetime]:
+    def _parse_date(self, date_str: str) -> datetime | None:
         """Parse date string from RSS feed."""
         if not date_str:
             return None
@@ -443,7 +442,7 @@ class ItalianDocumentCollector:
         else:
             return DocumentCategory.ALTRO
 
-    def _extract_tax_types(self, title: str, content: str) -> List[str]:
+    def _extract_tax_types(self, title: str, content: str) -> list[str]:
         """Extract relevant tax types from document content."""
         text = f"{title} {content or ''}".lower()
         found_tax_types = []
@@ -454,7 +453,7 @@ class ItalianDocumentCollector:
 
         return found_tax_types
 
-    def _extract_keywords(self, title: str, content: str) -> List[str]:
+    def _extract_keywords(self, title: str, content: str) -> list[str]:
         """Extract relevant keywords from document content."""
         text = f"{title} {content or ''}".lower()
 
@@ -496,7 +495,7 @@ class ItalianDocumentCollector:
         try:
             async with database_service.get_session() as session:
                 # Update each configured source
-                for source_key, source_config in ITALIAN_RSS_FEEDS.items():
+                for _source_key, source_config in ITALIAN_RSS_FEEDS.items():
                     authority = source_config["authority"]
 
                     # Count documents collected from this authority
@@ -513,8 +512,8 @@ class ItalianDocumentCollector:
 
                     if source_record:
                         source_record.documents_collected = total_docs
-                        source_record.last_accessed = datetime.now(timezone.utc)
-                        source_record.updated_at = datetime.now(timezone.utc)
+                        source_record.last_accessed = datetime.now(UTC)
+                        source_record.updated_at = datetime.now(UTC)
                     else:
                         # Create new source record
                         feeds = source_config["feeds"]
@@ -540,7 +539,7 @@ class ItalianDocumentCollector:
         except Exception as e:
             self.logger.error(f"Error updating source statistics: {str(e)}")
 
-    async def get_collection_status(self) -> Dict[str, Any]:
+    async def get_collection_status(self) -> dict[str, Any]:
         """Get status of document collection."""
         async with database_service.get_session() as session:
             # Count documents by authority
@@ -618,8 +617,7 @@ async def collect_italian_documents_task() -> None:
 
         # Log summary
         logger.info(
-            f"Document collection completed: {results['new_documents']} new documents, "
-            f"{len(results['errors'])} errors"
+            f"Document collection completed: {results['new_documents']} new documents, {len(results['errors'])} errors"
         )
 
         # Invalidate cache if new documents were added

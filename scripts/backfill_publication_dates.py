@@ -22,7 +22,7 @@ async def backfill_publication_dates():
     """Backfill publication_date for all knowledge_items without it."""
     async with AsyncSessionLocal() as session:
         # Find all items without publication_date
-        result = await session.execute(select(KnowledgeItem).where(KnowledgeItem.publication_date == None))
+        result = await session.execute(select(KnowledgeItem).where(KnowledgeItem.publication_date is None))
         items = result.scalars().all()
 
         print(f"\n📋 Found {len(items)} items without publication_date")
@@ -54,7 +54,7 @@ async def backfill_publication_dates():
         # Final commit
         await session.commit()
 
-        print(f"\n✅ Backfill complete:")
+        print("\n✅ Backfill complete:")
         print(f"   - Updated: {updated} items")
         print(f"   - No date found: {failed} items")
         print(f"   - Total processed: {len(items)} items")

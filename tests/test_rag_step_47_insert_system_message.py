@@ -12,7 +12,7 @@ import pytest
 
 from app.core.langgraph.graph import LangGraphAgent
 from app.schemas.chat import Message
-from app.services.domain_action_classifier import DomainActionClassification, Domain, Action
+from app.services.domain_action_classifier import Action, Domain, DomainActionClassification
 
 
 class TestRAGStep47InsertSystemMessage:
@@ -32,7 +32,7 @@ class TestRAGStep47InsertSystemMessage:
         """Messages list without a system message."""
         return [
             Message(role="user", content="What is tax deduction?"),
-            Message(role="assistant", content="A tax deduction reduces taxable income.")
+            Message(role="assistant", content="A tax deduction reduces taxable income."),
         ]
 
     @pytest.fixture
@@ -53,7 +53,7 @@ class TestRAGStep47InsertSystemMessage:
             action=Action.INFORMATION_REQUEST,
             confidence=0.85,
             document_type=None,
-            reasoning="High confidence tax query about deductions"
+            reasoning="High confidence tax query about deductions",
         )
 
     @pytest.fixture
@@ -64,17 +64,13 @@ class TestRAGStep47InsertSystemMessage:
             action=Action.CALCULATION_REQUEST,
             confidence=0.92,
             document_type=None,
-            reasoning="High confidence labor query about overtime"
+            reasoning="High confidence labor query about overtime",
         )
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch("app.core.langgraph.graph.rag_step_log")
     async def test_step_47_insert_system_message_with_classification(
-        self,
-        mock_log,
-        lang_graph_agent,
-        messages_without_system,
-        tax_classification
+        self, mock_log, lang_graph_agent, messages_without_system, tax_classification
     ):
         """Test STEP 47: Insert system message when none exists and classification available."""
 
@@ -86,7 +82,7 @@ class TestRAGStep47InsertSystemMessage:
         result = lang_graph_agent._prepare_messages_with_system_prompt(
             messages_without_system,
             system_prompt="Tax-specific system prompt for deductions.",
-            classification=tax_classification
+            classification=tax_classification,
         )
 
         # Verify system message was inserted at position 0
@@ -97,32 +93,26 @@ class TestRAGStep47InsertSystemMessage:
         assert result[1].content == "What is tax deduction?"
 
         # Verify STEP 47 logging was called for insert action
-        step_47_logs = [
-            call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 47
-        ]
+        step_47_logs = [call for call in mock_log.call_args_list if len(call[1]) > 3 and call[1].get("step") == 47]
 
         assert len(step_47_logs) > 0, "STEP 47 insert action should be logged"
         log_call = step_47_logs[0]
-        assert log_call[1]['step'] == 47
-        assert log_call[1]['step_id'] == "RAG.prompting.insert.system.message"
-        assert log_call[1]['node_label'] == "InsertMsg"
-        assert log_call[1]['decision'] == "system_message_inserted"
-        assert log_call[1]['action_taken'] == "insert"
-        assert log_call[1]['system_message_exists'] is False
-        assert log_call[1]['has_classification'] is True
-        assert log_call[1]['classification_confidence'] == 0.85
-        assert log_call[1]['domain'] == Domain.TAX.value
-        assert log_call[1]['insert_position'] == 0
-        assert log_call[1]['messages_count'] == original_count + 1
+        assert log_call[1]["step"] == 47
+        assert log_call[1]["step_id"] == "RAG.prompting.insert.system.message"
+        assert log_call[1]["node_label"] == "InsertMsg"
+        assert log_call[1]["decision"] == "system_message_inserted"
+        assert log_call[1]["action_taken"] == "insert"
+        assert log_call[1]["system_message_exists"] is False
+        assert log_call[1]["has_classification"] is True
+        assert log_call[1]["classification_confidence"] == 0.85
+        assert log_call[1]["domain"] == Domain.TAX.value
+        assert log_call[1]["insert_position"] == 0
+        assert log_call[1]["messages_count"] == original_count + 1
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch("app.core.langgraph.graph.rag_step_log")
     async def test_step_47_insert_system_message_without_classification(
-        self,
-        mock_log,
-        lang_graph_agent,
-        messages_without_system
+        self, mock_log, lang_graph_agent, messages_without_system
     ):
         """Test STEP 47: Insert default system message when no classification available."""
 
@@ -132,9 +122,7 @@ class TestRAGStep47InsertSystemMessage:
 
         # Call the method with default system prompt
         result = lang_graph_agent._prepare_messages_with_system_prompt(
-            messages_without_system,
-            system_prompt="You are a helpful assistant.",
-            classification=None
+            messages_without_system, system_prompt="You are a helpful assistant.", classification=None
         )
 
         # Verify system message was inserted
@@ -143,26 +131,19 @@ class TestRAGStep47InsertSystemMessage:
         assert result[0].content == "You are a helpful assistant."
 
         # Verify STEP 47 logging for insert without classification
-        step_47_logs = [
-            call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 47
-        ]
+        step_47_logs = [call for call in mock_log.call_args_list if len(call[1]) > 3 and call[1].get("step") == 47]
 
         assert len(step_47_logs) > 0
         log_call = step_47_logs[0]
-        assert log_call[1]['action_taken'] == "insert"
-        assert log_call[1]['has_classification'] is False
-        assert log_call[1]['classification_confidence'] is None
-        assert log_call[1]['domain'] is None
+        assert log_call[1]["action_taken"] == "insert"
+        assert log_call[1]["has_classification"] is False
+        assert log_call[1]["classification_confidence"] is None
+        assert log_call[1]["domain"] is None
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch("app.core.langgraph.graph.rag_step_log")
     async def test_step_47_insert_system_message_empty_messages(
-        self,
-        mock_log,
-        lang_graph_agent,
-        empty_messages,
-        labor_classification
+        self, mock_log, lang_graph_agent, empty_messages, labor_classification
     ):
         """Test STEP 47: Insert system message when messages list is empty."""
 
@@ -172,7 +153,7 @@ class TestRAGStep47InsertSystemMessage:
         result = lang_graph_agent._prepare_messages_with_system_prompt(
             empty_messages,
             system_prompt="Labor law specialist prompt for calculations.",
-            classification=labor_classification
+            classification=labor_classification,
         )
 
         # Should have inserted a system message into empty list
@@ -181,42 +162,32 @@ class TestRAGStep47InsertSystemMessage:
         assert result[0].content == "Labor law specialist prompt for calculations."
 
         # Verify STEP 47 logging for empty messages
-        step_47_logs = [
-            call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 47
-        ]
+        step_47_logs = [call for call in mock_log.call_args_list if len(call[1]) > 3 and call[1].get("step") == 47]
 
         assert len(step_47_logs) > 0
         log_call = step_47_logs[0]
-        assert log_call[1]['messages_empty'] is True
-        assert log_call[1]['original_messages_count'] == 0
-        assert log_call[1]['messages_count'] == 1
-        assert log_call[1]['domain'] == Domain.LABOR.value
+        assert log_call[1]["messages_empty"] is True
+        assert log_call[1]["original_messages_count"] == 0
+        assert log_call[1]["messages_count"] == 1
+        assert log_call[1]["domain"] == Domain.LABOR.value
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
-    async def test_step_47_insert_preserves_message_order(
-        self,
-        mock_log,
-        lang_graph_agent,
-        tax_classification
-    ):
+    @patch("app.core.langgraph.graph.rag_step_log")
+    async def test_step_47_insert_preserves_message_order(self, mock_log, lang_graph_agent, tax_classification):
         """Test STEP 47: Inserting system message preserves order of existing messages."""
 
         messages = [
             Message(role="user", content="First user message"),
             Message(role="assistant", content="First assistant response"),
             Message(role="user", content="Second user message"),
-            Message(role="assistant", content="Second assistant response")
+            Message(role="assistant", content="Second assistant response"),
         ]
 
         lang_graph_agent._current_classification = tax_classification
 
         # Call the method
         result = lang_graph_agent._prepare_messages_with_system_prompt(
-            messages,
-            system_prompt="Tax advisor system prompt",
-            classification=tax_classification
+            messages, system_prompt="Tax advisor system prompt", classification=tax_classification
         )
 
         # Verify system message inserted at beginning and order preserved
@@ -233,27 +204,18 @@ class TestRAGStep47InsertSystemMessage:
         assert result[4].content == "Second assistant response"
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
-    async def test_step_47_insert_with_different_message_types(
-        self,
-        mock_log,
-        lang_graph_agent,
-        tax_classification
-    ):
+    @patch("app.core.langgraph.graph.rag_step_log")
+    async def test_step_47_insert_with_different_message_types(self, mock_log, lang_graph_agent, tax_classification):
         """Test STEP 47: Insertion works with different Message object types."""
 
         # Create messages
-        messages = [
-            Message(role="user", content="Question about tax deductions")
-        ]
+        messages = [Message(role="user", content="Question about tax deductions")]
 
         lang_graph_agent._current_classification = tax_classification
 
         # Call the method
         result = lang_graph_agent._prepare_messages_with_system_prompt(
-            messages,
-            system_prompt="Inserted system prompt",
-            classification=tax_classification
+            messages, system_prompt="Inserted system prompt", classification=tax_classification
         )
 
         # Verify insertion worked correctly
@@ -266,12 +228,8 @@ class TestRAGStep47InsertSystemMessage:
         assert isinstance(result[1], type(messages[0]))
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
-    async def test_step_47_insert_with_various_starting_roles(
-        self,
-        mock_log,
-        lang_graph_agent
-    ):
+    @patch("app.core.langgraph.graph.rag_step_log")
+    async def test_step_47_insert_with_various_starting_roles(self, mock_log, lang_graph_agent):
         """Test STEP 47: Insert system message regardless of first message role."""
 
         test_scenarios = [
@@ -288,9 +246,7 @@ class TestRAGStep47InsertSystemMessage:
 
             # Call the method
             result = lang_graph_agent._prepare_messages_with_system_prompt(
-                messages_copy,
-                system_prompt="Default system prompt",
-                classification=None
+                messages_copy, system_prompt="Default system prompt", classification=None
             )
 
             if should_insert:
@@ -301,24 +257,18 @@ class TestRAGStep47InsertSystemMessage:
 
                 # Verify STEP 47 logging
                 step_47_logs = [
-                    call for call in mock_log.call_args_list
-                    if len(call[1]) > 3 and call[1].get('step') == 47
+                    call for call in mock_log.call_args_list if len(call[1]) > 3 and call[1].get("step") == 47
                 ]
                 assert len(step_47_logs) > 0
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
-    async def test_step_47_no_insert_when_system_exists(
-        self,
-        mock_log,
-        lang_graph_agent,
-        tax_classification
-    ):
+    @patch("app.core.langgraph.graph.rag_step_log")
+    async def test_step_47_no_insert_when_system_exists(self, mock_log, lang_graph_agent, tax_classification):
         """Test STEP 47: No insertion when system message already exists."""
 
         messages = [
             Message(role="system", content="Existing system message"),
-            Message(role="user", content="User question")
+            Message(role="user", content="User question"),
         ]
 
         lang_graph_agent._current_classification = tax_classification
@@ -326,9 +276,7 @@ class TestRAGStep47InsertSystemMessage:
 
         # Call the method
         result = lang_graph_agent._prepare_messages_with_system_prompt(
-            messages,
-            system_prompt="Would-be inserted system prompt",
-            classification=tax_classification
+            messages, system_prompt="Would-be inserted system prompt", classification=tax_classification
         )
 
         # Should NOT have inserted - should have replaced instead (STEP 46)
@@ -338,20 +286,13 @@ class TestRAGStep47InsertSystemMessage:
         assert result[0].content == "Would-be inserted system prompt"
 
         # Verify NO STEP 47 logging (should be STEP 46 replace instead)
-        step_47_logs = [
-            call for call in mock_log.call_args_list
-            if len(call[1]) > 3 and call[1].get('step') == 47
-        ]
+        step_47_logs = [call for call in mock_log.call_args_list if len(call[1]) > 3 and call[1].get("step") == 47]
         assert len(step_47_logs) == 0, "STEP 47 should not be logged when system message exists"
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch("app.core.langgraph.graph.rag_step_log")
     async def test_step_47_comprehensive_logging_format(
-        self,
-        mock_log,
-        lang_graph_agent,
-        single_user_message,
-        tax_classification
+        self, mock_log, lang_graph_agent, single_user_message, tax_classification
     ):
         """Test STEP 47: Comprehensive structured logging format."""
 
@@ -359,17 +300,14 @@ class TestRAGStep47InsertSystemMessage:
 
         # Call the method
         lang_graph_agent._prepare_messages_with_system_prompt(
-            single_user_message,
-            system_prompt="Comprehensive test system prompt",
-            classification=tax_classification
+            single_user_message, system_prompt="Comprehensive test system prompt", classification=tax_classification
         )
 
         # Find the insert action log
         step_47_logs = [
-            call for call in mock_log.call_args_list
-            if (len(call[1]) > 3 and
-                call[1].get('step') == 47 and
-                call[1].get('action_taken') == 'insert')
+            call
+            for call in mock_log.call_args_list
+            if (len(call[1]) > 3 and call[1].get("step") == 47 and call[1].get("action_taken") == "insert")
         ]
 
         assert len(step_47_logs) > 0
@@ -377,40 +315,42 @@ class TestRAGStep47InsertSystemMessage:
 
         # Verify all required STEP 47 logging fields
         required_fields = [
-            'step', 'step_id', 'node_label', 'decision', 'action_taken',
-            'system_message_exists', 'has_classification', 'messages_count',
-            'original_messages_count', 'insert_position'
+            "step",
+            "step_id",
+            "node_label",
+            "decision",
+            "action_taken",
+            "system_message_exists",
+            "has_classification",
+            "messages_count",
+            "original_messages_count",
+            "insert_position",
         ]
 
         for field in required_fields:
             assert field in log_call[1], f"Missing required field in STEP 47 log: {field}"
 
         # Verify specific values for insert action
-        assert log_call[1]['step'] == 47
-        assert log_call[1]['step_id'] == "RAG.prompting.insert.system.message"
-        assert log_call[1]['node_label'] == "InsertMsg"
-        assert log_call[1]['decision'] == "system_message_inserted"
-        assert log_call[1]['action_taken'] == "insert"
-        assert log_call[1]['system_message_exists'] is False
-        assert log_call[1]['has_classification'] is True
-        assert log_call[1]['messages_count'] == 2  # 1 original + 1 inserted
-        assert log_call[1]['original_messages_count'] == 1
-        assert log_call[1]['insert_position'] == 0
-        assert log_call[1]['classification_confidence'] == 0.85
-        assert log_call[1]['domain'] == Domain.TAX.value
-        assert log_call[1]['action'] == Action.INFORMATION_REQUEST.value
-        assert log_call[1]['processing_stage'] == "completed"
+        assert log_call[1]["step"] == 47
+        assert log_call[1]["step_id"] == "RAG.prompting.insert.system.message"
+        assert log_call[1]["node_label"] == "InsertMsg"
+        assert log_call[1]["decision"] == "system_message_inserted"
+        assert log_call[1]["action_taken"] == "insert"
+        assert log_call[1]["system_message_exists"] is False
+        assert log_call[1]["has_classification"] is True
+        assert log_call[1]["messages_count"] == 2  # 1 original + 1 inserted
+        assert log_call[1]["original_messages_count"] == 1
+        assert log_call[1]["insert_position"] == 0
+        assert log_call[1]["classification_confidence"] == 0.85
+        assert log_call[1]["domain"] == Domain.TAX.value
+        assert log_call[1]["action"] == Action.INFORMATION_REQUEST.value
+        assert log_call[1]["processing_stage"] == "completed"
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
-    @patch('app.core.langgraph.graph.rag_step_timer')
+    @patch("app.core.langgraph.graph.rag_step_log")
+    @patch("app.core.langgraph.graph.rag_step_timer")
     async def test_step_47_performance_tracking_during_insert(
-        self,
-        mock_timer,
-        mock_log,
-        lang_graph_agent,
-        messages_without_system,
-        tax_classification
+        self, mock_timer, mock_log, lang_graph_agent, messages_without_system, tax_classification
     ):
         """Test STEP 47: Performance tracking during system message insertion."""
 
@@ -422,25 +362,15 @@ class TestRAGStep47InsertSystemMessage:
 
         # Call the method
         lang_graph_agent._prepare_messages_with_system_prompt(
-            messages_without_system,
-            system_prompt="Performance test prompt",
-            classification=tax_classification
+            messages_without_system, system_prompt="Performance test prompt", classification=tax_classification
         )
 
         # Verify timer was used for STEP 45 (which coordinates insert logic)
-        mock_timer.assert_called_with(
-            45,
-            "RAG.prompting.system.message.exists",
-            "CheckSysMsg"
-        )
+        mock_timer.assert_called_with(45, "RAG.prompting.system.message.exists", "CheckSysMsg")
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
-    async def test_step_47_insert_multiple_domain_scenarios(
-        self,
-        mock_log,
-        lang_graph_agent
-    ):
+    @patch("app.core.langgraph.graph.rag_step_log")
+    async def test_step_47_insert_multiple_domain_scenarios(self, mock_log, lang_graph_agent):
         """Test STEP 47: Insert behavior across multiple domain scenarios."""
 
         scenarios = [
@@ -456,19 +386,14 @@ class TestRAGStep47InsertSystemMessage:
             messages = [Message(role="user", content=f"Query about {domain.value}")]
 
             classification = DomainActionClassification(
-                domain=domain,
-                action=action,
-                confidence=confidence,
-                reasoning=f"Test {domain.value} classification"
+                domain=domain, action=action, confidence=confidence, reasoning=f"Test {domain.value} classification"
             )
 
             lang_graph_agent._current_classification = classification
 
             # Call the method
             lang_graph_agent._prepare_messages_with_system_prompt(
-                messages,
-                system_prompt=f"{domain.value.title()} domain-specific prompt",
-                classification=classification
+                messages, system_prompt=f"{domain.value.title()} domain-specific prompt", classification=classification
             )
 
             # Verify insertion occurred
@@ -477,25 +402,21 @@ class TestRAGStep47InsertSystemMessage:
 
             # Verify STEP 47 logging
             step_47_logs = [
-                call for call in mock_log.call_args_list
-                if (len(call[1]) > 3 and
-                    call[1].get('step') == 47 and
-                    call[1].get('action_taken') == 'insert')
+                call
+                for call in mock_log.call_args_list
+                if (len(call[1]) > 3 and call[1].get("step") == 47 and call[1].get("action_taken") == "insert")
             ]
 
             assert len(step_47_logs) > 0, f"No STEP 47 insert log for {domain.value}"
             log_call = step_47_logs[0]
-            assert log_call[1]['domain'] == expected_domain
-            assert log_call[1]['action'] == expected_action
-            assert log_call[1]['classification_confidence'] == confidence
+            assert log_call[1]["domain"] == expected_domain
+            assert log_call[1]["action"] == expected_action
+            assert log_call[1]["classification_confidence"] == confidence
 
     @pytest.mark.asyncio
-    @patch('app.core.langgraph.graph.rag_step_log')
+    @patch("app.core.langgraph.graph.rag_step_log")
     async def test_step_47_insert_with_low_confidence_classification(
-        self,
-        mock_log,
-        lang_graph_agent,
-        messages_without_system
+        self, mock_log, lang_graph_agent, messages_without_system
     ):
         """Test STEP 47: Insertion occurs even with low confidence classification."""
 
@@ -505,7 +426,7 @@ class TestRAGStep47InsertSystemMessage:
             action=Action.STRATEGIC_ADVICE,
             confidence=0.2,  # Very low confidence
             document_type=None,
-            reasoning="Uncertain business classification"
+            reasoning="Uncertain business classification",
         )
 
         lang_graph_agent._current_classification = low_conf_classification
@@ -514,7 +435,7 @@ class TestRAGStep47InsertSystemMessage:
         result = lang_graph_agent._prepare_messages_with_system_prompt(
             messages_without_system,
             system_prompt="Low confidence business prompt",
-            classification=low_conf_classification
+            classification=low_conf_classification,
         )
 
         # Should still insert (classification presence matters, not confidence)
@@ -523,13 +444,12 @@ class TestRAGStep47InsertSystemMessage:
 
         # Verify STEP 47 logging shows insertion with low confidence
         step_47_logs = [
-            call for call in mock_log.call_args_list
-            if (len(call[1]) > 3 and
-                call[1].get('step') == 47 and
-                call[1].get('action_taken') == 'insert')
+            call
+            for call in mock_log.call_args_list
+            if (len(call[1]) > 3 and call[1].get("step") == 47 and call[1].get("action_taken") == "insert")
         ]
 
         assert len(step_47_logs) > 0
         log_call = step_47_logs[0]
-        assert log_call[1]['classification_confidence'] == 0.2
-        assert log_call[1]['domain'] == Domain.BUSINESS.value
+        assert log_call[1]["classification_confidence"] == 0.2
+        assert log_call[1]["domain"] == Domain.BUSINESS.value

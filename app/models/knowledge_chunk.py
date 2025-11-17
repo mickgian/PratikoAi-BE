@@ -1,9 +1,9 @@
-"""
-Knowledge chunk models for hybrid RAG (FTS + vector search).
+"""Knowledge chunk models for hybrid RAG (FTS + vector search).
 Stores chunked documents with both tsvector and pgvector embeddings.
 """
 
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -27,8 +27,7 @@ from sqlmodel import (
 
 
 class KnowledgeChunk(SQLModel, table=True):
-    """
-    Chunked knowledge for hybrid retrieval.
+    """Chunked knowledge for hybrid retrieval.
 
     Each chunk has:
     - Text content with Italian FTS (tsvector)
@@ -39,10 +38,10 @@ class KnowledgeChunk(SQLModel, table=True):
 
     __tablename__ = "knowledge_chunks"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
 
     # Parent reference
-    knowledge_item_id: Optional[int] = Field(
+    knowledge_item_id: int | None = Field(
         default=None, foreign_key="knowledge_items.id", description="Parent knowledge item"
     )
 
@@ -52,10 +51,10 @@ class KnowledgeChunk(SQLModel, table=True):
     token_count: int = Field(..., description="Approximate token count for this chunk")
 
     # Search fields (added via migration)
-    search_vector: Optional[str] = Field(
+    search_vector: str | None = Field(
         default=None, sa_column=Column(TSVECTOR), description="Italian FTS vector (auto-maintained by trigger)"
     )
-    embedding: Optional[List[float]] = Field(
+    embedding: list[float] | None = Field(
         default=None, sa_column=Column(Vector(1536)), description="1536-d vector embedding (pgvector)"
     )
 
@@ -63,22 +62,20 @@ class KnowledgeChunk(SQLModel, table=True):
     kb_epoch: float = Field(..., description="Unix timestamp when chunk was ingested")
 
     # Metadata
-    source_url: Optional[str] = Field(default=None, description="Original document URL")
-    document_title: Optional[str] = Field(default=None, description="Parent document title")
+    source_url: str | None = Field(default=None, description="Original document URL")
+    document_title: str | None = Field(default=None, description="Parent document title")
 
     # Quality tracking (for junk detection and repair)
-    quality_score: Optional[float] = Field(default=None, description="Chunk-level quality score (0.0-1.0)")
+    quality_score: float | None = Field(default=None, description="Chunk-level quality score (0.0-1.0)")
     junk: bool = Field(default=False, description="Flag indicating corrupted/low-quality chunk")
     ocr_used: bool = Field(default=False, description="Flag indicating OCR was used for extraction")
 
     # Character position tracking (for span references)
-    start_char: Optional[int] = Field(default=None, description="Starting character position in source document")
-    end_char: Optional[int] = Field(default=None, description="Ending character position in source document")
+    start_char: int | None = Field(default=None, description="Starting character position in source document")
+    end_char: int | None = Field(default=None, description="Ending character position in source document")
 
     # Timestamps
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), sa_column=Column(DateTime(timezone=True))
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_column=Column(DateTime(timezone=True)))
 
     __table_args__ = (
         # Foreign key index

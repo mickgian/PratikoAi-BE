@@ -1,11 +1,11 @@
-"""
-Regulatory Documents Models for Dynamic Knowledge Collection System.
+"""Regulatory Documents Models for Dynamic Knowledge Collection System.
 
 These models store regulatory documents from Italian authorities with
 proper versioning, status tracking, and metadata management.
 """
 
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -57,7 +57,7 @@ class RegulatoryDocument(SQLModel, table=True):
     __tablename__ = "regulatory_documents"
 
     # Primary identification
-    id: Optional[str] = Field(default=None, primary_key=True, max_length=100)
+    id: str | None = Field(default=None, primary_key=True, max_length=100)
 
     # Source information
     source: str = Field(description="Source authority (agenzia_entrate, inps, etc.)")
@@ -66,50 +66,50 @@ class RegulatoryDocument(SQLModel, table=True):
     # Document metadata
     title: str = Field(description="Document title")
     url: str = Field(description="Original document URL", unique=True)
-    published_date: Optional[datetime] = Field(default=None, description="Official publication date")
+    published_date: datetime | None = Field(default=None, description="Official publication date")
 
     # Content information
     content: str = Field(sa_column=Column(Text), description="Extracted text content")
     content_hash: str = Field(description="SHA256 hash for duplicate detection")
 
     # Document classification
-    document_number: Optional[str] = Field(default=None, description="Official document number")
-    authority: Optional[str] = Field(default=None, description="Publishing authority name")
+    document_number: str | None = Field(default=None, description="Official document number")
+    authority: str | None = Field(default=None, description="Publishing authority name")
 
     # Metadata and version management
-    document_metadata: Dict[str, Any] = Field(
+    document_metadata: dict[str, Any] = Field(
         default_factory=dict, sa_column=Column(JSON), description="Additional document metadata"
     )
     version: int = Field(default=1, description="Document version number")
-    previous_version_id: Optional[str] = Field(default=None, description="ID of previous version if this is an update")
+    previous_version_id: str | None = Field(default=None, description="ID of previous version if this is an update")
 
     # Processing information
     status: ProcessingStatus = Field(default=ProcessingStatus.PENDING, description="Current processing status")
-    processed_at: Optional[datetime] = Field(default=None, description="When document was successfully processed")
-    processing_errors: Optional[str] = Field(default=None, description="Any errors encountered during processing")
+    processed_at: datetime | None = Field(default=None, description="When document was successfully processed")
+    processing_errors: str | None = Field(default=None, description="Any errors encountered during processing")
 
     # Knowledge base integration
-    knowledge_item_id: Optional[int] = Field(default=None, description="Associated knowledge_items record ID")
+    knowledge_item_id: int | None = Field(default=None, description="Associated knowledge_items record ID")
 
     # Classification and tagging
-    topics: Optional[str] = Field(default=None, description="Comma-separated list of topics/keywords")
+    topics: str | None = Field(default=None, description="Comma-separated list of topics/keywords")
     importance_score: float = Field(default=0.5, description="Calculated importance score (0.0-1.0)")
 
     # Timestamps
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True)),
         description="Record creation timestamp",
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True)),
         description="Last update timestamp",
     )
 
     # Archival information
-    archived_at: Optional[datetime] = Field(default=None, description="When document was archived")
-    archive_reason: Optional[str] = Field(default=None, description="Reason for archiving")
+    archived_at: datetime | None = Field(default=None, description="When document was archived")
+    archive_reason: str | None = Field(default=None, description="Reason for archiving")
 
 
 class FeedStatus(SQLModel, table=True):
@@ -118,36 +118,36 @@ class FeedStatus(SQLModel, table=True):
     __tablename__ = "feed_status"
 
     # Primary identification
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
 
     # Feed information
     feed_url: str = Field(unique=True, description="RSS feed URL")
-    source: Optional[str] = Field(default=None, description="Source authority")
-    feed_type: Optional[str] = Field(default=None, description="Type of feed")
-    parser: Optional[str] = Field(
+    source: str | None = Field(default=None, description="Source authority")
+    feed_type: str | None = Field(default=None, description="Type of feed")
+    parser: str | None = Field(
         default=None, description="Parser to use (agenzia_normativa, inps, gazzetta_ufficiale, generic)"
     )
 
     # Status tracking
     status: str = Field(description="Current status (healthy, unhealthy, error)")
     last_checked: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True)),
         description="Last health check timestamp",
     )
-    last_success: Optional[datetime] = Field(
+    last_success: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True)), description="Last successful fetch timestamp"
     )
 
     # Performance metrics
-    response_time_ms: Optional[float] = Field(default=None, description="Last response time in milliseconds")
-    items_found: Optional[int] = Field(default=None, description="Number of items in last successful fetch")
+    response_time_ms: float | None = Field(default=None, description="Last response time in milliseconds")
+    items_found: int | None = Field(default=None, description="Number of items in last successful fetch")
 
     # Error tracking
     consecutive_errors: int = Field(default=0, description="Count of consecutive errors")
     errors: int = Field(default=0, description="Total error count")
-    last_error: Optional[str] = Field(default=None, description="Last error message")
-    last_error_at: Optional[datetime] = Field(
+    last_error: str | None = Field(default=None, description="Last error message")
+    last_error_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True)), description="Last error timestamp"
     )
 
@@ -157,12 +157,12 @@ class FeedStatus(SQLModel, table=True):
 
     # Timestamps
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True)),
         description="Record creation timestamp",
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True)),
         description="Last update timestamp",
     )
@@ -174,10 +174,10 @@ class DocumentProcessingLog(SQLModel, table=True):
     __tablename__ = "document_processing_log"
 
     # Primary identification
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
 
     # Document reference
-    document_id: Optional[str] = Field(
+    document_id: str | None = Field(
         default=None, foreign_key="regulatory_documents.id", description="Associated regulatory document ID"
     )
     document_url: str = Field(description="Document URL")
@@ -187,22 +187,22 @@ class DocumentProcessingLog(SQLModel, table=True):
     status: str = Field(description="Operation status (success, failed, partial)")
 
     # Performance metrics
-    processing_time_ms: Optional[float] = Field(default=None, description="Processing time in milliseconds")
-    content_length: Optional[int] = Field(default=None, description="Extracted content length")
+    processing_time_ms: float | None = Field(default=None, description="Processing time in milliseconds")
+    content_length: int | None = Field(default=None, description="Extracted content length")
 
     # Error information
-    error_message: Optional[str] = Field(default=None, description="Error message if operation failed")
-    error_details: Optional[Dict[str, Any]] = Field(
+    error_message: str | None = Field(default=None, description="Error message if operation failed")
+    error_details: dict[str, Any] | None = Field(
         default=None, sa_column=Column(JSON), description="Detailed error information"
     )
 
     # Context information
     triggered_by: str = Field(description="What triggered this operation (scheduler, manual, api)")
-    feed_url: Optional[str] = Field(default=None, description="Source RSS feed URL")
+    feed_url: str | None = Field(default=None, description="Source RSS feed URL")
 
     # Timestamps
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True)),
         description="Log entry timestamp",
     )
@@ -214,11 +214,11 @@ class DocumentCollection(SQLModel, table=True):
     __tablename__ = "document_collections"
 
     # Primary identification
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
 
     # Collection metadata
     name: str = Field(description="Collection name")
-    description: Optional[str] = Field(default=None, description="Collection description")
+    description: str | None = Field(default=None, description="Collection description")
 
     # Classification
     source: str = Field(description="Primary source authority")
@@ -229,20 +229,20 @@ class DocumentCollection(SQLModel, table=True):
     total_content_length: int = Field(default=0, description="Total content length")
 
     # Date ranges
-    earliest_document: Optional[datetime] = Field(default=None, description="Publication date of earliest document")
-    latest_document: Optional[datetime] = Field(default=None, description="Publication date of latest document")
+    earliest_document: datetime | None = Field(default=None, description="Publication date of earliest document")
+    latest_document: datetime | None = Field(default=None, description="Publication date of latest document")
 
     # Collection status
     status: str = Field(default="active", description="Collection status")
 
     # Timestamps
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True)),
         description="Collection creation timestamp",
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True)),
         description="Last update timestamp",
     )
@@ -313,7 +313,7 @@ def extract_topics_from_content(content: str) -> str:
 
 
 def calculate_importance_score(
-    source: str, document_type: str, content_length: int, published_date: Optional[datetime] = None
+    source: str, document_type: str, content_length: int, published_date: datetime | None = None
 ) -> float:
     """Calculate importance score for a document.
 
@@ -348,7 +348,7 @@ def calculate_importance_score(
 
     # Recency consideration
     if published_date:
-        days_old = (datetime.now(timezone.utc) - published_date).days
+        days_old = (datetime.now(UTC) - published_date).days
         if days_old < 30:  # Very recent
             score += 0.02
         elif days_old > 365:  # Old documents

@@ -8,11 +8,10 @@ This module enforces constraints on tool usage:
 
 import hashlib
 import json
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 from app.core.logging import logger
-
 
 # Policy constant: maximum tool calls allowed per turn
 MAX_TOOL_CALLS_PER_TURN = 1
@@ -28,13 +27,14 @@ class ToolDecision:
         tool_name: Name of the tool being evaluated
         tool_call_hash: Hash of the tool call for deduplication
     """
+
     should_execute: bool
     reason: str
     tool_name: str
     tool_call_hash: str
 
 
-def _generate_tool_call_key(tool_call: Dict[str, Any]) -> str:
+def _generate_tool_call_key(tool_call: dict[str, Any]) -> str:
     """Generate a unique key for a tool call for deduplication.
 
     Args:
@@ -57,9 +57,7 @@ def _generate_tool_call_key(tool_call: Dict[str, Any]) -> str:
 
 
 def should_execute_tool_call(
-    prev_calls: List[Dict[str, Any]],
-    new_call: Dict[str, Any],
-    state: str = "S075"
+    prev_calls: list[dict[str, Any]], new_call: dict[str, Any], state: str = "S075"
 ) -> ToolDecision:
     """Decide if a tool call should be executed based on guardrails.
 
@@ -97,18 +95,20 @@ def should_execute_tool_call(
             should_execute=False,
             reason=f"max_calls_reached:{MAX_TOOL_CALLS_PER_TURN}",
             tool_name=tool_name,
-            tool_call_hash=new_key
+            tool_call_hash=new_key,
         )
 
-        logger.info({
-            "event": "tool_decision",
-            "state": state,
-            "action": "skip",
-            "reason": "max_reached",
-            "tool_name": tool_name,
-            "prev_count": len(prev_calls),
-            "max_allowed": MAX_TOOL_CALLS_PER_TURN
-        })
+        logger.info(
+            {
+                "event": "tool_decision",
+                "state": state,
+                "action": "skip",
+                "reason": "max_reached",
+                "tool_name": tool_name,
+                "prev_count": len(prev_calls),
+                "max_allowed": MAX_TOOL_CALLS_PER_TURN,
+            }
+        )
 
         return decision
 
@@ -117,49 +117,45 @@ def should_execute_tool_call(
         prev_key = _generate_tool_call_key(prev_call)
         if prev_key == new_key:
             decision = ToolDecision(
-                should_execute=False,
-                reason="duplicate_call",
-                tool_name=tool_name,
-                tool_call_hash=new_key
+                should_execute=False, reason="duplicate_call", tool_name=tool_name, tool_call_hash=new_key
             )
 
-            logger.info({
-                "event": "tool_decision",
-                "state": state,
-                "action": "skip",
-                "reason": "duplicate",
-                "tool_name": tool_name,
-                "tool_hash": new_key[:16]
-            })
+            logger.info(
+                {
+                    "event": "tool_decision",
+                    "state": state,
+                    "action": "skip",
+                    "reason": "duplicate",
+                    "tool_name": tool_name,
+                    "tool_hash": new_key[:16],
+                }
+            )
 
             return decision
 
     # All checks passed - allow execution
     decision = ToolDecision(
-        should_execute=True,
-        reason="passed_guardrails",
-        tool_name=tool_name,
-        tool_call_hash=new_key
+        should_execute=True, reason="passed_guardrails", tool_name=tool_name, tool_call_hash=new_key
     )
 
-    logger.info({
-        "event": "tool_decision",
-        "state": state,
-        "action": "execute",
-        "reason": "allowed",
-        "tool_name": tool_name,
-        "tool_hash": new_key[:16],
-        "prev_count": len(prev_calls)
-    })
+    logger.info(
+        {
+            "event": "tool_decision",
+            "state": state,
+            "action": "execute",
+            "reason": "allowed",
+            "tool_name": tool_name,
+            "tool_hash": new_key[:16],
+            "prev_count": len(prev_calls),
+        }
+    )
 
     return decision
 
 
 def filter_tool_calls(
-    tool_calls: List[Dict[str, Any]],
-    prev_calls: Optional[List[Dict[str, Any]]] = None,
-    state: str = "S075"
-) -> List[Dict[str, Any]]:
+    tool_calls: list[dict[str, Any]], prev_calls: list[dict[str, Any]] | None = None, state: str = "S075"
+) -> list[dict[str, Any]]:
     """Filter a list of tool calls according to guardrails.
 
     This function processes all tool calls and returns only those that pass
@@ -189,12 +185,14 @@ def filter_tool_calls(
             break
 
     if len(tool_calls) > len(allowed):
-        logger.warning({
-            "event": "tools_filtered",
-            "state": state,
-            "requested": len(tool_calls),
-            "allowed": len(allowed),
-            "filtered": len(tool_calls) - len(allowed)
-        })
+        logger.warning(
+            {
+                "event": "tools_filtered",
+                "state": state,
+                "requested": len(tool_calls),
+                "allowed": len(allowed),
+                "filtered": len(tool_calls) - len(allowed),
+            }
+        )
 
     return allowed

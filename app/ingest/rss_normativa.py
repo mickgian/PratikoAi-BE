@@ -1,5 +1,4 @@
-"""
-RSS Normativa Ingestion for Agenzia Entrate.
+"""RSS Normativa Ingestion for Agenzia Entrate.
 
 Fetches documents from the Normativa/Prassi RSS feed, processes them,
 chunks them, generates embeddings, and stores in knowledge_items + knowledge_chunks.
@@ -7,6 +6,7 @@ chunks them, generates embeddings, and stores in knowledge_items + knowledge_chu
 
 import time
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -31,9 +31,8 @@ from app.core.document_ingestion import (
 FEED_URL = "https://www.agenziaentrate.gov.it/portale/c/portal/rss/entrate?idrss=0753fcb1-1a42-4f8c-f40d-02793c6aefb4"
 
 
-async def fetch_rss_feed(feed_url: str = FEED_URL) -> List[Dict[str, Any]]:
-    """
-    Fetch and parse RSS feed.
+async def fetch_rss_feed(feed_url: str = FEED_URL) -> list[dict[str, Any]]:
+    """Fetch and parse RSS feed.
 
     Args:
         feed_url: RSS feed URL
@@ -75,12 +74,11 @@ async def fetch_rss_feed(feed_url: str = FEED_URL) -> List[Dict[str, Any]]:
 
 async def run_rss_ingestion(
     session: AsyncSession,
-    feed_url: Optional[str] = None,
-    feed_type: Optional[str] = None,
-    max_items: Optional[int] = None,
-) -> Dict[str, Any]:
-    """
-    Run the RSS ingestion pipeline.
+    feed_url: str | None = None,
+    feed_type: str | None = None,
+    max_items: int | None = None,
+) -> dict[str, Any]:
+    """Run the RSS ingestion pipeline.
 
     Args:
         session: Database session
@@ -149,7 +147,7 @@ async def run_rss_ingestion(
                 import time as time_module
 
                 timestamp = time_module.mktime(item["published_parsed"])
-                published_date = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+                published_date = datetime.fromtimestamp(timestamp, tz=UTC)
             except Exception as e:
                 print(f"⚠️  Failed to parse pubDate for {title}: {e}")
 

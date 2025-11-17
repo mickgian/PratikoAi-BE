@@ -1,18 +1,18 @@
-
 """
 Failure injection tests for Phase 4: Cache, LLM, and Tools failures.
 
 Tests error handling for cache downtime, LLM API errors, and tool timeouts.
 """
 
-import pytest
 from unittest.mock import patch
 
-from tests.common.fixtures_state import make_state, state_needs_llm, state_with_tools
-from tests.common.fakes import FakeOrchestrator
+import pytest
+
 from app.core.langgraph.nodes.step_059__check_cache import node_step_59
 from app.core.langgraph.nodes.step_064__llm_call import node_step_64
 from app.core.langgraph.nodes.step_080__kb_tool import node_step_80
+from tests.common.fakes import FakeOrchestrator
+from tests.common.fixtures_state import make_state, state_needs_llm, state_with_tools
 
 
 @pytest.mark.failure
@@ -25,11 +25,13 @@ class TestPhase4CacheFailures:
         state = make_state()
 
         # Cache check raises exception
-        fake_orch = FakeOrchestrator({
-            "cache_error": True,
-            "cache_available": False,
-            "cache_hit": False  # Treat as miss when cache is down
-        })
+        fake_orch = FakeOrchestrator(
+            {
+                "cache_error": True,
+                "cache_available": False,
+                "cache_hit": False,  # Treat as miss when cache is down
+            }
+        )
         with patch("app.core.langgraph.nodes.step_059__check_cache.step_59__check_cache", fake_orch):
             state = await node_step_59(state)
 
@@ -41,11 +43,7 @@ class TestPhase4CacheFailures:
         """Verify cache timeout is treated as cache miss."""
         state = make_state()
 
-        fake_orch = FakeOrchestrator({
-            "cache_timeout": True,
-            "cache_hit": False,
-            "timeout_ms": 5000
-        })
+        fake_orch = FakeOrchestrator({"cache_timeout": True, "cache_hit": False, "timeout_ms": 5000})
         with patch("app.core.langgraph.nodes.step_059__check_cache.step_59__check_cache", fake_orch):
             state = await node_step_59(state)
 
@@ -57,11 +55,7 @@ class TestPhase4CacheFailures:
         """Verify corrupted cache data is treated as miss."""
         state = make_state()
 
-        fake_orch = FakeOrchestrator({
-            "cache_hit": False,
-            "cache_error": True,
-            "error_type": "corrupted_data"
-        })
+        fake_orch = FakeOrchestrator({"cache_hit": False, "cache_error": True, "error_type": "corrupted_data"})
         with patch("app.core.langgraph.nodes.step_059__check_cache.step_59__check_cache", fake_orch):
             state = await node_step_59(state)
 
@@ -79,12 +73,9 @@ class TestPhase4LLMFailures:
         state = state_needs_llm()
 
         # LLM returns 500 error
-        fake_orch = FakeOrchestrator({
-            "llm_success": False,
-            "error": "Internal Server Error",
-            "status_code": 500,
-            "retryable": True
-        })
+        fake_orch = FakeOrchestrator(
+            {"llm_success": False, "error": "Internal Server Error", "status_code": 500, "retryable": True}
+        )
         with patch("app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall", fake_orch):
             state = await node_step_64(state)
 
@@ -97,13 +88,15 @@ class TestPhase4LLMFailures:
         """Verify rate limit error indicates retry is possible."""
         state = state_needs_llm()
 
-        fake_orch = FakeOrchestrator({
-            "llm_success": False,
-            "error": "Rate limit exceeded",
-            "status_code": 429,
-            "retryable": True,
-            "retry_after_ms": 1000
-        })
+        fake_orch = FakeOrchestrator(
+            {
+                "llm_success": False,
+                "error": "Rate limit exceeded",
+                "status_code": 429,
+                "retryable": True,
+                "retry_after_ms": 1000,
+            }
+        )
         with patch("app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall", fake_orch):
             state = await node_step_64(state)
 
@@ -116,12 +109,9 @@ class TestPhase4LLMFailures:
         """Verify authentication error is not retryable."""
         state = state_needs_llm()
 
-        fake_orch = FakeOrchestrator({
-            "llm_success": False,
-            "error": "Invalid API key",
-            "status_code": 401,
-            "retryable": False
-        })
+        fake_orch = FakeOrchestrator(
+            {"llm_success": False, "error": "Invalid API key", "status_code": 401, "retryable": False}
+        )
         with patch("app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall", fake_orch):
             state = await node_step_64(state)
 
@@ -134,12 +124,9 @@ class TestPhase4LLMFailures:
         """Verify LLM timeout is retryable."""
         state = state_needs_llm()
 
-        fake_orch = FakeOrchestrator({
-            "llm_success": False,
-            "error": "Request timeout",
-            "timeout": True,
-            "retryable": True
-        })
+        fake_orch = FakeOrchestrator(
+            {"llm_success": False, "error": "Request timeout", "timeout": True, "retryable": True}
+        )
         with patch("app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall", fake_orch):
             state = await node_step_64(state)
 
@@ -159,12 +146,9 @@ class TestPhase4ToolFailures:
         state = state_with_tools()
 
         # Tool execution times out
-        fake_orch = FakeOrchestrator({
-            "tool_success": False,
-            "error": "Tool execution timeout",
-            "timeout": True,
-            "timeout_ms": 30000
-        })
+        fake_orch = FakeOrchestrator(
+            {"tool_success": False, "error": "Tool execution timeout", "timeout": True, "timeout_ms": 30000}
+        )
         with patch("app.core.langgraph.nodes.step_080__kb_tool.step_80__kb_tool", fake_orch):
             state = await node_step_80(state)
 
@@ -176,11 +160,9 @@ class TestPhase4ToolFailures:
         """Verify KB unavailable error is handled."""
         state = state_with_tools()
 
-        fake_orch = FakeOrchestrator({
-            "tool_success": False,
-            "error": "Knowledge base unavailable",
-            "kb_available": False
-        })
+        fake_orch = FakeOrchestrator(
+            {"tool_success": False, "error": "Knowledge base unavailable", "kb_available": False}
+        )
         with patch("app.core.langgraph.nodes.step_080__kb_tool.step_80__kb_tool", fake_orch):
             state = await node_step_80(state)
 
@@ -193,11 +175,7 @@ class TestPhase4ToolFailures:
         state = state_with_tools()
 
         # Tool succeeds but returns empty results
-        fake_orch = FakeOrchestrator({
-            "tool_success": True,
-            "results": {"documents": []},
-            "results_count": 0
-        })
+        fake_orch = FakeOrchestrator({"tool_success": True, "results": {"documents": []}, "results_count": 0})
         with patch("app.core.langgraph.nodes.step_080__kb_tool.step_80__kb_tool", fake_orch):
             state = await node_step_80(state)
 
@@ -210,13 +188,15 @@ class TestPhase4ToolFailures:
         state = state_with_tools()
 
         # Some documents retrieved, some failed
-        fake_orch = FakeOrchestrator({
-            "tool_success": True,
-            "partial_failure": True,
-            "results": {"documents": [{"title": "Doc 1"}]},
-            "results_count": 1,
-            "failed_sources": ["source_2"]
-        })
+        fake_orch = FakeOrchestrator(
+            {
+                "tool_success": True,
+                "partial_failure": True,
+                "results": {"documents": [{"title": "Doc 1"}]},
+                "results_count": 1,
+                "failed_sources": ["source_2"],
+            }
+        )
         with patch("app.core.langgraph.nodes.step_080__kb_tool.step_80__kb_tool", fake_orch):
             state = await node_step_80(state)
 
@@ -237,12 +217,9 @@ class TestPhase4RetryLogic:
         state["retry_count"] = 0
 
         # First attempt: failure (500)
-        fake_fail = FakeOrchestrator({
-            "llm_success": False,
-            "error": "Server error",
-            "status_code": 500,
-            "retryable": True
-        })
+        fake_fail = FakeOrchestrator(
+            {"llm_success": False, "error": "Server error", "status_code": 500, "retryable": True}
+        )
         with patch("app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall", fake_fail):
             state = await node_step_64(state)
 
@@ -250,13 +227,10 @@ class TestPhase4RetryLogic:
         assert state.get("retryable") is True
 
         # Step 69: Retry check (should retry)
-        fake_retry_check = FakeOrchestrator({
-            "should_retry": True,
-            "retry_count": 1,
-            "max_retries": 3
-        })
+        fake_retry_check = FakeOrchestrator({"should_retry": True, "retry_count": 1, "max_retries": 3})
         with patch("app.core.langgraph.nodes.step_069__retry_check.step_69__retry_check", fake_retry_check):
             from app.core.langgraph.nodes.step_069__retry_check import node_step_69
+
             state = await node_step_69(state)
 
         # Retry should be indicated
@@ -267,22 +241,17 @@ class TestPhase4RetryLogic:
         state = state_needs_llm()
 
         # Non-retryable failure (401)
-        fake_fail = FakeOrchestrator({
-            "llm_success": False,
-            "error": "Auth error",
-            "status_code": 401,
-            "retryable": False
-        })
+        fake_fail = FakeOrchestrator(
+            {"llm_success": False, "error": "Auth error", "status_code": 401, "retryable": False}
+        )
         with patch("app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall", fake_fail):
             state = await node_step_64(state)
 
         # Step 69: Retry check (should NOT retry)
-        fake_retry_check = FakeOrchestrator({
-            "should_retry": False,
-            "retry_allowed": False
-        })
+        fake_retry_check = FakeOrchestrator({"should_retry": False, "retry_allowed": False})
         with patch("app.core.langgraph.nodes.step_069__retry_check.step_69__retry_check", fake_retry_check):
             from app.core.langgraph.nodes.step_069__retry_check import node_step_69
+
             state = await node_step_69(state)
 
         # No retry

@@ -4,11 +4,13 @@ Internal step - inserts new system message with selected prompt.
 """
 
 from app.core.langgraph.types import RAGState
-from app.orchestrators.prompting import step_47__insert_msg
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
+from app.orchestrators.prompting import step_47__insert_msg
 
 STEP = 47
 
@@ -27,10 +29,7 @@ async def node_step_47(state: RAGState) -> RAGState:
 
     with rag_step_timer(STEP):
         # Call sync orchestrator - returns updated messages list
-        updated_messages = step_47__insert_msg(
-            messages=state.get("messages", []),
-            ctx=dict(state)
-        )
+        updated_messages = step_47__insert_msg(messages=state.get("messages", []), ctx=dict(state))
 
         # Update messages with inserted system message
         if updated_messages is not None:
@@ -40,9 +39,6 @@ async def node_step_47(state: RAGState) -> RAGState:
             state["sys_msg_inserted"] = False
 
     rag_step_log(
-        STEP,
-        "exit",
-        inserted=state.get("sys_msg_inserted"),
-        new_message_count=len(state.get("messages", []))
+        STEP, "exit", inserted=state.get("sys_msg_inserted"), new_message_count=len(state.get("messages", []))
     )
     return state

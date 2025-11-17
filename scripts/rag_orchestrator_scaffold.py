@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Auto-scaffold orchestrator modules and step stubs from either:
 - docs/architecture/rag_steps.yml  (preferred if present), OR
@@ -18,12 +17,14 @@ Usage:
   python scripts/rag_orchestrator_scaffold.py --only-steps 51,52,53
   python scripts/rag_orchestrator_scaffold.py --dry-run
 """
+
 from __future__ import annotations
 
 import argparse
 import re
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,6 +72,7 @@ INIT_HEADER = """# Expose orchestrator functions for test imports and wiring.
 
 # ---------- utils ----------
 
+
 def snakeify(s: str) -> str:
     s = s or ""
     s = re.sub(r"[^a-zA-Z0-9]+", "_", s).strip("_")
@@ -78,14 +80,17 @@ def snakeify(s: str) -> str:
     s = re.sub(r"_+", "_", s)
     return s.lower() or "node"
 
+
 def ensure_file(p: Path, header: str, *, dry: bool):
     if not p.exists() and not dry:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(header, encoding="utf-8")
 
+
 def function_exists(text: str, fname: str) -> bool:
     pat = rf"^def\s+{re.escape(fname)}\s*\("
     return re.search(pat, text, re.MULTILINE) is not None
+
 
 def append_stub(mod_path: Path, stub: str, *, dry: bool):
     if dry:
@@ -93,9 +98,11 @@ def append_stub(mod_path: Path, stub: str, *, dry: bool):
     with mod_path.open("a", encoding="utf-8") as f:
         f.write(stub)
 
-def scan_functions_in_file(p: Path) -> List[str]:
+
+def scan_functions_in_file(p: Path) -> list[str]:
     text = p.read_text(encoding="utf-8")
     return re.findall(r"^def\s+([a-zA-Z0-9_]+)\s*\(", text, re.MULTILINE)
+
 
 def build_stub(step: int, step_id: str, node_id: str, node_label: str, typ: str, category: str, fname: str) -> str:
     return FUNC_TEMPLATE.format(
@@ -112,14 +119,16 @@ def build_stub(step: int, step_id: str, node_id: str, node_label: str, typ: str,
         type_repr=repr(typ),
     )
 
+
 # ---------- loaders ----------
 
-def load_steps_from_yaml() -> List[Dict[str, Any]]:
+
+def load_steps_from_yaml() -> list[dict[str, Any]]:
     if not STEPS_YML.exists():
         return []
     raw = yaml.safe_load(STEPS_YML.read_text(encoding="utf-8")) or {}
-    steps: List[Dict[str, Any]] = raw.get("steps", [])
-    normd: List[Dict[str, Any]] = []
+    steps: list[dict[str, Any]] = raw.get("steps", [])
+    normd: list[dict[str, Any]] = []
     for st in steps:
         step = int(st.get("step"))
         step_id = st.get("id") or ""
@@ -127,26 +136,29 @@ def load_steps_from_yaml() -> List[Dict[str, Any]]:
         node_id = st.get("node_id") or snakeify(node_label)
         category = st.get("category") or "misc"
         typ = st.get("type") or "process"
-        normd.append({
-            "step": step,
-            "id": step_id,
-            "node_label": node_label,
-            "node_id": node_id,
-            "category": category,
-            "type": typ,
-        })
+        normd.append(
+            {
+                "step": step,
+                "id": step_id,
+                "node_label": node_label,
+                "node_id": node_id,
+                "category": category,
+                "type": typ,
+            }
+        )
     return normd
 
+
 MD_H1_RE = re.compile(
-    r"^#\s*RAG\s+STEP\s+(?P<num>\d+)\s+—\s+(?P<label>.+?)\s*\((?P<id>RAG\.[^)]+)\)\s*$",
-    re.MULTILINE
+    r"^#\s*RAG\s+STEP\s+(?P<num>\d+)\s+—\s+(?P<label>.+?)\s*\((?P<id>RAG\.[^)]+)\)\s*$", re.MULTILINE
 )
 MD_TYPE_RE = re.compile(r"^\*\*Type:\*\*\s*(?P<type>\w+)", re.MULTILINE)
-MD_CAT_RE  = re.compile(r"^\*\*Category:\*\*\s*(?P<cat>\w+)", re.MULTILINE)
+MD_CAT_RE = re.compile(r"^\*\*Category:\*\*\s*(?P<cat>\w+)", re.MULTILINE)
 MD_NODE_RE = re.compile(r"^\*\*Node ID:\*\*\s*`(?P<node>[^`]+)`", re.MULTILINE)
 
-def load_steps_from_markdown() -> List[Dict[str, Any]]:
-    steps: List[Dict[str, Any]] = []
+
+def load_steps_from_markdown() -> list[dict[str, Any]]:
+    steps: list[dict[str, Any]] = []
     if not STEPS_DIR.exists():
         return steps
 
@@ -173,32 +185,37 @@ def load_steps_from_markdown() -> List[Dict[str, Any]]:
         cat = (MD_CAT_RE.search(text).group("cat") if MD_CAT_RE.search(text) else "misc").strip()
         node_id = (MD_NODE_RE.search(text).group("node") if MD_NODE_RE.search(text) else snakeify(node_label)).strip()
 
-        steps.append({
-            "step": num,
-            "id": step_id,
-            "node_label": node_label,
-            "node_id": node_id,
-            "category": cat,
-            "type": typ,
-        })
+        steps.append(
+            {
+                "step": num,
+                "id": step_id,
+                "node_label": node_label,
+                "node_id": node_id,
+                "category": cat,
+                "type": typ,
+            }
+        )
     return steps
 
-def load_steps() -> List[Dict[str, Any]]:
+
+def load_steps() -> list[dict[str, Any]]:
     # Prefer YAML; fall back to scanning Markdown
     steps = load_steps_from_yaml()
     if steps:
         return steps
     return load_steps_from_markdown()
 
+
 # ---------- writers ----------
 
-def update_category_module(cat: str, steps: List[Dict[str, Any]], *, dry: bool) -> List[str]:
+
+def update_category_module(cat: str, steps: list[dict[str, Any]], *, dry: bool) -> list[str]:
     mod_name = snakeify(cat)
     mod_path = ORCH_DIR / f"{mod_name}.py"
     ensure_file(mod_path, HEADER, dry=dry)
     text = mod_path.read_text(encoding="utf-8") if mod_path.exists() else HEADER
 
-    added: List[str] = []
+    added: list[str] = []
     for st in steps:
         step = st["step"]
         step_id = st["id"]
@@ -219,10 +236,11 @@ def update_category_module(cat: str, steps: List[Dict[str, Any]], *, dry: bool) 
         added.append(f"{mod_name}.{fname}")
     return added
 
-def update_init(categories: List[str], *, dry: bool):
+
+def update_init(categories: list[str], *, dry: bool):
     init_path = ORCH_DIR / "__init__.py"
-    lines: List[str] = [INIT_HEADER]
-    exports: List[str] = []
+    lines: list[str] = [INIT_HEADER]
+    exports: list[str] = []
 
     for cat in sorted(categories, key=lambda x: snakeify(x)):
         mod = snakeify(cat)
@@ -232,7 +250,7 @@ def update_init(categories: List[str], *, dry: bool):
         fns = scan_functions_in_file(mod_file)
         if not fns:
             continue
-        fns_sorted = sorted(set(fn for fn in fns if not fn.startswith("_")))
+        fns_sorted = sorted({fn for fn in fns if not fn.startswith("_")})
         lines.append(f"from .{mod} import {', '.join(fns_sorted)}")
         exports.extend(fns_sorted)
 
@@ -244,7 +262,9 @@ def update_init(categories: List[str], *, dry: bool):
     if not dry:
         init_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+
 # ---------- main ----------
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -272,7 +292,7 @@ def main() -> int:
 
     ORCH_DIR.mkdir(parents=True, exist_ok=True)
 
-    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    grouped: dict[str, list[dict[str, Any]]] = {}
     for st in steps:
         grouped.setdefault(st["category"] or "misc", []).append(st)
 
@@ -289,6 +309,7 @@ def main() -> int:
     update_init(list(grouped.keys()), dry=args.dry_run)
     print(f"✅ Done. New stubs: {total_new}  (dry-run={args.dry_run})")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

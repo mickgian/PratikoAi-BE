@@ -1,5 +1,4 @@
-"""
-Domain-Action Classification System for PratikoAI.
+"""Domain-Action Classification System for PratikoAI.
 
 This service provides two-dimensional classification of Italian professional queries:
 1. Domain: tax, legal, labor, business, accounting
@@ -65,9 +64,9 @@ class DomainActionClassification(BaseModel):
     domain: Domain
     action: Action
     confidence: float
-    sub_domain: Optional[str] = None
-    document_type: Optional[str] = None
-    reasoning: Optional[str] = None
+    sub_domain: str | None = None
+    document_type: str | None = None
+    reasoning: str | None = None
     fallback_used: bool = False
 
 
@@ -75,7 +74,7 @@ class DomainActionClassification(BaseModel):
 class PatternMatch:
     """Pattern matching result"""
 
-    keywords: List[str]
+    keywords: list[str]
     score: float
     weight: float = 1.0
 
@@ -89,7 +88,6 @@ class DomainActionClassifier:
 
     def _load_patterns(self):
         """Load Italian professional terminology patterns"""
-
         # Domain patterns with weights
         self.domain_patterns = {
             Domain.TAX: {
@@ -698,8 +696,7 @@ class DomainActionClassifier:
         }
 
     async def classify(self, query: str) -> DomainActionClassification:
-        """
-        Main classification method with fallback strategy.
+        """Main classification method with fallback strategy.
 
         Args:
             query: Italian professional query to classify
@@ -781,7 +778,7 @@ class DomainActionClassifier:
             fallback_used=fallback_used,
         )
 
-    def _calculate_domain_scores(self, query: str) -> Dict[Domain, float]:
+    def _calculate_domain_scores(self, query: str) -> dict[Domain, float]:
         """Calculate confidence scores for each domain"""
         scores = {}
 
@@ -812,7 +809,7 @@ class DomainActionClassifier:
 
         return scores
 
-    def _calculate_action_scores(self, query: str) -> Dict[Action, float]:
+    def _calculate_action_scores(self, query: str) -> dict[Action, float]:
         """Calculate confidence scores for each action"""
         scores = {}
 
@@ -839,7 +836,6 @@ class DomainActionClassifier:
         )
 
         for action, patterns in self.action_patterns.items():
-            score = 0.0
             matches = []
 
             # Boost document generation for explicit document requests
@@ -872,7 +868,7 @@ class DomainActionClassifier:
 
             # Check document types for document_generation
             if action == Action.DOCUMENT_GENERATION:
-                for doc_type, terms in patterns.get("document_types", {}).items():
+                for _doc_type, terms in patterns.get("document_types", {}).items():
                     for term in terms:
                         if term in query:
                             # Extra high weight for legal document types
@@ -904,7 +900,7 @@ class DomainActionClassifier:
 
         return scores
 
-    def _extract_sub_domain(self, query: str, domain: Domain) -> Optional[str]:
+    def _extract_sub_domain(self, query: str, domain: Domain) -> str | None:
         """Extract sub-domain from query based on domain patterns"""
         if domain not in self.domain_patterns:
             return None
@@ -918,7 +914,7 @@ class DomainActionClassifier:
 
         return None
 
-    def _extract_document_type(self, query: str, action: Action) -> Optional[str]:
+    def _extract_document_type(self, query: str, action: Action) -> str | None:
         """Extract document type for document generation actions"""
         if action != Action.DOCUMENT_GENERATION:
             return None
@@ -937,11 +933,10 @@ class DomainActionClassifier:
         query: str,
         domain: Domain,
         action: Action,
-        domain_scores: Dict[Domain, float],
-        action_scores: Dict[Action, float],
+        domain_scores: dict[Domain, float],
+        action_scores: dict[Action, float],
     ) -> str:
         """Generate human-readable reasoning for the classification"""
-
         domain_keywords = []
         for keyword in self.domain_patterns[domain]["keywords"]:
             if keyword in query:
@@ -961,9 +956,8 @@ class DomainActionClassifier:
 
         return reasoning
 
-    async def _llm_fallback_classification(self, query: str) -> Optional[DomainActionClassification]:
+    async def _llm_fallback_classification(self, query: str) -> DomainActionClassification | None:
         """Use LLM for classification when rule-based confidence is low"""
-
         try:
             # Create messages first for LLM provider selection
             system_prompt = """Sei un esperto classificatore per query professionali italiane.
@@ -1020,7 +1014,7 @@ Rispondi SOLO con formato JSON:
             logger.error(f"LLM fallback classification failed: {e}")
             return None
 
-    def get_classification_stats(self) -> Dict[str, Any]:
+    def get_classification_stats(self) -> dict[str, Any]:
         """Get statistics about the classification patterns"""
         return {
             "domains": {

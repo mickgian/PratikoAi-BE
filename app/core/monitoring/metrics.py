@@ -5,12 +5,10 @@ business metrics, and system health.
 """
 
 import os
+from typing import Any, Dict
+
 import psutil
-from typing import Dict, Any
-from prometheus_client import (
-    Counter, Gauge, Histogram, Info, CollectorRegistry, 
-    generate_latest, CONTENT_TYPE_LATEST
-)
+from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Gauge, Histogram, Info, generate_latest
 
 from app.core.config import settings
 from app.core.logging import logger
@@ -23,24 +21,24 @@ REGISTRY = CollectorRegistry()
 # =============================================================================
 
 llm_cost_total = Counter(
-    'llm_cost_total_eur',
-    'Total LLM API costs in EUR by provider and model',
-    ['provider', 'model', 'user_id'],
-    registry=REGISTRY
+    "llm_cost_total_eur",
+    "Total LLM API costs in EUR by provider and model",
+    ["provider", "model", "user_id"],
+    registry=REGISTRY,
 )
 
 user_monthly_cost = Gauge(
-    'user_monthly_cost_eur',
-    'Current monthly cost per user in EUR (target <2.00)',
-    ['user_id', 'plan_type'],
-    registry=REGISTRY
+    "user_monthly_cost_eur",
+    "Current monthly cost per user in EUR (target <2.00)",
+    ["user_id", "plan_type"],
+    registry=REGISTRY,
 )
 
 api_calls_by_provider = Counter(
-    'api_calls_total',
-    'Total API calls by provider and success status',
-    ['provider', 'model', 'status'],
-    registry=REGISTRY
+    "api_calls_total",
+    "Total API calls by provider and success status",
+    ["provider", "model", "status"],
+    registry=REGISTRY,
 )
 
 # =============================================================================
@@ -48,32 +46,29 @@ api_calls_by_provider = Counter(
 # =============================================================================
 
 ccnl_queries_total = Counter(
-    'ccnl_queries_total',
-    'Total CCNL queries by type and sector',
-    ['query_type', 'sector', 'status'],
-    registry=REGISTRY
+    "ccnl_queries_total",
+    "Total CCNL queries by type and sector",
+    ["query_type", "sector", "status"],
+    registry=REGISTRY,
 )
 
 ccnl_query_duration_seconds = Histogram(
-    'ccnl_query_duration_seconds',
-    'CCNL query execution time in seconds',
-    ['query_type', 'sector'],
+    "ccnl_query_duration_seconds",
+    "CCNL query execution time in seconds",
+    ["query_type", "sector"],
     buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 ccnl_cache_hits_total = Counter(
-    'ccnl_cache_hits_total',
-    'CCNL cache hits by query type',
-    ['query_type', 'cache_type'],
-    registry=REGISTRY
+    "ccnl_cache_hits_total", "CCNL cache hits by query type", ["query_type", "cache_type"], registry=REGISTRY
 )
 
 ccnl_semantic_search_usage = Counter(
-    'ccnl_semantic_search_usage_total',
-    'Usage of semantic search for CCNL queries',
-    ['sector', 'success'],
-    registry=REGISTRY
+    "ccnl_semantic_search_usage_total",
+    "Usage of semantic search for CCNL queries",
+    ["sector", "success"],
+    registry=REGISTRY,
 )
 
 # =============================================================================
@@ -81,25 +76,20 @@ ccnl_semantic_search_usage = Counter(
 # =============================================================================
 
 http_request_duration_seconds = Histogram(
-    'http_request_duration_seconds',
-    'HTTP request latency in seconds',
-    ['method', 'endpoint', 'status_code'],
-    buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, float('inf')),
-    registry=REGISTRY
+    "http_request_duration_seconds",
+    "HTTP request latency in seconds",
+    ["method", "endpoint", "status_code"],
+    buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, float("inf")),
+    registry=REGISTRY,
 )
 
-cache_hit_ratio = Gauge(
-    'cache_hit_ratio',
-    'Cache hit ratio (0.0-1.0, target >0.8)',
-    ['cache_type'],
-    registry=REGISTRY
-)
+cache_hit_ratio = Gauge("cache_hit_ratio", "Cache hit ratio (0.0-1.0, target >0.8)", ["cache_type"], registry=REGISTRY)
 
 active_users = Gauge(
-    'active_users_total',
-    'Number of currently active users',
-    ['time_window'],  # 5m, 1h, 24h
-    registry=REGISTRY
+    "active_users_total",
+    "Number of currently active users",
+    ["time_window"],  # 5m, 1h, 24h
+    registry=REGISTRY,
 )
 
 # =============================================================================
@@ -107,24 +97,21 @@ active_users = Gauge(
 # =============================================================================
 
 active_subscriptions = Gauge(
-    'active_subscriptions_total',
-    'Number of active paid subscriptions (target 50)',
-    ['subscription_type', 'status'],
-    registry=REGISTRY
+    "active_subscriptions_total",
+    "Number of active paid subscriptions (target 50)",
+    ["subscription_type", "status"],
+    registry=REGISTRY,
 )
 
 monthly_revenue = Gauge(
-    'monthly_revenue_eur',
-    'Monthly Recurring Revenue in EUR (target 25000)',
-    ['currency'],
-    registry=REGISTRY
+    "monthly_revenue_eur", "Monthly Recurring Revenue in EUR (target 25000)", ["currency"], registry=REGISTRY
 )
 
 trial_conversions = Counter(
-    'trial_conversions_total',
-    'Number of trial to paid conversions',
-    ['conversion_type', 'plan_type'],
-    registry=REGISTRY
+    "trial_conversions_total",
+    "Number of trial to paid conversions",
+    ["conversion_type", "plan_type"],
+    registry=REGISTRY,
 )
 
 # =============================================================================
@@ -132,24 +119,16 @@ trial_conversions = Counter(
 # =============================================================================
 
 database_connections = Gauge(
-    'database_connections_active',
-    'Number of active database connections',
-    ['database_type', 'status'],
-    registry=REGISTRY
+    "database_connections_active",
+    "Number of active database connections",
+    ["database_type", "status"],
+    registry=REGISTRY,
 )
 
-redis_memory_usage = Gauge(
-    'redis_memory_usage_bytes',
-    'Redis memory usage in bytes',
-    ['instance'],
-    registry=REGISTRY
-)
+redis_memory_usage = Gauge("redis_memory_usage_bytes", "Redis memory usage in bytes", ["instance"], registry=REGISTRY)
 
 llm_errors = Counter(
-    'llm_errors_total',
-    'LLM provider errors by type',
-    ['provider', 'error_type', 'model'],
-    registry=REGISTRY
+    "llm_errors_total", "LLM provider errors by type", ["provider", "error_type", "model"], registry=REGISTRY
 )
 
 # =============================================================================
@@ -158,196 +137,184 @@ llm_errors = Counter(
 
 # Italian Tax Calculations
 italian_tax_calculations_total = Counter(
-    'italian_tax_calculations_total',
-    'Total Italian tax calculations performed',
-    ['calculation_type', 'status', 'user_id'],
-    registry=REGISTRY
+    "italian_tax_calculations_total",
+    "Total Italian tax calculations performed",
+    ["calculation_type", "status", "user_id"],
+    registry=REGISTRY,
 )
 
 italian_tax_amount_calculated_eur = Counter(
-    'italian_tax_amount_calculated_eur',
-    'Total tax amounts calculated in EUR',
-    ['calculation_type', 'tax_year'],
-    registry=REGISTRY
+    "italian_tax_amount_calculated_eur",
+    "Total tax amounts calculated in EUR",
+    ["calculation_type", "tax_year"],
+    registry=REGISTRY,
 )
 
 # Document Processing Operations
 document_processing_operations_total = Counter(
-    'document_processing_operations_total', 
-    'Total document processing operations',
-    ['operation_type', 'document_type', 'status'],
-    registry=REGISTRY
+    "document_processing_operations_total",
+    "Total document processing operations",
+    ["operation_type", "document_type", "status"],
+    registry=REGISTRY,
 )
 
 document_processing_duration_seconds = Histogram(
-    'document_processing_duration_seconds',
-    'Document processing duration in seconds',
-    ['operation_type', 'document_type'],
-    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, float('inf')),
-    registry=REGISTRY
+    "document_processing_duration_seconds",
+    "Document processing duration in seconds",
+    ["operation_type", "document_type"],
+    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, float("inf")),
+    registry=REGISTRY,
 )
 
 # Knowledge Base Queries
 knowledge_base_queries_total = Counter(
-    'knowledge_base_queries_total',
-    'Total knowledge base queries',
-    ['query_type', 'source', 'status'],
-    registry=REGISTRY
+    "knowledge_base_queries_total",
+    "Total knowledge base queries",
+    ["query_type", "source", "status"],
+    registry=REGISTRY,
 )
 
 knowledge_base_query_duration_seconds = Histogram(
-    'knowledge_base_query_duration_seconds',
-    'Knowledge base query duration in seconds',
-    ['query_type', 'source'],
-    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, float('inf')),
-    registry=REGISTRY
+    "knowledge_base_query_duration_seconds",
+    "Knowledge base query duration in seconds",
+    ["query_type", "source"],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, float("inf")),
+    registry=REGISTRY,
 )
 
 knowledge_base_results_found = Histogram(
-    'knowledge_base_results_found',
-    'Number of results found in knowledge base queries',
-    ['query_type', 'source'],
-    buckets=(0, 1, 5, 10, 25, 50, 100, float('inf')),
-    registry=REGISTRY
+    "knowledge_base_results_found",
+    "Number of results found in knowledge base queries",
+    ["query_type", "source"],
+    buckets=(0, 1, 5, 10, 25, 50, 100, float("inf")),
+    registry=REGISTRY,
 )
 
 # Domain-Action Classification Metrics
 query_classifications_total = Counter(
-    'query_classifications_total',
-    'Total query classifications performed',
-    ['domain', 'action', 'confidence_bucket', 'fallback_used'],
-    registry=REGISTRY
+    "query_classifications_total",
+    "Total query classifications performed",
+    ["domain", "action", "confidence_bucket", "fallback_used"],
+    registry=REGISTRY,
 )
 
 classification_confidence_distribution = Histogram(
-    'classification_confidence_distribution',
-    'Distribution of classification confidence scores',
-    ['domain', 'action'],
+    "classification_confidence_distribution",
+    "Distribution of classification confidence scores",
+    ["domain", "action"],
     buckets=(0.0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0),
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 domain_specific_prompts_used = Counter(
-    'domain_specific_prompts_used_total',
-    'Total usage of domain-specific prompts',
-    ['domain', 'action', 'confidence_bucket'],
-    registry=REGISTRY
+    "domain_specific_prompts_used_total",
+    "Total usage of domain-specific prompts",
+    ["domain", "action", "confidence_bucket"],
+    registry=REGISTRY,
 )
 
 classification_routing_changes = Counter(
-    'classification_routing_changes_total',
-    'Total routing changes based on classification',
-    ['domain', 'action', 'new_strategy', 'old_strategy'],
-    registry=REGISTRY
+    "classification_routing_changes_total",
+    "Total routing changes based on classification",
+    ["domain", "action", "new_strategy", "old_strategy"],
+    registry=REGISTRY,
 )
 
-# Payment Operations 
+# Payment Operations
 payment_operations_total = Counter(
-    'payment_operations_total',
-    'Total payment operations',
-    ['operation_type', 'payment_method', 'status'],
-    registry=REGISTRY
+    "payment_operations_total",
+    "Total payment operations",
+    ["operation_type", "payment_method", "status"],
+    registry=REGISTRY,
 )
 
 payment_amount_processed_eur = Counter(
-    'payment_amount_processed_eur',
-    'Total payment amounts processed in EUR',
-    ['operation_type', 'currency'],
-    registry=REGISTRY
+    "payment_amount_processed_eur",
+    "Total payment amounts processed in EUR",
+    ["operation_type", "currency"],
+    registry=REGISTRY,
 )
 
 payment_operation_duration_seconds = Histogram(
-    'payment_operation_duration_seconds',
-    'Payment operation duration in seconds',
-    ['operation_type', 'payment_method'],
-    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, float('inf')),
-    registry=REGISTRY
+    "payment_operation_duration_seconds",
+    "Payment operation duration in seconds",
+    ["operation_type", "payment_method"],
+    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, float("inf")),
+    registry=REGISTRY,
 )
 
 # API Errors by Category
 api_errors_total = Counter(
-    'api_errors_total',
-    'Total API errors by category and type',
-    ['error_category', 'error_type', 'endpoint', 'status_code'],
-    registry=REGISTRY
+    "api_errors_total",
+    "Total API errors by category and type",
+    ["error_category", "error_type", "endpoint", "status_code"],
+    registry=REGISTRY,
 )
 
 # User Actions
 user_actions_total = Counter(
-    'user_actions_total',
-    'Total user actions performed',
-    ['action_type', 'feature', 'user_type'],
-    registry=REGISTRY
+    "user_actions_total", "Total user actions performed", ["action_type", "feature", "user_type"], registry=REGISTRY
 )
 
 # =============================================================================
 # ADDITIONAL SYSTEM METRICS
 # =============================================================================
 
-system_info = Info(
-    'pratikoai_system_info',
-    'System information',
-    registry=REGISTRY
-)
+system_info = Info("pratikoai_system_info", "System information", registry=REGISTRY)
 
 process_memory_bytes = Gauge(
-    'process_memory_bytes',
-    'Process memory usage in bytes',
-    ['type'],  # rss, vms, shared
-    registry=REGISTRY
+    "process_memory_bytes",
+    "Process memory usage in bytes",
+    ["type"],  # rss, vms, shared
+    registry=REGISTRY,
 )
 
-cpu_usage_percent = Gauge(
-    'cpu_usage_percent',
-    'CPU usage percentage',
-    registry=REGISTRY
-)
+cpu_usage_percent = Gauge("cpu_usage_percent", "CPU usage percentage", registry=REGISTRY)
 
 # =============================================================================
 # INITIALIZATION AND UTILITY FUNCTIONS
 # =============================================================================
 
+
 def initialize_metrics():
     """Initialize metrics with system information and default values."""
     try:
         # Set system information
-        system_info.info({
-            'version': settings.VERSION,
-            'environment': settings.ENVIRONMENT.value,
-            'python_version': os.sys.version.split()[0],
-            'project_name': settings.PROJECT_NAME,
-        })
-        
+        system_info.info(
+            {
+                "version": settings.VERSION,
+                "environment": settings.ENVIRONMENT.value,
+                "python_version": os.sys.version.split()[0],
+                "project_name": settings.PROJECT_NAME,
+            }
+        )
+
         # Initialize default values
-        cache_hit_ratio.labels(cache_type='llm_responses').set(0.0)
-        cache_hit_ratio.labels(cache_type='conversations').set(0.0)
-        cache_hit_ratio.labels(cache_type='embeddings').set(0.0)
-        
+        cache_hit_ratio.labels(cache_type="llm_responses").set(0.0)
+        cache_hit_ratio.labels(cache_type="conversations").set(0.0)
+        cache_hit_ratio.labels(cache_type="embeddings").set(0.0)
+
         # Initialize active users
-        active_users.labels(time_window='5m').set(0)
-        active_users.labels(time_window='1h').set(0)
-        active_users.labels(time_window='24h').set(0)
-        
+        active_users.labels(time_window="5m").set(0)
+        active_users.labels(time_window="1h").set(0)
+        active_users.labels(time_window="24h").set(0)
+
         # Initialize revenue tracking
-        monthly_revenue.labels(currency='EUR').set(0.0)
-        
+        monthly_revenue.labels(currency="EUR").set(0.0)
+
         # Initialize subscription counts
-        active_subscriptions.labels(subscription_type='monthly', status='active').set(0)
-        active_subscriptions.labels(subscription_type='monthly', status='trial').set(0)
-        active_subscriptions.labels(subscription_type='monthly', status='cancelled').set(0)
-        
+        active_subscriptions.labels(subscription_type="monthly", status="active").set(0)
+        active_subscriptions.labels(subscription_type="monthly", status="trial").set(0)
+        active_subscriptions.labels(subscription_type="monthly", status="cancelled").set(0)
+
         logger.info(
             "prometheus_metrics_initialized",
             environment=settings.ENVIRONMENT.value,
-            registry_collectors=len(REGISTRY._collector_to_names)
+            registry_collectors=len(REGISTRY._collector_to_names),
         )
-        
+
     except Exception as e:
-        logger.error(
-            "prometheus_metrics_initialization_failed",
-            error=str(e),
-            exc_info=True
-        )
+        logger.error("prometheus_metrics_initialization_failed", error=str(e), exc_info=True)
 
 
 def update_system_metrics():
@@ -356,21 +323,17 @@ def update_system_metrics():
         # Get process info
         process = psutil.Process()
         memory_info = process.memory_info()
-        
+
         # Update memory metrics
-        process_memory_bytes.labels(type='rss').set(memory_info.rss)
-        process_memory_bytes.labels(type='vms').set(memory_info.vms)
-        
+        process_memory_bytes.labels(type="rss").set(memory_info.rss)
+        process_memory_bytes.labels(type="vms").set(memory_info.vms)
+
         # Update CPU usage
         cpu_percent = process.cpu_percent()
         cpu_usage_percent.set(cpu_percent)
-        
+
     except Exception as e:
-        logger.error(
-            "system_metrics_update_failed", 
-            error=str(e),
-            exc_info=True
-        )
+        logger.error("system_metrics_update_failed", error=str(e), exc_info=True)
 
 
 def get_registry() -> CollectorRegistry:
@@ -384,19 +347,16 @@ def get_metrics_content() -> str:
         # Update system metrics before export
         update_system_metrics()
         metrics_bytes = generate_latest(REGISTRY)
-        return metrics_bytes.decode('utf-8') if isinstance(metrics_bytes, bytes) else metrics_bytes
+        return metrics_bytes.decode("utf-8") if isinstance(metrics_bytes, bytes) else metrics_bytes
     except Exception as e:
-        logger.error(
-            "metrics_generation_failed",
-            error=str(e),
-            exc_info=True
-        )
+        logger.error("metrics_generation_failed", error=str(e), exc_info=True)
         return ""
 
 
 # =============================================================================
 # HELPER FUNCTIONS FOR METRIC UPDATES
 # =============================================================================
+
 
 def track_llm_cost(provider: str, model: str, user_id: str, cost_eur: float):
     """Track LLM API cost."""
@@ -430,7 +390,7 @@ def update_subscription_metrics(subscription_type: str, status: str, count: int)
 
 def update_monthly_revenue(revenue_eur: float):
     """Update monthly revenue."""
-    monthly_revenue.labels(currency='EUR').set(revenue_eur)
+    monthly_revenue.labels(currency="EUR").set(revenue_eur)
 
 
 def track_trial_conversion(conversion_type: str, plan_type: str):
@@ -452,98 +412,70 @@ def track_llm_error(provider: str, error_type: str, model: str):
 # BUSINESS-SPECIFIC METRIC TRACKING FUNCTIONS
 # =============================================================================
 
-def track_italian_tax_calculation(calculation_type: str, status: str, user_id: str, amount_eur: float = None, tax_year: str = None):
+
+def track_italian_tax_calculation(
+    calculation_type: str, status: str, user_id: str, amount_eur: float = None, tax_year: str = None
+):
     """Track Italian tax calculation operation."""
-    italian_tax_calculations_total.labels(
-        calculation_type=calculation_type,
-        status=status,
-        user_id=user_id
-    ).inc()
-    
+    italian_tax_calculations_total.labels(calculation_type=calculation_type, status=status, user_id=user_id).inc()
+
     if amount_eur and tax_year:
-        italian_tax_amount_calculated_eur.labels(
-            calculation_type=calculation_type,
-            tax_year=tax_year
-        ).inc(amount_eur)
+        italian_tax_amount_calculated_eur.labels(calculation_type=calculation_type, tax_year=tax_year).inc(amount_eur)
 
 
 def track_document_processing(operation_type: str, document_type: str, status: str, duration_seconds: float = None):
     """Track document processing operation."""
     document_processing_operations_total.labels(
-        operation_type=operation_type,
-        document_type=document_type,
-        status=status
+        operation_type=operation_type, document_type=document_type, status=status
     ).inc()
-    
+
     if duration_seconds:
         document_processing_duration_seconds.labels(
-            operation_type=operation_type,
-            document_type=document_type
+            operation_type=operation_type, document_type=document_type
         ).observe(duration_seconds)
 
 
 def track_knowledge_base_query(query_type: str, source: str, status: str, duration_seconds: float, results_count: int):
     """Track knowledge base query operation."""
-    knowledge_base_queries_total.labels(
-        query_type=query_type,
-        source=source,
-        status=status
-    ).inc()
-    
-    knowledge_base_query_duration_seconds.labels(
-        query_type=query_type,
-        source=source
-    ).observe(duration_seconds)
-    
-    knowledge_base_results_found.labels(
-        query_type=query_type,
-        source=source
-    ).observe(results_count)
+    knowledge_base_queries_total.labels(query_type=query_type, source=source, status=status).inc()
+
+    knowledge_base_query_duration_seconds.labels(query_type=query_type, source=source).observe(duration_seconds)
+
+    knowledge_base_results_found.labels(query_type=query_type, source=source).observe(results_count)
 
 
-def track_payment_operation(operation_type: str, payment_method: str, status: str, amount_eur: float = None, duration_seconds: float = None):
+def track_payment_operation(
+    operation_type: str, payment_method: str, status: str, amount_eur: float = None, duration_seconds: float = None
+):
     """Track payment operation."""
-    payment_operations_total.labels(
-        operation_type=operation_type,
-        payment_method=payment_method,
-        status=status
-    ).inc()
-    
+    payment_operations_total.labels(operation_type=operation_type, payment_method=payment_method, status=status).inc()
+
     if amount_eur:
-        payment_amount_processed_eur.labels(
-            operation_type=operation_type,
-            currency="EUR"
-        ).inc(amount_eur)
-    
+        payment_amount_processed_eur.labels(operation_type=operation_type, currency="EUR").inc(amount_eur)
+
     if duration_seconds:
         payment_operation_duration_seconds.labels(
-            operation_type=operation_type,
-            payment_method=payment_method
+            operation_type=operation_type, payment_method=payment_method
         ).observe(duration_seconds)
 
 
 def track_api_error(error_category: str, error_type: str, endpoint: str, status_code: int):
     """Track categorized API error."""
     api_errors_total.labels(
-        error_category=error_category,
-        error_type=error_type,
-        endpoint=endpoint,
-        status_code=str(status_code)
+        error_category=error_category, error_type=error_type, endpoint=endpoint, status_code=str(status_code)
     ).inc()
 
 
 def track_user_action(action_type: str, feature: str, user_type: str):
     """Track user action."""
-    user_actions_total.labels(
-        action_type=action_type,
-        feature=feature,
-        user_type=user_type
-    ).inc()
+    user_actions_total.labels(action_type=action_type, feature=feature, user_type=user_type).inc()
 
 
-def track_ccnl_query(query_type: str, sector: str, status: str, duration_seconds: float = None, semantic_search_used: bool = False):
+def track_ccnl_query(
+    query_type: str, sector: str, status: str, duration_seconds: float = None, semantic_search_used: bool = False
+):
     """Track CCNL query metrics.
-    
+
     Args:
         query_type: Type of CCNL query (salary_calculation, leave_calculation, etc.)
         sector: CCNL sector (metalmeccanico, edilizia, etc.)
@@ -553,65 +485,58 @@ def track_ccnl_query(query_type: str, sector: str, status: str, duration_seconds
     """
     try:
         # Track query count
-        ccnl_queries_total.labels(
-            query_type=query_type,
-            sector=sector or "unknown",
-            status=status
-        ).inc()
-        
+        ccnl_queries_total.labels(query_type=query_type, sector=sector or "unknown", status=status).inc()
+
         # Track duration if provided
         if duration_seconds is not None:
-            ccnl_query_duration_seconds.labels(
-                query_type=query_type,
-                sector=sector or "unknown"
-            ).observe(duration_seconds)
-        
+            ccnl_query_duration_seconds.labels(query_type=query_type, sector=sector or "unknown").observe(
+                duration_seconds
+            )
+
         # Track semantic search usage
         if semantic_search_used:
-            ccnl_semantic_search_usage.labels(
-                sector=sector or "unknown",
-                success=status
-            ).inc()
-            
+            ccnl_semantic_search_usage.labels(sector=sector or "unknown", success=status).inc()
+
         logger.debug(
             "ccnl_metrics_tracked",
             query_type=query_type,
             sector=sector,
             status=status,
             duration_seconds=duration_seconds,
-            semantic_search_used=semantic_search_used
+            semantic_search_used=semantic_search_used,
         )
-        
+
     except Exception as e:
         logger.error("ccnl_metrics_tracking_failed", error=str(e))
 
 
 def track_ccnl_cache_hit(query_type: str, cache_type: str):
     """Track CCNL cache hits.
-    
+
     Args:
         query_type: Type of CCNL query that was cached
         cache_type: Type of cache (response, calculation, search)
     """
     try:
-        ccnl_cache_hits_total.labels(
-            query_type=query_type,
-            cache_type=cache_type
-        ).inc()
-        
-        logger.debug(
-            "ccnl_cache_hit_tracked",
-            query_type=query_type,
-            cache_type=cache_type
-        )
-        
+        ccnl_cache_hits_total.labels(query_type=query_type, cache_type=cache_type).inc()
+
+        logger.debug("ccnl_cache_hit_tracked", query_type=query_type, cache_type=cache_type)
+
     except Exception as e:
         logger.error("ccnl_cache_metrics_tracking_failed", error=str(e))
 
 
-def track_classification_usage(domain: str, action: str, confidence: float, fallback_used: bool = False, prompt_used: bool = False, old_strategy: str = None, new_strategy: str = None):
+def track_classification_usage(
+    domain: str,
+    action: str,
+    confidence: float,
+    fallback_used: bool = False,
+    prompt_used: bool = False,
+    old_strategy: str = None,
+    new_strategy: str = None,
+):
     """Track domain-action classification usage and metrics.
-    
+
     Args:
         domain: The classified domain (tax, legal, labor, business, accounting)
         action: The classified action (information_request, document_generation, etc.)
@@ -632,36 +557,23 @@ def track_classification_usage(domain: str, action: str, confidence: float, fall
         confidence_bucket = "low"
     else:
         confidence_bucket = "very_low"
-    
+
     # Track classification
     query_classifications_total.labels(
-        domain=domain,
-        action=action,
-        confidence_bucket=confidence_bucket,
-        fallback_used=str(fallback_used)
+        domain=domain, action=action, confidence_bucket=confidence_bucket, fallback_used=str(fallback_used)
     ).inc()
-    
+
     # Track confidence distribution
-    classification_confidence_distribution.labels(
-        domain=domain,
-        action=action
-    ).observe(confidence)
-    
+    classification_confidence_distribution.labels(domain=domain, action=action).observe(confidence)
+
     # Track domain-specific prompt usage
     if prompt_used:
-        domain_specific_prompts_used.labels(
-            domain=domain,
-            action=action,
-            confidence_bucket=confidence_bucket
-        ).inc()
-    
+        domain_specific_prompts_used.labels(domain=domain, action=action, confidence_bucket=confidence_bucket).inc()
+
     # Track routing strategy changes
     if old_strategy and new_strategy and old_strategy != new_strategy:
         classification_routing_changes.labels(
-            domain=domain,
-            action=action,
-            new_strategy=new_strategy,
-            old_strategy=old_strategy
+            domain=domain, action=action, new_strategy=new_strategy, old_strategy=old_strategy
         ).inc()
 
 

@@ -1,5 +1,4 @@
-"""
-Date extraction utilities for Italian documents.
+"""Date extraction utilities for Italian documents.
 
 Provides functions to extract publication dates from Italian regulatory documents
 and parse years from search queries.
@@ -26,9 +25,8 @@ ITALIAN_MONTHS = {
 }
 
 
-def extract_publication_date(content: str, title: str = "") -> Optional[date]:
-    """
-    Extract publication date from Italian document content.
+def extract_publication_date(content: str, title: str = "") -> date | None:
+    """Extract publication date from Italian document content.
 
     Looks for common Italian date patterns like:
     - "Roma, 13 ottobre 2025"
@@ -84,9 +82,8 @@ def extract_publication_date(content: str, title: str = "") -> Optional[date]:
     return None
 
 
-def extract_year_from_query(query: str) -> Optional[int]:
-    """
-    Extract 4-digit year from search query.
+def extract_year_from_query(query: str) -> int | None:
+    """Extract 4-digit year from search query.
 
     Looks for years in format 201X or 202X (2010-2029 range).
 
@@ -107,8 +104,7 @@ def extract_year_from_query(query: str) -> Optional[int]:
 
 
 def strip_years_from_text(text: str) -> str:
-    """
-    Remove 4-digit years from text (for FTS preprocessing).
+    """Remove 4-digit years from text (for FTS preprocessing).
 
     PostgreSQL FTS doesn't index numbers, so we strip years from queries
     to prevent false negatives. Year filtering is done via SQL WHERE clause.

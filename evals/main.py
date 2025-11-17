@@ -79,7 +79,7 @@ def print_success(message: str) -> None:
     print(f"{Fore.GREEN}✓ {message}{Style.RESET_ALL}")
 
 
-def get_user_input(prompt: str, default: Optional[str] = None) -> str:
+def get_user_input(prompt: str, default: str | None = None) -> str:
     """Get user input with a colored prompt.
 
     Args:
@@ -113,7 +113,7 @@ def get_yes_no(prompt: str, default: bool = True) -> bool:
     return response.lower() in ("y", "yes")
 
 
-def display_summary(report: Dict[str, Any]) -> None:
+def display_summary(report: dict[str, Any]) -> None:
     """Display a summary of the evaluation results.
 
     Args:
@@ -187,7 +187,7 @@ async def run_evaluation(generate_report: bool = True) -> None:
         sys.exit(1)
 
 
-def display_configuration(config: Dict[str, Any]) -> None:
+def display_configuration(config: dict[str, Any]) -> None:
     """Display the current configuration.
 
     Args:

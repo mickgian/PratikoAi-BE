@@ -2,6 +2,7 @@
 
 import re
 from datetime import datetime
+from typing import Optional
 
 from pydantic import (
     BaseModel,
@@ -10,7 +11,6 @@ from pydantic import (
     SecretStr,
     field_validator,
 )
-from typing import Optional
 
 
 class Token(BaseModel):
@@ -146,9 +146,10 @@ class SessionResponse(BaseModel):
             str: The sanitized name
         """
         # Remove only dangerous HTML/script characters, keep apostrophes and quotes for natural text
-        sanitized = re.sub(r'[<>{}[\]()]', "", v)
+        sanitized = re.sub(r"[<>{}[\]()]", "", v)
         # Decode HTML entities - may need multiple passes for double-encoded entities
         import html
+
         # First pass - decode standard entities
         sanitized = html.unescape(sanitized)
         # Second pass - handle cases like &amp;#x27; -> &#x27; -> '
@@ -158,19 +159,20 @@ class SessionResponse(BaseModel):
 
 # OAuth-specific schema models
 
+
 class OAuthLoginResponse(BaseModel):
     """Response model for OAuth login initiation.
-    
+
     Attributes:
         authorization_url: The URL to redirect the user to for OAuth authorization
     """
-    
+
     authorization_url: str = Field(..., description="The URL to redirect the user to for OAuth authorization")
 
 
 class OAuthUserInfo(BaseModel):
     """User information from OAuth provider.
-    
+
     Attributes:
         id: User's ID in the application
         email: User's email address
@@ -178,24 +180,24 @@ class OAuthUserInfo(BaseModel):
         avatar_url: URL to user's profile picture
         provider: Authentication provider ('google' or 'linkedin')
     """
-    
+
     id: int = Field(..., description="User's ID in the application")
     email: str = Field(..., description="User's email address")
-    name: Optional[str] = Field(None, description="User's full name from OAuth provider")
-    avatar_url: Optional[str] = Field(None, description="URL to user's profile picture")
+    name: str | None = Field(None, description="User's full name from OAuth provider")
+    avatar_url: str | None = Field(None, description="URL to user's profile picture")
     provider: str = Field(..., description="Authentication provider ('email', 'google', or 'linkedin')")
 
 
 class OAuthTokenResponse(BaseModel):
     """Response model for OAuth authentication completion.
-    
+
     Attributes:
         user: User information from OAuth provider
         access_token: The JWT access token
         refresh_token: The JWT refresh token for obtaining new access tokens
         token_type: The type of token (always "bearer")
     """
-    
+
     user: OAuthUserInfo = Field(..., description="User information from OAuth provider")
     access_token: str = Field(..., description="The JWT access token")
     refresh_token: str = Field(..., description="The JWT refresh token for obtaining new access tokens")
@@ -204,9 +206,9 @@ class OAuthTokenResponse(BaseModel):
 
 class EnhancedUserResponse(BaseModel):
     """Enhanced user response model that includes OAuth provider information.
-    
+
     This extends the basic UserResponse with OAuth-specific fields.
-    
+
     Attributes:
         id: User's ID
         email: User's email address
@@ -218,11 +220,11 @@ class EnhancedUserResponse(BaseModel):
         token_type: The type of token (always "bearer")
         expires_at: When the access token expires
     """
-    
+
     id: int = Field(..., description="User's ID")
     email: str = Field(..., description="User's email address")
-    name: Optional[str] = Field(None, description="User's full name")
-    avatar_url: Optional[str] = Field(None, description="URL to user's profile picture")
+    name: str | None = Field(None, description="User's full name")
+    avatar_url: str | None = Field(None, description="URL to user's profile picture")
     provider: str = Field(default="email", description="Authentication provider")
     access_token: str = Field(..., description="The JWT access token")
     refresh_token: str = Field(..., description="The JWT refresh token")

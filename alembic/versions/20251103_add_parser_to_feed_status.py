@@ -24,7 +24,6 @@ depends_on = None
 
 def upgrade():
     """Add parser column to feed_status"""
-
     # Add parser column (idempotent - using raw SQL with IF NOT EXISTS check)
     op.execute(
         """
@@ -103,7 +102,6 @@ def upgrade():
 
 def downgrade():
     """Remove parser column from feed_status"""
-
     # Drop index
     op.execute("DROP INDEX IF EXISTS idx_feed_status_parser;")
 

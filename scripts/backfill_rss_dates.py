@@ -8,6 +8,7 @@ import asyncio
 import sys
 import time
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -60,7 +61,7 @@ async def fetch_feed_dates(feed_url: str) -> dict:
             if url and published_parsed:
                 try:
                     timestamp = time.mktime(published_parsed)
-                    pub_date = datetime.fromtimestamp(timestamp, tz=timezone.utc).date()
+                    pub_date = datetime.fromtimestamp(timestamp, tz=UTC).date()
                     url_to_date[url] = pub_date
                 except Exception:
                     pass
@@ -129,7 +130,7 @@ async def backfill_publication_dates():
         # Commit changes
         await session.commit()
 
-        print(f"\n✅ Backfill complete:")
+        print("\n✅ Backfill complete:")
         print(f"   - Updated: {updated} documents")
         print(f"   - Skipped (same date): {skipped_same} documents")
         print(f"   - Skipped (no RSS match): {skipped_missing} documents")

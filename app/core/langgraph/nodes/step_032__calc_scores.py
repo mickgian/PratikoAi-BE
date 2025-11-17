@@ -4,11 +4,13 @@ Internal step - calculates domain and action scores using Italian keyword matchi
 """
 
 from app.core.langgraph.types import RAGState
-from app.orchestrators.classify import step_32__calc_scores
 from app.observability.rag_logging import (
     rag_step_log_compat as rag_step_log,
+)
+from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
+from app.orchestrators.classify import step_32__calc_scores
 
 STEP = 32
 
@@ -25,10 +27,7 @@ async def node_step_32(state: RAGState) -> RAGState:
     rag_step_log(STEP, "enter")
 
     with rag_step_timer(STEP):
-        res = await step_32__calc_scores(
-            messages=state.get("messages", []),
-            ctx=dict(state)
-        )
+        res = await step_32__calc_scores(messages=state.get("messages", []), ctx=dict(state))
 
         # Update classification with scores
         classification = state.setdefault("classification", {})

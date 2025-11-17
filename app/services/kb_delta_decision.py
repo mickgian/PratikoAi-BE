@@ -1,5 +1,4 @@
-"""
-RAG STEP 27 — KB newer than Golden as of or conflicting tags?
+"""RAG STEP 27 — KB newer than Golden as of or conflicting tags?
 
 This module implements the decision logic that compares KB results from STEP 26
 with Golden Set metadata to determine whether KB has newer or conflicting information
@@ -9,39 +8,37 @@ Based on Mermaid diagram: KBDelta (KB newer than Golden as of or conflicting tag
 """
 
 import time
-from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional, Set
+from datetime import UTC, datetime, timezone
+from typing import Any, Dict, List, Optional, Set
 
-from app.services.knowledge_search_service import SearchResult
-from app.observability.rag_logging import rag_step_log, rag_step_timer
 from app.core.logging import logger
+from app.observability.rag_logging import rag_step_log, rag_step_timer
+from app.services.knowledge_search_service import SearchResult
 
 
 class KBDeltaDecision:
-    """
-    RAG STEP 27 — Decision logic for comparing KB results with Golden Set.
-    
+    """RAG STEP 27 — Decision logic for comparing KB results with Golden Set.
+
     This class encapsulates the decision logic that determines whether
     KB has newer or conflicting information compared to Golden Set.
     """
-    
+
     def __init__(self):
         self.STEP_NUM = 27
         self.STEP_ID = "RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags"
         self.NODE_LABEL = "KBDelta"
-    
-    def evaluate_kb_vs_golden(self, decision_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Evaluate if KB has newer or conflicting information vs Golden Set.
-        
+
+    def evaluate_kb_vs_golden(self, decision_data: dict[str, Any]) -> dict[str, Any]:
+        """Evaluate if KB has newer or conflicting information vs Golden Set.
+
         Args:
             decision_data: Dictionary containing:
                 - kb_results: List of SearchResult from STEP 26
                 - golden_metadata: Golden Set metadata (timestamp, tags, etc.)
                 - trace_id: Trace identifier for logging
-                - user_id: User identifier  
+                - user_id: User identifier
                 - session_id: Session identifier
-                
+
         Returns:
             Dict with decision result:
                 - decision: "newer_kb" | "no_newer_kb"
@@ -51,22 +48,18 @@ class KBDeltaDecision:
                 - should_merge_context: Boolean flag
         """
         start_time = time.perf_counter()
-        
+
         # Extract parameters
         kb_results = decision_data.get("kb_results", [])
         golden_metadata = decision_data.get("golden_metadata", {})
         trace_id = decision_data.get("trace_id")
         user_id = decision_data.get("user_id")
         session_id = decision_data.get("session_id")
-        
+
         try:
             # Use timer context manager for performance tracking
             with rag_step_timer(
-                self.STEP_NUM,
-                self.STEP_ID,
-                self.NODE_LABEL,
-                trace_id=trace_id,
-                kb_results_count=len(kb_results)
+                self.STEP_NUM, self.STEP_ID, self.NODE_LABEL, trace_id=trace_id, kb_results_count=len(kb_results)
             ):
                 # Initial logging
                 rag_step_log(
@@ -78,49 +71,49 @@ class KBDeltaDecision:
                     session_id=session_id,
                     kb_results_count=len(kb_results),
                     has_golden_metadata=bool(golden_metadata),
-                    processing_stage="started"
+                    processing_stage="started",
                 )
-                
+
                 # Handle edge case: no KB results
                 if not kb_results:
                     result = self._create_decision_result(
                         decision="no_newer_kb",
                         reason="No KB results to compare with Golden Set",
                         newer_count=0,
-                        conflict_count=0
+                        conflict_count=0,
                     )
-                    
+
                     self._log_decision(result, trace_id, user_id, session_id, "no_kb_results")
                     return result
-                
+
                 # Handle edge case: no Golden metadata
                 if not golden_metadata:
                     result = self._create_decision_result(
                         decision="newer_kb",
                         reason="No Golden Set metadata available, using KB results",
                         newer_count=len(kb_results),
-                        conflict_count=0
+                        conflict_count=0,
                     )
-                    
+
                     self._log_decision(result, trace_id, user_id, session_id, "no_golden_metadata")
                     return result
-                
+
                 # Perform main comparison
                 comparison_result = self._compare_kb_with_golden(kb_results, golden_metadata)
-                
+
                 # Make decision based on comparison
                 decision_result = self._make_decision(comparison_result)
-                
+
                 # Log final decision
                 self._log_decision(decision_result, trace_id, user_id, session_id, "comparison_complete")
-                
+
                 return decision_result
-                
+
         except Exception as exc:
             # Calculate latency even on error
             end_time = time.perf_counter()
             latency_ms = round((end_time - start_time) * 1000.0, 2)
-            
+
             # Log error
             rag_step_log(
                 step=self.STEP_NUM,
@@ -132,62 +125,60 @@ class KBDeltaDecision:
                 trace_id=trace_id,
                 user_id=user_id,
                 session_id=session_id,
-                processing_stage="error"
+                processing_stage="error",
             )
-            
+
             # Return safe default on error
             logger.error("kb_delta_decision_error", error=str(exc), trace_id=trace_id)
             return self._create_decision_result(
-                decision="no_newer_kb",
-                reason=f"Error in decision logic: {str(exc)}",
-                newer_count=0,
-                conflict_count=0
+                decision="no_newer_kb", reason=f"Error in decision logic: {str(exc)}", newer_count=0, conflict_count=0
             )
-    
-    def _compare_kb_with_golden(self, kb_results: List[SearchResult], golden_metadata: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _compare_kb_with_golden(
+        self, kb_results: list[SearchResult], golden_metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Compare KB results with Golden Set metadata."""
-        
         # Extract Golden Set information
         golden_timestamp = golden_metadata.get("updated_at")
         golden_tags = set(golden_metadata.get("tags", []))
         golden_category = golden_metadata.get("category", "")
-        
+
         # Ensure golden timestamp is timezone-aware
         if golden_timestamp and golden_timestamp.tzinfo is None:
-            golden_timestamp = golden_timestamp.replace(tzinfo=timezone.utc)
-        
+            golden_timestamp = golden_timestamp.replace(tzinfo=UTC)
+
         # Calculate Golden Set age
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         golden_age_days = None
         if golden_timestamp:
             golden_age_days = (now - golden_timestamp).total_seconds() / 86400
-        
+
         # Analyze KB results
         newer_results = []
         conflict_results = []
         all_conflict_types = set()
         kb_newest_timestamp = None
-        
+
         for result in kb_results:
             result_timestamp = result.updated_at
             if result_timestamp and result_timestamp.tzinfo is None:
-                result_timestamp = result_timestamp.replace(tzinfo=timezone.utc)
-            
+                result_timestamp = result_timestamp.replace(tzinfo=UTC)
+
             # Track newest KB timestamp
             if result_timestamp:
                 if kb_newest_timestamp is None or result_timestamp > kb_newest_timestamp:
                     kb_newest_timestamp = result_timestamp
-            
+
             # Check if KB result is newer than Golden
             is_newer = False
             if golden_timestamp and result_timestamp:
                 is_newer = result_timestamp > golden_timestamp
             elif not golden_timestamp:
                 is_newer = True  # No golden timestamp, consider KB as "newer"
-            
+
             if is_newer:
                 newer_results.append(result)
-            
+
             # Check for conflicts
             has_conflict = self._detect_conflicts(result, golden_tags, golden_category)
             if has_conflict:
@@ -195,12 +186,12 @@ class KBDeltaDecision:
                 # Collect conflict types
                 conflict_reasons = result.metadata.get("conflict_reasons", [])
                 all_conflict_types.update(conflict_reasons)
-        
+
         # Calculate KB newest age
         kb_newest_age_days = None
         if kb_newest_timestamp:
             kb_newest_age_days = (now - kb_newest_timestamp).total_seconds() / 86400
-        
+
         return {
             "newer_results": newer_results,
             "conflict_results": conflict_results,
@@ -210,24 +201,23 @@ class KBDeltaDecision:
             "golden_age_days": golden_age_days,
             "kb_newest_age_days": kb_newest_age_days,
             "golden_timestamp": golden_timestamp,
-            "kb_newest_timestamp": kb_newest_timestamp
+            "kb_newest_timestamp": kb_newest_timestamp,
         }
-    
-    def _detect_conflicts(self, kb_result: SearchResult, golden_tags: Set[str], golden_category: str) -> bool:
+
+    def _detect_conflicts(self, kb_result: SearchResult, golden_tags: set[str], golden_category: str) -> bool:
         """Detect if KB result conflicts with Golden Set."""
-        
         # Check if conflict already detected by STEP 26
         if kb_result.metadata.get("conflict_detected", False):
             return True
-        
+
         # Additional conflict detection logic
         result_tags = set(kb_result.metadata.get("tags", []))
-        
+
         # Check for explicit conflict indicators
         conflict_indicators = {"supersedes_previous", "rate_change", "law_change", "updated_info"}
         if result_tags.intersection(conflict_indicators):
             return True
-        
+
         # Check for same category only if there are strong conflict signals
         if golden_category and kb_result.category == golden_category:
             # Only flag as conflict if:
@@ -241,32 +231,33 @@ class KBDeltaDecision:
                 # Or explicit conflict indicators
                 if result_tags.intersection(conflict_indicators):
                     return True
-        
+
         return False
-    
-    def _make_decision(self, comparison_result: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _make_decision(self, comparison_result: dict[str, Any]) -> dict[str, Any]:
         """Make the final decision based on comparison results."""
-        
         newer_count = comparison_result["newer_count"]
         conflict_count = comparison_result["conflict_count"]
         conflict_types = comparison_result["conflict_types"]
         golden_age_days = comparison_result["golden_age_days"]
         kb_newest_age_days = comparison_result["kb_newest_age_days"]
-        
+
         # Decision logic
         should_merge_context = False
         decision = "no_newer_kb"
         reason_parts = []
-        
+
         # Primary decision factors
         if newer_count > 0:
             should_merge_context = True
             decision = "newer_kb"
             if golden_age_days is not None:
-                reason_parts.append(f"KB has {newer_count} results newer than Golden Set ({golden_age_days:.0f} days old)")
+                reason_parts.append(
+                    f"KB has {newer_count} results newer than Golden Set ({golden_age_days:.0f} days old)"
+                )
             else:
                 reason_parts.append(f"KB has {newer_count} newer results")
-        
+
         # Conflict-based decision
         if conflict_count > 0:
             should_merge_context = True
@@ -275,7 +266,7 @@ class KBDeltaDecision:
                 reason_parts.append(f"conflicts detected: {', '.join(conflict_types)}")
             else:
                 reason_parts.append(f"{conflict_count} conflicts detected")
-        
+
         # Final reason
         if not reason_parts:
             if golden_age_days is not None:
@@ -284,16 +275,16 @@ class KBDeltaDecision:
                 reason = "No newer or conflicting KB results found"
         else:
             reason = ", with ".join(reason_parts)
-        
+
         # Create result
         result = self._create_decision_result(
             decision=decision,
             reason=reason,
             newer_count=newer_count,
             conflict_count=conflict_count,
-            should_merge_context=should_merge_context
+            should_merge_context=should_merge_context,
         )
-        
+
         # Add additional metadata
         if conflict_types:
             result["conflict_types"] = conflict_types
@@ -301,40 +292,33 @@ class KBDeltaDecision:
             result["golden_age_days"] = round(golden_age_days, 1)
         if kb_newest_age_days is not None:
             result["kb_newest_age_days"] = round(kb_newest_age_days, 1)
-        
+
         return result
-    
+
     def _create_decision_result(
-        self, 
-        decision: str, 
-        reason: str, 
-        newer_count: int, 
+        self,
+        decision: str,
+        reason: str,
+        newer_count: int,
         conflict_count: int,
-        should_merge_context: Optional[bool] = None
-    ) -> Dict[str, Any]:
+        should_merge_context: bool | None = None,
+    ) -> dict[str, Any]:
         """Create standardized decision result."""
-        
         if should_merge_context is None:
-            should_merge_context = (decision == "newer_kb")
-        
+            should_merge_context = decision == "newer_kb"
+
         return {
             "decision": decision,
             "reason": reason,
             "newer_count": newer_count,
             "conflict_count": conflict_count,
-            "should_merge_context": should_merge_context
+            "should_merge_context": should_merge_context,
         }
-    
+
     def _log_decision(
-        self, 
-        result: Dict[str, Any], 
-        trace_id: Optional[str], 
-        user_id: Optional[str], 
-        session_id: Optional[str],
-        stage: str
+        self, result: dict[str, Any], trace_id: str | None, user_id: str | None, session_id: str | None, stage: str
     ):
         """Log the decision with structured logging."""
-        
         rag_step_log(
             step=self.STEP_NUM,
             step_id=self.STEP_ID,
@@ -350,18 +334,17 @@ class KBDeltaDecision:
             processing_stage=stage,
             golden_age_days=result.get("golden_age_days"),
             kb_newest_age_days=result.get("kb_newest_age_days"),
-            conflict_types=result.get("conflict_types", [])
+            conflict_types=result.get("conflict_types", []),
         )
 
 
 # Convenience function for direct usage
-def evaluate_kb_vs_golden(decision_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Convenience function to evaluate KB vs Golden Set.
-    
+def evaluate_kb_vs_golden(decision_data: dict[str, Any]) -> dict[str, Any]:
+    """Convenience function to evaluate KB vs Golden Set.
+
     Args:
         decision_data: Decision data dictionary
-        
+
     Returns:
         Dict with decision result
     """

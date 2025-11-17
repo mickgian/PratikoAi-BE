@@ -45,7 +45,7 @@ class MarkdownFile:
     def _extract_title(self) -> str:
         """Extract title from first # heading or filename."""
         try:
-            with open(self.path, "r", encoding="utf-8") as f:
+            with open(self.path, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line.startswith("# "):
@@ -64,7 +64,7 @@ class MarkdownFile:
     def _extract_description(self) -> str:
         """Extract first paragraph or sentence as description."""
         try:
-            with open(self.path, "r", encoding="utf-8") as f:
+            with open(self.path, encoding="utf-8") as f:
                 lines = f.readlines()
                 in_frontmatter = False
                 found_title = False
@@ -125,7 +125,7 @@ class MarkdownFile:
     def _extract_status(self) -> str:
         """Extract status indicator from document."""
         try:
-            with open(self.path, "r", encoding="utf-8") as f:
+            with open(self.path, encoding="utf-8") as f:
                 content = f.read(500)  # Check first 500 chars
                 if "✅" in content or "Status:** ✅" in content or "COMPLETE" in content:
                     return "✅ Current"
@@ -145,10 +145,10 @@ class DocumentationIndexer:
 
     def __init__(self, root_dir: Path):
         self.root_dir = root_dir
-        self.all_docs: List[MarkdownFile] = []
-        self.docs_by_directory: Dict[str, List[MarkdownFile]] = defaultdict(list)
+        self.all_docs: list[MarkdownFile] = []
+        self.docs_by_directory: dict[str, list[MarkdownFile]] = defaultdict(list)
 
-    def scan_documents(self, exclude_patterns: List[str] = None):
+    def scan_documents(self, exclude_patterns: list[str] = None):
         """Scan all markdown files in repository."""
         if exclude_patterns is None:
             exclude_patterns = [
@@ -208,7 +208,7 @@ class DocumentationIndexer:
 
         content = f"""# Master Documentation Index
 
-**Auto-generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Auto-generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 **Total Documents:** {len(self.all_docs)} markdown files
 
 > 💡 This index is automatically generated. To update, run: `python scripts/generate_docs_index.py`
@@ -244,7 +244,7 @@ class DocumentationIndexer:
 
 ### 🏛️ Architects
 - **System Design:** [docs/architecture/](docs/architecture/INDEX.md)
-- **RAG Pipeline:** [docs/architecture/steps/](docs/architecture/steps/INDEX.md) ({subsystems['docs/architecture/steps']} steps)
+- **RAG Pipeline:** [docs/architecture/steps/](docs/architecture/steps/INDEX.md) ({subsystems["docs/architecture/steps"]} steps)
 - **Policy Gated Autonomy:** [docs/architecture/POLICY_GATED_AUTONOMY_INTEGRATION.md](docs/architecture/POLICY_GATED_AUTONOMY_INTEGRATION.md)
 
 ### 🧪 QA / Testing
@@ -257,13 +257,13 @@ class DocumentationIndexer:
 
 | Subsystem | Documents | Primary Index |
 |-----------|-----------|---------------|
-| **RAG Architecture** | {subsystems['docs/architecture/steps']} steps | [docs/architecture/](docs/architecture/INDEX.md) |
-| **Core Docs** | {subsystems['docs/']} docs | [docs/](docs/INDEX.md) |
-| **Monitoring** | {subsystems['monitoring/']} docs | [monitoring/](monitoring/INDEX.md) |
-| **Deployment** | {subsystems['deployment-orchestration/']} docs | [deployment-orchestration/](deployment-orchestration/INDEX.md) |
-| **MCP Servers** | {subsystems['mcp-servers/']} docs | [mcp-servers/](mcp-servers/INDEX.md) |
-| **Feature Flags** | {subsystems['feature-flags/']} docs | [feature-flags/](feature-flags/INDEX.md) |
-| **Version Management** | {subsystems['version-management/']} docs | [version-management/](version-management/INDEX.md) |
+| **RAG Architecture** | {subsystems["docs/architecture/steps"]} steps | [docs/architecture/](docs/architecture/INDEX.md) |
+| **Core Docs** | {subsystems["docs/"]} docs | [docs/](docs/INDEX.md) |
+| **Monitoring** | {subsystems["monitoring/"]} docs | [monitoring/](monitoring/INDEX.md) |
+| **Deployment** | {subsystems["deployment-orchestration/"]} docs | [deployment-orchestration/](deployment-orchestration/INDEX.md) |
+| **MCP Servers** | {subsystems["mcp-servers/"]} docs | [mcp-servers/](mcp-servers/INDEX.md) |
+| **Feature Flags** | {subsystems["feature-flags/"]} docs | [feature-flags/](feature-flags/INDEX.md) |
+| **Version Management** | {subsystems["version-management/"]} docs | [version-management/](version-management/INDEX.md) |
 | **Rollback System** | 3 docs | [rollback-system/](rollback-system/INDEX.md) |
 | **Failure Recovery** | 1 doc | [failure-recovery-system/](failure-recovery-system/INDEX.md) |
 
@@ -367,7 +367,7 @@ The index is automatically regenerated on commit if markdown files change.
 
         content = f"""# Documentation Directory Index
 
-**Auto-generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Auto-generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 > 💡 This directory contains {len(docs_files)} technical documentation files plus {arch_count} architecture documents.
 
@@ -424,7 +424,7 @@ The index is automatically regenerated on commit if markdown files change.
 
 ---
 
-**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Last Updated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 """
 
         return content
@@ -449,7 +449,7 @@ The index is automatically regenerated on commit if markdown files change.
 
         content = f"""# RAG Architecture Documentation
 
-**Auto-generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Auto-generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 > 💡 Complete documentation of the RAG (Retrieval-Augmented Generation) system architecture.
 
@@ -509,7 +509,7 @@ The steps directory contains detailed documentation for every step in the RAG pi
 
 ---
 
-**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Last Updated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 """
 
         return content
@@ -557,7 +557,7 @@ The steps directory contains detailed documentation for every step in the RAG pi
 
         content = f"""# RAG Pipeline Steps (1-135)
 
-**Auto-generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Auto-generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 **Total Steps:** {len(steps)}
 
 > 💡 This directory contains {len(steps)} detailed step documents describing the complete RAG pipeline from request to response.
@@ -624,7 +624,7 @@ Each step document describes a specific operation in the RAG pipeline:
 
 ---
 
-**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Last Updated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 """
 
         return content

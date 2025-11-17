@@ -5,18 +5,19 @@ Verifies that validation and privacy nodes correctly delegate
 to orchestrators and maintain state consistency.
 """
 
-import pytest
 from unittest.mock import patch
 
-from tests.common.fixtures_state import make_state
-from tests.common.fakes import (
-    fake_validate_request_orch,
-    fake_privacy_check_orch,
-    FakeOrchestrator,
-)
+import pytest
+
 from app.core.langgraph.nodes.step_001__validate_request import node_step_1
 from app.core.langgraph.nodes.step_006__privacy_check import node_step_6
 from app.core.langgraph.nodes.step_009__pii_check import node_step_9
+from tests.common.fakes import (
+    FakeOrchestrator,
+    fake_privacy_check_orch,
+    fake_validate_request_orch,
+)
+from tests.common.fixtures_state import make_state
 
 
 @pytest.mark.parity
@@ -26,9 +27,7 @@ class TestPhase6ValidationParity:
 
     async def test_validate_request_delegates_valid(self):
         """Verify validation with valid request delegates correctly."""
-        state = make_state(
-            messages=[{"role": "user", "content": "test query"}]
-        )
+        state = make_state(messages=[{"role": "user", "content": "test query"}])
         fake_orch = fake_validate_request_orch(valid=True)
 
         with patch("app.core.langgraph.nodes.step_001__validate_request.step_1__validate_request", fake_orch):
@@ -111,13 +110,8 @@ class TestPhase6PIIParity:
 
     async def test_pii_check_no_pii_delegates(self):
         """Verify PII check with no PII delegates correctly."""
-        state = make_state(
-            messages=[{"role": "user", "content": "What is the weather?"}]
-        )
-        fake_orch = FakeOrchestrator({
-            "pii_detected": False,
-            "pii_entities": []
-        })
+        state = make_state(messages=[{"role": "user", "content": "What is the weather?"}])
+        fake_orch = FakeOrchestrator({"pii_detected": False, "pii_entities": []})
 
         with patch("app.core.langgraph.nodes.step_009__pii_check.step_9__pii_check", fake_orch):
             result = await node_step_9(state)
@@ -130,13 +124,10 @@ class TestPhase6PIIParity:
 
     async def test_pii_check_with_pii_delegates(self):
         """Verify PII check with PII detected delegates correctly."""
-        state = make_state(
-            messages=[{"role": "user", "content": "My email is john@example.com"}]
+        state = make_state(messages=[{"role": "user", "content": "My email is john@example.com"}])
+        fake_orch = FakeOrchestrator(
+            {"pii_detected": True, "pii_entities": [{"type": "EMAIL", "value": "john@example.com"}]}
         )
-        fake_orch = FakeOrchestrator({
-            "pii_detected": True,
-            "pii_entities": [{"type": "EMAIL", "value": "john@example.com"}]
-        })
 
         with patch("app.core.langgraph.nodes.step_009__pii_check.step_9__pii_check", fake_orch):
             result = await node_step_9(state)
@@ -150,14 +141,8 @@ class TestPhase6PIIParity:
 
     async def test_pii_wrapper_preserves_privacy_state(self):
         """Verify PII check preserves privacy configuration."""
-        state = make_state(
-            privacy_enabled=True,
-            privacy={"gdpr_logged": True}
-        )
-        fake_orch = FakeOrchestrator({
-            "pii_detected": False,
-            "pii_entities": []
-        })
+        state = make_state(privacy_enabled=True, privacy={"gdpr_logged": True})
+        fake_orch = FakeOrchestrator({"pii_detected": False, "pii_entities": []})
 
         with patch("app.core.langgraph.nodes.step_009__pii_check.step_9__pii_check", fake_orch):
             result = await node_step_9(state)

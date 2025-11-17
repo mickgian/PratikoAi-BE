@@ -1,9 +1,11 @@
 """Node wrapper for Step 27: KB Delta."""
 
-from typing import Dict, Any
+from typing import Any, Dict
+
 from app.core.langgraph.types import RAGState
+from app.observability.rag_logging import rag_step_log_compat as rag_step_log
+from app.observability.rag_logging import rag_step_timer_compat as rag_step_timer
 from app.orchestrators.golden import step_27__kbdelta
-from app.observability.rag_logging import rag_step_log_compat as rag_step_log, rag_step_timer_compat as rag_step_timer
 
 # Re-export for test patching
 step_27__kb_delta = step_27__kbdelta
@@ -12,7 +14,7 @@ __all__ = ["node_step_27", "step_27__kb_delta"]
 STEP = 27
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):

@@ -1,5 +1,4 @@
-"""
-Lightweight wiring registry for audit visibility.
+"""Lightweight wiring registry for audit visibility.
 
 This module contains only the static wiring registry without any heavy imports
 or initialization code, allowing the audit to load node wiring information quickly.
@@ -16,7 +15,6 @@ STEP_IDS = {
     8: "RAG.response.langgraphagent.get.response.initialize.workflow",
     9: "RAG.platform.pii.detected",
     10: "RAG.platform.logger.info.log.pii.anonymization",
-
     # Phase 8: Golden/KB Gates
     20: "RAG.golden.golden.fast.path.eligible.no.doc.or.quick.check.safe",
     24: "RAG.preflight.goldenset.match.by.signature.or.semantic",
@@ -25,7 +23,6 @@ STEP_IDS = {
     27: "RAG.golden.kb.newer.than.golden.as.of.or.conflicting.tags",
     28: "RAG.golden.serve.golden.answer.with.citations",
     30: "RAG.response.return.chatresponse",
-
     # Phase 5: Provider Governance Lane
     48: "RAG.providers.langgraphagent.get.optimal.provider.select.llm.provider",
     49: "RAG.facts.llmfactory.get.optimal.provider.apply.routing.strategy",
@@ -38,7 +35,6 @@ STEP_IDS = {
     56: "RAG.providers.cost.within.budget",
     57: "RAG.providers.create.provider.instance",
     58: "RAG.providers.select.cheaper.provider.or.fail",
-
     # Phase 4: Cache → LLM → Tools Lane
     59: "RAG.cache.langgraphagent.get.cached.llm.response.check.for.cached.response",
     62: "RAG.cache.cache.hit",
@@ -58,7 +54,6 @@ STEP_IDS = {
     82: "RAG.preflight.documentingesttool.process.process.attachments",
     83: "RAG.golden.faqtool.faq.query.query.golden.set",
     99: "RAG.platform.return.to.tool.caller",
-
     # Phase 7: Streaming/Response Lane
     104: "RAG.streaming.streaming.requested",
     105: "RAG.streaming.chatbotcontroller.chat.stream.setup.sse",
@@ -147,25 +142,31 @@ PHASE8_WIRED_NODES = {
 # Global wiring registry (combined view)
 WIRED_NODES: dict[int, dict] = {}
 
+
 def initialize_phase4_registry() -> None:
     """Initialize Phase 4 nodes in the wiring registry."""
     WIRED_NODES.update(PHASE4_WIRED_NODES)
+
 
 def initialize_phase5_registry() -> None:
     """Initialize Phase 5 nodes in the wiring registry."""
     WIRED_NODES.update(PHASE5_WIRED_NODES)
 
+
 def initialize_phase6_registry() -> None:
     """Initialize Phase 6 nodes in the wiring registry."""
     WIRED_NODES.update(PHASE6_WIRED_NODES)
+
 
 def initialize_phase7_registry() -> None:
     """Initialize Phase 7 nodes in the wiring registry."""
     WIRED_NODES.update(PHASE7_WIRED_NODES)
 
+
 def initialize_phase8_registry() -> None:
     """Initialize Phase 8 nodes in the wiring registry."""
     WIRED_NODES.update(PHASE8_WIRED_NODES)
+
 
 def track_edge(from_step: int, to_step: int) -> None:
     """Track an edge between two steps in the wiring registry."""
@@ -174,13 +175,16 @@ def track_edge(from_step: int, to_step: int) -> None:
     if to_step in WIRED_NODES:
         WIRED_NODES[to_step]["incoming"] = sorted(set(WIRED_NODES[to_step]["incoming"] + [from_step]))
 
+
 def get_wired_nodes_snapshot() -> dict[int, dict]:
     """Return a shallow copy of wired nodes registry to avoid mutation."""
     return {k: dict(v) for k, v in WIRED_NODES.items()}
 
+
 def get_wired_ids() -> set[str]:
     """Return the set of all wired step IDs."""
     return {node["id"] for node in WIRED_NODES.values()}
+
 
 def get_step_id(step: int) -> str | None:
     """Get the canonical ID for a step number."""

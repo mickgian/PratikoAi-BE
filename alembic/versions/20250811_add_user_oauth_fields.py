@@ -19,7 +19,6 @@ depends_on = None
 
 def upgrade():
     """Add OAuth support fields to users table."""
-
     # Add OAuth profile fields
     op.add_column("user", sa.Column("name", sa.String(255), nullable=True))
     op.add_column("user", sa.Column("avatar_url", sa.String(512), nullable=True))
@@ -66,7 +65,6 @@ def upgrade():
 
 def downgrade():
     """Remove OAuth fields from users table."""
-
     # Drop constraints
     op.drop_constraint("ck_users_auth_method", "user", type_="check")
     op.drop_constraint("ck_users_oauth_provider_id", "user", type_="check")

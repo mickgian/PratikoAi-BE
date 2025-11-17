@@ -1,5 +1,4 @@
-"""
-Consistent RAG step logging (no behavior change).
+"""Consistent RAG step logging (no behavior change).
 This module is optional; import it where you need explicit RAG observability.
 
 Usage examples:
@@ -16,6 +15,7 @@ Usage examples:
 """
 
 from __future__ import annotations
+
 import json
 import logging
 import time
@@ -41,8 +41,7 @@ def rag_step_log(
     level: str = "INFO",
     **attrs: Any,
 ) -> None:
-    """
-    Emit a structured log line for a RAG step.
+    """Emit a structured log line for a RAG step.
 
     Required:
       - step: human step number from docs/architecture/rag_steps.yml
@@ -55,7 +54,7 @@ def rag_step_log(
 
     This function does not raise; it logs best-effort.
     """
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "step": int(step),
         "step_id": str(step_id),
         "node": str(node_label),
@@ -75,8 +74,7 @@ def rag_step_log(
 
 
 def rag_step_log_compat(*args, **kwargs) -> None:
-    """
-    Compatibility wrapper for old-style rag_step_log calls.
+    """Compatibility wrapper for old-style rag_step_log calls.
 
     Old form: rag_step_log(STEP, "enter", **ctx)
     New form: rag_step_log(step, step_id, node_label, **ctx)
@@ -108,8 +106,7 @@ def rag_step_log_compat(*args, **kwargs) -> None:
 
 @contextmanager
 def rag_step_timer_compat(step: int, **attrs: Any):
-    """
-    Compatibility wrapper for old-style rag_step_timer calls.
+    """Compatibility wrapper for old-style rag_step_timer calls.
 
     Old form: with rag_step_timer(STEP):
     New form: with rag_step_timer(step, step_id, node_label):
@@ -130,8 +127,7 @@ def rag_step_timer(
     node_label: str,
     **attrs: Any,
 ):
-    """
-    Context manager to measure elapsed time for a RAG step section.
+    """Context manager to measure elapsed time for a RAG step section.
     On normal exit: logs INFO with latency_ms.
     On exception: logs ERROR with latency_ms and error repr, then re-raises.
     """

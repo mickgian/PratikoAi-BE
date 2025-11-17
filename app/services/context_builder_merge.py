@@ -1,5 +1,4 @@
-"""
-RAG STEP 40 — ContextBuilder.merge facts and KB docs and optional doc facts
+"""RAG STEP 40 — ContextBuilder.merge facts and KB docs and optional doc facts
 
 This module implements the context building logic that merges canonical facts,
 KB search results, and optional document facts into a unified context for LLM processing.
@@ -12,6 +11,7 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import (
+    UTC,
     datetime,
     timezone,
 )
@@ -39,10 +39,10 @@ class ContextPart:
     content: str
     tokens: int
     priority_score: float
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
-def extract_publication_date(content: str, title: str = "") -> Optional[str]:
+def extract_publication_date(content: str, title: str = "") -> str | None:
     """Extract publication date from document content.
 
     Looks for common Italian date patterns like:
@@ -82,9 +82,9 @@ class MergedContext:
     """Result of context merging operation."""
 
     merged_context: str
-    context_parts: List[Dict[str, Any]]
+    context_parts: list[dict[str, Any]]
     token_count: int
-    source_distribution: Dict[str, int]
+    source_distribution: dict[str, int]
     context_quality_score: float
     deduplication_applied: bool = False
     content_truncated: bool = False
@@ -92,8 +92,7 @@ class MergedContext:
 
 
 class ContextBuilderMerge:
-    """
-    RAG STEP 40 — ContextBuilder for merging facts, KB docs, and document facts.
+    """RAG STEP 40 — ContextBuilder for merging facts, KB docs, and document facts.
 
     This class handles the merging of different types of content into a unified
     context that will be passed to the LLM for response generation.
@@ -112,9 +111,8 @@ class ContextBuilderMerge:
         self.budget_step_size = 500
         self.default_priority_weights = {"facts": 0.3, "kb_docs": 0.5, "document_facts": 0.2}
 
-    def calculate_optimal_budget(self, kb_results: List, base_budget: Optional[int] = None) -> int:
-        """
-        Dynamically calculate optimal token budget based on search results.
+    def calculate_optimal_budget(self, kb_results: list, base_budget: int | None = None) -> int:
+        """Dynamically calculate optimal token budget based on search results.
 
         Uses smart heuristics to balance cost and quality:
         - Small result sets: use base budget (3500 tokens)
@@ -160,9 +158,8 @@ class ContextBuilderMerge:
 
         return final_budget
 
-    def merge_context(self, context_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Merge facts, KB docs, and optional document facts into unified context.
+    def merge_context(self, context_data: dict[str, Any]) -> dict[str, Any]:
+        """Merge facts, KB docs, and optional document facts into unified context.
 
         Args:
             context_data: Dictionary containing:
@@ -308,13 +305,12 @@ class ContextBuilderMerge:
 
     def _create_context_parts(
         self,
-        canonical_facts: List[str],
-        kb_results: List[SearchResult],
-        document_facts: Optional[List[str]],
-        priority_weights: Dict[str, float],
-    ) -> List[ContextPart]:
+        canonical_facts: list[str],
+        kb_results: list[SearchResult],
+        document_facts: list[str] | None,
+        priority_weights: dict[str, float],
+    ) -> list[ContextPart]:
         """Convert inputs to ContextPart objects."""
-
         parts = []
 
         # Process canonical facts
@@ -419,9 +415,8 @@ class ContextBuilderMerge:
 
         return parts
 
-    def _deduplicate_content(self, context_parts: List[ContextPart]) -> Tuple[List[ContextPart], bool]:
+    def _deduplicate_content(self, context_parts: list[ContextPart]) -> tuple[list[ContextPart], bool]:
         """Remove duplicate or highly similar content."""
-
         if len(context_parts) <= 1:
             return context_parts, False
 
@@ -450,10 +445,9 @@ class ContextBuilderMerge:
         return deduplicated, deduplication_applied
 
     def _apply_token_budget_with_retry(
-        self, context_parts: List[ContextPart], initial_budget: int, kb_results: List
-    ) -> Tuple[List[ContextPart], bool, bool]:
-        """
-        Apply token budget with adaptive retry if content doesn't fit.
+        self, context_parts: list[ContextPart], initial_budget: int, kb_results: list
+    ) -> tuple[list[ContextPart], bool, bool]:
+        """Apply token budget with adaptive retry if content doesn't fit.
 
         Tries initial budget, then increases in 500-token steps up to max (8000) if needed.
 
@@ -514,10 +508,9 @@ class ContextBuilderMerge:
         return selected_parts, content_truncated, budget_exceeded
 
     def _apply_token_budget(
-        self, context_parts: List[ContextPart], max_tokens: int
-    ) -> Tuple[List[ContextPart], bool, bool]:
+        self, context_parts: list[ContextPart], max_tokens: int
+    ) -> tuple[list[ContextPart], bool, bool]:
         """Apply token budget constraints with priority-based selection."""
-
         if not context_parts:
             return [], False, False
 
@@ -555,13 +548,12 @@ class ContextBuilderMerge:
 
         return selected_parts, content_truncated, budget_exceeded
 
-    def _generate_merged_context_text(self, context_parts: List[ContextPart], query: str) -> str:
+    def _generate_merged_context_text(self, context_parts: list[ContextPart], query: str) -> str:
         """Generate final merged context text with document type labels and source links.
 
         NOW GROUPS CHUNKS BY DOCUMENT: Multiple chunks from the same document are
         combined under a single document header, improving readability and token efficiency.
         """
-
         if not context_parts:
             return "No specific context available for this query."
 
@@ -655,7 +647,7 @@ class ContextBuilderMerge:
                             month_name = month_map.get(publication_date_obj.month, "")
                             if month_name:
                                 publication_date = f"{day} {month_name} {year}"
-                    except Exception as e:
+                    except Exception:
                         # Fallback to content extraction if date formatting fails
                         first_chunk_content = chunks[0].content
                         publication_date = extract_publication_date(first_chunk_content, doc_title)
@@ -708,9 +700,8 @@ class ContextBuilderMerge:
 
         return "\n".join(sections).strip()
 
-    def _calculate_source_distribution(self, context_parts: List[ContextPart]) -> Dict[str, int]:
+    def _calculate_source_distribution(self, context_parts: list[ContextPart]) -> dict[str, int]:
         """Calculate distribution of content by source type."""
-
         distribution = {"facts": 0, "kb_docs": 0, "document_facts": 0}
 
         for part in context_parts:
@@ -720,10 +711,9 @@ class ContextBuilderMerge:
         return distribution
 
     def _calculate_context_quality(
-        self, context_parts: List[ContextPart], query: str, total_tokens: int, max_tokens: int
+        self, context_parts: list[ContextPart], query: str, total_tokens: int, max_tokens: int
     ) -> float:
         """Calculate context quality score based on various factors."""
-
         if not context_parts:
             return 0.0
 
@@ -731,7 +721,7 @@ class ContextBuilderMerge:
         avg_priority = sum(p.priority_score for p in context_parts) / len(context_parts)
 
         # Diversity bonus (having multiple types)
-        types_present = len(set(p.type for p in context_parts))
+        types_present = len({p.type for p in context_parts})
         diversity_bonus = min(types_present * 0.1, 0.2)
 
         # Token utilization efficiency
@@ -767,15 +757,15 @@ class ContextBuilderMerge:
 
         return token_estimate
 
-    def _calculate_recency_boost(self, updated_at: Optional[datetime]) -> float:
+    def _calculate_recency_boost(self, updated_at: datetime | None) -> float:
         """Calculate recency boost for content."""
         if not updated_at:
             return 0.0
 
         if updated_at.tzinfo is None:
-            updated_at = updated_at.replace(tzinfo=timezone.utc)
+            updated_at = updated_at.replace(tzinfo=UTC)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         age_days = (now - updated_at).total_seconds() / 86400
 
         # Exponential decay: newer content gets higher boost
@@ -828,7 +818,7 @@ class ContextBuilderMerge:
         # Fallback to character truncation
         return content[: max_chars - 3] + "..."
 
-    def _context_parts_to_dict(self, context_parts: List[ContextPart]) -> List[Dict[str, Any]]:
+    def _context_parts_to_dict(self, context_parts: list[ContextPart]) -> list[dict[str, Any]]:
         """Convert ContextPart objects to dictionaries."""
         return [
             {
@@ -842,10 +832,9 @@ class ContextBuilderMerge:
         ]
 
     def _create_empty_context_result(
-        self, trace_id: Optional[str], user_id: Optional[str], session_id: Optional[str]
-    ) -> Dict[str, Any]:
+        self, trace_id: str | None, user_id: str | None, session_id: str | None
+    ) -> dict[str, Any]:
         """Create result for empty input scenario."""
-
         rag_step_log(
             step=self.STEP_NUM,
             step_id=self.STEP_ID,
@@ -870,7 +859,7 @@ class ContextBuilderMerge:
             "budget_exceeded": False,
         }
 
-    def _convert_to_dict(self, result: MergedContext) -> Dict[str, Any]:
+    def _convert_to_dict(self, result: MergedContext) -> dict[str, Any]:
         """Convert MergedContext to dictionary."""
         return {
             "merged_context": result.merged_context,
@@ -885,9 +874,8 @@ class ContextBuilderMerge:
 
 
 # Convenience function for direct usage
-def merge_context(context_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Convenience function to merge context from facts, KB docs, and document facts.
+def merge_context(context_data: dict[str, Any]) -> dict[str, Any]:
+    """Convenience function to merge context from facts, KB docs, and document facts.
 
     Args:
         context_data: Context data dictionary

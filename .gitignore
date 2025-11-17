@@ -32,6 +32,12 @@ Thumbs.db
 # Reports
 evals/reports/
 
+# Test coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
 # Load testing artifacts
 load_test_results/
 load_test.log
@@ -44,3 +50,6 @@ CLAUDE_ORIGINAL.md
 
 # Claude Code settings - keep local only
 .claude/settings.local.json
+
+# Roadmap timeline cache - generated file
+.roadmap_timeline_cache.json

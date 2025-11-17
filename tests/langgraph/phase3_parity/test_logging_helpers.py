@@ -13,7 +13,7 @@ class TestLoggingHelpers:
 
     def test_rag_step_log_basic(self):
         """Test basic rag_step_log functionality."""
-        with patch('app.core.langgraph.types.logger') as mock_logger:
+        with patch("app.core.langgraph.types.logger") as mock_logger:
             rag_step_log(1, "enter")
 
             # Verify logger.info was called
@@ -31,7 +31,7 @@ class TestLoggingHelpers:
 
     def test_rag_step_log_with_attributes(self):
         """Test rag_step_log with additional attributes."""
-        with patch('app.core.langgraph.types.logger') as mock_logger:
+        with patch("app.core.langgraph.types.logger") as mock_logger:
             rag_step_log(3, "exit", keys=["a", "b"], status="success")
 
             mock_logger.info.assert_called_once()
@@ -47,7 +47,7 @@ class TestLoggingHelpers:
 
     def test_rag_step_timer_basic(self):
         """Test basic rag_step_timer functionality."""
-        with patch('app.core.langgraph.types.logger') as mock_logger:
+        with patch("app.core.langgraph.types.logger") as mock_logger:
             with rag_step_timer(5):
                 time.sleep(0.01)  # Small delay to ensure measurable duration
 
@@ -68,10 +68,9 @@ class TestLoggingHelpers:
 
     def test_rag_step_timer_with_exception(self):
         """Test rag_step_timer logs duration even when exception occurs."""
-        with patch('app.core.langgraph.types.logger') as mock_logger:
-            with pytest.raises(ValueError):
-                with rag_step_timer(10):
-                    raise ValueError("Test exception")
+        with patch("app.core.langgraph.types.logger") as mock_logger:
+            with pytest.raises(ValueError), rag_step_timer(10):
+                raise ValueError("Test exception")
 
             # Timer should still log despite exception
             mock_logger.info.assert_called_once()
@@ -80,7 +79,7 @@ class TestLoggingHelpers:
 
     def test_rag_step_timer_duration_precision(self):
         """Test that timer duration has correct precision."""
-        with patch('app.core.langgraph.types.logger') as mock_logger:
+        with patch("app.core.langgraph.types.logger") as mock_logger:
             with rag_step_timer(7):
                 pass
 
@@ -90,5 +89,6 @@ class TestLoggingHelpers:
             duration_str = args[0]
             # Extract the duration part (e.g., "0.001s")
             import re
-            match = re.search(r'(\d+\.\d{3})s', duration_str)
+
+            match = re.search(r"(\d+\.\d{3})s", duration_str)
             assert match is not None, f"Duration format not found in: {duration_str}"

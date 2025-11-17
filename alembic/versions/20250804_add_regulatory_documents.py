@@ -27,7 +27,6 @@ depends_on = None
 
 def upgrade():
     """Add regulatory documents tables."""
-
     # Create regulatory_documents table
     op.create_table(
         "regulatory_documents",
@@ -347,7 +346,6 @@ def upgrade():
 
 def downgrade():
     """Remove regulatory documents tables."""
-
     # Drop triggers first
     op.execute("DROP TRIGGER IF EXISTS update_regulatory_documents_updated_at_trigger ON regulatory_documents;")
     op.execute("DROP TRIGGER IF EXISTS update_feed_status_updated_at_trigger ON feed_status;")

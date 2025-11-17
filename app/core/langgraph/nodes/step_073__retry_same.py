@@ -13,7 +13,7 @@ from app.orchestrators.providers import step_73__retry_same
 STEP = 73
 
 
-def _merge(d: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
     """Recursively merge patch into d (additive)."""
     for k, v in (patch or {}).items():
         if isinstance(v, dict):
@@ -59,7 +59,7 @@ async def node_step_73(state: RAGState) -> RAGState:
             from app.core.logging import logger
 
             logger.error(
-                f"retry_hard_cap_exceeded",
+                "retry_hard_cap_exceeded",
                 extra={"step": 73, "llm_attempts": retries["llm_attempts"], "max_retries": max_retries},
             )
 

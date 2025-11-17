@@ -20,9 +20,7 @@ class TestUnifiedGraphStreaming:
         """Test that unified graph executes all steps before streaming LLM response."""
         # Setup
         agent = LangGraphAgent()
-        messages = [
-            Message(role="user", content="Qual è il mio contratto CCNL?")
-        ]
+        messages = [Message(role="user", content="Qual è il mio contratto CCNL?")]
         session_id = "test-session-123"
         user_id = "test-user-456"
 
@@ -38,29 +36,24 @@ class TestUnifiedGraphStreaming:
 
         # Mock the unified graph to track execution
         mock_graph = AsyncMock()
-        mock_graph.ainvoke = AsyncMock(return_value={
-            "messages": messages,
-            "session_id": session_id,
-            "user_id": user_id,
-            "request_valid": True,
-            "privacy": {"anonymize_enabled": False, "pii_detected": False},
-            "processed_messages": messages,
-            "golden": {"eligible": False},
-            "classification": {
-                "domain": "labor",
-                "action": "ccnl_query",
-                "confidence": 0.85
-            },
-            "provider": {
-                "selected": mock_provider,
-                "cost_estimated": 0.015
-            },
-            "cache": {"hit": False, "key": "test-cache-key"}
-        })
+        mock_graph.ainvoke = AsyncMock(
+            return_value={
+                "messages": messages,
+                "session_id": session_id,
+                "user_id": user_id,
+                "request_valid": True,
+                "privacy": {"anonymize_enabled": False, "pii_detected": False},
+                "processed_messages": messages,
+                "golden": {"eligible": False},
+                "classification": {"domain": "labor", "action": "ccnl_query", "confidence": 0.85},
+                "provider": {"selected": mock_provider, "cost_estimated": 0.015},
+                "cache": {"hit": False, "key": "test-cache-key"},
+            }
+        )
 
         # Patch graph creation to return our mock
-        with patch.object(agent, '_graph', mock_graph):
-            with patch.object(agent, 'create_graph', return_value=mock_graph):
+        with patch.object(agent, "_graph", mock_graph):
+            with patch.object(agent, "create_graph", return_value=mock_graph):
                 # Execute
                 chunks = []
                 async for chunk in agent.get_stream_response(messages, session_id, user_id):
@@ -71,7 +64,7 @@ class TestUnifiedGraphStreaming:
 
                 call_args = mock_graph.ainvoke.call_args
                 assert call_args is not None
-                state_input = call_args[0][0] if call_args[0] else call_args[1].get('input') or call_args[1]
+                state_input = call_args[0][0] if call_args[0] else call_args[1].get("input") or call_args[1]
 
                 # Verify input contains required fields
                 assert "messages" in state_input or state_input.get("messages") or messages
@@ -102,15 +95,17 @@ class TestUnifiedGraphStreaming:
 
         # Mock graph that returns provider in state
         mock_graph = AsyncMock()
-        mock_graph.ainvoke = AsyncMock(return_value={
-            "messages": messages,
-            "session_id": "test-123",
-            "provider": {"selected": mock_provider},
-            "processed_messages": messages,
-            "cache": {"hit": False}
-        })
+        mock_graph.ainvoke = AsyncMock(
+            return_value={
+                "messages": messages,
+                "session_id": "test-123",
+                "provider": {"selected": mock_provider},
+                "processed_messages": messages,
+                "cache": {"hit": False},
+            }
+        )
 
-        with patch.object(agent, '_graph', mock_graph):
+        with patch.object(agent, "_graph", mock_graph):
             # Execute
             chunks = []
             async for chunk in agent.get_stream_response(messages, "test-123"):
@@ -128,16 +123,15 @@ class TestUnifiedGraphStreaming:
         # Mock graph with cache hit
         mock_graph = AsyncMock()
         cached_response = "This is a cached response"
-        mock_graph.ainvoke = AsyncMock(return_value={
-            "messages": messages,
-            "session_id": "test-456",
-            "cache": {
-                "hit": True,
-                "response": {"content": cached_response}
+        mock_graph.ainvoke = AsyncMock(
+            return_value={
+                "messages": messages,
+                "session_id": "test-456",
+                "cache": {"hit": True, "response": {"content": cached_response}},
             }
-        })
+        )
 
-        with patch.object(agent, '_graph', mock_graph):
+        with patch.object(agent, "_graph", mock_graph):
             # Execute
             chunks = []
             async for chunk in agent.get_stream_response(messages, "test-456"):
@@ -157,6 +151,7 @@ class TestUnifiedGraphStreaming:
 
         # Mock graph that logs execution
         mock_graph = AsyncMock()
+
         async def mock_invoke(state, **kwargs):
             # Simulate steps executing
             execution_log.append("Lane1:Request/Privacy")
@@ -169,18 +164,16 @@ class TestUnifiedGraphStreaming:
             return {
                 "messages": messages,
                 "session_id": state.get("session_id", "test"),
-                "provider": {
-                    "selected": self._create_mock_provider()
-                },
+                "provider": {"selected": self._create_mock_provider()},
                 "processed_messages": messages,
-                "cache": {"hit": False}
+                "cache": {"hit": False},
             }
 
         mock_graph.ainvoke = mock_invoke
 
-        with patch.object(agent, '_graph', mock_graph):
+        with patch.object(agent, "_graph", mock_graph):
             # Execute
-            chunks = list([c async for c in agent.get_stream_response(messages, "test-789")])
+            chunks = [c async for c in agent.get_stream_response(messages, "test-789")]
 
             # Verify all lanes executed before streaming
             assert "Lane1:Request/Privacy" in execution_log
@@ -198,6 +191,7 @@ class TestUnifiedGraphStreaming:
 
     def _create_mock_provider(self):
         """Helper to create a mock provider with async generator."""
+
         async def mock_stream_gen(*args, **kwargs):
             async for chunk in self._mock_stream():
                 yield chunk
@@ -229,15 +223,17 @@ class TestStreamingBackwardCompatibility:
         mock_provider.stream_completion = mock_chunk_gen
 
         mock_graph = AsyncMock()
-        mock_graph.ainvoke = AsyncMock(return_value={
-            "messages": messages,
-            "session_id": "test",
-            "provider": {"selected": mock_provider},
-            "processed_messages": messages,
-            "cache": {"hit": False}
-        })
+        mock_graph.ainvoke = AsyncMock(
+            return_value={
+                "messages": messages,
+                "session_id": "test",
+                "provider": {"selected": mock_provider},
+                "processed_messages": messages,
+                "cache": {"hit": False},
+            }
+        )
 
-        with patch.object(agent, '_graph', mock_graph):
+        with patch.object(agent, "_graph", mock_graph):
             chunks = [c async for c in agent.get_stream_response(messages, "test")]
 
             # All chunks should be strings

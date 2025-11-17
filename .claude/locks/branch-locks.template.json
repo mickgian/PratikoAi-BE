@@ -1,0 +1,30 @@
+{
+  "locks": [
+    {
+      "branch_name": "DEV-BE-XXX-feature-description",
+      "task_id": "DEV-BE-XXX",
+      "subagent": "backend-expert",
+      "subagent_name": "Ezio",
+      "reserved_at": "2025-11-17T14:30:00Z",
+      "reserved_by": "scrum-master",
+      "status": "active",
+      "repository": "backend",
+      "notes": "Example lock entry - this file is a template"
+    }
+  ],
+  "last_updated": "2025-11-17T00:00:00Z",
+  "version": "1.0",
+  "repository": "backend",
+  "description": "Branch reservation system for coordinating parallel subagent work. Managed by Scrum Master subagent (@Ottavio). See ADR-011 in docs/architecture/decisions.md for protocol details.",
+  "_usage": {
+    "purpose": "This is a TEMPLATE file showing the structure of branch-locks.json",
+    "actual_file": "The actual branch-locks.json file is gitignored (runtime state)",
+    "initialization": "Copy this template to branch-locks.json to initialize a new repository",
+    "lock_statuses": [
+      "active - Branch currently reserved and in use",
+      "completed - Work finished, PR created, ready to clean up",
+      "abandoned - Work stopped, branch can be deleted"
+    ],
+    "coordination_protocol": "See ADR-011 in docs/architecture/decisions.md for full details"
+  }
+}

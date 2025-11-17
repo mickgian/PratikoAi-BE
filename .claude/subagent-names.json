@@ -1,0 +1,78 @@
+{
+  "subagents": {
+    "egidio": {
+      "type": "architect",
+      "config_file": "architect.md",
+      "role": "Strategic Architect",
+      "status": "active",
+      "description": "Architecture decisions, tech stack, ADRs, veto power"
+    },
+    "ottavio": {
+      "type": "scrum-master",
+      "config_file": "scrum-master.md",
+      "role": "Sprint Coordinator",
+      "status": "active",
+      "description": "Sprint planning, task coordination, progress tracking"
+    },
+    "ezio": {
+      "type": "backend-expert",
+      "config_file": "backend-expert.md",
+      "role": "Backend Specialist",
+      "status": "configured",
+      "description": "Python, FastAPI, LangGraph, RAG implementation"
+    },
+    "livia": {
+      "type": "frontend-expert",
+      "config_file": "frontend-expert.md",
+      "role": "Frontend Specialist",
+      "status": "configured",
+      "description": "Next.js, React, UI/UX, Tailwind CSS"
+    },
+    "severino": {
+      "type": "security-audit",
+      "config_file": "security-audit.md",
+      "role": "Security Auditor",
+      "status": "configured",
+      "description": "GDPR compliance, security reviews, data protection"
+    },
+    "clelia": {
+      "type": "test-generation",
+      "config_file": "test-generation.md",
+      "role": "Test Engineer",
+      "status": "configured",
+      "description": "pytest, test coverage (target: 69.5%), TDD"
+    },
+    "primo": {
+      "type": "database-designer",
+      "config_file": "database-designer.md",
+      "role": "Database Architect",
+      "status": "configured",
+      "description": "PostgreSQL, pgvector, query optimization, indexes"
+    },
+    "valerio": {
+      "type": "performance-optimizer",
+      "config_file": "performance-optimizer.md",
+      "role": "Performance Engineer",
+      "status": "prepared",
+      "description": "Cache optimization, query performance, load testing"
+    },
+    "dario": {
+      "type": "devops",
+      "config_file": "devops.md",
+      "role": "DevOps Engineer",
+      "status": "configured",
+      "description": "GitHub integration, CI/CD monitoring, PR creation, cost optimization"
+    }
+  },
+  "aliases": {
+    "architect": "egidio",
+    "scrum": "ottavio",
+    "backend": "ezio",
+    "frontend": "livia",
+    "security": "severino",
+    "test": "clelia",
+    "database": "primo",
+    "performance": "valerio",
+    "devops": "dario"
+  }
+}

@@ -295,11 +295,20 @@ class Settings:
         self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
         self.FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@pratikoai.com")
 
+        # Stakeholder Configuration
+        self.STAKEHOLDER_EMAIL = os.getenv("STAKEHOLDER_EMAIL", "admin@pratikoai.com")
+
         # Metrics Report Recipients (comma-separated)
         self.METRICS_REPORT_RECIPIENTS = os.getenv("METRICS_REPORT_RECIPIENTS", "admin@pratikoai.com")
         self.METRICS_REPORT_RECIPIENTS_ADMIN = os.getenv("METRICS_REPORT_RECIPIENTS_ADMIN", "")
         self.METRICS_REPORT_RECIPIENTS_TECH = os.getenv("METRICS_REPORT_RECIPIENTS_TECH", "")
         self.METRICS_REPORT_RECIPIENTS_BUSINESS = os.getenv("METRICS_REPORT_RECIPIENTS_BUSINESS", "")
+
+        # Slack Notification Settings (for Subagent System)
+        # Modern Slack webhooks require separate webhooks for each channel
+        self.SLACK_WEBHOOK_URL_ARCHITECT = os.getenv("SLACK_WEBHOOK_URL_ARCHITECT", "")
+        self.SLACK_WEBHOOK_URL_SCRUM = os.getenv("SLACK_WEBHOOK_URL_SCRUM", "")
+        self.SLACK_ENABLED = os.getenv("SLACK_ENABLED", "false").lower() in ("true", "1", "t", "yes")
 
         # Security and Antivirus Settings
         self.ENABLE_EXTERNAL_AV_SCAN = os.getenv("ENABLE_EXTERNAL_AV_SCAN", "false").lower() in (

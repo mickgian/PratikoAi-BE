@@ -51,5 +51,12 @@ CLAUDE_ORIGINAL.md
 # Claude Code settings - keep local only
 .claude/settings.local.json
 
+# Branch coordination lock files (runtime state, not config)
+.claude/locks/*.json
+!.claude/locks/*.template.json
+
 # Roadmap timeline cache - generated file
 .roadmap_timeline_cache.json
+
+# Linting/code quality output files
+errors

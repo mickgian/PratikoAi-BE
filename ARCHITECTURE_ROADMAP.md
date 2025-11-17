@@ -19,23 +19,22 @@ This roadmap tracks planned architectural improvements and enhancements for the 
 **Deployment Timeline Estimates:**
 
 📅 **Time to QA Environment (DEV-BE-75):**
-- **Optimistic (parallel work):** ~5-6 weeks (17 Nov - 29 Dec)
-- **Conservative (sequential):** ~7-8 weeks (17 Nov - 7 Gen)
-- **Prerequisites:** DEV-BE-70, DEV-BE-74, DEV-BE-68, DEV-BE-72...
-- **Total effort (sequential):** 36 days (5.1 weeks) - DEV-BE-67 completed
-- **Note:** FAQ migration deferred to Sprint 1
+- **Optimistic (parallel work):** ~5-6 weeks (17 Nov - 31 Dic)
+- **Conservative (sequential):** ~7-8 weeks (17 Nov - 11 Gen)
+- **Prerequisites:** DEV-BE-70, DEV-BE-74, DEV-BE-71, DEV-BE-68, DEV-BE-72...
+- **Total effort (sequential):** 37 days (5.3 weeks)
 
 📅 **Time to Preprod Environment (DEV-BE-88):**
-- **Optimistic:** ~14-16 weeks from now (15 Nov - 9 Mar)
-- **Conservative:** ~20-22 weeks from now (15 Nov - 18 Apr)
-- **Prerequisites:** Path to QA + DEV-BE-72, DEV-BE-75, DEV-BE-69
-- **Total effort (sequential):** 100 days (14.3 weeks)
+- **Optimistic:** ~14-16 weeks from now (17 Nov - 7 Mar)
+- **Conservative:** ~19-21 weeks from now (17 Nov - 15 Apr)
+- **Prerequisites:** Path to QA + DEV-BE-69, DEV-BE-67, DEV-BE-75
+- **Total effort (sequential):** 96 days (13.7 weeks)
 
 📅 **Time to Production Environment (DEV-BE-90):**
-- **Optimistic:** ~16-17.1 weeks from now (15 Nov - 15 Mar)
-- **Conservative:** ~23-26 weeks from now (15 Nov - 19 Mag)
-- **Prerequisites:** Path to Preprod + DEV-BE-72, DEV-BE-71, DEV-BE-69
-- **Total effort (sequential):** 110 days (15.6 weeks)
+- **Optimistic:** ~15-16.6 weeks from now (17 Nov - 13 Mar)
+- **Conservative:** ~23-26 weeks from now (17 Nov - 15 Mag)
+- **Prerequisites:** Path to Preprod + DEV-BE-69, DEV-BE-67, DEV-BE-75
+- **Total effort (sequential):** 106 days (15.1 weeks)
 - **Note:** Production launch requires full GDPR compliance and payment system validation
 
 **Key Dependencies:**
@@ -113,7 +112,7 @@ uv run mypy app/
 ## Q1 2025 (January - March)
 
 ### DEV-BE-67: Sprint 0: Multi-Agent System Setup
-**Priority:** HIGH | **Effort:** 3-5 days | **Dependencies:** None | **Status:** ✅ COMPLETED
+**Priority:** HIGH | **Effort:** 1 day (2025-11-17) | **Actual:** 1 day | **Dependencies:** None | **Status:** ✅ COMPLETED
 
 **Original Task:** Migrate FAQ Embeddings from Pinecone to pgvector
 

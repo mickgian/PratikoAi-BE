@@ -213,6 +213,7 @@ REQUISITI SPECIFICI:
 6. Mantieni la precisione tecnica e i dettagli normativi
 7. Se ci sono calcoli o formule, mantienili chiari e precisi
 8. Aggiungi tag rilevanti per categorizzazione e ricerca
+9. NON usare emoji nella risposta (usa testo professionale invece di ✅, ⚠️, 📊, etc.)
 
 GENERA SOLO IL JSON, SENZA COMMENTI O TESTO AGGIUNTIVO."""
 

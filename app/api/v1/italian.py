@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.api.v1.auth import get_current_session
 from app.core.config import settings
@@ -35,8 +35,9 @@ class TaxCalculationRequest(BaseModel):
     # Withholding tax parameters
     withholding_type: str | None = Field(default="professional", description="Type of withholding")
 
-    @validator("tax_year")
-    def validate_tax_year(self, v):
+    @field_validator("tax_year")
+    @classmethod
+    def validate_tax_year(cls, v):
         if v is not None and (v < 2020 or v > 2030):
             raise ValueError("Tax year must be between 2020 and 2030")
         return v

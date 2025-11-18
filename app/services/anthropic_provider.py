@@ -123,7 +123,7 @@ class AnthropicProvider:
                     cost=cost,
                     processing_time=processing_time,
                     provider="anthropic",
-                    metadata={
+                    response_metadata={
                         "stop_reason": stop_reason,
                         "input_tokens": input_tokens,
                         "output_tokens": output_tokens,

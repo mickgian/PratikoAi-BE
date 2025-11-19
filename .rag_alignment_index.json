@@ -3199,7 +3199,6 @@
       "incoming": [],
       "outgoing": [
         "InvalidateFAQCache",
-        "VectorReindex",
         "GoldenSetDB"
       ]
     },
@@ -3245,10 +3244,11 @@
     "node_label": "VectorIndex.upsert_faq update embeddings",
     "category": "golden",
     "type": "process",
+    "status": "DEPRECATED",
+    "deprecated_date": "2025-11-19",
+    "deprecation_reason": "Replaced by pgvector automatic embedding triggers (DEV-BE-68)",
     "neighbors": {
-      "incoming": [
-        "PublishGolden"
-      ],
+      "incoming": [],
       "outgoing": []
     },
     "code_refs": {
@@ -3259,8 +3259,7 @@
     },
     "orchestrator": false,
     "tests_refs": [],
-    "runtime_hits": 0,
-    "status": "missing"
+    "runtime_hits": 0
   },
   "132": {
     "step": 132,

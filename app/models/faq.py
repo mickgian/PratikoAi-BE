@@ -4,7 +4,7 @@ These models support FAQ entries, usage tracking, analytics, and obsolescence de
 for the Italian tax/legal domain with response variation and cost optimization.
 """
 
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
@@ -259,7 +259,7 @@ class FAQVariationCache(SQLModel, table=True):
         description="When variation was cached",
     )
     expires_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC) + datetime.timedelta(hours=24),
+        default_factory=lambda: datetime.now(UTC) + timedelta(hours=24),
         sa_column=Column(DateTime(timezone=True)),
         description="When cache entry expires",
     )

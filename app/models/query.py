@@ -71,7 +71,7 @@ class QueryResponse:
     completed_at: datetime | None = None
     error_message: str | None = None
     retry_count: int = 0
-    query_metadata: dict[str, Any] = None
+    query_metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         if self.query_metadata is None:

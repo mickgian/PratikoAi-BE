@@ -1,45 +1,85 @@
-# RAG STEP 131 — VectorIndex.upsert_faq update embeddings (RAG.golden.vectorindex.upsert.faq.update.embeddings)
+# RAG STEP 131 — VectorIndex.upsert_faq update embeddings (DEPRECATED)
 
-**Type:** process  
-**Category:** golden  
-**Node ID:** `VectorReindex`
+**DEPRECATION NOTICE (2025-11-19):** This step has been removed as part of DEV-BE-68 (Pinecone removal).
 
-## Intent (Blueprint)
-Updates vector embeddings for published/updated FAQ entries in the vector index. When an FAQ is created or modified (from Step 129), this step processes FAQ content and metadata to create/update vector embeddings using EmbeddingManager. Runs in parallel with InvalidateFAQCache (Step 130) to complete the FAQ publication flow. This step is derived from the Mermaid node: `VectorReindex` (VectorIndex.upsert_faq update embeddings).
+**Status:** 🔴 DEPRECATED
+**Type:** process
+**Category:** golden
+**Node ID:** `VectorReindex` (obsolete)
 
-## Current Implementation (Repo)
-- **Role:** Internal
-- **Paths / classes:** `app/orchestrators/golden.py:step_131__vector_reindex`
-- **Status:** 🔌
-- **Behavior notes:** Async orchestrator that updates vector embeddings for FAQ entries. Uses EmbeddingManager.update_pinecone_embeddings to upsert FAQ content and metadata into Pinecone vector index. Creates vector indexing metadata for observability. Preserves all context data. Runs in parallel with Step 130 from Step 129 per Mermaid flow.
+---
 
-## Differences (Blueprint vs Current)
-- None - implementation matches Mermaid flow exactly
+## Migration Information
 
-## Risks / Impact
-- None - thin orchestrator preserving existing service behavior
+**Why Deprecated:**
+- Pinecone vector database replaced with PostgreSQL + pgvector (ADR-003)
+- Vector embeddings are now **automatically managed** by pgvector database triggers
+- No manual reindexing step required when FAQ entries are created/updated
 
-## TDD Task List
-- [x] Unit tests (update FAQ embeddings, handle updated FAQs, context preservation, metadata inclusion, error handling, indexing metadata, completion flow, logging)
-- [x] Parity tests (embedding update behavior verification)
-- [x] Integration tests (PublishGolden→VectorReindex flow, parallel execution with Step 130)
-- [x] Implementation changes (async orchestrator wrapping EmbeddingManager)
-- [x] Observability: add structured log line
-  `RAG STEP 131 (RAG.golden.vectorindex.upsert.faq.update.embeddings): VectorIndex.upsert_faq update embeddings | attrs={faq_id, embeddings_updated, version, operation, processing_stage}`
-- [x] Feature flag / config if needed (none required - uses existing service)
-- [x] Rollout plan (implemented with comprehensive tests)
+**Migration Path:**
+- Step 129 (PublishGolden) now writes directly to PostgreSQL
+- pgvector triggers automatically generate and update embeddings for `faqs` table
+- Embedding column: `faqs.embedding` (vector(1536) using text-embedding-3-small)
+- Database function: `update_faq_embedding_trigger()` executes on INSERT/UPDATE
 
-## Done When
-- Tests pass; metrics/latency acceptable; feature behind flag if risky.
+**Architecture Change:**
+```
+BEFORE (Pinecone):
+Step 129 → Step 131 (manual Pinecone upsert) → Embeddings updated
 
-## Links
-- RAG Diagram: `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd`
-- Step registry: `docs/architecture/rag_steps.yml`
+AFTER (pgvector):
+Step 129 → PostgreSQL INSERT/UPDATE → Automatic trigger → Embeddings updated
+```
 
+**Related Documentation:**
+- [ADR-012: Remove Step 131 Vector Reindexing](../decisions.md#adr-012-remove-step-131-vector-reindexing)
+- ADR-003: pgvector over Pinecone (`../decisions.md#adr-003-pgvector-over-pinecone`)
+- DEV-BE-67: FAQ Embeddings Migration
+- DEV-BE-68: Pinecone Removal
+- Database schema: `docs/DATABASE_ARCHITECTURE.md`
 
-<!-- AUTO-AUDIT:BEGIN -->
-Role: Internal  |  Status: 🔌 (Implemented (internal))  |  Registry: ❌ Not in registry
+---
 
-Notes:
-- ✅ Internal step (no wiring required)
-<!-- AUTO-AUDIT:END -->
+## Historical Context
+
+This step previously managed Pinecone vector index updates using `EmbeddingManager.update_pinecone_embeddings()`. It ran in parallel with Step 130 (InvalidateFAQCache) after Step 129 (PublishGolden). The step processed FAQ content and metadata to create/update vector embeddings in Pinecone's external index.
+
+**Original Implementation:**
+- **Location:** `app/orchestrators/golden.py:step_131__vector_reindex` (lines 1264-1410)
+- **Function:** Async orchestrator wrapping EmbeddingManager.update_pinecone_embeddings
+- **Behavior:** Updated Pinecone vector index with FAQ embeddings
+- **Parallel execution:** Ran alongside Step 130 (InvalidateFAQCache)
+
+**Code Reference:**
+The original implementation is preserved (commented out) in `app/orchestrators/golden.py` lines 1259-1410 with deprecation notice.
+
+---
+
+## Reasons for Removal
+
+1. **Cost Savings:** Pinecone: $70-200/month → pgvector: $0/month (included in PostgreSQL)
+2. **Consistency:** Database triggers guarantee embeddings always match FAQ data (ACID transactions)
+3. **Latency:** Eliminated external API call to Pinecone (~50-100ms saved per FAQ update)
+4. **GDPR Compliance:** All data (including embeddings) now hosted in EU (Hetzner Germany)
+5. **Simplicity:** Removed orchestration complexity, retry logic, and failure modes
+
+---
+
+## Rollback Plan (If Needed)
+
+If pgvector triggers prove problematic:
+
+1. Uncomment `app/orchestrators/golden.py:step_131__vector_reindex()` (lines 1264-1410)
+2. Modify to call pgvector upsert instead of Pinecone
+3. Disable database triggers to prevent duplicate updates
+4. Restore imports in `app/orchestrators/__init__.py`
+5. Update Mermaid diagrams to re-add S131 node
+
+**Estimated effort:** 2-4 hours
+**Risk:** Low (pgvector triggers tested in 69.5% test coverage suite)
+
+---
+
+**Deprecated:** 2025-11-19
+**Replacement:** Automatic pgvector database triggers
+**Last Active:** DEV-BE-68 merge date

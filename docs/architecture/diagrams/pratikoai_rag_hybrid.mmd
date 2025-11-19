@@ -220,11 +220,11 @@ flowchart TD
     S128 -->|Auto or approved| S129[S129 · GoldenSet.publish_or_update<br/>versioned entry]
     S128 -->|Rejected| S115
     S129 --> S130[S130 · CacheService.invalidate_faq<br/>by id or signature]
-    S129 --> S131[S131 · VectorIndex.upsert_faq<br/>update embeddings]
     S129 --> GoldenSetDB
+    %% S131 (VectorReindex) removed - pgvector now manages embeddings automatically via DB triggers (DEV-BE-68)
 
     %% Background RSS Influence (schedule)
-    S132[S132 · RSS Monitor] --> S133[S133 · Fetch and parse sources]
+S132[S132 · RSS Monitor] --> S133[S133 · Fetch and parse sources]
     S133 --> S134[S134 · Extract text and metadata]
     S134 --> KnowledgeStore[(Knowledge Base)]
     KnowledgeStore --> S135[S135 · GoldenSetUpdater.auto_rule_eval<br/>new or obsolete candidates]
@@ -255,9 +255,10 @@ flowchart TD
     %% Canonical Nodes (27 total) - Runtime boundaries with metrics/retries
     class S002,S003,S006,S009,S013,S020,S024,S026,S031,S041,S042,S048,S050,S055,S056,S059,S062,S064,S067,S075,S079,S080,S081,S082,S083,S104,S105,S109,S112 canonicalNode
 
-    %% Internal Steps (108 total) - Pure transforms, no isolation
+    %% Internal Steps (107 total) - Pure transforms, no isolation
     %% These steps are styled with light green dashed borders to distinguish from Canonical Nodes
-    class Start,S001,S004,S005,S007,S008,S010,S011,S012,S014,S015,S016,S017,S018,S019,S021,S022,S023,S025,S027,S028,S029,S030,S032,S033,S034,S034a,S035,S036,S037,S038,S039,S040,S043,S044,S045,S046,S047,S049,S051,S052,S053,S054,S057,S058,S060,S061,S063,S065,S066,S068,S069,S070,S071,S072,S073,S074,S076,S077,S078,S084,S085,S086,S087,S088,S089,S090,S091,S092,S093,S094,S095,S096,S097,S098,S099,S100,S101,S102,S103,S106,S107,S108,S110,S111,S113,S114,S115,S116,S117,S118,S119,S120,S121,S122,S123,S124,S125,S126,S127,S128,S129,S130,S131,S132,S133,S134,S135 internalNode
+    %% S131 removed (Pinecone deprecation - DEV-BE-68)
+    class Start,S001,S004,S005,S007,S008,S010,S011,S012,S014,S015,S016,S017,S018,S019,S021,S022,S023,S025,S027,S028,S029,S030,S032,S033,S034,S034a,S035,S036,S037,S038,S039,S040,S043,S044,S045,S046,S047,S049,S051,S052,S053,S054,S057,S058,S060,S061,S063,S065,S066,S068,S069,S070,S071,S072,S073,S074,S076,S077,S078,S084,S085,S086,S087,S088,S089,S090,S091,S092,S093,S094,S095,S096,S097,S098,S099,S100,S101,S102,S103,S106,S107,S108,S110,S111,S113,S114,S115,S116,S117,S118,S119,S120,S121,S122,S123,S124,S125,S126,S127,S128,S129,S130,S132,S133,S134,S135 internalNode
 
     %% Databases
     class RedisCache,PostgresDB,GoldenSetDB,KnowledgeStore databaseNode
@@ -283,4 +284,3 @@ flowchart TD
     style L2 fill:#E0FFE0,stroke:#666666,stroke-width:3px,stroke-dasharray: 5 5,color:#000000
     style L3 fill:#90EE90,stroke:#228B22,stroke-width:5px,color:#000000
     style L4 fill:#E6D5F5,stroke:#8E44AD,stroke-width:3px,color:#000000
-

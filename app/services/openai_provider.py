@@ -125,7 +125,7 @@ class OpenAIProvider:
                     cost=cost,
                     processing_time=processing_time,
                     provider="openai",
-                    metadata={
+                    response_metadata={
                         "finish_reason": finish_reason,
                         "prompt_tokens": prompt_tokens,
                         "completion_tokens": completion_tokens,

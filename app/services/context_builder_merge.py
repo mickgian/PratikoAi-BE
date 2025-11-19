@@ -658,7 +658,7 @@ class ContextBuilderMerge:
 
                 # Add publication date prominently if found
                 if publication_date:
-                    kb_item += f"📅 Publication Date: {publication_date}\n"
+                    kb_item += f"Publication Date: {publication_date}\n"
 
                 # Concatenate all chunk texts, removing redundant title prefixes
                 chunk_texts = []
@@ -673,7 +673,7 @@ class ContextBuilderMerge:
 
                 # Add source URL if available
                 if source_url:
-                    kb_item += f"\n📎 Source: {source_url}"
+                    kb_item += f"\nSource URL: {source_url}"
 
                 kb_items.append(kb_item)
 
@@ -687,8 +687,8 @@ class ContextBuilderMerge:
                 num_documents=len(docs_by_title),
                 num_chunks=total_chunks,
                 total_chars=len(kb_text),
-                has_dates=any("📅" in item for item in kb_items),
-                has_links=any("📎" in item for item in kb_items),
+                has_dates=any("Publication Date:" in item for item in kb_items),
+                has_links=any("Source URL:" in item for item in kb_items),
                 first_doc_preview=kb_items[0][:200] if kb_items else None,
                 message=f"Built KB context with {len(docs_by_title)} document(s) from {total_chunks} chunks, {len(kb_text)} chars",
             )

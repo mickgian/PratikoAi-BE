@@ -33,6 +33,11 @@ Tools that subagents can use autonomously without asking permission:
 **Testing:**
 - ✅ `pytest` - Run tests (if permitted by task)
 
+**Communication:**
+- ✅ `Slack notifications` - ALWAYS send automatically (NO approval needed)
+- ✅ `SlackNotificationService` - Send notifications for milestones, code review, PR creation
+- ✅ Automatic notifications for: code ready, commits, pushes, PR creation, task completion
+
 ---
 
 ### 🟡 NOTIFICATION REQUIRED (Do it, but notify)
@@ -69,8 +74,14 @@ Tools that require explicit human approval before execution:
 - 🔴 Environment variable changes - Ask first
 
 **External Services:**
-- 🔴 API calls to external services (except Slack notifications)
+- 🔴 API calls to external services (EXCEPT Slack - see below)
 - 🔴 npm/pip install (dependency changes) - Ask first
+
+**IMPORTANT - Slack Exception:**
+- ✅ Slack notifications are ALWAYS ALLOWED without approval
+- ✅ Send automatically at key milestones (code ready, commits, PRs)
+- ✅ DO NOT wait for human approval to send Slack notifications
+- ✅ Notifications are for visibility, not approval requests
 
 ---
 
@@ -246,12 +257,14 @@ Next: Creating PR to develop
 |------|-----------|----------------|-----------|--------------|
 | Read | ✅ Allowed | - | - | - |
 | Edit | - | ✅ Allowed | - | - |
+| Slack notifications | - | - | - | ✅ ALWAYS ALLOWED |
 | ruff check | ✅ Allowed | - | - | - |
 | ruff check --fix | - | 🟡 Notify | - | - |
 | git add | - | - | 🟡 Notify | - |
 | git commit | - | - | 🔴 Ask + Slack | - |
 | git push --force | ❌ FORBIDDEN | - | ❌ FORBIDDEN | - |
 | npm install | ❌ Ask first | 🔴 Ask | - | 🔴 External |
+| Other External APIs | ❌ Ask first | - | - | 🔴 Ask first |
 
 ---
 

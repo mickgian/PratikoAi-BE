@@ -1,333 +1,388 @@
-"""
-Tests for the Email Service.
-"""
+"""Tests for email service."""
 
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 import pytest
 
 from app.services.email_service import EmailService
-from app.services.metrics_service import Environment, MetricResult, MetricsReport, MetricStatus
+from app.services.metrics_service import (
+    Environment,
+    MetricResult,
+    MetricsReport,
+    MetricStatus,
+)
 
 
 class TestEmailService:
-    """Test cases for EmailService."""
+    """Test EmailService class."""
 
-    @pytest.fixture
-    def email_service(self):
-        """Create an EmailService instance for testing."""
-        return EmailService()
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    def test_initialization_with_settings(self, mock_metrics_service, mock_settings):
+        """Test EmailService initialization with configured settings."""
+        mock_settings.SMTP_SERVER = "smtp.test.com"
+        mock_settings.SMTP_PORT = 465
+        mock_settings.SMTP_USERNAME = "test@test.com"
+        mock_settings.SMTP_PASSWORD = "testpass"
+        mock_settings.FROM_EMAIL = "sender@test.com"
 
-    @pytest.fixture
-    def sample_metrics_report(self):
-        """Create a sample metrics report for testing."""
-        current_time = datetime.utcnow()
+        service = EmailService()
 
-        technical_metrics = [
-            MetricResult(
-                name="API Response Time (P95)",
-                value=450.0,
-                target=500.0,
-                status=MetricStatus.PASS,
-                unit="ms",
-                description="95th percentile API response time",
-                timestamp=current_time,
-                environment=Environment.PRODUCTION,
-            ),
-            MetricResult(
-                name="Cache Hit Rate",
-                value=75.0,
-                target=80.0,
-                status=MetricStatus.WARNING,
-                unit="%",
-                description="Percentage of cache hits",
-                timestamp=current_time,
-                environment=Environment.PRODUCTION,
-            ),
-        ]
+        assert service.smtp_server == "smtp.test.com"
+        assert service.smtp_port == 465
+        assert service.smtp_username == "test@test.com"
+        assert service.smtp_password == "testpass"
+        assert service.from_email == "sender@test.com"
 
-        business_metrics = [
-            MetricResult(
-                name="API Cost per User",
-                value=1.8,
-                target=2.0,
-                status=MetricStatus.PASS,
-                unit="EUR/month",
-                description="Average API cost per user",
-                timestamp=current_time,
-                environment=Environment.PRODUCTION,
-            ),
-            MetricResult(
-                name="System Uptime",
-                value=98.5,
-                target=99.5,
-                status=MetricStatus.FAIL,
-                unit="%",
-                description="System uptime percentage",
-                timestamp=current_time,
-                environment=Environment.PRODUCTION,
-            ),
-        ]
+    @pytest.mark.asyncio
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    async def test_send_metrics_report_no_recipients(self, mock_metrics_service, mock_settings):
+        """Test sending metrics report with no recipients."""
+        service = EmailService()
 
-        return MetricsReport(
-            environment=Environment.PRODUCTION,
-            timestamp=current_time,
-            technical_metrics=technical_metrics,
-            business_metrics=business_metrics,
-            overall_health_score=75.0,
-            alerts=[
-                "WARNING: Cache Hit Rate is 75.0 %, target: 80.0 %",
-                "CRITICAL: System Uptime is 98.5 %, target: 99.5 %",
-            ],
-            recommendations=[
-                "Consider tuning cache parameters to improve hit rates",
-                "Investigate and resolve infrastructure issues for better uptime",
-            ],
+        result = await service.send_metrics_report(recipient_emails=[], environments=[Environment.DEVELOPMENT])
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    async def test_send_metrics_report_no_reports(self, mock_metrics_service, mock_settings):
+        """Test sending metrics report when report generation fails."""
+        mock_metrics_instance = mock_metrics_service.return_value
+        mock_metrics_instance.generate_metrics_report = AsyncMock(side_effect=Exception("Report error"))
+
+        service = EmailService()
+        result = await service.send_metrics_report(
+            recipient_emails=["test@test.com"], environments=[Environment.DEVELOPMENT]
         )
 
-    @pytest.mark.asyncio
-    async def test_send_metrics_report_success(self, email_service, sample_metrics_report):
-        """Test successful metrics report email sending."""
-        environments = [Environment.PRODUCTION]
-        recipient = "test@example.com"
-
-        with (
-            patch.object(
-                email_service.metrics_service, "generate_metrics_report", return_value=sample_metrics_report
-            ) as mock_generate,
-            patch.object(email_service, "_send_email", return_value=True) as mock_send,
-        ):
-            result = await email_service.send_metrics_report(recipient, environments)
-
-            assert result is True
-            mock_generate.assert_called_once_with(Environment.PRODUCTION)
-            mock_send.assert_called_once()
-
-            # Check email parameters
-            call_args = mock_send.call_args
-            assert call_args[1]["recipient_email"] == recipient
-            assert "NormoAI System Metrics Report" in call_args[1]["subject"]
-            assert "html_content" in call_args[1]
+        assert result is False
 
     @pytest.mark.asyncio
-    async def test_send_metrics_report_no_reports_generated(self, email_service):
-        """Test handling when no reports are generated."""
-        environments = [Environment.DEVELOPMENT, Environment.STAGING]
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    async def test_send_metrics_report_success(self, mock_metrics_service, mock_settings):
+        """Test successful metrics report sending."""
+        mock_settings.SMTP_USERNAME = None
+        mock_settings.SMTP_PASSWORD = None
 
-        with patch.object(
-            email_service.metrics_service, "generate_metrics_report", side_effect=Exception("Report generation failed")
-        ):
-            result = await email_service.send_metrics_report("test@example.com", environments)
-
-            assert result is False
-
-    @pytest.mark.asyncio
-    async def test_send_metrics_report_email_failure(self, email_service, sample_metrics_report):
-        """Test handling of email sending failure."""
-        with (
-            patch.object(email_service.metrics_service, "generate_metrics_report", return_value=sample_metrics_report),
-            patch.object(email_service, "_send_email", return_value=False),
-        ):
-            result = await email_service.send_metrics_report("test@example.com", [Environment.PRODUCTION])
-
-            assert result is False
-
-    def test_generate_html_report_single_environment(self, email_service, sample_metrics_report):
-        """Test HTML report generation for a single environment."""
-        reports = {"production": sample_metrics_report}
-
-        html_content = email_service._generate_html_report(reports)
-
-        # Check HTML structure
-        assert "<!DOCTYPE html>" in html_content
-        assert "NormoAI System Metrics Report" in html_content
-        assert "Production Environment" in html_content
-        assert "Health Score: 75.0%" in html_content
-
-        # Check metrics are included
-        assert "API Response Time (P95)" in html_content
-        assert "450.0 ms" in html_content
-        assert "Cache Hit Rate" in html_content
-        assert "75.0 %" in html_content
-        assert "API Cost per User" in html_content
-        assert "1.8 EUR/month" in html_content
-
-        # Check alerts and recommendations
-        assert "🚨 Alerts" in html_content
-        assert "WARNING: Cache Hit Rate" in html_content
-        assert "CRITICAL: System Uptime" in html_content
-        assert "💡 Recommendations" in html_content
-        assert "Consider tuning cache parameters" in html_content
-
-    def test_generate_html_report_multiple_environments(self, email_service):
-        """Test HTML report generation for multiple environments."""
+        # Create mock report
         current_time = datetime.utcnow()
-
-        # Create reports for different environments
-        dev_report = MetricsReport(
+        mock_report = MetricsReport(
             environment=Environment.DEVELOPMENT,
             timestamp=current_time,
-            technical_metrics=[],
-            business_metrics=[],
             overall_health_score=95.0,
+            technical_metrics=[
+                MetricResult(
+                    name="API Latency",
+                    value=150.0,
+                    target=500.0,
+                    unit="ms",
+                    status=MetricStatus.PASS,
+                    description="Test metric",
+                    timestamp=current_time,
+                    environment=Environment.DEVELOPMENT,
+                )
+            ],
+            business_metrics=[
+                MetricResult(
+                    name="Daily Active Users",
+                    value=500.0,
+                    target=1000.0,
+                    unit="users",
+                    status=MetricStatus.PASS,
+                    description="Test metric",
+                    timestamp=current_time,
+                    environment=Environment.DEVELOPMENT,
+                )
+            ],
             alerts=[],
             recommendations=[],
         )
 
-        prod_report = MetricsReport(
-            environment=Environment.PRODUCTION,
-            timestamp=current_time,
+        mock_metrics_instance = mock_metrics_service.return_value
+        mock_metrics_instance.generate_metrics_report = AsyncMock(return_value=mock_report)
+
+        service = EmailService()
+        with patch.object(service, "_send_email", new_callable=AsyncMock) as mock_send:
+            mock_send.return_value = True
+
+            result = await service.send_metrics_report(
+                recipient_emails=["test@test.com"], environments=[Environment.DEVELOPMENT]
+            )
+
+            assert result is True
+            mock_send.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    async def test_send_metrics_report_multiple_recipients(self, mock_metrics_service, mock_settings):
+        """Test sending metrics report to multiple recipients."""
+        mock_settings.SMTP_USERNAME = None
+        mock_settings.SMTP_PASSWORD = None
+
+        # Create mock report
+        mock_report = MetricsReport(
+            environment=Environment.DEVELOPMENT,
+            timestamp=datetime.utcnow(),
+            overall_health_score=95.0,
             technical_metrics=[],
             business_metrics=[],
-            overall_health_score=85.0,
-            alerts=["Test alert"],
-            recommendations=["Test recommendation"],
+            alerts=[],
+            recommendations=[],
         )
 
-        reports = {"development": dev_report, "production": prod_report}
+        mock_metrics_instance = mock_metrics_service.return_value
+        mock_metrics_instance.generate_metrics_report = AsyncMock(return_value=mock_report)
 
-        html_content = email_service._generate_html_report(reports)
+        service = EmailService()
+        with patch.object(service, "_send_email", new_callable=AsyncMock) as mock_send:
+            mock_send.return_value = True
 
-        # Check both environments are included
-        assert "Development Environment" in html_content
-        assert "Production Environment" in html_content
-        assert "Health Score: 95.0%" in html_content
-        assert "Health Score: 85.0%" in html_content
+            result = await service.send_metrics_report(
+                recipient_emails=["test1@test.com", "test2@test.com"], environments=[Environment.DEVELOPMENT]
+            )
 
-        # Check summary section
-        assert "📊 Overall System Health" in html_content
-        assert "Environments Monitored: 2" in html_content
-
-    def test_generate_summary_section(self, email_service):
-        """Test summary section generation."""
-        reports = {
-            "development": Mock(overall_health_score=95.0),
-            "staging": Mock(overall_health_score=88.0),
-            "production": Mock(overall_health_score=92.0),
-        }
-
-        summary_html = email_service._generate_summary_section(reports)
-
-        assert "📊 Overall System Health" in summary_html
-        assert "Environments Monitored: 3" in summary_html
-        assert "Healthy Environments: 3/3" in summary_html  # All above 90%
-        assert "Development:" in summary_html
-        assert "95.0%" in summary_html
-
-    def test_get_health_class(self, email_service):
-        """Test health class determination for CSS styling."""
-        assert email_service._get_health_class(95.0) == "health-excellent"
-        assert email_service._get_health_class(85.0) == "health-good"
-        assert email_service._get_health_class(65.0) == "health-poor"
+            assert result is True
+            assert mock_send.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_send_email_without_credentials(self, email_service):
-        """Test email sending without SMTP credentials (development mode)."""
-        # Ensure no credentials are set
-        email_service.smtp_username = None
-        email_service.smtp_password = None
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    async def test_send_metrics_report_partial_failure(self, mock_metrics_service, mock_settings):
+        """Test metrics report with partial send failure."""
+        mock_settings.SMTP_USERNAME = None
+        mock_settings.SMTP_PASSWORD = None
 
-        result = await email_service._send_email(
-            recipient_email="test@example.com", subject="Test Subject", html_content="<html><body>Test</body></html>"
+        mock_report = MetricsReport(
+            environment=Environment.DEVELOPMENT,
+            timestamp=datetime.utcnow(),
+            overall_health_score=95.0,
+            technical_metrics=[],
+            business_metrics=[],
+            alerts=[],
+            recommendations=[],
         )
 
-        # Should return True in development mode (logs instead of sending)
-        assert result is True
+        mock_metrics_instance = mock_metrics_service.return_value
+        mock_metrics_instance.generate_metrics_report = AsyncMock(return_value=mock_report)
 
-    @pytest.mark.asyncio
-    async def test_send_email_with_smtp_error(self, email_service):
-        """Test email sending with SMTP error."""
-        email_service.smtp_username = "test@example.com"
-        email_service.smtp_password = "test-app-password"
+        service = EmailService()
+        with patch.object(service, "_send_email", new_callable=AsyncMock) as mock_send:
+            # First succeeds, second fails
+            mock_send.side_effect = [True, False]
 
-        with patch("smtplib.SMTP") as mock_smtp:
-            mock_smtp.return_value.__enter__.return_value.send_message.side_effect = Exception("SMTP Error")
-
-            result = await email_service._send_email(
-                recipient_email="test@example.com",
-                subject="Test Subject",
-                html_content="<html><body>Test</body></html>",
+            result = await service.send_metrics_report(
+                recipient_emails=["test1@test.com", "test2@test.com"], environments=[Environment.DEVELOPMENT]
             )
 
             assert result is False
 
-    def test_email_service_initialization(self):
-        """Test EmailService initialization with default settings."""
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    def test_generate_html_report(self, mock_metrics_service, mock_settings):
+        """Test HTML report generation."""
         service = EmailService()
 
-        assert service.smtp_server == "smtp.gmail.com"
-        assert service.smtp_port == 587
-        assert service.from_email == "noreply@normoai.com"
-        assert service.smtp_username is None
-        assert service.smtp_password is None
+        current_time = datetime.utcnow()
+        mock_report = MetricsReport(
+            environment=Environment.DEVELOPMENT,
+            timestamp=current_time,
+            overall_health_score=95.0,
+            technical_metrics=[
+                MetricResult(
+                    name="API Latency",
+                    value=150.0,
+                    target=500.0,
+                    unit="ms",
+                    status=MetricStatus.PASS,
+                    description="Test",
+                    timestamp=current_time,
+                    environment=Environment.DEVELOPMENT,
+                )
+            ],
+            business_metrics=[
+                MetricResult(
+                    name="DAU",
+                    value=500.0,
+                    target=1000.0,
+                    unit="users",
+                    status=MetricStatus.PASS,
+                    description="Test",
+                    timestamp=current_time,
+                    environment=Environment.DEVELOPMENT,
+                )
+            ],
+            alerts=["High memory usage"],
+            recommendations=["Scale up instances"],
+        )
+
+        reports = {"development": mock_report}
+        html = service._generate_html_report(reports)
+
+        assert "PratikoAI System Metrics Report" in html
+        assert "development" in html.lower()
+        assert "API Latency" in html
+        assert "High memory usage" in html
+        assert "Scale up instances" in html
+
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    def test_generate_summary_section(self, mock_metrics_service, mock_settings):
+        """Test summary section generation."""
+        service = EmailService()
+
+        current_time = datetime.utcnow()
+        mock_report_1 = MetricsReport(
+            environment=Environment.DEVELOPMENT,
+            timestamp=current_time,
+            overall_health_score=95.0,
+            technical_metrics=[],
+            business_metrics=[],
+            alerts=[],
+            recommendations=[],
+        )
+
+        mock_report_2 = MetricsReport(
+            environment=Environment.PRODUCTION,
+            timestamp=current_time,
+            overall_health_score=85.0,
+            technical_metrics=[],
+            business_metrics=[],
+            alerts=[],
+            recommendations=[],
+        )
+
+        reports = {"development": mock_report_1, "production": mock_report_2}
+        html = service._generate_summary_section(reports)
+
+        assert "Overall System Health" in html
+        assert "2" in html  # 2 environments
+        assert "95.0%" in html
+        assert "85.0%" in html
+
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    def test_generate_environment_section(self, mock_metrics_service, mock_settings):
+        """Test environment section generation."""
+        service = EmailService()
+
+        current_time = datetime.utcnow()
+        mock_report = MetricsReport(
+            environment=Environment.DEVELOPMENT,
+            timestamp=current_time,
+            overall_health_score=95.0,
+            technical_metrics=[
+                MetricResult(
+                    name="API Latency",
+                    value=150.0,
+                    target=500.0,
+                    unit="ms",
+                    status=MetricStatus.PASS,
+                    description="Test",
+                    timestamp=current_time,
+                    environment=Environment.DEVELOPMENT,
+                )
+            ],
+            business_metrics=[
+                MetricResult(
+                    name="DAU",
+                    value=500.0,
+                    target=1000.0,
+                    unit="users",
+                    status=MetricStatus.PASS,
+                    description="Test",
+                    timestamp=current_time,
+                    environment=Environment.DEVELOPMENT,
+                )
+            ],
+            alerts=["Alert 1"],
+            recommendations=["Rec 1"],
+        )
+
+        html = service._generate_environment_section("development", mock_report)
+
+        assert "Development Environment" in html
+        assert "95.0%" in html
+        assert "API Latency" in html
+        assert "DAU" in html
+        assert "Alert 1" in html
+        assert "Rec 1" in html
+
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    def test_get_health_class(self, mock_metrics_service, mock_settings):
+        """Test health score CSS class mapping."""
+        service = EmailService()
+
+        assert service._get_health_class(95.0) == "health-excellent"
+        assert service._get_health_class(90.0) == "health-excellent"
+        assert service._get_health_class(85.0) == "health-good"
+        assert service._get_health_class(70.0) == "health-good"
+        assert service._get_health_class(65.0) == "health-poor"
+        assert service._get_health_class(50.0) == "health-poor"
 
     @pytest.mark.asyncio
-    async def test_send_metrics_report_partial_success(self, email_service, sample_metrics_report):
-        """Test metrics report sending with partial environment failures."""
-        environments = [Environment.DEVELOPMENT, Environment.PRODUCTION]
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    async def test_send_email_no_credentials(self, mock_metrics_service, mock_settings):
+        """Test email sending without SMTP credentials (dev mode)."""
+        service = EmailService()
+        service.smtp_username = None
+        service.smtp_password = None
 
-        def mock_generate_report(env):
-            if env == Environment.DEVELOPMENT:
-                raise Exception("Dev environment error")
-            return sample_metrics_report
-
-        with (
-            patch.object(
-                email_service.metrics_service, "generate_metrics_report", side_effect=mock_generate_report
-            ) as mock_generate,
-            patch.object(email_service, "_send_email", return_value=True) as mock_send,
-        ):
-            result = await email_service.send_metrics_report("test@example.com", environments)
-
-            assert result is True  # Should succeed with at least one report
-            assert mock_generate.call_count == 2  # Called for both environments
-            mock_send.assert_called_once()
-
-    def test_html_report_css_classes(self, email_service, sample_metrics_report):
-        """Test that proper CSS classes are applied in HTML report."""
-        reports = {"production": sample_metrics_report}
-        html_content = email_service._generate_html_report(reports)
-
-        # Check status classes are applied
-        assert "status-pass" in html_content
-        assert "status-warning" in html_content
-        assert "status-fail" in html_content
-
-        # Check health score class
-        assert "health-good" in html_content  # 75% health score
-
-    def test_html_report_escaping(self, email_service):
-        """Test that HTML content is properly escaped to prevent injection."""
-        current_time = datetime.utcnow()
-
-        # Create a report with potentially problematic content
-        metric_with_html = MetricResult(
-            name="Test <script>alert('xss')</script>",
-            value=100.0,
-            target=100.0,
-            status=MetricStatus.PASS,
-            unit="count",
-            description="<b>Bold</b> description",
-            timestamp=current_time,
-            environment=Environment.DEVELOPMENT,
+        result = await service._send_email(
+            recipient_email="test@test.com", subject="Test Subject", html_content="<p>Test</p>"
         )
 
-        report = MetricsReport(
-            environment=Environment.DEVELOPMENT,
-            timestamp=current_time,
-            technical_metrics=[metric_with_html],
-            business_metrics=[],
-            overall_health_score=100.0,
-            alerts=["Alert with <em>emphasis</em>"],
-            recommendations=["Recommendation with <strong>strong</strong> text"],
+        # Should return True (logged instead of sent)
+        assert result is True
+
+    @pytest.mark.asyncio
+    @patch("app.services.email_service.smtplib.SMTP")
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    async def test_send_email_with_credentials_success(self, mock_metrics_service, mock_settings, mock_smtp):
+        """Test successful email sending with SMTP credentials."""
+        service = EmailService()
+        service.smtp_username = "user@test.com"
+        service.smtp_password = "password"
+        service.smtp_server = "smtp.test.com"
+        service.smtp_port = 587
+
+        # Mock SMTP context manager
+        mock_server = MagicMock()
+        mock_smtp.return_value.__enter__.return_value = mock_server
+
+        result = await service._send_email(
+            recipient_email="test@test.com", subject="Test Subject", html_content="<p>Test</p>"
         )
 
-        reports = {"development": report}
-        html_content = email_service._generate_html_report(reports)
+        assert result is True
+        mock_smtp.assert_called_once_with("smtp.test.com", 587)
+        mock_server.starttls.assert_called_once()
+        mock_server.login.assert_called_once_with("user@test.com", "password")
+        mock_server.send_message.assert_called_once()
 
-        # The content should be included but script tags should not execute
-        # (Note: In a real implementation, you'd want proper HTML escaping)
-        assert "Test" in html_content
-        assert "Alert with" in html_content
-        assert "Recommendation with" in html_content
+    @pytest.mark.asyncio
+    @patch("app.services.email_service.smtplib.SMTP")
+    @patch("app.services.email_service.settings")
+    @patch("app.services.email_service.MetricsService")
+    async def test_send_email_smtp_error(self, mock_metrics_service, mock_settings, mock_smtp):
+        """Test email sending SMTP error handling."""
+        service = EmailService()
+        service.smtp_username = "user@test.com"
+        service.smtp_password = "password"
+
+        # Mock SMTP to raise error
+        mock_smtp.side_effect = Exception("SMTP connection failed")
+
+        result = await service._send_email(
+            recipient_email="test@test.com", subject="Test Subject", html_content="<p>Test</p>"
+        )
+
+        assert result is False

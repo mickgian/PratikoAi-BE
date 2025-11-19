@@ -1175,6 +1175,9 @@ steps:
   node_label: VectorIndex.upsert_faq update embeddings
   type: process
   category: golden
+  status: DEPRECATED
+  deprecated_date: 2025-11-19
+  deprecation_reason: "Replaced by pgvector automatic embedding triggers (DEV-BE-68)"
   nodes:
   - VectorReindex
   code_owner: TBD

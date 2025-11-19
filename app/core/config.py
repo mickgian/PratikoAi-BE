@@ -251,12 +251,9 @@ class Settings:
         # Domain-Action Classification Configuration
         self.CLASSIFICATION_CONFIDENCE_THRESHOLD = float(os.getenv("CLASSIFICATION_CONFIDENCE_THRESHOLD", "0.6"))
 
-        # Vector Database Configuration (Pinecone)
-        self.PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
-        self.PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "")
-        self.PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "normoai-knowledge")
-        self.VECTOR_DIMENSION = int(os.getenv("VECTOR_DIMENSION", "384"))  # sentence-transformers dimension
-        self.EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+        # Vector Database Configuration (PostgreSQL + pgvector)
+        self.VECTOR_DIMENSION = int(os.getenv("VECTOR_DIMENSION", "1536"))  # text-embedding-3-small dimension
+        self.EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
         self.VECTOR_SIMILARITY_THRESHOLD = float(os.getenv("VECTOR_SIMILARITY_THRESHOLD", "0.7"))
         self.MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "10"))
 

@@ -1130,7 +1130,8 @@ async def step_129__publish_golden(
 
     Thin async orchestrator that publishes or updates an approved FAQ entry in the
     Golden Set database with versioning. Routes to InvalidateFAQCache (Step 130)
-    and VectorReindex (Step 131) for downstream updates.
+    for cache invalidation. Vector embeddings are automatically updated by pgvector
+    database triggers (Step 131 deprecated in DEV-BE-68).
     """
     ctx = ctx or {}
     request_id = ctx.get("request_id", "unknown")
@@ -1255,153 +1256,158 @@ async def step_129__publish_golden(
         return result
 
 
-async def step_131__vector_reindex(
-    *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
-) -> Any:
-    """RAG STEP 131 — VectorIndex.upsert_faq update embeddings
-    ID: RAG.golden.vectorindex.upsert.faq.update.embeddings
-    Type: process | Category: golden | Node: VectorReindex
-
-    Thin async orchestrator that updates vector embeddings for published/updated FAQ entries.
-    Uses EmbeddingManager.update_pinecone_embeddings to upsert FAQ content and metadata into
-    vector index. Provides indexing metadata for observability.
-    """
-    ctx = ctx or {}
-    request_id = ctx.get("request_id", "unknown")
-
-    with rag_step_timer(
-        131,
-        "RAG.golden.vectorindex.upsert.faq.update.embeddings",
-        "VectorReindex",
-        request_id=request_id,
-        stage="start",
-    ):
-        rag_step_log(
-            step=131,
-            step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
-            node_label="VectorReindex",
-            category="golden",
-            type="process",
-            request_id=request_id,
-            processing_stage="started",
-        )
-
-        # Extract FAQ data
-        published_faq = ctx.get("published_faq", {})
-        publication_metadata = ctx.get("publication_metadata", {})
-        faq_id = published_faq.get("id")
-
-        if not faq_id:
-            from datetime import datetime, timezone
-
-            rag_step_log(
-                step=131,
-                step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
-                node_label="VectorReindex",
-                request_id=request_id,
-                error="No FAQ ID found",
-                processing_stage="error",
-            )
-
-            # Build result with error
-            result = {
-                **ctx,
-                "vector_index_metadata": {
-                    "success": False,
-                    "error": "No FAQ ID found in published_faq",
-                    "indexed_at": datetime.now(UTC).isoformat(),
-                },
-                "request_id": request_id,
-            }
-            return result
-
-        try:
-            # Import here to avoid circular imports
-            from datetime import datetime, timezone
-
-            from app.services.embedding_management import EmbeddingManager
-
-            embedding_manager = EmbeddingManager()
-
-            # Prepare FAQ content for embedding
-            faq_content = f"{published_faq.get('question', '')} {published_faq.get('answer', '')}".strip()
-
-            embedding_items = [
-                {
-                    "id": faq_id,
-                    "content": faq_content,
-                    "metadata": {
-                        "faq_id": faq_id,
-                        "category": published_faq.get("category"),
-                        "version": published_faq.get("version", 1),
-                        "operation": publication_metadata.get("operation", "unknown"),
-                        "regulatory_references": published_faq.get("regulatory_references", []),
-                        "quality_score": published_faq.get("quality_score"),
-                        "updated_at": publication_metadata.get("published_at"),
-                        "source_type": "faq",
-                    },
-                }
-            ]
-
-            # Update embeddings in vector index
-            rag_step_log(
-                step=131,
-                step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
-                node_label="VectorReindex",
-                request_id=request_id,
-                faq_id=faq_id,
-                processing_stage="updating_embeddings",
-            )
-
-            batch_result = await embedding_manager.update_pinecone_embeddings(items=embedding_items, source_type="faq")
-
-            # Create indexing metadata
-            vector_metadata = {
-                "faq_id": faq_id,
-                "embeddings_updated": batch_result.successful,
-                "total_items": batch_result.total_items,
-                "failed_items": batch_result.failed,
-                "processing_time": batch_result.processing_time_seconds,
-                "version": published_faq.get("version", 1),
-                "operation": publication_metadata.get("operation", "unknown"),
-                "success": batch_result.successful > 0 and batch_result.failed == 0,
-                "indexed_at": datetime.now(UTC).isoformat(),
-            }
-
-            rag_step_log(
-                step=131,
-                step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
-                node_label="VectorReindex",
-                request_id=request_id,
-                faq_id=faq_id,
-                embeddings_updated=batch_result.successful,
-                processing_stage="completed",
-            )
-
-        except Exception as e:
-            from datetime import datetime, timezone
-
-            rag_step_log(
-                step=131,
-                step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
-                node_label="VectorReindex",
-                request_id=request_id,
-                faq_id=faq_id,
-                error=str(e),
-                processing_stage="error",
-            )
-
-            vector_metadata = {
-                "faq_id": faq_id,
-                "success": False,
-                "error": str(e),
-                "indexed_at": datetime.now(UTC).isoformat(),
-            }
-
-        # Build result with preserved context
-        result = {**ctx, "vector_index_metadata": vector_metadata, "request_id": request_id}
-
-        return result
+# ===== DEPRECATED: Pinecone-based vector reindexing (DEV-BE-68) =====
+# This function was disabled as part of Pinecone removal.
+# Vector embeddings are now managed via PostgreSQL + pgvector.
+# See DEV-BE-67 for FAQ migration to pgvector.
+#
+# async def step_131__vector_reindex(
+#     *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
+# ) -> Any:
+#     """RAG STEP 131 — VectorIndex.upsert_faq update embeddings
+#     ID: RAG.golden.vectorindex.upsert.faq.update.embeddings
+#     Type: process | Category: golden | Node: VectorReindex
+#
+#     Thin async orchestrator that updates vector embeddings for published/updated FAQ entries.
+#     Uses EmbeddingManager.update_pinecone_embeddings to upsert FAQ content and metadata into
+#     vector index. Provides indexing metadata for observability.
+#     """
+#     ctx = ctx or {}
+#     request_id = ctx.get("request_id", "unknown")
+#
+#     with rag_step_timer(
+#         131,
+#         "RAG.golden.vectorindex.upsert.faq.update.embeddings",
+#         "VectorReindex",
+#         request_id=request_id,
+#         stage="start",
+#     ):
+#         rag_step_log(
+#             step=131,
+#             step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
+#             node_label="VectorReindex",
+#             category="golden",
+#             type="process",
+#             request_id=request_id,
+#             processing_stage="started",
+#         )
+#
+# Extract FAQ data
+#         published_faq = ctx.get("published_faq", {})
+#         publication_metadata = ctx.get("publication_metadata", {})
+#         faq_id = published_faq.get("id")
+#
+#         if not faq_id:
+#             from datetime import datetime, timezone
+#
+#             rag_step_log(
+#                 step=131,
+#                 step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
+#                 node_label="VectorReindex",
+#                 request_id=request_id,
+#                 error="No FAQ ID found",
+#                 processing_stage="error",
+#             )
+#
+# Build result with error
+#             result = {
+#                 **ctx,
+#                 "vector_index_metadata": {
+#                     "success": False,
+#                     "error": "No FAQ ID found in published_faq",
+#                     "indexed_at": datetime.now(UTC).isoformat(),
+#                 },
+#                 "request_id": request_id,
+#             }
+#             return result
+#
+#         try:
+# Import here to avoid circular imports
+#             from datetime import datetime, timezone
+#
+#             from app.services.embedding_management import EmbeddingManager
+#
+#             embedding_manager = EmbeddingManager()
+#
+# Prepare FAQ content for embedding
+#             faq_content = f"{published_faq.get('question', '')} {published_faq.get('answer', '')}".strip()
+#
+#             embedding_items = [
+#                 {
+#                     "id": faq_id,
+#                     "content": faq_content,
+#                     "metadata": {
+#                         "faq_id": faq_id,
+#                         "category": published_faq.get("category"),
+#                         "version": published_faq.get("version", 1),
+#                         "operation": publication_metadata.get("operation", "unknown"),
+#                         "regulatory_references": published_faq.get("regulatory_references", []),
+#                         "quality_score": published_faq.get("quality_score"),
+#                         "updated_at": publication_metadata.get("published_at"),
+#                         "source_type": "faq",
+#                     },
+#                 }
+#             ]
+#
+# Update embeddings in vector index
+#             rag_step_log(
+#                 step=131,
+#                 step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
+#                 node_label="VectorReindex",
+#                 request_id=request_id,
+#                 faq_id=faq_id,
+#                 processing_stage="updating_embeddings",
+#             )
+#
+#             batch_result = await embedding_manager.update_pinecone_embeddings(items=embedding_items, source_type="faq")
+#
+# Create indexing metadata
+#             vector_metadata = {
+#                 "faq_id": faq_id,
+#                 "embeddings_updated": batch_result.successful,
+#                 "total_items": batch_result.total_items,
+#                 "failed_items": batch_result.failed,
+#                 "processing_time": batch_result.processing_time_seconds,
+#                 "version": published_faq.get("version", 1),
+#                 "operation": publication_metadata.get("operation", "unknown"),
+#                 "success": batch_result.successful > 0 and batch_result.failed == 0,
+#                 "indexed_at": datetime.now(UTC).isoformat(),
+#             }
+#
+#             rag_step_log(
+#                 step=131,
+#                 step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
+#                 node_label="VectorReindex",
+#                 request_id=request_id,
+#                 faq_id=faq_id,
+#                 embeddings_updated=batch_result.successful,
+#                 processing_stage="completed",
+#             )
+#
+#         except Exception as e:
+#             from datetime import datetime, timezone
+#
+#             rag_step_log(
+#                 step=131,
+#                 step_id="RAG.golden.vectorindex.upsert.faq.update.embeddings",
+#                 node_label="VectorReindex",
+#                 request_id=request_id,
+#                 faq_id=faq_id,
+#                 error=str(e),
+#                 processing_stage="error",
+#             )
+#
+#             vector_metadata = {
+#                 "faq_id": faq_id,
+#                 "success": False,
+#                 "error": str(e),
+#                 "indexed_at": datetime.now(UTC).isoformat(),
+#             }
+#
+# Build result with preserved context
+#         result = {**ctx, "vector_index_metadata": vector_metadata, "request_id": request_id}
+#
+#         return result
 
 
 async def step_135__golden_rules(

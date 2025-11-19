@@ -1,11 +1,12 @@
 """Tests for vector provider factory."""
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 from app.core.config import Environment
-from app.services.vector_provider_factory import VectorProviderFactory, VectorSearchProvider
 from app.services.vector_config import VectorConfig, VectorProvider
+from app.services.vector_provider_factory import VectorProviderFactory, VectorSearchProvider
 
 
 class TestVectorProviderFactory:
@@ -126,7 +127,7 @@ class TestVectorProviderFactory:
 
         config = Mock()
         config.is_pinecone_configured.return_value = True
-        config.pinecone_api_key = "test-key"
+        config.pinecone_api_key = "test-key"  # pragma: allowlist secret
         config.pinecone_environment = "serverless"
         config.get_effective_index_name.return_value = "test-index"
         config.embedding_dimension = 384

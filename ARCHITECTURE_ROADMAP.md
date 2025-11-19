@@ -19,22 +19,22 @@ This roadmap tracks planned architectural improvements and enhancements for the 
 **Deployment Timeline Estimates:**
 
 📅 **Time to QA Environment (DEV-BE-75):**
-- **Optimistic (parallel work):** ~5-6 weeks (17 Nov - 31 Dic)
-- **Conservative (sequential):** ~7-8 weeks (17 Nov - 11 Gen)
-- **Prerequisites:** DEV-BE-70, DEV-BE-74, DEV-BE-71, DEV-BE-68, DEV-BE-72...
-- **Total effort (sequential):** 37 days (5.3 weeks)
+- **Optimistic (parallel work):** ~5-6 weeks (19 Nov - 3 Gen)
+- **Conservative (sequential):** ~7-8 weeks (19 Nov - 14 Gen)
+- **Prerequisites:** DEV-BE-68, DEV-BE-67, DEV-BE-70, DEV-BE-74, DEV-BE-69...
+- **Total effort (sequential):** 38 days (5.4 weeks)
 
 📅 **Time to Preprod Environment (DEV-BE-88):**
-- **Optimistic:** ~14-16 weeks from now (17 Nov - 7 Mar)
-- **Conservative:** ~19-21 weeks from now (17 Nov - 15 Apr)
-- **Prerequisites:** Path to QA + DEV-BE-69, DEV-BE-67, DEV-BE-75
-- **Total effort (sequential):** 96 days (13.7 weeks)
+- **Optimistic:** ~14-16 weeks from now (19 Nov - 10 Mar)
+- **Conservative:** ~19-21 weeks from now (19 Nov - 18 Apr)
+- **Prerequisites:** Path to QA + DEV-BE-69, DEV-BE-71, DEV-BE-72
+- **Total effort (sequential):** 97 days (13.9 weeks)
 
 📅 **Time to Production Environment (DEV-BE-90):**
-- **Optimistic:** ~15-16.6 weeks from now (17 Nov - 13 Mar)
-- **Conservative:** ~23-26 weeks from now (17 Nov - 15 Mag)
-- **Prerequisites:** Path to Preprod + DEV-BE-69, DEV-BE-67, DEV-BE-75
-- **Total effort (sequential):** 106 days (15.1 weeks)
+- **Optimistic:** ~15-16.7 weeks from now (19 Nov - 16 Mar)
+- **Conservative:** ~23-26 weeks from now (19 Nov - 19 Mag)
+- **Prerequisites:** Path to Preprod + DEV-BE-71, DEV-BE-89, DEV-BE-72
+- **Total effort (sequential):** 106 days (15.2 weeks)
 - **Note:** Production launch requires full GDPR compliance and payment system validation
 
 **Key Dependencies:**
@@ -194,28 +194,28 @@ Pinecone integration code (600+ lines) adds maintenance burden and confuses deve
 **Implementation Tasks:**
 
 **Week 1: Code Removal**
-- [ ] Delete `app/services/vector_providers/pinecone_provider.py` (349 lines)
-- [ ] Delete `app/services/vector_config.py` (205 lines)
-- [ ] Delete `app/services/vector_provider_factory.py`
-- [ ] Delete `app/services/embedding_management.py` (Pinecone-based)
-- [ ] Delete `app/services/hybrid_search_engine.py` (Pinecone-based)
-- [ ] Delete `app/services/query_expansion_service.py`
-- [ ] Delete `app/services/semantic_faq_matcher.py`
-- [ ] Delete `app/services/context_builder.py` (check if used elsewhere first!)
-- [ ] Remove from `requirements.txt` or `pyproject.toml`: `pinecone-client>=2.2.0`
-- [ ] Delete tests: `tests/test_vector_search.py`
-- [ ] Remove Pinecone env vars from `.env.example`:
+- [x] Delete `app/services/vector_providers/pinecone_provider.py` (349 lines)
+- [x] Delete `app/services/vector_config.py` (205 lines)
+- [x] Delete `app/services/vector_provider_factory.py`
+- [x] Delete `app/services/embedding_management.py` (Pinecone-based)
+- [x] Delete `app/services/hybrid_search_engine.py` (Pinecone-based)
+- [x] Delete `app/services/query_expansion_service.py`
+- [x] Delete `app/services/semantic_faq_matcher.py`
+- [x] Delete `app/services/context_builder.py` (check if used elsewhere first!)
+- [x] Remove from `requirements.txt` or `pyproject.toml`: `pinecone-client>=2.2.0`
+- [x] Delete tests: `tests/test_vector_search.py`
+- [x] Remove Pinecone env vars from `.env.example`:
   - `PINECONE_API_KEY`
   - `PINECONE_ENVIRONMENT`
   - `PINECONE_INDEX_NAME`
-- [ ] Update `app/core/config.py` - remove Pinecone settings
-- [ ] Search codebase for "pinecone" (case-insensitive) and clean up all references
+- [x] Update `app/core/config.py` - remove Pinecone settings
+- [x] Search codebase for "pinecone" (case-insensitive) and clean up all references
 
 **Documentation Cleanup:**
-- [ ] Delete `docs/pinecone-guardrails.md` (262 lines)
-- [ ] Delete `docs/architecture/vector-search.md` (261 lines)
-- [ ] Update README.md to remove Pinecone references
-- [ ] Update `docs/DATABASE_ARCHITECTURE.md` if needed
+- [x] Delete `docs/pinecone-guardrails.md` (262 lines)
+- [x] Delete `docs/architecture/vector-search.md` (261 lines)
+- [x] Update README.md to remove Pinecone references
+- [x] Update `docs/DATABASE_ARCHITECTURE.md` if needed
 
 **Acceptance Criteria:**
 - ✅ `grep -ri "pinecone" .` returns no results (excluding git history)
@@ -224,8 +224,8 @@ Pinecone integration code (600+ lines) adds maintenance burden and confuses deve
 - ✅ No Pinecone costs on billing dashboard
 
 **Validation:**
-- [ ] Run full test suite: `pytest`
-- [ ] Deploy to QA, test FAQ lookup functionality
+- [x] Run full test suite: `pytest`
+- [x] Deploy to QA, test FAQ lookup functionality
 
 ---
 
@@ -552,7 +552,7 @@ This backend task is linked to **DEV-BE-004** in frontend roadmap:
 - **API Endpoints:** Frontend will consume `/api/v1/feedback/*` endpoints created in this task
 
 **Problem:**
-Expert feedback system is designed in architecture diagram (steps S113-S131) but NOT fully connected. When experts provide feedback, it should:
+Expert feedback system is designed in architecture diagram (steps S113-S130) but NOT fully connected. When experts provide feedback, it should:
 1. Validate expert credentials and trust score
 2. Collect feedback with Italian categorization
 3. Update expert metrics
@@ -568,7 +568,7 @@ Expert feedback system is designed in architecture diagram (steps S113-S131) but
 - ❌ Trust score validation NOT enforced
 
 **Solution:**
-Complete integration following architecture diagram (S113-S131).
+Complete integration following architecture diagram (S113-S130).
 
 **Implementation Tasks:**
 
@@ -625,10 +625,9 @@ Complete integration following architecture diagram (S113-S131).
       else:
           return Action.REJECT
   ```
-- [ ] Implement S129-S131: Golden Set publishing
+- [ ] Implement S129-S130: Golden Set publishing
   - S129: Publish or update versioned entry in Golden Set
   - S130: Invalidate FAQ cache by id or signature
-  - S131: Update vector embeddings for new/updated FAQs
 - [ ] Create admin UI endpoint: `GET /api/v1/admin/faq-candidates`
   - Show pending FAQs (trust_score 0.7-0.9)
   - Manual approve/reject buttons
@@ -1803,7 +1802,7 @@ Comprehensive production GDPR audit with security hardening and compliance docum
 - [ ] **RSS feeds expanded:** 8+ sources configured (DEV-BE-69)
 - [ ] **Daily RSS email reports:** Automated feed monitoring (DEV-BE-70)
 - [ ] **No emojis in responses:** Professional, formal tone for Italian tax/legal context (DEV-BE-71)
-- [ ] **Expert feedback system:** Complete S113-S131 flow, auto-approval for trusted experts (DEV-BE-72)
+- [ ] **Expert feedback system:** Complete S113-S130 flow, auto-approval for trusted experts (DEV-BE-72)
 - [ ] **QA environment deployed:** On Hetzner (DEV-BE-73)
 - [ ] **QA GDPR audit complete:** (DEV-BE-75)
 - [ ] **Payment system live:** Stripe integration, subscriptions, reminders (DEV-BE-87)
@@ -1838,7 +1837,7 @@ Comprehensive production GDPR audit with security hardening and compliance docum
 | 2025-11-14 | Expand RSS feeds | Better regulatory coverage (INPS, MEF, Corte di Cassazione, etc.) | DEV-BE-69 |
 | 2025-11-14 | Daily RSS email reports | Proactive feed monitoring and quality tracking | DEV-BE-70 |
 | 2025-11-14 | Disable emoji in LLM responses | Professional Italian tax/legal context requires formal tone | DEV-BE-71 |
-| 2025-11-14 | Implement expert feedback system | Complete S113-S131 architecture flow with auto-approval | DEV-BE-72 |
+| 2025-11-14 | Implement expert feedback system | Complete S113-S130 architecture flow with auto-approval | DEV-BE-72 |
 | 2025-11-14 | Deploy to Hetzner (not AWS) | Cost: $33/month (all 3 envs) vs $330+/month AWS | DEV-BE-73, DEV-BE-88, DEV-BE-90 |
 | 2025-11-14 | GDPR compliance audits | Required before production launch with real users | DEV-BE-75, DEV-BE-89, DEV-BE-91 |
 | 2025-11-14 | Stripe payment integration | Enable subscription revenue, €2,440/month projected | DEV-BE-87 |

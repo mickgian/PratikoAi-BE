@@ -1,7 +1,7 @@
 # RAG Conformance Dashboard
 
-This dashboard tracks the implementation status of each step in the PratikoAI RAG blueprint. 
-It is automatically generated from the Mermaid diagram using append-only step numbering. 
+This dashboard tracks the implementation status of each step in the PratikoAI RAG blueprint.
+It is automatically generated from the Mermaid diagram using append-only step numbering.
 Each step should be audited and its documentation filled during the conformance review.
 
 ## Audit Summary
@@ -158,7 +158,7 @@ Each step should be audited and its documentation filled during the conformance 
 | 128 | RAG.golden.auto.threshold.met.or.manual.approval | GoldenApproval | decision | golden | 🔌 | [📄](steps/STEP-128-RAG.golden.auto.threshold.met.or.manual.approval.md) |
 | 129 | RAG.golden.goldenset.publish.or.update.versioned.entry | PublishGolden | process | golden | 🔌 | [📄](steps/STEP-129-RAG.golden.goldenset.publish.or.update.versioned.entry.md) |
 | 130 | RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature | InvalidateFAQCache | process | preflight | 🔌 | [📄](steps/STEP-130-RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature.md) |
-| 131 | RAG.golden.vectorindex.upsert.faq.update.embeddings | VectorReindex | process | golden | 🔌 | [📄](steps/STEP-131-RAG.golden.vectorindex.upsert.faq.update.embeddings.md) |
+| ~~131~~ | ~~RAG.golden.vectorindex.upsert.faq.update.embeddings~~ | ~~VectorReindex~~ | ~~process~~ | ~~golden~~ | 🔴 | [📄](steps/STEP-131-RAG.golden.vectorindex.upsert.faq.update.embeddings.md) | DEPRECATED - pgvector automatic triggers |
 | 132 | RAG.kb.rss.monitor | RSSMonitor | process | kb | 🔌 | [📄](steps/STEP-132-RAG.kb.rss.monitor.md) |
 | 133 | RAG.platform.fetch.and.parse.sources | FetchFeeds | process | platform | ❌ | [📄](steps/STEP-133-RAG.platform.fetch.and.parse.sources.md) |
 | 134 | RAG.docs.extract.text.and.metadata | ParseDocs | process | docs | 🔌 | [📄](steps/STEP-134-RAG.docs.extract.text.and.metadata.md) |

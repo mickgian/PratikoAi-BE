@@ -66,7 +66,6 @@ from .golden import (
     step_127__golden_candidate,
     step_128__golden_approval,
     step_129__publish_golden,
-    step_131__vector_reindex,
     step_135__golden_rules,
 )
 from .kb import step_26__kbcontext_check, step_80__kbquery_tool, step_118__knowledge_feedback, step_132__rssmonitor
@@ -185,7 +184,6 @@ __all__ = [
     "step_129__publish_golden",
     "step_12__extract_query",
     "step_130__invalidate_faqcache",
-    "step_131__vector_reindex",
     "step_132__rssmonitor",
     "step_133__fetch_feeds",
     "step_134__parse_docs",

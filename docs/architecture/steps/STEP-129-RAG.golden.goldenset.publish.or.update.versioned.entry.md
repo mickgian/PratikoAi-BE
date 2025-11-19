@@ -5,7 +5,7 @@
 **Node ID:** `PublishGolden`
 
 ## Intent (Blueprint)
-Publishes or updates an approved FAQ entry in the Golden Set database with versioning. When a candidate is approved (from Step 128), this step persists it to the database, either creating a new FAQ entry or updating an existing one with version history. Routes to InvalidateFAQCache (Step 130) and VectorReindex (Step 131) for downstream cache invalidation and vector embedding updates. This step is derived from the Mermaid node: `PublishGolden` (GoldenSet.publish_or_update versioned entry).
+Publishes or updates an approved FAQ entry in the Golden Set database with versioning. When a candidate is approved (from Step 128), this step persists it to the database, either creating a new FAQ entry or updating an existing one with version history. Routes to InvalidateFAQCache (Step 130) for downstream cache invalidation. Vector embeddings are automatically updated by pgvector database triggers (Step 131 deprecated). This step is derived from the Mermaid node: `PublishGolden` (GoldenSet.publish_or_update versioned entry).
 
 ## Current Implementation (Repo)
 - **Role:** Internal

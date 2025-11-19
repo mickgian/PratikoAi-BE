@@ -167,7 +167,7 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 - **Step 128**: Auto threshold met or manual approval - Approval workflow with expert validation logic ✅
 - **Step 129**: Publish or update versioned entry - Golden set publication with metadata tracking ✅
 - **Step 130**: Invalidate FAQ by ID or signature - Cache invalidation by patterns with metadata ✅
-- **Step 131**: Update embeddings - Vector index updates with Pinecone integration ✅
+- ~~**Step 131**: Update embeddings - Vector index updates with Pinecone integration~~ (DEPRECATED - pgvector automatic triggers)
 - **Step 135**: Auto rule eval new or obsolete candidates - Rule-based evaluation with priority scoring ✅
 
 ## Phase 10: Streaming & Response Handling (Days 25-26)
@@ -380,7 +380,7 @@ We'll implement the 135 RAG steps using a phased approach, starting with simple 
 - ✅ **Step 128**: Approval workflow with auto-threshold and manual processes (20 tests)
 - ✅ **Step 129**: Golden set publication with versioned entries and metadata tracking (22 tests)
 - ✅ **Step 130**: FAQ cache invalidation by ID/signature patterns with Redis integration (17 tests)
-- ✅ **Step 131**: Vector index embedding updates with Pinecone upsert operations (16 tests)
+- ~~✅ **Step 131**: Vector index embedding updates with Pinecone upsert operations~~ (DEPRECATED - pgvector automatic triggers)
 - ✅ **Step 135**: Rule-based FAQ candidate evaluation with priority scoring (9 tests)
 - ✅ **Total**: 119 comprehensive tests, 100% pass rate, full golden set update infrastructure
 

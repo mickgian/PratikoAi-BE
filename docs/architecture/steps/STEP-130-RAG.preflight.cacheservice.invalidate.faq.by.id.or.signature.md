@@ -1,7 +1,7 @@
 # RAG STEP 130 — CacheService.invalidate_faq by id or signature (RAG.preflight.cacheservice.invalidate.faq.by.id.or.signature)
 
-**Type:** process  
-**Category:** preflight  
+**Type:** process
+**Category:** preflight
 **Node ID:** `InvalidateFAQCache`
 
 ## Intent (Blueprint)
@@ -11,7 +11,7 @@ Invalidates cached FAQ responses when an FAQ is published or updated. When an FA
 - **Role:** Internal
 - **Paths / classes:** `app/orchestrators/preflight.py:909` - `step_130__invalidate_faqcache()`
 - **Status:** 🔌
-- **Behavior notes:** Async orchestrator that invalidates cached FAQ entries. Uses cache_service.clear_cache() to remove cached responses by FAQ ID patterns. Creates cache invalidation metadata for tracking. Preserves all context data. Routes to 'vector_reindex' (Step 131) per Mermaid flow.
+- **Behavior notes:** Async orchestrator that invalidates cached FAQ entries. Uses cache_service.clear_cache() to remove cached responses by FAQ ID patterns. Creates cache invalidation metadata for tracking. Preserves all context data. Runs in parallel with Step 129 (PublishGolden) per Mermaid flow.
 
 ## Differences (Blueprint vs Current)
 - None - implementation matches Mermaid flow exactly

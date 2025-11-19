@@ -1,10 +1,11 @@
 """Vector search providers package.
 
 Contains implementations for different vector search backends including
-Pinecone cloud service and local in-memory storage.
+PostgreSQL + pgvector and local in-memory storage.
+
+Note: Pinecone provider removed as part of DEV-BE-68.
 """
 
 from .local_provider import LocalVectorProvider
-from .pinecone_provider import PineconeProvider
 
-__all__ = ["LocalVectorProvider", "PineconeProvider"]
+__all__ = ["LocalVectorProvider"]

@@ -72,9 +72,9 @@ jobs:
           uv sync --all-groups
 
       - name: Run database migrations
-        run: alembic upgrade head
+        run: uv run alembic upgrade head
         env:
-          POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/pratikoai_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pratikoai_test
 
       - name: Run streaming protection tests (critical)
         run: |

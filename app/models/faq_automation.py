@@ -317,14 +317,14 @@ class GeneratedFAQ(Base):
 
     # Approval workflow
     approval_status = Column(String(30), nullable=False, default="pending_review")
-    approved_by = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"))
+    approved_by = Column(PG_UUID(as_uuid=True), ForeignKey("user.id"))
     approved_at = Column(DateTime(timezone=True))
     rejection_reason = Column(Text)
 
     # Publishing
     published = Column(Boolean, default=False)
     published_at = Column(DateTime(timezone=True))
-    faq_id = Column(PG_UUID(as_uuid=True), ForeignKey("faqs.id"))  # Link to published FAQ
+    faq_id = Column(PG_UUID(as_uuid=True), ForeignKey("faq_entries.id"))  # Link to published FAQ
 
     # Performance tracking
     view_count = Column(Integer, default=0)
@@ -434,7 +434,7 @@ class RSSFAQImpact(Base):
     action_required = Column(String(50), nullable=False)  # review, regenerate, ignore
     action_taken = Column(String(50))
     action_date = Column(DateTime(timezone=True))
-    action_by = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"))
+    action_by = Column(PG_UUID(as_uuid=True), ForeignKey("user.id"))
 
     # Processing status
     processed = Column(Boolean, default=False)
@@ -550,7 +550,7 @@ class FAQGenerationJob(Base):
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"))
+    created_by = Column(PG_UUID(as_uuid=True), ForeignKey("user.id"))
 
     # Background job ID (Celery task ID)
     celery_task_id = Column(String(100), index=True)

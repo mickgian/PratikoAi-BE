@@ -80,7 +80,7 @@ class ExpertProfile(Base):
     __tablename__ = "expert_profiles"
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Professional credentials
     credentials: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)

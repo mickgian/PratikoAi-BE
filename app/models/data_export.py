@@ -56,7 +56,7 @@ class DataExportRequest(Base):
     __tablename__ = "data_export_requests"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Request configuration
     format = Column(SQLEnum(ExportFormat), default=ExportFormat.JSON, nullable=False)
@@ -225,7 +225,7 @@ class ExportAuditLog(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     export_request_id = Column(UUID(as_uuid=True), ForeignKey("data_export_requests.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Activity details
     activity_type = Column(String(50), nullable=False)  # requested, started, completed, downloaded, expired
@@ -271,7 +271,7 @@ class QueryHistory(Base):
     __tablename__ = "query_history"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Query details
     query = Column(Text, nullable=False)
@@ -310,7 +310,7 @@ class DocumentAnalysis(Base):
     __tablename__ = "document_analysis"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Document metadata
     filename = Column(String(255), nullable=False)
@@ -348,7 +348,7 @@ class TaxCalculation(Base):
     __tablename__ = "tax_calculations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Calculation details
     calculation_type = Column(String(50), nullable=False)  # IVA, IRPEF, IMU, etc.
@@ -381,7 +381,7 @@ class FAQInteraction(Base):
     __tablename__ = "faq_interactions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # FAQ details
     faq_id = Column(String(100), nullable=False)
@@ -413,7 +413,7 @@ class KnowledgeBaseSearch(Base):
     __tablename__ = "knowledge_base_searches"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Search details
     search_query = Column(Text, nullable=False)
@@ -446,7 +446,7 @@ class ElectronicInvoice(Base):
     __tablename__ = "electronic_invoices"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Invoice identification
     invoice_number = Column(String(50), nullable=False)

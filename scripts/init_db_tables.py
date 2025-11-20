@@ -87,7 +87,7 @@ def main():
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-    print(f"Creating tables in database...")
+    print("Creating tables in database...")
     print(f"Database URL: {database_url.split('@')[1] if '@' in database_url else 'unknown'}")
 
     # Create engine

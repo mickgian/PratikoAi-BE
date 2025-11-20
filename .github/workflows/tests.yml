@@ -39,6 +39,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up test environment variables
+        run: |
+          # Load all 36 environment variables from .env.example
+          if [ -f .env.example ]; then
+            set -a
+            source .env.example
+            set +a
+          fi
+          # Export all current env vars to GITHUB_ENV for subsequent steps
+          env | grep -v '^_' | grep -v '^PWD=' | grep -v '^OLDPWD=' | grep -v '^SHLVL=' >> $GITHUB_ENV
+          # Override with CI-specific test values
+          echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
+          echo "LLM_API_KEY=test-key-for-ci" >> $GITHUB_ENV
+          echo "OPENAI_API_KEY=test-key-for-ci" >> $GITHUB_ENV
+          echo "JWT_SECRET_KEY=test-jwt-secret-key-for-ci" >> $GITHUB_ENV
+          echo "LANGFUSE_PUBLIC_KEY=test-langfuse-public" >> $GITHUB_ENV
+          echo "LANGFUSE_SECRET_KEY=test-langfuse-secret" >> $GITHUB_ENV
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -52,15 +70,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-groups
-
-      - name: Set up test environment variables
-        run: |
-          echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
-          echo "LLM_API_KEY=test-key-for-ci" >> $GITHUB_ENV
-          echo "OPENAI_API_KEY=test-key-for-ci" >> $GITHUB_ENV
-          echo "JWT_SECRET_KEY=test-jwt-secret-key-for-ci" >> $GITHUB_ENV
-          echo "LANGFUSE_PUBLIC_KEY=test-langfuse-public" >> $GITHUB_ENV
-          echo "LANGFUSE_SECRET_KEY=test-langfuse-secret" >> $GITHUB_ENV
 
       - name: Run streaming protection tests (critical)
         run: |

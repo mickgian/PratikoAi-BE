@@ -342,8 +342,10 @@ class GeneratedFAQ(Base):
 
     # Relationships
     candidate = relationship("FAQCandidate", back_populates="generated_faqs")
-    approver = relationship("User", foreign_keys=[approved_by])
-    published_faq = relationship("FAQ", foreign_keys=[faq_id])
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via approved_by foreign key instead.
+    # Note: No relationship to FAQ/FAQEntry model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access FAQ via faq_id foreign key instead.
     rss_impacts = relationship("RSSFAQImpact", back_populates="faq", cascade="all, delete-orphan")
 
     # Indexes
@@ -447,7 +449,8 @@ class RSSFAQImpact(Base):
 
     # Relationships
     faq = relationship("GeneratedFAQ", back_populates="rss_impacts")
-    action_user = relationship("User", foreign_keys=[action_by])
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via action_by foreign key instead.
 
     # Indexes
     __table_args__ = (
@@ -553,7 +556,8 @@ class FAQGenerationJob(Base):
     celery_task_id = Column(String(100), index=True)
 
     # Relationships
-    creator = relationship("User", foreign_keys=[created_by])
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via created_by foreign key instead.
 
     # Indexes
     __table_args__ = (

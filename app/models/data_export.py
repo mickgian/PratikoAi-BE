@@ -118,7 +118,8 @@ class DataExportRequest(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="data_export_requests")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -244,7 +245,8 @@ class ExportAuditLog(Base):
 
     # Relationships
     export_request = relationship("DataExportRequest")
-    user = relationship("User")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
@@ -295,7 +297,8 @@ class QueryHistory(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="query_history")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 class DocumentAnalysis(Base):
@@ -332,7 +335,8 @@ class DocumentAnalysis(Base):
     analyzed_at = Column(DateTime, nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="document_analyses")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 class TaxCalculation(Base):
@@ -364,7 +368,8 @@ class TaxCalculation(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    user = relationship("User", back_populates="tax_calculations")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 class FAQInteraction(Base):
@@ -395,7 +400,8 @@ class FAQInteraction(Base):
     tax_related = Column(Boolean, default=False)
 
     # Relationships
-    user = relationship("User", back_populates="faq_interactions")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 class KnowledgeBaseSearch(Base):
@@ -427,7 +433,8 @@ class KnowledgeBaseSearch(Base):
     searched_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    user = relationship("User", back_populates="knowledge_searches")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 class ElectronicInvoice(Base):
@@ -460,7 +467,8 @@ class ElectronicInvoice(Base):
     accepted_at = Column(DateTime, nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="electronic_invoices")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 # Update User model to include relationships (add to existing User model)

@@ -222,7 +222,8 @@ class Subscription(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="subscription")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
     plan = relationship("SubscriptionPlan", back_populates="subscriptions")
     plan_changes = relationship("SubscriptionPlanChange", back_populates="subscription")
     invoices = relationship("Invoice", back_populates="subscription")

@@ -71,6 +71,11 @@ jobs:
         run: |
           uv sync --all-groups
 
+      - name: Run database migrations
+        run: alembic upgrade head
+        env:
+          POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/pratikoai_test
+
       - name: Run streaming protection tests (critical)
         run: |
           uv run pytest \

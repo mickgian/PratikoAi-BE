@@ -71,6 +71,12 @@ jobs:
         run: |
           uv sync --all-groups
 
+      - name: Enable pgvector extension
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d pratikoai_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+        env:
+          PGPASSWORD: postgres
+
       - name: Initialize database tables
         run: uv run python scripts/init_db_tables.py
         env:

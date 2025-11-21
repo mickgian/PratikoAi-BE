@@ -82,6 +82,18 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pratikoai_test
 
+      - name: Expand alembic_version column for long revision IDs
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d pratikoai_test -c "
+            DO \$\$ BEGIN
+              IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='alembic_version') THEN
+                ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(64);
+              END IF;
+            END \$\$;
+          "
+        env:
+          PGPASSWORD: postgres
+
       - name: Run database migrations
         run: uv run alembic upgrade head
         env:

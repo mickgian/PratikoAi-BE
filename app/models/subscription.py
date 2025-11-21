@@ -181,7 +181,7 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     plan_id = Column(UUID(as_uuid=True), ForeignKey("subscription_plans.id"), nullable=False)
 
     # Stripe integration

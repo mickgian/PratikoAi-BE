@@ -46,7 +46,7 @@ class Subscription(SQLModel, table=True):
     __tablename__ = "subscriptions"
 
     id: int | None = Field(default=None, primary_key=True)
-    user_id: str = Field(..., description="User ID from session")
+    user_id: int = Field(..., foreign_key="user.id", description="User ID from session")
 
     # Stripe-specific fields
     stripe_subscription_id: str = Field(..., description="Stripe subscription ID")
@@ -90,7 +90,7 @@ class Payment(SQLModel, table=True):
     __tablename__ = "payments"
 
     id: int | None = Field(default=None, primary_key=True)
-    user_id: str = Field(..., description="User ID from session")
+    user_id: int = Field(..., foreign_key="user.id", description="User ID from session")
     subscription_id: int | None = Field(default=None, foreign_key="subscriptions.id")
 
     # Stripe-specific fields
@@ -136,7 +136,7 @@ class Invoice(SQLModel, table=True):
     __tablename__ = "invoices"
 
     id: int | None = Field(default=None, primary_key=True)
-    user_id: str = Field(..., description="User ID from session")
+    user_id: int = Field(..., foreign_key="user.id", description="User ID from session")
     subscription_id: int | None = Field(default=None, foreign_key="subscriptions.id")
     payment_id: int | None = Field(default=None, foreign_key="payments.id")
 
@@ -186,7 +186,7 @@ class Customer(SQLModel, table=True):
     __tablename__ = "customers"
 
     id: int | None = Field(default=None, primary_key=True)
-    user_id: str = Field(..., unique=True, description="User ID from session")
+    user_id: int = Field(..., unique=True, foreign_key="user.id", description="User ID from session")
 
     # Stripe-specific fields
     stripe_customer_id: str = Field(..., unique=True, description="Stripe customer ID")

@@ -96,7 +96,7 @@ class FAQUsageLog(SQLModel, table=True):
 
     # References
     faq_id: str = Field(foreign_key="faq_entries.id", description="FAQ entry that was used")
-    user_id: str | None = Field(default=None, foreign_key="user.id", description="User who accessed the FAQ")
+    user_id: int | None = Field(default=None, foreign_key="user.id", description="User who accessed the FAQ")
 
     # Usage details
     used_at: datetime = Field(
@@ -238,7 +238,7 @@ class FAQVariationCache(SQLModel, table=True):
 
     # Cache key components
     faq_id: str = Field(foreign_key="faq_entries.id", description="FAQ entry this variation is for")
-    user_id: str | None = Field(
+    user_id: int | None = Field(
         default=None, foreign_key="user.id", description="User this variation was generated for"
     )
     cache_key: str = Field(unique=True, max_length=200, description="Unique cache key for this variation")

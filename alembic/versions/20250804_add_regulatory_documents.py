@@ -121,8 +121,9 @@ def upgrade():
     # Create unique constraint on URL (only one active document per URL)
     op.create_index("idx_regulatory_documents_url_unique", "regulatory_documents", ["url"], unique=True)
 
-    # Create feed_status table
-    op.create_table(
+    # Create feed_status table (only if it doesn't exist)
+    if not table_exists("feed_status"):
+        op.create_table(
         "feed_status",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("feed_url", sa.Text(), nullable=False, comment="RSS feed URL"),
@@ -179,8 +180,9 @@ def upgrade():
     op.create_index("idx_feed_status_enabled", "feed_status", ["enabled"])
     op.create_index("idx_feed_status_errors", "feed_status", ["consecutive_errors"])
 
-    # Create document_processing_log table
-    op.create_table(
+    # Create document_processing_log table (only if it doesn't exist)
+    if not table_exists("document_processing_log"):
+        op.create_table(
         "document_processing_log",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("document_id", sa.String(length=100), nullable=True, comment="Associated regulatory document ID"),
@@ -221,8 +223,9 @@ def upgrade():
     # Create compound index for common queries
     op.create_index("idx_document_processing_log_status_date", "document_processing_log", ["status", "created_at"])
 
-    # Create document_collections table
-    op.create_table(
+    # Create document_collections table (only if it doesn't exist)
+    if not table_exists("document_collections"):
+        op.create_table(
         "document_collections",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("name", sa.String(length=200), nullable=False, comment="Collection name"),

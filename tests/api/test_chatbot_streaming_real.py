@@ -99,7 +99,7 @@ class TestRealSSEStreaming:
             assert len(chunks) >= 20, f"Expected >=20 chunks, got {len(chunks)}"
 
             # Verify done event sent in last few chunks
-            done_found = any(b'"done":true' in chunk or b'"done": true' in chunk for chunk in chunks[-3:])
+            done_found = any('"done":true' in chunk or '"done": true' in chunk for chunk in chunks[-3:])
             assert done_found, "No done event found in final chunks"
 
     @pytest.mark.integration
@@ -130,8 +130,8 @@ class TestRealSSEStreaming:
             assert elapsed < 2.0, f"First line took {elapsed:.2f}s (> 2s)"
 
             # First line should be either keepalive comment or data
-            is_keepalive = first_line.startswith(b":")
-            is_data = first_line.startswith(b"data:")
+            is_keepalive = first_line.startswith(":")
+            is_data = first_line.startswith("data:")
             assert is_keepalive or is_data, f"Unexpected first line: {first_line!r}"
 
     @pytest.mark.integration
@@ -149,7 +149,7 @@ class TestRealSSEStreaming:
             chunk_sizes = []
 
             for line in response.iter_lines():
-                if line and line.startswith(b"data:"):
+                if line and line.startswith("data:"):
                     try:
                         data = json.loads(line[5:])  # Skip "data:" prefix
                         if data.get("content") and not data.get("done"):
@@ -182,12 +182,12 @@ class TestRealSSEStreaming:
                     continue
 
                 # Comment lines (keepalive)
-                if line.startswith(b":"):
-                    assert line.endswith(b"\n\n") or True  # May or may not have trailing newlines in iter_lines
+                if line.startswith(":"):
+                    assert line.endswith("\n\n") or True  # May or may not have trailing newlines in iter_lines
                     continue
 
                 # Data lines
-                if line.startswith(b"data:"):
+                if line.startswith("data:"):
                     # Should be valid JSON after "data:" prefix
                     try:
                         json.loads(line[5:])
@@ -213,7 +213,7 @@ class TestRealSSEStreaming:
             content_chunks = []
 
             for line in response.iter_lines():
-                if line and line.startswith(b"data:"):
+                if line and line.startswith("data:"):
                     try:
                         data = json.loads(line[5:])
                         if data.get("content") and not data.get("done"):

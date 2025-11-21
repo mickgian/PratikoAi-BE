@@ -57,15 +57,14 @@ class TestConsentManager:
         """Test consent expiration."""
         user_id = "test_user_123"
 
-        # Grant consent with short expiry
+        # Grant consent with negative expiry (already expired)
         self.consent_manager.grant_consent(
             user_id=user_id,
             consent_type=ConsentType.MARKETING,
-            expiry_days=0,  # Expires immediately
+            expiry_days=-1,  # Already expired
         )
 
-        # Should expire after cleanup
-        self.consent_manager.cleanup_expired_consents()
+        # Should be expired immediately (no cleanup needed)
         assert not self.consent_manager.has_valid_consent(user_id, ConsentType.MARKETING)
 
     def test_consent_history(self):

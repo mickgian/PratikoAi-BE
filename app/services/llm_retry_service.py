@@ -165,18 +165,32 @@ class CircuitBreaker:
         self.failure_count = 0
         self.last_failure_time: float | None = None
         self.state = "closed"  # closed, open, half_open
-        self._lock = asyncio.Lock()
+        self._lock: asyncio.Lock | None = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Get or create the lock in the current event loop.
+
+        This lazy initialization ensures the lock is created in the correct
+        event loop, avoiding issues when the CircuitBreaker is instantiated
+        in one event loop but used in another (e.g., during testing).
+
+        Returns:
+            The asyncio.Lock instance for the current event loop
+        """
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
     async def record_success(self):
         """Record a successful operation."""
-        async with self._lock:
+        async with self._get_lock():
             self.failure_count = 0
             self.state = "closed"
             logger.debug("Circuit breaker: recorded success, state=closed")
 
     async def record_failure(self):
         """Record a failed operation."""
-        async with self._lock:
+        async with self._get_lock():
             self.failure_count += 1
             self.last_failure_time = time.time()
 
@@ -186,7 +200,7 @@ class CircuitBreaker:
 
     async def can_attempt(self) -> bool:
         """Check if requests can be attempted."""
-        async with self._lock:
+        async with self._get_lock():
             if self.state == "closed":
                 return True
             elif self.state == "open":

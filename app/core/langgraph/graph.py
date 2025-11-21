@@ -264,6 +264,10 @@ class LangGraphAgent:
         self._graph: CompiledStateGraph | None = None
         self._current_provider: LLMProvider | None = None
 
+        # Cache checkpointer to avoid recreating it and binding to wrong event loop
+        self._checkpointer: Any | None = None
+        self._checkpointer_event_loop: Any | None = None
+
         # Initialize domain-action classification services
         self._domain_classifier = DomainActionClassifier()
         self._prompt_template_manager = PromptTemplateManager()
@@ -855,6 +859,34 @@ class LangGraphAgent:
                     return None
                 raise e
         return self._connection_pool
+
+    async def _get_checkpointer(self) -> Any | None:
+        """Get a fresh PostgreSQL checkpointer for the current event loop.
+
+        Always creates a new checkpointer instance to avoid event loop binding issues.
+        This is crucial for tests where TestClient creates new event loops per request.
+
+        Returns:
+            Optional checkpointer instance, or None if unavailable
+        """
+        # Track current event loop
+        try:
+            import asyncio
+
+            self._checkpointer_event_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._checkpointer_event_loop = None
+
+        connection_pool = await self._get_connection_pool()
+        if connection_pool and AsyncPostgresSaver is not None:
+            checkpointer = AsyncPostgresSaver(connection_pool)
+            await checkpointer.setup()
+            logger.debug("checkpointer_created", environment=settings.ENVIRONMENT.value)
+            return checkpointer
+        else:
+            if settings.ENVIRONMENT != Environment.PRODUCTION and AsyncPostgresSaver is not None:
+                logger.warning("connection_pool_unavailable_for_checkpointer")
+            return None
 
     async def _chat(self, state: GraphState) -> dict:
         """Process the chat state and generate a response.
@@ -1569,15 +1601,14 @@ class LangGraphAgent:
             graph_builder.set_entry_point("ValidateRequest")
             graph_builder.set_finish_point("End")
 
-            # Get connection pool
-            connection_pool = await self._get_connection_pool()
-            if connection_pool and AsyncPostgresSaver is not None:
-                checkpointer = AsyncPostgresSaver(connection_pool)
-                await checkpointer.setup()
-            else:
-                checkpointer = None
-                if settings.ENVIRONMENT != Environment.PRODUCTION and AsyncPostgresSaver is not None:
-                    raise Exception("Connection pool initialization failed")
+            # Get checkpointer (handles event loop binding correctly)
+            checkpointer = await self._get_checkpointer()
+            if (
+                checkpointer is None
+                and settings.ENVIRONMENT != Environment.PRODUCTION
+                and AsyncPostgresSaver is not None
+            ):
+                raise Exception("Checkpointer initialization failed")
 
             compiled_graph = graph_builder.compile(
                 checkpointer=checkpointer, name=f"{settings.PROJECT_NAME} Agent Phase1A ({settings.ENVIRONMENT.value})"
@@ -1734,15 +1765,14 @@ class LangGraphAgent:
             graph_builder.set_entry_point("ValidateRequest")
             graph_builder.set_finish_point("End")
 
-            # Get connection pool and checkpointer
-            connection_pool = await self._get_connection_pool()
-            if connection_pool and AsyncPostgresSaver is not None:
-                checkpointer = AsyncPostgresSaver(connection_pool)
-                await checkpointer.setup()
-            else:
-                checkpointer = None
-                if settings.ENVIRONMENT != Environment.PRODUCTION and AsyncPostgresSaver is not None:
-                    raise Exception("Connection pool initialization failed")
+            # Get checkpointer (handles event loop binding correctly)
+            checkpointer = await self._get_checkpointer()
+            if (
+                checkpointer is None
+                and settings.ENVIRONMENT != Environment.PRODUCTION
+                and AsyncPostgresSaver is not None
+            ):
+                raise Exception("Checkpointer initialization failed")
 
             compiled_graph = graph_builder.compile(
                 checkpointer=checkpointer, name=f"{settings.PROJECT_NAME} Agent Phase4 ({settings.ENVIRONMENT.value})"
@@ -1971,15 +2001,14 @@ class LangGraphAgent:
             track_edge(110, 111)
             track_edge(111, 112)
 
-            # Get connection pool
-            connection_pool = await self._get_connection_pool()
-            if connection_pool and AsyncPostgresSaver is not None:
-                checkpointer = AsyncPostgresSaver(connection_pool)
-                await checkpointer.setup()
-            else:
-                checkpointer = None
-                if settings.ENVIRONMENT != Environment.PRODUCTION and AsyncPostgresSaver is not None:
-                    raise Exception("Connection pool initialization failed")
+            # Get checkpointer (handles event loop binding correctly)
+            checkpointer = await self._get_checkpointer()
+            if (
+                checkpointer is None
+                and settings.ENVIRONMENT != Environment.PRODUCTION
+                and AsyncPostgresSaver is not None
+            ):
+                raise Exception("Checkpointer initialization failed")
 
             compiled_graph = graph_builder.compile(
                 checkpointer=checkpointer,
@@ -2308,14 +2337,8 @@ class LangGraphAgent:
             # Final step
             graph_builder.add_edge("CollectMetrics", "End")
 
-            # Compile graph
-            connection_pool = await self._get_connection_pool()
-            if connection_pool and AsyncPostgresSaver is not None:
-                checkpointer = AsyncPostgresSaver(connection_pool)
-                await checkpointer.setup()
-            else:
-                checkpointer = None
-
+            # Get checkpointer (handles event loop binding correctly)
+            checkpointer = await self._get_checkpointer()
             compiled_graph = graph_builder.compile(
                 checkpointer=checkpointer, name=f"{settings.PROJECT_NAME} Agent Unified ({settings.ENVIRONMENT.value})"
             )
@@ -2340,9 +2363,27 @@ class LangGraphAgent:
     async def create_graph(self) -> CompiledStateGraph | None:
         """Create and configure the LangGraph workflow.
 
+        Handles event loop changes by recreating the graph when running in a different
+        event loop (important for tests where TestClient creates new event loops).
+
         Returns:
             Optional[CompiledStateGraph]: The configured LangGraph instance or None if init fails
         """
+        # Check if we're in a different event loop and need to recreate
+        try:
+            import asyncio
+
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        # Recreate graph if in different event loop (important for tests)
+        if self._graph is not None and self._checkpointer_event_loop != current_loop:
+            logger.debug("event_loop_changed_recreating_graph", environment=settings.ENVIRONMENT.value)
+            self._graph = None
+            self._checkpointer = None
+            self._checkpointer_event_loop = None
+
         if self._graph is None:
             # Unified graph is now the default (connects all 8 lanes)
             logger.info("using_unified_graph", environment=settings.ENVIRONMENT.value)

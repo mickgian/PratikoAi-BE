@@ -245,8 +245,8 @@ async def test_bm25_search_direct():
                 print(f"   ❌ Error: {e}")
 
         # Test with title filter (SQL LIKE)
-        print(f"\n🔍 Test: Title filter (SQL LIKE)")
-        print(f"   Pattern: '%n. 63%'")
+        print("\n🔍 Test: Title filter (SQL LIKE)")
+        print("   Pattern: '%n. 63%'")
 
         try:
             result = await session.execute(
@@ -306,7 +306,7 @@ async def test_knowledge_search_service():
         for test_case in test_queries:
             print(f"\n🔍 Test: {test_case['description']}")
             print(f"   Query: '{test_case['query']}'")
-            if test_case['canonical_facts']:
+            if test_case["canonical_facts"]:
                 print(f"   Canonical Facts: {test_case['canonical_facts']}")
 
             query_data = {
@@ -328,21 +328,24 @@ async def test_knowledge_search_service():
                     for i, result in enumerate(results[:5], 1):
                         title_short = result.title[:60] + "..." if len(result.title) > 60 else result.title
                         print(f"      {i}. {title_short}")
-                        print(f"         Score: {result.score:.4f} (BM25: {result.bm25_score:.4f if result.bm25_score else 'N/A'})")
+                        print(
+                            f"         Score: {result.score:.4f} (BM25: {result.bm25_score:.4f if result.bm25_score else 'N/A'})"
+                        )
                         print(f"         Category: {result.category}, Source: {result.source}")
 
                     # Check if risoluzione 63 is in results
                     has_ris_63 = any("63" in r.title and "risoluz" in r.title.lower() for r in results)
                     if has_ris_63:
-                        print(f"   ✅ Risoluzione 63 IS in results!")
+                        print("   ✅ Risoluzione 63 IS in results!")
                     else:
-                        print(f"   ⚠️  Risoluzione 63 NOT in results")
+                        print("   ⚠️  Risoluzione 63 NOT in results")
                 else:
                     print("   ❌ No results found")
 
             except Exception as e:
                 print(f"   ❌ Error: {e}")
                 import traceback
+
                 traceback.print_exc()
 
 
@@ -450,6 +453,7 @@ async def main():
     except Exception as e:
         print(f"\n❌ Investigation failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

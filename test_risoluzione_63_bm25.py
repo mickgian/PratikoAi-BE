@@ -147,9 +147,9 @@ async def test_bm25_searches():
 
         if doc:
             print(f"Document ID 82: {doc.title[:80]}...")
-            print(f"\nTitle Vector (from title column):")
+            print("\nTitle Vector (from title column):")
             print(f"  {doc.title_vector}")
-            print(f"\nSearch Vector (full tsvector):")
+            print("\nSearch Vector (full tsvector):")
             print(f"  {str(doc.search_vector)[:500]}...")
 
             # Check if '63' is in the vector
@@ -172,7 +172,7 @@ async def test_bm25_searches():
             )
             matches = result.fetchone()
 
-            print(f"\nTSQuery Match Tests:")
+            print("\nTSQuery Match Tests:")
             print(f"  'risoluzione 63' (AND): {matches.matches_both}")
             print(f"  'risoluzione' only: {matches.matches_type}")
             print(f"  '63' only: {matches.matches_number}")
@@ -234,6 +234,7 @@ D. Extract numbers and use SQL filter (BEST)
     except Exception as e:
         print(f"\n❌ Investigation failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

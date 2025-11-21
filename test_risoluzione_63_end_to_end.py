@@ -67,7 +67,9 @@ async def test_search_pipeline():
                     print(f"\n✅ Found {len(results)} result(s):")
                     for i, result in enumerate(results, 1):
                         title_short = result.title[:70] + "..." if len(result.title) > 70 else result.title
-                        is_63 = " (RISOLUZIONE 63!)" if "63" in result.title and "risoluz" in result.title.lower() else ""
+                        is_63 = (
+                            " (RISOLUZIONE 63!)" if "63" in result.title and "risoluz" in result.title.lower() else ""
+                        )
                         print(f"   {i}. {title_short}{is_63}")
                         print(f"      Score: {result.score:.4f}, Source: {result.source}")
                 else:
@@ -77,6 +79,7 @@ async def test_search_pipeline():
             except Exception as e:
                 print(f"\n❌ Error: {e}")
                 import traceback
+
                 traceback.print_exc()
 
             print()
@@ -114,6 +117,7 @@ To see these logs in real-time:
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

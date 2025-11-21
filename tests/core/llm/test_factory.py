@@ -87,7 +87,8 @@ class TestLLMFactory:
 
     def test_create_provider_unsupported_type(self):
         """Test creating unsupported provider type."""
-        with pytest.raises(ValueError, match="Unsupported provider type"):
+        # LOCAL provider type is not configured, so it raises "not configured" error
+        with pytest.raises(ValueError, match=r"Provider local is not configured"):
             self.factory.create_provider(LLMProviderType.LOCAL)
 
     @patch("app.core.llm.factory.settings")

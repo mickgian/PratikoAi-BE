@@ -4,6 +4,7 @@ from logging.config import fileConfig
 from sqlalchemy import (
     engine_from_config,
     pool,
+    text,
 )
 from sqlmodel import SQLModel
 
@@ -134,6 +135,20 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        # Create alembic_version table with VARCHAR(64) if it doesn't exist
+        # This accommodates long revision IDs (some are 33 characters)
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS alembic_version (
+                    version_num VARCHAR(64) NOT NULL,
+                    CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)
+                )
+                """
+            )
+        )
+        connection.commit()
+
         context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():

@@ -391,6 +391,50 @@ class ResponseCompressor:
             logger.error("compression_statistics_failed", error=str(e), exc_info=True)
             return {"error": str(e)}
 
+    def _minify_css(self, css_content: str) -> str:
+        """Minify CSS by removing comments and extra whitespace.
+
+        Args:
+            css_content: CSS content to minify
+
+        Returns:
+            Minified CSS string
+        """
+        import re
+
+        # Remove CSS comments
+        css_content = re.sub(r"/\*.*?\*/", "", css_content, flags=re.DOTALL)
+
+        # Remove extra whitespace
+        css_content = re.sub(r"\s+", " ", css_content)
+
+        # Remove spaces around certain characters
+        css_content = re.sub(r"\s*([{};:,])\s*", r"\1", css_content)
+
+        return css_content.strip()
+
+    def _minify_javascript(self, js_content: str) -> str:
+        """Minify JavaScript by removing comments and extra whitespace.
+
+        Args:
+            js_content: JavaScript content to minify
+
+        Returns:
+            Minified JavaScript string
+        """
+        import re
+
+        # Remove single-line comments (but preserve URLs)
+        js_content = re.sub(r"(?<!:)//.*$", "", js_content, flags=re.MULTILINE)
+
+        # Remove multi-line comments
+        js_content = re.sub(r"/\*.*?\*/", "", js_content, flags=re.DOTALL)
+
+        # Remove extra whitespace
+        js_content = re.sub(r"\s+", " ", js_content)
+
+        return js_content.strip()
+
     def reset_statistics(self) -> bool:
         """Reset compression statistics.
 

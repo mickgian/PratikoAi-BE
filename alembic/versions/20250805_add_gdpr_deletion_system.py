@@ -1,6 +1,6 @@
 """Add GDPR deletion system
 
-Revision ID: 20250805_add_gdpr_deletion_system
+Revision ID: 20250805_gdpr_deletion
 Revises: 20250805_add_database_encryption
 Create Date: 2025-08-05 14:30:00.000000
 
@@ -17,7 +17,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "20250805_add_gdpr_deletion_system"
+revision = "20250805_gdpr_deletion"
 down_revision = "add_database_encryption_20250805"
 branch_labels = None
 depends_on = None

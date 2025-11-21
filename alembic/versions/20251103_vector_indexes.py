@@ -49,9 +49,9 @@ def upgrade():
     """
     )
 
-    # Analyze for planner stats
-    op.execute("VACUUM ANALYZE knowledge_items;")
-    op.execute("VACUUM ANALYZE knowledge_chunks;")
+    # Note: VACUUM ANALYZE removed because it cannot run inside a transaction block
+    # Alembic runs migrations in transactions, so VACUUM would abort the transaction.
+    # Query planner will collect statistics automatically during normal operations.
 
 
 def downgrade():

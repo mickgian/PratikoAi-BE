@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Index, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import JSON, Column, Field, SQLModel
 
 
@@ -174,8 +175,8 @@ class ItalianRegulation(SQLModel, table=True):
     )
 
     # Subject matter
-    subjects: list[str] = Field(..., sa_column=Column(JSON), description="Subject matter tags")
-    keywords: list[str] = Field(default_factory=list, sa_column=Column(JSON), description="Search keywords")
+    subjects: list[str] = Field(..., sa_column=Column(JSONB), description="Subject matter tags")
+    keywords: list[str] = Field(default_factory=list, sa_column=Column(JSONB), description="Search keywords")
 
     # Source tracking
     source_url: str = Field(..., description="Official source URL")
@@ -188,7 +189,7 @@ class ItalianRegulation(SQLModel, table=True):
         Index("idx_regulation_type_number", "regulation_type", "number", "year"),
         Index("idx_regulation_authority", "authority"),
         Index("idx_regulation_dates", "enacted_date", "effective_date"),
-        Index("idx_regulation_subjects", "subjects"),
+        Index("idx_regulation_subjects", "subjects", postgresql_using="gin"),
         Index("idx_regulation_status", "repealed_date"),
     )
 

@@ -317,14 +317,14 @@ class GeneratedFAQ(Base):
 
     # Approval workflow
     approval_status = Column(String(30), nullable=False, default="pending_review")
-    approved_by = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"))
+    approved_by = Column(PG_UUID(as_uuid=True), ForeignKey("user.id"))
     approved_at = Column(DateTime(timezone=True))
     rejection_reason = Column(Text)
 
     # Publishing
     published = Column(Boolean, default=False)
     published_at = Column(DateTime(timezone=True))
-    faq_id = Column(PG_UUID(as_uuid=True), ForeignKey("faqs.id"))  # Link to published FAQ
+    faq_id = Column(PG_UUID(as_uuid=True), ForeignKey("faq_entries.id"))  # Link to published FAQ
 
     # Performance tracking
     view_count = Column(Integer, default=0)
@@ -342,8 +342,10 @@ class GeneratedFAQ(Base):
 
     # Relationships
     candidate = relationship("FAQCandidate", back_populates="generated_faqs")
-    approver = relationship("User", foreign_keys=[approved_by])
-    published_faq = relationship("FAQ", foreign_keys=[faq_id])
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via approved_by foreign key instead.
+    # Note: No relationship to FAQ/FAQEntry model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access FAQ via faq_id foreign key instead.
     rss_impacts = relationship("RSSFAQImpact", back_populates="faq", cascade="all, delete-orphan")
 
     # Indexes
@@ -432,7 +434,7 @@ class RSSFAQImpact(Base):
     action_required = Column(String(50), nullable=False)  # review, regenerate, ignore
     action_taken = Column(String(50))
     action_date = Column(DateTime(timezone=True))
-    action_by = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"))
+    action_by = Column(PG_UUID(as_uuid=True), ForeignKey("user.id"))
 
     # Processing status
     processed = Column(Boolean, default=False)
@@ -447,7 +449,8 @@ class RSSFAQImpact(Base):
 
     # Relationships
     faq = relationship("GeneratedFAQ", back_populates="rss_impacts")
-    action_user = relationship("User", foreign_keys=[action_by])
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via action_by foreign key instead.
 
     # Indexes
     __table_args__ = (
@@ -547,13 +550,14 @@ class FAQGenerationJob(Base):
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"))
+    created_by = Column(PG_UUID(as_uuid=True), ForeignKey("user.id"))
 
     # Background job ID (Celery task ID)
     celery_task_id = Column(String(100), index=True)
 
     # Relationships
-    creator = relationship("User", foreign_keys=[created_by])
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via created_by foreign key instead.
 
     # Indexes
     __table_args__ = (

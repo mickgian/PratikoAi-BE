@@ -23,7 +23,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: pratikoai_test
@@ -39,10 +39,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up test environment variables
+        run: |
+          # Load all 36 environment variables from .env.example
+          if [ -f .env.example ]; then
+            set -a
+            source .env.example
+            set +a
+          fi
+          # Export all current env vars to GITHUB_ENV for subsequent steps
+          env | grep -v '^_' | grep -v '^PWD=' | grep -v '^OLDPWD=' | grep -v '^SHLVL=' >> $GITHUB_ENV
+          # Override with CI-specific test values
+          echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
+          echo "LLM_API_KEY=test-key-for-ci" >> $GITHUB_ENV
+          echo "OPENAI_API_KEY=test-key-for-ci" >> $GITHUB_ENV
+          echo "JWT_SECRET_KEY=test-jwt-secret-key-for-ci" >> $GITHUB_ENV
+          echo "LANGFUSE_PUBLIC_KEY=test-langfuse-public" >> $GITHUB_ENV
+          echo "LANGFUSE_SECRET_KEY=test-langfuse-secret" >> $GITHUB_ENV
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version-file: '.python-version'
 
       - name: Install uv
         run: |
@@ -51,33 +69,42 @@ jobs:
 
       - name: Install dependencies
         run: |
+          uv venv --python 3.11
           uv sync --all-groups
 
-      - name: Set up test environment variables
+      - name: Enable pgvector extension
         run: |
-          echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
-          echo "LLM_API_KEY=test-key-for-ci" >> $GITHUB_ENV
-          echo "JWT_SECRET_KEY=test-jwt-secret-key-for-ci" >> $GITHUB_ENV
-          echo "LANGFUSE_PUBLIC_KEY=test-langfuse-public" >> $GITHUB_ENV
-          echo "LANGFUSE_SECRET_KEY=test-langfuse-secret" >> $GITHUB_ENV
+          PGPASSWORD=postgres psql -h localhost -U postgres -d pratikoai_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+        env:
+          PGPASSWORD: postgres
+
+      - name: Initialize base database tables
+        run: uv run python scripts/init_db_tables.py
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pratikoai_test
+
+      - name: Run database migrations
+        run: uv run alembic upgrade head
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pratikoai_test
 
       - name: Run streaming protection tests (critical)
         run: |
           uv run pytest \
             tests/test_sse_format_validation.py \
-            tests/langgraph/test_buffered_streaming_timing.py::TestBufferedStreamingRegressionProtection \
             -v --tb=line -x
         continue-on-error: false
 
       - name: Run all tests with coverage
-        continue-on-error: true
+        continue-on-error: false
         run: |
           uv run pytest tests/ \
             -v \
             --cov=app \
             --cov-report=xml \
             --cov-report=html \
-            --cov-report=term-missing
+            --cov-report=term-missing \
+            --cov-fail-under=30
 
       - name: Upload coverage reports
         if: success() || failure()

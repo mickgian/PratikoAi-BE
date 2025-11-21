@@ -49,9 +49,15 @@ def upgrade():
     """
     )
 
-    # Analyze for planner stats
-    op.execute("VACUUM ANALYZE knowledge_items;")
-    op.execute("VACUUM ANALYZE knowledge_chunks;")
+    # Analyze for planner stats (optional, skip if in transaction)
+    try:
+        op.execute("VACUUM ANALYZE knowledge_items;")
+    except Exception:
+        pass  # VACUUM cannot run in transaction, skip
+    try:
+        op.execute("VACUUM ANALYZE knowledge_chunks;")
+    except Exception:
+        pass  # VACUUM cannot run in transaction, skip
 
 
 def downgrade():

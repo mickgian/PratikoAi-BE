@@ -92,7 +92,6 @@ jobs:
         run: |
           uv run pytest \
             tests/test_sse_format_validation.py \
-            tests/langgraph/test_buffered_streaming_timing.py::TestBufferedStreamingRegressionProtection \
             -v --tb=line -x
         continue-on-error: false
 

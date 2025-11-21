@@ -1,7 +1,7 @@
 """Add OAuth fields to User model
 
 Revision ID: 20250811_add_user_oauth_fields
-Revises: 20250805_add_gdpr_deletion_system
+Revises: 20250805_gdpr_deletion
 Create Date: 2025-08-11 10:30:00.000000
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20250811_add_user_oauth_fields"
-down_revision = "20250805_add_gdpr_deletion_system"
+down_revision = "20250805_gdpr_deletion"
 branch_labels = None
 depends_on = None
 

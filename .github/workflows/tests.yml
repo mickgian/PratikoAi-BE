@@ -77,11 +77,6 @@ jobs:
         env:
           PGPASSWORD: postgres
 
-      - name: Initialize database tables
-        run: uv run python scripts/init_db_tables.py
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pratikoai_test
-
       - name: Run database migrations
         run: uv run alembic upgrade head
         env:

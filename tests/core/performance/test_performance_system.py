@@ -55,10 +55,10 @@ class TestDatabaseOptimizer:
 
         assert aggregated_stats is not None
         assert aggregated_stats.execution_count == 5
-        assert aggregated_stats.total_time == sum(0.1 + (i * 0.05) for i in range(5))
-        assert aggregated_stats.avg_time == aggregated_stats.total_time / 5
-        assert aggregated_stats.min_time == 0.1
-        assert aggregated_stats.max_time == 0.3
+        assert aggregated_stats.total_time == pytest.approx(sum(0.1 + (i * 0.05) for i in range(5)))
+        assert aggregated_stats.avg_time == pytest.approx(aggregated_stats.total_time / 5)
+        assert aggregated_stats.min_time == pytest.approx(0.1)
+        assert aggregated_stats.max_time == pytest.approx(0.3)
 
     def test_normalize_query(self):
         """Test query normalization for consistent tracking."""
@@ -157,7 +157,8 @@ class TestResponseCompressor:
 
     def test_should_compress_json(self):
         """Test compression decision for JSON content."""
-        content = b'{"test": "data", "array": [1, 2, 3, 4, 5]}'
+        # Create content larger than min_size_bytes (500 bytes)
+        content = b'{"test": "data", "array": [1, 2, 3, 4, 5]}' * 20  # ~860 bytes
         content_type = "application/json"
         accept_encoding = "gzip, deflate, br"
 

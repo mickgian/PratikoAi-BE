@@ -274,7 +274,7 @@ class EncryptedQueryLog(BaseModel, table=True):
     )
 
     # Non-encrypted fields for performance and analytics
-    user_id: int | None = Field(default=None, foreign_key="users.id", description="User who made the query")
+    user_id: int | None = Field(default=None, foreign_key="user.id", description="User who made the query")
     session_id: str | None = Field(default=None, description="Session identifier")
 
     # Query metadata (not encrypted)
@@ -298,7 +298,7 @@ class EncryptedSubscriptionData(BaseModel, table=True):
 
     id: int = Field(default=None, primary_key=True)
 
-    user_id: int = Field(foreign_key="users.id", description="Associated user")
+    user_id: int = Field(foreign_key="user.id", description="Associated user")
 
     # Encrypted financial data
     stripe_customer_id: str | None = Field(

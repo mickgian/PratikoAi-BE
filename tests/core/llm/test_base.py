@@ -23,6 +23,8 @@ class MockLLMProvider(LLMProvider):
         super().__init__(api_key, model, **kwargs)
         self.call_count = 0
         self.should_fail = False
+        # Allow overriding supported models
+        self._supported_models_override = None
 
     @property
     def provider_type(self) -> LLMProviderType:
@@ -30,6 +32,9 @@ class MockLLMProvider(LLMProvider):
 
     @property
     def supported_models(self) -> dict[str, LLMCostInfo]:
+        # Allow tests to override supported models
+        if self._supported_models_override is not None:
+            return self._supported_models_override
         return {
             "mock-model": LLMCostInfo(
                 input_cost_per_1k_tokens=0.001,
@@ -150,7 +155,7 @@ class TestLLMProvider:
         ]
 
         tokens = provider.estimate_tokens(messages)
-        assert tokens == 5  # (11//4) + (9//4) = 2 + 2 = 4, but actually it's 5
+        assert tokens == 4  # (11//4) + (9//4) = 2 + 2 = 4
 
     def test_estimate_cost(self):
         """Test cost estimation."""

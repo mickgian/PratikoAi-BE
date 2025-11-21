@@ -370,6 +370,63 @@ Should I proceed? Any architectural concerns?
 
 ---
 
+## Git Workflow Integration
+
+### CRITICAL: Human-in-the-Loop Workflow
+
+**Read:** `.claude/workflows/human-in-the-loop-git.md` for authoritative workflow.
+
+**Agents CAN:**
+- ✅ `git checkout develop` - Switch to develop branch
+- ✅ `git pull origin develop` - Update from remote
+- ✅ `git checkout -b TICKET-NUMBER-descriptive-name` - Create feature branches
+- ✅ `git add .` or `git add <files>` - Stage changes
+- ✅ `git status` - Check status
+- ✅ `git diff` - View changes
+- ✅ Read/Write/Edit files
+- ✅ Run tests
+
+**Agents CANNOT:**
+- ❌ `git commit` - Only Mick (human) commits
+- ❌ `git push` - Only Mick (human) pushes
+
+**Mick (human) MUST:**
+- ✅ Review staged changes
+- ✅ Authorize and execute `git commit`
+- ✅ Execute `git push`
+- ✅ Signal completion (e.g., "DEV-BE-XX-feature-name pushed")
+
+### Branch Naming Convention
+
+**Format:** `TICKET-NUMBER-descriptive-name`
+
+**Examples:**
+- ✅ `DEV-BE-67-faq-embeddings-migration`
+- ✅ `DEV-BE-68-remove-pinecone`
+- ✅ `DEV-BE-72-expert-feedback-api`
+- ❌ `feature/faq` (missing ticket number)
+- ❌ `DEV-BE-67` (missing description)
+
+### Pull Request Rules
+
+**CRITICAL - MUST FOLLOW:**
+- ✅ **PRs ALWAYS target `develop` branch**
+- ❌ **PRs NEVER target `master` branch**
+
+**Example (CORRECT):**
+```bash
+gh pr create --base develop --head DEV-BE-67-faq-embeddings-migration
+```
+
+**Example (WRONG - DO NOT USE):**
+```bash
+gh pr create --base master --head DEV-BE-67-faq-embeddings-migration
+```
+
+**Note:** Ezio does NOT create PRs. Silvano (DevOps) creates PRs after Mick commits/pushes.
+
+---
+
 ## Task Execution Workflow
 
 ### When Assigned Task by Scrum Master
@@ -441,29 +498,47 @@ Should I proceed? Any architectural concerns?
    - Test API endpoints: Postman/curl
    - Verify database changes: `psql` inspection
 
-**Step 5: Commit & Push (Day N)**
+**Step 5: Stage Changes & Signal Completion (Day N)**
 1. **Stage changes:**
    ```bash
    git add .
    ```
 
-2. **Commit** (pre-commit hooks run automatically):
+2. **Check what's staged:**
    ```bash
-   git commit -m "feat(DEV-BE-XX): Task description
-
-   - Implemented feature X
-   - Added tests with 95% coverage
-   - Updated documentation
-
-   🤖 Generated with Claude Code"
+   git status
+   git diff --staged
    ```
 
-3. **Push to branch:**
-   ```bash
-   git push origin DEV-BE-XX-task-name
-   ```
+3. **STOP - Wait for Mick to commit and push**
 
-4. **Notify Scrum Master** task complete
+**Signal completion to Mick:**
+```
+Changes staged, ready for commit:
+
+Task: DEV-BE-XX - [Brief description]
+Branch: DEV-BE-XX-descriptive-name
+Repository: backend
+
+Staged files:
+- app/services/feature_service.py (new service)
+- app/api/v1/feature.py (new endpoint)
+- tests/services/test_feature_service.py (tests)
+- alembic/versions/XXXX_add_feature_table.py (migration)
+
+Tests: ✅ All passing
+Linting: ✅ Ruff passing
+Type checks: ✅ MyPy passing
+Coverage: ✅ 69.5%+
+
+Summary:
+- [Key change 1]
+- [Key change 2]
+
+Waiting for Mick to commit and push.
+```
+
+4. **After Mick commits/pushes:** Notify Scrum Master task complete
 
 **Step 6: Deployment (If Required)**
 - **QA Deployment:** Coordinate with Scrum Master

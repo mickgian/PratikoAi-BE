@@ -69,7 +69,7 @@ repos:
         files: ^pyproject.toml$
         always_run: false
 
-  # Run critical streaming tests before commit
+  # Run critical streaming tests before commit (only when SSE-related files change)
   - repo: local
     hooks:
       - id: streaming-tests
@@ -77,10 +77,11 @@ repos:
         entry: bash -c 'source scripts/set_env.sh development && python -m pytest tests/core/test_sse_formatter.py tests/api/test_sse_comment_detection.py tests/api/test_sse_keepalive_timing.py tests/unit/core/test_sse_write_helper.py -v --tb=line -x'
         language: system
         pass_filenames: false
-        always_run: true
+        always_run: false
+        files: 'app/(core|api)/.*sse.*\.py|tests/.*sse.*\.py'
         stages: [pre-commit]
 
-  # Run RSS scheduler tests before commit
+  # Run RSS scheduler tests before commit (only when scheduler/RSS-related files change)
   - repo: local
     hooks:
       - id: rss-scheduler-tests
@@ -88,11 +89,13 @@ repos:
         entry: bash -c 'source scripts/set_env.sh development && python -m pytest tests/test_scheduler_italian_integration.py -v --tb=line -x'
         language: system
         pass_filenames: false
-        always_run: true
+        always_run: false
+        files: 'app/.*(scheduler|rss).*\.py|tests/.*scheduler.*\.py'
         stages: [pre-commit]
 
-  # Run all tests with coverage check before commit
+  # Run all tests with coverage check before push
   # This enforces minimum coverage thresholds (49% lines, lowered to unblock development)
+  # Moved to pre-push stage to allow fast commits while maintaining quality before sharing code
   - repo: local
     hooks:
       - id: test-coverage
@@ -101,7 +104,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [pre-commit]
+        stages: [pre-push]
 
   # Auto-regenerate documentation indexes when markdown files change
   - repo: local

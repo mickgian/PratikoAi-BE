@@ -190,6 +190,106 @@ You work under the coordination of the **Scrum Master** and technical guidance o
 
 ---
 
+## Git Workflow Integration
+
+### CRITICAL: Human-in-the-Loop Workflow
+
+**Read:** `.claude/workflows/human-in-the-loop-git.md` for authoritative workflow.
+
+**Agents CAN:**
+- ✅ `git checkout develop` - Switch to develop branch
+- ✅ `git pull origin develop` - Update from remote
+- ✅ `git checkout -b TICKET-NUMBER-descriptive-name` - Create feature branches
+- ✅ `git add .` or `git add <files>` - Stage changes
+- ✅ `git status` - Check status
+- ✅ `git diff` - View changes
+- ✅ Read/Write/Edit files
+- ✅ Run tests
+
+**Agents CANNOT:**
+- ❌ `git commit` - Only Mick (human) commits
+- ❌ `git push` - Only Mick (human) pushes
+
+**Mick (human) MUST:**
+- ✅ Review staged changes
+- ✅ Authorize and execute `git commit`
+- ✅ Execute `git push`
+- ✅ Signal completion (e.g., "DEV-FE-XX-feature-name pushed")
+
+### Branch Naming Convention
+
+**Format:** `TICKET-NUMBER-descriptive-name`
+
+**Examples:**
+- ✅ `DEV-FE-002-ui-source-citations`
+- ✅ `DEV-FE-010-expert-feedback-ui`
+- ✅ `DEV-FE-015-responsive-chat-layout`
+- ❌ `feature/citations` (missing ticket number)
+- ❌ `DEV-FE-002` (missing description)
+
+### Pull Request Rules
+
+**CRITICAL - MUST FOLLOW:**
+- ✅ **PRs ALWAYS target `develop` branch**
+- ❌ **PRs NEVER target `master` branch**
+
+**Example (CORRECT):**
+```bash
+gh pr create --base develop --head DEV-FE-002-ui-source-citations
+```
+
+**Example (WRONG - DO NOT USE):**
+```bash
+gh pr create --base master --head DEV-FE-002-ui-source-citations
+```
+
+**Note:** Livia does NOT create PRs. Silvano (DevOps) creates PRs after Mick commits/pushes.
+
+### Multi-Repository Tasks
+
+**For tasks affecting BOTH frontend and backend:**
+
+1. **Create matching branches in BOTH repos:**
+   ```bash
+   # Frontend
+   cd /Users/micky/WebstormProjects/PratikoAiWebApp
+   git checkout develop && git pull origin develop
+   git checkout -b TICKET-NUMBER-descriptive-name
+   # Make changes, run tests
+   git add .
+
+   # Backend
+   cd /Users/micky/PycharmProjects/PratikoAi-BE
+   git checkout develop && git pull origin develop
+   git checkout -b TICKET-NUMBER-descriptive-name
+   # Make changes, run tests
+   git add .
+   ```
+
+2. **Signal completion for BOTH repos:**
+   ```
+   Changes staged, ready for commit (multi-repo):
+
+   Frontend: TICKET-NUMBER-descriptive-name
+   Staged:
+   - src/components/ui/source-citation.tsx
+   - src/components/ui/__tests__/source-citation.test.tsx
+
+   Backend: TICKET-NUMBER-descriptive-name
+   Staged:
+   - app/core/prompts/system.md
+   - app/services/context_builder_merge.py
+
+   Tests: ✅ All passing (both repos)
+
+   Waiting for Mick to commit and push both repositories.
+   ```
+
+3. **Wait for Mick to commit/push BOTH repos**
+4. **Wait for Silvano to create PRs for BOTH repos**
+
+---
+
 ## Task Execution Workflow
 
 ### When Assigned Task
@@ -229,15 +329,41 @@ npm run lint
 4. Verify no console errors
 5. Check performance (Lighthouse score)
 
-**Step 5: Commit & Push**
+**Step 5: Stage Changes & Signal Completion**
 ```bash
-git commit -m "feat(DEV-FE-XX): Task description
+# Stage all changes
+git add .
 
-- Implemented feature
-- Added tests
-- Updated types
+# Check what's staged
+git status
+git diff --staged
 
-🤖 Generated with Claude Code"
+# STOP - Wait for Mick to commit and push
+```
+
+**Signal completion to Mick:**
+```
+Changes staged, ready for commit:
+
+Task: DEV-FE-XX - [Brief description]
+Branch: DEV-FE-XX-descriptive-name
+Repository: frontend
+
+Staged files:
+- src/components/ui/ComponentName.tsx (new component)
+- src/components/ui/__tests__/ComponentName.test.tsx (tests)
+- src/types/index.ts (type definitions)
+
+Tests: ✅ All passing
+Linting: ✅ ESLint passing
+Type checks: ✅ TypeScript passing
+Coverage: ✅ 69.5%+
+
+Summary:
+- [Key change 1]
+- [Key change 2]
+
+Waiting for Mick to commit and push.
 ```
 
 ---

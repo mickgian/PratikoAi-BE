@@ -1,7 +1,7 @@
 """Enable pgvector extension for vector similarity search
 
 Revision ID: enable_pgvector_20251103
-Revises: add_regulatory_documents_20250804
+Revises: add_regulatory_docs_20250804
 Create Date: 2025-11-03
 
 This migration enables the pgvector extension if available on the server.

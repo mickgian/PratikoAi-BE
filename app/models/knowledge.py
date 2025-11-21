@@ -182,7 +182,7 @@ class KnowledgeFeedback(SQLModel, table=True):
 
     # Reference
     knowledge_item_id: int = Field(..., foreign_key="knowledge_items.id")
-    user_id: str = Field(..., description="User who provided feedback")
+    user_id: int = Field(..., foreign_key="user.id", description="User who provided feedback")
     session_id: str = Field(..., description="Session ID")
 
     # Feedback

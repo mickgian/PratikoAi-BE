@@ -40,7 +40,7 @@ class UsageEvent(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     # User and session information
-    user_id: str = Field(index=True, description="User identifier")
+    user_id: int = Field(index=True, foreign_key="user.id", description="User identifier")
     session_id: str | None = Field(default=None, index=True, description="Session identifier")
 
     # Event details
@@ -88,7 +88,7 @@ class UserUsageSummary(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     # User and time period
-    user_id: str = Field(index=True, description="User identifier")
+    user_id: int = Field(index=True, foreign_key="user.id", description="User identifier")
     date: datetime = Field(index=True, description="Date for this summary")
 
     # Usage counts
@@ -138,7 +138,9 @@ class CostAlert(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     # Alert configuration
-    user_id: str | None = Field(default=None, index=True, description="User ID (null for system-wide)")
+    user_id: int | None = Field(
+        default=None, index=True, foreign_key="user.id", description="User ID (null for system-wide)"
+    )
     alert_type: str = Field(description="Type of alert (daily, monthly, threshold)")
     threshold_eur: float = Field(description="Cost threshold in EUR")
 
@@ -168,7 +170,7 @@ class UsageQuota(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     # User information
-    user_id: str = Field(unique=True, index=True, description="User identifier")
+    user_id: int = Field(unique=True, index=True, foreign_key="user.id", description="User identifier")
 
     # Quota limits
     daily_requests_limit: int = Field(default=100, description="Daily request limit")
@@ -208,7 +210,9 @@ class CostOptimizationSuggestion(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     # Target
-    user_id: str | None = Field(default=None, index=True, description="User ID (null for system-wide)")
+    user_id: int | None = Field(
+        default=None, index=True, foreign_key="user.id", description="User ID (null for system-wide)"
+    )
 
     # Suggestion details
     suggestion_type: str = Field(description="Type of suggestion (model_switch, caching, etc.)")

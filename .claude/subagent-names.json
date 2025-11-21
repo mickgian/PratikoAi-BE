@@ -56,12 +56,19 @@
       "status": "prepared",
       "description": "Cache optimization, query performance, load testing"
     },
-    "dario": {
+    "silvano": {
       "type": "devops",
       "config_file": "devops.md",
       "role": "DevOps Engineer",
       "status": "configured",
       "description": "GitHub integration, CI/CD monitoring, PR creation, cost optimization"
+    },
+    "tiziano": {
+      "type": "debugging-expert",
+      "config_file": "debugging-expert.md",
+      "role": "Debugging Specialist",
+      "status": "configured",
+      "description": "Bug investigation, root cause analysis, systematic troubleshooting"
     }
   },
   "aliases": {
@@ -73,6 +80,7 @@
     "test": "clelia",
     "database": "primo",
     "performance": "valerio",
-    "devops": "dario"
+    "devops": "silvano",
+    "debugging": "tiziano"
   }
 }

@@ -56,7 +56,7 @@ class DataExportRequest(Base):
     __tablename__ = "data_export_requests"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Request configuration
     format = Column(SQLEnum(ExportFormat), default=ExportFormat.JSON, nullable=False)
@@ -118,7 +118,8 @@ class DataExportRequest(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="data_export_requests")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -224,7 +225,7 @@ class ExportAuditLog(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     export_request_id = Column(UUID(as_uuid=True), ForeignKey("data_export_requests.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Activity details
     activity_type = Column(String(50), nullable=False)  # requested, started, completed, downloaded, expired
@@ -244,7 +245,8 @@ class ExportAuditLog(Base):
 
     # Relationships
     export_request = relationship("DataExportRequest")
-    user = relationship("User")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
@@ -269,7 +271,7 @@ class QueryHistory(Base):
     __tablename__ = "query_history"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Query details
     query = Column(Text, nullable=False)
@@ -295,7 +297,8 @@ class QueryHistory(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="query_history")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 class DocumentAnalysis(Base):
@@ -307,7 +310,7 @@ class DocumentAnalysis(Base):
     __tablename__ = "document_analysis"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Document metadata
     filename = Column(String(255), nullable=False)
@@ -332,7 +335,8 @@ class DocumentAnalysis(Base):
     analyzed_at = Column(DateTime, nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="document_analyses")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 class TaxCalculation(Base):
@@ -344,7 +348,7 @@ class TaxCalculation(Base):
     __tablename__ = "tax_calculations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Calculation details
     calculation_type = Column(String(50), nullable=False)  # IVA, IRPEF, IMU, etc.
@@ -364,7 +368,8 @@ class TaxCalculation(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    user = relationship("User", back_populates="tax_calculations")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 class FAQInteraction(Base):
@@ -376,7 +381,7 @@ class FAQInteraction(Base):
     __tablename__ = "faq_interactions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # FAQ details
     faq_id = Column(String(100), nullable=False)
@@ -395,7 +400,8 @@ class FAQInteraction(Base):
     tax_related = Column(Boolean, default=False)
 
     # Relationships
-    user = relationship("User", back_populates="faq_interactions")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 class KnowledgeBaseSearch(Base):
@@ -407,7 +413,7 @@ class KnowledgeBaseSearch(Base):
     __tablename__ = "knowledge_base_searches"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Search details
     search_query = Column(Text, nullable=False)
@@ -427,7 +433,8 @@ class KnowledgeBaseSearch(Base):
     searched_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    user = relationship("User", back_populates="knowledge_searches")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 class ElectronicInvoice(Base):
@@ -439,7 +446,7 @@ class ElectronicInvoice(Base):
     __tablename__ = "electronic_invoices"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     # Invoice identification
     invoice_number = Column(String(50), nullable=False)
@@ -460,7 +467,8 @@ class ElectronicInvoice(Base):
     accepted_at = Column(DateTime, nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="electronic_invoices")
+    # Note: No relationship to User model - it uses SQLModel which is incompatible
+    # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
 # Update User model to include relationships (add to existing User model)

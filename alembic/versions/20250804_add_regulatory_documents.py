@@ -25,10 +25,22 @@ branch_labels = None
 depends_on = None
 
 
+def table_exists(table_name):
+    """Check if a table exists in the database."""
+    conn = op.get_bind()
+    result = conn.execute(
+        text(
+            f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='{table_name}')"
+        )
+    ).scalar()
+    return result
+
+
 def upgrade():
     """Add regulatory documents tables."""
-    # Create regulatory_documents table
-    op.create_table(
+    # Create regulatory_documents table (only if it doesn't exist)
+    if not table_exists("regulatory_documents"):
+        op.create_table(
         "regulatory_documents",
         sa.Column("id", sa.String(length=100), primary_key=True),
         sa.Column(

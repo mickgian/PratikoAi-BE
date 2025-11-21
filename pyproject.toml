@@ -3,7 +3,7 @@ name = "langgraph-fastapi-template"
 version = "0.1.0"
 description = "LangGraph FastAPI Template"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.13",
     "fastapi>=0.115.12",

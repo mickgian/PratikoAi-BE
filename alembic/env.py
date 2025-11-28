@@ -14,12 +14,16 @@ from app.models.cassazione import CassazioneDecision
 # Phase 3: GDPR Data Export Models
 from app.models.data_export import (
     DataExportRequest,
-    DocumentAnalysis as ExportDocumentAnalysis,
     ElectronicInvoice,
     ExportAuditLog,
     FAQInteraction,
     KnowledgeBaseSearch,
     QueryHistory,
+)
+from app.models.data_export import (
+    DocumentAnalysis as ExportDocumentAnalysis,
+)
+from app.models.data_export import (
     TaxCalculation as ExportTaxCalculation,
 )
 from app.models.document import (
@@ -84,6 +88,14 @@ from app.models.query_normalization import (
     QueryNormalizationLog,
     QueryNormalizationPattern,
     QueryNormalizationStats,
+)
+
+# Phase 4: Regional Tax Models
+from app.models.regional_taxes import (
+    Comune,
+    ComunalTaxRate,
+    Regione,
+    RegionalTaxRate,
 )
 
 # Phase 3: Italian Subscription Models

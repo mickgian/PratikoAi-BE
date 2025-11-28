@@ -15,29 +15,13 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    Date,
-    DateTime,
-    ForeignKey,
-    Index,
-    Integer,
-    Numeric,
-    String,
-    Text,
-    UniqueConstraint,
-)
+from sqlalchemy import Column, Date, DateTime, Index, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlmodel import Field, Relationship, SQLModel
 
-from app.models.ccnl_database import Base
 
-
-class Regione(Base):
+class Regione(SQLModel, table=True):
     """Italian regions with tax autonomy information.
 
     Represents the 20 Italian regions including special autonomous regions
@@ -46,26 +30,33 @@ class Regione(Base):
 
     __tablename__ = "regioni"
 
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    codice_istat = Column(String(2), unique=True, nullable=False, index=True)
-    nome = Column(String(50), nullable=False, unique=True)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    codice_istat: str = Field(max_length=2, unique=True, index=True)
+    nome: str = Field(max_length=50, unique=True)
 
     # Special status information
-    is_autonomous = Column(Boolean, default=False, nullable=False)
-    has_special_statute = Column(Boolean, default=False, nullable=False)
+    is_autonomous: bool = Field(default=False)
+    has_special_statute: bool = Field(default=False)
 
     # Geographic information
-    area_kmq = Column(Integer)  # Area in square kilometers
-    popolazione = Column(Integer)  # Population
+    area_kmq: Optional[int] = Field(default=None)  # Area in square kilometers
+    popolazione: Optional[int] = Field(default=None)  # Population
 
     # Administrative details
-    capoluogo = Column(String(50))  # Regional capital
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    capoluogo: Optional[str] = Field(default=None, max_length=50)  # Regional capital
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    )
 
     # Relationships
-    comuni = relationship("Comune", back_populates="regione", cascade="all, delete-orphan")
-    tax_rates = relationship("RegionalTaxRate", back_populates="regione", cascade="all, delete-orphan")
+    comuni: List["Comune"] = Relationship(back_populates="regione", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    tax_rates: List["RegionalTaxRate"] = Relationship(
+        back_populates="regione", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     def __repr__(self):
         return f"<Regione(nome='{self.nome}', codice_istat='{self.codice_istat}')>"
@@ -83,7 +74,7 @@ class Regione(Base):
         }
 
 
-class Comune(Base):
+class Comune(SQLModel, table=True):
     """Italian municipalities (comuni) with geographic and administrative data.
 
     Contains detailed information about Italian municipalities including
@@ -92,46 +83,53 @@ class Comune(Base):
 
     __tablename__ = "comuni"
 
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    codice_istat = Column(String(6), unique=True, nullable=False, index=True)
-    nome = Column(String(100), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    codice_istat: str = Field(max_length=6, unique=True, index=True)
+    nome: str = Field(max_length=100)
 
     # Geographic hierarchy
-    provincia = Column(String(2), nullable=False, index=True)  # RM, MI, NA, etc.
-    regione_id = Column(PG_UUID(as_uuid=True), ForeignKey("regioni.id"), nullable=False)
+    provincia: str = Field(max_length=2, index=True)  # RM, MI, NA, etc.
+    regione_id: UUID = Field(foreign_key="regioni.id")
 
     # Postal codes (multiple CAPs per comune)
-    cap_codes = Column(ARRAY(String(5)), nullable=False, index=True)
+    cap_codes: List[str] = Field(sa_column=Column(ARRAY(String(5)), nullable=False, index=True))
 
     # Administrative classification
-    is_capoluogo = Column(Boolean, default=False, nullable=False)
-    is_capoluogo_provincia = Column(Boolean, default=False, nullable=False)
-    is_metropolitan_city = Column(Boolean, default=False, nullable=False)
+    is_capoluogo: bool = Field(default=False)
+    is_capoluogo_provincia: bool = Field(default=False)
+    is_metropolitan_city: bool = Field(default=False)
 
     # Population and area
-    popolazione = Column(Integer)
-    area_kmq = Column(Numeric(8, 2))  # Area in square kilometers
-    densita_abitativa = Column(Numeric(8, 2))  # Inhabitants per km²
+    popolazione: Optional[int] = Field(default=None)
+    area_kmq: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(8, 2), nullable=True))
+    densita_abitativa: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(8, 2), nullable=True))
 
     # Geographic coordinates
-    latitudine = Column(Numeric(10, 7))
-    longitudine = Column(Numeric(10, 7))
-    altitudine = Column(Integer)  # Meters above sea level
+    latitudine: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(10, 7), nullable=True))
+    longitudine: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(10, 7), nullable=True))
+    altitudine: Optional[int] = Field(default=None)  # Meters above sea level
 
     # Administrative details
-    sindaco = Column(String(100))  # Current mayor
-    telefono = Column(String(20))
-    email = Column(String(100))
-    pec = Column(String(100))  # Certified email
-    sito_web = Column(String(200))
+    sindaco: Optional[str] = Field(default=None, max_length=100)  # Current mayor
+    telefono: Optional[str] = Field(default=None, max_length=20)
+    email: Optional[str] = Field(default=None, max_length=100)
+    pec: Optional[str] = Field(default=None, max_length=100)  # Certified email
+    sito_web: Optional[str] = Field(default=None, max_length=200)
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    )
 
     # Relationships
-    regione = relationship("Regione", back_populates="comuni")
-    tax_rates = relationship("ComunalTaxRate", back_populates="comune", cascade="all, delete-orphan")
+    regione: "Regione" = Relationship(back_populates="comuni")
+    tax_rates: List["ComunalTaxRate"] = Relationship(
+        back_populates="comune", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     # Indexes for performance
     __table_args__ = (
@@ -143,7 +141,7 @@ class Comune(Base):
     def __repr__(self):
         return f"<Comune(nome='{self.nome}', provincia='{self.provincia}')>"
 
-    def get_primary_cap(self) -> str | None:
+    def get_primary_cap(self) -> Optional[str]:
         """Get the primary postal code for this comune"""
         return self.cap_codes[0] if self.cap_codes else None
 
@@ -169,7 +167,7 @@ class Comune(Base):
         }
 
 
-class RegionalTaxRate(Base):
+class RegionalTaxRate(SQLModel, table=True):
     """Regional tax rates for IRAP and addizionale regionale IRPEF.
 
     Stores tax rates that vary by region, including different rates
@@ -178,39 +176,46 @@ class RegionalTaxRate(Base):
 
     __tablename__ = "regional_tax_rates"
 
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    regione_id = Column(PG_UUID(as_uuid=True), ForeignKey("regioni.id"), nullable=False)
-    tax_type = Column(String(50), nullable=False, index=True)  # IRAP, ADDIZIONALE_IRPEF
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    regione_id: UUID = Field(foreign_key="regioni.id")
+
+    # Core fields
+    tax_type: str = Field(max_length=50, index=True)  # IRAP, ADDIZIONALE_IRPEF
 
     # Different rates by business category (for IRAP)
-    rate_standard = Column(Numeric(5, 2), nullable=False)  # Standard business rate
-    rate_banks = Column(Numeric(5, 2))  # Banks and financial institutions
-    rate_insurance = Column(Numeric(5, 2))  # Insurance companies
-    rate_agriculture = Column(Numeric(5, 2))  # Agricultural activities
-    rate_cooperatives = Column(Numeric(5, 2))  # Cooperative societies
+    rate_standard: Decimal = Field(sa_column=Column(Numeric(5, 2), nullable=False))  # Standard business rate
+    rate_banks: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_insurance: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_agriculture: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_cooperatives: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
 
     # Validity period
-    valid_from = Column(Date, nullable=False, index=True)
-    valid_to = Column(Date, index=True)  # NULL means currently valid
+    valid_from: date = Field(sa_column=Column(Date, nullable=False, index=True))
+    valid_to: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True, index=True))
 
     # Additional parameters
-    minimum_tax = Column(Numeric(10, 2))  # Minimum tax amount
-    maximum_tax = Column(Numeric(12, 2))  # Maximum tax amount
-    exemption_threshold = Column(Numeric(12, 2))  # Revenue threshold for exemption
+    minimum_tax: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(10, 2), nullable=True))
+    maximum_tax: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(12, 2), nullable=True))
+    exemption_threshold: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(12, 2), nullable=True))
 
     # Calculation parameters stored as JSON
-    calculation_parameters = Column(JSONB)  # Flexible parameters
+    calculation_parameters: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Legislative reference
-    legislative_reference = Column(Text)  # Law or decree reference
-    notes = Column(Text)  # Additional notes
+    legislative_reference: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    )
 
     # Relationships
-    regione = relationship("Regione", back_populates="tax_rates")
+    regione: "Regione" = Relationship(back_populates="tax_rates")
 
     # Constraints
     __table_args__ = (
@@ -261,7 +266,7 @@ class RegionalTaxRate(Base):
         }
 
 
-class ComunalTaxRate(Base):
+class ComunalTaxRate(SQLModel, table=True):
     """Municipal tax rates for IMU and addizionale comunale IRPEF.
 
     Stores tax rates that vary by municipality, including special rates
@@ -270,30 +275,35 @@ class ComunalTaxRate(Base):
 
     __tablename__ = "comunal_tax_rates"
 
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    comune_id = Column(PG_UUID(as_uuid=True), ForeignKey("comuni.id"), nullable=False)
-    tax_type = Column(String(50), nullable=False, index=True)  # IMU, ADDIZIONALE_COMUNALE_IRPEF
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    comune_id: UUID = Field(foreign_key="comuni.id")
+
+    # Core fields
+    tax_type: str = Field(max_length=50, index=True)  # IMU, ADDIZIONALE_COMUNALE_IRPEF
 
     # Basic rate information
-    rate = Column(Numeric(5, 2), nullable=False)  # Standard rate percentage
-    rate_prima_casa = Column(Numeric(5, 2))  # Rate for primary residence (IMU)
-    rate_altri_immobili = Column(Numeric(5, 2))  # Rate for other properties (IMU)
-    rate_commerciale = Column(Numeric(5, 2))  # Rate for commercial properties
-    rate_industriale = Column(Numeric(5, 2))  # Rate for industrial properties
-    rate_agricolo = Column(Numeric(5, 2))  # Rate for agricultural properties
+    rate: Decimal = Field(sa_column=Column(Numeric(5, 2), nullable=False))  # Standard rate percentage
+    rate_prima_casa: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_altri_immobili: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_commerciale: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_industriale: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_agricolo: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
 
     # Exemptions and special provisions
-    esenzione_prima_casa = Column(Boolean, default=False, nullable=False)
-    esenzione_giovani_coppie = Column(Boolean, default=False)  # Young couples exemption
-    esenzione_over_65 = Column(Boolean, default=False)  # Elderly exemption
+    esenzione_prima_casa: bool = Field(default=False)
+    esenzione_giovani_coppie: Optional[bool] = Field(default=None)  # Young couples exemption
+    esenzione_over_65: Optional[bool] = Field(default=None)  # Elderly exemption
 
     # Validity period
-    valid_from = Column(Date, nullable=False, index=True)
-    valid_to = Column(Date, index=True)  # NULL means currently valid
+    valid_from: date = Field(sa_column=Column(Date, nullable=False, index=True))
+    valid_to: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True, index=True))
 
     # Deductions and thresholds
-    detrazioni = Column(JSONB)  # Deductions by category
-    soglie = Column(JSONB)  # Income/value thresholds
+    detrazioni: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    soglie: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Examples of detrazioni structure:
     # {
@@ -310,21 +320,23 @@ class ComunalTaxRate(Base):
     # }
 
     # Additional municipal provisions
-    maggiorazioni = Column(JSONB)  # Rate increases for specific categories
-    agevolazioni = Column(JSONB)  # Municipal incentives and reductions
+    maggiorazioni: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    agevolazioni: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Legislative reference
-    delibera_comunale = Column(String(50))  # Municipal resolution number
-    data_delibera = Column(Date)  # Resolution date
-    legislative_reference = Column(Text)  # Full legislative reference
-    notes = Column(Text)  # Additional notes
+    delibera_comunale: Optional[str] = Field(default=None, max_length=50)
+    data_delibera: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    legislative_reference: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    )
 
     # Relationships
-    comune = relationship("Comune", back_populates="tax_rates")
+    comune: "Comune" = Relationship(back_populates="tax_rates")
 
     # Constraints
     __table_args__ = (
@@ -366,7 +378,7 @@ class ComunalTaxRate(Base):
         threshold = self.soglie.get("no_tax_under")
         return bool(threshold and income < Decimal(str(threshold)))
 
-    def get_reduced_rate_if_applicable(self, income: Decimal) -> Decimal | None:
+    def get_reduced_rate_if_applicable(self, income: Decimal) -> Optional[Decimal]:
         """Get reduced rate if income qualifies"""
         if not self.soglie:
             return None

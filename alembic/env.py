@@ -10,6 +10,24 @@ from sqlmodel import SQLModel
 
 from alembic import context
 from app.models.cassazione import CassazioneDecision
+from app.models.ccnl_database import (
+    CCNLAgreementDB,
+    CCNLSectorDB,
+    JobLevelDB,
+    LeaveEntitlementDB,
+    NoticePeriodsDB,
+    OvertimeRulesDB,
+    SalaryTableDB,
+    SpecialAllowanceDB,
+    WorkingHoursDB,
+)
+from app.models.ccnl_update_models import (
+    CCNLChangeLog,
+    CCNLDatabase,
+    CCNLMonitoringMetric,
+    CCNLUpdateEvent,
+    CCNLVersion,
+)
 from app.models.document import (
     Document,
     DocumentAnalysis,

@@ -10,6 +10,18 @@ from sqlmodel import SQLModel
 
 from alembic import context
 from app.models.cassazione import CassazioneDecision
+
+# Phase 3: GDPR Data Export Models
+from app.models.data_export import (
+    DataExportRequest,
+    DocumentAnalysis as ExportDocumentAnalysis,
+    ElectronicInvoice,
+    ExportAuditLog,
+    FAQInteraction,
+    KnowledgeBaseSearch,
+    QueryHistory,
+    TaxCalculation as ExportTaxCalculation,
+)
 from app.models.document import (
     Document,
     DocumentAnalysis,
@@ -26,6 +38,15 @@ from app.models.faq import (
     FAQUsageLog,
     FAQVariationCache,
     FAQVersionHistory,
+)
+
+# Phase 3: FAQ Automation Models
+from app.models.faq_automation import (
+    FAQCandidate,
+    FAQGenerationJob,
+    GeneratedFAQ,
+    QueryCluster,
+    RSSFAQImpact,
 )
 from app.models.italian_data import (
     ComplianceCheck,
@@ -48,11 +69,32 @@ from app.models.payment import (
     Subscription,
     WebhookEvent,
 )
+
+# Phase 3: Expert Feedback & Quality Analysis Models
+from app.models.quality_analysis import (
+    ExpertFeedback,
+    ExpertProfile,
+    ExpertValidation,
+    FailurePattern,
+    PromptTemplate,
+    QualityMetric,
+    SystemImprovement,
+)
 from app.models.query_normalization import (
     QueryNormalizationLog,
     QueryNormalizationPattern,
     QueryNormalizationStats,
 )
+
+# Phase 3: Italian Subscription Models
+# TEMPORARILY COMMENTED OUT: Conflicts with payment.py models (duplicate table names)
+# TODO: Create separate migration to evolve payment.py schema -> subscription.py schema
+# from app.models.subscription import (
+#     Invoice as SubscriptionInvoice,
+#     Subscription as UserSubscription,
+#     SubscriptionPlan,
+#     SubscriptionPlanChange,
+# )
 from app.models.regulatory_documents import (
     DocumentCollection,
     DocumentProcessingLog,

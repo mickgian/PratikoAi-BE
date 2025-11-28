@@ -8,16 +8,11 @@ secure handling of sensitive information.
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, Optional
-from uuid import uuid4
+from typing import Any, Dict, List, Optional
+from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import relationship
-
-from app.models.ccnl_database import Base
+from sqlalchemy import BigInteger, Column, Date, DateTime, Integer, JSON, Numeric, String, Text
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class ExportFormat(str, Enum):
@@ -46,7 +41,7 @@ class PrivacyLevel(str, Enum):
     MINIMAL = "minimal"  # Essential data only
 
 
-class DataExportRequest(Base):
+class DataExportRequest(SQLModel, table=True):
     """Data export requests for GDPR Article 20 compliance.
 
     Tracks user requests for complete data portability with Italian
@@ -55,67 +50,91 @@ class DataExportRequest(Base):
 
     __tablename__ = "data_export_requests"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
 
-    # Request configuration
-    format = Column(SQLEnum(ExportFormat), default=ExportFormat.JSON, nullable=False)
-    privacy_level = Column(SQLEnum(PrivacyLevel), default=PrivacyLevel.FULL, nullable=False)
-    include_sensitive = Column(Boolean, default=True, nullable=False)
-    anonymize_pii = Column(Boolean, default=False, nullable=False)
+    # Foreign keys
+    user_id: int = Field(foreign_key="user.id")
+
+    # Request configuration (store enums as strings)
+    format: str = Field(default=ExportFormat.JSON.value, max_length=20)
+    privacy_level: str = Field(default=PrivacyLevel.FULL.value, max_length=20)
+    include_sensitive: bool = Field(default=True)
+    anonymize_pii: bool = Field(default=False)
 
     # Date range filtering (optional)
-    date_from = Column(Date, nullable=True)
-    date_to = Column(Date, nullable=True)
+    date_from: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    date_to: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
 
     # Italian specific options
-    include_fatture = Column(Boolean, default=True, nullable=False)
-    include_f24 = Column(Boolean, default=True, nullable=False)
-    include_dichiarazioni = Column(Boolean, default=True, nullable=False)
-    mask_codice_fiscale = Column(Boolean, default=False, nullable=False)
+    include_fatture: bool = Field(default=True)
+    include_f24: bool = Field(default=True)
+    include_dichiarazioni: bool = Field(default=True)
+    mask_codice_fiscale: bool = Field(default=False)
 
     # Data categories to include
-    include_profile = Column(Boolean, default=True, nullable=False)
-    include_queries = Column(Boolean, default=True, nullable=False)
-    include_documents = Column(Boolean, default=True, nullable=False)
-    include_calculations = Column(Boolean, default=True, nullable=False)
-    include_subscriptions = Column(Boolean, default=True, nullable=False)
-    include_invoices = Column(Boolean, default=True, nullable=False)
-    include_usage_stats = Column(Boolean, default=True, nullable=False)
-    include_faq_interactions = Column(Boolean, default=True, nullable=False)
-    include_knowledge_searches = Column(Boolean, default=True, nullable=False)
+    include_profile: bool = Field(default=True)
+    include_queries: bool = Field(default=True)
+    include_documents: bool = Field(default=True)
+    include_calculations: bool = Field(default=True)
+    include_subscriptions: bool = Field(default=True)
+    include_invoices: bool = Field(default=True)
+    include_usage_stats: bool = Field(default=True)
+    include_faq_interactions: bool = Field(default=True)
+    include_knowledge_searches: bool = Field(default=True)
 
-    # Processing status
-    status = Column(SQLEnum(ExportStatus), default=ExportStatus.PENDING, nullable=False)
-    requested_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
-    expires_at = Column(DateTime, nullable=False)
+    # Processing status (store enum as string)
+    status: str = Field(default=ExportStatus.PENDING.value, max_length=20)
+    requested_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    started_at: Optional[datetime] = Field(default=None)
+    completed_at: Optional[datetime] = Field(default=None)
+    expires_at: datetime
 
     # Results
-    file_size_bytes = Column(BigInteger, nullable=True)
-    download_url = Column(String(500), nullable=True)
-    download_count = Column(Integer, default=0, nullable=False)
-    max_downloads = Column(Integer, default=10, nullable=False)
+    file_size_bytes: Optional[int] = Field(
+        default=None,
+        sa_column=Column(BigInteger, nullable=True)
+    )
+    download_url: Optional[str] = Field(default=None, max_length=500)
+    download_count: int = Field(default=0)
+    max_downloads: int = Field(default=10)
 
     # Error handling
-    error_message = Column(Text, nullable=True)
-    retry_count = Column(Integer, default=0, nullable=False)
-    max_retries = Column(Integer, default=3, nullable=False)
+    error_message: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    retry_count: int = Field(default=0)
+    max_retries: int = Field(default=3)
 
     # Security and audit
-    request_ip = Column(String(45), nullable=True)  # IPv6 compatible
-    user_agent = Column(Text, nullable=True)
-    download_ips = Column(JSON, nullable=True)  # Track download IPs
+    request_ip: Optional[str] = Field(default=None, max_length=45)  # IPv6 compatible
+    user_agent: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    download_ips: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True)
+    )  # Track download IPs
 
     # Italian compliance
-    gdpr_lawful_basis = Column(String(100), default="Article 20 - Right to data portability")
-    data_controller = Column(String(255), default="PratikoAI SRL")
-    retention_notice = Column(Text, default="Dati cancellati automaticamente dopo 24 ore")
+    gdpr_lawful_basis: str = Field(
+        default="Article 20 - Right to data portability",
+        max_length=100
+    )
+    data_controller: str = Field(default="PratikoAI SRL", max_length=255)
+    retention_notice: str = Field(
+        default="Dati cancellati automaticamente dopo 24 ore",
+        sa_column=Column(Text, default="Dati cancellati automaticamente dopo 24 ore")
+    )
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible
@@ -126,19 +145,16 @@ class DataExportRequest(Base):
         if not self.expires_at:
             self.expires_at = datetime.utcnow() + timedelta(hours=24)
 
-    @hybrid_property
     def is_expired(self) -> bool:
         """Check if export has expired"""
         return datetime.utcnow() > self.expires_at
 
-    @hybrid_property
     def is_downloadable(self) -> bool:
         """Check if export is ready for download"""
         return (
-            self.status == ExportStatus.COMPLETED and not self.is_expired and self.download_count < self.max_downloads
+            self.status == ExportStatus.COMPLETED.value and not self.is_expired() and self.download_count < self.max_downloads
         )
 
-    @hybrid_property
     def processing_time_seconds(self) -> int | None:
         """Calculate processing time in seconds"""
         if self.started_at and self.completed_at:
@@ -146,7 +162,6 @@ class DataExportRequest(Base):
             return int(delta.total_seconds())
         return None
 
-    @hybrid_property
     def time_until_expiry(self) -> timedelta | None:
         """Time remaining until expiry"""
         if self.expires_at:
@@ -156,11 +171,11 @@ class DataExportRequest(Base):
 
     def can_retry(self) -> bool:
         """Check if export can be retried"""
-        return self.status == ExportStatus.FAILED and self.retry_count < self.max_retries
+        return self.status == ExportStatus.FAILED.value and self.retry_count < self.max_retries
 
     def increment_download(self, ip_address: str = None) -> bool:
         """Increment download count and track IP"""
-        if not self.is_downloadable:
+        if not self.is_downloadable():
             return False
 
         self.download_count += 1
@@ -177,9 +192,9 @@ class DataExportRequest(Base):
         return {
             "id": str(self.id),
             "user_id": str(self.user_id),
-            "format": self.format.value,
-            "privacy_level": self.privacy_level.value,
-            "status": self.status.value,
+            "format": self.format,
+            "privacy_level": self.privacy_level,
+            "status": self.status,
             "requested_at": self.requested_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
@@ -187,11 +202,11 @@ class DataExportRequest(Base):
             "file_size_mb": round(self.file_size_bytes / 1024 / 1024, 2) if self.file_size_bytes else None,
             "download_count": self.download_count,
             "max_downloads": self.max_downloads,
-            "is_expired": self.is_expired,
-            "is_downloadable": self.is_downloadable,
-            "processing_time_seconds": self.processing_time_seconds,
-            "time_until_expiry_hours": round(self.time_until_expiry.total_seconds() / 3600, 1)
-            if self.time_until_expiry
+            "is_expired": self.is_expired(),
+            "is_downloadable": self.is_downloadable(),
+            "processing_time_seconds": self.processing_time_seconds(),
+            "time_until_expiry_hours": round(self.time_until_expiry().total_seconds() / 3600, 1)
+            if self.time_until_expiry()
             else 0,
             "error_message": self.error_message,
             "data_categories": {
@@ -215,7 +230,7 @@ class DataExportRequest(Base):
         }
 
 
-class ExportAuditLog(Base):
+class ExportAuditLog(SQLModel, table=True):
     """Audit log for data export activities.
 
     Tracks all export-related activities for compliance and security monitoring.
@@ -223,28 +238,37 @@ class ExportAuditLog(Base):
 
     __tablename__ = "export_audit_logs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    export_request_id = Column(UUID(as_uuid=True), ForeignKey("data_export_requests.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    export_request_id: UUID = Field(foreign_key="data_export_requests.id")
+    user_id: int = Field(foreign_key="user.id")
 
     # Activity details
-    activity_type = Column(String(50), nullable=False)  # requested, started, completed, downloaded, expired
-    activity_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    activity_type: str = Field(max_length=50)  # requested, started, completed, downloaded, expired
+    activity_timestamp: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
 
     # Context information
-    ip_address = Column(String(45), nullable=True)
-    user_agent = Column(Text, nullable=True)
-    session_id = Column(String(255), nullable=True)
+    ip_address: Optional[str] = Field(default=None, max_length=45)
+    user_agent: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    session_id: Optional[str] = Field(default=None, max_length=255)
 
     # Activity-specific data
-    activity_data = Column(JSON, nullable=True)
+    activity_data: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True)
+    )
 
     # Security flags
-    suspicious_activity = Column(Boolean, default=False)
-    security_notes = Column(Text, nullable=True)
+    suspicious_activity: bool = Field(default=False)
+    security_notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Relationships
-    export_request = relationship("DataExportRequest")
+    export_request: Optional["DataExportRequest"] = Relationship()
     # Note: No relationship to User model - it uses SQLModel which is incompatible
     # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
@@ -262,7 +286,7 @@ class ExportAuditLog(Base):
         }
 
 
-class QueryHistory(Base):
+class QueryHistory(SQLModel, table=True):
     """User query history for export.
 
     Stores user queries and responses for GDPR compliance export.
@@ -270,109 +294,143 @@ class QueryHistory(Base):
 
     __tablename__ = "query_history"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    user_id: int = Field(foreign_key="user.id")
 
     # Query details
-    query = Column(Text, nullable=False)
-    response = Column(Text, nullable=True)
-    response_cached = Column(Boolean, default=False)
-    response_time_ms = Column(Integer, nullable=True)
+    query: str = Field(sa_column=Column(Text, nullable=False))
+    response: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    response_cached: bool = Field(default=False)
+    response_time_ms: Optional[int] = Field(default=None)
 
     # Usage tracking
-    tokens_used = Column(Integer, nullable=True)
-    cost_cents = Column(Integer, nullable=True)
-    model_used = Column(String(100), nullable=True)
+    tokens_used: Optional[int] = Field(default=None)
+    cost_cents: Optional[int] = Field(default=None)
+    model_used: Optional[str] = Field(default=None, max_length=100)
 
     # Context
-    session_id = Column(String(255), nullable=True)
-    conversation_id = Column(UUID(as_uuid=True), nullable=True)
+    session_id: Optional[str] = Field(default=None, max_length=255)
+    conversation_id: Optional[UUID] = Field(default=None)
 
     # Italian specific
-    query_type = Column(String(50), nullable=True)  # tax_calculation, document_analysis, general
-    italian_content = Column(Boolean, default=True)
+    query_type: Optional[str] = Field(default=None, max_length=50)  # tax_calculation, document_analysis, general
+    italian_content: bool = Field(default=True)
 
     # Timestamps
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible
     # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
-class DocumentAnalysis(Base):
+class DocumentAnalysis(SQLModel, table=True):
     """Document analysis history for export.
 
     Metadata only - no actual document content for privacy.
     """
 
-    __tablename__ = "document_analysis"
+    __tablename__ = "export_document_analysis"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    user_id: int = Field(foreign_key="user.id")
 
     # Document metadata
-    filename = Column(String(255), nullable=False)
-    file_type = Column(String(100), nullable=False)
-    file_size_bytes = Column(BigInteger, nullable=True)
+    filename: str = Field(max_length=255)
+    file_type: str = Field(max_length=100)
+    file_size_bytes: Optional[int] = Field(
+        default=None,
+        sa_column=Column(BigInteger, nullable=True)
+    )
 
     # Analysis details
-    analysis_type = Column(String(100), nullable=False)  # italian_invoice, f24, declaration
-    processing_time_ms = Column(Integer, nullable=True)
-    analysis_status = Column(String(50), default="completed")
+    analysis_type: str = Field(max_length=100)  # italian_invoice, f24, declaration
+    processing_time_ms: Optional[int] = Field(default=None)
+    analysis_status: str = Field(default="completed", max_length=50)
 
     # Results summary (no actual content)
-    entities_found = Column(Integer, nullable=True)
-    confidence_score = Column(Numeric(3, 2), nullable=True)
+    entities_found: Optional[int] = Field(default=None)
+    confidence_score: Optional[Decimal] = Field(
+        default=None,
+        sa_column=Column(Numeric(3, 2), nullable=True)
+    )
 
     # Italian specific
-    document_category = Column(String(100), nullable=True)  # fattura, ricevuta, f24, etc.
-    tax_year = Column(Integer, nullable=True)
+    document_category: Optional[str] = Field(default=None, max_length=100)  # fattura, ricevuta, f24, etc.
+    tax_year: Optional[int] = Field(default=None)
 
     # Timestamps
-    uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    analyzed_at = Column(DateTime, nullable=True)
+    uploaded_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    analyzed_at: Optional[datetime] = Field(default=None)
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible
     # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
-class TaxCalculation(Base):
+class TaxCalculation(SQLModel, table=True):
     """Tax calculation history for export.
 
     Italian tax calculations performed by users.
     """
 
-    __tablename__ = "tax_calculations"
+    __tablename__ = "export_tax_calculations"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    user_id: int = Field(foreign_key="user.id")
 
     # Calculation details
-    calculation_type = Column(String(50), nullable=False)  # IVA, IRPEF, IMU, etc.
-    input_amount = Column(Numeric(12, 2), nullable=False)
-    result = Column(JSON, nullable=False)  # Calculation results
-    parameters = Column(JSON, nullable=True)  # Input parameters
+    calculation_type: str = Field(max_length=50)  # IVA, IRPEF, IMU, etc.
+    input_amount: Decimal = Field(
+        sa_column=Column(Numeric(12, 2), nullable=False)
+    )
+    result: Dict[str, Any] = Field(
+        sa_column=Column(JSON, nullable=False)
+    )  # Calculation results
+    parameters: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True)
+    )  # Input parameters
 
     # Italian specific
-    tax_year = Column(Integer, nullable=True)
-    region = Column(String(50), nullable=True)
-    municipality = Column(String(100), nullable=True)
+    tax_year: Optional[int] = Field(default=None)
+    region: Optional[str] = Field(default=None, max_length=50)
+    municipality: Optional[str] = Field(default=None, max_length=100)
 
     # Context
-    session_id = Column(String(255), nullable=True)
+    session_id: Optional[str] = Field(default=None, max_length=255)
 
     # Timestamps
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible
     # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
-class FAQInteraction(Base):
+class FAQInteraction(SQLModel, table=True):
     """FAQ interaction history for export.
 
     Tracks user interactions with FAQ system.
@@ -380,31 +438,37 @@ class FAQInteraction(Base):
 
     __tablename__ = "faq_interactions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    user_id: int = Field(foreign_key="user.id")
 
     # FAQ details
-    faq_id = Column(String(100), nullable=False)
-    question = Column(Text, nullable=False)
-    answer = Column(Text, nullable=True)
-    category = Column(String(100), nullable=True)
+    faq_id: str = Field(max_length=100)
+    question: str = Field(sa_column=Column(Text, nullable=False))
+    answer: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    category: Optional[str] = Field(default=None, max_length=100)
 
     # Interaction details
-    viewed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    time_spent_seconds = Column(Integer, nullable=True)
-    helpful_rating = Column(Integer, nullable=True)  # 1-5 scale
-    feedback = Column(Text, nullable=True)
+    viewed_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    time_spent_seconds: Optional[int] = Field(default=None)
+    helpful_rating: Optional[int] = Field(default=None)  # 1-5 scale
+    feedback: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Italian specific
-    italian_content = Column(Boolean, default=True)
-    tax_related = Column(Boolean, default=False)
+    italian_content: bool = Field(default=True)
+    tax_related: bool = Field(default=False)
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible
     # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
-class KnowledgeBaseSearch(Base):
+class KnowledgeBaseSearch(SQLModel, table=True):
     """Knowledge base search history for export.
 
     Tracks user searches in the knowledge base.
@@ -412,32 +476,41 @@ class KnowledgeBaseSearch(Base):
 
     __tablename__ = "knowledge_base_searches"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    user_id: int = Field(foreign_key="user.id")
 
     # Search details
-    search_query = Column(Text, nullable=False)
-    results_count = Column(Integer, nullable=False)
-    clicked_result_id = Column(String(100), nullable=True)
-    clicked_position = Column(Integer, nullable=True)
+    search_query: str = Field(sa_column=Column(Text, nullable=False))
+    results_count: int
+    clicked_result_id: Optional[str] = Field(default=None, max_length=100)
+    clicked_position: Optional[int] = Field(default=None)
 
     # Search context
-    search_filters = Column(JSON, nullable=True)
-    search_category = Column(String(100), nullable=True)
+    search_filters: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True)
+    )
+    search_category: Optional[str] = Field(default=None, max_length=100)
 
     # Italian specific
-    italian_query = Column(Boolean, default=True)
-    regulatory_content = Column(Boolean, default=False)
+    italian_query: bool = Field(default=True)
+    regulatory_content: bool = Field(default=False)
 
     # Timestamps
-    searched_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    searched_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible
     # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
-class ElectronicInvoice(Base):
+class ElectronicInvoice(SQLModel, table=True):
     """Electronic invoice (Fattura Elettronica) history for export.
 
     Italian electronic invoice metadata and status.
@@ -445,26 +518,32 @@ class ElectronicInvoice(Base):
 
     __tablename__ = "electronic_invoices"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    user_id: int = Field(foreign_key="user.id")
 
     # Invoice identification
-    invoice_number = Column(String(50), nullable=False)
-    invoice_date = Column(Date, nullable=False)
+    invoice_number: str = Field(max_length=50)
+    invoice_date: date = Field(sa_column=Column(Date, nullable=False))
 
     # Electronic invoice specific
-    xml_content = Column(Text, nullable=True)  # Full XML content
-    xml_hash = Column(String(64), nullable=True)  # SHA-256 hash
+    xml_content: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))  # Full XML content
+    xml_hash: Optional[str] = Field(default=None, max_length=64)  # SHA-256 hash
 
     # SDI (Sistema di Interscambio) details
-    sdi_transmission_id = Column(String(255), nullable=True)
-    sdi_status = Column(String(50), nullable=True)  # sent, accepted, rejected
-    sdi_response = Column(Text, nullable=True)
+    sdi_transmission_id: Optional[str] = Field(default=None, max_length=255)
+    sdi_status: Optional[str] = Field(default=None, max_length=50)  # sent, accepted, rejected
+    sdi_response: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    transmitted_at = Column(DateTime, nullable=True)
-    accepted_at = Column(DateTime, nullable=True)
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    transmitted_at: Optional[datetime] = Field(default=None)
+    accepted_at: Optional[datetime] = Field(default=None)
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible

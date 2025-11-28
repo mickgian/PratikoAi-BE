@@ -31,10 +31,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-
-from app.models.ccnl_database import Base
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class FeedbackType(enum.Enum):
@@ -74,44 +72,61 @@ class ImprovementStatus(enum.Enum):
     FAILED = "failed"
 
 
-class ExpertProfile(Base):
+class ExpertProfile(SQLModel, table=True):
     """Expert profiles for validation and trust scoring"""
 
     __tablename__ = "expert_profiles"
 
-    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
 
-    # Professional credentials
-    credentials: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
-    credential_types: Mapped[list[ExpertCredentialType]] = mapped_column(
-        ARRAY(Enum(ExpertCredentialType)), default=list
+    # Foreign keys
+    user_id: int = Field(foreign_key="user.id")
+
+    # Professional credentials (arrays require sa_column)
+    credentials: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
     )
-    experience_years: Mapped[int] = mapped_column(Integer, default=0)
-    specializations: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    credential_types: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)  # Store as strings
+    )
+    experience_years: int = Field(default=0)
+    specializations: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
+    )
 
     # Performance metrics
-    feedback_count: Mapped[int] = mapped_column(Integer, default=0)
-    feedback_accuracy_rate: Mapped[float] = mapped_column(Float, default=0.0)
-    average_response_time_seconds: Mapped[int] = mapped_column(Integer, default=0)
-    trust_score: Mapped[float] = mapped_column(Float, default=0.5)
+    feedback_count: int = Field(default=0)
+    feedback_accuracy_rate: float = Field(default=0.0)
+    average_response_time_seconds: int = Field(default=0)
+    trust_score: float = Field(default=0.5)
 
     # Professional information
-    professional_registration_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    organization: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    location_city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    professional_registration_number: Optional[str] = Field(default=None, max_length=50)
+    organization: Optional[str] = Field(default=None, max_length=200)
+    location_city: Optional[str] = Field(default=None, max_length=100)
 
     # Status and verification
-    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    verification_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_verified: bool = Field(default=False)
+    verification_date: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime, nullable=True)
+    )
+    is_active: bool = Field(default=True)
 
-    # Metadata
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
+    )
 
     # Relationships
-    expert_feedback: Mapped[list["ExpertFeedback"]] = relationship("ExpertFeedback", back_populates="expert")
+    expert_feedback: List["ExpertFeedback"] = Relationship(back_populates="expert")
 
     __table_args__ = (
         Index("idx_expert_profiles_trust_score", "trust_score"),
@@ -122,99 +137,126 @@ class ExpertProfile(Base):
     )
 
 
-class ExpertFeedback(Base):
-    """Expert feedback on AI-generated answers"""
+class ExpertFeedback(SQLModel, table=True):
+    """Expert feedback on AI-generated answers - POWERS THE CORRETTA BUTTON"""
 
     __tablename__ = "expert_feedback"
 
-    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    query_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
-    expert_id: Mapped[UUID] = mapped_column(
-        PostgreSQLUUID(as_uuid=True), ForeignKey("expert_profiles.id"), nullable=False
-    )
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
 
-    # Feedback details
-    feedback_type: Mapped[FeedbackType] = mapped_column(Enum(FeedbackType), nullable=False)
-    category: Mapped[ItalianFeedbackCategory | None] = mapped_column(Enum(ItalianFeedbackCategory), nullable=True)
+    # Foreign keys
+    query_id: UUID
+    expert_id: UUID = Field(foreign_key="expert_profiles.id")
+
+    # Feedback details (store enum as string)
+    feedback_type: str = Field(max_length=20)  # FeedbackType enum value
+    category: Optional[str] = Field(default=None, max_length=50)  # ItalianFeedbackCategory enum value
 
     # Original content
-    query_text: Mapped[str] = mapped_column(Text, nullable=False)
-    original_answer: Mapped[str] = mapped_column(Text, nullable=False)
+    query_text: str = Field(sa_column=Column(Text, nullable=False))
+    original_answer: str = Field(sa_column=Column(Text, nullable=False))
 
     # Expert input
-    expert_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
-    improvement_suggestions: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
-    regulatory_references: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    expert_answer: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    improvement_suggestions: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(Text), default=list)
+    )
+    regulatory_references: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
+    )
 
     # Quality metrics
-    confidence_score: Mapped[float] = mapped_column(Float, default=0.0)
-    time_spent_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
-    complexity_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 1-5 scale
+    confidence_score: float = Field(default=0.0)
+    time_spent_seconds: int
+    complexity_rating: Optional[int] = Field(default=None)  # 1-5 scale
 
     # Processing metadata
-    processing_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    feedback_timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    processing_time_ms: Optional[int] = Field(default=None)
+    feedback_timestamp: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
 
     # System response
-    action_taken: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    improvement_applied: Mapped[bool] = mapped_column(Boolean, default=False)
+    action_taken: Optional[str] = Field(default=None, max_length=100)
+    improvement_applied: bool = Field(default=False)
 
-    # Metadata
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
+    )
 
     # Relationships
-    expert: Mapped["ExpertProfile"] = relationship("ExpertProfile", back_populates="expert_feedback")
+    expert: "ExpertProfile" = Relationship(back_populates="expert_feedback")
 
     __table_args__ = (
         Index("idx_expert_feedback_query_id", "query_id"),
         Index("idx_expert_feedback_expert_id", "expert_id"),
         Index("idx_expert_feedback_type_category", "feedback_type", "category"),
         Index("idx_expert_feedback_timestamp", "feedback_timestamp"),
+        Index("idx_expert_feedback_improvement_applied", "improvement_applied"),
         CheckConstraint("confidence_score >= 0.0 AND confidence_score <= 1.0", name="confidence_score_range"),
         CheckConstraint("complexity_rating >= 1 AND complexity_rating <= 5", name="complexity_rating_range"),
         CheckConstraint("time_spent_seconds > 0", name="positive_time_spent"),
     )
 
 
-class PromptTemplate(Base):
+class PromptTemplate(SQLModel, table=True):
     """Advanced prompt templates with structured reasoning"""
 
     __tablename__ = "prompt_templates"
 
-    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
-    version: Mapped[str] = mapped_column(String(20), nullable=False, default="1.0")
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    name: str = Field(max_length=200, unique=True)
+    version: str = Field(max_length=20, default="1.0")
 
     # Template content
-    template_text: Mapped[str] = mapped_column(Text, nullable=False)
-    variables: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    template_text: str = Field(sa_column=Column(Text, nullable=False))
+    variables: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
+    )
+    description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Categorization
-    category: Mapped[str] = mapped_column(String(100), nullable=False)
-    specialization_areas: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
-    complexity_level: Mapped[str] = mapped_column(String(20), default="medium")  # basic, medium, advanced
+    category: str = Field(max_length=100)
+    specialization_areas: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
+    )
+    complexity_level: str = Field(max_length=20, default="medium")  # basic, medium, advanced
 
     # Quality metrics
-    clarity_score: Mapped[float] = mapped_column(Float, default=0.0)
-    completeness_score: Mapped[float] = mapped_column(Float, default=0.0)
-    accuracy_score: Mapped[float] = mapped_column(Float, default=0.0)
-    overall_quality_score: Mapped[float] = mapped_column(Float, default=0.0)
+    clarity_score: float = Field(default=0.0)
+    completeness_score: float = Field(default=0.0)
+    accuracy_score: float = Field(default=0.0)
+    overall_quality_score: float = Field(default=0.0)
 
     # Usage tracking
-    usage_count: Mapped[int] = mapped_column(Integer, default=0)
-    success_rate: Mapped[float] = mapped_column(Float, default=0.0)
-    average_user_rating: Mapped[float] = mapped_column(Float, default=0.0)
+    usage_count: int = Field(default=0)
+    success_rate: float = Field(default=0.0)
+    average_user_rating: float = Field(default=0.0)
 
     # A/B testing
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    variant_group: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    is_active: bool = Field(default=True)
+    variant_group: Optional[str] = Field(default=None, max_length=50)
 
-    # Metadata
-    created_by: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    # Timestamps
+    created_by: Optional[UUID] = Field(default=None)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
+    )
 
     __table_args__ = (
         Index("idx_prompt_templates_category", "category"),
@@ -231,41 +273,61 @@ class PromptTemplate(Base):
     )
 
 
-class FailurePattern(Base):
+class FailurePattern(SQLModel, table=True):
     """Identified patterns in system failures"""
 
     __tablename__ = "failure_patterns"
 
-    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    pattern_name: Mapped[str] = mapped_column(String(200), nullable=False)
-    pattern_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    pattern_name: str = Field(max_length=200)
+    pattern_type: str = Field(max_length=100)
 
     # Pattern characteristics
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    categories: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
-    example_queries: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    description: str = Field(sa_column=Column(Text, nullable=False))
+    categories: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
+    )
+    example_queries: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(Text), default=list)
+    )
 
     # Frequency and impact
-    frequency_count: Mapped[int] = mapped_column(Integer, default=0)
-    impact_score: Mapped[float] = mapped_column(Float, default=0.0)
-    confidence_score: Mapped[float] = mapped_column(Float, default=0.0)
+    frequency_count: int = Field(default=0)
+    impact_score: float = Field(default=0.0)
+    confidence_score: float = Field(default=0.0)
 
     # Analysis metadata
-    detection_algorithm: Mapped[str] = mapped_column(String(100), default="manual")
-    cluster_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    detection_algorithm: str = Field(max_length=100, default="manual")
+    cluster_id: Optional[str] = Field(default=None, max_length=100)
 
     # Temporal tracking
-    first_detected: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    last_occurrence: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    first_detected: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
+    last_occurrence: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
 
     # Resolution tracking
-    is_resolved: Mapped[bool] = mapped_column(Boolean, default=False)
-    resolution_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    resolution_method: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    is_resolved: bool = Field(default=False)
+    resolution_date: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime, nullable=True)
+    )
+    resolution_method: Optional[str] = Field(default=None, max_length=200)
 
-    # Metadata
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
+    )
 
     __table_args__ = (
         Index("idx_failure_patterns_type", "pattern_type"),
@@ -278,56 +340,91 @@ class FailurePattern(Base):
     )
 
 
-class SystemImprovement(Base):
+class SystemImprovement(SQLModel, table=True):
     """Tracking of system improvements and their outcomes"""
 
     __tablename__ = "system_improvements"
 
-    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    improvement_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    improvement_type: str = Field(max_length=100)
 
     # Improvement details
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    category: Mapped[str] = mapped_column(String(100), nullable=False)
+    title: str = Field(max_length=200)
+    description: str = Field(sa_column=Column(Text, nullable=False))
+    category: str = Field(max_length=100)
 
     # Source and reasoning
-    trigger_pattern_id: Mapped[UUID | None] = mapped_column(
-        PostgreSQLUUID(as_uuid=True), ForeignKey("failure_patterns.id"), nullable=True
+    trigger_pattern_id: Optional[UUID] = Field(default=None, foreign_key="failure_patterns.id")
+    expert_feedback_ids: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
     )
-    expert_feedback_ids: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
-    justification: Mapped[str] = mapped_column(Text, nullable=False)
+    justification: str = Field(sa_column=Column(Text, nullable=False))
 
-    # Implementation
-    implementation_details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    status: Mapped[ImprovementStatus] = mapped_column(Enum(ImprovementStatus), default=ImprovementStatus.PENDING)
+    # Implementation (JSON requires sa_column)
+    implementation_details: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, default=dict)
+    )
+    status: str = Field(max_length=20, default="pending")  # ImprovementStatus enum value
 
     # Impact measurement
-    target_metrics: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    baseline_metrics: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    actual_metrics: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    target_metrics: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, default=dict)
+    )
+    baseline_metrics: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True)
+    )
+    actual_metrics: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True)
+    )
 
     # Confidence and priority
-    confidence_score: Mapped[float] = mapped_column(Float, default=0.0)
-    priority_score: Mapped[float] = mapped_column(Float, default=0.5)
-    estimated_impact: Mapped[float] = mapped_column(Float, default=0.0)
+    confidence_score: float = Field(default=0.0)
+    priority_score: float = Field(default=0.5)
+    estimated_impact: float = Field(default=0.0)
 
     # Timeline
-    planned_start_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    actual_start_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    planned_completion_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    actual_completion_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    planned_start_date: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime, nullable=True)
+    )
+    actual_start_date: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime, nullable=True)
+    )
+    planned_completion_date: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime, nullable=True)
+    )
+    actual_completion_date: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime, nullable=True)
+    )
 
     # Approval workflow
-    requires_expert_validation: Mapped[bool] = mapped_column(Boolean, default=False)
-    expert_approved: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    approving_expert_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=True)
-    approval_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    requires_expert_validation: bool = Field(default=False)
+    expert_approved: Optional[bool] = Field(default=None)
+    approving_expert_id: Optional[UUID] = Field(default=None)
+    approval_date: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime, nullable=True)
+    )
 
-    # Metadata
-    created_by: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    # Timestamps
+    created_by: Optional[UUID] = Field(default=None)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
+    )
 
     __table_args__ = (
         Index("idx_system_improvements_type", "improvement_type"),
@@ -340,46 +437,60 @@ class SystemImprovement(Base):
     )
 
 
-class QualityMetric(Base):
+class QualityMetric(SQLModel, table=True):
     """Quality metrics tracking over time"""
 
     __tablename__ = "quality_metrics"
 
-    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    metric_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    metric_category: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    metric_name: str = Field(max_length=100)
+    metric_category: str = Field(max_length=100)
 
     # Metric value and context
-    metric_value: Mapped[float] = mapped_column(Float, nullable=False)
-    metric_unit: Mapped[str] = mapped_column(String(50), default="score")
-    measurement_period: Mapped[str] = mapped_column(String(50), default="daily")
+    metric_value: float
+    metric_unit: str = Field(max_length=50, default="score")
+    measurement_period: str = Field(max_length=50, default="daily")
 
     # Contextualization
-    query_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    expert_specialization: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    user_segment: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    query_category: Optional[str] = Field(default=None, max_length=100)
+    expert_specialization: Optional[str] = Field(default=None, max_length=100)
+    user_segment: Optional[str] = Field(default=None, max_length=100)
 
     # Sample size and confidence
-    sample_size: Mapped[int] = mapped_column(Integer, default=0)
-    confidence_interval: Mapped[float | None] = mapped_column(Float, nullable=True)
-    standard_deviation: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sample_size: int = Field(default=0)
+    confidence_interval: Optional[float] = Field(default=None)
+    standard_deviation: Optional[float] = Field(default=None)
 
     # Benchmarking
-    baseline_value: Mapped[float | None] = mapped_column(Float, nullable=True)
-    target_value: Mapped[float | None] = mapped_column(Float, nullable=True)
-    benchmark_percentile: Mapped[float | None] = mapped_column(Float, nullable=True)
+    baseline_value: Optional[float] = Field(default=None)
+    target_value: Optional[float] = Field(default=None)
+    benchmark_percentile: Optional[float] = Field(default=None)
 
     # Temporal tracking
-    measurement_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    measurement_window_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    measurement_window_end: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    measurement_date: datetime = Field(
+        sa_column=Column(DateTime, nullable=False)
+    )
+    measurement_window_start: datetime = Field(
+        sa_column=Column(DateTime, nullable=False)
+    )
+    measurement_window_end: datetime = Field(
+        sa_column=Column(DateTime, nullable=False)
+    )
 
     # Metadata
-    calculated_by: Mapped[str] = mapped_column(String(100), default="system")
-    calculation_method: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    data_sources: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    calculated_by: str = Field(max_length=100, default="system")
+    calculation_method: Optional[str] = Field(default=None, max_length=200)
+    data_sources: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
+    )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
 
     __table_args__ = (
         Index("idx_quality_metrics_name_date", "metric_name", "measurement_date"),
@@ -389,49 +500,75 @@ class QualityMetric(Base):
     )
 
 
-class ExpertValidation(Base):
+class ExpertValidation(SQLModel, table=True):
     """Expert validation records for complex queries"""
 
     __tablename__ = "expert_validations"
 
-    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    query_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    query_id: UUID
 
     # Validation request
-    validation_type: Mapped[str] = mapped_column(String(100), nullable=False)  # consensus, single_expert, automated
-    complexity_level: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-5 scale
-    specialization_required: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    validation_type: str = Field(max_length=100)  # consensus, single_expert, automated
+    complexity_level: int  # 1-5 scale
+    specialization_required: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
+    )
 
     # Expert assignments
-    assigned_experts: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
-    completed_validations: Mapped[int] = mapped_column(Integer, default=0)
-    required_validations: Mapped[int] = mapped_column(Integer, default=1)
+    assigned_experts: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
+    )
+    completed_validations: int = Field(default=0)
+    required_validations: int = Field(default=1)
 
     # Consensus tracking
-    consensus_reached: Mapped[bool] = mapped_column(Boolean, default=False)
-    consensus_confidence: Mapped[float] = mapped_column(Float, default=0.0)
-    disagreement_areas: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    consensus_reached: bool = Field(default=False)
+    consensus_confidence: float = Field(default=0.0)
+    disagreement_areas: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
+    )
 
     # Final outcome
-    validated_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
-    validation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    regulatory_confirmations: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    validated_answer: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    validation_notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    regulatory_confirmations: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), default=list)
+    )
 
     # Quality assurance
-    final_confidence_score: Mapped[float] = mapped_column(Float, default=0.0)
-    expert_agreement_score: Mapped[float] = mapped_column(Float, default=0.0)
+    final_confidence_score: float = Field(default=0.0)
+    expert_agreement_score: float = Field(default=0.0)
 
     # Timeline
-    requested_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    target_completion: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    requested_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
+    target_completion: datetime = Field(
+        sa_column=Column(DateTime, nullable=False)
+    )
+    completed_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime, nullable=True)
+    )
 
     # Status
-    status: Mapped[str] = mapped_column(String(50), default="pending")  # pending, in_progress, completed, expired
+    status: str = Field(max_length=50, default="pending")  # pending, in_progress, completed, expired
 
-    # Metadata
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
+    )
 
     __table_args__ = (
         Index("idx_expert_validations_query", "query_id"),

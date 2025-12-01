@@ -108,14 +108,14 @@ def mock_database_session():
     return session
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db_session():
     """Real async database session for integration tests."""
     from app.models.database import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
         yield session
-        await session.close()
+        # Note: No explicit close() needed - context manager handles cleanup
 
 
 @contextmanager

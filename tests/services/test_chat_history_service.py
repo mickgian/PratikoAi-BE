@@ -1,11 +1,15 @@
 """Unit tests for ChatHistoryService.
 
 Tests chat history persistence, retrieval, and GDPR compliance.
+
+The ChatHistoryService methods accept an optional `db` parameter for dependency
+injection, which allows us to pass mock database sessions directly without
+needing to patch the get_db async generator.
 """
 
 import uuid
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -39,7 +43,20 @@ def sample_query():
 @pytest.fixture
 def sample_response():
     """Fixture for sample AI response."""
-    return "L'IVA (Imposta sul Valore Aggiunto) è un'imposta indiretta sui consumi..."
+    return "L'IVA (Imposta sul Valore Aggiunto) e un'imposta indiretta sui consumi..."
+
+
+@pytest.fixture
+def mock_db():
+    """Fixture for mock async database session.
+
+    Creates a mock AsyncSession with common methods pre-configured.
+    """
+    db = AsyncMock()
+    db.execute = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+    return db
 
 
 class TestSaveChatInteraction:
@@ -53,34 +70,28 @@ class TestSaveChatInteraction:
         sample_session_id,
         sample_query,
         sample_response,
+        mock_db,
     ):
         """Test successful chat interaction save."""
-        # Arrange
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock()
-        mock_db.commit = AsyncMock()
-
-        # Mock get_db generator
-        async def mock_get_db():
-            yield mock_db
-
-        # Act
-        with patch("app.models.database.get_db", mock_get_db):
-            record_id = await chat_history_service.save_chat_interaction(
-                user_id=sample_user_id,
-                session_id=sample_session_id,
-                user_query=sample_query,
-                ai_response=sample_response,
-                model_used="gpt-4-turbo",
-                tokens_used=350,
-                cost_cents=5,
-                response_time_ms=1200,
-                response_cached=False,
-            )
+        # Act - pass mock_db directly via db parameter
+        record_id = await chat_history_service.save_chat_interaction(
+            user_id=sample_user_id,
+            session_id=sample_session_id,
+            user_query=sample_query,
+            ai_response=sample_response,
+            model_used="gpt-4-turbo",
+            tokens_used=350,
+            cost_cents=5,
+            response_time_ms=1200,
+            response_cached=False,
+            db=mock_db,
+        )
 
         # Assert
         assert record_id is not None
         assert isinstance(record_id, str)
+        # Verify UUID format
+        uuid.UUID(record_id)
         mock_db.execute.assert_called_once()
         mock_db.commit.assert_called_once()
 
@@ -92,24 +103,17 @@ class TestSaveChatInteraction:
         sample_session_id,
         sample_query,
         sample_response,
+        mock_db,
     ):
         """Test save with only required parameters."""
-        # Arrange
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock()
-        mock_db.commit = AsyncMock()
-
-        async def mock_get_db():
-            yield mock_db
-
         # Act
-        with patch("app.models.database.get_db", mock_get_db):
-            record_id = await chat_history_service.save_chat_interaction(
-                user_id=sample_user_id,
-                session_id=sample_session_id,
-                user_query=sample_query,
-                ai_response=sample_response,
-            )
+        record_id = await chat_history_service.save_chat_interaction(
+            user_id=sample_user_id,
+            session_id=sample_session_id,
+            user_query=sample_query,
+            ai_response=sample_response,
+            db=mock_db,
+        )
 
         # Assert
         assert record_id is not None
@@ -124,30 +128,26 @@ class TestSaveChatInteraction:
         sample_session_id,
         sample_query,
         sample_response,
+        mock_db,
     ):
         """Test save with conversation ID for conversation threading."""
         # Arrange
         conversation_id = str(uuid.uuid4())
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock()
-        mock_db.commit = AsyncMock()
-
-        async def mock_get_db():
-            yield mock_db
 
         # Act
-        with patch("app.models.database.get_db", mock_get_db):
-            record_id = await chat_history_service.save_chat_interaction(
-                user_id=sample_user_id,
-                session_id=sample_session_id,
-                user_query=sample_query,
-                ai_response=sample_response,
-                conversation_id=conversation_id,
-            )
+        record_id = await chat_history_service.save_chat_interaction(
+            user_id=sample_user_id,
+            session_id=sample_session_id,
+            user_query=sample_query,
+            ai_response=sample_response,
+            conversation_id=conversation_id,
+            db=mock_db,
+        )
 
         # Assert
         assert record_id is not None
         call_args = mock_db.execute.call_args
+        # The second argument to execute is the params dict
         assert call_args[0][1]["conversation_id"] == conversation_id
 
     @pytest.mark.asyncio
@@ -160,22 +160,19 @@ class TestSaveChatInteraction:
         sample_response,
     ):
         """Test error handling when database save fails."""
-        # Arrange
+        # Arrange - create mock that raises an exception
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(side_effect=Exception("Database connection failed"))
 
-        async def mock_get_db():
-            yield mock_db
-
         # Act & Assert
-        with patch("app.services.chat_history_service.get_db", mock_get_db):
-            with pytest.raises(Exception, match="Database connection failed"):
-                await chat_history_service.save_chat_interaction(
-                    user_id=sample_user_id,
-                    session_id=sample_session_id,
-                    user_query=sample_query,
-                    ai_response=sample_response,
-                )
+        with pytest.raises(Exception, match="Database connection failed"):
+            await chat_history_service.save_chat_interaction(
+                user_id=sample_user_id,
+                session_id=sample_session_id,
+                user_query=sample_query,
+                ai_response=sample_response,
+                db=mock_db,
+            )
 
 
 class TestGetSessionHistory:
@@ -221,17 +218,14 @@ class TestGetSessionHistory:
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        async def mock_get_db():
-            yield mock_db
-
-        # Act
-        with patch("app.models.database.get_db", mock_get_db):
-            history = await chat_history_service.get_session_history(
-                user_id=sample_user_id,
-                session_id=sample_session_id,
-                limit=100,
-                offset=0,
-            )
+        # Act - pass mock_db directly via db parameter
+        history = await chat_history_service.get_session_history(
+            user_id=sample_user_id,
+            session_id=sample_session_id,
+            limit=100,
+            offset=0,
+            db=mock_db,
+        )
 
         # Assert
         assert len(history) == 2
@@ -255,17 +249,14 @@ class TestGetSessionHistory:
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        async def mock_get_db():
-            yield mock_db
-
         # Act
-        with patch("app.models.database.get_db", mock_get_db):
-            history = await chat_history_service.get_session_history(
-                user_id=sample_user_id,
-                session_id=sample_session_id,
-                limit=50,
-                offset=100,
-            )
+        history = await chat_history_service.get_session_history(
+            user_id=sample_user_id,
+            session_id=sample_session_id,
+            limit=50,
+            offset=100,
+            db=mock_db,
+        )
 
         # Assert
         assert len(history) == 0
@@ -288,15 +279,12 @@ class TestGetSessionHistory:
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        async def mock_get_db():
-            yield mock_db
-
         # Act
-        with patch("app.models.database.get_db", mock_get_db):
-            history = await chat_history_service.get_session_history(
-                user_id=sample_user_id,
-                session_id=sample_session_id,
-            )
+        history = await chat_history_service.get_session_history(
+            user_id=sample_user_id,
+            session_id=sample_session_id,
+            db=mock_db,
+        )
 
         # Assert
         assert len(history) == 0
@@ -345,16 +333,13 @@ class TestGetUserHistory:
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        async def mock_get_db():
-            yield mock_db
-
-        # Act
-        with patch("app.models.database.get_db", mock_get_db):
-            history = await chat_history_service.get_user_history(
-                user_id=sample_user_id,
-                limit=100,
-                offset=0,
-            )
+        # Act - pass mock_db directly via db parameter
+        history = await chat_history_service.get_user_history(
+            user_id=sample_user_id,
+            limit=100,
+            offset=0,
+            db=mock_db,
+        )
 
         # Assert
         assert len(history) == 2
@@ -380,14 +365,11 @@ class TestDeleteUserHistory:
         mock_db.execute = AsyncMock(return_value=mock_result)
         mock_db.commit = AsyncMock()
 
-        async def mock_get_db():
-            yield mock_db
-
-        # Act
-        with patch("app.models.database.get_db", mock_get_db):
-            deleted_count = await chat_history_service.delete_user_history(
-                user_id=sample_user_id,
-            )
+        # Act - pass mock_db directly via db parameter
+        deleted_count = await chat_history_service.delete_user_history(
+            user_id=sample_user_id,
+            db=mock_db,
+        )
 
         # Assert
         assert deleted_count == 42
@@ -409,14 +391,11 @@ class TestDeleteUserHistory:
         mock_db.execute = AsyncMock(return_value=mock_result)
         mock_db.commit = AsyncMock()
 
-        async def mock_get_db():
-            yield mock_db
-
         # Act
-        with patch("app.models.database.get_db", mock_get_db):
-            deleted_count = await chat_history_service.delete_user_history(
-                user_id=sample_user_id,
-            )
+        deleted_count = await chat_history_service.delete_user_history(
+            user_id=sample_user_id,
+            db=mock_db,
+        )
 
         # Assert
         assert deleted_count == 0

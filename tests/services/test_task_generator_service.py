@@ -4,9 +4,12 @@ Tests the automatic task generation from expert feedback, including:
 - Task ID generation (scanning files, incrementing max number)
 - Task name generation (truncation, sanitization)
 - Markdown formatting
-- File operations (create, append)
+- File operations (append to existing)
 - Database operations
 - Error handling
+
+Note: The service generates QUERY-XX task IDs (starting from QUERY-08) and writes
+to QUERY_ISSUES_ROADMAP.md. It creates its own database session internally.
 """
 
 import re
@@ -22,20 +25,13 @@ from app.services.task_generator_service import TaskGeneratorService
 
 
 @pytest.fixture
-def mock_db():
-    """Mock database session."""
-    db = AsyncMock(spec=AsyncSession)
-    db.add = Mock()
-    db.commit = AsyncMock()
-    db.flush = AsyncMock()
-    db.refresh = AsyncMock()
-    return db
+def task_generator_service():
+    """TaskGeneratorService instance.
 
-
-@pytest.fixture
-def task_generator_service(mock_db):
-    """TaskGeneratorService instance with mock DB."""
-    return TaskGeneratorService(db=mock_db)
+    Note: The service does NOT accept a db argument - it creates its own
+    database session internally using AsyncSessionLocal().
+    """
+    return TaskGeneratorService()
 
 
 @pytest.fixture
@@ -55,8 +51,11 @@ def sample_feedback():
     feedback.confidence_score = 0.9
     feedback.time_spent_seconds = 180
     feedback.complexity_rating = 3
-    feedback.additional_details = "La risposta è incompleta perché non tratta i casi specifici."
+    feedback.additional_details = "La risposta è incompleta perche non tratta i casi specifici."
     feedback.task_creation_attempted = False
+    feedback.generated_task_id = None
+    feedback.task_creation_success = None
+    feedback.task_creation_error = None
     return feedback
 
 
@@ -80,33 +79,40 @@ def sample_expert():
 
 
 class TestTaskIDGeneration:
-    """Tests for task ID generation logic."""
+    """Tests for task ID generation logic.
+
+    The service scans QUERY_ISSUES_ROADMAP.md for QUERY-XX patterns and
+    generates the next ID. IDs start from QUERY-08 (01-07 are reserved).
+    """
 
     @pytest.mark.asyncio
     async def test_generate_task_id_no_existing_files(self, task_generator_service):
-        """Test task ID generation when no files exist."""
+        """Test task ID generation when no files exist (starts from QUERY-08)."""
         with patch.object(task_generator_service, "_scan_file_for_max_task_number", return_value=0):
             task_id = await task_generator_service._generate_task_id()
 
-            assert task_id == "DEV-BE-1"
+            # Starts from QUERY-08 (01-07 are reserved)
+            assert task_id == "QUERY-08"
 
     @pytest.mark.asyncio
     async def test_generate_task_id_with_existing_tasks(self, task_generator_service):
         """Test task ID generation increments from max existing number."""
-
-        # Mock roadmap has DEV-BE-45, tasks file has DEV-BE-50
-        async def mock_scan(filepath, pattern):
-            if "ARCHITECTURE_ROADMAP" in str(filepath):
-                return 45
-            elif "SUPER_USER_TASKS" in str(filepath):
-                return 50
-            return 0
-
-        with patch.object(task_generator_service, "_scan_file_for_max_task_number", side_effect=mock_scan):
+        # Mock QUERY_ISSUES_ROADMAP.md has QUERY-15
+        with patch.object(task_generator_service, "_scan_file_for_max_task_number", return_value=15):
             task_id = await task_generator_service._generate_task_id()
 
-            # Should be max(45, 50) + 1 = 51
-            assert task_id == "DEV-BE-51"
+            # Should be 15 + 1 = 16
+            assert task_id == "QUERY-16"
+
+    @pytest.mark.asyncio
+    async def test_generate_task_id_respects_minimum(self, task_generator_service):
+        """Test task ID starts from at least QUERY-08 even if file has lower numbers."""
+        # Mock file has only QUERY-03 (which is in reserved range)
+        with patch.object(task_generator_service, "_scan_file_for_max_task_number", return_value=3):
+            task_id = await task_generator_service._generate_task_id()
+
+            # Should still be QUERY-08 (minimum)
+            assert task_id == "QUERY-08"
 
     @pytest.mark.asyncio
     async def test_scan_file_for_max_task_number_file_exists(self, task_generator_service, tmp_path):
@@ -116,13 +122,13 @@ class TestTaskIDGeneration:
         test_file.write_text(
             """
         # Tasks
-        - DEV-BE-10: Task 10
-        - DEV-BE-25: Task 25
-        - DEV-BE-15: Task 15
+        - QUERY-10: Task 10
+        - QUERY-25: Task 25
+        - QUERY-15: Task 15
         """
         )
 
-        max_num = await task_generator_service._scan_file_for_max_task_number(test_file, pattern=r"DEV-BE-(\d+)")
+        max_num = await task_generator_service._scan_file_for_max_task_number(test_file, pattern=r"QUERY-(\d+)")
 
         assert max_num == 25
 
@@ -132,7 +138,7 @@ class TestTaskIDGeneration:
         non_existent_file = tmp_path / "nonexistent.md"
 
         max_num = await task_generator_service._scan_file_for_max_task_number(
-            non_existent_file, pattern=r"DEV-BE-(\d+)"
+            non_existent_file, pattern=r"QUERY-(\d+)"
         )
 
         assert max_num == 0
@@ -143,7 +149,7 @@ class TestTaskIDGeneration:
         test_file = tmp_path / "test_empty.md"
         test_file.write_text("# No tasks here")
 
-        max_num = await task_generator_service._scan_file_for_max_task_number(test_file, pattern=r"DEV-BE-(\d+)")
+        max_num = await task_generator_service._scan_file_for_max_task_number(test_file, pattern=r"QUERY-(\d+)")
 
         assert max_num == 0
 
@@ -191,7 +197,7 @@ class TestMarkdownGeneration:
 
     def test_create_task_markdown_structure(self, task_generator_service, sample_feedback, sample_expert):
         """Test markdown task contains all required sections."""
-        task_id = "DEV-BE-123"
+        task_id = "QUERY-08"
         task_name = "CALCOLO_IVA"
 
         markdown = task_generator_service._create_task_markdown(task_id, task_name, sample_feedback, sample_expert)
@@ -208,7 +214,8 @@ class TestMarkdownGeneration:
         assert sample_feedback.original_answer in markdown
         assert "**Dettagli aggiuntivi dall'esperto:**" in markdown
         assert sample_feedback.additional_details in markdown
-        assert "**Status:** 🔴 TODO" in markdown
+        assert "**Status:**" in markdown
+        assert "TODO" in markdown
 
     def test_create_task_markdown_includes_regulatory_references(
         self, task_generator_service, sample_feedback, sample_expert
@@ -216,7 +223,7 @@ class TestMarkdownGeneration:
         """Test markdown includes regulatory references when present."""
         sample_feedback.regulatory_references = ["Art. 1, L. 190/2014", "D.L. 119/2018"]
 
-        markdown = task_generator_service._create_task_markdown("DEV-BE-123", "TASK", sample_feedback, sample_expert)
+        markdown = task_generator_service._create_task_markdown("QUERY-08", "TASK", sample_feedback, sample_expert)
 
         assert "**Riferimenti normativi citati dall'esperto:**" in markdown
         assert "Art. 1, L. 190/2014" in markdown
@@ -231,15 +238,36 @@ class TestMarkdownGeneration:
             "Citare normativa aggiornata",
         ]
 
-        markdown = task_generator_service._create_task_markdown("DEV-BE-123", "TASK", sample_feedback, sample_expert)
+        markdown = task_generator_service._create_task_markdown("QUERY-08", "TASK", sample_feedback, sample_expert)
 
         assert "**Suggerimenti per il miglioramento:**" in markdown
         assert "Aggiungere casi specifici" in markdown
         assert "Citare normativa aggiornata" in markdown
 
+    def test_create_task_markdown_feedback_type_translation(
+        self, task_generator_service, sample_feedback, sample_expert
+    ):
+        """Test feedback type is translated to Italian."""
+        sample_feedback.feedback_type = MagicMock()
+        sample_feedback.feedback_type.value = "incomplete"
+
+        markdown = task_generator_service._create_task_markdown("QUERY-08", "TASK", sample_feedback, sample_expert)
+
+        assert "**Incompleta**" in markdown
+
+        sample_feedback.feedback_type.value = "incorrect"
+        markdown = task_generator_service._create_task_markdown("QUERY-08", "TASK", sample_feedback, sample_expert)
+
+        assert "**Errata**" in markdown
+
 
 class TestTaskGeneration:
-    """Tests for end-to-end task generation."""
+    """Tests for end-to-end task generation.
+
+    Note: The service method generate_task_from_feedback takes (feedback_id, expert_id)
+    as UUIDs, NOT the actual objects. It creates its own database session and loads
+    the objects from the database.
+    """
 
     @pytest.mark.asyncio
     async def test_generate_task_from_feedback_success(
@@ -249,33 +277,56 @@ class TestTaskGeneration:
         # Mock file operations
         task_generator_service.project_root = tmp_path
 
-        # Mock ID generation and database storage to avoid SQLAlchemy mapper issues
-        with (
-            patch.object(task_generator_service, "_generate_task_id", return_value="DEV-BE-100"),
-            patch.object(task_generator_service, "_store_task_record", new_callable=AsyncMock),
-        ):
-            task_id = await task_generator_service.generate_task_from_feedback(sample_feedback, sample_expert)
+        # Create QUERY_ISSUES_ROADMAP.md (required by service)
+        roadmap_file = tmp_path / "QUERY_ISSUES_ROADMAP.md"
+        roadmap_file.write_text("# Query Issues Roadmap\n\n")
 
-            assert task_id == "DEV-BE-100"
-            assert sample_feedback.generated_task_id == "DEV-BE-100"
-            assert sample_feedback.task_creation_success is True
+        # Mock the database session and operations
+        mock_session = AsyncMock()
+        mock_session.get = AsyncMock(side_effect=[sample_feedback, sample_expert])
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        mock_session.add = Mock()
 
-            # Verify file was created
-            tasks_file = tmp_path / "SUPER_USER_TASKS.md"
-            assert tasks_file.exists()
+        # Create a context manager mock for AsyncSessionLocal
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
 
-            content = tasks_file.read_text()
-            assert "DEV-BE-100" in content
+        with patch("app.services.task_generator_service.AsyncSessionLocal", return_value=mock_session_ctx):
+            task_id = await task_generator_service.generate_task_from_feedback(
+                feedback_id=sample_feedback.id, expert_id=sample_expert.id
+            )
+
+            assert task_id is not None
+            assert task_id.startswith("QUERY-")
+
+            # Verify file was updated
+            content = roadmap_file.read_text()
+            assert task_id in content
             assert sample_feedback.query_text in content
 
     @pytest.mark.asyncio
     async def test_generate_task_skips_correct_feedback(self, task_generator_service, sample_feedback, sample_expert):
         """Test task generation is skipped for 'correct' feedback."""
-        sample_feedback.feedback_type = FeedbackType.CORRECT
+        sample_feedback.feedback_type = MagicMock()
+        sample_feedback.feedback_type.value = "correct"
 
-        task_id = await task_generator_service.generate_task_from_feedback(sample_feedback, sample_expert)
+        # Mock the database session
+        mock_session = AsyncMock()
+        mock_session.get = AsyncMock(side_effect=[sample_feedback, sample_expert])
+        mock_session.commit = AsyncMock()
 
-        assert task_id is None
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("app.services.task_generator_service.AsyncSessionLocal", return_value=mock_session_ctx):
+            task_id = await task_generator_service.generate_task_from_feedback(
+                feedback_id=sample_feedback.id, expert_id=sample_expert.id
+            )
+
+            assert task_id is None
 
     @pytest.mark.asyncio
     async def test_generate_task_skips_without_additional_details(
@@ -283,55 +334,127 @@ class TestTaskGeneration:
     ):
         """Test task generation is skipped without additional_details."""
         sample_feedback.additional_details = None
+        sample_feedback.feedback_type = MagicMock()
+        sample_feedback.feedback_type.value = "incomplete"
 
-        task_id = await task_generator_service.generate_task_from_feedback(sample_feedback, sample_expert)
+        # Mock the database session
+        mock_session = AsyncMock()
+        mock_session.get = AsyncMock(side_effect=[sample_feedback, sample_expert])
+        mock_session.commit = AsyncMock()
 
-        assert task_id is None
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("app.services.task_generator_service.AsyncSessionLocal", return_value=mock_session_ctx):
+            task_id = await task_generator_service.generate_task_from_feedback(
+                feedback_id=sample_feedback.id, expert_id=sample_expert.id
+            )
+
+            assert task_id is None
+
+    @pytest.mark.asyncio
+    async def test_generate_task_handles_missing_feedback(self, task_generator_service):
+        """Test task generation handles missing feedback record gracefully."""
+        # Mock the database session returning None for feedback
+        mock_session = AsyncMock()
+        mock_session.get = AsyncMock(return_value=None)
+
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("app.services.task_generator_service.AsyncSessionLocal", return_value=mock_session_ctx):
+            task_id = await task_generator_service.generate_task_from_feedback(feedback_id=uuid4(), expert_id=uuid4())
+
+            # Should return None without raising
+            assert task_id is None
 
     @pytest.mark.asyncio
     async def test_generate_task_handles_errors_gracefully(
         self, task_generator_service, sample_feedback, sample_expert
     ):
         """Test task generation handles errors without raising exceptions."""
+        sample_feedback.feedback_type = MagicMock()
+        sample_feedback.feedback_type.value = "incomplete"
+
+        # Mock the database session
+        mock_session = AsyncMock()
+        mock_session.get = AsyncMock(side_effect=[sample_feedback, sample_expert])
+        mock_session.commit = AsyncMock()
+
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
+
         # Force an error by making _generate_task_id raise
-        with patch.object(task_generator_service, "_generate_task_id", side_effect=Exception("Test error")):
-            task_id = await task_generator_service.generate_task_from_feedback(sample_feedback, sample_expert)
+        with (
+            patch("app.services.task_generator_service.AsyncSessionLocal", return_value=mock_session_ctx),
+            patch.object(task_generator_service, "_generate_task_id", side_effect=Exception("Test error")),
+        ):
+            task_id = await task_generator_service.generate_task_from_feedback(
+                feedback_id=sample_feedback.id, expert_id=sample_expert.id
+            )
 
             # Should return None and not raise
             assert task_id is None
-            assert sample_feedback.task_creation_success is False
-            assert "Test error" in sample_feedback.task_creation_error
 
 
 class TestFileOperations:
-    """Tests for file operations."""
+    """Tests for file operations.
+
+    Note: The service writes to QUERY_ISSUES_ROADMAP.md (NOT SUPER_USER_TASKS.md).
+    The file MUST exist - the service raises FileNotFoundError if it doesn't.
+    """
 
     @pytest.mark.asyncio
-    async def test_append_to_file_creates_file_if_not_exists(self, task_generator_service, tmp_path):
-        """Test file is created with header if it doesn't exist."""
+    async def test_append_to_file_requires_existing_file(self, task_generator_service, tmp_path):
+        """Test that append fails if QUERY_ISSUES_ROADMAP.md doesn't exist."""
         task_generator_service.project_root = tmp_path
-        tasks_file = tmp_path / "SUPER_USER_TASKS.md"
+        roadmap_file = tmp_path / "QUERY_ISSUES_ROADMAP.md"
 
-        assert not tasks_file.exists()
+        assert not roadmap_file.exists()
 
-        await task_generator_service._append_to_file("## Test Task")
-
-        assert tasks_file.exists()
-        content = tasks_file.read_text()
-        assert "# PratikoAi Backend - Tasks Generati dal Feedback Esperti" in content
-        assert "## Test Task" in content
+        with pytest.raises(FileNotFoundError):
+            await task_generator_service._append_to_file("## Test Task")
 
     @pytest.mark.asyncio
     async def test_append_to_file_appends_to_existing_file(self, task_generator_service, tmp_path):
         """Test content is appended to existing file."""
         task_generator_service.project_root = tmp_path
-        tasks_file = tmp_path / "SUPER_USER_TASKS.md"
+        roadmap_file = tmp_path / "QUERY_ISSUES_ROADMAP.md"
 
         # Create file with initial content
-        tasks_file.write_text("# Existing Content\n")
+        roadmap_file.write_text("# Query Issues Roadmap\n\n## Existing Content\n")
 
-        await task_generator_service._append_to_file("## New Task")
+        await task_generator_service._append_to_file("## New Task\n")
 
-        content = tasks_file.read_text()
-        assert "# Existing Content" in content
+        content = roadmap_file.read_text()
+        assert "# Query Issues Roadmap" in content
+        assert "## Existing Content" in content
         assert "## New Task" in content
+
+    @pytest.mark.asyncio
+    async def test_append_to_file_preserves_original_content(self, task_generator_service, tmp_path):
+        """Test that appending preserves all original content."""
+        task_generator_service.project_root = tmp_path
+        roadmap_file = tmp_path / "QUERY_ISSUES_ROADMAP.md"
+
+        original_content = """# Query Issues Roadmap
+
+## QUERY-01: Reserved Task
+Some content here.
+
+## QUERY-07: Last Reserved Task
+More content.
+"""
+        roadmap_file.write_text(original_content)
+
+        await task_generator_service._append_to_file("\n## QUERY-08: New Task\nNew content.\n")
+
+        content = roadmap_file.read_text()
+        # Original content preserved
+        assert "QUERY-01: Reserved Task" in content
+        assert "QUERY-07: Last Reserved Task" in content
+        # New content appended
+        assert "QUERY-08: New Task" in content

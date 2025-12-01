@@ -1565,10 +1565,11 @@ def upgrade() -> None:
         existing_comment="Unique user ID from OAuth provider",
         existing_nullable=True,
     )
-    op.drop_index(op.f("ix_user_role"), table_name="user")
+    # NOTE: Role column and index are intentionally KEPT - role is part of User model
+    # op.drop_index(op.f("ix_user_role"), table_name="user")  # REMOVED: keep role index
     op.drop_constraint(op.f("uq_user_provider_provider_id"), "user", type_="unique")
     op.create_index(op.f("ix_user_refresh_token_hash"), "user", ["refresh_token_hash"], unique=False)
-    op.drop_column("user", "role")
+    # op.drop_column("user", "role")  # REMOVED: keep role column
     op.alter_column(
         "user_usage_summaries",
         "user_id",
@@ -1588,19 +1589,11 @@ def downgrade() -> None:
     op.alter_column(
         "user_usage_summaries", "user_id", existing_type=sa.Integer(), type_=sa.VARCHAR(), existing_nullable=False
     )
-    op.add_column(
-        "user",
-        sa.Column(
-            "role",
-            sa.VARCHAR(length=20),
-            server_default=sa.text("'user'::character varying"),
-            autoincrement=False,
-            nullable=False,
-        ),
-    )
+    # NOTE: Role column is kept in upgrade, so no need to re-add in downgrade
+    # op.add_column("user", sa.Column("role", ...))  # REMOVED: role column is kept
     op.drop_index(op.f("ix_user_refresh_token_hash"), table_name="user")
     op.create_unique_constraint(op.f("uq_user_provider_provider_id"), "user", ["provider", "provider_id"])
-    op.create_index(op.f("ix_user_role"), "user", ["role"], unique=False)
+    # op.create_index(op.f("ix_user_role"), "user", ["role"], unique=False)  # REMOVED: index is kept
     op.alter_column(
         "user",
         "provider_id",

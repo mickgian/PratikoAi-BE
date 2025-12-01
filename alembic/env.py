@@ -41,7 +41,7 @@ from app.models.data_export import (
     QueryHistory,
 )
 from app.models.data_export import (
-    DocumentAnalysis as ExportDocumentAnalysis,
+    ExportDocumentAnalysis,
 )
 from app.models.data_export import (
     TaxCalculation as ExportTaxCalculation,

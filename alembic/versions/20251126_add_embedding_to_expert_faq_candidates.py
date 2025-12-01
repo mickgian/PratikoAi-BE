@@ -41,22 +41,33 @@ depends_on = None
 
 def upgrade() -> None:
     """Add question_embedding column and vector similarity index to expert_faq_candidates"""
+    # Check if column already exists (may be created by SQLModel.metadata.create_all in tests)
+    conn = op.get_bind()
+    col_result = conn.execute(
+        sa.text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'expert_faq_candidates' AND column_name = 'question_embedding'
+        """)
+    )
+    column_exists = col_result.fetchone() is not None
+
     # Ensure pgvector extension is enabled (should already be enabled by earlier migrations)
     op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
-    # Add question_embedding column with Vector(1536) type
-    # Nullable=True because:
-    # 1. Existing records won't have embeddings initially (backfill required)
-    # 2. Graceful degradation: if embedding generation fails, FAQ still created
-    op.add_column(
-        "expert_faq_candidates",
-        sa.Column(
-            "question_embedding",
-            Vector(1536),  # OpenAI text-embedding-ada-002 dimension
-            nullable=True,
-            comment="Vector embedding of FAQ question for semantic similarity search (OpenAI ada-002, 1536d)",
-        ),
-    )
+    if not column_exists:
+        # Add question_embedding column with Vector(1536) type
+        # Nullable=True because:
+        # 1. Existing records won't have embeddings initially (backfill required)
+        # 2. Graceful degradation: if embedding generation fails, FAQ still created
+        op.add_column(
+            "expert_faq_candidates",
+            sa.Column(
+                "question_embedding",
+                Vector(1536),  # OpenAI text-embedding-ada-002 dimension
+                nullable=True,
+                comment="Vector embedding of FAQ question for semantic similarity search (OpenAI ada-002, 1536d)",
+            ),
+        )
 
     # Create IVFFlat index for fast cosine similarity search
     # Parameters:

@@ -25,26 +25,40 @@ def upgrade():
     """Add generated_faq_id column to track Golden Set entries created from expert feedback."""
     from sqlalchemy import inspect
 
-    # Add generated_faq_id column (matches faq_entries.id type: String(100))
-    op.add_column("expert_feedback", sa.Column("generated_faq_id", sa.String(length=100), nullable=True))
+    conn = op.get_bind()
+
+    # Check if column already exists (may be created by SQLModel.metadata.create_all in tests)
+    col_result = conn.execute(
+        sa.text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'expert_feedback' AND column_name = 'generated_faq_id'
+        """)
+    )
+    column_exists = col_result.fetchone() is not None
+
+    if not column_exists:
+        # Add generated_faq_id column (matches faq_entries.id type: String(100))
+        op.add_column("expert_feedback", sa.Column("generated_faq_id", sa.String(length=100), nullable=True))
 
     # Check if faq_entries table exists before creating foreign key
     # This makes the migration robust in case FAQ tables migration wasn't applied
-    conn = op.get_bind()
     inspector = inspect(conn)
     if "faq_entries" in inspector.get_table_names():
-        # Add foreign key constraint to faq_entries
-        op.create_foreign_key(
-            "fk_expert_feedback_generated_faq_id",
-            "expert_feedback",
-            "faq_entries",
-            ["generated_faq_id"],
-            ["id"],
-            ondelete="SET NULL",
-        )
+        # Check if FK already exists
+        fk_names = [fk["name"] for fk in inspector.get_foreign_keys("expert_feedback")]
+        if "fk_expert_feedback_generated_faq_id" not in fk_names:
+            # Add foreign key constraint to faq_entries
+            op.create_foreign_key(
+                "fk_expert_feedback_generated_faq_id",
+                "expert_feedback",
+                "faq_entries",
+                ["generated_faq_id"],
+                ["id"],
+                ondelete="SET NULL",
+            )
 
-    # Create index for efficient lookups
-    op.create_index("idx_expert_feedback_generated_faq_id", "expert_feedback", ["generated_faq_id"])
+    # Create index for efficient lookups (IF NOT EXISTS)
+    op.execute(sa.text('CREATE INDEX IF NOT EXISTS idx_expert_feedback_generated_faq_id ON expert_feedback (generated_faq_id)'))
 
 
 def downgrade():

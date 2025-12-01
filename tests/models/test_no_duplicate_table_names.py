@@ -128,7 +128,9 @@ def test_subscription_models_not_both_imported():
     This test ensures we don't accidentally re-enable both imports.
     """
     # Read alembic/env.py
-    with open("/Users/micky/PycharmProjects/PratikoAi-BE/alembic/env.py") as f:
+    from pathlib import Path
+    alembic_env_path = Path(__file__).parent.parent.parent / "alembic" / "env.py"
+    with open(alembic_env_path) as f:
         env_content = f.read()
 
     # Check imports
@@ -172,7 +174,9 @@ def test_alembic_env_imports_match_expected():
         "QualityMetric",
     ]
 
-    with open("/Users/micky/PycharmProjects/PratikoAi-BE/alembic/env.py") as f:
+    from pathlib import Path
+    alembic_env_path = Path(__file__).parent.parent.parent / "alembic" / "env.py"
+    with open(alembic_env_path) as f:
         env_content = f.read()
 
     missing_imports = []

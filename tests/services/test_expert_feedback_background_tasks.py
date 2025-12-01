@@ -246,10 +246,10 @@ class TestGoldenSetWorkflowSessionManagement:
         """Test _trigger_golden_set_workflow creates its own session (Bug #5)."""
         from app.api.v1.expert_feedback import _trigger_golden_set_workflow
 
-        # Mock Golden Set orchestrator steps
-        with patch("app.api.v1.expert_feedback.step_127__golden_candidate") as mock_127:
-            with patch("app.api.v1.expert_feedback.step_128__golden_approval") as mock_128:
-                with patch("app.api.v1.expert_feedback.step_129__publish_golden") as mock_129:
+        # Mock Golden Set orchestrator steps (patch at source since imports are inside function)
+        with patch("app.orchestrators.golden.step_127__golden_candidate") as mock_127:
+            with patch("app.orchestrators.golden.step_128__golden_approval") as mock_128:
+                with patch("app.orchestrators.golden.step_129__publish_golden") as mock_129:
                     # Mock successful workflow
                     mock_127.return_value = {"faq_candidate": {"priority_score": 0.9}}
                     mock_128.return_value = {"approval_decision": {"status": "auto_approved"}}
@@ -272,9 +272,9 @@ class TestGoldenSetWorkflowSessionManagement:
         await real_db.close()
 
         # Mock Golden Set orchestrator
-        with patch("app.api.v1.expert_feedback.step_127__golden_candidate") as mock_127:
-            with patch("app.api.v1.expert_feedback.step_128__golden_approval") as mock_128:
-                with patch("app.api.v1.expert_feedback.step_129__publish_golden") as mock_129:
+        with patch("app.orchestrators.golden.step_127__golden_candidate") as mock_127:
+            with patch("app.orchestrators.golden.step_128__golden_approval") as mock_128:
+                with patch("app.orchestrators.golden.step_129__publish_golden") as mock_129:
                     mock_127.return_value = {"faq_candidate": {"priority_score": 0.9}}
                     mock_128.return_value = {"approval_decision": {"status": "auto_approved"}}
                     mock_129.return_value = {"published_faq_id": "faq_123"}
@@ -292,9 +292,9 @@ class TestGoldenSetWorkflowSessionManagement:
 
         faq_id = "faq_test_123"
 
-        with patch("app.api.v1.expert_feedback.step_127__golden_candidate") as mock_127:
-            with patch("app.api.v1.expert_feedback.step_128__golden_approval") as mock_128:
-                with patch("app.api.v1.expert_feedback.step_129__publish_golden") as mock_129:
+        with patch("app.orchestrators.golden.step_127__golden_candidate") as mock_127:
+            with patch("app.orchestrators.golden.step_128__golden_approval") as mock_128:
+                with patch("app.orchestrators.golden.step_129__publish_golden") as mock_129:
                     mock_127.return_value = {"faq_candidate": {"priority_score": 0.9}}
                     mock_128.return_value = {"approval_decision": {"status": "auto_approved"}}
                     mock_129.return_value = {"published_faq_id": faq_id}
@@ -312,8 +312,8 @@ class TestGoldenSetWorkflowSessionManagement:
         """Test Golden Set workflow handles rejection (low trust score, etc.)."""
         from app.api.v1.expert_feedback import _trigger_golden_set_workflow
 
-        with patch("app.api.v1.expert_feedback.step_127__golden_candidate") as mock_127:
-            with patch("app.api.v1.expert_feedback.step_128__golden_approval") as mock_128:
+        with patch("app.orchestrators.golden.step_127__golden_candidate") as mock_127:
+            with patch("app.orchestrators.golden.step_128__golden_approval") as mock_128:
                 mock_127.return_value = {"faq_candidate": {"priority_score": 0.9}}
                 mock_128.return_value = {"approval_decision": {"status": "requires_review"}}  # Not approved
 
@@ -332,7 +332,7 @@ class TestGoldenSetWorkflowSessionManagement:
 
         # Force an error
         with patch(
-            "app.api.v1.expert_feedback.step_127__golden_candidate", side_effect=Exception("Orchestrator error")
+            "app.orchestrators.golden.step_127__golden_candidate", side_effect=Exception("Orchestrator error")
         ):
             # Should not raise exception (logs error instead)
             await _trigger_golden_set_workflow(feedback_id=correct_feedback.id, expert_id=test_expert.id)

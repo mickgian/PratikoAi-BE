@@ -59,7 +59,7 @@ async def test_regular_user(db_session: AsyncSession) -> User:
         hashed_password="<hashed-test-password>",
         is_active=True,
         is_verified=True,
-        role=UserRole.USER.value,
+        role=UserRole.REGULAR_USER.value,
     )
     db_session.add(user)
     await db_session.commit()

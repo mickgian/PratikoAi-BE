@@ -60,7 +60,7 @@ async def test_regular_user(real_db):
     user = User(
         email=f"regular_test_{id(real_db)}@test.com",
         hashed_password="hashed",
-        role=UserRole.USER.value,
+        role=UserRole.REGULAR_USER.value,
     )
     real_db.add(user)
     await real_db.commit()

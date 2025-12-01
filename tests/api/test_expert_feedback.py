@@ -58,7 +58,7 @@ def regular_user():
     user.email = "regular@test.com"
     user.is_active = True
     user.is_verified = True
-    user.role = UserRole.USER.value  # Regular user role
+    user.role = UserRole.REGULAR_USER.value  # Regular user role
     return user
 
 

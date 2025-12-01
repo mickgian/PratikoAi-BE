@@ -263,7 +263,7 @@ class TestExpertProfileRetrieval:
         """Test that profile response includes user role (for frontend RBAC)."""
         # Test with different user roles
         test_cases = [
-            (UserRole.USER, "user"),
+            (UserRole.REGULAR_USER, "regular_user"),
             (UserRole.SUPER_USER, "super_user"),
             (UserRole.ADMIN, "admin"),
         ]

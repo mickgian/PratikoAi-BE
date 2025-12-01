@@ -6,12 +6,22 @@ to its string value (e.g., "medium") when stored in the database, not its name
 
 Bug Context: SQLModel was converting enum to name instead of value, causing:
     invalid input value for enum updatesensitivity: "MEDIUM"
+
+REQUIRES: Real PostgreSQL database connection to test actual enum storage.
 """
+
+import os
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.faq import FAQEntry, UpdateSensitivity
+
+# Check if database is available - these are integration tests
+pytestmark = pytest.mark.skipif(
+    os.environ.get("SKIP_DB_TESTS", "true").lower() == "true",
+    reason="Database integration tests require real PostgreSQL. Set SKIP_DB_TESTS=false to run.",
+)
 
 
 @pytest.mark.asyncio

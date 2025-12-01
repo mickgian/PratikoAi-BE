@@ -137,6 +137,44 @@ def safe_drop_constraint(constraint_name, table_name: str, **kwargs) -> None:
         op.drop_constraint(constraint_name, table_name, **kwargs)
 
 
+def _column_exists(table_name: str, column_name: str) -> bool:
+    """Check if a column exists."""
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(
+            "SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name = :table AND column_name = :column)"
+        ),
+        {"table": table_name, "column": column_name},
+    )
+    return bool(result.scalar())
+
+
+def safe_drop_column(table_name: str, column_name: str) -> None:
+    """Drop column only if it exists."""
+    if _column_exists(table_name, column_name):
+        op.drop_column(table_name, column_name)
+
+
+def safe_add_column(table_name: str, column, **kwargs) -> None:
+    """Add column only if it doesn't exist."""
+    if not _column_exists(table_name, column.name):
+        op.add_column(table_name, column, **kwargs)
+
+
+def safe_alter_column(table_name: str, column_name: str, **kwargs) -> None:
+    """Alter column only if it exists."""
+    if _column_exists(table_name, column_name):
+        op.alter_column(table_name, column_name, **kwargs)
+
+
+def safe_create_unique_constraint(constraint_name, table_name: str, columns, **kwargs) -> None:
+    """Create unique constraint only if it doesn't exist."""
+    # Handle op.f() wrapper
+    actual_name = constraint_name.name if hasattr(constraint_name, "name") else constraint_name
+    if actual_name and not _constraint_exists(table_name, actual_name):
+        op.create_unique_constraint(constraint_name, table_name, columns, **kwargs)
+
+
 def upgrade() -> None:
     """Upgrade schema."""
     # Pre-create ENUM types to avoid errors if they already exist (CI runs SQLModel.metadata.create_all)
@@ -1841,14 +1879,14 @@ def upgrade() -> None:
     safe_drop_table("checkpoint_blobs")
     safe_drop_index(op.f("checkpoints_thread_id_idx"), table_name="checkpoints")
     safe_drop_table("checkpoints")
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "feedback_type",
         existing_type=postgresql.ENUM("correct", "incomplete", "incorrect", name="feedback_type"),
         type_=sqlmodel.sql.sqltypes.AutoString(length=20),
         existing_nullable=False,
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "category",
         existing_type=postgresql.ENUM(
@@ -1862,7 +1900,7 @@ def upgrade() -> None:
         type_=sqlmodel.sql.sqltypes.AutoString(length=50),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "regulatory_references",
         existing_type=postgresql.ARRAY(sa.TEXT()),
@@ -1870,14 +1908,14 @@ def upgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("'{}'::text[]"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "confidence_score",
         existing_type=sa.DOUBLE_PRECISION(precision=53),
         nullable=False,
         existing_server_default=sa.text("0.0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "feedback_timestamp",
         existing_type=postgresql.TIMESTAMP(timezone=True),
@@ -1885,14 +1923,14 @@ def upgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "improvement_applied",
         existing_type=sa.BOOLEAN(),
         nullable=False,
         existing_server_default=sa.text("false"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "created_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
@@ -1900,7 +1938,7 @@ def upgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "updated_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
@@ -1918,25 +1956,25 @@ def upgrade() -> None:
     safe_create_index("idx_expert_feedback_timestamp", "expert_feedback", ["feedback_timestamp"], unique=False)
     safe_drop_constraint(op.f("expert_feedback_expert_id_fkey"), "expert_feedback", type_="foreignkey")
     safe_create_foreign_key(None, "expert_feedback", "expert_profiles", ["expert_id"], ["id"])
-    op.drop_column("expert_feedback", "task_creation_attempted")
-    op.drop_column("expert_feedback", "task_creation_success")
-    op.drop_column("expert_feedback", "additional_details")
-    op.drop_column("expert_feedback", "generated_task_id")
-    op.drop_column("expert_feedback", "generated_faq_id")
-    op.drop_column("expert_feedback", "task_creation_error")
-    op.add_column(
+    safe_drop_column("expert_feedback", "task_creation_attempted")
+    safe_drop_column("expert_feedback", "task_creation_success")
+    safe_drop_column("expert_feedback", "additional_details")
+    safe_drop_column("expert_feedback", "generated_task_id")
+    safe_drop_column("expert_feedback", "generated_faq_id")
+    safe_drop_column("expert_feedback", "task_creation_error")
+    safe_add_column(
         "expert_generated_tasks",
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=True),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_generated_tasks",
         "task_name",
         existing_type=sa.VARCHAR(length=50),
         type_=sqlmodel.sql.sqltypes.AutoString(length=200),
         existing_nullable=False,
     )
-    op.alter_column("expert_generated_tasks", "additional_details", existing_type=sa.TEXT(), nullable=True)
-    op.alter_column(
+    safe_alter_column("expert_generated_tasks", "additional_details", existing_type=sa.TEXT(), nullable=True)
+    safe_alter_column(
         "expert_generated_tasks",
         "file_path",
         existing_type=sa.VARCHAR(length=200),
@@ -1944,7 +1982,7 @@ def upgrade() -> None:
         nullable=False,
         existing_server_default=sa.text("'SUPER_USER_TASKS.md'::character varying"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_generated_tasks",
         "created_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
@@ -1965,7 +2003,7 @@ def upgrade() -> None:
     safe_create_index(op.f("ix_expert_generated_tasks_task_id"), "expert_generated_tasks", ["task_id"], unique=True)
     safe_drop_constraint(op.f("expert_generated_tasks_feedback_id_fkey"), "expert_generated_tasks", type_="foreignkey")
     safe_create_foreign_key(None, "expert_generated_tasks", "expert_feedback", ["feedback_id"], ["id"])
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "credentials",
         existing_type=postgresql.ARRAY(sa.TEXT()),
@@ -1973,7 +2011,7 @@ def upgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("'{}'::text[]"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "credential_types",
         existing_type=postgresql.ARRAY(
@@ -1991,14 +2029,14 @@ def upgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("'{}'::expert_credential_type[]"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "experience_years",
         existing_type=sa.INTEGER(),
         nullable=False,
         existing_server_default=sa.text("0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "specializations",
         existing_type=postgresql.ARRAY(sa.TEXT()),
@@ -2006,56 +2044,56 @@ def upgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("'{}'::text[]"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "feedback_count",
         existing_type=sa.INTEGER(),
         nullable=False,
         existing_server_default=sa.text("0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "feedback_accuracy_rate",
         existing_type=sa.DOUBLE_PRECISION(precision=53),
         nullable=False,
         existing_server_default=sa.text("0.0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "average_response_time_seconds",
         existing_type=sa.INTEGER(),
         nullable=False,
         existing_server_default=sa.text("0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "trust_score",
         existing_type=sa.DOUBLE_PRECISION(precision=53),
         nullable=False,
         existing_server_default=sa.text("0.5"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "is_verified",
         existing_type=sa.BOOLEAN(),
         nullable=False,
         existing_server_default=sa.text("false"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "verification_date",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         type_=sa.DateTime(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "is_active",
         existing_type=sa.BOOLEAN(),
         nullable=False,
         existing_server_default=sa.text("true"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "created_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
@@ -2063,7 +2101,7 @@ def upgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "updated_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
@@ -2074,24 +2112,24 @@ def upgrade() -> None:
     safe_drop_constraint(op.f("expert_profiles_user_id_key"), "expert_profiles", type_="unique")
     safe_drop_constraint(op.f("expert_profiles_user_id_fkey"), "expert_profiles", type_="foreignkey")
     safe_create_foreign_key(None, "expert_profiles", "user", ["user_id"], ["id"])
-    op.add_column("faq_entries", sa.Column("similarity_score", sa.Float(), nullable=True))
-    op.alter_column("faq_entries", "question", existing_type=sa.TEXT(), nullable=True)
-    op.alter_column("faq_entries", "answer", existing_type=sa.TEXT(), nullable=True)
-    op.alter_column(
+    safe_add_column("faq_entries", sa.Column("similarity_score", sa.Float(), nullable=True))
+    safe_alter_column("faq_entries", "question", existing_type=sa.TEXT(), nullable=True)
+    safe_alter_column("faq_entries", "answer", existing_type=sa.TEXT(), nullable=True)
+    safe_alter_column(
         "faq_entries",
         "created_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "faq_entries",
         "updated_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "faq_entries",
         "search_vector",
         existing_type=sa.TEXT(),
@@ -2109,55 +2147,55 @@ def upgrade() -> None:
     safe_drop_index(op.f("idx_faq_entries_needs_review"), table_name="faq_entries")
     safe_drop_index(op.f("idx_faq_entries_update_sensitivity"), table_name="faq_entries")
     safe_drop_index(op.f("idx_faq_entries_updated_at"), table_name="faq_entries")
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "feed_url",
         existing_type=sa.TEXT(),
         type_=sqlmodel.sql.sqltypes.AutoString(),
         existing_nullable=False,
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "last_checked",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "consecutive_errors",
         existing_type=sa.INTEGER(),
         nullable=False,
         existing_server_default=sa.text("0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status", "errors", existing_type=sa.INTEGER(), nullable=False, existing_server_default=sa.text("0")
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "last_error",
         existing_type=sa.TEXT(),
         type_=sqlmodel.sql.sqltypes.AutoString(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "check_interval_minutes",
         existing_type=sa.INTEGER(),
         nullable=False,
         existing_server_default=sa.text("240"),
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status", "enabled", existing_type=sa.BOOLEAN(), nullable=False, existing_server_default=sa.text("true")
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "created_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "updated_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
@@ -2165,43 +2203,49 @@ def upgrade() -> None:
         existing_server_default=sa.text("now()"),
     )
     safe_drop_index(op.f("idx_feed_status_last_success"), table_name="feed_status")
-    op.alter_column("knowledge_chunks", "created_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=True)
-    op.alter_column(
+    safe_alter_column(
+        "knowledge_chunks", "created_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=True
+    )
+    safe_alter_column(
         "knowledge_feedback", "user_id", existing_type=sa.VARCHAR(), type_=sa.Integer(), existing_nullable=False
     )
     safe_create_foreign_key(None, "knowledge_feedback", "user", ["user_id"], ["id"])
-    op.alter_column("knowledge_items", "created_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=True)
-    op.alter_column("knowledge_items", "updated_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=True)
+    safe_alter_column(
+        "knowledge_items", "created_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=True
+    )
+    safe_alter_column(
+        "knowledge_items", "updated_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=True
+    )
     safe_drop_index(
         op.f("idx_ki_publication_date"),
         table_name="knowledge_items",
         postgresql_where="(publication_date IS NOT NULL)",
     )
     safe_drop_index(op.f("idx_knowledge_publication_date"), table_name="knowledge_items")
-    op.add_column("regulatory_documents", sa.Column("document_metadata", sa.JSON(), nullable=True))
-    op.alter_column(
+    safe_add_column("regulatory_documents", sa.Column("document_metadata", sa.JSON(), nullable=True))
+    safe_alter_column(
         "regulatory_documents",
         "title",
         existing_type=sa.TEXT(),
         type_=sqlmodel.sql.sqltypes.AutoString(),
         existing_nullable=False,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "url",
         existing_type=sa.TEXT(),
         type_=sqlmodel.sql.sqltypes.AutoString(),
         existing_nullable=False,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "published_date",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         type_=sa.DateTime(),
         existing_nullable=True,
     )
-    op.alter_column("regulatory_documents", "content", existing_type=sa.TEXT(), nullable=True)
-    op.alter_column(
+    safe_alter_column("regulatory_documents", "content", existing_type=sa.TEXT(), nullable=True)
+    safe_alter_column(
         "regulatory_documents",
         "status",
         existing_type=sa.VARCHAR(length=20),
@@ -2219,49 +2263,49 @@ def upgrade() -> None:
         existing_nullable=False,
         existing_server_default=sa.text("'pending'::character varying"),
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "processed_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         type_=sa.DateTime(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "processing_errors",
         existing_type=sa.TEXT(),
         type_=sqlmodel.sql.sqltypes.AutoString(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "topics",
         existing_type=sa.TEXT(),
         type_=sqlmodel.sql.sqltypes.AutoString(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "created_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "updated_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "archived_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         type_=sa.DateTime(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "archive_reason",
         existing_type=sa.TEXT(),
@@ -2270,9 +2314,9 @@ def upgrade() -> None:
     )
     safe_drop_index(op.f("idx_regulatory_documents_source"), table_name="regulatory_documents")
     safe_drop_index(op.f("idx_regulatory_documents_status"), table_name="regulatory_documents")
-    op.create_unique_constraint(None, "regulatory_documents", ["url"])
-    op.drop_column("regulatory_documents", "metadata")
-    op.alter_column(
+    safe_create_unique_constraint(None, "regulatory_documents", ["url"])
+    safe_drop_column("regulatory_documents", "metadata")
+    safe_alter_column(
         "user",
         "role",
         existing_type=sa.VARCHAR(length=20),
@@ -2286,7 +2330,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
-    op.alter_column(
+    safe_alter_column(
         "user",
         "role",
         existing_type=sqlmodel.sql.sqltypes.AutoString(length=50),
@@ -2294,63 +2338,63 @@ def downgrade() -> None:
         existing_nullable=False,
         existing_server_default=sa.text("'user'::character varying"),
     )
-    op.add_column(
+    safe_add_column(
         "regulatory_documents",
         sa.Column("metadata", postgresql.JSON(astext_type=sa.Text()), autoincrement=False, nullable=True),
     )
     safe_drop_constraint(None, "regulatory_documents", type_="unique")
     safe_create_index(op.f("idx_regulatory_documents_status"), "regulatory_documents", ["status"], unique=False)
     safe_create_index(op.f("idx_regulatory_documents_source"), "regulatory_documents", ["source"], unique=False)
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "archive_reason",
         existing_type=sqlmodel.sql.sqltypes.AutoString(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "archived_at",
         existing_type=sa.DateTime(),
         type_=postgresql.TIMESTAMP(timezone=True),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "updated_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=False,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "created_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=False,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "topics",
         existing_type=sqlmodel.sql.sqltypes.AutoString(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "processing_errors",
         existing_type=sqlmodel.sql.sqltypes.AutoString(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "processed_at",
         existing_type=sa.DateTime(),
         type_=postgresql.TIMESTAMP(timezone=True),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "status",
         existing_type=sa.Enum(
@@ -2368,29 +2412,29 @@ def downgrade() -> None:
         existing_nullable=False,
         existing_server_default=sa.text("'pending'::character varying"),
     )
-    op.alter_column("regulatory_documents", "content", existing_type=sa.TEXT(), nullable=False)
-    op.alter_column(
+    safe_alter_column("regulatory_documents", "content", existing_type=sa.TEXT(), nullable=False)
+    safe_alter_column(
         "regulatory_documents",
         "published_date",
         existing_type=sa.DateTime(),
         type_=postgresql.TIMESTAMP(timezone=True),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "url",
         existing_type=sqlmodel.sql.sqltypes.AutoString(),
         type_=sa.TEXT(),
         existing_nullable=False,
     )
-    op.alter_column(
+    safe_alter_column(
         "regulatory_documents",
         "title",
         existing_type=sqlmodel.sql.sqltypes.AutoString(),
         type_=sa.TEXT(),
         existing_nullable=False,
     )
-    op.drop_column("regulatory_documents", "document_metadata")
+    safe_drop_column("regulatory_documents", "document_metadata")
     safe_create_index(op.f("idx_knowledge_publication_date"), "knowledge_items", ["publication_date"], unique=False)
     safe_create_index(
         op.f("idx_ki_publication_date"),
@@ -2399,65 +2443,69 @@ def downgrade() -> None:
         unique=False,
         postgresql_where="(publication_date IS NOT NULL)",
     )
-    op.alter_column("knowledge_items", "updated_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=False)
-    op.alter_column("knowledge_items", "created_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=False)
+    safe_alter_column(
+        "knowledge_items", "updated_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=False
+    )
+    safe_alter_column(
+        "knowledge_items", "created_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=False
+    )
     safe_drop_constraint(None, "knowledge_feedback", type_="foreignkey")
-    op.alter_column(
+    safe_alter_column(
         "knowledge_feedback", "user_id", existing_type=sa.Integer(), type_=sa.VARCHAR(), existing_nullable=False
     )
-    op.alter_column(
+    safe_alter_column(
         "knowledge_chunks", "created_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=False
     )
     safe_create_index(op.f("idx_feed_status_last_success"), "feed_status", ["last_success"], unique=False)
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "updated_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=False,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "created_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=False,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status", "enabled", existing_type=sa.BOOLEAN(), nullable=True, existing_server_default=sa.text("true")
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "check_interval_minutes",
         existing_type=sa.INTEGER(),
         nullable=True,
         existing_server_default=sa.text("240"),
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "last_error",
         existing_type=sqlmodel.sql.sqltypes.AutoString(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status", "errors", existing_type=sa.INTEGER(), nullable=True, existing_server_default=sa.text("0")
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "consecutive_errors",
         existing_type=sa.INTEGER(),
         nullable=True,
         existing_server_default=sa.text("0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "last_checked",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=False,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "feed_status",
         "feed_url",
         existing_type=sqlmodel.sql.sqltypes.AutoString(),
@@ -2483,36 +2531,36 @@ def downgrade() -> None:
         op.f("idx_faq_entries_category_needs_review"), "faq_entries", ["category", "needs_review"], unique=False
     )
     safe_create_index(op.f("idx_faq_entries_category"), "faq_entries", ["category"], unique=False)
-    op.alter_column(
+    safe_alter_column(
         "faq_entries",
         "search_vector",
         existing_type=sqlmodel.sql.sqltypes.AutoString(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "faq_entries",
         "updated_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=False,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "faq_entries",
         "created_at",
         existing_type=postgresql.TIMESTAMP(timezone=True),
         nullable=False,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column("faq_entries", "answer", existing_type=sa.TEXT(), nullable=False)
-    op.alter_column("faq_entries", "question", existing_type=sa.TEXT(), nullable=False)
-    op.drop_column("faq_entries", "similarity_score")
+    safe_alter_column("faq_entries", "answer", existing_type=sa.TEXT(), nullable=False)
+    safe_alter_column("faq_entries", "question", existing_type=sa.TEXT(), nullable=False)
+    safe_drop_column("faq_entries", "similarity_score")
     safe_drop_constraint(None, "expert_profiles", type_="foreignkey")
     safe_create_foreign_key(
         op.f("expert_profiles_user_id_fkey"), "expert_profiles", "user", ["user_id"], ["id"], ondelete="CASCADE"
     )
-    op.create_unique_constraint(op.f("expert_profiles_user_id_key"), "expert_profiles", ["user_id"])
-    op.alter_column(
+    safe_create_unique_constraint(op.f("expert_profiles_user_id_key"), "expert_profiles", ["user_id"])
+    safe_alter_column(
         "expert_profiles",
         "updated_at",
         existing_type=sa.DateTime(),
@@ -2520,7 +2568,7 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "created_at",
         existing_type=sa.DateTime(),
@@ -2528,56 +2576,56 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "is_active",
         existing_type=sa.BOOLEAN(),
         nullable=True,
         existing_server_default=sa.text("true"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "verification_date",
         existing_type=sa.DateTime(),
         type_=postgresql.TIMESTAMP(timezone=True),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "is_verified",
         existing_type=sa.BOOLEAN(),
         nullable=True,
         existing_server_default=sa.text("false"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "trust_score",
         existing_type=sa.DOUBLE_PRECISION(precision=53),
         nullable=True,
         existing_server_default=sa.text("0.5"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "average_response_time_seconds",
         existing_type=sa.INTEGER(),
         nullable=True,
         existing_server_default=sa.text("0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "feedback_accuracy_rate",
         existing_type=sa.DOUBLE_PRECISION(precision=53),
         nullable=True,
         existing_server_default=sa.text("0.0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "feedback_count",
         existing_type=sa.INTEGER(),
         nullable=True,
         existing_server_default=sa.text("0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "specializations",
         existing_type=postgresql.ARRAY(sa.String()),
@@ -2585,14 +2633,14 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("'{}'::text[]"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "experience_years",
         existing_type=sa.INTEGER(),
         nullable=True,
         existing_server_default=sa.text("0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "credential_types",
         existing_type=postgresql.ARRAY(sa.String()),
@@ -2610,7 +2658,7 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("'{}'::expert_credential_type[]"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_profiles",
         "credentials",
         existing_type=postgresql.ARRAY(sa.String()),
@@ -2637,8 +2685,8 @@ def downgrade() -> None:
     safe_create_index(
         op.f("idx_egt_created_at"), "expert_generated_tasks", [sa.literal_column("created_at DESC")], unique=False
     )
-    op.create_unique_constraint(op.f("expert_generated_tasks_task_id_key"), "expert_generated_tasks", ["task_id"])
-    op.alter_column(
+    safe_create_unique_constraint(op.f("expert_generated_tasks_task_id_key"), "expert_generated_tasks", ["task_id"])
+    safe_alter_column(
         "expert_generated_tasks",
         "created_at",
         existing_type=sa.DateTime(),
@@ -2646,7 +2694,7 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_generated_tasks",
         "file_path",
         existing_type=sqlmodel.sql.sqltypes.AutoString(length=500),
@@ -2654,27 +2702,27 @@ def downgrade() -> None:
         nullable=True,
         existing_server_default=sa.text("'SUPER_USER_TASKS.md'::character varying"),
     )
-    op.alter_column("expert_generated_tasks", "additional_details", existing_type=sa.TEXT(), nullable=False)
-    op.alter_column(
+    safe_alter_column("expert_generated_tasks", "additional_details", existing_type=sa.TEXT(), nullable=False)
+    safe_alter_column(
         "expert_generated_tasks",
         "task_name",
         existing_type=sqlmodel.sql.sqltypes.AutoString(length=200),
         type_=sa.VARCHAR(length=50),
         existing_nullable=False,
     )
-    op.drop_column("expert_generated_tasks", "updated_at")
-    op.add_column("expert_feedback", sa.Column("task_creation_error", sa.TEXT(), autoincrement=False, nullable=True))
-    op.add_column(
+    safe_drop_column("expert_generated_tasks", "updated_at")
+    safe_add_column("expert_feedback", sa.Column("task_creation_error", sa.TEXT(), autoincrement=False, nullable=True))
+    safe_add_column(
         "expert_feedback", sa.Column("generated_faq_id", sa.VARCHAR(length=100), autoincrement=False, nullable=True)
     )
-    op.add_column(
+    safe_add_column(
         "expert_feedback", sa.Column("generated_task_id", sa.VARCHAR(length=50), autoincrement=False, nullable=True)
     )
-    op.add_column("expert_feedback", sa.Column("additional_details", sa.TEXT(), autoincrement=False, nullable=True))
-    op.add_column(
+    safe_add_column("expert_feedback", sa.Column("additional_details", sa.TEXT(), autoincrement=False, nullable=True))
+    safe_add_column(
         "expert_feedback", sa.Column("task_creation_success", sa.BOOLEAN(), autoincrement=False, nullable=True)
     )
-    op.add_column(
+    safe_add_column(
         "expert_feedback",
         sa.Column(
             "task_creation_attempted",
@@ -2710,7 +2758,7 @@ def downgrade() -> None:
     safe_create_index(
         op.f("idx_expert_feedback_generated_faq_id"), "expert_feedback", ["generated_faq_id"], unique=False
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "updated_at",
         existing_type=sa.DateTime(),
@@ -2718,7 +2766,7 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "created_at",
         existing_type=sa.DateTime(),
@@ -2726,14 +2774,14 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "improvement_applied",
         existing_type=sa.BOOLEAN(),
         nullable=True,
         existing_server_default=sa.text("false"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "feedback_timestamp",
         existing_type=sa.DateTime(),
@@ -2741,14 +2789,14 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "confidence_score",
         existing_type=sa.DOUBLE_PRECISION(precision=53),
         nullable=True,
         existing_server_default=sa.text("0.0"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "regulatory_references",
         existing_type=postgresql.ARRAY(sa.String()),
@@ -2756,7 +2804,7 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("'{}'::text[]"),
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "category",
         existing_type=sqlmodel.sql.sqltypes.AutoString(length=50),
@@ -2770,7 +2818,7 @@ def downgrade() -> None:
         ),
         existing_nullable=True,
     )
-    op.alter_column(
+    safe_alter_column(
         "expert_feedback",
         "feedback_type",
         existing_type=sqlmodel.sql.sqltypes.AutoString(length=20),

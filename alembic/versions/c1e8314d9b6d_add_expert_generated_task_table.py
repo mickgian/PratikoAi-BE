@@ -129,6 +129,14 @@ def safe_drop_index(index_name, table_name: str, **kwargs) -> None:
         op.drop_index(index_name, table_name)
 
 
+def safe_drop_constraint(constraint_name, table_name: str, **kwargs) -> None:
+    """Drop constraint only if it exists."""
+    # Handle op.f() wrapper
+    actual_name = constraint_name.name if hasattr(constraint_name, "name") else constraint_name
+    if _constraint_exists(table_name, actual_name):
+        op.drop_constraint(constraint_name, table_name, **kwargs)
+
+
 def upgrade() -> None:
     """Upgrade schema."""
     # Pre-create ENUM types to avoid errors if they already exist (CI runs SQLModel.metadata.create_all)
@@ -1908,7 +1916,7 @@ def upgrade() -> None:
     )
     safe_drop_index(op.f("idx_expert_feedback_timestamp"), table_name="expert_feedback")
     safe_create_index("idx_expert_feedback_timestamp", "expert_feedback", ["feedback_timestamp"], unique=False)
-    op.drop_constraint(op.f("expert_feedback_expert_id_fkey"), "expert_feedback", type_="foreignkey")
+    safe_drop_constraint(op.f("expert_feedback_expert_id_fkey"), "expert_feedback", type_="foreignkey")
     safe_create_foreign_key(None, "expert_feedback", "expert_profiles", ["expert_id"], ["id"])
     op.drop_column("expert_feedback", "task_creation_attempted")
     op.drop_column("expert_feedback", "task_creation_success")
@@ -1944,7 +1952,7 @@ def upgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.drop_constraint(op.f("expert_generated_tasks_task_id_key"), "expert_generated_tasks", type_="unique")
+    safe_drop_constraint(op.f("expert_generated_tasks_task_id_key"), "expert_generated_tasks", type_="unique")
     safe_drop_index(op.f("idx_egt_created_at"), table_name="expert_generated_tasks")
     safe_drop_index(op.f("idx_egt_expert_id"), table_name="expert_generated_tasks")
     safe_drop_index(op.f("idx_egt_feedback_id"), table_name="expert_generated_tasks")
@@ -1955,7 +1963,7 @@ def upgrade() -> None:
         "idx_expert_generated_tasks_feedback_id", "expert_generated_tasks", ["feedback_id"], unique=False
     )
     safe_create_index(op.f("ix_expert_generated_tasks_task_id"), "expert_generated_tasks", ["task_id"], unique=True)
-    op.drop_constraint(op.f("expert_generated_tasks_feedback_id_fkey"), "expert_generated_tasks", type_="foreignkey")
+    safe_drop_constraint(op.f("expert_generated_tasks_feedback_id_fkey"), "expert_generated_tasks", type_="foreignkey")
     safe_create_foreign_key(None, "expert_generated_tasks", "expert_feedback", ["feedback_id"], ["id"])
     op.alter_column(
         "expert_profiles",
@@ -2063,8 +2071,8 @@ def upgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("now()"),
     )
-    op.drop_constraint(op.f("expert_profiles_user_id_key"), "expert_profiles", type_="unique")
-    op.drop_constraint(op.f("expert_profiles_user_id_fkey"), "expert_profiles", type_="foreignkey")
+    safe_drop_constraint(op.f("expert_profiles_user_id_key"), "expert_profiles", type_="unique")
+    safe_drop_constraint(op.f("expert_profiles_user_id_fkey"), "expert_profiles", type_="foreignkey")
     safe_create_foreign_key(None, "expert_profiles", "user", ["user_id"], ["id"])
     op.add_column("faq_entries", sa.Column("similarity_score", sa.Float(), nullable=True))
     op.alter_column("faq_entries", "question", existing_type=sa.TEXT(), nullable=True)
@@ -2290,7 +2298,7 @@ def downgrade() -> None:
         "regulatory_documents",
         sa.Column("metadata", postgresql.JSON(astext_type=sa.Text()), autoincrement=False, nullable=True),
     )
-    op.drop_constraint(None, "regulatory_documents", type_="unique")
+    safe_drop_constraint(None, "regulatory_documents", type_="unique")
     safe_create_index(op.f("idx_regulatory_documents_status"), "regulatory_documents", ["status"], unique=False)
     safe_create_index(op.f("idx_regulatory_documents_source"), "regulatory_documents", ["source"], unique=False)
     op.alter_column(
@@ -2393,7 +2401,7 @@ def downgrade() -> None:
     )
     op.alter_column("knowledge_items", "updated_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=False)
     op.alter_column("knowledge_items", "created_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=False)
-    op.drop_constraint(None, "knowledge_feedback", type_="foreignkey")
+    safe_drop_constraint(None, "knowledge_feedback", type_="foreignkey")
     op.alter_column(
         "knowledge_feedback", "user_id", existing_type=sa.Integer(), type_=sa.VARCHAR(), existing_nullable=False
     )
@@ -2499,7 +2507,7 @@ def downgrade() -> None:
     op.alter_column("faq_entries", "answer", existing_type=sa.TEXT(), nullable=False)
     op.alter_column("faq_entries", "question", existing_type=sa.TEXT(), nullable=False)
     op.drop_column("faq_entries", "similarity_score")
-    op.drop_constraint(None, "expert_profiles", type_="foreignkey")
+    safe_drop_constraint(None, "expert_profiles", type_="foreignkey")
     safe_create_foreign_key(
         op.f("expert_profiles_user_id_fkey"), "expert_profiles", "user", ["user_id"], ["id"], ondelete="CASCADE"
     )
@@ -2610,7 +2618,7 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("'{}'::text[]"),
     )
-    op.drop_constraint(None, "expert_generated_tasks", type_="foreignkey")
+    safe_drop_constraint(None, "expert_generated_tasks", type_="foreignkey")
     safe_create_foreign_key(
         op.f("expert_generated_tasks_feedback_id_fkey"),
         "expert_generated_tasks",
@@ -2676,7 +2684,7 @@ def downgrade() -> None:
             nullable=True,
         ),
     )
-    op.drop_constraint(None, "expert_feedback", type_="foreignkey")
+    safe_drop_constraint(None, "expert_feedback", type_="foreignkey")
     safe_create_foreign_key(
         op.f("expert_feedback_expert_id_fkey"),
         "expert_feedback",

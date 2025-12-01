@@ -150,20 +150,20 @@ def _column_exists(table_name: str, column_name: str) -> bool:
 
 
 def safe_drop_column(table_name: str, column_name: str) -> None:
-    """Drop column only if it exists."""
-    if _column_exists(table_name, column_name):
+    """Drop column only if table and column exist."""
+    if _table_exists(table_name) and _column_exists(table_name, column_name):
         op.drop_column(table_name, column_name)
 
 
 def safe_add_column(table_name: str, column, **kwargs) -> None:
-    """Add column only if it doesn't exist."""
-    if not _column_exists(table_name, column.name):
+    """Add column only if table exists and column doesn't exist."""
+    if _table_exists(table_name) and not _column_exists(table_name, column.name):
         op.add_column(table_name, column, **kwargs)
 
 
 def safe_alter_column(table_name: str, column_name: str, **kwargs) -> None:
-    """Alter column only if it exists."""
-    if _column_exists(table_name, column_name):
+    """Alter column only if table and column exist."""
+    if _table_exists(table_name) and _column_exists(table_name, column_name):
         op.alter_column(table_name, column_name, **kwargs)
 
 

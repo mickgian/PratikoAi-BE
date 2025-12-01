@@ -15,6 +15,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -26,6 +27,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
 )
@@ -61,6 +63,7 @@ class ExpertCredentialType(enum.Enum):
     CONSULENTE_FISCALE = "consulente_fiscale"
     CONSULENTE_LAVORO = "consulente_lavoro"
     CAF_OPERATOR = "caf_operator"
+    ADMIN = "admin"
 
 
 class ImprovementStatus(enum.Enum):
@@ -114,6 +117,8 @@ class ExpertProfile(SQLModel, table=True):
 
     # Relationships
     expert_feedback: list["ExpertFeedback"] = Relationship(back_populates="expert")
+    generated_tasks: list["ExpertGeneratedTask"] = Relationship(back_populates="expert")
+    faq_candidates: list["ExpertFAQCandidate"] = Relationship(back_populates="expert")
 
     __table_args__ = (
         Index("idx_expert_profiles_trust_score", "trust_score"),
@@ -192,6 +197,10 @@ class ExpertFeedback(SQLModel, table=True):
 
     # Relationships
     expert: "ExpertProfile" = Relationship(back_populates="expert_feedback")
+    generated_task: "ExpertGeneratedTask" = Relationship(
+        back_populates="feedback",
+        sa_relationship_kwargs={"uselist": False},
+    )
 
     __table_args__ = (
         Index("idx_expert_feedback_query_id", "query_id"),
@@ -521,10 +530,98 @@ class ExpertGeneratedTask(SQLModel, table=True):
     created_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
     updated_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now()))
 
+    # Relationships
+    feedback: "ExpertFeedback" = Relationship(back_populates="generated_task")
+    expert: "ExpertProfile" = Relationship(back_populates="generated_tasks")
+
     __table_args__ = (
         Index("idx_expert_generated_tasks_feedback_id", "feedback_id"),
         Index("idx_expert_generated_tasks_expert_id", "expert_id"),
         Index("idx_expert_generated_tasks_created_at", "created_at"),
+    )
+
+
+class ExpertFAQCandidate(SQLModel, table=True):
+    """FAQ candidates generated from expert feedback (Golden Set workflow).
+
+    This table stores FAQ candidates specifically from expert feedback,
+    separate from the automated faq_candidates in faq_automation.py.
+    Used for the Golden Set feature to bypass LLM for approved responses.
+    """
+
+    __tablename__ = "expert_faq_candidates"
+
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # FAQ content
+    question: str = Field(sa_column=Column(Text, nullable=False))
+    answer: str = Field(sa_column=Column(Text, nullable=False))
+
+    # Vector embedding for semantic similarity search (OpenAI ada-002)
+    question_embedding: list[float] | None = Field(
+        default=None,
+        sa_column=Column(Vector(1536), nullable=True),
+    )
+
+    # Query signature for fast golden set lookups
+    query_signature: str | None = Field(default=None, max_length=64)
+
+    # Source information
+    source: str = Field(max_length=20, default="expert_feedback")  # expert_feedback, auto_generated
+    expert_id: UUID | None = Field(default=None, foreign_key="expert_profiles.id")
+    expert_trust_score: float | None = Field(default=None)
+
+    # Approval workflow
+    approval_status: str = Field(max_length=20, default="pending")  # pending, approved, rejected
+    approved_by: int | None = Field(default=None, foreign_key="user.id")
+    approved_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+
+    # Classification
+    suggested_category: str | None = Field(default=None, max_length=100)
+    suggested_tags: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
+    regulatory_references: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
+
+    # Business metrics
+    frequency: int = Field(default=0)
+    estimated_monthly_savings: Decimal = Field(
+        default=Decimal("0"),
+        sa_column=Column(Numeric(10, 2), nullable=False, default=0),
+    )
+    roi_score: Decimal = Field(
+        default=Decimal("0"),
+        sa_column=Column(Numeric(10, 2), nullable=False, default=0),
+    )
+    priority_score: Decimal = Field(
+        default=Decimal("0"),
+        sa_column=Column(Numeric(10, 2), nullable=False, default=0),
+    )
+
+    # Timestamps
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    )
+
+    # Relationships
+    expert: "ExpertProfile" = Relationship(back_populates="faq_candidates")
+
+    __table_args__ = (
+        Index("idx_expert_faq_candidates_status", "approval_status", "created_at"),
+        Index("idx_expert_faq_candidates_priority", "priority_score", "approval_status"),
+        Index("idx_expert_faq_candidates_expert", "expert_id", "expert_trust_score"),
+        Index("idx_expert_faq_candidates_category", "suggested_category"),
+        Index("ix_expert_faq_candidates_query_signature", "query_signature"),
+        CheckConstraint("frequency >= 0", name="non_negative_frequency"),
+        CheckConstraint("estimated_monthly_savings >= 0", name="non_negative_savings"),
+        CheckConstraint(
+            "source IN ('expert_feedback', 'auto_generated')",
+            name="valid_source",
+        ),
+        CheckConstraint(
+            "approval_status IN ('pending', 'approved', 'rejected')",
+            name="valid_approval_status",
+        ),
     )
 
 

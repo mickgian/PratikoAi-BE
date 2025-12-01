@@ -15,9 +15,9 @@ from typing import AsyncGenerator
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel
 
 from app.core.config import settings
-from app.models.ccnl_database import Base
 
 # Use test database (separate from dev/prod)
 # NOTE: Ensure this database exists: CREATE DATABASE pratiko_ai_test;
@@ -55,13 +55,13 @@ async def test_engine() -> AsyncGenerator[AsyncEngine]:
 
     # Create all tables
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(SQLModel.metadata.create_all)
 
     yield engine
 
     # Drop all tables after tests
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(SQLModel.metadata.drop_all)
 
     await engine.dispose()
 

@@ -65,13 +65,10 @@ from app.models.user import User
 async def test_user(db_session: AsyncSession) -> User:
     """Create a test user for FK relationships."""
     user = User(
-        id=uuid4(),
         email="expert@pratiko.ai",
-        username="expert_user",
-        first_name="Expert",
-        last_name="User",
-        is_verified=True,
-        is_active=True,
+        name="Expert User",
+        provider="email",
+        role="expert",
     )
     db_session.add(user)
     await db_session.commit()

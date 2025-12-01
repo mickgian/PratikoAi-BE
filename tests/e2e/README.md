@@ -295,7 +295,7 @@ docker stop postgres-test && docker rm postgres-test
 **Documentation:**
 - [E2E Testing Strategy](../../docs/testing/E2E_EXPERT_FEEDBACK_TESTING_STRATEGY.md)
 - [Expert Feedback Implementation Summary](../../EXPERT_FEEDBACK_IMPLEMENTATION_SUMMARY.md)
-- [Database Schema Documentation](../../DEPLOYMENT_EXPERT_FEEDBACK_SCHEMA.md)
+- [Database Schema Documentation](../../docs/deployment/DEPLOYMENT_EXPERT_FEEDBACK_SCHEMA.md)
 
 **Related Code:**
 - API: `app/api/v1/expert_feedback.py`

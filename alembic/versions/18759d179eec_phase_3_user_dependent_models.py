@@ -23,6 +23,56 @@ depends_on: str | Sequence[str] | None = None
 
 
 # Helper functions for idempotent operations (CI creates tables via SQLModel.metadata.create_all)
+# IMPORTANT: We must check existence BEFORE operations, not catch exceptions after.
+# PostgreSQL transactions are atomic - any error aborts the entire transaction.
+
+
+def _table_exists(table_name: str) -> bool:
+    """Check if a table exists."""
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(
+            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = :name)"
+        ),
+        {"name": table_name},
+    )
+    return result.scalar()
+
+
+def _column_exists(table_name: str, column_name: str) -> bool:
+    """Check if a column exists."""
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(
+            "SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name = :table AND column_name = :column)"
+        ),
+        {"table": table_name, "column": column_name},
+    )
+    return result.scalar()
+
+
+def _index_exists(index_name: str) -> bool:
+    """Check if an index exists."""
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text("SELECT EXISTS (SELECT FROM pg_indexes WHERE indexname = :name)"),
+        {"name": index_name},
+    )
+    return result.scalar()
+
+
+def _constraint_exists(table_name: str, constraint_name: str) -> bool:
+    """Check if a constraint exists."""
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(
+            "SELECT EXISTS (SELECT FROM information_schema.table_constraints WHERE table_name = :table AND constraint_name = :constraint)"
+        ),
+        {"table": table_name, "constraint": constraint_name},
+    )
+    return result.scalar()
+
+
 def safe_drop_index(index_name: str, table_name: str) -> None:
     """Drop index only if it exists."""
     op.execute(sa.text(f'DROP INDEX IF EXISTS "{index_name}"'))
@@ -35,68 +85,80 @@ def safe_drop_table(table_name: str) -> None:
 
 def safe_drop_constraint(constraint_name: str, table_name: str, type_: str) -> None:
     """Drop constraint only if it exists."""
-    conn = op.get_bind()
-    if type_ == "foreignkey":
-        result = conn.execute(
-            sa.text(f"""
-            SELECT constraint_name FROM information_schema.table_constraints
-            WHERE table_name = '{table_name}' AND constraint_name = '{constraint_name}'
-        """)
-        )
-    else:
-        result = conn.execute(
-            sa.text(f"""
-            SELECT constraint_name FROM information_schema.table_constraints
-            WHERE table_name = '{table_name}' AND constraint_name = '{constraint_name}'
-        """)
-        )
-    if result.fetchone():
+    if _constraint_exists(table_name, constraint_name):
         op.drop_constraint(constraint_name, table_name, type_=type_)
 
 
 def safe_drop_column(table_name: str, column_name: str) -> None:
     """Drop column only if it exists."""
-    conn = op.get_bind()
-    result = conn.execute(
-        sa.text(f"""
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name = '{table_name}' AND column_name = '{column_name}'
-    """)
-    )
-    if result.fetchone():
+    if _column_exists(table_name, column_name):
         op.drop_column(table_name, column_name)
 
 
 def safe_add_column(table_name: str, column: sa.Column) -> None:
     """Add column only if it doesn't exist."""
-    conn = op.get_bind()
-    result = conn.execute(
-        sa.text(f"""
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name = '{table_name}' AND column_name = '{column.name}'
-    """)
-    )
-    if not result.fetchone():
+    if not _column_exists(table_name, column.name):
         op.add_column(table_name, column)
 
 
-def safe_create_index(*args, **kwargs) -> None:
-    """Create index, ignoring if it already exists."""
-    from sqlalchemy.exc import ProgrammingError
+def safe_create_index(index_name, table_name, columns, **kwargs) -> None:
+    """Create index only if it doesn't exist."""
+    # Handle op.f() wrapped names
+    actual_name = index_name.name if hasattr(index_name, "name") else index_name
+    if not _index_exists(actual_name):
+        op.create_index(index_name, table_name, columns, **kwargs)
 
-    try:
-        op.create_index(*args, **kwargs)
-    except ProgrammingError as e:
-        if "already exists" in str(e):
-            pass  # Index already exists, skip
-        else:
-            raise
+
+def safe_create_table(table_name: str, *args, **kwargs) -> None:
+    """Create table only if it doesn't exist."""
+    if not _table_exists(table_name):
+        op.create_table(table_name, *args, **kwargs)
+
+
+def _fk_exists_between(source_table: str, local_col: str, referent_table: str) -> bool:
+    """Check if a FK already exists from source_table.local_col to referent_table."""
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+                JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+                WHERE tc.constraint_type = 'FOREIGN KEY'
+                AND tc.table_name = :source_table
+                AND kcu.column_name = :local_col
+                AND ccu.table_name = :referent_table
+            )
+        """),
+        {"source_table": source_table, "local_col": local_col, "referent_table": referent_table},
+    )
+    return result.scalar()
+
+
+def safe_create_foreign_key(
+    constraint_name, source_table, referent_table, local_cols, remote_cols, **kwargs
+) -> None:
+    """Create foreign key only if it doesn't exist."""
+    # Handle op.f() wrapped names
+    actual_name = constraint_name.name if hasattr(constraint_name, "name") else constraint_name
+
+    # If constraint has a name, check by name
+    if actual_name and _constraint_exists(source_table, actual_name):
+        return
+
+    # Also check if FK already exists between these tables/columns (for None-named FKs)
+    if local_cols and _fk_exists_between(source_table, local_cols[0], referent_table):
+        return
+
+    op.create_foreign_key(
+        constraint_name, source_table, referent_table, local_cols, remote_cols, **kwargs
+    )
 
 
 def upgrade() -> None:
     """Upgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
-    op.create_table(
+    safe_create_table(
         "expert_validations",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("query_id", sa.Uuid(), nullable=False),
@@ -137,7 +199,7 @@ def upgrade() -> None:
     safe_create_index("idx_expert_validations_query", "expert_validations", ["query_id"], unique=False)
     safe_create_index("idx_expert_validations_status", "expert_validations", ["status"], unique=False)
     safe_create_index("idx_expert_validations_target", "expert_validations", ["target_completion"], unique=False)
-    op.create_table(
+    safe_create_table(
         "failure_patterns",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("pattern_name", sqlmodel.sql.sqltypes.AutoString(length=200), nullable=False),
@@ -166,7 +228,7 @@ def upgrade() -> None:
     safe_create_index("idx_failure_patterns_impact", "failure_patterns", ["impact_score"], unique=False)
     safe_create_index("idx_failure_patterns_resolved", "failure_patterns", ["is_resolved"], unique=False)
     safe_create_index("idx_failure_patterns_type", "failure_patterns", ["pattern_type"], unique=False)
-    op.create_table(
+    safe_create_table(
         "prompt_templates",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("name", sqlmodel.sql.sqltypes.AutoString(length=200), nullable=False),
@@ -203,7 +265,7 @@ def upgrade() -> None:
     safe_create_index("idx_prompt_templates_category", "prompt_templates", ["category"], unique=False)
     safe_create_index("idx_prompt_templates_quality", "prompt_templates", ["overall_quality_score"], unique=False)
     safe_create_index("idx_prompt_templates_usage", "prompt_templates", ["usage_count"], unique=False)
-    op.create_table(
+    safe_create_table(
         "quality_metrics",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("metric_name", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
@@ -237,7 +299,7 @@ def upgrade() -> None:
     safe_create_index(
         "idx_quality_metrics_period", "quality_metrics", ["measurement_period", "measurement_date"], unique=False
     )
-    op.create_table(
+    safe_create_table(
         "query_clusters",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("canonical_query", sqlmodel.sql.sqltypes.AutoString(length=500), nullable=False),
@@ -272,7 +334,7 @@ def upgrade() -> None:
     safe_create_index(op.f("ix_query_clusters_first_seen"), "query_clusters", ["first_seen"], unique=False)
     safe_create_index(op.f("ix_query_clusters_last_seen"), "query_clusters", ["last_seen"], unique=False)
     safe_create_index(op.f("ix_query_clusters_normalized_form"), "query_clusters", ["normalized_form"], unique=False)
-    op.create_table(
+    safe_create_table(
         "data_export_requests",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
@@ -321,7 +383,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table(
+    safe_create_table(
         "electronic_invoices",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
@@ -341,7 +403,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table(
+    safe_create_table(
         "export_document_analysis",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
@@ -363,7 +425,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table(
+    safe_create_table(
         "export_tax_calculations",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
@@ -382,7 +444,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table(
+    safe_create_table(
         "faq_candidates",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("cluster_id", sa.Uuid(), nullable=False),
@@ -418,7 +480,7 @@ def upgrade() -> None:
         "idx_faq_candidates_roi", "faq_candidates", ["roi_score", "estimated_monthly_savings"], unique=False
     )
     safe_create_index("idx_faq_candidates_status", "faq_candidates", ["status", "created_at"], unique=False)
-    op.create_table(
+    safe_create_table(
         "faq_generation_jobs",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("job_type", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
@@ -456,7 +518,7 @@ def upgrade() -> None:
     safe_create_index(
         op.f("ix_faq_generation_jobs_celery_task_id"), "faq_generation_jobs", ["celery_task_id"], unique=False
     )
-    op.create_table(
+    safe_create_table(
         "faq_interactions",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
@@ -476,7 +538,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table(
+    safe_create_table(
         "knowledge_base_searches",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
@@ -495,7 +557,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table(
+    safe_create_table(
         "query_history",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
@@ -518,7 +580,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table(
+    safe_create_table(
         "system_improvements",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("improvement_type", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
@@ -560,7 +622,7 @@ def upgrade() -> None:
     safe_create_index("idx_system_improvements_priority", "system_improvements", ["priority_score"], unique=False)
     safe_create_index("idx_system_improvements_status", "system_improvements", ["status"], unique=False)
     safe_create_index("idx_system_improvements_type", "system_improvements", ["improvement_type"], unique=False)
-    op.create_table(
+    safe_create_table(
         "export_audit_logs",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("export_request_id", sa.Uuid(), nullable=False),
@@ -583,7 +645,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table(
+    safe_create_table(
         "generated_faqs",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("candidate_id", sa.Uuid(), nullable=False),
@@ -638,7 +700,7 @@ def upgrade() -> None:
         "idx_generated_faqs_performance", "generated_faqs", ["usage_count", "satisfaction_score"], unique=False
     )
     safe_create_index("idx_generated_faqs_quality", "generated_faqs", ["quality_score", "approval_status"], unique=False)
-    op.create_table(
+    safe_create_table(
         "rss_faq_impacts",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("faq_id", sa.Uuid(), nullable=False),
@@ -704,7 +766,7 @@ def upgrade() -> None:
         existing_nullable=True,
         postgresql_using="user_id::integer",
     )
-    op.create_foreign_key(None, "cost_alerts", "user", ["user_id"], ["id"])
+    safe_create_foreign_key(None, "cost_alerts", "user", ["user_id"], ["id"])
     op.alter_column(
         "cost_optimization_suggestions",
         "user_id",
@@ -713,7 +775,7 @@ def upgrade() -> None:
         existing_nullable=True,
         postgresql_using="user_id::integer",
     )
-    op.create_foreign_key(None, "cost_optimization_suggestions", "user", ["user_id"], ["id"])
+    safe_create_foreign_key(None, "cost_optimization_suggestions", "user", ["user_id"], ["id"])
     op.alter_column(
         "document_collections",
         "name",
@@ -909,7 +971,7 @@ def upgrade() -> None:
     safe_drop_index("idx_document_processing_log_status", "document_processing_log")
     safe_drop_index("idx_document_processing_log_status_date", "document_processing_log")
     safe_drop_index("idx_document_processing_log_triggered_by", "document_processing_log")
-    op.create_foreign_key(None, "document_processing_log", "regulatory_documents", ["document_id"], ["id"])
+    safe_create_foreign_key(None, "document_processing_log", "regulatory_documents", ["document_id"], ["id"])
     op.alter_column(
         "expert_feedback",
         "feedback_type",
@@ -1305,7 +1367,7 @@ def upgrade() -> None:
         existing_nullable=False,
         postgresql_using="user_id::integer",
     )
-    op.create_foreign_key(None, "knowledge_feedback", "user", ["user_id"], ["id"])
+    safe_create_foreign_key(None, "knowledge_feedback", "user", ["user_id"], ["id"])
     op.alter_column(
         "knowledge_items",
         "last_accessed",
@@ -1567,7 +1629,7 @@ def upgrade() -> None:
         existing_nullable=False,
         postgresql_using="user_id::integer",
     )
-    op.create_foreign_key(None, "usage_events", "user", ["user_id"], ["id"])
+    safe_create_foreign_key(None, "usage_events", "user", ["user_id"], ["id"])
     op.alter_column(
         "usage_quotas",
         "user_id",
@@ -1576,7 +1638,7 @@ def upgrade() -> None:
         existing_nullable=False,
         postgresql_using="user_id::integer",
     )
-    op.create_foreign_key(None, "usage_quotas", "user", ["user_id"], ["id"])
+    safe_create_foreign_key(None, "usage_quotas", "user", ["user_id"], ["id"])
     op.alter_column(
         "user",
         "name",
@@ -1623,7 +1685,7 @@ def upgrade() -> None:
         existing_nullable=False,
         postgresql_using="user_id::integer",
     )
-    op.create_foreign_key(None, "user_usage_summaries", "user", ["user_id"], ["id"])
+    safe_create_foreign_key(None, "user_usage_summaries", "user", ["user_id"], ["id"])
     # ### end Alembic commands ###
 
 
@@ -1943,7 +2005,7 @@ def downgrade() -> None:
         "knowledge_feedback", "user_id", existing_type=sa.Integer(), type_=sa.VARCHAR(), existing_nullable=False
     )
     op.drop_constraint(None, "knowledge_chunks", type_="foreignkey")
-    op.create_foreign_key(
+    safe_create_foreign_key(
         op.f("knowledge_chunks_knowledge_item_id_fkey"),
         "knowledge_chunks",
         "knowledge_items",
@@ -2162,7 +2224,7 @@ def downgrade() -> None:
     op.alter_column("faq_entries", "question", existing_type=sa.TEXT(), nullable=False)
     safe_drop_column("faq_entries", "similarity_score")
     op.drop_constraint(None, "expert_profiles", type_="foreignkey")
-    op.create_foreign_key(
+    safe_create_foreign_key(
         op.f("expert_profiles_user_id_fkey"), "expert_profiles", "user", ["user_id"], ["id"], ondelete="CASCADE"
     )
     op.create_unique_constraint(op.f("expert_profiles_user_id_key"), "expert_profiles", ["user_id"])
@@ -2294,7 +2356,7 @@ def downgrade() -> None:
     )
     safe_add_column("expert_feedback", sa.Column("task_creation_error", sa.TEXT(), autoincrement=False, nullable=True))
     op.drop_constraint(None, "expert_feedback", type_="foreignkey")
-    op.create_foreign_key(
+    safe_create_foreign_key(
         op.f("expert_feedback_expert_id_fkey"),
         "expert_feedback",
         "expert_profiles",
@@ -2585,7 +2647,7 @@ def downgrade() -> None:
     )
     op.drop_constraint(None, "cost_alerts", type_="foreignkey")
     op.alter_column("cost_alerts", "user_id", existing_type=sa.Integer(), type_=sa.VARCHAR(), existing_nullable=True)
-    op.create_table(
+    safe_create_table(
         "expert_generated_tasks",
         sa.Column("id", sa.UUID(), server_default=sa.text("gen_random_uuid()"), autoincrement=False, nullable=False),
         sa.Column("task_id", sa.VARCHAR(length=50), autoincrement=False, nullable=False),
@@ -2627,12 +2689,12 @@ def downgrade() -> None:
     safe_create_index(
         op.f("idx_egt_created_at"), "expert_generated_tasks", [sa.literal_column("created_at DESC")], unique=False
     )
-    op.create_table(
+    safe_create_table(
         "checkpoint_migrations",
         sa.Column("v", sa.INTEGER(), autoincrement=False, nullable=False),
         sa.PrimaryKeyConstraint("v", name=op.f("checkpoint_migrations_pkey")),
     )
-    op.create_table(
+    safe_create_table(
         "checkpoints",
         sa.Column("thread_id", sa.TEXT(), autoincrement=False, nullable=False),
         sa.Column("checkpoint_ns", sa.TEXT(), server_default=sa.text("''::text"), autoincrement=False, nullable=False),
@@ -2650,7 +2712,7 @@ def downgrade() -> None:
         sa.PrimaryKeyConstraint("thread_id", "checkpoint_ns", "checkpoint_id", name=op.f("checkpoints_pkey")),
     )
     safe_create_index(op.f("checkpoints_thread_id_idx"), "checkpoints", ["thread_id"], unique=False)
-    op.create_table(
+    safe_create_table(
         "expert_faq_candidates",
         sa.Column("id", sa.UUID(), server_default=sa.text("gen_random_uuid()"), autoincrement=False, nullable=False),
         sa.Column("question", sa.TEXT(), autoincrement=False, nullable=False),
@@ -2781,7 +2843,7 @@ def downgrade() -> None:
     safe_create_index(
         op.f("idx_expert_faq_candidates_category"), "expert_faq_candidates", ["suggested_category"], unique=False
     )
-    op.create_table(
+    safe_create_table(
         "checkpoint_blobs",
         sa.Column("thread_id", sa.TEXT(), autoincrement=False, nullable=False),
         sa.Column("checkpoint_ns", sa.TEXT(), server_default=sa.text("''::text"), autoincrement=False, nullable=False),
@@ -2794,7 +2856,7 @@ def downgrade() -> None:
         ),
     )
     safe_create_index(op.f("checkpoint_blobs_thread_id_idx"), "checkpoint_blobs", ["thread_id"], unique=False)
-    op.create_table(
+    safe_create_table(
         "checkpoint_writes",
         sa.Column("thread_id", sa.TEXT(), autoincrement=False, nullable=False),
         sa.Column("checkpoint_ns", sa.TEXT(), server_default=sa.text("''::text"), autoincrement=False, nullable=False),

@@ -55,10 +55,10 @@ def _index_exists(index_name: str) -> bool:
 
 
 def safe_create_index(index_name, table_name, columns, **kwargs) -> None:
-    """Create index only if it doesn't exist."""
+    """Create index only if table exists and index doesn't exist."""
     # Handle op.f() wrapper
     actual_name = index_name.name if hasattr(index_name, "name") else index_name
-    if not _index_exists(actual_name):
+    if _table_exists(table_name) and not _index_exists(actual_name):
         op.create_index(index_name, table_name, columns, **kwargs)
 
 
@@ -103,7 +103,10 @@ def _fk_exists_between(source_table: str, local_col: str, referent_table: str) -
 
 
 def safe_create_foreign_key(constraint_name, source_table, referent_table, local_cols, remote_cols, **kwargs) -> None:
-    """Create foreign key only if it doesn't exist."""
+    """Create foreign key only if tables exist and constraint doesn't exist."""
+    # Check if tables exist
+    if not _table_exists(source_table) or not _table_exists(referent_table):
+        return
     # Handle op.f() wrapper
     actual_name = constraint_name.name if hasattr(constraint_name, "name") else constraint_name
     # Check by constraint name
@@ -168,7 +171,9 @@ def safe_alter_column(table_name: str, column_name: str, **kwargs) -> None:
 
 
 def safe_create_unique_constraint(constraint_name, table_name: str, columns, **kwargs) -> None:
-    """Create unique constraint only if it doesn't exist."""
+    """Create unique constraint only if table exists and constraint doesn't exist."""
+    if not _table_exists(table_name):
+        return
     # Handle op.f() wrapper
     actual_name = constraint_name.name if hasattr(constraint_name, "name") else constraint_name
     if actual_name and not _constraint_exists(table_name, actual_name):

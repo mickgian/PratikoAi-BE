@@ -85,7 +85,7 @@ def safe_create_index(*args, **kwargs) -> None:
     from sqlalchemy.exc import ProgrammingError
 
     try:
-        safe_create_index(*args, **kwargs)
+        op.create_index(*args, **kwargs)
     except ProgrammingError as e:
         if "already exists" in str(e):
             pass  # Index already exists, skip

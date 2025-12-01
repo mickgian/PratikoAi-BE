@@ -33,20 +33,47 @@ depends_on = None
 
 def upgrade() -> None:
     """Add question_embedding column and vector similarity index to faq_candidates"""
+    # Check if faq_candidates table exists (may not exist yet if running before Phase 3/4 migrations)
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_name = 'faq_candidates'
+            )
+        """)
+    )
+    table_exists = result.scalar()
+
+    if not table_exists:
+        # Table doesn't exist yet - will be created with column by later migration (c1e8314d9b6d)
+        print("ℹ️  faq_candidates table doesn't exist yet, skipping (will be created with column by later migration)")
+        return
+
+    # Check if column already exists
+    col_result = conn.execute(
+        sa.text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'faq_candidates' AND column_name = 'question_embedding'
+        """)
+    )
+    column_exists = col_result.fetchone() is not None
+
     # Ensure pgvector extension is enabled (should already be enabled)
     op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
-    # Add question_embedding column with Vector(1536) type
-    # Nullable=True because existing records won't have embeddings initially
-    op.add_column(
-        "faq_candidates",
-        sa.Column(
-            "question_embedding",
-            Vector(1536),  # OpenAI ada-002 embedding dimension
-            nullable=True,
-            comment="Vector embedding of the FAQ question for semantic similarity search (OpenAI ada-002, 1536 dimensions)",
-        ),
-    )
+    if not column_exists:
+        # Add question_embedding column with Vector(1536) type
+        # Nullable=True because existing records won't have embeddings initially
+        op.add_column(
+            "faq_candidates",
+            sa.Column(
+                "question_embedding",
+                Vector(1536),  # OpenAI ada-002 embedding dimension
+                nullable=True,
+                comment="Vector embedding of the FAQ question for semantic similarity search (OpenAI ada-002, 1536 dimensions)",
+            ),
+        )
 
     # Create IVFFlat index for fast similarity search
     # Note: Index will be empty initially and will populate as embeddings are added
@@ -65,11 +92,33 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Remove question_embedding column and index from faq_candidates"""
+    # Check if table exists before trying to drop column
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_name = 'faq_candidates'
+            )
+        """)
+    )
+    table_exists = result.scalar()
+
+    if not table_exists:
+        return
+
     # Drop index first (must drop before dropping column)
     op.execute("DROP INDEX IF EXISTS idx_faq_candidates_question_embedding_ivfflat;")
 
-    # Drop the question_embedding column
-    op.drop_column("faq_candidates", "question_embedding")
+    # Check if column exists before dropping
+    col_result = conn.execute(
+        sa.text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'faq_candidates' AND column_name = 'question_embedding'
+        """)
+    )
+    if col_result.fetchone() is not None:
+        op.drop_column("faq_candidates", "question_embedding")
 
     # Note: We don't drop the vector extension as other tables (knowledge_chunks,
     # knowledge_items) still use it for their embedding columns

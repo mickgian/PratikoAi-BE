@@ -37,15 +37,19 @@ def safe_drop_constraint(constraint_name: str, table_name: str, type_: str) -> N
     """Drop constraint only if it exists."""
     conn = op.get_bind()
     if type_ == "foreignkey":
-        result = conn.execute(sa.text(f"""
+        result = conn.execute(
+            sa.text(f"""
             SELECT constraint_name FROM information_schema.table_constraints
             WHERE table_name = '{table_name}' AND constraint_name = '{constraint_name}'
-        """))
+        """)
+        )
     else:
-        result = conn.execute(sa.text(f"""
+        result = conn.execute(
+            sa.text(f"""
             SELECT constraint_name FROM information_schema.table_constraints
             WHERE table_name = '{table_name}' AND constraint_name = '{constraint_name}'
-        """))
+        """)
+        )
     if result.fetchone():
         op.drop_constraint(constraint_name, table_name, type_=type_)
 
@@ -53,12 +57,27 @@ def safe_drop_constraint(constraint_name: str, table_name: str, type_: str) -> N
 def safe_drop_column(table_name: str, column_name: str) -> None:
     """Drop column only if it exists."""
     conn = op.get_bind()
-    result = conn.execute(sa.text(f"""
+    result = conn.execute(
+        sa.text(f"""
         SELECT column_name FROM information_schema.columns
         WHERE table_name = '{table_name}' AND column_name = '{column_name}'
-    """))
+    """)
+    )
     if result.fetchone():
         op.drop_column(table_name, column_name)
+
+
+def safe_add_column(table_name: str, column: sa.Column) -> None:
+    """Add column only if it doesn't exist."""
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(f"""
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = '{table_name}' AND column_name = '{column.name}'
+    """)
+    )
+    if not result.fetchone():
+        op.add_column(table_name, column)
 
 
 def upgrade() -> None:
@@ -948,7 +967,9 @@ def upgrade() -> None:
     safe_drop_index("idx_expert_feedback_generated_faq_id", "expert_feedback")
     safe_drop_index("idx_expert_feedback_task_id", "expert_feedback")
     safe_drop_index("idx_expert_feedback_timestamp", "expert_feedback")
-    op.execute(sa.text('CREATE INDEX IF NOT EXISTS idx_expert_feedback_timestamp ON expert_feedback (feedback_timestamp)'))
+    op.execute(
+        sa.text("CREATE INDEX IF NOT EXISTS idx_expert_feedback_timestamp ON expert_feedback (feedback_timestamp)")
+    )
     safe_drop_constraint("expert_feedback_expert_id_fkey", "expert_feedback", "foreignkey")
     # FK recreation handled by SQLModel.metadata.create_all in CI
     safe_drop_column("expert_feedback", "task_creation_error")
@@ -1066,7 +1087,7 @@ def upgrade() -> None:
     safe_drop_constraint("expert_profiles_user_id_key", "expert_profiles", "unique")
     safe_drop_constraint("expert_profiles_user_id_fkey", "expert_profiles", "foreignkey")
     # FK recreation handled by SQLModel.metadata.create_all in CI
-    op.add_column("faq_entries", sa.Column("similarity_score", sa.Float(), nullable=True))
+    safe_add_column("faq_entries", sa.Column("similarity_score", sa.Float(), nullable=True))
     op.alter_column("faq_entries", "question", existing_type=sa.TEXT(), nullable=True)
     op.alter_column("faq_entries", "answer", existing_type=sa.TEXT(), nullable=True)
     op.alter_column(
@@ -1260,7 +1281,7 @@ def upgrade() -> None:
     safe_drop_index("idx_kc_not_junk", "knowledge_chunks")
     safe_drop_index("idx_kc_vec", "knowledge_chunks")
     safe_drop_index("idx_chunk_kb_epoch", "knowledge_chunks")
-    op.execute(sa.text('CREATE INDEX IF NOT EXISTS idx_chunk_kb_epoch ON knowledge_chunks (kb_epoch)'))
+    op.execute(sa.text("CREATE INDEX IF NOT EXISTS idx_chunk_kb_epoch ON knowledge_chunks (kb_epoch)"))
     safe_drop_constraint("knowledge_chunks_knowledge_item_id_fkey", "knowledge_chunks", "foreignkey")
     # FK recreation handled by SQLModel.metadata.create_all in CI
     op.alter_column(
@@ -2070,7 +2091,7 @@ def downgrade() -> None:
         comment="RSS feed URL",
         existing_nullable=False,
     )
-    op.add_column(
+    safe_add_column(
         "faq_entries",
         sa.Column(
             "question_embedding", pgvector.sqlalchemy.vector.VECTOR(dim=1536), autoincrement=False, nullable=True
@@ -2238,7 +2259,7 @@ def downgrade() -> None:
         existing_nullable=True,
         existing_server_default=sa.text("'{}'::text[]"),
     )
-    op.add_column(
+    safe_add_column(
         "expert_feedback",
         sa.Column(
             "task_creation_attempted",
@@ -2248,17 +2269,17 @@ def downgrade() -> None:
             nullable=True,
         ),
     )
-    op.add_column("expert_feedback", sa.Column("additional_details", sa.TEXT(), autoincrement=False, nullable=True))
-    op.add_column(
+    safe_add_column("expert_feedback", sa.Column("additional_details", sa.TEXT(), autoincrement=False, nullable=True))
+    safe_add_column(
         "expert_feedback", sa.Column("generated_faq_id", sa.VARCHAR(length=100), autoincrement=False, nullable=True)
     )
-    op.add_column(
+    safe_add_column(
         "expert_feedback", sa.Column("task_creation_success", sa.BOOLEAN(), autoincrement=False, nullable=True)
     )
-    op.add_column(
+    safe_add_column(
         "expert_feedback", sa.Column("generated_task_id", sa.VARCHAR(length=50), autoincrement=False, nullable=True)
     )
-    op.add_column("expert_feedback", sa.Column("task_creation_error", sa.TEXT(), autoincrement=False, nullable=True))
+    safe_add_column("expert_feedback", sa.Column("task_creation_error", sa.TEXT(), autoincrement=False, nullable=True))
     op.drop_constraint(None, "expert_feedback", type_="foreignkey")
     op.create_foreign_key(
         op.f("expert_feedback_expert_id_fkey"),

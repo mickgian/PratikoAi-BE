@@ -1,7 +1,7 @@
 """phase_3_user_dependent_models
 
 Revision ID: 18759d179eec
-Revises: 8f41bd3ce9fd
+Revises: 6c9df3d39110
 Create Date: 2025-11-28 14:38:29.870764
 
 """
@@ -17,7 +17,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "18759d179eec"
-down_revision: str | Sequence[str] | None = "8f41bd3ce9fd"
+down_revision: str | Sequence[str] | None = "6c9df3d39110"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

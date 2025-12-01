@@ -185,6 +185,7 @@ class TestGetSessionHistory:
     async def test_get_session_history_success(
         self,
         chat_history_service,
+        sample_user_id,
         sample_session_id,
     ):
         """Test successful retrieval of session history."""
@@ -226,6 +227,7 @@ class TestGetSessionHistory:
         # Act
         with patch("app.models.database.get_db", mock_get_db):
             history = await chat_history_service.get_session_history(
+                user_id=sample_user_id,
                 session_id=sample_session_id,
                 limit=100,
                 offset=0,
@@ -242,6 +244,7 @@ class TestGetSessionHistory:
     async def test_get_session_history_pagination(
         self,
         chat_history_service,
+        sample_user_id,
         sample_session_id,
     ):
         """Test pagination with limit and offset."""
@@ -258,6 +261,7 @@ class TestGetSessionHistory:
         # Act
         with patch("app.models.database.get_db", mock_get_db):
             history = await chat_history_service.get_session_history(
+                user_id=sample_user_id,
                 session_id=sample_session_id,
                 limit=50,
                 offset=100,
@@ -273,6 +277,7 @@ class TestGetSessionHistory:
     async def test_get_session_history_empty_result(
         self,
         chat_history_service,
+        sample_user_id,
         sample_session_id,
     ):
         """Test retrieval when no messages exist."""
@@ -289,6 +294,7 @@ class TestGetSessionHistory:
         # Act
         with patch("app.models.database.get_db", mock_get_db):
             history = await chat_history_service.get_session_history(
+                user_id=sample_user_id,
                 session_id=sample_session_id,
             )
 

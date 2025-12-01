@@ -323,10 +323,12 @@ class QueryHistory(SQLModel, table=True):
     # with SQLAlchemy relationships. Access user via user_id foreign key instead.
 
 
-class DocumentAnalysis(SQLModel, table=True):
+class ExportDocumentAnalysis(SQLModel, table=True):
     """Document analysis history for export.
 
     Metadata only - no actual document content for privacy.
+    Note: Renamed from DocumentAnalysis to avoid mapper conflict with
+    app.models.document.DocumentAnalysis
     """
 
     __tablename__ = "export_document_analysis"
@@ -523,7 +525,7 @@ Add these relationships to the existing User model:
 # Data export relationships
 data_export_requests = relationship("DataExportRequest", back_populates="user")
 query_history = relationship("QueryHistory", back_populates="user")
-document_analyses = relationship("DocumentAnalysis", back_populates="user")
+document_analyses = relationship("ExportDocumentAnalysis", back_populates="user")
 tax_calculations = relationship("TaxCalculation", back_populates="user")
 faq_interactions = relationship("FAQInteraction", back_populates="user")
 knowledge_searches = relationship("KnowledgeBaseSearch", back_populates="user")

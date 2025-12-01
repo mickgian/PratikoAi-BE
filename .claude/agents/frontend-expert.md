@@ -147,6 +147,304 @@ You work under the coordination of the **Scrum Master** and technical guidance o
 - **`tsconfig.json`** - TypeScript configuration
 - **`jest.config.js`** - Jest test configuration
 - **`playwright.config.ts`** - E2E test configuration
+- **`src/lib/api.ts`** - Backend API client (chat history endpoints)
+- **`src/lib/hooks/useChatStorage.ts`** - Chat storage hook (IndexedDB → Backend API migration)
+
+---
+
+## Chat History Storage Architecture (⚠️ CRITICAL - NEW)
+
+**STATUS:** Migration in progress (IndexedDB → PostgreSQL backend)
+**DATE:** 2025-11-29
+
+### Overview
+PratikoAI is migrating from client-side IndexedDB to server-side PostgreSQL for chat history storage, following industry best practices (ChatGPT, Claude model).
+
+**Rationale:**
+- ✅ Multi-device sync (access from phone, tablet, desktop)
+- ✅ GDPR compliance (data export, deletion, retention)
+- ✅ Enterprise-ready (backup, recovery, analytics)
+- ✅ Data ownership (company controls data)
+- ❌ OLD: IndexedDB (browser-only, no sync, GDPR non-compliant)
+
+### Frontend Architecture Changes
+
+#### Phase 1: Backend API Client (src/lib/api.ts)
+
+**New Endpoints to Integrate:**
+```typescript
+// Chat history API client functions
+
+interface ChatMessage {
+  id: string;
+  query: string;
+  response: string;
+  timestamp: string;
+  model_used: string | null;
+  tokens_used: number | null;
+  cost_cents: number | null;
+  response_cached: boolean;
+  response_time_ms: number | null;
+}
+
+/**
+ * Retrieve chat history for a specific session
+ * GET /api/v1/chatbot/sessions/{sessionId}/messages
+ */
+export async function getChatHistory(
+  sessionId: string,
+  limit = 100,
+  offset = 0
+): Promise<ChatMessage[]> {
+  const response = await fetch(
+    `/api/v1/chatbot/sessions/${sessionId}/messages?limit=${limit}&offset=${offset}`,
+    {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${getAuthToken()}` },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch chat history: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Import chat history from IndexedDB to backend
+ * POST /api/v1/chatbot/import-history
+ */
+export async function importChatHistory(
+  messages: { session_id: string; query: string; response: string; timestamp: string }[]
+): Promise<{ imported_count: number; skipped_count: number }> {
+  const response = await fetch('/api/v1/chatbot/import-history', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getAuthToken()}`,
+    },
+    body: JSON.stringify({ messages }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to import chat history: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+```
+
+#### Phase 2: Chat Storage Hook (src/lib/hooks/useChatStorage.ts)
+
+**Hybrid Approach:**
+```typescript
+'use client';
+
+import { useState, useEffect } from 'react';
+import { getChatHistory, importChatHistory } from '@/lib/api';
+
+/**
+ * Chat storage hook with hybrid approach:
+ * - PRIMARY: Backend PostgreSQL (source of truth)
+ * - FALLBACK: IndexedDB (offline cache)
+ */
+export function useChatStorage(sessionId: string) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [migrationNeeded, setMigrationNeeded] = useState(false);
+
+  useEffect(() => {
+    async function loadMessages() {
+      try {
+        // Try backend first
+        const backendMessages = await getChatHistory(sessionId);
+        setMessages(backendMessages);
+
+        // Check if IndexedDB has unmigrated messages
+        const indexedDBMessages = await getIndexedDBMessages(sessionId);
+        if (indexedDBMessages.length > backendMessages.length) {
+          setMigrationNeeded(true);
+        }
+      } catch (error) {
+        console.error('Failed to load from backend, falling back to IndexedDB:', error);
+
+        // Fallback to IndexedDB if backend fails
+        const indexedDBMessages = await getIndexedDBMessages(sessionId);
+        setMessages(indexedDBMessages);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadMessages();
+  }, [sessionId]);
+
+  return { messages, isLoading, migrationNeeded };
+}
+```
+
+#### Phase 3: Migration UI Component
+
+**Migration Banner (src/components/MigrationBanner.tsx):**
+```tsx
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { importChatHistory } from '@/lib/api';
+
+export function MigrationBanner({ sessionId }: { sessionId: string }) {
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationComplete, setMigrationComplete] = useState(false);
+
+  async function handleMigration() {
+    setIsMigrating(true);
+
+    try {
+      // Export from IndexedDB
+      const indexedDBMessages = await getIndexedDBMessages(sessionId);
+
+      // Import to backend
+      const result = await importChatHistory(indexedDBMessages);
+
+      console.log(`Migrated ${result.imported_count} messages, skipped ${result.skipped_count}`);
+      setMigrationComplete(true);
+    } catch (error) {
+      console.error('Migration failed:', error);
+      alert('Failed to migrate chat history. Please try again or contact support.');
+    } finally {
+      setIsMigrating(false);
+    }
+  }
+
+  if (migrationComplete) {
+    return (
+      <Alert className="mb-4">
+        <AlertTitle>Migration Complete! ✅</AlertTitle>
+        <AlertDescription>
+          Your chat history is now synced across all your devices.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <Alert className="mb-4">
+      <AlertTitle>Sync Your Chat History</AlertTitle>
+      <AlertDescription>
+        We've upgraded to cloud-based chat history. Sync your conversations to access them from any device.
+      </AlertDescription>
+      <Button onClick={handleMigration} disabled={isMigrating} className="mt-2">
+        {isMigrating ? 'Syncing...' : 'Sync Now'}
+      </Button>
+    </Alert>
+  );
+}
+```
+
+### Implementation Tasks for Frontend Expert
+
+#### Phase 2: Frontend API Integration (DEV-FE-XXX)
+**Duration:** 3-4 days
+
+**Day 1: API Client**
+- ✅ Create `src/lib/api/chat-history.ts` with typed API client functions
+- ✅ Add authentication headers (JWT tokens)
+- ✅ Add error handling and retry logic
+- ✅ Write unit tests for API client
+
+**Day 2: Chat Storage Hook**
+- ✅ Create `src/lib/hooks/useChatStorage.ts` with hybrid approach
+- ✅ Implement backend-first, IndexedDB fallback
+- ✅ Add migration detection logic
+- ✅ Write React hook tests
+
+**Day 3: Migration UI**
+- ✅ Create `MigrationBanner.tsx` component
+- ✅ Add migration progress indicator
+- ✅ Handle migration errors gracefully
+- ✅ Write component tests
+
+**Day 4: Integration & Testing**
+- ✅ Update chat pages to use new hook
+- ✅ Test multi-device sync (desktop + mobile)
+- ✅ Test offline fallback to IndexedDB
+- ✅ Write E2E tests with Playwright
+
+### Important Notes for Frontend Developers
+
+**DO:**
+- ✅ Always try backend API first (source of truth)
+- ✅ Fall back to IndexedDB only if backend fails
+- ✅ Show migration banner if unmigrated data exists
+- ✅ Handle API errors gracefully (don't break UI)
+- ✅ Use TypeScript interfaces matching backend schemas
+
+**DON'T:**
+- ❌ Write directly to IndexedDB (read-only after migration)
+- ❌ Skip backend API even if IndexedDB has data
+- ❌ Force migration without user consent
+- ❌ Delete IndexedDB data without confirmation
+
+### Testing Requirements
+
+**Unit Tests:**
+- API client functions (GET, POST)
+- Chat storage hook (backend + IndexedDB fallback)
+- Migration logic
+
+**Component Tests:**
+- MigrationBanner rendering and interaction
+- Chat messages rendering from backend
+
+**E2E Tests (Playwright):**
+```typescript
+test('chat history syncs across devices', async ({ page, context }) => {
+  // Login on device 1
+  await page.goto('/login');
+  await page.fill('input[name="email"]', 'test@example.com');
+  await page.fill('input[name="password"]', 'password123');
+  await page.click('button[type="submit"]');
+
+  // Send a message
+  await page.goto('/chat');
+  await page.fill('textarea', 'What is IVA in Italy?');
+  await page.click('button[type="submit"]');
+  await page.waitForSelector('text=IVA (Imposta sul Valore Aggiunto)');
+
+  // Open new tab (simulating device 2)
+  const newPage = await context.newPage();
+  await newPage.goto('/chat');
+
+  // Verify message appears on device 2
+  await newPage.waitForSelector('text=What is IVA in Italy?');
+  await newPage.waitForSelector('text=IVA (Imposta sul Valore Aggiunto)');
+});
+```
+
+### Migration Phases
+
+**Phase 2A: API Client (Week 1)**
+- Backend API client functions
+- TypeScript interfaces
+- Unit tests
+
+**Phase 2B: Storage Hook (Week 1)**
+- Hybrid storage hook
+- Migration detection
+- React hook tests
+
+**Phase 2C: Migration UI (Week 2)**
+- Migration banner component
+- Progress indicators
+- Error handling
+
+**Phase 2D: Integration (Week 2)**
+- Update chat pages
+- E2E tests
+- Multi-device testing
 
 ---
 

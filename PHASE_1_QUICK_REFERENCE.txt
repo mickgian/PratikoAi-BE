@@ -1,0 +1,44 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                  PHASE 1 MIGRATION - QUICK REFERENCE                  ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+📁 MIGRATION FILE:
+   alembic/versions/e1ca2614d620_phase_1_convert_regional_taxes_py_to_.py
+
+📊 STATS:
+   • 164 lines (was 1,485 - reduced by 89%)
+   • 4 tables created (regioni, comuni, regional_tax_rates, comunal_tax_rates)
+   • 0 dangerous operations (was 40+ DROP/ALTER commands)
+   • Risk: SAFE ✅
+
+🗂️ TABLE HIERARCHY:
+   regioni (20 regions)
+     ├── comuni (8,000+ municipalities) [FK: regione_id]
+     │     └── comunal_tax_rates [FK: comune_id]
+     └── regional_tax_rates [FK: regione_id]
+
+🚀 DEPLOYMENT:
+   1. Backup DB: pg_dump -U postgres pratikoai > backup_$(date +%Y%m%d).sql
+   2. Apply:     uv run alembic upgrade e1ca2614d620
+   3. Verify:    See validation queries in FINAL_REPORT.md
+
+🔄 ROLLBACK:
+   uv run alembic downgrade 20251126_add_query_signature
+
+📚 DOCUMENTATION:
+   • PHASE_1_MIGRATION_CLEANUP_SUMMARY.md - Overview
+   • PHASE_1_MIGRATION_FINAL_REPORT.md - Complete details
+   • verify_phase1_migration.sh - Validation script
+
+✅ SAFETY CHECKS PASSED:
+   ✓ No DROP TABLE in upgrade()
+   ✓ No ALTER TABLE commands
+   ✓ Only new tables created
+   ✓ Foreign keys correct
+   ✓ Python syntax valid
+   ✓ Alembic recognizes migration
+   ✓ Downgrade drops only new tables
+
+🎯 STATUS: READY FOR DEPLOYMENT
+
+═══════════════════════════════════════════════════════════════════════

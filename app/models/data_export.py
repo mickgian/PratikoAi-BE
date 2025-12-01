@@ -11,7 +11,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, Column, Date, DateTime, Integer, JSON, Numeric, String, Text
+import sqlalchemy as sa
+from sqlalchemy import JSON, BigInteger, Column, Date, DateTime, Integer, Numeric, String, Text
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -63,8 +64,8 @@ class DataExportRequest(SQLModel, table=True):
     anonymize_pii: bool = Field(default=False)
 
     # Date range filtering (optional)
-    date_from: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
-    date_to: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    date_from: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
+    date_to: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
 
     # Italian specific options
     include_fatture: bool = Field(default=True)
@@ -86,54 +87,42 @@ class DataExportRequest(SQLModel, table=True):
     # Processing status (store enum as string)
     status: str = Field(default=ExportStatus.PENDING.value, max_length=20)
     requested_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
     )
-    started_at: Optional[datetime] = Field(default=None)
-    completed_at: Optional[datetime] = Field(default=None)
+    started_at: datetime | None = Field(default=None)
+    completed_at: datetime | None = Field(default=None)
     expires_at: datetime
 
     # Results
-    file_size_bytes: Optional[int] = Field(
-        default=None,
-        sa_column=Column(BigInteger, nullable=True)
-    )
-    download_url: Optional[str] = Field(default=None, max_length=500)
+    file_size_bytes: int | None = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    download_url: str | None = Field(default=None, max_length=500)
     download_count: int = Field(default=0)
     max_downloads: int = Field(default=10)
 
     # Error handling
-    error_message: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    error_message: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     retry_count: int = Field(default=0)
     max_retries: int = Field(default=3)
 
     # Security and audit
-    request_ip: Optional[str] = Field(default=None, max_length=45)  # IPv6 compatible
-    user_agent: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    download_ips: Optional[List[Dict[str, Any]]] = Field(
-        default=None,
-        sa_column=Column(JSON, nullable=True)
+    request_ip: str | None = Field(default=None, max_length=45)  # IPv6 compatible
+    user_agent: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    download_ips: list[dict[str, Any]] | None = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
     )  # Track download IPs
 
     # Italian compliance
-    gdpr_lawful_basis: str = Field(
-        default="Article 20 - Right to data portability",
-        max_length=100
-    )
+    gdpr_lawful_basis: str = Field(default="Article 20 - Right to data portability", max_length=100)
     data_controller: str = Field(default="PratikoAI SRL", max_length=255)
     retention_notice: str = Field(
         default="Dati cancellati automaticamente dopo 24 ore",
-        sa_column=Column(Text, default="Dati cancellati automaticamente dopo 24 ore")
+        sa_column=Column(Text, default="Dati cancellati automaticamente dopo 24 ore"),
     )
 
     # Timestamps
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow))
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     )
 
     # Relationships
@@ -152,7 +141,9 @@ class DataExportRequest(SQLModel, table=True):
     def is_downloadable(self) -> bool:
         """Check if export is ready for download"""
         return (
-            self.status == ExportStatus.COMPLETED.value and not self.is_expired() and self.download_count < self.max_downloads
+            self.status == ExportStatus.COMPLETED.value
+            and not self.is_expired()
+            and self.download_count < self.max_downloads
         )
 
     def processing_time_seconds(self) -> int | None:
@@ -248,24 +239,20 @@ class ExportAuditLog(SQLModel, table=True):
     # Activity details
     activity_type: str = Field(max_length=50)  # requested, started, completed, downloaded, expired
     activity_timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
     )
 
     # Context information
-    ip_address: Optional[str] = Field(default=None, max_length=45)
-    user_agent: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    session_id: Optional[str] = Field(default=None, max_length=255)
+    ip_address: str | None = Field(default=None, max_length=45)
+    user_agent: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    session_id: str | None = Field(default=None, max_length=255)
 
     # Activity-specific data
-    activity_data: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSON, nullable=True)
-    )
+    activity_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
 
     # Security flags
     suspicious_activity: bool = Field(default=False)
-    security_notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    security_notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Relationships
     export_request: Optional["DataExportRequest"] = Relationship()
@@ -297,37 +284,39 @@ class QueryHistory(SQLModel, table=True):
     # Primary key
     id: UUID = Field(default_factory=uuid4, primary_key=True)
 
-    # Foreign keys
-    user_id: int = Field(foreign_key="user.id")
+    # Foreign keys (CASCADE delete for GDPR compliance)
+    user_id: int = Field(
+        sa_column=Column(
+            Integer,
+            sa.ForeignKey("user.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+    )
 
     # Query details
     query: str = Field(sa_column=Column(Text, nullable=False))
-    response: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    response: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     response_cached: bool = Field(default=False)
-    response_time_ms: Optional[int] = Field(default=None)
+    response_time_ms: int | None = Field(default=None)
 
     # Usage tracking
-    tokens_used: Optional[int] = Field(default=None)
-    cost_cents: Optional[int] = Field(default=None)
-    model_used: Optional[str] = Field(default=None, max_length=100)
+    tokens_used: int | None = Field(default=None)
+    cost_cents: int | None = Field(default=None)
+    model_used: str | None = Field(default=None, max_length=100)
 
     # Context
-    session_id: Optional[str] = Field(default=None, max_length=255)
-    conversation_id: Optional[UUID] = Field(default=None)
+    session_id: str | None = Field(default=None, max_length=255)
+    conversation_id: UUID | None = Field(default=None)
 
     # Italian specific
-    query_type: Optional[str] = Field(default=None, max_length=50)  # tax_calculation, document_analysis, general
+    query_type: str | None = Field(default=None, max_length=50)  # tax_calculation, document_analysis, general
     italian_content: bool = Field(default=True)
 
     # Timestamps
     timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
     )
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow))
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible
@@ -351,33 +340,26 @@ class DocumentAnalysis(SQLModel, table=True):
     # Document metadata
     filename: str = Field(max_length=255)
     file_type: str = Field(max_length=100)
-    file_size_bytes: Optional[int] = Field(
-        default=None,
-        sa_column=Column(BigInteger, nullable=True)
-    )
+    file_size_bytes: int | None = Field(default=None, sa_column=Column(BigInteger, nullable=True))
 
     # Analysis details
     analysis_type: str = Field(max_length=100)  # italian_invoice, f24, declaration
-    processing_time_ms: Optional[int] = Field(default=None)
+    processing_time_ms: int | None = Field(default=None)
     analysis_status: str = Field(default="completed", max_length=50)
 
     # Results summary (no actual content)
-    entities_found: Optional[int] = Field(default=None)
-    confidence_score: Optional[Decimal] = Field(
-        default=None,
-        sa_column=Column(Numeric(3, 2), nullable=True)
-    )
+    entities_found: int | None = Field(default=None)
+    confidence_score: Decimal | None = Field(default=None, sa_column=Column(Numeric(3, 2), nullable=True))
 
     # Italian specific
-    document_category: Optional[str] = Field(default=None, max_length=100)  # fattura, ricevuta, f24, etc.
-    tax_year: Optional[int] = Field(default=None)
+    document_category: str | None = Field(default=None, max_length=100)  # fattura, ricevuta, f24, etc.
+    tax_year: int | None = Field(default=None)
 
     # Timestamps
     uploaded_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
     )
-    analyzed_at: Optional[datetime] = Field(default=None)
+    analyzed_at: datetime | None = Field(default=None)
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible
@@ -400,29 +382,21 @@ class TaxCalculation(SQLModel, table=True):
 
     # Calculation details
     calculation_type: str = Field(max_length=50)  # IVA, IRPEF, IMU, etc.
-    input_amount: Decimal = Field(
-        sa_column=Column(Numeric(12, 2), nullable=False)
-    )
-    result: Dict[str, Any] = Field(
-        sa_column=Column(JSON, nullable=False)
-    )  # Calculation results
-    parameters: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSON, nullable=True)
-    )  # Input parameters
+    input_amount: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
+    result: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))  # Calculation results
+    parameters: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON, nullable=True))  # Input parameters
 
     # Italian specific
-    tax_year: Optional[int] = Field(default=None)
-    region: Optional[str] = Field(default=None, max_length=50)
-    municipality: Optional[str] = Field(default=None, max_length=100)
+    tax_year: int | None = Field(default=None)
+    region: str | None = Field(default=None, max_length=50)
+    municipality: str | None = Field(default=None, max_length=100)
 
     # Context
-    session_id: Optional[str] = Field(default=None, max_length=255)
+    session_id: str | None = Field(default=None, max_length=255)
 
     # Timestamps
     timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
     )
 
     # Relationships
@@ -447,17 +421,16 @@ class FAQInteraction(SQLModel, table=True):
     # FAQ details
     faq_id: str = Field(max_length=100)
     question: str = Field(sa_column=Column(Text, nullable=False))
-    answer: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    category: Optional[str] = Field(default=None, max_length=100)
+    answer: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    category: str | None = Field(default=None, max_length=100)
 
     # Interaction details
     viewed_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
     )
-    time_spent_seconds: Optional[int] = Field(default=None)
-    helpful_rating: Optional[int] = Field(default=None)  # 1-5 scale
-    feedback: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    time_spent_seconds: int | None = Field(default=None)
+    helpful_rating: int | None = Field(default=None)  # 1-5 scale
+    feedback: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Italian specific
     italian_content: bool = Field(default=True)
@@ -485,15 +458,12 @@ class KnowledgeBaseSearch(SQLModel, table=True):
     # Search details
     search_query: str = Field(sa_column=Column(Text, nullable=False))
     results_count: int
-    clicked_result_id: Optional[str] = Field(default=None, max_length=100)
-    clicked_position: Optional[int] = Field(default=None)
+    clicked_result_id: str | None = Field(default=None, max_length=100)
+    clicked_position: int | None = Field(default=None)
 
     # Search context
-    search_filters: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSON, nullable=True)
-    )
-    search_category: Optional[str] = Field(default=None, max_length=100)
+    search_filters: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
+    search_category: str | None = Field(default=None, max_length=100)
 
     # Italian specific
     italian_query: bool = Field(default=True)
@@ -501,8 +471,7 @@ class KnowledgeBaseSearch(SQLModel, table=True):
 
     # Timestamps
     searched_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
     )
 
     # Relationships
@@ -529,21 +498,18 @@ class ElectronicInvoice(SQLModel, table=True):
     invoice_date: date = Field(sa_column=Column(Date, nullable=False))
 
     # Electronic invoice specific
-    xml_content: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))  # Full XML content
-    xml_hash: Optional[str] = Field(default=None, max_length=64)  # SHA-256 hash
+    xml_content: str | None = Field(default=None, sa_column=Column(Text, nullable=True))  # Full XML content
+    xml_hash: str | None = Field(default=None, max_length=64)  # SHA-256 hash
 
     # SDI (Sistema di Interscambio) details
-    sdi_transmission_id: Optional[str] = Field(default=None, max_length=255)
-    sdi_status: Optional[str] = Field(default=None, max_length=50)  # sent, accepted, rejected
-    sdi_response: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    sdi_transmission_id: str | None = Field(default=None, max_length=255)
+    sdi_status: str | None = Field(default=None, max_length=50)  # sent, accepted, rejected
+    sdi_response: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Timestamps
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    transmitted_at: Optional[datetime] = Field(default=None)
-    accepted_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow))
+    transmitted_at: datetime | None = Field(default=None)
+    accepted_at: datetime | None = Field(default=None)
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible

@@ -29,6 +29,15 @@ You are the **PratikoAI Test Generation** subagent, responsible for creating com
 
 **CURRENT BLOCKER:** Test coverage is 4%, blocking all commits. Target: 69.5%.
 
+**CRITICAL - DATABASE MODEL TESTS:**
+- ✅ **ALL models use SQLModel** (`class Model(SQLModel, table=True):`)
+- ❌ **REJECT PRs** that use SQLAlchemy `Base` or confusing `BaseModel`
+- ❌ **REJECT PRs** that use `relationship()` instead of `Relationship()`
+- ❌ **REJECT PRs** without `import sqlmodel` in migrations
+- 📖 **READ FIRST:** `docs/architecture/decisions/ADR-014-sqlmodel-exclusive-orm.md`
+- 📖 **TEST PATTERNS:** `docs/architecture/SQLMODEL_STANDARDS.md` (Testing Requirements section)
+- 📖 **PR CHECKLIST:** `docs/architecture/SQLMODEL_REVIEW_CHECKLIST.md`
+
 ---
 
 ## Core Responsibilities
@@ -275,46 +284,78 @@ def test_process_document_api_failure(mock_openai, processor):
     assert "API Error" in str(exc_info.value)
 ```
 
-### Pattern 3: Database Test with Rollback
+### Pattern 3: Database Test with SQLModel (REQUIRED PATTERN)
 ```python
 # tests/models/test_knowledge_items.py
 import pytest
-from app.models.database import KnowledgeItem
-from app.core.database import get_db
+from sqlmodel import Session, create_engine, SQLModel
+from app.models.knowledge import KnowledgeItem  # SQLModel model
 
 @pytest.fixture
-def db_session():
-    """Create a test database session with rollback."""
-    session = next(get_db())
-    yield session
-    session.rollback()
-    session.close()
+def session():
+    """Create a test database session with rollback.
 
-def test_create_knowledge_item(db_session):
-    """Test creating a knowledge item."""
+    CRITICAL: Model MUST inherit from SQLModel, table=True
+    """
+    # In-memory SQLite for testing
+    engine = create_engine("sqlite:///:memory:")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        yield session
+
+def test_create_knowledge_item(session):
+    """Test creating a knowledge item.
+
+    Verifies SQLModel pattern:
+    - Model uses SQLModel, table=True
+    - Fields use Field() syntax
+    - Proper type hints
+    """
     item = KnowledgeItem(
         title="Test Document",
         category="fiscal",
         source_url="https://example.com/doc"
     )
-    db_session.add(item)
-    db_session.commit()
+    session.add(item)
+    session.commit()
+    session.refresh(item)
 
     assert item.id is not None
     assert item.title == "Test Document"
+    assert item.category == "fiscal"
 
-def test_knowledge_item_unique_constraint(db_session):
+def test_knowledge_item_unique_constraint(session):
     """Test unique constraint on source_url."""
-    item1 = KnowledgeItem(title="Doc 1", source_url="https://example.com/doc")
-    item2 = KnowledgeItem(title="Doc 2", source_url="https://example.com/doc")
+    item1 = KnowledgeItem(
+        title="Doc 1",
+        category="fiscal",
+        source_url="https://example.com/doc"
+    )
+    item2 = KnowledgeItem(
+        title="Doc 2",
+        category="fiscal",
+        source_url="https://example.com/doc"  # Duplicate!
+    )
 
-    db_session.add(item1)
-    db_session.commit()
+    session.add(item1)
+    session.commit()
 
-    db_session.add(item2)
+    session.add(item2)
     with pytest.raises(Exception):  # IntegrityError
-        db_session.commit()
+        session.commit()
+
+# ❌ WRONG - Do NOT test models that inherit from Base
+# ❌ WRONG - Do NOT test models using relationship() instead of Relationship()
+# ✅ CORRECT - Only test SQLModel models
 ```
+
+**CRITICAL TESTING RULES:**
+- ✅ Use `from sqlmodel import Session, SQLModel` (NOT `from sqlalchemy.orm import Session`)
+- ✅ Create test engine with `SQLModel.metadata.create_all(engine)`
+- ✅ Verify model uses `SQLModel, table=True` before writing tests
+- ❌ REJECT tests for models using SQLAlchemy Base
+- ❌ REJECT tests for models using `relationship()` instead of `Relationship()`
 
 ### Pattern 4: Async Test
 ```python

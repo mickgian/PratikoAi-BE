@@ -77,6 +77,7 @@ from app.models.payment import (
 # Phase 3: Expert Feedback & Quality Analysis Models
 from app.models.quality_analysis import (
     ExpertFeedback,
+    ExpertGeneratedTask,
     ExpertProfile,
     ExpertValidation,
     FailurePattern,
@@ -92,10 +93,10 @@ from app.models.query_normalization import (
 
 # Phase 4: Regional Tax Models
 from app.models.regional_taxes import (
-    Comune,
     ComunalTaxRate,
-    Regione,
+    Comune,
     RegionalTaxRate,
+    Regione,
 )
 
 # Phase 3: Italian Subscription Models

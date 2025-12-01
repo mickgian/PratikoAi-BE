@@ -12,6 +12,14 @@ repos:
         pass_filenames: false
         always_run: true
 
+      - id: check-alembic-migrations
+        name: Check Alembic migrations are up-to-date
+        entry: "bash -c 'alembic check || (echo WARNING - Database migrations pending && exit 1)'"
+        language: system
+        pass_filenames: false
+        always_run: false
+        files: ^(alembic/versions/.*\.py|app/models/.*\.py)$
+
   # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0

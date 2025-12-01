@@ -8,6 +8,7 @@ FastAPI-based backend for PratikoAI - AI-powered assistant for Italian legal and
 - **Hybrid Search:** 50% FTS + 35% Vector + 15% Recency scoring
 - **pgvector:** PostgreSQL-based vector search (1536d embeddings)
 - **Semantic Caching:** Redis-based caching for cost optimization
+- **Chat History:** PostgreSQL-based persistent storage with multi-device sync
 - **GDPR Compliant:** Data export, deletion, and consent management
 - **Multi-Agent System:** Architect, Scrum Master, and specialized subagents with @mention support
 
@@ -77,13 +78,24 @@ pip install -e .
 
 ### 4. Database Setup
 
-```bash
-# Using Docker Compose (recommended)
-docker-compose up -d postgres redis
+⚠️ **IMPORTANT:** Always use Docker PostgreSQL for development (port 5433) to prevent schema drift.
 
-# Run migrations
+```bash
+# Start Docker services (PostgreSQL on port 5433, Redis)
+docker-compose up -d db redis
+
+# Run migrations (ALWAYS run this before starting work)
 alembic upgrade head
+
+# Verify database is accessible
+psql "postgresql://aifinance:devpass@localhost:5433/aifinance" -c "\dt"
 ```
+
+**Why Docker-only database?**
+- Prevents schema drift between developers
+- Easy to reset: `docker-compose down -v db && docker-compose up -d db`
+- Matches production environment exactly
+- Pre-commit hooks enforce migration discipline
 
 ### 5. Run the Application
 
@@ -237,6 +249,122 @@ Once the server is running:
 - **ReDoc:** http://localhost:8000/redoc
 - **OpenAPI JSON:** http://localhost:8000/openapi.json
 
+## Chat History Storage
+
+PratikoAI uses a **hybrid chat history architecture** following industry best practices (ChatGPT, Claude model):
+
+### Architecture
+- **Primary Storage:** PostgreSQL (`query_history` table)
+- **Fallback:** IndexedDB (client-side, offline support)
+- **Multi-device Sync:** Chat history accessible from any device
+- **GDPR Compliance:** CASCADE deletion, data export, 90-day retention
+
+### Key Features
+- ✅ Persistent storage with PostgreSQL
+- ✅ Multi-device synchronization
+- ✅ Offline mode fallback with IndexedDB
+- ✅ Automatic migration from IndexedDB to PostgreSQL
+- ✅ Session-based organization
+- ✅ Usage tracking (tokens, cost, model)
+- ✅ Response caching metadata
+- ✅ Italian content tracking
+- ✅ Query type categorization
+
+### Database Schema
+```sql
+CREATE TABLE query_history (
+    id UUID PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    session_id VARCHAR(255) NOT NULL,
+    query TEXT NOT NULL,
+    response TEXT NOT NULL,
+    model_used VARCHAR(50),
+    tokens_used INTEGER,
+    cost_cents INTEGER,
+    response_time_ms INTEGER,
+    response_cached BOOLEAN DEFAULT FALSE,
+    conversation_id UUID,
+    query_type VARCHAR(50),
+    italian_content BOOLEAN DEFAULT TRUE,
+    timestamp TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_query_history_user_id ON query_history(user_id);
+CREATE INDEX idx_query_history_session_id ON query_history(session_id);
+CREATE INDEX idx_query_history_timestamp ON query_history(timestamp DESC);
+CREATE INDEX idx_query_history_conversation_id ON query_history(conversation_id);
+```
+
+### API Endpoints
+```bash
+# Get session messages
+GET /api/v1/chatbot/sessions/{session_id}/messages?limit=100&offset=0
+
+# Get user sessions
+GET /api/v1/chatbot/sessions
+
+# Delete session
+DELETE /api/v1/chatbot/sessions/{session_id}
+
+# Import from IndexedDB (migration)
+POST /api/v1/chatbot/import-history
+```
+
+### Service Layer
+```python
+from app.services.chat_history_service import chat_history_service
+
+# Save chat interaction
+record_id = await chat_history_service.save_chat_interaction(
+    user_id=user.id,
+    session_id="session-123",
+    user_query="What is IVA in Italy?",
+    ai_response="IVA is the Italian Value-Added Tax...",
+    model_used="gpt-4-turbo",
+    tokens_used=150,
+    cost_cents=2,
+)
+
+# Get session history
+messages = await chat_history_service.get_session_history(
+    user_id=user.id,
+    session_id="session-123",
+    limit=100,
+)
+
+# Get user sessions
+sessions = await chat_history_service.get_user_sessions(user_id=user.id)
+
+# Delete session
+deleted_count = await chat_history_service.delete_session(
+    user_id=user.id,
+    session_id="session-123",
+)
+```
+
+### GDPR Compliance
+- **Right to Access:** Export all chat history via `/api/v1/users/me/export`
+- **Right to Erasure:** CASCADE deletion when user is deleted
+- **Data Retention:** 90-day retention policy (cron job cleanup)
+- **Consent:** User must consent to data processing
+
+### Testing
+```bash
+# Run integration tests
+pytest tests/integration/test_chat_history_flow.py -v
+
+# Expected: 10/10 tests passing
+# - Save and retrieve interactions
+# - Session management
+# - CASCADE deletion
+# - Usage tracking
+# - Italian content tracking
+```
+
+For detailed architecture documentation, see: [docs/CHAT_STORAGE_ARCHITECTURE.md](docs/CHAT_STORAGE_ARCHITECTURE.md)
+
 ## Environment Variables
 
 Key environment variables (see `.env.example` for complete list):
@@ -309,4 +437,4 @@ For issues or questions:
 
 ---
 
-**Last Updated:** 2025-11-17
+**Last Updated:** 2025-11-29

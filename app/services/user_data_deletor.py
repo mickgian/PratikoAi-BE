@@ -73,6 +73,7 @@ class UserDataDeletor:
             # Direct user references (delete first)
             {"table": "sessions", "user_column": "user_id"},
             {"table": "query_logs", "user_column": "user_id"},
+            {"table": "query_history", "user_column": "user_id"},  # Chat history for GDPR compliance
             {"table": "subscription_data", "user_column": "user_id"},
             {"table": "gdpr_deletion_requests", "user_column": "user_id"},
             # Main user table (delete last)

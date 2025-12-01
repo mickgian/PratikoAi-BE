@@ -77,12 +77,8 @@ class QueryCluster(SQLModel, table=True):
 
     # Cluster statistics
     query_count: int = Field(default=0)
-    first_seen: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), nullable=False, index=True)
-    )
-    last_seen: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), nullable=False, index=True)
-    )
+    first_seen: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False, index=True))
+    last_seen: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False, index=True))
 
     # Cost analysis
     total_cost_cents: int = Field(default=0)
@@ -91,53 +87,34 @@ class QueryCluster(SQLModel, table=True):
 
     # Quality metrics
     avg_quality_score: Decimal = Field(
-        default=Decimal("0"),
-        sa_column=Column(Numeric(3, 2), nullable=False, default=0)
+        default=Decimal("0"), sa_column=Column(Numeric(3, 2), nullable=False, default=0)
     )
     avg_response_time_ms: int = Field(default=0)
 
     # Pattern analysis (PostgreSQL arrays)
-    query_variations: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String(500)), nullable=False, default=list)
+    query_variations: list[str] = Field(
+        default_factory=list, sa_column=Column(ARRAY(String(500)), nullable=False, default=list)
     )
-    semantic_tags: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String(50)), nullable=False, default=list)
+    semantic_tags: list[str] = Field(
+        default_factory=list, sa_column=Column(ARRAY(String(50)), nullable=False, default=list)
     )
-    topic_distribution: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSONB, nullable=True)
-    )
+    topic_distribution: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Business metrics
-    roi_score: Decimal = Field(
-        default=Decimal("0"),
-        sa_column=Column(Numeric(10, 2), nullable=False, default=0)
-    )
-    priority_score: Decimal = Field(
-        default=Decimal("0"),
-        sa_column=Column(Numeric(10, 2), nullable=False, default=0)
-    )
+    roi_score: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0))
+    priority_score: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0))
 
     # Processing status
     processing_status: str = Field(max_length=20, default="discovered")
-    last_analyzed: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now())
-    )
+    last_analyzed: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True))
 
     # Relationships
-    faq_candidates: List["FAQCandidate"] = Relationship(
-        back_populates="query_cluster",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    faq_candidates: list["FAQCandidate"] = Relationship(
+        back_populates="query_cluster", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
     # Indexes for performance
@@ -223,41 +200,25 @@ class FAQCandidate(SQLModel, table=True):
     # FAQ content preparation
     suggested_question: str = Field(sa_column=Column(Text, nullable=False))
     best_response_content: str = Field(sa_column=Column(Text, nullable=False))
-    best_response_id: Optional[UUID] = Field(default=None)  # Reference to original query
+    best_response_id: UUID | None = Field(default=None)  # Reference to original query
 
     # Classification and tagging
-    suggested_category: Optional[str] = Field(default=None, max_length=100)
-    suggested_tags: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String(50)), default=list)
-    )
-    regulatory_references: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String(200)), default=list)
-    )
+    suggested_category: str | None = Field(default=None, max_length=100)
+    suggested_tags: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(50)), default=list))
+    regulatory_references: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(200)), default=list))
 
     # Business case
     frequency: int
     estimated_monthly_savings: Decimal = Field(
-        default=Decimal("0"),
-        sa_column=Column(Numeric(10, 2), nullable=False, default=0)
+        default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0)
     )
-    roi_score: Decimal = Field(
-        default=Decimal("0"),
-        sa_column=Column(Numeric(10, 2), nullable=False, default=0)
-    )
-    priority_score: Decimal = Field(
-        default=Decimal("0"),
-        sa_column=Column(Numeric(10, 2), nullable=False, default=0)
-    )
+    roi_score: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0))
+    priority_score: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0))
 
     # Generation parameters
-    generation_prompt: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    generation_prompt: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     generation_model_suggested: str = Field(max_length=50, default="gpt-3.5-turbo")
-    quality_threshold: Decimal = Field(
-        default=Decimal("0.85"),
-        sa_column=Column(Numeric(3, 2), default=0.85)
-    )
+    quality_threshold: Decimal = Field(default=Decimal("0.85"), sa_column=Column(Numeric(3, 2), default=0.85))
 
     # Status and workflow
     status: str = Field(max_length=30, default="pending")
@@ -265,32 +226,18 @@ class FAQCandidate(SQLModel, table=True):
     max_generation_attempts: int = Field(default=3)
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-    )
-    expires_at: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True))
+    expires_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
 
     # Processing metadata
-    analysis_metadata: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSONB, nullable=True)
-    )
-    generation_metadata: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSONB, nullable=True)
-    )
+    analysis_metadata: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    generation_metadata: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Relationships
     query_cluster: "QueryCluster" = Relationship(back_populates="faq_candidates")
-    generated_faqs: List["GeneratedFAQ"] = Relationship(
-        back_populates="candidate",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    generated_faqs: list["GeneratedFAQ"] = Relationship(
+        back_populates="candidate", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
     # Constraints and indexes
@@ -357,89 +304,60 @@ class GeneratedFAQ(SQLModel, table=True):
     # FAQ content
     question: str = Field(sa_column=Column(Text, nullable=False))
     answer: str = Field(sa_column=Column(Text, nullable=False))
-    category: Optional[str] = Field(default=None, max_length=100)
-    tags: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String(50)), default=list)
-    )
+    category: str | None = Field(default=None, max_length=100)
+    tags: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(50)), default=list))
 
     # Quality and validation
-    quality_score: Decimal = Field(
-        sa_column=Column(Numeric(3, 2), nullable=False)
-    )
-    quality_details: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSONB, nullable=True)
-    )
-    validation_notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    quality_score: Decimal = Field(sa_column=Column(Numeric(3, 2), nullable=False))
+    quality_details: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    validation_notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Legal and regulatory
-    regulatory_refs: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String(200)), default=list)
-    )
+    regulatory_refs: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(200)), default=list))
     legal_review_required: bool = Field(default=False)
-    compliance_notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    compliance_notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Generation details
     generation_model: str = Field(max_length=50)
     generation_cost_cents: int = Field(default=0)
-    generation_tokens: Optional[int] = Field(default=None)
-    generation_time_ms: Optional[int] = Field(default=None)
+    generation_tokens: int | None = Field(default=None)
+    generation_time_ms: int | None = Field(default=None)
 
     # Business metrics
     estimated_monthly_savings: Decimal = Field(
-        default=Decimal("0"),
-        sa_column=Column(Numeric(10, 2), nullable=False, default=0)
+        default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0)
     )
     source_query_count: int = Field(default=0)
 
     # Approval workflow
     approval_status: str = Field(max_length=30, default="pending_review")
-    approved_by: Optional[int] = Field(default=None, foreign_key="user.id")
-    approved_at: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True)
-    )
-    rejection_reason: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    approved_by: int | None = Field(default=None, foreign_key="user.id")
+    approved_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    rejection_reason: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Publishing
     published: bool = Field(default=False)
-    published_at: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True)
-    )
-    faq_id: Optional[str] = Field(default=None, max_length=100, foreign_key="faq_entries.id")  # Link to published FAQ
+    published_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    faq_id: str | None = Field(default=None, max_length=100, foreign_key="faq_entries.id")  # Link to published FAQ
 
     # Performance tracking
     view_count: int = Field(default=0)
     usage_count: int = Field(default=0)
-    satisfaction_score: Optional[Decimal] = Field(
-        default=None,
-        sa_column=Column(Numeric(3, 2), nullable=True)
-    )
+    satisfaction_score: Decimal | None = Field(default=None, sa_column=Column(Numeric(3, 2), nullable=True))
     feedback_count: int = Field(default=0)
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True))
 
     # Generation metadata
-    generation_metadata: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSONB, nullable=True)
-    )
+    generation_metadata: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
     auto_generated: bool = Field(default=True)
 
     # Relationships
     candidate: "FAQCandidate" = Relationship(back_populates="generated_faqs")
-    rss_impacts: List["RSSFAQImpact"] = Relationship(
-        back_populates="faq",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    rss_impacts: list["RSSFAQImpact"] = Relationship(
+        back_populates="faq", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
     # Indexes
@@ -509,62 +427,37 @@ class RSSFAQImpact(SQLModel, table=True):
 
     # Impact assessment
     impact_level: str = Field(max_length=20)  # low, medium, high, critical
-    impact_score: Decimal = Field(
-        sa_column=Column(Numeric(3, 2), nullable=False)
-    )
-    confidence_score: Decimal = Field(
-        sa_column=Column(Numeric(3, 2), nullable=False)
-    )
+    impact_score: Decimal = Field(sa_column=Column(Numeric(3, 2), nullable=False))
+    confidence_score: Decimal = Field(sa_column=Column(Numeric(3, 2), nullable=False))
 
     # RSS update details
     rss_source: str = Field(max_length=200)
     rss_title: str = Field(sa_column=Column(Text, nullable=False))
-    rss_summary: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    rss_published_date: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), nullable=False)
-    )
-    rss_url: Optional[str] = Field(default=None, max_length=500)
+    rss_summary: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    rss_published_date: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
+    rss_url: str | None = Field(default=None, max_length=500)
 
     # Matching details
-    matching_tags: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String(50)), default=list)
-    )
-    matching_keywords: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String(100)), default=list)
-    )
-    regulatory_changes: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String(200)), default=list)
-    )
+    matching_tags: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(50)), default=list))
+    matching_keywords: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(100)), default=list))
+    regulatory_changes: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(200)), default=list))
 
     # Action taken
     action_required: str = Field(max_length=50)  # review, regenerate, ignore
-    action_taken: Optional[str] = Field(default=None, max_length=50)
-    action_date: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True)
-    )
-    action_by: Optional[int] = Field(default=None, foreign_key="user.id")
+    action_taken: str | None = Field(default=None, max_length=50)
+    action_date: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    action_by: int | None = Field(default=None, foreign_key="user.id")
 
     # Processing status
     processed: bool = Field(default=False)
-    processing_notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    processing_notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True))
 
     # Analysis metadata
-    analysis_metadata: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSONB, nullable=True)
-    )
+    analysis_metadata: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Relationships
     faq: "GeneratedFAQ" = Relationship(back_populates="rss_impacts")
@@ -636,27 +529,18 @@ class FAQGenerationJob(SQLModel, table=True):
     job_name: str = Field(max_length=200)
 
     # Job parameters
-    parameters: Dict[str, Any] = Field(
-        default_factory=dict,
-        sa_column=Column(JSONB, nullable=False, default=dict)
-    )
+    parameters: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSONB, nullable=False, default=dict))
     priority: int = Field(default=5)  # 1-10, higher = more important
 
     # Processing status
     status: str = Field(max_length=30, default="pending")
     progress_percentage: int = Field(default=0)
-    progress_description: Optional[str] = Field(default=None, max_length=200)
+    progress_description: str | None = Field(default=None, max_length=200)
 
     # Execution details
-    started_at: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True)
-    )
-    completed_at: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True)
-    )
-    execution_time_seconds: Optional[int] = Field(default=None)
+    started_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    completed_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    execution_time_seconds: int | None = Field(default=None)
 
     # Results and metrics
     items_processed: int = Field(default=0)
@@ -665,31 +549,21 @@ class FAQGenerationJob(SQLModel, table=True):
     total_cost_cents: int = Field(default=0)
 
     # Error handling
-    error_message: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    error_message: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     retry_count: int = Field(default=0)
     max_retries: int = Field(default=3)
 
     # Results
-    result_data: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSONB, nullable=True)
-    )
-    output_references: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String(100)), default=list)
-    )
+    result_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    output_references: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(100)), default=list))
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-    )
-    created_by: Optional[int] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True))
+    created_by: int | None = Field(default=None, foreign_key="user.id")
 
     # Background job ID (Celery task ID)
-    celery_task_id: Optional[str] = Field(default=None, max_length=100, index=True)
+    celery_task_id: str | None = Field(default=None, max_length=100, index=True)
 
     # Indexes
     __table_args__ = (

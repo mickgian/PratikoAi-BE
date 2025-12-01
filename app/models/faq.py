@@ -9,6 +9,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Float, Integer, String
 from sqlmodel import ARRAY, JSON, Boolean, Column, DateTime, Field, SQLModel, Text
 
@@ -50,7 +52,11 @@ class FAQEntry(SQLModel, table=True):
         default_factory=list, sa_column=Column(JSON), description="References to regulatory documents"
     )
     update_sensitivity: UpdateSensitivity = Field(
-        default=UpdateSensitivity.MEDIUM, description="How sensitive FAQ is to regulatory changes"
+        default=UpdateSensitivity.MEDIUM,
+        sa_column=Column(
+            SQLEnum(UpdateSensitivity, name="updatesensitivity", values_callable=lambda obj: [e.value for e in obj])
+        ),
+        description="How sensitive FAQ is to regulatory changes",
     )
 
     # Usage analytics
@@ -80,9 +86,20 @@ class FAQEntry(SQLModel, table=True):
     # Generated automatically by database trigger
     search_vector: str | None = Field(default=None, description="Full-text search vector (auto-generated)")
 
-    # Similarity score (used in search results, not stored)
+    # Vector embedding for semantic search (pgvector)
+    # 1536 dimensions for OpenAI text-embedding-3-small
+    question_embedding: list[float] | None = Field(
+        default=None,
+        sa_column=Column(Vector(1536)),
+        description="Question embedding vector for semantic search (1536d)",
+    )
+
+    # Similarity score (runtime-only, not a database column)
+    # Use sa_column=None to exclude from SQLAlchemy table mapping
     similarity_score: float | None = Field(
-        default=None, exclude=True, description="Similarity score for search results"
+        default=None,
+        sa_column=None,  # Not stored in database, computed at runtime
+        description="Similarity score for search results",
     )
 
 

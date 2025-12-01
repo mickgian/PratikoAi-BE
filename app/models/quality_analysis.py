@@ -84,19 +84,13 @@ class ExpertProfile(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id")
 
     # Professional credentials (arrays require sa_column)
-    credentials: List[str] = Field(
+    credentials: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
+    credential_types: list[str] = Field(
         default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
-    credential_types: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)  # Store as strings
+        sa_column=Column(ARRAY(String), default=list),  # Store as strings
     )
     experience_years: int = Field(default=0)
-    specializations: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
+    specializations: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
 
     # Performance metrics
     feedback_count: int = Field(default=0)
@@ -105,28 +99,21 @@ class ExpertProfile(SQLModel, table=True):
     trust_score: float = Field(default=0.5)
 
     # Professional information
-    professional_registration_number: Optional[str] = Field(default=None, max_length=50)
-    organization: Optional[str] = Field(default=None, max_length=200)
-    location_city: Optional[str] = Field(default=None, max_length=100)
+    professional_registration_number: str | None = Field(default=None, max_length=50)
+    organization: str | None = Field(default=None, max_length=200)
+    location_city: str | None = Field(default=None, max_length=100)
 
     # Status and verification
     is_verified: bool = Field(default=False)
-    verification_date: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime, nullable=True)
-    )
+    verification_date: datetime | None = Field(default=None, sa_column=Column(DateTime, nullable=True))
     is_active: bool = Field(default=True)
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now()))
 
     # Relationships
-    expert_feedback: List["ExpertFeedback"] = Relationship(back_populates="expert")
+    expert_feedback: list["ExpertFeedback"] = Relationship(back_populates="expert")
 
     __table_args__ = (
         Index("idx_expert_profiles_trust_score", "trust_score"),
@@ -149,47 +136,59 @@ class ExpertFeedback(SQLModel, table=True):
     query_id: UUID
     expert_id: UUID = Field(foreign_key="expert_profiles.id")
 
-    # Feedback details (store enum as string)
-    feedback_type: str = Field(max_length=20)  # FeedbackType enum value
-    category: Optional[str] = Field(default=None, max_length=50)  # ItalianFeedbackCategory enum value
+    # Feedback details (use SQLAlchemy Enum to match database ENUM types)
+    # Use values_callable to serialize enum VALUE (lowercase) instead of NAME (uppercase)
+    feedback_type: FeedbackType = Field(
+        sa_column=Column(
+            Enum(FeedbackType, name="feedback_type", values_callable=lambda e: [member.value for member in e]),
+            nullable=False,
+        )
+    )
+    category: ItalianFeedbackCategory | None = Field(
+        default=None,
+        sa_column=Column(
+            Enum(
+                ItalianFeedbackCategory,
+                name="italian_feedback_category",
+                values_callable=lambda e: [member.value for member in e],
+            ),
+            nullable=True,
+        ),
+    )
 
     # Original content
     query_text: str = Field(sa_column=Column(Text, nullable=False))
     original_answer: str = Field(sa_column=Column(Text, nullable=False))
 
     # Expert input
-    expert_answer: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    improvement_suggestions: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(Text), default=list)
-    )
-    regulatory_references: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
+    expert_answer: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    improvement_suggestions: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(Text), default=list))
+    regulatory_references: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
 
     # Quality metrics
     confidence_score: float = Field(default=0.0)
     time_spent_seconds: int
-    complexity_rating: Optional[int] = Field(default=None)  # 1-5 scale
+    complexity_rating: int | None = Field(default=None)  # 1-5 scale
 
     # Processing metadata
-    processing_time_ms: Optional[int] = Field(default=None)
-    feedback_timestamp: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
+    processing_time_ms: int | None = Field(default=None)
+    feedback_timestamp: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
 
     # System response
-    action_taken: Optional[str] = Field(default=None, max_length=100)
+    action_taken: str | None = Field(default=None, max_length=100)
     improvement_applied: bool = Field(default=False)
 
+    # Task generation fields (for QUERY_ISSUES_ROADMAP.md integration)
+    additional_details: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    generated_task_id: str | None = Field(default=None, max_length=50)
+    task_creation_attempted: bool = Field(default=False)
+    task_creation_success: bool | None = Field(default=None)
+    task_creation_error: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    generated_faq_id: str | None = Field(default=None, max_length=100)
+
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now()))
 
     # Relationships
     expert: "ExpertProfile" = Relationship(back_populates="expert_feedback")
@@ -220,18 +219,12 @@ class PromptTemplate(SQLModel, table=True):
 
     # Template content
     template_text: str = Field(sa_column=Column(Text, nullable=False))
-    variables: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
-    description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    variables: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
+    description: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Categorization
     category: str = Field(max_length=100)
-    specialization_areas: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
+    specialization_areas: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
     complexity_level: str = Field(max_length=20, default="medium")  # basic, medium, advanced
 
     # Quality metrics
@@ -247,16 +240,12 @@ class PromptTemplate(SQLModel, table=True):
 
     # A/B testing
     is_active: bool = Field(default=True)
-    variant_group: Optional[str] = Field(default=None, max_length=50)
+    variant_group: str | None = Field(default=None, max_length=50)
 
     # Timestamps
-    created_by: Optional[UUID] = Field(default=None)
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
-    )
+    created_by: UUID | None = Field(default=None)
+    created_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now()))
 
     __table_args__ = (
         Index("idx_prompt_templates_category", "category"),
@@ -287,14 +276,8 @@ class FailurePattern(SQLModel, table=True):
 
     # Pattern characteristics
     description: str = Field(sa_column=Column(Text, nullable=False))
-    categories: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
-    example_queries: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(Text), default=list)
-    )
+    categories: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
+    example_queries: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(Text), default=list))
 
     # Frequency and impact
     frequency_count: int = Field(default=0)
@@ -303,31 +286,20 @@ class FailurePattern(SQLModel, table=True):
 
     # Analysis metadata
     detection_algorithm: str = Field(max_length=100, default="manual")
-    cluster_id: Optional[str] = Field(default=None, max_length=100)
+    cluster_id: str | None = Field(default=None, max_length=100)
 
     # Temporal tracking
-    first_detected: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
-    last_occurrence: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
+    first_detected: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
+    last_occurrence: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
 
     # Resolution tracking
     is_resolved: bool = Field(default=False)
-    resolution_date: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime, nullable=True)
-    )
-    resolution_method: Optional[str] = Field(default=None, max_length=200)
+    resolution_date: datetime | None = Field(default=None, sa_column=Column(DateTime, nullable=True))
+    resolution_method: str | None = Field(default=None, max_length=200)
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now()))
 
     __table_args__ = (
         Index("idx_failure_patterns_type", "pattern_type"),
@@ -357,33 +329,18 @@ class SystemImprovement(SQLModel, table=True):
     category: str = Field(max_length=100)
 
     # Source and reasoning
-    trigger_pattern_id: Optional[UUID] = Field(default=None, foreign_key="failure_patterns.id")
-    expert_feedback_ids: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
+    trigger_pattern_id: UUID | None = Field(default=None, foreign_key="failure_patterns.id")
+    expert_feedback_ids: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
     justification: str = Field(sa_column=Column(Text, nullable=False))
 
     # Implementation (JSON requires sa_column)
-    implementation_details: Dict[str, Any] = Field(
-        default_factory=dict,
-        sa_column=Column(JSON, default=dict)
-    )
+    implementation_details: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, default=dict))
     status: str = Field(max_length=20, default="pending")  # ImprovementStatus enum value
 
     # Impact measurement
-    target_metrics: Dict[str, Any] = Field(
-        default_factory=dict,
-        sa_column=Column(JSON, default=dict)
-    )
-    baseline_metrics: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSON, nullable=True)
-    )
-    actual_metrics: Optional[Dict[str, Any]] = Field(
-        default=None,
-        sa_column=Column(JSON, nullable=True)
-    )
+    target_metrics: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, default=dict))
+    baseline_metrics: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
+    actual_metrics: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
 
     # Confidence and priority
     confidence_score: float = Field(default=0.0)
@@ -391,40 +348,21 @@ class SystemImprovement(SQLModel, table=True):
     estimated_impact: float = Field(default=0.0)
 
     # Timeline
-    planned_start_date: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime, nullable=True)
-    )
-    actual_start_date: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime, nullable=True)
-    )
-    planned_completion_date: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime, nullable=True)
-    )
-    actual_completion_date: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime, nullable=True)
-    )
+    planned_start_date: datetime | None = Field(default=None, sa_column=Column(DateTime, nullable=True))
+    actual_start_date: datetime | None = Field(default=None, sa_column=Column(DateTime, nullable=True))
+    planned_completion_date: datetime | None = Field(default=None, sa_column=Column(DateTime, nullable=True))
+    actual_completion_date: datetime | None = Field(default=None, sa_column=Column(DateTime, nullable=True))
 
     # Approval workflow
     requires_expert_validation: bool = Field(default=False)
-    expert_approved: Optional[bool] = Field(default=None)
-    approving_expert_id: Optional[UUID] = Field(default=None)
-    approval_date: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime, nullable=True)
-    )
+    expert_approved: bool | None = Field(default=None)
+    approving_expert_id: UUID | None = Field(default=None)
+    approval_date: datetime | None = Field(default=None, sa_column=Column(DateTime, nullable=True))
 
     # Timestamps
-    created_by: Optional[UUID] = Field(default=None)
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
-    )
+    created_by: UUID | None = Field(default=None)
+    created_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now()))
 
     __table_args__ = (
         Index("idx_system_improvements_type", "improvement_type"),
@@ -455,42 +393,31 @@ class QualityMetric(SQLModel, table=True):
     measurement_period: str = Field(max_length=50, default="daily")
 
     # Contextualization
-    query_category: Optional[str] = Field(default=None, max_length=100)
-    expert_specialization: Optional[str] = Field(default=None, max_length=100)
-    user_segment: Optional[str] = Field(default=None, max_length=100)
+    query_category: str | None = Field(default=None, max_length=100)
+    expert_specialization: str | None = Field(default=None, max_length=100)
+    user_segment: str | None = Field(default=None, max_length=100)
 
     # Sample size and confidence
     sample_size: int = Field(default=0)
-    confidence_interval: Optional[float] = Field(default=None)
-    standard_deviation: Optional[float] = Field(default=None)
+    confidence_interval: float | None = Field(default=None)
+    standard_deviation: float | None = Field(default=None)
 
     # Benchmarking
-    baseline_value: Optional[float] = Field(default=None)
-    target_value: Optional[float] = Field(default=None)
-    benchmark_percentile: Optional[float] = Field(default=None)
+    baseline_value: float | None = Field(default=None)
+    target_value: float | None = Field(default=None)
+    benchmark_percentile: float | None = Field(default=None)
 
     # Temporal tracking
-    measurement_date: datetime = Field(
-        sa_column=Column(DateTime, nullable=False)
-    )
-    measurement_window_start: datetime = Field(
-        sa_column=Column(DateTime, nullable=False)
-    )
-    measurement_window_end: datetime = Field(
-        sa_column=Column(DateTime, nullable=False)
-    )
+    measurement_date: datetime = Field(sa_column=Column(DateTime, nullable=False))
+    measurement_window_start: datetime = Field(sa_column=Column(DateTime, nullable=False))
+    measurement_window_end: datetime = Field(sa_column=Column(DateTime, nullable=False))
 
     # Metadata
     calculated_by: str = Field(max_length=100, default="system")
-    calculation_method: Optional[str] = Field(default=None, max_length=200)
-    data_sources: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
+    calculation_method: str | None = Field(default=None, max_length=200)
+    data_sources: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
 
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
 
     __table_args__ = (
         Index("idx_quality_metrics_name_date", "metric_name", "measurement_date"),
@@ -514,61 +441,38 @@ class ExpertValidation(SQLModel, table=True):
     # Validation request
     validation_type: str = Field(max_length=100)  # consensus, single_expert, automated
     complexity_level: int  # 1-5 scale
-    specialization_required: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
+    specialization_required: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
 
     # Expert assignments
-    assigned_experts: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
+    assigned_experts: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
     completed_validations: int = Field(default=0)
     required_validations: int = Field(default=1)
 
     # Consensus tracking
     consensus_reached: bool = Field(default=False)
     consensus_confidence: float = Field(default=0.0)
-    disagreement_areas: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
+    disagreement_areas: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
 
     # Final outcome
-    validated_answer: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    validation_notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    regulatory_confirmations: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(ARRAY(String), default=list)
-    )
+    validated_answer: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    validation_notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    regulatory_confirmations: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String), default=list))
 
     # Quality assurance
     final_confidence_score: float = Field(default=0.0)
     expert_agreement_score: float = Field(default=0.0)
 
     # Timeline
-    requested_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
-    target_completion: datetime = Field(
-        sa_column=Column(DateTime, nullable=False)
-    )
-    completed_at: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime, nullable=True)
-    )
+    requested_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
+    target_completion: datetime = Field(sa_column=Column(DateTime, nullable=False))
+    completed_at: datetime | None = Field(default=None, sa_column=Column(DateTime, nullable=True))
 
     # Status
     status: str = Field(max_length=50, default="pending")  # pending, in_progress, completed, expired
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now())
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now())
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now()))
 
     __table_args__ = (
         Index("idx_expert_validations_query", "query_id"),
@@ -586,6 +490,41 @@ class ExpertValidation(SQLModel, table=True):
             "expert_agreement_score >= 0.0 AND expert_agreement_score <= 1.0", name="agreement_score_range"
         ),
         CheckConstraint("completed_validations <= required_validations", name="logical_validation_counts"),
+    )
+
+
+class ExpertGeneratedTask(SQLModel, table=True):
+    """Tasks automatically generated from expert feedback for QUERY_ISSUES_ROADMAP.md tracking"""
+
+    __tablename__ = "expert_generated_tasks"
+
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Task identification
+    task_id: str = Field(max_length=50, unique=True, index=True)  # e.g., "QUERY-08"
+    task_name: str = Field(max_length=200)
+
+    # Source references
+    feedback_id: UUID = Field(foreign_key="expert_feedback.id")
+    expert_id: UUID = Field(foreign_key="expert_profiles.id")
+
+    # Content snapshot
+    question: str = Field(sa_column=Column(Text, nullable=False))
+    answer: str = Field(sa_column=Column(Text, nullable=False))
+    additional_details: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+
+    # File tracking
+    file_path: str = Field(max_length=500, default="QUERY_ISSUES_ROADMAP.md")
+
+    # Timestamps
+    created_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime, server_default=func.now(), onupdate=func.now()))
+
+    __table_args__ = (
+        Index("idx_expert_generated_tasks_feedback_id", "feedback_id"),
+        Index("idx_expert_generated_tasks_expert_id", "expert_id"),
+        Index("idx_expert_generated_tasks_created_at", "created_at"),
     )
 
 

@@ -49,6 +49,11 @@ async def node_step_24(state: RAGState) -> RAGState:
         if "lookup" in res:
             golden["lookup"] = res["lookup"]
 
+        # Map golden_match to state so Step 25 can read it
+        if "golden_match" in res:
+            state["golden_match"] = res["golden_match"]
+            golden["match"] = res["golden_match"]
+
         _merge(golden, res.get("golden_extra", {}))
         _merge(decisions, res.get("decisions", {}))
 

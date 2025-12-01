@@ -1,5 +1,6 @@
 """This file contains the user model for the application."""
 
+from enum import Enum
 from typing import (
     TYPE_CHECKING,
     List,
@@ -12,6 +13,16 @@ from sqlmodel import (
 )
 
 from app.models.base import BaseModel
+
+
+class UserRole(str, Enum):
+    """User role enumeration."""
+
+    REGULAR_USER = "regular_user"
+    EXPERT = "expert"
+    ADMIN = "admin"
+    SUPER_USER = "super_user"
+
 
 if TYPE_CHECKING:
     from app.models.session import Session
@@ -46,6 +57,9 @@ class User(BaseModel, table=True):
     avatar_url: str | None = Field(default=None, max_length=512)
     provider: str = Field(default="email", max_length=50, index=True)  # 'email', 'google', 'linkedin'
     provider_id: str | None = Field(default=None, max_length=255, index=True)  # OAuth provider user ID
+
+    # User role
+    role: str = Field(default=UserRole.REGULAR_USER.value, max_length=50, index=True)
 
     sessions: list["Session"] = Relationship(back_populates="user")
 

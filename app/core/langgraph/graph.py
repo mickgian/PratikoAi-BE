@@ -2797,8 +2797,22 @@ class LangGraphAgent:
             # FIX: Check for content to stream (from final_response or buffered response)
             content = None
 
-            # Priority 1: Check final_response (if we fell through from streaming path above)
-            if final_response and streaming_requested:
+            # Priority 0: Check for golden answer (served by Step 28)
+            # This bypasses LLM entirely when a golden answer was served
+            # Uses golden_hit and golden_answer which are declared in RAGState
+            if state.get("golden_hit"):
+                golden_answer = state.get("golden_answer")
+                if golden_answer:
+                    content = golden_answer
+                    logger.info(
+                        "streaming_from_golden_answer",
+                        session_id=session_id,
+                        content_length=len(content),
+                        source="golden_served_step_28",
+                    )
+
+            # Priority 1: Check final_response (only if Priority 0 didn't set content)
+            if not content and final_response and streaming_requested:
                 content = final_response.get("content", "")
                 if content:
                     logger.info(
@@ -2914,6 +2928,12 @@ class LangGraphAgent:
                     total_chunks_yielded=chunk_count,
                     total_content_length=len(content),
                 )
+
+                # Yield metadata marker for chat history save
+                # This tells chatbot.py whether to use "golden_set" or "llm" as model_used
+                golden_hit = state.get("golden_hit", False)
+                yield f"__RESPONSE_METADATA__:golden_hit={golden_hit}"
+
                 return  # Exit without making second LLM call
 
             # DIAGNOSTIC: We reached the fallback streaming path (content was not found)

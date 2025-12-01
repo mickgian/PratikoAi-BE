@@ -52,11 +52,11 @@ class SubscriptionPlan(SQLModel, table=True):
     __tablename__ = "subscription_plans"
 
     # Primary key
-    id: Optional[str] = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    id: str | None = Field(default_factory=lambda: str(uuid4()), primary_key=True)
 
     # Plan details
     name: str = Field(max_length=100)
-    description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    description: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Billing configuration (store enum as string)
     billing_period: str = Field(max_length=20)  # BillingPeriod enum value
@@ -69,30 +69,25 @@ class SubscriptionPlan(SQLModel, table=True):
     # Plan configuration
     is_active: bool = Field(default=True)
     trial_period_days: int = Field(default=7)
-    features: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))  # JSON string of features
+    features: str | None = Field(default=None, sa_column=Column(Text, nullable=True))  # JSON string of features
 
     # Italian market specific
     supports_fattura_elettronica: bool = Field(default=True)
     iva_rate: Decimal = Field(
-        default=Decimal("22.00"),
-        sa_column=Column(Numeric(precision=5, scale=2), default=Decimal("22.00"))
+        default=Decimal("22.00"), sa_column=Column(Numeric(precision=5, scale=2), default=Decimal("22.00"))
     )
 
     # Timestamps
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow))
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     )
 
     # Relationships
-    subscriptions: List["Subscription"] = Relationship(back_populates="plan")
+    subscriptions: list["Subscription"] = Relationship(back_populates="plan")
 
     # Italian market plans configuration
-    PROFESSIONAL_MONTHLY: ClassVar[Dict[str, Any]] = {
+    PROFESSIONAL_MONTHLY: ClassVar[dict[str, Any]] = {
         "name": "Professionale Mensile",
         "description": "Piano mensile per professionisti e PMI",
         "billing_period": BillingPeriod.MONTHLY,
@@ -108,7 +103,7 @@ class SubscriptionPlan(SQLModel, table=True):
         ],
     }
 
-    PROFESSIONAL_ANNUAL: ClassVar[Dict[str, Any]] = {
+    PROFESSIONAL_ANNUAL: ClassVar[dict[str, Any]] = {
         "name": "Professionale Annuale",
         "description": "Piano annuale con risparmi del 27.7% (€229/anno)",
         "billing_period": BillingPeriod.ANNUAL,
@@ -186,7 +181,7 @@ class Subscription(SQLModel, table=True):
     __tablename__ = "subscriptions"
 
     # Primary key
-    id: Optional[str] = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    id: str | None = Field(default_factory=lambda: str(uuid4()), primary_key=True)
 
     # Foreign keys
     user_id: int = Field(foreign_key="user.id")
@@ -200,18 +195,18 @@ class Subscription(SQLModel, table=True):
     status: str = Field(default=SubscriptionStatus.INCOMPLETE.value, max_length=30)
     current_period_start: datetime
     current_period_end: datetime
-    trial_start: Optional[datetime] = Field(default=None)
-    trial_end: Optional[datetime] = Field(default=None)
+    trial_start: datetime | None = Field(default=None)
+    trial_end: datetime | None = Field(default=None)
 
     # Cancellation
     cancel_at_period_end: bool = Field(default=False)
-    canceled_at: Optional[datetime] = Field(default=None)
-    ended_at: Optional[datetime] = Field(default=None)
+    canceled_at: datetime | None = Field(default=None)
+    ended_at: datetime | None = Field(default=None)
 
     # Italian tax information
     is_business: bool = Field(default=False)
-    partita_iva: Optional[str] = Field(default=None, max_length=11)  # Italian VAT number (11 digits)
-    codice_fiscale: Optional[str] = Field(default=None, max_length=16)  # Italian tax code (16 chars)
+    partita_iva: str | None = Field(default=None, max_length=11)  # Italian VAT number (11 digits)
+    codice_fiscale: str | None = Field(default=None, max_length=16)  # Italian tax code (16 chars)
 
     # Invoice information
     invoice_name: str = Field(max_length=255)  # Ragione sociale or full name
@@ -222,25 +217,21 @@ class Subscription(SQLModel, table=True):
     invoice_country: str = Field(default="IT", max_length=2)
 
     # Electronic invoice (fattura elettronica) fields
-    sdi_code: Optional[str] = Field(default=None, max_length=7)  # Codice destinatario for SDI
-    pec_email: Optional[str] = Field(default=None, max_length=255)  # PEC email for electronic invoice
+    sdi_code: str | None = Field(default=None, max_length=7)  # Codice destinatario for SDI
+    pec_email: str | None = Field(default=None, max_length=255)  # PEC email for electronic invoice
 
     # Timestamps
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow))
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     )
 
     # Relationships
     # Note: No relationship to User model - it uses SQLModel which is incompatible
     # with SQLAlchemy relationships. Access user via user_id foreign key instead.
     plan: Optional["SubscriptionPlan"] = Relationship(back_populates="subscriptions")
-    plan_changes: List["SubscriptionPlanChange"] = Relationship(back_populates="subscription")
-    invoices: List["Invoice"] = Relationship(back_populates="subscription")
+    plan_changes: list["SubscriptionPlanChange"] = Relationship(back_populates="subscription")
+    invoices: list["Invoice"] = Relationship(back_populates="subscription")
 
     # Constraints
     __table_args__ = (
@@ -425,7 +416,7 @@ class SubscriptionPlanChange(SQLModel, table=True):
     __tablename__ = "subscription_plan_changes"
 
     # Primary key
-    id: Optional[str] = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    id: str | None = Field(default_factory=lambda: str(uuid4()), primary_key=True)
 
     # Foreign keys
     subscription_id: str = Field(foreign_key="subscriptions.id")
@@ -437,27 +428,21 @@ class SubscriptionPlanChange(SQLModel, table=True):
 
     # Financial details
     proration_credit: Decimal = Field(
-        default=Decimal("0"),
-        sa_column=Column(Numeric(precision=10, scale=2), default=Decimal("0"))
+        default=Decimal("0"), sa_column=Column(Numeric(precision=10, scale=2), default=Decimal("0"))
     )
     immediate_charge: Decimal = Field(
-        default=Decimal("0"),
-        sa_column=Column(Numeric(precision=10, scale=2), default=Decimal("0"))
+        default=Decimal("0"), sa_column=Column(Numeric(precision=10, scale=2), default=Decimal("0"))
     )
 
     # Stripe integration
-    stripe_invoice_id: Optional[str] = Field(default=None, max_length=255)
-    stripe_payment_intent_id: Optional[str] = Field(default=None, max_length=255)
+    stripe_invoice_id: str | None = Field(default=None, max_length=255)
+    stripe_payment_intent_id: str | None = Field(default=None, max_length=255)
 
     # Dates
     effective_date: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, nullable=False, default=datetime.utcnow)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False, default=datetime.utcnow)
     )
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow))
 
     # Relationships
     subscription: Optional["Subscription"] = Relationship(back_populates="plan_changes")
@@ -505,7 +490,7 @@ class Invoice(SQLModel, table=True):
     __tablename__ = "invoices"
 
     # Primary key
-    id: Optional[str] = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    id: str | None = Field(default_factory=lambda: str(uuid4()), primary_key=True)
 
     # Foreign keys
     subscription_id: str = Field(foreign_key="subscriptions.id")
@@ -513,8 +498,7 @@ class Invoice(SQLModel, table=True):
     # Invoice identification
     invoice_number: str = Field(max_length=50, unique=True)
     invoice_date: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, nullable=False, default=datetime.utcnow)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False, default=datetime.utcnow)
     )
     due_date: datetime
 
@@ -525,29 +509,25 @@ class Invoice(SQLModel, table=True):
 
     # Payment
     payment_status: str = Field(default="pending", max_length=50)  # pending, paid, failed
-    paid_at: Optional[datetime] = Field(default=None)
+    paid_at: datetime | None = Field(default=None)
 
     # Stripe integration
-    stripe_invoice_id: Optional[str] = Field(default=None, max_length=255, unique=True)
-    stripe_payment_intent_id: Optional[str] = Field(default=None, max_length=255)
+    stripe_invoice_id: str | None = Field(default=None, max_length=255, unique=True)
+    stripe_payment_intent_id: str | None = Field(default=None, max_length=255)
 
     # Electronic invoice (fattura elettronica)
-    fattura_elettronica_xml: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))  # Generated XML
-    sdi_transmission_id: Optional[str] = Field(default=None, max_length=255)  # SDI transmission reference
-    sdi_status: Optional[str] = Field(default=None, max_length=50)  # sent, accepted, rejected
-    sdi_sent_at: Optional[datetime] = Field(default=None)
+    fattura_elettronica_xml: str | None = Field(default=None, sa_column=Column(Text, nullable=True))  # Generated XML
+    sdi_transmission_id: str | None = Field(default=None, max_length=255)  # SDI transmission reference
+    sdi_status: str | None = Field(default=None, max_length=50)  # sent, accepted, rejected
+    sdi_sent_at: datetime | None = Field(default=None)
 
     # PDF invoice
-    pdf_path: Optional[str] = Field(default=None, max_length=500)  # Path to generated PDF
+    pdf_path: str | None = Field(default=None, max_length=500)  # Path to generated PDF
 
     # Timestamps
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow))
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        default_factory=datetime.utcnow, sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     )
 
     # Relationships

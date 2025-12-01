@@ -36,7 +36,7 @@ def event_loop():
 
 
 @pytest.fixture(scope="session")
-async def test_engine() -> AsyncGenerator[AsyncEngine]:
+async def test_engine() -> AsyncGenerator[AsyncEngine, None]:
     """Create test database engine and initialize schema.
 
     This fixture:
@@ -67,7 +67,7 @@ async def test_engine() -> AsyncGenerator[AsyncEngine]:
 
 
 @pytest.fixture
-async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
+async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
     """Create database session with automatic rollback.
 
     Each test gets a fresh session that rolls back all changes,

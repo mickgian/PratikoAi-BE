@@ -11,6 +11,26 @@ from sqlmodel import SQLModel
 from alembic import context
 from app.models.cassazione import CassazioneDecision
 
+# Phase 2: CCNL Database Models
+from app.models.ccnl_database import (
+    CCNLAgreementDB,
+    CCNLSectorDB,
+    JobLevelDB,
+    LeaveEntitlementDB,
+    NoticePeriodsDB,
+    OvertimeRulesDB,
+    SalaryTableDB,
+    SpecialAllowanceDB,
+    WorkingHoursDB,
+)
+from app.models.ccnl_update_models import (
+    CCNLChangeLog,
+    CCNLDatabase,
+    CCNLMonitoringMetric,
+    CCNLUpdateEvent,
+    CCNLVersion,
+)
+
 # Phase 3: GDPR Data Export Models
 from app.models.data_export import (
     DataExportRequest,

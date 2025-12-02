@@ -1,6 +1,6 @@
 """Database models for Italian Collective Labor Agreements (CCNL).
 
-This module provides SQLAlchemy database models for persisting CCNL data
+This module provides SQLModel database models for persisting CCNL data
 with proper relationships, constraints, and indexes for optimal performance.
 """
 
@@ -25,31 +25,43 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import declarative_base, relationship
+from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.ccnl_data import AllowanceType, CCNLSector, CompanySize, GeographicArea, LeaveType, WorkerCategory
 
-Base = declarative_base()
 
-
-class CCNLSectorDB(Base):
+class CCNLSectorDB(SQLModel, table=True):
     """Database model for CCNL sectors."""
 
     __tablename__ = "ccnl_sectors"
 
-    id = Column(Integer, primary_key=True)
-    sector_code = Column(String(50), unique=True, nullable=False, index=True)
-    italian_name = Column(String(200), nullable=False)
-    priority_level = Column(Integer, nullable=False, default=2)
-    worker_coverage_percentage = Column(Numeric(5, 2), default=0.0)
-    active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Primary key
+    id: int = Field(default=None, primary_key=True)
+
+    # Unique identifiers
+    sector_code: str = Field(max_length=50, unique=True, index=True)
+
+    # Core fields
+    italian_name: str = Field(max_length=200)
+    priority_level: int = Field(default=2)
+    worker_coverage_percentage: Decimal = Field(
+        default=Decimal("0.0"),
+        sa_column=Column(Numeric(5, 2), default=0.0)
+    )
+    active: bool = Field(default=True)
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
 
     # Relationships
-    agreements = relationship("CCNLAgreementDB", back_populates="sector")
+    agreements: List["CCNLAgreementDB"] = Relationship(back_populates="sector")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("idx_ccnl_sectors_priority_active", "priority_level", "active"),
         CheckConstraint("priority_level >= 1 AND priority_level <= 6", name="valid_priority_level"),
@@ -67,36 +79,78 @@ class CCNLSectorDB(Base):
         return CCNLSector(self.sector_code)
 
 
-class CCNLAgreementDB(Base):
+class CCNLAgreementDB(SQLModel, table=True):
     """Database model for complete CCNL agreements."""
 
     __tablename__ = "ccnl_agreements"
 
-    id = Column(Integer, primary_key=True)
-    sector_code = Column(String(50), ForeignKey("ccnl_sectors.sector_code"), nullable=False)
-    name = Column(String(500), nullable=False)
-    valid_from = Column(Date, nullable=False)
-    valid_to = Column(Date, nullable=True)
-    signatory_unions = Column(JSON, default=list)  # List of union names
-    signatory_employers = Column(JSON, default=list)  # List of employer associations
-    renewal_status = Column(String(20), default="vigente")  # vigente, scaduto, in_rinnovo
-    last_updated = Column(DateTime, default=datetime.utcnow)
-    data_source = Column(String(500), nullable=True)
-    verification_date = Column(Date, nullable=True)
+    # Primary key
+    id: int = Field(default=None, primary_key=True)
+
+    # Foreign keys
+    sector_code: str = Field(foreign_key="ccnl_sectors.sector_code", max_length=50)
+
+    # Core fields
+    name: str = Field(max_length=500)
+    valid_from: date = Field(sa_column=Column(Date, nullable=False))
+    valid_to: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+
+    # JSON fields (requires sa_column override)
+    signatory_unions: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, default=list)
+    )
+    signatory_employers: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, default=list)
+    )
+
+    # Status fields
+    renewal_status: str = Field(default="vigente", max_length=20)  # vigente, scaduto, in_rinnovo
+    last_updated: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    data_source: Optional[str] = Field(default=None, max_length=500)
+    verification_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
 
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
 
     # Relationships
-    sector = relationship("CCNLSectorDB", back_populates="agreements")
-    job_levels = relationship("JobLevelDB", back_populates="agreement", cascade="all, delete-orphan")
-    salary_tables = relationship("SalaryTableDB", back_populates="agreement", cascade="all, delete-orphan")
-    working_hours = relationship("WorkingHoursDB", back_populates="agreement", cascade="all, delete-orphan")
-    overtime_rules = relationship("OvertimeRulesDB", back_populates="agreement", cascade="all, delete-orphan")
-    leave_entitlements = relationship("LeaveEntitlementDB", back_populates="agreement", cascade="all, delete-orphan")
-    notice_periods = relationship("NoticePeriodsDB", back_populates="agreement", cascade="all, delete-orphan")
-    special_allowances = relationship("SpecialAllowanceDB", back_populates="agreement", cascade="all, delete-orphan")
+    sector: "CCNLSectorDB" = Relationship(back_populates="agreements")
+    job_levels: List["JobLevelDB"] = Relationship(
+        back_populates="agreement",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    salary_tables: List["SalaryTableDB"] = Relationship(
+        back_populates="agreement",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    working_hours: List["WorkingHoursDB"] = Relationship(
+        back_populates="agreement",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    overtime_rules: List["OvertimeRulesDB"] = Relationship(
+        back_populates="agreement",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    leave_entitlements: List["LeaveEntitlementDB"] = Relationship(
+        back_populates="agreement",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    notice_periods: List["NoticePeriodsDB"] = Relationship(
+        back_populates="agreement",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    special_allowances: List["SpecialAllowanceDB"] = Relationship(
+        back_populates="agreement",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     # Indexes
     __table_args__ = (
@@ -131,28 +185,47 @@ class CCNLAgreementDB(Base):
         return applicable
 
 
-class JobLevelDB(Base):
+class JobLevelDB(SQLModel, table=True):
     """Database model for job levels within CCNL agreements."""
 
     __tablename__ = "ccnl_job_levels"
 
-    id = Column(Integer, primary_key=True)
-    agreement_id = Column(Integer, ForeignKey("ccnl_agreements.id"), nullable=False)
-    level_code = Column(String(10), nullable=False)
-    level_name = Column(String(200), nullable=False)
-    worker_category = Column(String(20), nullable=False)  # operaio, impiegato, quadro, dirigente
-    description = Column(Text, nullable=True)
-    minimum_experience_months = Column(Integer, default=0)
-    required_qualifications = Column(JSON, default=list)
-    typical_tasks = Column(JSON, default=list)
-    decision_making_level = Column(String(50), nullable=True)
-    supervision_responsibilities = Column(Boolean, default=False)
+    # Primary key
+    id: int = Field(default=None, primary_key=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Foreign keys
+    agreement_id: int = Field(foreign_key="ccnl_agreements.id")
+
+    # Core fields
+    level_code: str = Field(max_length=10)
+    level_name: str = Field(max_length=200)
+    worker_category: str = Field(max_length=20)  # operaio, impiegato, quadro, dirigente
+    description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    minimum_experience_months: int = Field(default=0)
+
+    # JSON fields
+    required_qualifications: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, default=list)
+    )
+    typical_tasks: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, default=list)
+    )
+
+    decision_making_level: Optional[str] = Field(default=None, max_length=50)
+    supervision_responsibilities: bool = Field(default=False)
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
 
     # Relationships
-    agreement = relationship("CCNLAgreementDB", back_populates="job_levels")
+    agreement: "CCNLAgreementDB" = Relationship(back_populates="job_levels")
 
     # Indexes
     __table_args__ = (
@@ -174,30 +247,50 @@ class JobLevelDB(Base):
         return category_hierarchy.get(self.worker_category, 1) > category_hierarchy.get(other.worker_category, 1)
 
 
-class SalaryTableDB(Base):
+class SalaryTableDB(SQLModel, table=True):
     """Database model for salary tables."""
 
     __tablename__ = "ccnl_salary_tables"
 
-    id = Column(Integer, primary_key=True)
-    agreement_id = Column(Integer, ForeignKey("ccnl_agreements.id"), nullable=False)
-    level_code = Column(String(10), nullable=False)
-    base_monthly_salary = Column(Numeric(10, 2), nullable=False)
-    geographic_area = Column(String(20), default="nazionale")  # nazionale, nord, centro, sud, sud_isole
-    valid_from = Column(Date, nullable=True)
-    valid_to = Column(Date, nullable=True)
-    thirteenth_month = Column(Boolean, default=True)
-    fourteenth_month = Column(Boolean, default=False)
-    additional_allowances = Column(JSON, default=dict)  # Dict of allowance_name -> amount
-    company_size_adjustments = Column(JSON, default=dict)  # Dict of size -> adjustment_amount
+    # Primary key
+    id: int = Field(default=None, primary_key=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Foreign keys
+    agreement_id: int = Field(foreign_key="ccnl_agreements.id")
+
+    # Core fields
+    level_code: str = Field(max_length=10)
+    base_monthly_salary: Decimal = Field(
+        sa_column=Column(Numeric(10, 2), nullable=False)
+    )
+    geographic_area: str = Field(default="nazionale", max_length=20)  # nazionale, nord, centro, sud, sud_isole
+    valid_from: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    valid_to: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    thirteenth_month: bool = Field(default=True)
+    fourteenth_month: bool = Field(default=False)
+
+    # JSON fields
+    additional_allowances: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, default=dict)
+    )
+    company_size_adjustments: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, default=dict)
+    )
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
 
     # Relationships
-    agreement = relationship("CCNLAgreementDB", back_populates="salary_tables")
+    agreement: "CCNLAgreementDB" = Relationship(back_populates="salary_tables")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("idx_salary_tables_agreement_level", "agreement_id", "level_code", "geographic_area"),
         Index("idx_salary_tables_dates", "valid_from", "valid_to"),
@@ -231,35 +324,54 @@ class SalaryTableDB(Base):
         return self.base_monthly_salary * months
 
 
-class WorkingHoursDB(Base):
+class WorkingHoursDB(SQLModel, table=True):
     """Database model for working hours configurations."""
 
     __tablename__ = "ccnl_working_hours"
 
-    id = Column(Integer, primary_key=True)
-    agreement_id = Column(Integer, ForeignKey("ccnl_agreements.id"), nullable=False)
-    ordinary_weekly_hours = Column(Integer, nullable=False)
-    maximum_weekly_hours = Column(Integer, default=48)
-    daily_rest_hours = Column(Integer, default=11)
-    weekly_rest_hours = Column(Integer, default=24)
-    flexible_hours_allowed = Column(Boolean, default=False)
-    flexible_hours_range_min = Column(Integer, nullable=True)
-    flexible_hours_range_max = Column(Integer, nullable=True)
-    core_hours_start = Column(String(5), nullable=True)  # "09:00"
-    core_hours_end = Column(String(5), nullable=True)  # "17:00"
-    part_time_allowed = Column(Boolean, default=True)
-    minimum_part_time_hours = Column(Integer, nullable=True)
-    shift_work_allowed = Column(Boolean, default=False)
-    shift_patterns = Column(JSON, default=list)
-    night_shift_allowance = Column(Numeric(6, 2), nullable=True)
+    # Primary key
+    id: int = Field(default=None, primary_key=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Foreign keys
+    agreement_id: int = Field(foreign_key="ccnl_agreements.id")
+
+    # Core fields
+    ordinary_weekly_hours: int
+    maximum_weekly_hours: int = Field(default=48)
+    daily_rest_hours: int = Field(default=11)
+    weekly_rest_hours: int = Field(default=24)
+    flexible_hours_allowed: bool = Field(default=False)
+    flexible_hours_range_min: Optional[int] = Field(default=None)
+    flexible_hours_range_max: Optional[int] = Field(default=None)
+    core_hours_start: Optional[str] = Field(default=None, max_length=5)  # "09:00"
+    core_hours_end: Optional[str] = Field(default=None, max_length=5)  # "17:00"
+    part_time_allowed: bool = Field(default=True)
+    minimum_part_time_hours: Optional[int] = Field(default=None)
+    shift_work_allowed: bool = Field(default=False)
+
+    # JSON field
+    shift_patterns: List[Any] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, default=list)
+    )
+
+    night_shift_allowance: Optional[Decimal] = Field(
+        default=None,
+        sa_column=Column(Numeric(6, 2), nullable=True)
+    )
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
 
     # Relationships
-    agreement = relationship("CCNLAgreementDB", back_populates="working_hours")
+    agreement: "CCNLAgreementDB" = Relationship(back_populates="working_hours")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("idx_working_hours_agreement", "agreement_id"),
         CheckConstraint("ordinary_weekly_hours > 0", name="positive_weekly_hours"),
@@ -271,30 +383,49 @@ class WorkingHoursDB(Base):
         return self.ordinary_weekly_hours / 5.0
 
 
-class OvertimeRulesDB(Base):
+class OvertimeRulesDB(SQLModel, table=True):
     """Database model for overtime rules and compensation."""
 
     __tablename__ = "ccnl_overtime_rules"
 
-    id = Column(Integer, primary_key=True)
-    agreement_id = Column(Integer, ForeignKey("ccnl_agreements.id"), nullable=False)
-    daily_threshold_hours = Column(Integer, default=8)
-    weekly_threshold_hours = Column(Integer, default=40)
-    daily_overtime_rate = Column(Numeric(4, 2), default=Decimal("1.25"))
-    weekend_rate = Column(Numeric(4, 2), default=Decimal("1.50"))
-    holiday_rate = Column(Numeric(4, 2), default=Decimal("2.00"))
-    maximum_daily_overtime = Column(Integer, nullable=True)
-    maximum_weekly_overtime = Column(Integer, nullable=True)
-    maximum_monthly_overtime = Column(Integer, nullable=True)
-    maximum_annual_overtime = Column(Integer, nullable=True)
+    # Primary key
+    id: int = Field(default=None, primary_key=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Foreign keys
+    agreement_id: int = Field(foreign_key="ccnl_agreements.id")
+
+    # Core fields
+    daily_threshold_hours: int = Field(default=8)
+    weekly_threshold_hours: int = Field(default=40)
+    daily_overtime_rate: Decimal = Field(
+        default=Decimal("1.25"),
+        sa_column=Column(Numeric(4, 2), default=Decimal("1.25"))
+    )
+    weekend_rate: Decimal = Field(
+        default=Decimal("1.50"),
+        sa_column=Column(Numeric(4, 2), default=Decimal("1.50"))
+    )
+    holiday_rate: Decimal = Field(
+        default=Decimal("2.00"),
+        sa_column=Column(Numeric(4, 2), default=Decimal("2.00"))
+    )
+    maximum_daily_overtime: Optional[int] = Field(default=None)
+    maximum_weekly_overtime: Optional[int] = Field(default=None)
+    maximum_monthly_overtime: Optional[int] = Field(default=None)
+    maximum_annual_overtime: Optional[int] = Field(default=None)
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
 
     # Relationships
-    agreement = relationship("CCNLAgreementDB", back_populates="overtime_rules")
+    agreement: "CCNLAgreementDB" = Relationship(back_populates="overtime_rules")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("idx_overtime_rules_agreement", "agreement_id"),
         CheckConstraint("daily_overtime_rate >= 1.0", name="valid_overtime_rate"),
@@ -311,31 +442,50 @@ class OvertimeRulesDB(Base):
         return not (self.maximum_weekly_overtime and weekly_total > self.maximum_weekly_overtime)
 
 
-class LeaveEntitlementDB(Base):
+class LeaveEntitlementDB(SQLModel, table=True):
     """Database model for leave entitlements."""
 
     __tablename__ = "ccnl_leave_entitlements"
 
-    id = Column(Integer, primary_key=True)
-    agreement_id = Column(Integer, ForeignKey("ccnl_agreements.id"), nullable=False)
-    leave_type = Column(String(50), nullable=False)  # ferie, permessi_retribuiti, etc.
-    base_annual_days = Column(Integer, nullable=True)
-    base_annual_hours = Column(Integer, nullable=True)
-    seniority_bonus_schedule = Column(JSON, default=dict)  # months_seniority -> bonus_days
-    calculation_method = Column(String(20), default="annual")
-    minimum_usage_hours = Column(Integer, nullable=True)
-    advance_notice_hours = Column(Integer, nullable=True)
-    compensation_percentage = Column(Numeric(4, 2), default=Decimal("1.00"))
-    mandatory_period = Column(Boolean, default=False)
-    additional_optional_days = Column(Integer, nullable=True)
+    # Primary key
+    id: int = Field(default=None, primary_key=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Foreign keys
+    agreement_id: int = Field(foreign_key="ccnl_agreements.id")
+
+    # Core fields
+    leave_type: str = Field(max_length=50)  # ferie, permessi_retribuiti, etc.
+    base_annual_days: Optional[int] = Field(default=None)
+    base_annual_hours: Optional[int] = Field(default=None)
+
+    # JSON field
+    seniority_bonus_schedule: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, default=dict)
+    )
+
+    calculation_method: str = Field(default="annual", max_length=20)
+    minimum_usage_hours: Optional[int] = Field(default=None)
+    advance_notice_hours: Optional[int] = Field(default=None)
+    compensation_percentage: Decimal = Field(
+        default=Decimal("1.00"),
+        sa_column=Column(Numeric(4, 2), default=Decimal("1.00"))
+    )
+    mandatory_period: bool = Field(default=False)
+    additional_optional_days: Optional[int] = Field(default=None)
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
 
     # Relationships
-    agreement = relationship("CCNLAgreementDB", back_populates="leave_entitlements")
+    agreement: "CCNLAgreementDB" = Relationship(back_populates="leave_entitlements")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("idx_leave_entitlements_agreement_type", "agreement_id", "leave_type"),
         CheckConstraint("compensation_percentage >= 0 AND compensation_percentage <= 1", name="valid_compensation"),
@@ -362,26 +512,36 @@ class LeaveEntitlementDB(Base):
         return 0.0
 
 
-class NoticePeriodsDB(Base):
+class NoticePeriodsDB(SQLModel, table=True):
     """Database model for notice period requirements."""
 
     __tablename__ = "ccnl_notice_periods"
 
-    id = Column(Integer, primary_key=True)
-    agreement_id = Column(Integer, ForeignKey("ccnl_agreements.id"), nullable=False)
-    worker_category = Column(String(20), nullable=False)
-    seniority_months_min = Column(Integer, nullable=False)
-    seniority_months_max = Column(Integer, nullable=False)
-    notice_days = Column(Integer, nullable=False)
-    termination_by = Column(String(10), default="both")  # employer, employee, both
+    # Primary key
+    id: int = Field(default=None, primary_key=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Foreign keys
+    agreement_id: int = Field(foreign_key="ccnl_agreements.id")
+
+    # Core fields
+    worker_category: str = Field(max_length=20)
+    seniority_months_min: int
+    seniority_months_max: int
+    notice_days: int
+    termination_by: str = Field(default="both", max_length=10)  # employer, employee, both
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
 
     # Relationships
-    agreement = relationship("CCNLAgreementDB", back_populates="notice_periods")
+    agreement: "CCNLAgreementDB" = Relationship(back_populates="notice_periods")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("idx_notice_periods_agreement_category", "agreement_id", "worker_category"),
         CheckConstraint("seniority_months_max >= seniority_months_min", name="valid_seniority_range"),
@@ -393,28 +553,54 @@ class NoticePeriodsDB(Base):
         return self.seniority_months_min <= months_seniority <= self.seniority_months_max
 
 
-class SpecialAllowanceDB(Base):
+class SpecialAllowanceDB(SQLModel, table=True):
     """Database model for special allowances and benefits."""
 
     __tablename__ = "ccnl_special_allowances"
 
-    id = Column(Integer, primary_key=True)
-    agreement_id = Column(Integer, ForeignKey("ccnl_agreements.id"), nullable=False)
-    allowance_type = Column(String(50), nullable=False)  # buoni_pasto, indennita_trasporto, etc.
-    amount = Column(Numeric(8, 2), nullable=False)
-    frequency = Column(String(10), nullable=False)  # daily, monthly, annual
-    conditions = Column(JSON, default=list)
-    applicable_job_levels = Column(JSON, default=list)
-    geographic_areas = Column(JSON, default=list)  # Empty list means national
-    company_sizes = Column(JSON, default=list)  # Empty list means all sizes
+    # Primary key
+    id: int = Field(default=None, primary_key=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Foreign keys
+    agreement_id: int = Field(foreign_key="ccnl_agreements.id")
+
+    # Core fields
+    allowance_type: str = Field(max_length=50)  # buoni_pasto, indennita_trasporto, etc.
+    amount: Decimal = Field(
+        sa_column=Column(Numeric(8, 2), nullable=False)
+    )
+    frequency: str = Field(max_length=10)  # daily, monthly, annual
+
+    # JSON fields
+    conditions: List[Any] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, default=list)
+    )
+    applicable_job_levels: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, default=list)
+    )
+    geographic_areas: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, default=list)
+    )
+    company_sizes: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, default=list)
+    )
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
 
     # Relationships
-    agreement = relationship("CCNLAgreementDB", back_populates="special_allowances")
+    agreement: "CCNLAgreementDB" = Relationship(back_populates="special_allowances")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("idx_special_allowances_agreement_type", "agreement_id", "allowance_type"),
         CheckConstraint("amount > 0", name="positive_allowance_amount"),

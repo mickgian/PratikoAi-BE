@@ -38,8 +38,29 @@ You work under the coordination of the **Scrum Master** and technical guidance o
 - Python 3.13 (modern syntax, type hints, async/await)
 - FastAPI (async endpoints, dependency injection, middleware)
 - Pydantic V2 (validation, serialization, field validators)
-- SQLAlchemy 2.0 (async ORM, relationship patterns)
+- **SQLModel (MANDATORY - 100% of models use SQLModel, ZERO tolerance for SQLAlchemy Base)**
 - Alembic (database migrations, version control)
+
+**CRITICAL - DATABASE MODELS:**
+- ✅ **ONLY USE:** `class Model(SQLModel, table=True):` pattern
+- ❌ **NEVER USE:** SQLAlchemy `Base`, `declarative_base()`, or `BaseModel` (confusing name)
+- ❌ **NEVER USE:** `relationship()` (use `Relationship()` with capital R)
+- ❌ **NEVER USE:** `Column()` for simple types (use `Field()`)
+- 📖 **READ FIRST:** `docs/architecture/decisions/ADR-014-sqlmodel-exclusive-orm.md`
+- 📖 **STANDARDS:** `docs/architecture/SQLMODEL_STANDARDS.md`
+- 📖 **REVIEW CHECKLIST:** `docs/architecture/SQLMODEL_REVIEW_CHECKLIST.md`
+
+**CRITICAL - DEVELOPMENT DATABASE:**
+- ⚠️ **ALWAYS use Docker PostgreSQL** (port 5433) for local development
+- ❌ **NEVER use local PostgreSQL** (port 5432) - causes schema drift
+- 📝 **DATABASE_URL:** `postgresql://aifinance:devpass@localhost:5433/aifinance`
+- 🔄 **Migrations:** Run `alembic upgrade head` BEFORE any backend work
+- 🗑️ **Reset:** `docker-compose down -v db && docker-compose up -d db` (creates fresh DB)
+- **Why Docker-only:**
+  - Prevents schema drift between developers
+  - Easy to reset and start fresh
+  - Matches production environment
+  - Pre-commit hooks enforce migration discipline
 
 **LLM & RAG:**
 - LangGraph (134-step orchestration pipeline - see pratikoai_rag_hybrid.mmd as what we're building)
@@ -145,6 +166,172 @@ app/
 - **`app/retrieval/postgres_retriever.py`** - Hybrid search (FTS + Vector + Recency)
 - **`app/services/expert_feedback_collector.py`** - Expert feedback (needs integration)
 - **`app/core/langgraph/prompt_policy.py`** - System prompts (for emoji removal task)
+- **`app/services/chat_history_service.py`** - Chat history persistence (NEW)
+
+---
+
+## Chat History Storage Architecture (⚠️ CRITICAL - NEW)
+
+**STATUS:** Migration in progress (IndexedDB → PostgreSQL)
+**DATE:** 2025-11-29
+
+### Overview
+PratikoAI is migrating from client-side IndexedDB to server-side PostgreSQL for chat history storage, following industry best practices (ChatGPT, Claude model).
+
+**Rationale:**
+- ✅ Multi-device sync (access from phone, tablet, desktop)
+- ✅ GDPR compliance (data export, deletion, retention)
+- ✅ Enterprise-ready (backup, recovery, analytics)
+- ✅ Data ownership (company controls data)
+- ❌ OLD: IndexedDB (browser-only, no sync, GDPR non-compliant)
+
+### Database Schema
+
+**Table:** `query_history`
+```sql
+CREATE TABLE query_history (
+  id UUID PRIMARY KEY,
+  user_id INTEGER REFERENCES "user"(id),
+  session_id VARCHAR(255) REFERENCES session(id),
+  conversation_id UUID,
+  query TEXT NOT NULL,              -- User's question
+  response TEXT,                     -- AI's answer
+  timestamp TIMESTAMP NOT NULL,
+  created_at TIMESTAMP,
+  model_used VARCHAR(100),           -- e.g., 'gpt-4-turbo'
+  tokens_used INTEGER,
+  cost_cents INTEGER,
+  response_time_ms INTEGER,
+  response_cached BOOLEAN NOT NULL,
+  query_type VARCHAR(50),
+  italian_content BOOLEAN NOT NULL
+);
+
+-- Indexes for performance
+CREATE INDEX idx_query_history_user_id ON query_history(user_id);
+CREATE INDEX idx_query_history_session_id ON query_history(session_id);
+CREATE INDEX idx_query_history_timestamp ON query_history(timestamp);
+```
+
+### Service Layer
+
+**File:** `app/services/chat_history_service.py`
+
+**Key Methods:**
+```python
+# Save chat interaction
+await chat_history_service.save_chat_interaction(
+    user_id=session.user_id,
+    session_id=session.id,
+    user_query="What is IVA in Italy?",
+    ai_response="IVA (Imposta sul Valore Aggiunto)...",
+    model_used="gpt-4-turbo",
+    tokens_used=350,
+    cost_cents=5,
+)
+
+# Retrieve session history
+messages = await chat_history_service.get_session_history(
+    session_id="abc-123",
+    limit=100
+)
+
+# Delete user history (GDPR)
+deleted_count = await chat_history_service.delete_user_history(user_id=1)
+```
+
+### API Endpoints
+
+**Implemented:**
+- ✅ `POST /api/v1/chatbot/chat` - Auto-saves chat to database after completion
+- ⏳ `POST /api/v1/chatbot/chat/stream` - TODO: Add save logic after streaming
+
+**To Implement:**
+- ⏳ `GET /api/v1/chatbot/sessions/{session_id}/messages` - Retrieve history
+- ⏳ `POST /api/v1/chatbot/import-history` - Migration endpoint (IndexedDB → PostgreSQL)
+
+### Integration Points
+
+**1. Chat Endpoint (`app/api/v1/chatbot.py`)**
+```python
+# After AI response generated (line 202)
+result = await agent.get_response(processed_messages, session.id, user_id=session.user_id)
+
+# Extract and save (lines 206-236)
+user_query = next((msg.content for msg in reversed(processed_messages) if msg.type == "user"), None)
+ai_response = next((msg.content for msg in reversed(result) if msg.type == "ai"), None)
+
+if user_query and ai_response:
+    await chat_history_service.save_chat_interaction(...)
+```
+
+**2. GDPR Export (`app/services/data_export_service.py`)**
+```python
+# TODO: Include chat history in data export
+chat_history = await chat_history_service.get_user_history(user_id)
+export_data["chat_history"] = chat_history
+```
+
+**3. GDPR Deletion (`app/services/gdpr_deletion_service.py`)**
+```python
+# TODO: Delete chat history on user deletion
+await chat_history_service.delete_user_history(user_id)
+```
+
+### LangGraph Checkpointer
+
+**File:** `app/core/langgraph/graph.py` (line 2315)
+```python
+checkpointer = AsyncPostgresSaver(connection_pool)
+await checkpointer.setup()  # Creates checkpoints table
+```
+
+**Purpose:** Stores LangGraph conversation state for multi-turn dialogues
+**Tables Created:** `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations`
+
+### Data Retention Policy
+
+**Configured in:** `.env` file
+```bash
+CHAT_RETENTION_DAYS=90  # Auto-delete messages older than 90 days
+```
+
+**Implementation:** TODO - Add scheduled task to delete old records
+
+### Migration Strategy
+
+**Phase 1:** Backend (IN PROGRESS)
+- ✅ Create `chat_history_service.py`
+- ✅ Add save logic to `/chat` endpoint
+- ⏳ Add save logic to `/chat/stream` endpoint
+- ⏳ Add retrieval API endpoint
+- ⏳ Update GDPR services
+
+**Phase 2:** Frontend
+- ⏳ Update API client to fetch from backend
+- ⏳ Migrate existing IndexedDB data
+- ⏳ Add migration UI
+
+**Phase 3:** Testing & Deployment
+- ⏳ Write comprehensive tests
+- ⏳ Deploy to staging
+- ⏳ Production rollout
+
+### Important Notes for Backend Expert
+
+**When implementing chat features:**
+1. **ALWAYS save chat interactions** to `query_history` table after AI response
+2. **Use chat_history_service** - Don't write direct SQL queries
+3. **Non-blocking saves** - Log errors, don't fail chat requests
+4. **GDPR compliance** - Ensure all user data is deleteable
+5. **Performance** - Add database indexes for user_id, session_id, timestamp
+6. **Retention** - Implement auto-deletion for old messages (90 days)
+
+**Testing Requirements:**
+- Unit tests for `chat_history_service.py`
+- Integration tests for chat endpoints with database
+- GDPR export/deletion tests
+- Multi-device sync tests (same session, different browser)
 
 ---
 
@@ -197,22 +384,28 @@ app/
 **Approach:**
 1. **Design** schema (normalized, indexed, constraints)
 2. **Consult Architect** for approval (especially for indexes, foreign keys)
-3. **Create Alembic migration:**
+3. **Read** `docs/architecture/SQLMODEL_STANDARDS.md` for patterns
+4. **Create SQLModel model** in `app/models/` using `SQLModel, table=True` pattern
+5. **Import model** in `alembic/env.py` to register with Alembic
+6. **Create Alembic migration:**
    ```bash
-   alembic revision -m "add_faq_embeddings_table"
+   alembic revision --autogenerate -m "add_faq_embeddings_table"
    ```
-4. **Write migration** (both upgrade and downgrade)
-5. **Update SQLAlchemy models** in app/models/
-6. **Write repository layer** for data access
-7. **Test migration** on QA database (apply + rollback)
-8. **Verify** indexes created correctly
+7. **Add sqlmodel import** to migration file: `import sqlmodel`
+8. **Write repository layer** for data access
+9. **Test migration** on QA database (apply + rollback)
+10. **Verify** indexes created correctly
 
 **Quality Gates:**
-- Migration applies cleanly (no errors)
-- Migration rolls back cleanly (downgrade works)
-- Indexes created as specified (check with \d+ table_name in psql)
-- Foreign key constraints enforced
-- Data types appropriate for use case
+- ✅ Model uses `SQLModel, table=True` (NOT Base, NOT BaseModel)
+- ✅ Model uses `Field()` for all columns
+- ✅ Model uses `Relationship()` for relationships
+- ✅ Migration imports `sqlmodel` to prevent NameError
+- ✅ Migration applies cleanly (no errors)
+- ✅ Migration rolls back cleanly (downgrade works)
+- ✅ Indexes created as specified (check with \d+ table_name in psql)
+- ✅ Foreign key constraints enforced
+- ✅ Data types appropriate for use case
 
 ---
 

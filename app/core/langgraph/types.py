@@ -49,7 +49,8 @@ class RAGState(TypedDict, total=False):
 
     # golden/knowledge
     golden_hit: bool | None
-    golden_answer: dict | None
+    golden_answer: str | None  # Answer text from Step 28 for streaming response handler
+    golden_match: dict | None  # Match data from Step 24 (faq_id, similarity_score, answer, etc.) for Step 25
     kb_docs: list[dict] | None
 
     # Prompt and context fields (for steps 40-47)

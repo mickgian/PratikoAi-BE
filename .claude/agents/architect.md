@@ -51,6 +51,12 @@ You act as the **institutional memory** for all architectural decisions, the **g
 - **Enforce tech stack consistency:**
   - Backend: Python 3.13, FastAPI, Pydantic V2, LangGraph, PostgreSQL+pgvector, Redis
   - Frontend: Next.js 15, React 19, TypeScript 5, Tailwind 4, Radix UI, Context API
+- **Database Development Setup (CRITICAL):**
+  - ⚠️ **Docker PostgreSQL ONLY** for local development (port 5433)
+  - **Why:** Prevents schema drift between developers
+  - **Never** use local PostgreSQL (port 5432) - causes data/schema inconsistencies
+  - **Migrations:** Always `alembic upgrade head` before coding
+  - **Reset:** `docker-compose down -v db && docker-compose up -d db`
 - **Prevent technical debt** accumulation
 - **Challenge** decisions that deviate from established patterns
 - **Approve** new dependencies, libraries, or frameworks
@@ -286,6 +292,147 @@ Next Review: [15th of next month]
 
 ---
 
+---
+
+## Chat History Storage Architecture (⚠️ ADR-015 - NEW)
+
+**STATUS:** Migration in progress (IndexedDB → PostgreSQL)
+**DATE:** 2025-11-29
+**DECISION:** ADR-015 - Server-side chat history storage
+
+### Overview
+PratikoAI is migrating from client-side IndexedDB to server-side PostgreSQL for chat history storage, following industry best practices (ChatGPT, Claude model).
+
+### Rationale for Decision
+
+**Why PostgreSQL (Server-Side)?**
+- ✅ Multi-device sync (access from phone, tablet, desktop)
+- ✅ GDPR compliance (data export, deletion, retention)
+- ✅ Enterprise-ready (backup, recovery, analytics)
+- ✅ Data ownership (company controls data)
+- ✅ Industry standard (ChatGPT, Claude, Perplexity)
+
+**Why NOT IndexedDB-Only?**
+- ❌ Browser-only (no multi-device sync)
+- ❌ GDPR non-compliant (can't delete/export chat from server)
+- ❌ No backup/recovery
+- ❌ Lost on browser cache clear
+- ❌ Not suitable for production SaaS
+
+### Architecture Decision (ADR-015)
+
+**Hybrid Approach:**
+1. **Primary:** PostgreSQL (`query_history` table) - Source of truth
+2. **Fallback:** IndexedDB (offline cache) - Graceful degradation
+
+**Database Schema:**
+```sql
+CREATE TABLE query_history (
+    id UUID PRIMARY KEY,
+    user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,  -- GDPR compliance
+    session_id VARCHAR(255),
+    query TEXT NOT NULL,
+    response TEXT NOT NULL,
+    model_used VARCHAR(100),
+    tokens_used INTEGER,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_qh_user_id ON query_history(user_id);
+CREATE INDEX idx_qh_session_id ON query_history(session_id);
+CREATE INDEX idx_qh_user_timestamp ON query_history(user_id, timestamp DESC);
+```
+
+### Implementation Phases
+
+**Phase 1: Backend (3-4 days) - Assigned to @ezio**
+- ✅ Create `ChatHistoryService` with save/retrieve/delete methods
+- ✅ Add save logic to `/chat` endpoint
+- ⏳ Add save logic to `/chat/stream` endpoint
+- ⏳ Create GET `/api/v1/chatbot/sessions/{id}/messages` endpoint
+- ⏳ Update GDPR export service
+- ⏳ Update GDPR deletion service
+
+**Phase 2: Frontend (3-4 days) - Assigned to @livia**
+- ⏳ Create backend API client (`src/lib/api/chat-history.ts`)
+- ⏳ Create chat storage hook (`src/lib/hooks/useChatStorage.ts`)
+- ⏳ Create migration UI banner component
+- ⏳ Update chat pages to use new hook
+- ⏳ Test multi-device sync
+
+**Phase 3: Migration (2-3 days)**
+- ⏳ Create IndexedDB → PostgreSQL migration endpoint
+- ⏳ User-triggered migration flow
+- ⏳ Migration progress indicator
+
+**Phase 4: Testing (2-3 days) - Assigned to @clelia**
+- ⏳ Unit tests (backend + frontend)
+- ⏳ Integration tests (API endpoints)
+- ⏳ E2E tests (multi-device sync)
+- ⏳ GDPR compliance tests
+
+**Phase 5: Documentation (1-2 days)**
+- ⏳ Update `README.md` with chat storage section
+- ⏳ Create `/docs/architecture/CHAT_STORAGE_ARCHITECTURE.md`
+- ⏳ Update GDPR documentation
+
+### Performance Targets
+
+- Get session history: <10ms (p95)
+- Save chat interaction: <50ms (non-blocking)
+- GDPR export: <1s for 1000 messages
+- GDPR deletion: <100ms (CASCADE)
+
+### Data Retention
+
+- **Retention Period:** 90 days
+- **Deletion Method:** Automated cron job (daily at 2 AM)
+- **GDPR:** User deletion CASCADE deletes all chat history
+
+### Migration Strategy
+
+**User Migration Flow:**
+1. User logs in → Check for unmigrated IndexedDB data
+2. Show migration banner if unmigrated data exists
+3. User clicks "Sync Now" → Export from IndexedDB
+4. POST to `/api/v1/chatbot/import-history` → Import to PostgreSQL
+5. Migration complete → Show success message
+6. IndexedDB becomes read-only offline cache
+
+**No Data Loss:**
+- Migration is optional (user-triggered)
+- IndexedDB data preserved as fallback
+- Backend takes precedence after migration
+
+### Consequences
+
+**Positive:**
+- ✅ Multi-device sync enabled
+- ✅ GDPR compliant (export, deletion, retention)
+- ✅ Enterprise-ready
+- ✅ Matches industry standards
+- ✅ Enables future features (chat search, analytics)
+
+**Negative:**
+- ⚠️ Increased backend complexity
+- ⚠️ Increased database storage (~300 MB/year for 500 users)
+- ⚠️ Migration effort (8-12 days)
+
+**Mitigations:**
+- Service layer abstracts complexity
+- Storage cost negligible (<€1/month)
+- Phased rollout reduces risk
+
+### Review & Approval
+
+- **Proposed By:** System (based on GDPR compliance gap)
+- **Reviewed By:** @egidio (Architect)
+- **Approved By:** Stakeholder (Michele Giannone)
+- **Status:** ✅ APPROVED - Implementation in progress
+
+---
+
 ## Current Architectural State (As of 2025-11-17)
 
 ### Backend Stack
@@ -321,6 +468,7 @@ Next Review: [15th of next month]
 3. **NO Material-UI** - Use Radix UI (ADR-009)
 4. **NO AWS** - Use Hetzner (ADR-006)
 5. **Pydantic V2 only** - No V1 syntax (ADR-005)
+6. **Chat History: PostgreSQL (NEW 2025-11-29)** - Server-side storage, NO IndexedDB-only (ADR-015)
 
 ---
 

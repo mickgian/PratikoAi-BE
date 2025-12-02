@@ -11,41 +11,74 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+# Note: AsyncMock is used for mocking async methods in tests
+
 
 class TestRAGStep24GoldenLookup:
     """Test suite for RAG STEP 24 - Golden Set lookup."""
 
     @pytest.mark.asyncio
     @patch("app.orchestrators.preflight.rag_step_log")
-    async def test_step_24_signature_match(self, mock_rag_log):
-        """Test Step 24: Finds FAQ by query signature (exact match)."""
+    @patch("app.orchestrators.preflight.AsyncSessionLocal")
+    async def test_step_24_signature_match(self, mock_session_factory, mock_rag_log):
+        """Test Step 24: Tests golden lookup behavior with mocked database.
+
+        Note: Signature matching is not yet implemented (see TODO in preflight.py).
+        This test verifies the semantic fallback path with a mocked FAQ match.
+        """
         from app.orchestrators.preflight import step_24__golden_lookup
 
-        ctx = {
-            "user_query": "Quali sono le detrazioni fiscali per il 2024?",
-            "query_signature": "abc123def456",  # From Step 18
-            "canonical_facts": ["detrazioni", "fiscali", "2024"],
-            "request_id": "test-24-signature",
-        }
+        # Mock the database session and FAQ service
+        mock_session = MagicMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session_factory.return_value = mock_session
 
-        result = await step_24__golden_lookup(messages=[], ctx=ctx)
+        # Create a mock FAQ entry result
+        mock_faq_entry = MagicMock()
+        mock_faq_entry.id = 1
+        mock_faq_entry.question = "Quali sono le detrazioni fiscali per il 2024?"
+        mock_faq_entry.answer = "Le detrazioni fiscali per il 2024..."
+        mock_faq_entry.category = "fiscale"
+        mock_faq_entry.tags = ["detrazioni", "2024"]
 
-        # Should return Golden Set match
-        assert isinstance(result, dict)
-        assert "golden_match" in result
-        assert result["match_type"] in ["signature", "semantic"]
-        assert result["next_step"] == "golden_hit_check"  # Routes to Step 25
+        mock_search_result = MagicMock()
+        mock_search_result.faq_entry = mock_faq_entry
+        mock_search_result.similarity_score = 0.95
+        mock_search_result.search_time_ms = 50
 
-        # Verify structured logging
-        assert mock_rag_log.call_count >= 2
-        completed_logs = [
-            call for call in mock_rag_log.call_args_list if call[1].get("processing_stage") == "completed"
-        ]
+        with patch("app.orchestrators.preflight.IntelligentFAQService") as mock_faq_service_class:
+            mock_faq_service = MagicMock()
+            mock_faq_service.find_best_match = AsyncMock(return_value=mock_search_result)
+            mock_faq_service_class.return_value = mock_faq_service
 
-        assert len(completed_logs) > 0
-        completed_log = completed_logs[0][1]
-        assert completed_log["step"] == 24
-        assert completed_log["node_label"] == "GoldenLookup"
+            ctx = {
+                "user_query": "Quali sono le detrazioni fiscali per il 2024?",
+                "query_signature": "abc123def456",  # From Step 18
+                "canonical_facts": ["detrazioni", "fiscali", "2024"],
+                "request_id": "test-24-signature",
+            }
+
+            result = await step_24__golden_lookup(messages=[], ctx=ctx)
+
+            # Should return Golden Set match
+            assert isinstance(result, dict)
+            assert "golden_match" in result
+            assert result["match_found"] is True
+            # Signature matching not implemented yet, so expect semantic
+            assert result["match_type"] == "semantic"
+            assert result["next_step"] == "golden_hit_check"  # Routes to Step 25
+
+            # Verify structured logging
+            assert mock_rag_log.call_count >= 2
+            completed_logs = [
+                call for call in mock_rag_log.call_args_list if call[1].get("processing_stage") == "completed"
+            ]
+
+            assert len(completed_logs) > 0
+            completed_log = completed_logs[0][1]
+            assert completed_log["step"] == 24
+            assert completed_log["node_label"] == "GoldenLookup"
 
     @pytest.mark.asyncio
     @patch("app.orchestrators.preflight.rag_step_log")

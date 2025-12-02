@@ -6,7 +6,9 @@ including database mocking and async support.
 """
 
 import os
-from contextlib import contextmanager
+import uuid
+from contextlib import asynccontextmanager, contextmanager
+from datetime import datetime
 from unittest.mock import (
     AsyncMock,
     Mock,
@@ -14,6 +16,12 @@ from unittest.mock import (
 )
 
 import pytest
+import pytest_asyncio
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlmodel import SQLModel
+
+from app.core.config import settings
 
 
 def pytest_addoption(parser):
@@ -100,14 +108,14 @@ def mock_database_session():
     return session
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db_session():
     """Real async database session for integration tests."""
     from app.models.database import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
         yield session
-        await session.close()
+        # Note: No explicit close() needed - context manager handles cleanup
 
 
 @contextmanager
@@ -120,3 +128,160 @@ def assume_mock_database():
 
 # Add the fixture to pytest namespace
 pytest.assume_mock_database = assume_mock_database
+
+
+# ============================================================================
+# Chat History Test Fixtures (Phase 4)
+# ============================================================================
+
+# Test database URL - use the same Docker PostgreSQL instance but different database
+TEST_DATABASE_URL = "postgresql+asyncpg://aifinance:devpass@localhost:5433/aifinance_test"
+
+
+@pytest_asyncio.fixture
+async def test_db():
+    """Create a test database session for tests.
+
+    Each test gets a fresh database session. Data is cleaned up after
+    the test completes to maintain isolation between tests.
+    """
+    # Create engine for this test
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+    )
+
+    # Ensure tables exist (idempotent)
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+
+    # Create session factory
+    TestingSessionLocal = async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+    async with TestingSessionLocal() as session:
+        yield session
+        # Commit any remaining changes
+        await session.commit()
+        await session.close()
+
+    # Clean up: Delete test data after each test
+    async with TestingSessionLocal() as cleanup_session:
+        # Delete test user and related data (CASCADE will handle query_history)
+        await cleanup_session.execute(text('DELETE FROM "user" WHERE id >= 99999'))
+        await cleanup_session.commit()
+
+    # Dispose engine
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def test_user(test_db):
+    """Create a test user for chat history tests.
+
+    Returns:
+        User object with id, email, and other required fields
+    """
+    from app.models.user import User
+
+    user = User(
+        id=99999,  # Use high ID to avoid conflicts
+        email="test_chat_user@example.com",
+        full_name="Test Chat User",
+        hashed_password="$2b$12$test_hashed_password_placeholder",
+        role="regular_user",
+        is_active=True,
+        email_verified=True,
+        provider="email",
+        created_at=datetime.utcnow(),  # Use timezone-naive datetime for PostgreSQL
+    )
+
+    test_db.add(user)
+    await test_db.commit()
+    await test_db.refresh(user)
+
+    return user
+
+
+@pytest_asyncio.fixture
+async def test_session_id():
+    """Create a test session ID for chat history tests."""
+    return f"test-session-{uuid.uuid4()}"
+
+
+@pytest_asyncio.fixture
+async def sample_chat_messages(test_db, test_user, test_session_id):
+    """Create sample chat messages for testing retrieval.
+
+    Creates 3 sample messages in the test database for the test user.
+
+    Returns:
+        List of message IDs
+    """
+    from app.models.data_export import QueryHistory
+
+    message_ids = []
+    base_time = datetime.utcnow()
+
+    messages = [
+        {
+            "query": "What is IVA in Italy?",
+            "response": "IVA (Imposta sul Valore Aggiunto) is the Italian Value-Added Tax.",
+            "tokens_used": 150,
+            "cost_cents": 2,
+        },
+        {
+            "query": "How much is the standard IVA rate?",
+            "response": "The standard IVA rate in Italy is 22%.",
+            "tokens_used": 120,
+            "cost_cents": 1,
+        },
+        {
+            "query": "Are there reduced IVA rates?",
+            "response": "Yes, Italy has reduced IVA rates of 10%, 5%, and 4% for specific goods and services.",
+            "tokens_used": 180,
+            "cost_cents": 3,
+        },
+    ]
+
+    for i, msg_data in enumerate(messages):
+        message_id = str(uuid.uuid4())
+        query_history = QueryHistory(
+            id=message_id,
+            user_id=test_user.id,
+            session_id=test_session_id,
+            query=msg_data["query"],
+            response=msg_data["response"],
+            model_used="gpt-4-turbo",
+            tokens_used=msg_data["tokens_used"],
+            cost_cents=msg_data["cost_cents"],
+            response_cached=False,
+            response_time_ms=1200 + i * 100,
+            timestamp=base_time,
+            created_at=base_time,
+        )
+        test_db.add(query_history)
+        message_ids.append(message_id)
+
+    await test_db.commit()
+
+    return message_ids
+
+
+@pytest.fixture
+def auth_headers(test_user):
+    """Create mock authentication headers for API tests.
+
+    Returns:
+        Dictionary with Authorization header containing a mock JWT token
+    """
+    # In real tests, you would generate a proper JWT token
+    # For now, we'll use a mock token
+    mock_token = f"test_token_user_{test_user.id}"
+    return {"Authorization": f"Bearer {mock_token}"}

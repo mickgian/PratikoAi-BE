@@ -143,13 +143,15 @@ async def _check_golden_fast_path_eligibility(ctx: dict[str, Any]) -> dict[str, 
     golden_score_ok = golden_eligible >= GOLDEN_ELIGIBLE_THRESHOLD
 
     # Check context-specific eligibility reasons
-    if not confidence_scores:  # Missing eligibility data
+    if not confidence_scores:  # Missing eligibility data - default to eligible
+        # Better to check Golden Set and find no match than skip it entirely
+        # Golden lookup is fast (vector search) and Step 25 handles low-confidence matches
         return {
-            "eligible": False,
-            "reason": "missing_eligibility_data",
-            "next_step": 31,
-            "next_step_id": "RAG.classify.domainactionclassifier.classify.rule.based.classification",
-            "route_to": "ClassifyDomain",
+            "eligible": True,
+            "reason": "default_eligible_missing_scores",
+            "next_step": 24,
+            "next_step_id": "RAG.golden.goldenset.match.by.signature.or.semantic",
+            "route_to": "GoldenLookup",
         }
 
     if not complexity_ok:  # Query too complex
@@ -304,7 +306,7 @@ async def step_25__golden_hit(
     ):
         rag_step_log(
             step=25,
-            step_id="RAG.golden.high.confidence.match.score.at.least.0.90",
+            step_id="RAG.golden.high.confidence.match.score.at.least.0.85",
             node_label="GoldenHit",
             category="golden",
             type="process",
@@ -319,12 +321,13 @@ async def step_25__golden_hit(
         faq_id = golden_match.get("faq_id", "unknown")
 
         # Check if confidence meets threshold
-        HIGH_CONFIDENCE_THRESHOLD = 0.90
+        # Note: 0.85 matches intelligent_faq_service threshold for consistency
+        HIGH_CONFIDENCE_THRESHOLD = 0.85
         is_high_confidence = confidence >= HIGH_CONFIDENCE_THRESHOLD
 
         rag_step_log(
             step=25,
-            step_id="RAG.golden.high.confidence.match.score.at.least.0.90",
+            step_id="RAG.golden.high.confidence.match.score.at.least.0.85",
             node_label="GoldenHit",
             request_id=request_id,
             confidence=confidence,
@@ -1026,6 +1029,12 @@ async def step_128__golden_approval(
         # Get quality score and trust score
         quality_score = faq_candidate.get("quality_score", 0.0)
         trust_score = ctx.get("trust_score", 0.0)
+
+        # Force maximum quality score for ADMIN and SUPER_USER roles
+        # These roles are trusted to provide high-quality feedback that should always auto-approve
+        user_role = ctx.get("user_role")
+        if user_role in ["admin", "super_user"]:
+            quality_score = 1.0
 
         # Decision logic based on thresholds
         try:

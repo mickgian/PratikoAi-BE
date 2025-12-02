@@ -14,13 +14,16 @@ from app.api.v1.chatbot import router as chatbot_router
 from app.api.v1.data_sources import router as data_sources_router
 from app.api.v1.demo import router as demo_router
 from app.api.v1.documents_minimal import router as documents_router
+from app.api.v1.expert_feedback import router as expert_feedback_router
 
 # from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router
 from app.api.v1.financial_validation import router as financial_validation_router
 from app.api.v1.health import router as health_router
 from app.api.v1.italian import router as italian_router
-from app.api.v1.italian_subscriptions import router as italian_subscriptions_router
 
+# TEMPORARY: Commented out due to duplicate Subscription model conflict
+# TODO: Re-enable after consolidating payment.py and subscription.py models
+# from app.api.v1.italian_subscriptions import router as italian_subscriptions_router
 # from app.api.v1.data_export import router as data_export_router
 # Temporarily disabled routers due to import issues
 # from app.api.v1.search import router as search_router
@@ -45,7 +48,9 @@ api_router.include_router(payments_router, prefix="/payments", tags=["payments"]
 api_router.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(privacy_router, prefix="/privacy", tags=["privacy"])
 api_router.include_router(italian_router, prefix="/italian", tags=["italian"])
-api_router.include_router(italian_subscriptions_router, prefix="/billing", tags=["billing"])
+api_router.include_router(expert_feedback_router)  # Includes /expert-feedback prefix from router
+# TEMPORARY: Commented out due to duplicate Subscription model conflict
+# api_router.include_router(italian_subscriptions_router, prefix="/billing", tags=["billing"])
 # api_router.include_router(data_export_router, prefix="/gdpr", tags=["data-export"])
 # api_router.include_router(search_router, prefix="/search", tags=["search"])
 # api_router.include_router(security_router, prefix="/security", tags=["security"])

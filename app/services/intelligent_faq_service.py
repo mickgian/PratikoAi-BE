@@ -169,32 +169,57 @@ class IntelligentFAQService:
             )
 
     async def find_best_match(self, query: str) -> FAQSearchResult:
-        """Find the best FAQ match using semantic search.
+        """Find the best FAQ match using semantic vector search.
+
+        Now uses pgvector cosine similarity instead of full-text search for better semantic matching.
 
         Args:
             query: Normalized query string
 
         Returns:
-            FAQSearchResult with best match and similarity score
+            FAQSearchResult with best match and similarity score (0.0-1.0 range)
         """
         start_time = time.perf_counter()
 
         try:
-            # Use PostgreSQL's full-text search with Italian language support
-            # This would use ts_rank for similarity scoring in production
+            # Import embedding generator
+            from app.core.embed import generate_embedding
+
+            # Generate embedding for the query
+            query_embedding = await generate_embedding(query)
+
+            if not query_embedding:
+                end_time = time.perf_counter()
+                return FAQSearchResult(
+                    faq_entry=None,
+                    similarity_score=0.0,
+                    search_time_ms=(end_time - start_time) * 1000,
+                    cache_hit=False,
+                )
+
+            # Use pgvector cosine similarity search
+            # <=> returns cosine distance, so similarity = 1 - distance
+            # Convert embedding list to pgvector format: [0.1,0.2,...]
+            embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+
             search_query = text("""
                 SELECT *,
-                       ts_rank(to_tsvector('italian', question || ' ' || answer),
-                              plainto_tsquery('italian', :query)) as similarity_score
+                       (1 - (question_embedding <=> cast(:query_embedding as vector))) as similarity
                 FROM faq_entries
-                WHERE to_tsvector('italian', question || ' ' || answer) @@
-                      plainto_tsquery('italian', :query)
+                WHERE question_embedding IS NOT NULL
                   AND NOT needs_review
-                ORDER BY similarity_score DESC
+                  AND (1 - (question_embedding <=> cast(:query_embedding as vector))) >= :min_similarity
+                ORDER BY question_embedding <=> cast(:query_embedding as vector)
                 LIMIT 5
             """)
 
-            result = await self.db.execute(search_query, {"query": query})
+            result = await self.db.execute(
+                search_query,
+                {
+                    "query_embedding": embedding_str,
+                    "min_similarity": self.similarity_threshold,  # 0.85
+                },
+            )
             rows = result.fetchall()
 
             best_match = None
@@ -203,7 +228,7 @@ class IntelligentFAQService:
             if rows:
                 # Convert first row to FAQEntry and get similarity score
                 row = rows[0]
-                best_score = float(row.similarity_score) if hasattr(row, "similarity_score") else 0.0
+                best_score = float(row.similarity) if hasattr(row, "similarity") else 0.0
 
                 # Create FAQEntry from row data
                 best_match = FAQEntry(
@@ -225,6 +250,7 @@ class IntelligentFAQService:
                     created_at=row.created_at,
                     updated_at=row.updated_at,
                     search_vector=row.search_vector,
+                    question_embedding=None,  # Don't load the full embedding vector
                 )
                 best_match.similarity_score = best_score
 
@@ -235,7 +261,15 @@ class IntelligentFAQService:
                 faq_entry=best_match, similarity_score=best_score, search_time_ms=search_time, cache_hit=False
             )
 
-        except Exception:
+        except Exception as e:
+            # Log error for debugging
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Vector search failed, returning no match: {e}", exc_info=True)
+
+            # Silently handle errors and return no match
+            # This prevents FAQ lookup failures from breaking the entire query pipeline
             end_time = time.perf_counter()
             return FAQSearchResult(
                 faq_entry=None, similarity_score=0.0, search_time_ms=(end_time - start_time) * 1000, cache_hit=False
@@ -603,9 +637,19 @@ async def create_faq_entry(
     tags: list[str] = None,
     update_sensitivity: UpdateSensitivity = UpdateSensitivity.MEDIUM,
 ) -> FAQEntry:
-    """Create a new FAQ entry."""
+    """Create a new FAQ entry with auto-generated question embedding."""
+    from app.core.embed import generate_embedding
+
+    # Generate embedding for semantic search
+    question_embedding = await generate_embedding(question)
+
     faq_entry = FAQEntry(
-        question=question, answer=answer, category=category, tags=tags or [], update_sensitivity=update_sensitivity
+        question=question,
+        answer=answer,
+        category=category,
+        tags=tags or [],
+        update_sensitivity=update_sensitivity,
+        question_embedding=question_embedding,
     )
 
     db.add(faq_entry)
@@ -624,6 +668,8 @@ async def update_faq_entry(
     change_reason: str | None = None,
 ) -> FAQEntry | None:
     """Update an existing FAQ entry with versioning."""
+    from app.core.embed import generate_embedding
+
     faq_entry = await db.get(FAQEntry, faq_id)
     if not faq_entry:
         return None
@@ -644,6 +690,8 @@ async def update_faq_entry(
     # Update FAQ entry
     if question is not None:
         faq_entry.question = question
+        # Regenerate embedding when question changes
+        faq_entry.question_embedding = await generate_embedding(question)
     if answer is not None:
         faq_entry.answer = answer
     if tags is not None:

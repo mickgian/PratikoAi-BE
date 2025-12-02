@@ -67,7 +67,7 @@ def expert_profile():
     """Expert profile fixture with high trust score using MagicMock."""
     profile = MagicMock()
     profile.id = uuid4()
-    profile.user_id = uuid4()
+    profile.user_id = 1  # User model uses integer IDs, not UUIDs
     profile.credentials = ["Dottore Commercialista", "Revisore Legale"]
     profile.credential_types = [ExpertCredentialType.DOTTORE_COMMERCIALISTA, ExpertCredentialType.REVISORE_LEGALE]
     profile.experience_years = 15
@@ -89,7 +89,7 @@ def low_trust_expert():
     """Expert profile with low trust score (below threshold) using MagicMock."""
     profile = MagicMock()
     profile.id = uuid4()
-    profile.user_id = uuid4()
+    profile.user_id = 2  # User model uses integer IDs, not UUIDs
     profile.credentials = ["Consulente Fiscale"]
     profile.credential_types = [ExpertCredentialType.CONSULENTE_FISCALE]
     profile.experience_years = 2
@@ -110,10 +110,8 @@ def sample_feedback(expert_profile):
     feedback.id = uuid4()
     feedback.query_id = uuid4()
     feedback.expert_id = expert_profile.id
-    feedback.feedback_type = MagicMock()
-    feedback.feedback_type.value = "incomplete"
-    feedback.category = MagicMock()
-    feedback.category.value = "calcolo_sbagliato"
+    feedback.feedback_type = FeedbackType.INCOMPLETE  # Use actual enum, not MagicMock
+    feedback.category = ItalianFeedbackCategory.CALCOLO_SBAGLIATO  # Use actual enum
     feedback.query_text = "Come si calcola l'IVA per il regime forfettario?"
     feedback.original_answer = "Nel regime forfettario non si applica l'IVA."
     feedback.expert_answer = "Nel regime forfettario non si applica l'IVA in fattura, ma..."
@@ -183,11 +181,10 @@ class TestSubmitFeedback:
                 mock_service_instance = AsyncMock()
                 mock_task_service.return_value = mock_service_instance
 
-                # Mock feedback instance
+                # Mock feedback instance - use actual enum value, not MagicMock
                 mock_feedback = MagicMock()
                 mock_feedback.id = uuid4()
-                mock_feedback.feedback_type = MagicMock()
-                mock_feedback.feedback_type.value = "incomplete"
+                mock_feedback.feedback_type = FeedbackType.INCOMPLETE
                 mock_feedback.task_creation_attempted = True
                 mock_feedback.generated_task_id = None
                 mock_feedback.generated_faq_id = None
@@ -243,11 +240,10 @@ class TestSubmitFeedback:
                 mock_expert_result.scalar_one_or_none.return_value = expert_profile
                 mock_db.execute.return_value = mock_expert_result
 
-                # Mock feedback instance
+                # Mock feedback instance - use actual enum value, not MagicMock
                 mock_feedback = MagicMock()
                 mock_feedback.id = uuid4()
-                mock_feedback.feedback_type = MagicMock()
-                mock_feedback.feedback_type.value = "correct"
+                mock_feedback.feedback_type = FeedbackType.CORRECT
                 mock_feedback.task_creation_attempted = True  # Changed to True for Golden Set workflow
                 mock_feedback.generated_task_id = None
                 mock_feedback.generated_faq_id = None  # Will be populated by background task
@@ -435,11 +431,10 @@ class TestSubmitFeedback:
                 mock_expert_result.scalar_one_or_none.return_value = expert_profile
                 mock_db.execute.return_value = mock_expert_result
 
-                # Mock feedback instance
+                # Mock feedback instance - use actual enum value, not MagicMock
                 mock_feedback = MagicMock()
                 mock_feedback.id = uuid4()
-                mock_feedback.feedback_type = MagicMock()
-                mock_feedback.feedback_type.value = "incomplete"
+                mock_feedback.feedback_type = FeedbackType.INCOMPLETE
                 mock_feedback.task_creation_attempted = False
                 mock_feedback.generated_task_id = None
                 mock_feedback.generated_faq_id = None

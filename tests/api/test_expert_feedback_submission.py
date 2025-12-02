@@ -8,7 +8,16 @@ BUGS THIS WOULD HAVE CAUGHT:
 - Bug #3: Foreign key to non-existent table (database constraints)
 - Bug #5: Database session management (background tasks using closed sessions)
 - Bug #6: String to enum conversion (API receives strings, must convert to enums)
+
+NOTE: Skipped in CI - requires real PostgreSQL database connection.
 """
+
+import pytest
+
+pytest.skip(
+    "Integration tests require real PostgreSQL database - skipped in CI",
+    allow_module_level=True,
+)
 
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch

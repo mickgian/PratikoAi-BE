@@ -1,0 +1,62 @@
+name: Daily Roadmap Email Notification
+
+# Send daily email at 6:00 AM if there are changes to ARCHITECTURE_ROADMAP files
+on:
+  schedule:
+    # Run at 6:00 AM UTC daily (adjust timezone as needed)
+    # For Italy (UTC+1/+2), use 5:00 UTC to get 6:00 AM local time in winter
+    - cron: '0 5 * * *'  # 5:00 AM UTC = 6:00 AM CET (winter)
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  send-roadmap-email:
+    runs-on: ubuntu-latest
+
+    # Only run on master/main branch
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit to detect changes
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install python-dateutil
+
+      - name: Check for roadmap changes in last 24 hours
+        id: check_changes
+        run: |
+          # Check if ARCHITECTURE_ROADMAP.md files were modified in last 24 hours
+          if git log --since="24 hours ago" --name-only --pretty=format: | grep -q "ARCHITECTURE_ROADMAP.md"; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "📝 Roadmap changes detected in last 24 hours"
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No roadmap changes in last 24 hours"
+          fi
+
+      - name: Send timeline notification email
+        if: steps.check_changes.outputs.changes == 'true'
+        env:
+          ROADMAP_NOTIFICATION_EMAIL: ${{ secrets.ROADMAP_NOTIFICATION_EMAIL }}
+          ROADMAP_AUTO_UPDATE: 'true'
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: |
+          python scripts/update_roadmap_timeline.py --notify
+
+      - name: No email needed
+        if: steps.check_changes.outputs.changes == 'false'
+        run: |
+          echo "ℹ️ No changes detected - skipping email notification"

@@ -396,6 +396,7 @@ class DataExportService:
                 "id": str(q.id),
                 "timestamp": q.timestamp.isoformat(),
                 "query": self._process_sensitive_field(q.query, export_request, "query_text"),
+                "response": self._process_sensitive_field(q.response, export_request, "response_text"),
                 "response_cached": q.response_cached,
                 "response_time_ms": q.response_time_ms,
                 "tokens_used": q.tokens_used,
@@ -404,6 +405,7 @@ class DataExportService:
                 "query_type": q.query_type,
                 "italian_content": q.italian_content,
                 "session_id": q.session_id,
+                "conversation_id": q.conversation_id if hasattr(q, "conversation_id") else None,
             }
             for q in queries
         ]

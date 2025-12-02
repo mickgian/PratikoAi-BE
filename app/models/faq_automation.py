@@ -26,11 +26,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-
-from app.models.ccnl_database import Base
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class FAQGenerationStatus(Enum):
@@ -62,7 +59,7 @@ class RSSImpactLevel(Enum):
     CRITICAL = "critical"
 
 
-class QueryCluster(Base):
+class QueryCluster(SQLModel, table=True):
     """Clusters of similar user queries identified by pattern analysis.
 
     Represents groups of semantically similar queries that could
@@ -71,43 +68,54 @@ class QueryCluster(Base):
 
     __tablename__ = "query_clusters"
 
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    canonical_query = Column(String(500), nullable=False, index=True)
-    normalized_form = Column(String(500), nullable=False, index=True)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    canonical_query: str = Field(max_length=500, index=True)
+    normalized_form: str = Field(max_length=500, index=True)
 
     # Cluster statistics
-    query_count = Column(Integer, nullable=False, default=0)
-    first_seen = Column(DateTime(timezone=True), nullable=False, index=True)
-    last_seen = Column(DateTime(timezone=True), nullable=False, index=True)
+    query_count: int = Field(default=0)
+    first_seen: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False, index=True))
+    last_seen: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False, index=True))
 
     # Cost analysis
-    total_cost_cents = Column(Integer, nullable=False, default=0)
-    avg_cost_cents = Column(Integer, nullable=False, default=0)
-    potential_savings_cents = Column(Integer, nullable=False, default=0)
+    total_cost_cents: int = Field(default=0)
+    avg_cost_cents: int = Field(default=0)
+    potential_savings_cents: int = Field(default=0)
 
     # Quality metrics
-    avg_quality_score = Column(Numeric(3, 2), nullable=False, default=0)
-    avg_response_time_ms = Column(Integer, nullable=False, default=0)
+    avg_quality_score: Decimal = Field(
+        default=Decimal("0"), sa_column=Column(Numeric(3, 2), nullable=False, default=0)
+    )
+    avg_response_time_ms: int = Field(default=0)
 
-    # Pattern analysis
-    query_variations = Column(ARRAY(String(500)), nullable=False, default=list)
-    semantic_tags = Column(ARRAY(String(50)), nullable=False, default=list)
-    topic_distribution = Column(JSONB)  # Distribution of topics in cluster
+    # Pattern analysis (PostgreSQL arrays)
+    query_variations: list[str] = Field(
+        default_factory=list, sa_column=Column(ARRAY(String(500)), nullable=False, default=list)
+    )
+    semantic_tags: list[str] = Field(
+        default_factory=list, sa_column=Column(ARRAY(String(50)), nullable=False, default=list)
+    )
+    topic_distribution: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Business metrics
-    roi_score = Column(Numeric(10, 2), nullable=False, default=0)
-    priority_score = Column(Numeric(10, 2), nullable=False, default=0)
+    roi_score: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0))
+    priority_score: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0))
 
     # Processing status
-    processing_status = Column(String(20), nullable=False, default="discovered")
-    last_analyzed = Column(DateTime(timezone=True), server_default=func.now())
+    processing_status: str = Field(max_length=20, default="discovered")
+    last_analyzed: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
 
-    # Metadata
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    # Timestamps
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True))
 
     # Relationships
-    faq_candidates = relationship("FAQCandidate", back_populates="query_cluster", cascade="all, delete-orphan")
+    faq_candidates: list["FAQCandidate"] = Relationship(
+        back_populates="query_cluster", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     # Indexes for performance
     __table_args__ = (
@@ -115,9 +123,6 @@ class QueryCluster(Base):
         Index("idx_query_clusters_cost", "potential_savings_cents", "query_count"),
         Index("idx_query_clusters_quality", "avg_quality_score", "processing_status"),
     )
-
-    def __repr__(self):
-        return f"<QueryCluster(canonical='{self.canonical_query[:50]}...', count={self.query_count})>"
 
     def calculate_monthly_savings(self, days_window: int = 30) -> Decimal:
         """Calculate estimated monthly savings"""
@@ -177,7 +182,7 @@ class QueryCluster(Base):
         }
 
 
-class FAQCandidate(Base):
+class FAQCandidate(SQLModel, table=True):
     """FAQ candidates generated from query cluster analysis.
 
     Represents potential FAQs that have been identified through
@@ -186,47 +191,54 @@ class FAQCandidate(Base):
 
     __tablename__ = "faq_candidates"
 
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    cluster_id = Column(PG_UUID(as_uuid=True), ForeignKey("query_clusters.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    cluster_id: UUID = Field(foreign_key="query_clusters.id")
 
     # FAQ content preparation
-    suggested_question = Column(Text, nullable=False)
-    best_response_content = Column(Text, nullable=False)
-    best_response_id = Column(PG_UUID(as_uuid=True))  # Reference to original query
+    suggested_question: str = Field(sa_column=Column(Text, nullable=False))
+    best_response_content: str = Field(sa_column=Column(Text, nullable=False))
+    best_response_id: UUID | None = Field(default=None)  # Reference to original query
 
     # Classification and tagging
-    suggested_category = Column(String(100))
-    suggested_tags = Column(ARRAY(String(50)), default=list)
-    regulatory_references = Column(ARRAY(String(200)), default=list)
+    suggested_category: str | None = Field(default=None, max_length=100)
+    suggested_tags: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(50)), default=list))
+    regulatory_references: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(200)), default=list))
 
     # Business case
-    frequency = Column(Integer, nullable=False)
-    estimated_monthly_savings = Column(Numeric(10, 2), nullable=False, default=0)
-    roi_score = Column(Numeric(10, 2), nullable=False, default=0)
-    priority_score = Column(Numeric(10, 2), nullable=False, default=0)
+    frequency: int
+    estimated_monthly_savings: Decimal = Field(
+        default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0)
+    )
+    roi_score: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0))
+    priority_score: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0))
 
     # Generation parameters
-    generation_prompt = Column(Text)
-    generation_model_suggested = Column(String(50), default="gpt-3.5-turbo")
-    quality_threshold = Column(Numeric(3, 2), default=0.85)
+    generation_prompt: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    generation_model_suggested: str = Field(max_length=50, default="gpt-3.5-turbo")
+    quality_threshold: Decimal = Field(default=Decimal("0.85"), sa_column=Column(Numeric(3, 2), default=0.85))
 
     # Status and workflow
-    status = Column(String(30), nullable=False, default="pending")
-    generation_attempts = Column(Integer, nullable=False, default=0)
-    max_generation_attempts = Column(Integer, nullable=False, default=3)
+    status: str = Field(max_length=30, default="pending")
+    generation_attempts: int = Field(default=0)
+    max_generation_attempts: int = Field(default=3)
 
-    # Metadata
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    expires_at = Column(DateTime(timezone=True))  # Candidate expiry
+    # Timestamps
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True))
+    expires_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
 
     # Processing metadata
-    analysis_metadata = Column(JSONB)  # Analysis details
-    generation_metadata = Column(JSONB)  # Generation parameters
+    analysis_metadata: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    generation_metadata: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Relationships
-    query_cluster = relationship("QueryCluster", back_populates="faq_candidates")
-    generated_faqs = relationship("GeneratedFAQ", back_populates="candidate", cascade="all, delete-orphan")
+    query_cluster: "QueryCluster" = Relationship(back_populates="faq_candidates")
+    generated_faqs: list["GeneratedFAQ"] = Relationship(
+        back_populates="candidate", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     # Constraints and indexes
     __table_args__ = (
@@ -234,9 +246,6 @@ class FAQCandidate(Base):
         Index("idx_faq_candidates_roi", "roi_score", "estimated_monthly_savings"),
         Index("idx_faq_candidates_status", "status", "created_at"),
     )
-
-    def __repr__(self):
-        return f"<FAQCandidate(question='{self.suggested_question[:50]}...', roi={self.roi_score})>"
 
     def can_generate(self) -> bool:
         """Check if candidate can be processed for generation"""
@@ -277,7 +286,7 @@ class FAQCandidate(Base):
         }
 
 
-class GeneratedFAQ(Base):
+class GeneratedFAQ(SQLModel, table=True):
     """FAQs generated by the automated system.
 
     Stores FAQs created through automated analysis and generation,
@@ -286,67 +295,70 @@ class GeneratedFAQ(Base):
 
     __tablename__ = "generated_faqs"
 
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    candidate_id = Column(PG_UUID(as_uuid=True), ForeignKey("faq_candidates.id"), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    candidate_id: UUID = Field(foreign_key="faq_candidates.id")
 
     # FAQ content
-    question = Column(Text, nullable=False)
-    answer = Column(Text, nullable=False)
-    category = Column(String(100))
-    tags = Column(ARRAY(String(50)), default=list)
+    question: str = Field(sa_column=Column(Text, nullable=False))
+    answer: str = Field(sa_column=Column(Text, nullable=False))
+    category: str | None = Field(default=None, max_length=100)
+    tags: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(50)), default=list))
 
     # Quality and validation
-    quality_score = Column(Numeric(3, 2), nullable=False)
-    quality_details = Column(JSONB)  # Detailed quality metrics
-    validation_notes = Column(Text)
+    quality_score: Decimal = Field(sa_column=Column(Numeric(3, 2), nullable=False))
+    quality_details: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    validation_notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Legal and regulatory
-    regulatory_refs = Column(ARRAY(String(200)), default=list)
-    legal_review_required = Column(Boolean, default=False)
-    compliance_notes = Column(Text)
+    regulatory_refs: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(200)), default=list))
+    legal_review_required: bool = Field(default=False)
+    compliance_notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Generation details
-    generation_model = Column(String(50), nullable=False)
-    generation_cost_cents = Column(Integer, nullable=False, default=0)
-    generation_tokens = Column(Integer)
-    generation_time_ms = Column(Integer)
+    generation_model: str = Field(max_length=50)
+    generation_cost_cents: int = Field(default=0)
+    generation_tokens: int | None = Field(default=None)
+    generation_time_ms: int | None = Field(default=None)
 
     # Business metrics
-    estimated_monthly_savings = Column(Numeric(10, 2), nullable=False, default=0)
-    source_query_count = Column(Integer, nullable=False, default=0)
+    estimated_monthly_savings: Decimal = Field(
+        default=Decimal("0"), sa_column=Column(Numeric(10, 2), nullable=False, default=0)
+    )
+    source_query_count: int = Field(default=0)
 
     # Approval workflow
-    approval_status = Column(String(30), nullable=False, default="pending_review")
-    approved_by = Column(PG_UUID(as_uuid=True), ForeignKey("user.id"))
-    approved_at = Column(DateTime(timezone=True))
-    rejection_reason = Column(Text)
+    approval_status: str = Field(max_length=30, default="pending_review")
+    approved_by: int | None = Field(default=None, foreign_key="user.id")
+    approved_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    rejection_reason: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Publishing
-    published = Column(Boolean, default=False)
-    published_at = Column(DateTime(timezone=True))
-    faq_id = Column(PG_UUID(as_uuid=True), ForeignKey("faq_entries.id"))  # Link to published FAQ
+    published: bool = Field(default=False)
+    published_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    faq_id: str | None = Field(default=None, max_length=100, foreign_key="faq_entries.id")  # Link to published FAQ
 
     # Performance tracking
-    view_count = Column(Integer, default=0)
-    usage_count = Column(Integer, default=0)
-    satisfaction_score = Column(Numeric(3, 2))
-    feedback_count = Column(Integer, default=0)
+    view_count: int = Field(default=0)
+    usage_count: int = Field(default=0)
+    satisfaction_score: Decimal | None = Field(default=None, sa_column=Column(Numeric(3, 2), nullable=True))
+    feedback_count: int = Field(default=0)
 
-    # Metadata
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    # Timestamps
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True))
 
     # Generation metadata
-    generation_metadata = Column(JSONB)  # Full generation details
-    auto_generated = Column(Boolean, default=True)
+    generation_metadata: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    auto_generated: bool = Field(default=True)
 
     # Relationships
-    candidate = relationship("FAQCandidate", back_populates="generated_faqs")
-    # Note: No relationship to User model - it uses SQLModel which is incompatible
-    # with SQLAlchemy relationships. Access user via approved_by foreign key instead.
-    # Note: No relationship to FAQ/FAQEntry model - it uses SQLModel which is incompatible
-    # with SQLAlchemy relationships. Access FAQ via faq_id foreign key instead.
-    rss_impacts = relationship("RSSFAQImpact", back_populates="faq", cascade="all, delete-orphan")
+    candidate: "FAQCandidate" = Relationship(back_populates="generated_faqs")
+    rss_impacts: list["RSSFAQImpact"] = Relationship(
+        back_populates="faq", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     # Indexes
     __table_args__ = (
@@ -355,9 +367,6 @@ class GeneratedFAQ(Base):
         Index("idx_generated_faqs_performance", "usage_count", "satisfaction_score"),
         UniqueConstraint("candidate_id", "question", name="uq_candidate_question"),
     )
-
-    def __repr__(self):
-        return f"<GeneratedFAQ(question='{self.question[:50]}...', quality={self.quality_score})>"
 
     def should_auto_approve(self) -> bool:
         """Determine if FAQ should be auto-approved based on quality"""
@@ -400,7 +409,7 @@ class GeneratedFAQ(Base):
         }
 
 
-class RSSFAQImpact(Base):
+class RSSFAQImpact(SQLModel, table=True):
     """Tracking of RSS updates that impact existing FAQs.
 
     Records when RSS feed updates potentially affect FAQ accuracy
@@ -409,48 +418,49 @@ class RSSFAQImpact(Base):
 
     __tablename__ = "rss_faq_impacts"
 
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    faq_id = Column(PG_UUID(as_uuid=True), ForeignKey("generated_faqs.id"), nullable=False)
-    rss_update_id = Column(PG_UUID(as_uuid=True), nullable=False)  # External RSS ID
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    faq_id: UUID = Field(foreign_key="generated_faqs.id")
+    rss_update_id: UUID  # External RSS ID
 
     # Impact assessment
-    impact_level = Column(String(20), nullable=False)  # low, medium, high, critical
-    impact_score = Column(Numeric(3, 2), nullable=False)
-    confidence_score = Column(Numeric(3, 2), nullable=False)
+    impact_level: str = Field(max_length=20)  # low, medium, high, critical
+    impact_score: Decimal = Field(sa_column=Column(Numeric(3, 2), nullable=False))
+    confidence_score: Decimal = Field(sa_column=Column(Numeric(3, 2), nullable=False))
 
     # RSS update details
-    rss_source = Column(String(200), nullable=False)
-    rss_title = Column(Text, nullable=False)
-    rss_summary = Column(Text)
-    rss_published_date = Column(DateTime(timezone=True), nullable=False)
-    rss_url = Column(String(500))
+    rss_source: str = Field(max_length=200)
+    rss_title: str = Field(sa_column=Column(Text, nullable=False))
+    rss_summary: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    rss_published_date: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
+    rss_url: str | None = Field(default=None, max_length=500)
 
     # Matching details
-    matching_tags = Column(ARRAY(String(50)), default=list)
-    matching_keywords = Column(ARRAY(String(100)), default=list)
-    regulatory_changes = Column(ARRAY(String(200)), default=list)
+    matching_tags: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(50)), default=list))
+    matching_keywords: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(100)), default=list))
+    regulatory_changes: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(200)), default=list))
 
     # Action taken
-    action_required = Column(String(50), nullable=False)  # review, regenerate, ignore
-    action_taken = Column(String(50))
-    action_date = Column(DateTime(timezone=True))
-    action_by = Column(PG_UUID(as_uuid=True), ForeignKey("user.id"))
+    action_required: str = Field(max_length=50)  # review, regenerate, ignore
+    action_taken: str | None = Field(default=None, max_length=50)
+    action_date: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    action_by: int | None = Field(default=None, foreign_key="user.id")
 
     # Processing status
-    processed = Column(Boolean, default=False)
-    processing_notes = Column(Text)
+    processed: bool = Field(default=False)
+    processing_notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
-    # Metadata
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    # Timestamps
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True))
 
     # Analysis metadata
-    analysis_metadata = Column(JSONB)  # Detailed analysis data
+    analysis_metadata: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Relationships
-    faq = relationship("GeneratedFAQ", back_populates="rss_impacts")
-    # Note: No relationship to User model - it uses SQLModel which is incompatible
-    # with SQLAlchemy relationships. Access user via action_by foreign key instead.
+    faq: "GeneratedFAQ" = Relationship(back_populates="rss_impacts")
 
     # Indexes
     __table_args__ = (
@@ -458,9 +468,6 @@ class RSSFAQImpact(Base):
         Index("idx_rss_impacts_date", "rss_published_date", "created_at"),
         Index("idx_rss_impacts_faq", "faq_id", "impact_level"),
     )
-
-    def __repr__(self):
-        return f"<RSSFAQImpact(faq_id='{self.faq_id}', impact='{self.impact_level}')>"
 
     def requires_immediate_action(self) -> bool:
         """Check if impact requires immediate action"""
@@ -505,7 +512,7 @@ class RSSFAQImpact(Base):
         }
 
 
-class FAQGenerationJob(Base):
+class FAQGenerationJob(SQLModel, table=True):
     """Background jobs for FAQ generation processing.
 
     Tracks asynchronous FAQ generation jobs including batch processing,
@@ -514,50 +521,49 @@ class FAQGenerationJob(Base):
 
     __tablename__ = "faq_generation_jobs"
 
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    job_type = Column(String(50), nullable=False)  # analysis, generation, rss_update, batch
-    job_name = Column(String(200), nullable=False)
+    # Primary key
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    job_type: str = Field(max_length=50)  # analysis, generation, rss_update, batch
+    job_name: str = Field(max_length=200)
 
     # Job parameters
-    parameters = Column(JSONB, nullable=False, default=dict)
-    priority = Column(Integer, nullable=False, default=5)  # 1-10, higher = more important
+    parameters: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSONB, nullable=False, default=dict))
+    priority: int = Field(default=5)  # 1-10, higher = more important
 
     # Processing status
-    status = Column(String(30), nullable=False, default="pending")
-    progress_percentage = Column(Integer, default=0)
-    progress_description = Column(String(200))
+    status: str = Field(max_length=30, default="pending")
+    progress_percentage: int = Field(default=0)
+    progress_description: str | None = Field(default=None, max_length=200)
 
     # Execution details
-    started_at = Column(DateTime(timezone=True))
-    completed_at = Column(DateTime(timezone=True))
-    execution_time_seconds = Column(Integer)
+    started_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    completed_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    execution_time_seconds: int | None = Field(default=None)
 
     # Results and metrics
-    items_processed = Column(Integer, default=0)
-    items_successful = Column(Integer, default=0)
-    items_failed = Column(Integer, default=0)
-    total_cost_cents = Column(Integer, default=0)
+    items_processed: int = Field(default=0)
+    items_successful: int = Field(default=0)
+    items_failed: int = Field(default=0)
+    total_cost_cents: int = Field(default=0)
 
     # Error handling
-    error_message = Column(Text)
-    retry_count = Column(Integer, default=0)
-    max_retries = Column(Integer, default=3)
+    error_message: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    retry_count: int = Field(default=0)
+    max_retries: int = Field(default=3)
 
     # Results
-    result_data = Column(JSONB)  # Job results and summary
-    output_references = Column(ARRAY(String(100)), default=list)  # Generated FAQ IDs, etc.
+    result_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    output_references: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(100)), default=list))
 
-    # Metadata
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(PG_UUID(as_uuid=True), ForeignKey("user.id"))
+    # Timestamps
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True))
+    created_by: int | None = Field(default=None, foreign_key="user.id")
 
     # Background job ID (Celery task ID)
-    celery_task_id = Column(String(100), index=True)
-
-    # Relationships
-    # Note: No relationship to User model - it uses SQLModel which is incompatible
-    # with SQLAlchemy relationships. Access user via created_by foreign key instead.
+    celery_task_id: str | None = Field(default=None, max_length=100, index=True)
 
     # Indexes
     __table_args__ = (
@@ -565,9 +571,6 @@ class FAQGenerationJob(Base):
         Index("idx_faq_jobs_type", "job_type", "status"),
         Index("idx_faq_jobs_celery", "celery_task_id"),
     )
-
-    def __repr__(self):
-        return f"<FAQGenerationJob(type='{self.job_type}', status='{self.status}')>"
 
     def can_retry(self) -> bool:
         """Check if job can be retried"""

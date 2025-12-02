@@ -82,15 +82,39 @@ async def get_current_user(
             )
 
         # Verify user exists in database
-        user_id_int = int(user_id)
-        user = await db_service.get_user(user_id_int)
-        if user is None:
-            logger.error("user_not_found", user_id=user_id_int)
-            raise HTTPException(
-                status_code=404,
-                detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        # Support both user tokens (user_id as int) and session tokens (session_id as UUID)
+        try:
+            # Try parsing as user_id (integer) - original flow
+            user_id_int = int(user_id)
+            user = await db_service.get_user(user_id_int)
+            if user is None:
+                logger.error("user_not_found", user_id=user_id_int)
+                raise HTTPException(
+                    status_code=404,
+                    detail="User not found",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        except ValueError:
+            # Token contains session_id (UUID string) - lookup user via session
+            logger.debug("session_token_detected", session_id=user_id)
+            session = await db_service.get_session(user_id)
+            if session is None:
+                logger.error("session_not_found", session_id=user_id)
+                raise HTTPException(
+                    status_code=404,
+                    detail="Session not found",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            # Get user from session
+            user = await db_service.get_user(session.user_id)
+            if user is None:
+                logger.error("user_not_found_from_session", user_id=session.user_id, session_id=user_id)
+                raise HTTPException(
+                    status_code=404,
+                    detail="User not found",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
 
         return user
     except ValueError as ve:

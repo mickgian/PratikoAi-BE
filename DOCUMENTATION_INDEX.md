@@ -1,7 +1,7 @@
 # Master Documentation Index
 
-**Auto-generated:** 2025-11-21 11:33:09
-**Total Documents:** 239 markdown files
+**Auto-generated:** 2025-12-01 19:57:27
+**Total Documents:** 289 markdown files
 
 > 💡 This index is automatically generated. To update, run: `python scripts/generate_docs_index.py`
 
@@ -50,7 +50,7 @@
 | Subsystem | Documents | Primary Index |
 |-----------|-----------|---------------|
 | **RAG Architecture** | 134 steps | [docs/architecture/](docs/architecture/INDEX.md) |
-| **Core Docs** | 19 docs | [docs/](docs/INDEX.md) |
+| **Core Docs** | 21 docs | [docs/](docs/INDEX.md) |
 | **Monitoring** | 11 docs | [monitoring/](monitoring/INDEX.md) |
 | **Deployment** | 3 docs | [deployment-orchestration/](deployment-orchestration/INDEX.md) |
 | **MCP Servers** | 5 docs | [mcp-servers/](mcp-servers/INDEX.md) |
@@ -76,10 +76,6 @@
   - **Created:** November 12, 2025 **Status:** Phase 1-2 Complete, Phase 3-5 Templates Provided
 - **[pgvector Setup Guide](docs/getting-started/PGVECTOR_SETUP_GUIDE.md)** ✅ Current
   - ✅ **Completed**: - Created Alembic migrations for pgvector enablement
-
-### Operations (1 docs)
-- **[PratikoAI Deployment Checklist](docs/operations/DEPLOYMENT_CHECKLIST.md)** ✅ Current
-  - **Pinecone Configuration** - [ ] `PINECONE_API_KEY` - Staging Pinecone API key
 
 ### Meta Documentation (2 docs)
 - **[Documentation Cleanup Summary](docs/meta/DOCUMENTATION_CLEANUP_SUMMARY.md)** ✅ Current

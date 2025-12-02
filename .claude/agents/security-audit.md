@@ -106,6 +106,7 @@ You work under the coordination of the **Scrum Master** and collaborate with the
 
 2. **Verify export includes:**
    - ✅ Personal information (name, email, phone)
+   - ✅ **Chat history (NEW: query_history table)** - All user queries and AI responses
    - ✅ Conversation history (all messages)
    - ✅ Document uploads (filenames, metadata)
    - ✅ Feedback submissions
@@ -138,6 +139,7 @@ You work under the coordination of the **Scrum Master** and collaborate with the
 
 2. **Verify complete deletion:**
    - ✅ User profile deleted
+   - ✅ **Chat history deleted (NEW: query_history table)** - CASCADE from user_id
    - ✅ Conversations deleted or anonymized
    - ✅ Document references removed
    - ✅ Personal data removed from logs
@@ -177,17 +179,109 @@ You work under the coordination of the **Scrum Master** and collaborate with the
 
 **Test on QA/Preprod/Production:**
 1. **Verify retention policies:**
+   - ✅ **Chat history (query_history): 90 days (NEW: automated cron job)**
    - ✅ Conversation data: 90 days
    - ✅ Log data: 30 days
    - ✅ Backup data: [X days]
 
 2. **Test automatic deletion:**
+   - ✅ **Chat history auto-deleted after 90 days (verify cron job working)**
    - ✅ Old conversations auto-deleted after 90 days
    - ✅ Logs auto-deleted after 30 days
 
 **Document Findings:**
 - Retention policies defined: ✅ / ❌
 - Automatic deletion working: ✅ / ❌
+
+---
+
+### Chat History Storage Compliance (⚠️ CRITICAL - NEW)
+
+**STATUS:** Migration in progress (IndexedDB → PostgreSQL)
+**DATE:** 2025-11-29
+
+**Test on QA/Preprod/Production:**
+
+#### 1. Data Export Test (Article 15)
+```bash
+# Test chat history export
+PGPASSWORD=devpass psql -h localhost -p 5433 -U aifinance -d aifinance -c \
+  "SELECT COUNT(*) FROM query_history WHERE user_id = 1;"
+
+# Expected: All user chat messages exported
+# Verify: query + response + timestamp + metadata
+```
+
+**Checklist:**
+- ✅ All user queries included
+- ✅ All AI responses included
+- ✅ Timestamps accurate
+- ✅ Metadata (model_used, tokens, cost) included
+- ✅ Export format human-readable (JSON/PDF)
+
+#### 2. Data Deletion Test (Article 17)
+```bash
+# Test chat history deletion (CASCADE from user table)
+PGPASSWORD=devpass psql -h localhost -p 5433 -U aifinance -d aifinance <<EOF
+BEGIN;
+DELETE FROM "user" WHERE id = 999;  -- Test user
+-- Verify CASCADE deleted query_history records
+SELECT COUNT(*) FROM query_history WHERE user_id = 999;
+-- Expected: 0
+ROLLBACK;  -- Don't actually delete in test
+EOF
+```
+
+**Checklist:**
+- ✅ DELETE CASCADE working (query_history auto-deleted with user)
+- ✅ No residual chat data after user deletion
+- ✅ Deletion completes within 30 days
+- ✅ Confirmation sent to user
+
+#### 3. Data Retention Test (Article 5)
+```bash
+# Test automatic 90-day deletion (cron job)
+# 1. Insert old record (91 days ago)
+PGPASSWORD=devpass psql -h localhost -p 5433 -U aifinance -d aifinance <<EOF
+INSERT INTO query_history (user_id, session_id, query, response, timestamp)
+VALUES (1, 'test-session', 'test query', 'test response', NOW() - INTERVAL '91 days');
+
+-- 2. Run deletion query (same as cron job)
+DELETE FROM query_history WHERE timestamp < NOW() - INTERVAL '90 days';
+
+-- 3. Verify old record deleted
+SELECT COUNT(*) FROM query_history WHERE timestamp < NOW() - INTERVAL '90 days';
+-- Expected: 0
+EOF
+```
+
+**Checklist:**
+- ✅ Cron job configured (runs daily at 2 AM)
+- ✅ Old records (>90 days) auto-deleted
+- ✅ Recent records (<90 days) retained
+- ✅ Deletion query efficient (<100ms)
+
+#### 4. Security Test (Article 32)
+```bash
+# Test access control on chat history
+curl -X GET "http://localhost:8000/api/v1/chatbot/sessions/abc123/messages" \
+  -H "Authorization: Bearer INVALID_TOKEN"
+
+# Expected: 401 Unauthorized
+
+# Test horizontal privilege escalation
+curl -X GET "http://localhost:8000/api/v1/chatbot/sessions/OTHER_USER_SESSION/messages" \
+  -H "Authorization: Bearer USER_A_TOKEN"
+
+# Expected: 403 Forbidden (user can't access other user's chats)
+```
+
+**Checklist:**
+- ✅ Authentication required (JWT)
+- ✅ Authorization enforced (users can only access their own chats)
+- ✅ No horizontal privilege escalation
+- ✅ Chat data encrypted in transit (HTTPS)
+- ✅ Chat data encrypted at rest (PostgreSQL encryption)
 
 ---
 

@@ -10,6 +10,42 @@ from sqlmodel import SQLModel
 
 from alembic import context
 from app.models.cassazione import CassazioneDecision
+
+# Phase 2: CCNL Database Models
+from app.models.ccnl_database import (
+    CCNLAgreementDB,
+    CCNLSectorDB,
+    JobLevelDB,
+    LeaveEntitlementDB,
+    NoticePeriodsDB,
+    OvertimeRulesDB,
+    SalaryTableDB,
+    SpecialAllowanceDB,
+    WorkingHoursDB,
+)
+from app.models.ccnl_update_models import (
+    CCNLChangeLog,
+    CCNLDatabase,
+    CCNLMonitoringMetric,
+    CCNLUpdateEvent,
+    CCNLVersion,
+)
+
+# Phase 3: GDPR Data Export Models
+from app.models.data_export import (
+    DataExportRequest,
+    ElectronicInvoice,
+    ExportAuditLog,
+    FAQInteraction,
+    KnowledgeBaseSearch,
+    QueryHistory,
+)
+from app.models.data_export import (
+    ExportDocumentAnalysis,
+)
+from app.models.data_export import (
+    TaxCalculation as ExportTaxCalculation,
+)
 from app.models.document import (
     Document,
     DocumentAnalysis,
@@ -26,6 +62,15 @@ from app.models.faq import (
     FAQUsageLog,
     FAQVariationCache,
     FAQVersionHistory,
+)
+
+# Phase 3: FAQ Automation Models
+from app.models.faq_automation import (
+    FAQCandidate,
+    FAQGenerationJob,
+    GeneratedFAQ,
+    QueryCluster,
+    RSSFAQImpact,
 )
 from app.models.italian_data import (
     ComplianceCheck,
@@ -48,11 +93,41 @@ from app.models.payment import (
     Subscription,
     WebhookEvent,
 )
+
+# Phase 3: Expert Feedback & Quality Analysis Models
+from app.models.quality_analysis import (
+    ExpertFeedback,
+    ExpertGeneratedTask,
+    ExpertProfile,
+    ExpertValidation,
+    FailurePattern,
+    PromptTemplate,
+    QualityMetric,
+    SystemImprovement,
+)
 from app.models.query_normalization import (
     QueryNormalizationLog,
     QueryNormalizationPattern,
     QueryNormalizationStats,
 )
+
+# Phase 4: Regional Tax Models
+from app.models.regional_taxes import (
+    ComunalTaxRate,
+    Comune,
+    RegionalTaxRate,
+    Regione,
+)
+
+# Phase 3: Italian Subscription Models
+# TEMPORARILY COMMENTED OUT: Conflicts with payment.py models (duplicate table names)
+# TODO: Create separate migration to evolve payment.py schema -> subscription.py schema
+# from app.models.subscription import (
+#     Invoice as SubscriptionInvoice,
+#     Subscription as UserSubscription,
+#     SubscriptionPlan,
+#     SubscriptionPlanChange,
+# )
 from app.models.regulatory_documents import (
     DocumentCollection,
     DocumentProcessingLog,

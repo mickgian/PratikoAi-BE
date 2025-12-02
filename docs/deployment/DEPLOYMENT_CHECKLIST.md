@@ -2,16 +2,12 @@
 
 ## Missing Configuration for Staging Environment
 
-### 🔑 Required Secrets
-
-**Pinecone Configuration**
-- [ ] `PINECONE_API_KEY` - Staging Pinecone API key
-- [ ] `PINECONE_ENVIRONMENT` - Set to `serverless` (or specific region)
-- [ ] `PINECONE_INDEX_NAME` - Suggest: `pratikoai-staging` or `pratikoai-embed-384`
+### Required Secrets
 
 **Database Configuration**
 - [ ] `POSTGRES_URL` - Staging PostgreSQL connection string
 - [ ] Database credentials and connection details
+- [ ] pgvector extension enabled (`CREATE EXTENSION IF NOT EXISTS vector;`)
 
 **Authentication Secrets**
 - [ ] `JWT_SECRET_KEY` - Staging JWT signing key (must be unique)
@@ -28,7 +24,7 @@
 - [ ] `LANGFUSE_PUBLIC_KEY` - Staging Langfuse public key
 - [ ] `LANGFUSE_SECRET_KEY` - Staging Langfuse secret key
 
-### 📋 Configuration Files Needed
+### Configuration Files Needed
 
 **Create Environment File**
 - [ ] Create `.env.staging` (copy from `.env.staging.example`)
@@ -39,25 +35,23 @@
 - [ ] Update `docker-compose.yml` environment variables for staging
 - [ ] Test with `APP_ENV=staging docker-compose up`
 
-### 🧪 Staging Verification Steps
+### Staging Verification Steps
 
 ```bash
 # 1. Set staging environment
 export APP_ENV=staging
 
-# 2. Test vector service initialization
-python -c "from app.services.vector_service_enhanced import EnhancedVectorService; print('✅ OK' if EnhancedVectorService().is_available() else '❌ Failed')"
+# 2. Test database connection
+python -c "from app.services.database import get_session; print('DB OK')"
 
-# 3. Test database connection
-python -c "from app.services.database import get_session; print('✅ DB OK')"
-
-# 4. Test Pinecone connection (if configured)
+# 3. Test pgvector extension
 python -c "
-config = VectorConfig()
-if config.is_pinecone_configured():
-    print('✅ Pinecone configured')
-else:
-    print('ℹ️ Pinecone not configured - using local fallback')
+from sqlalchemy import text
+from app.services.database import get_engine
+with get_engine().connect() as conn:
+    result = conn.execute(text(\"SELECT extversion FROM pg_extension WHERE extname = 'vector'\"))
+    version = result.scalar()
+    print(f'pgvector version: {version}')
 "
 ```
 
@@ -65,18 +59,13 @@ else:
 
 ## Missing Configuration for Production Environment
 
-### 🔑 Required Secrets
-
-**Pinecone Configuration**
-- [ ] `PINECONE_API_KEY` - Production Pinecone API key (separate from staging)
-- [ ] `PINECONE_ENVIRONMENT` - Set to `serverless` or production-specific region
-- [ ] `PINECONE_INDEX_NAME` - Suggest: `pratikoai-prod` or `pratikoai-embed-384`
-- [ ] `PINECONE_NAMESPACE_PREFIX` - Set to `env=prod` (default)
+### Required Secrets
 
 **Database Configuration**
 - [ ] `POSTGRES_URL` - Production PostgreSQL connection string (encrypted/secure)
 - [ ] Database credentials with minimal required permissions
 - [ ] Connection pooling configuration for production load
+- [ ] pgvector extension enabled with HNSW indexes
 
 **Authentication Secrets**
 - [ ] `JWT_SECRET_KEY` - Production JWT signing key (cryptographically strong)
@@ -108,19 +97,18 @@ else:
 - [ ] `RATE_LIMIT_CHAT` - Production chat rate limits
 - [ ] `ALLOWED_ORIGINS` - Production frontend URLs only
 
-### 🏗️ Infrastructure Configuration
+### Infrastructure Configuration
 
-**Vector Search Production Settings**
-- [ ] `VECTOR_STRICT_MODE` - Set to `true` for production
-- [ ] `VECTOR_STRICT_EMBEDDER_MATCH` - Set to `true` for production
-- [ ] Consider separate Pinecone indexes for different domains
-
-**Performance Configuration**
+**pgvector Production Settings**
+- [ ] PostgreSQL 15+ with pgvector 0.5+ extension
+- [ ] HNSW indexes created for all embedding columns
 - [ ] `POSTGRES_POOL_SIZE` - Tune for production load (suggest 20)
 - [ ] `POSTGRES_MAX_OVERFLOW` - Set production overflow limit (suggest 30)
+
+**Performance Configuration**
 - [ ] `LOG_LEVEL` - Set to `INFO` or `WARNING` for production
 
-### 📋 Production Deployment Files
+### Production Deployment Files
 
 **Create Production Environment File**
 - [ ] Create `.env.production` (copy from `.env.production.example`)
@@ -134,95 +122,68 @@ else:
 - [ ] Set up VPC/network isolation if using AWS
 - [ ] Configure backup and disaster recovery procedures
 
-### 🧪 Production Verification Steps
+### Production Verification Steps
 
 ```bash
 # 1. Set production environment
 export APP_ENV=production
 
-# 2. Test all services in production mode
-python -c "
-from app.services.vector_service_enhanced import EnhancedVectorService
-service = EnhancedVectorService()
-stats = service.get_service_stats()
-print(f'Provider: {stats[\"provider_available\"]}')
-print(f'Config: {stats[\"config\"][\"provider_preference\"]}')
-print(f'Strict Mode: {stats[\"config\"][\"strict_mode\"]}')
-"
+# 2. Test database connection
+python -c "from app.services.database import get_session; print('DB OK')"
 
-# 3. Test production vector operations
+# 3. Test pgvector extension and indexes
 python -c "
-service = EnhancedVectorService()
-# Test document storage
-result = service.store_document('test-prod', 'test content', {'domain': 'fiscale'})
-print(f'Storage: {\"✅ OK\" if result else \"❌ Failed\"}')
-# Test search
-results = service.search_similar('test query', top_k=1)
-print(f'Search: {\"✅ OK\" if results else \"❌ Failed\"}')
+from sqlalchemy import text
+from app.services.database import get_engine
+with get_engine().connect() as conn:
+    # Check pgvector version
+    result = conn.execute(text(\"SELECT extversion FROM pg_extension WHERE extname = 'vector'\"))
+    version = result.scalar()
+    print(f'pgvector version: {version}')
+
+    # Check HNSW indexes exist
+    result = conn.execute(text(\"SELECT indexname FROM pg_indexes WHERE indexdef LIKE '%hnsw%'\"))
+    indexes = result.fetchall()
+    print(f'HNSW indexes: {len(indexes)}')
 "
 
 # 4. Verify production settings
 python -c "
-from app.services.vector_config import VectorConfig
-config = VectorConfig()
-print(f'Strict Mode: {config.strict_mode}')
-print(f'Provider: {config.get_provider_preference()}')
-print(f'Fallback Allowed: {config.allow_fallback_in_production()}')
+from app.core.config import settings
+print(f'Environment: {settings.APP_ENV}')
+print(f'Debug: {settings.DEBUG}')
 "
 ```
 
 ---
 
-## Environment-Specific Index Strategy
-
-### Development
-- **Index**: `pratikoai-dev` ✅ (exists)
-- **Namespace**: `env=dev,domain=*,tenant=default`
-- **Data**: Test data, can be reset/cleared
-
-### Staging
-- **Index**: `pratikoai-staging` (create new)
-- **Namespace**: `env=staging,domain=*,tenant=default`
-- **Data**: Production-like data for testing
-
-### Production
-- **Index**: `pratikoai-prod` (create new)
-- **Namespace**: `env=prod,domain=*,tenant=default`
-- **Data**: Live production data
-- **Backup**: Enable automated backups
-
 ## Security Best Practices
 
-### 🔒 Secrets Management
+### Secrets Management
 - [ ] **Never commit secrets to git** - Use .env files that are gitignored
 - [ ] **Use different API keys per environment** - Isolate development from production
 - [ ] **Rotate API keys regularly** - Especially production keys
 - [ ] **Use AWS Secrets Manager** - For production secret storage
 - [ ] **Audit secret access** - Monitor who accesses production secrets
 
-### 🛡️ Network Security
+### Network Security
 - [ ] **Enable VPC for production databases** - Isolate database access
 - [ ] **Use TLS for all connections** - Encrypt data in transit
 - [ ] **Configure firewall rules** - Allow only necessary connections
 - [ ] **Monitor API usage** - Set up alerts for unusual activity
 - [ ] **Enable request rate limiting** - Prevent abuse
 
-### 📊 Monitoring Setup
+### Monitoring Setup
 - [ ] **Configure Langfuse for each environment** - Separate dashboards
 - [ ] **Set up production alerts** - Monitor errors and performance
 - [ ] **Configure log aggregation** - Centralized logging system
-- [ ] **Monitor Pinecone usage** - Track API quotas and costs
 - [ ] **Set up health checks** - Automated service monitoring
 
 ## Cost Optimization
 
-### Pinecone Cost Management
-- [ ] **Monitor index usage** - Track vector count and queries
-- [ ] **Set up usage alerts** - Get notified of cost increases
-- [ ] **Optimize index size** - Remove unused vectors periodically
-- [ ] **Consider regional pricing** - Choose cost-effective regions
-
-### Infrastructure Optimization
+### Database Cost Management
+- [ ] **Monitor index sizes** - Use `pg_indexes_size()` to track growth
+- [ ] **Regular VACUUM and REINDEX** - Maintain query performance
 - [ ] **Right-size instances** - Match compute resources to usage
 - [ ] **Enable auto-scaling** - Scale based on demand
 - [ ] **Monitor database performance** - Optimize queries and indexes

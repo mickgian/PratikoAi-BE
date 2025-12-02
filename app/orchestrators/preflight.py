@@ -15,6 +15,9 @@ from typing import (
     Optional,
 )
 
+from app.models.database import AsyncSessionLocal
+from app.services.intelligent_faq_service import IntelligentFAQService
+
 try:
     from app.observability.rag_logging import (
         rag_step_log,
@@ -310,11 +313,17 @@ async def step_24__golden_lookup(
         search_method = "signature_first"
 
         try:
+            # IMPORTANT: We query faq_entries directly, NOT faq_candidates.
+            # Rationale:
+            # - faq_entries: Golden set of validated, production-ready FAQs (Steps 127-129 save here)
+            # - faq_candidates: Staging area for unapproved FAQ candidates (not yet validated)
+            # Step 24 retrieves validated answers, so we use faq_entries as single source of truth.
+
             # Step 1: Try signature-based exact match first (faster)
+            # TODO: Implement query signature-based lookup in faq_entries for instant retrieval
+            # For now, signature matching is not implemented - fallback to semantic search
             if query_signature:
-                # Mock signature lookup - in production would query Golden Set by hash
-                # For now, simulate no signature match to test semantic fallback
-                signature_match = None  # Would be: await golden_set_service.get_by_signature(query_signature)
+                signature_match = None  # Future: await faq_service.get_by_signature(query_signature)
 
                 if signature_match:
                     golden_match = signature_match
@@ -323,28 +332,31 @@ async def step_24__golden_lookup(
                     similarity_score = 1.0  # Exact match
                     search_method = "signature_exact"
 
-            # Step 2: Fallback to semantic similarity search
+            # Step 2: Fallback to semantic similarity search against faq_entries
             if not golden_match and user_query:
-                # Mock semantic search - in production would use SemanticFAQMatcher
-                # For testing, simulate finding or not finding a match
                 search_method = "semantic_fallback"
 
-                # Simulate semantic matching logic
-                # In production: matches = await semantic_faq_matcher.find_matching_faqs(user_query, max_results=1)
-                # Mock: treat queries with 'sconosciuta', 'xyz', or 'nomatch' as no match
-                query_lower = user_query.lower()
-                is_unknown = any(keyword in query_lower for keyword in ["sconosciuta", "xyz", "nomatch", "unknown"])
+                # Create database session and FAQ service for real database query
+                async with AsyncSessionLocal() as db_session:
+                    faq_service = IntelligentFAQService(db_session)
+                    search_result = await faq_service.find_best_match(user_query)
 
-                if len(user_query) > 10 and not is_unknown:
-                    golden_match = {
-                        "faq_id": "mock_faq_001",
-                        "question": "Mock FAQ question",
-                        "answer": "Mock FAQ answer",
-                        "similarity_score": 0.85,
-                    }
-                    match_found = True
-                    match_type = "semantic"
-                    similarity_score = 0.85
+                    # Check if we found a match with sufficient confidence
+                    # Note: IntelligentFAQService uses 0.85 threshold internally,
+                    # but Step 25 checks for >= 0.90 for "high confidence" golden hit
+                    if search_result.faq_entry and search_result.similarity_score > 0:
+                        golden_match = {
+                            "faq_id": search_result.faq_entry.id,
+                            "question": search_result.faq_entry.question,
+                            "answer": search_result.faq_entry.answer,
+                            "similarity_score": search_result.similarity_score,
+                            "category": search_result.faq_entry.category,
+                            "tags": search_result.faq_entry.tags,
+                            "search_time_ms": search_result.search_time_ms,
+                        }
+                        match_found = True
+                        match_type = "semantic"
+                        similarity_score = search_result.similarity_score
 
         except Exception as e:
             # Log error but continue - Step 25 will handle no match

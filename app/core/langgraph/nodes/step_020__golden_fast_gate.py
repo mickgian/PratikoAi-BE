@@ -38,10 +38,11 @@ async def node_step_20(state: RAGState) -> RAGState:
         decisions = state.setdefault("decisions", {})
 
         # Field mappings with name translation
-        if "golden_eligible" in res:
-            golden["eligible"] = res["golden_eligible"]
-            decisions["golden_eligible"] = res["golden_eligible"]
-        mirror(state, "golden_eligible", bool(res.get("golden_eligible", False)))
+        # Note: orchestrator returns "golden_fast_path_eligible", not "golden_eligible"
+        if "golden_fast_path_eligible" in res:
+            golden["eligible"] = res["golden_fast_path_eligible"]
+            decisions["golden_eligible"] = res["golden_fast_path_eligible"]
+        mirror(state, "golden_eligible", bool(res.get("golden_fast_path_eligible", False)))
         if "should_check_golden" in res:
             mirror(state, "should_check_golden", bool(res["should_check_golden"]))
 

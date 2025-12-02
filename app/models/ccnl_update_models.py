@@ -9,12 +9,11 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional
+from uuid import UUID as UUIDType, uuid4
 
 from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import declarative_base, relationship
-
-Base = declarative_base()
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class UpdateSource(Enum):
@@ -55,24 +54,44 @@ class ChangeType(Enum):
     TEMPORARY = "temporary"
 
 
-class CCNLDatabase(Base):
+class CCNLDatabase(SQLModel, table=True):
     """Main CCNL database entry."""
 
     __tablename__ = "ccnl_database"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    sector_name = Column(String(200), nullable=False)
-    ccnl_code = Column(String(50), unique=True, nullable=False)
-    official_name = Column(Text, nullable=False)
-    current_version_id = Column(UUID(as_uuid=True), nullable=True)  # Remove FK constraint for now
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
+    # Primary key
+    id: UUIDType = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    sector_name: str = Field(max_length=200)
+    ccnl_code: str = Field(max_length=50, unique=True)
+    official_name: str = Field(sa_column=Column(Text, nullable=False))
+    current_version_id: Optional[UUIDType] = Field(default=None)  # No FK constraint
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    )
+
+    # Status
+    is_active: bool = Field(default=True)
 
     # Relationships
-    versions = relationship("CCNLVersion", back_populates="ccnl_database", cascade="all, delete-orphan")
-    update_events = relationship("CCNLUpdateEvent", back_populates="ccnl_database", cascade="all, delete-orphan")
-    change_logs = relationship("CCNLChangeLog", back_populates="ccnl_database", cascade="all, delete-orphan")
+    versions: List["CCNLVersion"] = Relationship(
+        back_populates="ccnl_database",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    update_events: List["CCNLUpdateEvent"] = Relationship(
+        back_populates="ccnl_database",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    change_logs: List["CCNLChangeLog"] = Relationship(
+        back_populates="ccnl_database",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     # Indexes
     __table_args__ = (
@@ -82,32 +101,59 @@ class CCNLDatabase(Base):
     )
 
 
-class CCNLVersion(Base):
+class CCNLVersion(SQLModel, table=True):
     """CCNL version tracking."""
 
     __tablename__ = "ccnl_versions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    ccnl_id = Column(UUID(as_uuid=True), ForeignKey("ccnl_database.id"), nullable=False)
-    version_number = Column(String(20), nullable=False)
-    effective_date = Column(Date, nullable=False)
-    expiry_date = Column(Date, nullable=True)
-    signed_date = Column(Date, nullable=True)
-    document_url = Column(Text, nullable=True)
-    salary_data = Column(JSON, default=dict, nullable=False)
-    working_conditions = Column(JSON, default=dict, nullable=False)
-    leave_provisions = Column(JSON, default=dict, nullable=False)
-    other_benefits = Column(JSON, default=dict, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    is_current = Column(Boolean, default=False, nullable=False)
+    # Primary key
+    id: UUIDType = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    ccnl_id: UUIDType = Field(foreign_key="ccnl_database.id")
+
+    # Core fields
+    version_number: str = Field(max_length=20)
+    effective_date: date = Field(sa_column=Column(Date, nullable=False))
+    expiry_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    signed_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    document_url: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+    # JSON fields
+    salary_data: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, default=dict, nullable=False)
+    )
+    working_conditions: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, default=dict, nullable=False)
+    )
+    leave_provisions: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, default=dict, nullable=False)
+    )
+    other_benefits: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, default=dict, nullable=False)
+    )
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+
+    # Status
+    is_current: bool = Field(default=False)
 
     # Relationships
-    ccnl_database = relationship("CCNLDatabase", back_populates="versions")
-    old_change_logs = relationship(
-        "CCNLChangeLog", foreign_keys="CCNLChangeLog.old_version_id", back_populates="old_version"
+    ccnl_database: "CCNLDatabase" = Relationship(back_populates="versions")
+    old_change_logs: List["CCNLChangeLog"] = Relationship(
+        back_populates="old_version",
+        sa_relationship_kwargs={"foreign_keys": "CCNLChangeLog.old_version_id"}
     )
-    new_change_logs = relationship(
-        "CCNLChangeLog", foreign_keys="CCNLChangeLog.new_version_id", back_populates="new_version"
+    new_change_logs: List["CCNLChangeLog"] = Relationship(
+        back_populates="new_version",
+        sa_relationship_kwargs={"foreign_keys": "CCNLChangeLog.new_version_id"}
     )
 
     # Indexes
@@ -118,25 +164,37 @@ class CCNLVersion(Base):
     )
 
 
-class CCNLUpdateEvent(Base):
+class CCNLUpdateEvent(SQLModel, table=True):
     """CCNL update event tracking."""
 
     __tablename__ = "ccnl_update_events"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    ccnl_id = Column(UUID(as_uuid=True), ForeignKey("ccnl_database.id"), nullable=False)
-    source = Column(String(50), nullable=False)  # UpdateSource enum value
-    detected_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    title = Column(Text, nullable=False)
-    url = Column(Text, nullable=True)
-    content_summary = Column(Text, nullable=True)
-    classification_confidence = Column(Numeric(3, 2), nullable=False)
-    status = Column(String(20), nullable=False)  # UpdateStatus enum value
-    processed_at = Column(DateTime, nullable=True)
-    error_message = Column(Text, nullable=True)
+    # Primary key
+    id: UUIDType = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    ccnl_id: UUIDType = Field(foreign_key="ccnl_database.id")
+
+    # Core fields
+    source: str = Field(max_length=50)  # UpdateSource enum value
+    detected_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    title: str = Field(sa_column=Column(Text, nullable=False))
+    url: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    content_summary: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    classification_confidence: Decimal = Field(
+        sa_column=Column(Numeric(3, 2), nullable=False)
+    )
+    status: str = Field(max_length=20)  # UpdateStatus enum value
+    processed_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime, nullable=True)
+    )
+    error_message: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Relationships
-    ccnl_database = relationship("CCNLDatabase", back_populates="update_events")
+    ccnl_database: "CCNLDatabase" = Relationship(back_populates="update_events")
 
     # Indexes
     __table_args__ = (
@@ -146,26 +204,49 @@ class CCNLUpdateEvent(Base):
     )
 
 
-class CCNLChangeLog(Base):
+class CCNLChangeLog(SQLModel, table=True):
     """CCNL change log tracking."""
 
     __tablename__ = "ccnl_change_logs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    ccnl_id = Column(UUID(as_uuid=True), ForeignKey("ccnl_database.id"), nullable=False)
-    old_version_id = Column(UUID(as_uuid=True), ForeignKey("ccnl_versions.id"), nullable=True)
-    new_version_id = Column(UUID(as_uuid=True), ForeignKey("ccnl_versions.id"), nullable=False)
-    change_type = Column(String(20), nullable=False)  # ChangeType enum value
-    changes_summary = Column(Text, nullable=False)
-    detailed_changes = Column(JSON, nullable=False)
-    significance_score = Column(Numeric(3, 2), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    created_by = Column(String(100), nullable=True)
+    # Primary key
+    id: UUIDType = Field(default_factory=uuid4, primary_key=True)
+
+    # Foreign keys
+    ccnl_id: UUIDType = Field(foreign_key="ccnl_database.id")
+    old_version_id: Optional[UUIDType] = Field(default=None, foreign_key="ccnl_versions.id")
+    new_version_id: UUIDType = Field(foreign_key="ccnl_versions.id")
+
+    # Core fields
+    change_type: str = Field(max_length=20)  # ChangeType enum value
+    changes_summary: str = Field(sa_column=Column(Text, nullable=False))
+
+    # JSON field
+    detailed_changes: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, nullable=False)
+    )
+
+    significance_score: Decimal = Field(
+        sa_column=Column(Numeric(3, 2), nullable=False)
+    )
+
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    created_by: Optional[str] = Field(default=None, max_length=100)
 
     # Relationships
-    ccnl_database = relationship("CCNLDatabase", back_populates="change_logs")
-    old_version = relationship("CCNLVersion", foreign_keys=[old_version_id], back_populates="old_change_logs")
-    new_version = relationship("CCNLVersion", foreign_keys=[new_version_id], back_populates="new_change_logs")
+    ccnl_database: "CCNLDatabase" = Relationship(back_populates="change_logs")
+    old_version: Optional["CCNLVersion"] = Relationship(
+        back_populates="old_change_logs",
+        sa_relationship_kwargs={"foreign_keys": "CCNLChangeLog.old_version_id"}
+    )
+    new_version: "CCNLVersion" = Relationship(
+        back_populates="new_change_logs",
+        sa_relationship_kwargs={"foreign_keys": "CCNLChangeLog.new_version_id"}
+    )
 
     # Indexes
     __table_args__ = (
@@ -175,19 +256,31 @@ class CCNLChangeLog(Base):
     )
 
 
-class CCNLMonitoringMetric(Base):
+class CCNLMonitoringMetric(SQLModel, table=True):
     """CCNL monitoring metrics."""
 
     __tablename__ = "ccnl_monitoring_metrics"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    metric_type = Column(String(50), nullable=False)
-    metric_name = Column(String(100), nullable=False)
-    value = Column(Numeric(10, 4), nullable=False)
-    unit = Column(String(20), nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
-    source = Column(String(50), nullable=True)
-    metric_metadata = Column(JSON, nullable=True)
+    # Primary key
+    id: UUIDType = Field(default_factory=uuid4, primary_key=True)
+
+    # Core fields
+    metric_type: str = Field(max_length=50)
+    metric_name: str = Field(max_length=100)
+    value: Decimal = Field(
+        sa_column=Column(Numeric(10, 4), nullable=False)
+    )
+    unit: Optional[str] = Field(default=None, max_length=20)
+    timestamp: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    source: Optional[str] = Field(default=None, max_length=50)
+
+    # JSON field
+    metric_metadata: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True)
+    )
 
     # Indexes
     __table_args__ = (

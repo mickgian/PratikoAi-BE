@@ -44,6 +44,7 @@ from app.schemas.chat import (
     Message,
     StreamResponse,
 )
+from app.services.chat_history_service import chat_history_service
 
 router = APIRouter()
 agent = LangGraphAgent()
@@ -201,6 +202,33 @@ async def chat(
             result = await agent.get_response(processed_messages, session.id, user_id=session.user_id)
 
             logger.info("chat_request_processed", session_id=session.id)
+
+            # Save chat interaction to database for multi-device sync and GDPR compliance
+            try:
+                # Extract user query (last user message)
+                user_query = next((msg.content for msg in reversed(processed_messages) if msg.type == "user"), None)
+
+                # Extract AI response (last AI message)
+                ai_response = next((msg.content for msg in reversed(result) if msg.type == "ai"), None)
+
+                # Validate both query and response are non-empty before saving
+                if user_query and user_query.strip() and ai_response and ai_response.strip():
+                    await chat_history_service.save_chat_interaction(
+                        user_id=session.user_id,
+                        session_id=session.id,
+                        user_query=user_query.strip(),
+                        ai_response=ai_response.strip(),
+                        model_used="gpt-4-turbo",  # TODO: Get from agent/LLM provider
+                        italian_content=True,  # TODO: Detect from query content
+                    )
+            except Exception as save_error:
+                # Log error but don't fail the request (degraded functionality)
+                logger.error(
+                    "chat_history_save_failed_non_critical",
+                    session_id=session.id,
+                    error=str(save_error),
+                    exc_info=True,
+                )
 
             return ChatResponse(messages=result)
     except Exception as e:
@@ -385,6 +413,11 @@ async def chat_stream(
                         streaming_requested=True,
                     )
 
+                    # Collect response chunks for chat history (non-blocking save after streaming)
+                    collected_response_chunks = []
+                    # Track if response came from golden set (for model_used in chat history)
+                    golden_hit = False
+
                     with llm_stream_duration_seconds.labels(model="llm").time():
                         # Wrap the original stream to prevent double iteration
                         original_stream = SinglePassStream(
@@ -430,8 +463,17 @@ async def chat_stream(
                                     # This is an SSE keepalive comment (e.g., ": starting\n\n")
                                     # Pass through unchanged - frontend will skip it (api.ts:788)
                                     yield chunk
+                                elif chunk.startswith("__RESPONSE_METADATA__:"):
+                                    # This is a metadata marker from graph.py (not content)
+                                    # Extract golden_hit flag for chat history save
+                                    # Format: __RESPONSE_METADATA__:golden_hit=True/False
+                                    if "golden_hit=True" in chunk:
+                                        golden_hit = True
+                                    # Don't yield or collect - this is internal metadata
                                 else:
                                     # This is regular content (plain text string from graph)
+                                    # Collect chunk for chat history
+                                    collected_response_chunks.append(chunk)
                                     # Wrap as proper SSE data event: data: {"content":"...","done":false}\n\n
                                     # Frontend expects this format (api.ts:756-784)
                                     stream_response = StreamResponse(content=chunk, done=False)
@@ -444,6 +486,32 @@ async def chat_stream(
 
                     # Log aggregated statistics for this streaming session
                     log_sse_summary(request_id=request_id)
+
+                    # Save chat history (non-blocking, after streaming completes)
+                    if collected_response_chunks:
+                        try:
+                            ai_response = "".join(collected_response_chunks)
+                            # Validate both query and response are non-empty before saving
+                            if user_query and user_query.strip() and ai_response and ai_response.strip():
+                                # Use "golden_set" if response came from Golden Set FAQ,
+                                # otherwise use the LLM model identifier
+                                model_used = "golden_set" if golden_hit else "gpt-4-turbo"
+                                await chat_history_service.save_chat_interaction(
+                                    user_id=session.user_id,
+                                    session_id=session.id,
+                                    user_query=user_query.strip(),
+                                    ai_response=ai_response.strip(),
+                                    model_used=model_used,
+                                    italian_content=True,  # TODO: Detect from query content
+                                )
+                        except Exception as save_error:
+                            # Log error but don't fail the stream (degraded functionality)
+                            logger.error(
+                                "chat_history_save_failed_streaming_non_critical",
+                                session_id=session.id,
+                                error=str(save_error),
+                                exc_info=True,
+                            )
 
             except RuntimeError as re:
                 if "iterated twice" in str(re):
@@ -521,4 +589,152 @@ async def clear_chat_history(
         return {"message": "Chat history cleared successfully"}
     except Exception as e:
         logger.error("clear_chat_history_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sessions/{session_id}/messages")
+@limiter.limit(settings.RATE_LIMIT_ENDPOINTS["messages"][0])
+async def get_session_history(
+    request: Request,
+    session_id: str,
+    limit: int = 100,
+    offset: int = 0,
+    session: Session = Depends(get_current_session),
+):
+    """Retrieve chat history for a specific session (PostgreSQL-backed).
+
+    Args:
+        request: The FastAPI request object for rate limiting.
+        session_id: ID of the session to retrieve history for.
+        limit: Maximum number of messages to return (default: 100).
+        offset: Number of messages to skip for pagination (default: 0).
+        session: The current authenticated session.
+
+    Returns:
+        list[dict]: List of chat messages with metadata.
+
+    Raises:
+        HTTPException: If user is not authorized or if there's an error.
+    """
+    try:
+        # Authorization: User can only access their own sessions
+        if session.id != session_id:
+            raise HTTPException(
+                status_code=403,
+                detail="You are not authorized to access this session",
+            )
+
+        # Retrieve history from PostgreSQL
+        messages = await chat_history_service.get_session_history(
+            session_id=session_id,
+            limit=limit,
+            offset=offset,
+        )
+
+        return messages
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "get_session_history_failed",
+            session_id=session_id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/import-history")
+@limiter.limit(settings.RATE_LIMIT_ENDPOINTS["messages"][0])
+async def import_chat_history(
+    request: Request,
+    import_data: dict,
+    session: Session = Depends(get_current_session),
+):
+    """Import chat history from IndexedDB (client-side migration).
+
+    Args:
+        request: The FastAPI request object for rate limiting.
+        import_data: Dict containing 'messages' array with chat history.
+        session: The current authenticated session.
+
+    Returns:
+        dict: Import results with imported_count and skipped_count.
+
+    Raises:
+        HTTPException: If there's a validation or processing error.
+    """
+    try:
+        messages = import_data.get("messages", [])
+
+        if not isinstance(messages, list):
+            raise HTTPException(
+                status_code=422,
+                detail="import_data must contain 'messages' array",
+            )
+
+        imported_count = 0
+        skipped_count = 0
+
+        # Process messages in batch
+        for msg in messages:
+            try:
+                # Validate required fields
+                if not all(k in msg for k in ["session_id", "query", "response", "timestamp"]):
+                    skipped_count += 1
+                    continue
+
+                # Save to database
+                await chat_history_service.save_chat_interaction(
+                    user_id=session.user_id,
+                    session_id=msg["session_id"],
+                    user_query=msg["query"],
+                    ai_response=msg["response"],
+                    model_used=msg.get("model_used"),
+                    tokens_used=msg.get("tokens_used"),
+                    cost_cents=msg.get("cost_cents"),
+                    response_time_ms=msg.get("response_time_ms"),
+                    response_cached=msg.get("response_cached", False),
+                    italian_content=msg.get("italian_content", True),
+                )
+                imported_count += 1
+
+            except Exception as save_error:
+                logger.warning(
+                    "import_message_skipped",
+                    error=str(save_error),
+                    message_preview=msg.get("query", "")[:100],
+                )
+                skipped_count += 1
+
+        status = "success"
+        if imported_count == 0 and skipped_count > 0:
+            status = "failed"
+        elif skipped_count > 0:
+            status = "partial_success"
+
+        logger.info(
+            "chat_history_import_completed",
+            user_id=session.user_id,
+            imported_count=imported_count,
+            skipped_count=skipped_count,
+            status=status,
+        )
+
+        return {
+            "imported_count": imported_count,
+            "skipped_count": skipped_count,
+            "status": status,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "import_chat_history_failed",
+            user_id=session.user_id,
+            error=str(e),
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))

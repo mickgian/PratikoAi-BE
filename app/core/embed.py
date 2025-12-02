@@ -16,6 +16,7 @@ from app.core.config import (
     EMBED_DIM,
     EMBED_MODEL,
 )
+from app.core.logging import logger
 
 # Initialize OpenAI client
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -44,7 +45,7 @@ async def generate_embedding(text: str) -> list[float] | None:
         return embedding
 
     except Exception as e:
-        print(f"Error generating embedding: {e}")
+        logger.error("Error generating embedding: %s", e, exc_info=True)
         return None
 
 
@@ -73,7 +74,7 @@ async def generate_embeddings_batch(texts: list[str], batch_size: int = 20) -> l
             all_embeddings.extend(batch_embeddings)
 
         except Exception as e:
-            print(f"Error generating batch embeddings: {e}")
+            logger.error("Error generating batch embeddings: %s", e, exc_info=True)
             # Return None for failed batch
             all_embeddings.extend([None] * len(batch))
 

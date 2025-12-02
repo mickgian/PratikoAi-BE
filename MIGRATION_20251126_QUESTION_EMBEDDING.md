@@ -227,7 +227,9 @@ WITH (m = 16, ef_construction = 64);
 
 **Resolution:** Set `DATABASE_URL` environment variable before running alembic:
 ```bash
-export DATABASE_URL="postgresql://aifinance:aifinance@localhost:5432/aifinance"
+export DATABASE_URL="postgresql://<user>:<password>@localhost:5433/<database>"
+# Or use your .env value:
+# source .env && alembic upgrade head
 alembic upgrade head
 ```
 

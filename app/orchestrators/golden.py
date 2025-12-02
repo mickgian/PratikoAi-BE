@@ -315,7 +315,8 @@ async def step_25__golden_hit(
         )
 
         # Extract golden match from context
-        golden_match = ctx.get("golden_match", {})
+        # Use 'or {}' to handle case where golden_match is explicitly None
+        golden_match = ctx.get("golden_match") or {}
         # Support both 'confidence' and 'similarity_score' fields
         confidence = golden_match.get("confidence") or golden_match.get("similarity_score", 0.0)
         faq_id = golden_match.get("faq_id", "unknown")
@@ -388,8 +389,9 @@ async def step_27__kbdelta(*, messages: list[Any] | None = None, ctx: dict[str, 
         )
 
         # Extract golden match and KB context
-        golden_match = ctx.get("golden_match", {})
-        kb_context = ctx.get("kb_context", {})
+        # Use 'or {}' to handle case where golden_match is explicitly None
+        golden_match = ctx.get("golden_match") or {}
+        kb_context = ctx.get("kb_context") or {}
 
         # Get timestamps
         golden_updated = golden_match.get("updated_at")
@@ -492,7 +494,8 @@ async def step_28__serve_golden(
         )
 
         # Extract golden match from context
-        golden_match = ctx.get("golden_match", {})
+        # Use 'or {}' to handle case where golden_match is explicitly None
+        golden_match = ctx.get("golden_match") or {}
         faq_id = golden_match.get("faq_id", "unknown")
         answer = golden_match.get("answer", "")
         question = golden_match.get("question", "")

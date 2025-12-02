@@ -14,6 +14,8 @@ Key features:
 """
 
 import hashlib
+import logging
+import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone
@@ -35,6 +37,8 @@ from app.models.faq import (
     generate_faq_cache_key,
 )
 from app.services.italian_query_normalizer import ItalianQueryNormalizer
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -189,6 +193,10 @@ class IntelligentFAQService:
             query_embedding = await generate_embedding(query)
 
             if not query_embedding:
+                logger.warning(
+                    "Query embedding generation failed for find_best_match, returning 0.0 similarity",
+                    extra={"query_preview": query[:50] if query else "empty"},
+                )
                 end_time = time.perf_counter()
                 return FAQSearchResult(
                     faq_entry=None,
@@ -217,7 +225,7 @@ class IntelligentFAQService:
                 search_query,
                 {
                     "query_embedding": embedding_str,
-                    "min_similarity": self.similarity_threshold,  # 0.85
+                    "min_similarity": 0.70,  # Lower SQL threshold, apply two-tier logic in Python
                 },
             )
             rows = result.fetchall()
@@ -225,10 +233,55 @@ class IntelligentFAQService:
             best_match = None
             best_score = 0.0
 
-            if rows:
-                # Convert first row to FAQEntry and get similarity score
-                row = rows[0]
-                best_score = float(row.similarity) if hasattr(row, "similarity") else 0.0
+            # Two-tier matching threshold:
+            # - Entity validation must pass (same doc number, or no entities in query)
+            # - If entities match, accept at 0.70+ similarity
+            # - If entity mismatch (e.g., risoluzione 63 vs 64), REJECT entirely
+            ENTITY_MATCH_THRESHOLD = 0.70
+
+            # Loop through rows and find first one that passes validation
+            for row in rows:
+                current_score = float(row.similarity) if hasattr(row, "similarity") else 0.0
+                entity_matched = self._validate_entity_match(query, row.question)
+
+                # Entity validation is a hard requirement:
+                # - True = entities match OR query has no entities (no constraints)
+                # - False = entity MISMATCH (query has entities that don't match FAQ)
+                if not entity_matched:
+                    # Entity mismatch - REJECT entirely, try next row
+                    logger.debug(
+                        "Skipping FAQ due to entity mismatch",
+                        extra={
+                            "query": query[:50],
+                            "faq_question": row.question[:50],
+                            "score": current_score,
+                        },
+                    )
+                    continue
+
+                # Entity validation passed - check similarity threshold
+                if current_score >= ENTITY_MATCH_THRESHOLD:
+                    logger.debug(
+                        "FAQ matched with entity validation",
+                        extra={
+                            "query": query[:50],
+                            "faq_question": row.question[:50],
+                            "score": current_score,
+                            "threshold": ENTITY_MATCH_THRESHOLD,
+                        },
+                    )
+                else:
+                    # Below similarity threshold - skip
+                    logger.debug(
+                        "Skipping FAQ: score=%.3f below threshold=%.2f",
+                        current_score,
+                        ENTITY_MATCH_THRESHOLD,
+                        extra={"query": query[:50], "faq_question": row.question[:50]},
+                    )
+                    continue
+
+                # This row passes two-tier validation - use it
+                best_score = current_score
 
                 # Create FAQEntry from row data
                 best_match = FAQEntry(
@@ -253,6 +306,7 @@ class IntelligentFAQService:
                     question_embedding=None,  # Don't load the full embedding vector
                 )
                 best_match.similarity_score = best_score
+                break  # Found valid match, stop searching
 
             end_time = time.perf_counter()
             search_time = (end_time - start_time) * 1000
@@ -263,10 +317,7 @@ class IntelligentFAQService:
 
         except Exception as e:
             # Log error for debugging
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.error(f"Vector search failed, returning no match: {e}", exc_info=True)
+            logger.error("Vector search failed, returning no match: %s", e, exc_info=True)
 
             # Silently handle errors and return no match
             # This prevents FAQ lookup failures from breaking the entire query pipeline
@@ -494,6 +545,114 @@ class IntelligentFAQService:
             "top_categories": top_categories,
             "top_faqs": top_faqs,
         }
+
+    # Entity extraction and validation (prevents false positives like risoluzione 63 vs 64)
+
+    def _extract_entities(self, text: str) -> dict[str, set[str]]:
+        """Extract key entities from text for validation.
+
+        Extracts:
+        - document_numbers: risoluzione 63, circolare 12, etc.
+        - years: 2024, 2025, etc.
+        - article_numbers: art. 1, articolo 12, etc.
+        - decree_numbers: decreto 123, DL 45, etc.
+
+        Args:
+            text: Text to extract entities from
+
+        Returns:
+            Dict with entity type as key and set of extracted values.
+        """
+        text_lower = text.lower()
+        entities: dict[str, set[str]] = {
+            "document_numbers": set(),
+            "years": set(),
+            "article_numbers": set(),
+            "decree_numbers": set(),
+        }
+
+        # Document numbers (risoluzione, circolare, interpello)
+        doc_patterns = [
+            r"risoluzione\s*(?:n\.?\s*)?(\d+)",
+            r"circolare\s*(?:n\.?\s*)?(\d+)",
+            r"interpello\s*(?:n\.?\s*)?(\d+)",
+        ]
+        for pattern in doc_patterns:
+            for match in re.finditer(pattern, text_lower):
+                entities["document_numbers"].add(match.group(1))
+
+        # Years (4 digits, 2020-2030 range for relevance)
+        year_pattern = r"\b(202[0-9]|2030)\b"
+        for match in re.finditer(year_pattern, text_lower):
+            entities["years"].add(match.group(1))
+
+        # Article numbers
+        article_patterns = [
+            r"(?:art\.?|articolo)\s*(\d+)",
+            r"comma\s*(\d+)",
+        ]
+        for pattern in article_patterns:
+            for match in re.finditer(pattern, text_lower):
+                entities["article_numbers"].add(match.group(1))
+
+        # Decree numbers
+        decree_patterns = [
+            r"(?:decreto|d\.?l\.?|d\.?lgs\.?)\s*(?:n\.?\s*)?(\d+)",
+        ]
+        for pattern in decree_patterns:
+            for match in re.finditer(pattern, text_lower):
+                entities["decree_numbers"].add(match.group(1))
+
+        return entities
+
+    def _validate_entity_match(self, query: str, faq_question: str) -> bool:
+        """Validate that key entities match between query and FAQ.
+
+        Rules:
+        - If query contains specific entities, FAQ must contain the SAME entities
+        - Empty entity sets are ignored (no constraint)
+        - All non-empty entity types must have at least one matching value
+
+        Args:
+            query: User's question
+            faq_question: Stored FAQ question
+
+        Returns:
+            True if entities match (or no entities in query), False otherwise
+        """
+        query_entities = self._extract_entities(query)
+        faq_entities = self._extract_entities(faq_question)
+
+        # Check each entity type
+        for entity_type, query_values in query_entities.items():
+            if not query_values:
+                # No entities of this type in query - skip
+                continue
+
+            faq_values = faq_entities.get(entity_type, set())
+
+            if not faq_values:
+                # Query has entities but FAQ doesn't - reject
+                logger.debug(
+                    "Entity mismatch: query has %s=%s but FAQ has none",
+                    entity_type,
+                    query_values,
+                )
+                return False
+
+            # Check if ANY query entity matches ANY FAQ entity
+            if not query_values.intersection(faq_values):
+                # No overlap - reject
+                logger.debug(
+                    "Entity mismatch: query %s=%s vs FAQ %s=%s",
+                    entity_type,
+                    query_values,
+                    entity_type,
+                    faq_values,
+                )
+                return False
+
+        return True
 
     # Private helper methods
 

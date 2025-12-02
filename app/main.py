@@ -50,7 +50,9 @@ async def check_pgvector_availability() -> bool:
     try:
         from sqlalchemy import text
 
-        async with database_service.get_session() as session:
+        from app.models.database import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as session:
             result = await session.execute(
                 text(
                     "SELECT installed_version FROM pg_available_extensions WHERE name='vector' AND installed_version IS NOT NULL"

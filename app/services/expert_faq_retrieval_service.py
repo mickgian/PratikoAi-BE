@@ -24,6 +24,7 @@ Integration Points:
 
 import hashlib
 import logging
+import re
 from typing import Dict, List, Optional
 
 from sqlalchemy import select
@@ -118,9 +119,17 @@ class ExpertFAQRetrievalService:
             result = await self.db.execute(stmt)
             rows = result.fetchall()
 
-            # Convert to dictionaries
+            # Convert to dictionaries, filtering entity mismatches
             faqs = []
             for row in rows:
+                # Validate entity match before including
+                if not self._validate_entity_match(query, row.suggested_question):
+                    logger.debug(
+                        "Filtered FAQ due to entity mismatch",
+                        extra={"query": query[:50], "faq_question": row.suggested_question[:50]},
+                    )
+                    continue  # Skip - entity mismatch
+
                 faq = {
                     "faq_id": str(row.id),
                     "question": row.suggested_question,
@@ -238,3 +247,99 @@ class ExpertFAQRetrievalService:
         except Exception as e:
             logger.error(f"Failed to generate embedding: {e}", exc_info=True, extra={"text_preview": text[:50]})
             return None
+
+    def _extract_entities(self, text: str) -> dict[str, set[str]]:
+        """Extract key entities from text for validation.
+
+        Extracts:
+        - document_numbers: risoluzione 63, circolare 12, etc.
+        - years: 2024, 2025, etc.
+        - article_numbers: art. 1, articolo 12, etc.
+        - decree_numbers: decreto 123, DL 45, etc.
+
+        Args:
+            text: Text to extract entities from
+
+        Returns:
+            Dict with entity type as key and set of extracted values.
+        """
+        text_lower = text.lower()
+        entities: dict[str, set[str]] = {
+            "document_numbers": set(),
+            "years": set(),
+            "article_numbers": set(),
+            "decree_numbers": set(),
+        }
+
+        # Document numbers (risoluzione, circolare, interpello)
+        doc_patterns = [
+            r"risoluzione\s*(?:n\.?\s*)?(\d+)",
+            r"circolare\s*(?:n\.?\s*)?(\d+)",
+            r"interpello\s*(?:n\.?\s*)?(\d+)",
+        ]
+        for pattern in doc_patterns:
+            for match in re.finditer(pattern, text_lower):
+                entities["document_numbers"].add(match.group(1))
+
+        # Years (4 digits, 2020-2030 range for relevance)
+        year_pattern = r"\b(202[0-9]|2030)\b"
+        for match in re.finditer(year_pattern, text_lower):
+            entities["years"].add(match.group(1))
+
+        # Article numbers
+        article_patterns = [
+            r"(?:art\.?|articolo)\s*(\d+)",
+            r"comma\s*(\d+)",
+        ]
+        for pattern in article_patterns:
+            for match in re.finditer(pattern, text_lower):
+                entities["article_numbers"].add(match.group(1))
+
+        # Decree numbers
+        decree_patterns = [
+            r"(?:decreto|d\.?l\.?|d\.?lgs\.?)\s*(?:n\.?\s*)?(\d+)",
+        ]
+        for pattern in decree_patterns:
+            for match in re.finditer(pattern, text_lower):
+                entities["decree_numbers"].add(match.group(1))
+
+        return entities
+
+    def _validate_entity_match(self, query: str, faq_question: str) -> bool:
+        """Validate that key entities match between query and FAQ.
+
+        Rules:
+        - If query contains specific entities, FAQ must contain the SAME entities
+        - Empty entity sets are ignored (no constraint)
+        - All non-empty entity types must have at least one matching value
+
+        Args:
+            query: User's question
+            faq_question: Stored FAQ question
+
+        Returns:
+            True if entities match (or no entities in query), False otherwise
+        """
+        query_entities = self._extract_entities(query)
+        faq_entities = self._extract_entities(faq_question)
+
+        # Check each entity type
+        for entity_type, query_values in query_entities.items():
+            if not query_values:
+                # No entities of this type in query - skip
+                continue
+
+            faq_values = faq_entities.get(entity_type, set())
+
+            if not faq_values:
+                # Query has entities but FAQ doesn't - reject
+                logger.debug(f"Entity mismatch: query has {entity_type}={query_values} but FAQ has none")
+                return False
+
+            # Check if ANY query entity matches ANY FAQ entity
+            if not query_values.intersection(faq_values):
+                # No overlap - reject
+                logger.debug(f"Entity mismatch: query {entity_type}={query_values} vs FAQ {entity_type}={faq_values}")
+                return False
+
+        return True

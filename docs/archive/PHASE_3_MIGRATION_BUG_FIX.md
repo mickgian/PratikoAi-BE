@@ -19,7 +19,7 @@ Specify 'extend_existing=True' to redefine options and columns on an existing Ta
 
 ### Command That Failed
 ```bash
-export DATABASE_URL="postgresql://aifinance:devpass@localhost:5432/aifinance" && \
+export DATABASE_URL="$DATABASE_URL (see .env)" && \
   alembic revision --autogenerate -m "phase_3_user_dependent_models"
 ```
 
@@ -214,7 +214,7 @@ from app.models.data_export import DataExportRequest, ExportAuditLog
 ### Migration Generation Success
 
 ```bash
-export DATABASE_URL="postgresql://aifinance:devpass@localhost:5432/aifinance" && \
+export DATABASE_URL="$DATABASE_URL (see .env)" && \
   alembic revision --autogenerate -m "phase_3_user_dependent_models"
 
 # Output:

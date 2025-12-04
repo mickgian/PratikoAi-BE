@@ -19,22 +19,22 @@ CREATE INDEX IF NOT EXISTS ix_user_provider_id ON "user" (provider_id);
 -- Add composite unique constraint for provider + provider_id to prevent duplicates
 -- Drop first in case it exists
 ALTER TABLE "user" DROP CONSTRAINT IF EXISTS uq_user_provider_provider_id;
-ALTER TABLE "user" ADD CONSTRAINT uq_user_provider_provider_id 
+ALTER TABLE "user" ADD CONSTRAINT uq_user_provider_provider_id
     UNIQUE (provider, provider_id);
 
 -- Add check constraint for valid providers
 ALTER TABLE "user" DROP CONSTRAINT IF EXISTS ck_user_provider_valid;
-ALTER TABLE "user" ADD CONSTRAINT ck_user_provider_valid 
+ALTER TABLE "user" ADD CONSTRAINT ck_user_provider_valid
     CHECK (provider IN ('email', 'google', 'linkedin'));
 
 -- Add check constraint to ensure OAuth users have provider_id
 ALTER TABLE "user" DROP CONSTRAINT IF EXISTS ck_user_oauth_provider_id;
-ALTER TABLE "user" ADD CONSTRAINT ck_user_oauth_provider_id 
+ALTER TABLE "user" ADD CONSTRAINT ck_user_oauth_provider_id
     CHECK ((provider = 'email' AND provider_id IS NULL) OR (provider != 'email' AND provider_id IS NOT NULL));
 
 -- Add check constraint to ensure email users have password or OAuth users don't require it
 ALTER TABLE "user" DROP CONSTRAINT IF EXISTS ck_user_auth_method;
-ALTER TABLE "user" ADD CONSTRAINT ck_user_auth_method 
+ALTER TABLE "user" ADD CONSTRAINT ck_user_auth_method
     CHECK ((provider = 'email' AND hashed_password IS NOT NULL) OR (provider != 'email'));
 
 -- Add comments for documentation

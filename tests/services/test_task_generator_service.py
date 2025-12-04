@@ -81,25 +81,35 @@ def sample_expert():
 class TestTaskIDGeneration:
     """Tests for task ID generation logic.
 
-    The service scans QUERY_ISSUES_ROADMAP.md for QUERY-XX patterns and
-    generates the next ID. IDs start from QUERY-08 (01-07 are reserved).
+    The service queries the database first for max task_id, then falls back to
+    file scanning. IDs start from QUERY-08 (01-07 are reserved).
     """
 
     @pytest.mark.asyncio
     async def test_generate_task_id_no_existing_files(self, task_generator_service):
-        """Test task ID generation when no files exist (starts from QUERY-08)."""
+        """Test task ID generation when no DB records and no files exist (starts from QUERY-08)."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None  # No DB records
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
         with patch.object(task_generator_service, "_scan_file_for_max_task_number", return_value=0):
-            task_id = await task_generator_service._generate_task_id()
+            task_id = await task_generator_service._generate_task_id(mock_session)
 
             # Starts from QUERY-08 (01-07 are reserved)
             assert task_id == "QUERY-08"
 
     @pytest.mark.asyncio
     async def test_generate_task_id_with_existing_tasks(self, task_generator_service):
-        """Test task ID generation increments from max existing number."""
-        # Mock QUERY_ISSUES_ROADMAP.md has QUERY-15
+        """Test task ID generation increments from max existing number in file."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None  # No DB records
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        # Mock file has QUERY-15
         with patch.object(task_generator_service, "_scan_file_for_max_task_number", return_value=15):
-            task_id = await task_generator_service._generate_task_id()
+            task_id = await task_generator_service._generate_task_id(mock_session)
 
             # Should be 15 + 1 = 16
             assert task_id == "QUERY-16"
@@ -107,9 +117,14 @@ class TestTaskIDGeneration:
     @pytest.mark.asyncio
     async def test_generate_task_id_respects_minimum(self, task_generator_service):
         """Test task ID starts from at least QUERY-08 even if file has lower numbers."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None  # No DB records
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
         # Mock file has only QUERY-03 (which is in reserved range)
         with patch.object(task_generator_service, "_scan_file_for_max_task_number", return_value=3):
-            task_id = await task_generator_service._generate_task_id()
+            task_id = await task_generator_service._generate_task_id(mock_session)
 
             # Should still be QUERY-08 (minimum)
             assert task_id == "QUERY-08"
@@ -277,8 +292,10 @@ class TestTaskGeneration:
         # Mock file operations
         task_generator_service.project_root = tmp_path
 
-        # Create QUERY_ISSUES_ROADMAP.md (required by service)
-        roadmap_file = tmp_path / "QUERY_ISSUES_ROADMAP.md"
+        # Create docs/tasks/QUERY_ISSUES_ROADMAP.md
+        docs_tasks = tmp_path / "docs" / "tasks"
+        docs_tasks.mkdir(parents=True)
+        roadmap_file = docs_tasks / "QUERY_ISSUES_ROADMAP.md"
         roadmap_file.write_text("# Query Issues Roadmap\n\n")
 
         # Mock the database session and operations
@@ -287,6 +304,11 @@ class TestTaskGeneration:
         mock_session.commit = AsyncMock()
         mock_session.refresh = AsyncMock()
         mock_session.add = Mock()
+
+        # Mock the execute for task ID generation
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None  # No existing tasks in DB
+        mock_session.execute = AsyncMock(return_value=mock_result)
 
         # Create a context manager mock for AsyncSessionLocal
         mock_session_ctx = AsyncMock()
@@ -403,32 +425,25 @@ class TestTaskGeneration:
 class TestFileOperations:
     """Tests for file operations.
 
-    Note: The service writes to QUERY_ISSUES_ROADMAP.md (NOT SUPER_USER_TASKS.md).
-    The file MUST exist - the service raises FileNotFoundError if it doesn't.
+    Note: The service writes to docs/tasks/QUERY_ISSUES_ROADMAP.md.
+    If the file doesn't exist, it is created automatically with a header.
+    File write failures are handled gracefully (return False, don't raise).
     """
-
-    @pytest.mark.asyncio
-    async def test_append_to_file_requires_existing_file(self, task_generator_service, tmp_path):
-        """Test that append fails if QUERY_ISSUES_ROADMAP.md doesn't exist."""
-        task_generator_service.project_root = tmp_path
-        roadmap_file = tmp_path / "QUERY_ISSUES_ROADMAP.md"
-
-        assert not roadmap_file.exists()
-
-        with pytest.raises(FileNotFoundError):
-            await task_generator_service._append_to_file("## Test Task")
 
     @pytest.mark.asyncio
     async def test_append_to_file_appends_to_existing_file(self, task_generator_service, tmp_path):
         """Test content is appended to existing file."""
         task_generator_service.project_root = tmp_path
-        roadmap_file = tmp_path / "QUERY_ISSUES_ROADMAP.md"
+        docs_tasks = tmp_path / "docs" / "tasks"
+        docs_tasks.mkdir(parents=True)
+        roadmap_file = docs_tasks / "QUERY_ISSUES_ROADMAP.md"
 
         # Create file with initial content
         roadmap_file.write_text("# Query Issues Roadmap\n\n## Existing Content\n")
 
-        await task_generator_service._append_to_file("## New Task\n")
+        result = await task_generator_service._append_to_file("## New Task\n")
 
+        assert result is True
         content = roadmap_file.read_text()
         assert "# Query Issues Roadmap" in content
         assert "## Existing Content" in content
@@ -438,7 +453,8 @@ class TestFileOperations:
     async def test_append_to_file_preserves_original_content(self, task_generator_service, tmp_path):
         """Test that appending preserves all original content."""
         task_generator_service.project_root = tmp_path
-        roadmap_file = tmp_path / "QUERY_ISSUES_ROADMAP.md"
+        roadmap_file = tmp_path / "docs" / "tasks" / "QUERY_ISSUES_ROADMAP.md"
+        roadmap_file.parent.mkdir(parents=True, exist_ok=True)
 
         original_content = """# Query Issues Roadmap
 
@@ -450,11 +466,216 @@ More content.
 """
         roadmap_file.write_text(original_content)
 
-        await task_generator_service._append_to_file("\n## QUERY-08: New Task\nNew content.\n")
+        result = await task_generator_service._append_to_file("\n## QUERY-08: New Task\nNew content.\n")
 
+        assert result is True
         content = roadmap_file.read_text()
         # Original content preserved
         assert "QUERY-01: Reserved Task" in content
         assert "QUERY-07: Last Reserved Task" in content
         # New content appended
         assert "QUERY-08: New Task" in content
+
+    @pytest.mark.asyncio
+    async def test_append_to_file_creates_file_if_missing(self, task_generator_service, tmp_path):
+        """Test that file is auto-created with header if it doesn't exist."""
+        task_generator_service.project_root = tmp_path
+        roadmap_file = tmp_path / "docs" / "tasks" / "QUERY_ISSUES_ROADMAP.md"
+
+        # Ensure file doesn't exist
+        assert not roadmap_file.exists()
+
+        result = await task_generator_service._append_to_file("## QUERY-08: Test Task\n")
+
+        assert result is True
+        assert roadmap_file.exists()
+        content = roadmap_file.read_text()
+        assert "# PratikoAi Query System" in content
+        assert "QUERY-08: Test Task" in content
+
+    @pytest.mark.asyncio
+    async def test_append_to_file_returns_false_on_permission_error(self, task_generator_service, tmp_path):
+        """Test that file write failure returns False instead of raising."""
+        task_generator_service.project_root = tmp_path
+
+        # Mock the file open to raise PermissionError
+        with patch("builtins.open", side_effect=PermissionError("Permission denied")):
+            with patch.object(Path, "exists", return_value=True):
+                with patch.object(Path, "mkdir"):
+                    result = await task_generator_service._append_to_file("## Test Task\n")
+
+        assert result is False
+
+
+class TestDatabaseFirstTaskIDGeneration:
+    """Tests for database-first task ID generation.
+
+    The service should query the database for max task_id first,
+    then fall back to file scanning.
+    """
+
+    @pytest.mark.asyncio
+    async def test_generate_task_id_from_database(self, task_generator_service):
+        """Task ID is generated from database when DB has records."""
+        # Mock database to return max task_id "QUERY-15"
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = "QUERY-15"
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        # Mock file scan to return lower value
+        with patch.object(task_generator_service, "_scan_file_for_max_task_number", return_value=10):
+            task_id = await task_generator_service._generate_task_id(mock_session)
+
+        # Should use DB value (15) not file value (10)
+        assert task_id == "QUERY-16"
+
+    @pytest.mark.asyncio
+    async def test_generate_task_id_from_file_when_db_empty(self, task_generator_service):
+        """Task ID uses file scan when database is empty."""
+        # Mock database to return None
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        # Mock file scan to return higher value
+        with patch.object(task_generator_service, "_scan_file_for_max_task_number", return_value=12):
+            task_id = await task_generator_service._generate_task_id(mock_session)
+
+        # Should use file value (12)
+        assert task_id == "QUERY-13"
+
+    @pytest.mark.asyncio
+    async def test_generate_task_id_respects_minimum_with_db(self, task_generator_service):
+        """Task ID starts from QUERY-08 even when DB/file have lower values."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = "QUERY-03"  # Below minimum
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        with patch.object(task_generator_service, "_scan_file_for_max_task_number", return_value=5):
+            task_id = await task_generator_service._generate_task_id(mock_session)
+
+        # Should still be QUERY-08 (minimum)
+        assert task_id == "QUERY-08"
+
+
+class TestTaskGenerationWithDatabaseFirst:
+    """Tests for end-to-end task generation with database-first approach."""
+
+    @pytest.mark.asyncio
+    async def test_generate_task_succeeds_when_file_missing(
+        self, task_generator_service, sample_feedback, sample_expert, tmp_path
+    ):
+        """Task is created in database even if roadmap file doesn't exist."""
+        sample_feedback.feedback_type = MagicMock()
+        sample_feedback.feedback_type.value = "incomplete"
+
+        task_generator_service.project_root = tmp_path
+        # Don't create docs/tasks/ directory - file should be auto-created
+
+        # Mock the database session
+        mock_session = AsyncMock()
+        mock_session.get = AsyncMock(side_effect=[sample_feedback, sample_expert])
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        mock_session.add = Mock()
+
+        # Mock the execute for task ID generation
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None  # No existing tasks
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("app.services.task_generator_service.AsyncSessionLocal", return_value=mock_session_ctx):
+            task_id = await task_generator_service.generate_task_from_feedback(
+                feedback_id=sample_feedback.id, expert_id=sample_expert.id
+            )
+
+        # Task should be created successfully even without pre-existing file
+        assert task_id is not None
+        assert task_id.startswith("QUERY-")
+        # Verify task_creation_success was set to True
+        assert sample_feedback.task_creation_success is True
+
+    @pytest.mark.asyncio
+    async def test_generate_task_writes_to_docs_tasks_folder(
+        self, task_generator_service, sample_feedback, sample_expert, tmp_path
+    ):
+        """Task is written to docs/tasks/QUERY_ISSUES_ROADMAP.md."""
+        sample_feedback.feedback_type = MagicMock()
+        sample_feedback.feedback_type.value = "incorrect"
+
+        task_generator_service.project_root = tmp_path
+        docs_tasks = tmp_path / "docs" / "tasks"
+        docs_tasks.mkdir(parents=True)
+        roadmap = docs_tasks / "QUERY_ISSUES_ROADMAP.md"
+        roadmap.write_text("# Tasks\n")
+
+        # Mock the database session
+        mock_session = AsyncMock()
+        mock_session.get = AsyncMock(side_effect=[sample_feedback, sample_expert])
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        mock_session.add = Mock()
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("app.services.task_generator_service.AsyncSessionLocal", return_value=mock_session_ctx):
+            task_id = await task_generator_service.generate_task_from_feedback(
+                feedback_id=sample_feedback.id, expert_id=sample_expert.id
+            )
+
+        # Verify file was written to docs/tasks/
+        content = roadmap.read_text()
+        assert task_id in content
+        assert sample_feedback.query_text in content
+
+    @pytest.mark.asyncio
+    async def test_file_write_failure_does_not_prevent_task_creation(
+        self, task_generator_service, sample_feedback, sample_expert, tmp_path
+    ):
+        """File write failure doesn't prevent task creation in database."""
+        sample_feedback.feedback_type = MagicMock()
+        sample_feedback.feedback_type.value = "incomplete"
+
+        task_generator_service.project_root = tmp_path
+
+        # Mock the database session
+        mock_session = AsyncMock()
+        mock_session.get = AsyncMock(side_effect=[sample_feedback, sample_expert])
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        mock_session.add = Mock()
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
+
+        with (
+            patch("app.services.task_generator_service.AsyncSessionLocal", return_value=mock_session_ctx),
+            patch.object(task_generator_service, "_append_to_file", return_value=False),
+        ):
+            task_id = await task_generator_service.generate_task_from_feedback(
+                feedback_id=sample_feedback.id, expert_id=sample_expert.id
+            )
+
+        # Task should still be created successfully
+        assert task_id is not None
+        assert task_id.startswith("QUERY-")
+        # Database save succeeded, so task_creation_success should be True
+        assert sample_feedback.task_creation_success is True

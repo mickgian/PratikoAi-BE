@@ -44,7 +44,7 @@ services:
     volumes:
       - ./app:/app/app
       - ./logs:/app/logs
-      - ./docs:/app/docs:ro
+      - ./docs:/app/docs  # Removed :ro to allow task generation to write to docs/tasks/
     env_file:
       - .env.${APP_ENV:-development}
     environment:

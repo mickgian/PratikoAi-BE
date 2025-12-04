@@ -1,28 +1,26 @@
 """Task Generator Service for Expert Feedback System.
 
-Automatically generates quality issue tasks in QUERY_ISSUES_ROADMAP.md when experts
+Automatically generates quality issue tasks in docs/tasks/QUERY_ISSUES_ROADMAP.md when experts
 mark responses as 'Incomplete' or 'Incorrect' and provide additional details.
 
 These tasks track AI response quality issues, NOT development process issues.
 
 Features:
 - Async task creation (fire and forget, doesn't block feedback submission)
-- Scans QUERY_ISSUES_ROADMAP.md to find max QUERY-XXX number
-- Generates task ID by incrementing max number (QUERY-01, QUERY-02, etc.)
+- Database-first task ID generation (queries expert_generated_tasks table)
+- Falls back to file scanning for consistency with existing tasks
 - Creates markdown task with proper format
-- Appends to QUERY_ISSUES_ROADMAP.md (creates file if doesn't exist)
-- Stores record in expert_generated_tasks table
+- Appends to docs/tasks/QUERY_ISSUES_ROADMAP.md (auto-creates if missing)
+- Stores record in expert_generated_tasks table (primary source of truth)
 - Logs success/failure (doesn't raise exceptions to avoid blocking feedback)
 """
 
-import os
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import logger
@@ -34,8 +32,11 @@ class TaskGeneratorService:
     """Service for automatically generating quality issue tasks from expert feedback.
 
     This service is called asynchronously (fire and forget) after expert feedback
-    is submitted. It creates tasks in QUERY_ISSUES_ROADMAP.md and tracks them in the
-    expert_generated_tasks database table.
+    is submitted. It creates tasks in docs/tasks/QUERY_ISSUES_ROADMAP.md and tracks them
+    in the expert_generated_tasks database table (primary source of truth).
+
+    The database is the source of truth for task IDs. File writing is attempted but
+    failures don't prevent task creation.
 
     Note: These tasks track AI response quality issues, NOT development process issues.
     """
@@ -89,24 +90,27 @@ class TaskGeneratorService:
 
                 logger.info(f"Starting task generation for feedback {feedback.id}")
 
-                # Generate task ID by scanning existing files
-                task_id = await self._generate_task_id()
+                # Generate task ID from database first (primary source of truth)
+                task_id = await self._generate_task_id(db)
                 logger.info(f"Generated task ID: {task_id}")
 
                 # Generate task name from question
                 task_name = self._generate_task_name(feedback.query_text)
                 logger.info(f"Generated task name: {task_name}")
 
+                # Store in database FIRST (primary storage)
+                await self._store_task_record(task_id, task_name, feedback, expert, db)
+                logger.info(f"Stored task {task_id} in database")
+
                 # Create markdown content
                 markdown = self._create_task_markdown(task_id, task_name, feedback, expert)
 
-                # Append to QUERY_ISSUES_ROADMAP.md
-                await self._append_to_file(markdown)
-                logger.info(f"Appended task {task_id} to QUERY_ISSUES_ROADMAP.md")
-
-                # Store in database
-                await self._store_task_record(task_id, task_name, feedback, expert, db)
-                logger.info(f"Stored task {task_id} in database")
+                # Try to append to file (optional, non-blocking)
+                file_written = await self._append_to_file(markdown)
+                if file_written:
+                    logger.info(f"Appended task {task_id} to docs/tasks/QUERY_ISSUES_ROADMAP.md")
+                else:
+                    logger.info(f"Task {task_id} stored in database only (file write skipped)")
 
                 # Update feedback record with task info
                 feedback.generated_task_id = task_id
@@ -130,23 +134,44 @@ class TaskGeneratorService:
 
                 return None
 
-    async def _generate_task_id(self) -> str:
-        """Generate next task ID by scanning QUERY_ISSUES_ROADMAP.md.
+    async def _generate_task_id(self, db: AsyncSession) -> str:
+        """Generate next task ID by querying database first, file as fallback.
 
-        Scans QUERY_ISSUES_ROADMAP.md to find the highest QUERY-XXX number and increments it.
-        Note: Task IDs start from QUERY-08 since QUERY-01 through QUERY-07 are reserved for
+        The database is the primary source of truth for task IDs. File scanning
+        is used as a fallback for consistency with any existing tasks not yet
+        in the database.
+
+        Task IDs start from QUERY-08 since QUERY-01 through QUERY-07 are reserved for
         development process issues.
+
+        Args:
+            db: Database session for querying existing task IDs
 
         Returns:
             str: Next task ID (e.g., "QUERY-08", "QUERY-09", etc.)
         """
-        roadmap_max = await self._scan_file_for_max_task_number(
-            self.project_root / "QUERY_ISSUES_ROADMAP.md", pattern=r"QUERY-(\d+)"
-        )
-        logger.debug(f"Max task number in QUERY_ISSUES_ROADMAP.md: {roadmap_max}")
+        # Query max task_id from database (primary source of truth)
+        result = await db.execute(select(func.max(ExpertGeneratedTask.task_id)))
+        max_db_id = result.scalar_one_or_none()
 
-        # Start from QUERY-08 (QUERY-01 to QUERY-07 are reserved for process issues)
-        next_num = max(roadmap_max, 7) + 1
+        db_max = 7  # Default (QUERY-01 to QUERY-07 are reserved)
+        if max_db_id:
+            match = re.match(r"QUERY-(\d+)", max_db_id)
+            if match:
+                db_max = int(match.group(1))
+        logger.debug(f"Max task number in database: {db_max}")
+
+        # Also check file (optional, for consistency with existing tasks)
+        file_max = 0
+        try:
+            filepath = self.project_root / "docs" / "tasks" / "QUERY_ISSUES_ROADMAP.md"
+            file_max = await self._scan_file_for_max_task_number(filepath, pattern=r"QUERY-(\d+)")
+            logger.debug(f"Max task number in file: {file_max}")
+        except Exception as e:
+            logger.debug(f"File scan skipped: {e}")
+
+        # Use max of database, file, and minimum (7)
+        next_num = max(db_max, file_max, 7) + 1
         return f"QUERY-{next_num:02d}"  # Zero-pad to 2 digits (QUERY-08, QUERY-09, ...)
 
     async def _scan_file_for_max_task_number(self, filepath: Path, pattern: str) -> int:
@@ -301,34 +326,46 @@ Per maggiori dettagli sul feedback originale, consultare il database con `feedba
 
         return markdown
 
-    async def _append_to_file(self, markdown: str) -> None:
-        """Append task to QUERY_ISSUES_ROADMAP.md.
+    async def _append_to_file(self, markdown: str) -> bool:
+        """Append task to docs/tasks/QUERY_ISSUES_ROADMAP.md.
 
-        Note: This method ONLY appends to the existing file. It does NOT create the file
-        if it doesn't exist, because QUERY_ISSUES_ROADMAP.md should be manually created
-        with proper structure (including QUERY-01 through QUERY-07 development process issues).
+        This method attempts to write to the file but returns False on failure
+        instead of raising an exception. The database is the primary storage,
+        so file write failures should not block task creation.
+
+        If the file doesn't exist, it's created with a header.
 
         Args:
             markdown: Formatted markdown task content
 
-        Raises:
-            FileNotFoundError: If QUERY_ISSUES_ROADMAP.md doesn't exist
+        Returns:
+            bool: True if file was written successfully, False otherwise
         """
-        filepath = self.project_root / "QUERY_ISSUES_ROADMAP.md"
+        filepath = self.project_root / "docs" / "tasks" / "QUERY_ISSUES_ROADMAP.md"
 
-        if not filepath.exists():
-            error_msg = (
-                f"QUERY_ISSUES_ROADMAP.md not found at {filepath}. "
-                "This file must be manually created with proper structure."
-            )
-            logger.error(error_msg)
-            raise FileNotFoundError(error_msg)
+        try:
+            # Create directory if it doesn't exist
+            filepath.parent.mkdir(parents=True, exist_ok=True)
 
-        # Append task to the end of the file
-        with filepath.open("a") as f:
-            f.write(markdown)
+            if not filepath.exists():
+                # Create file with header if it doesn't exist
+                filepath.write_text(
+                    "# PratikoAi Query System - Quality Improvement Tasks\n\n"
+                    "**Purpose:** Auto-generated tasks from expert feedback.\n\n"
+                    "Tasks are automatically added when experts mark responses as incomplete or incorrect.\n\n"
+                )
+                logger.info(f"Created new roadmap file at {filepath}")
 
-        logger.info(f"Appended task to {filepath}")
+            # Append task to the end of the file
+            with filepath.open("a") as f:
+                f.write(markdown)
+
+            logger.info(f"Appended task to {filepath}")
+            return True
+
+        except Exception as e:
+            logger.warning(f"Failed to write to roadmap file: {e}. Task stored in database only.")
+            return False
 
     async def _store_task_record(
         self, task_id: str, task_name: str, feedback: ExpertFeedback, expert: ExpertProfile, db: AsyncSession
@@ -350,7 +387,7 @@ Per maggiori dettagli sul feedback originale, consultare il database con `feedba
             question=feedback.query_text,
             answer=feedback.original_answer,
             additional_details=feedback.additional_details,
-            file_path="QUERY_ISSUES_ROADMAP.md",
+            file_path="docs/tasks/QUERY_ISSUES_ROADMAP.md",
         )
 
         db.add(task)

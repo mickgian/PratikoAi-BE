@@ -29,23 +29,23 @@ nl -ba /tmp/stream.log | sed -n 's/^ *[0-9]\+\tdata: //p' > /tmp/frames.jsonl
 
 if [ -s /tmp/frames.jsonl ]; then
     echo "Extracted $(wc -l < /tmp/frames.jsonl) frames"
-    
+
     # Show sequence numbers and checksums
     echo -e "\nSequence analysis (first 20 frames):"
     jq -r '[.seq, .done, .sha1, (.content|tostring|.[0:60])] | @tsv' /tmp/frames.jsonl | head -20 | nl -ba
-    
+
     # Save concatenated HTML
     echo -e "\nExtracting HTML content..."
     jq -r '.content // empty' /tmp/frames.jsonl > /tmp/stream.contents.html
-    
+
     # Check for duplicate markers
     echo -e "\nChecking for duplicate content markers:"
     grep -n "Definizione\|Concetto principale" /tmp/stream.contents.html || echo "No 'Definizione/Concetto principale' found"
     grep -n "Normativa di riferimento" /tmp/stream.contents.html || echo "No 'Normativa di riferimento' found"
-    
+
     echo -e "\nFirst few lines of combined HTML:"
     head -10 /tmp/stream.contents.html || echo "No HTML content found"
-    
+
     echo -e "\nLast few lines of combined HTML:"
     tail -10 /tmp/stream.contents.html || echo "No HTML content found"
 else

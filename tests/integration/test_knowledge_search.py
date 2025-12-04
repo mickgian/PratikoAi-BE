@@ -10,8 +10,8 @@ import os
 import sys
 from datetime import datetime
 
-# Add the project root to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+# Add the project root to Python path (2 levels up from tests/integration/)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from sqlalchemy import text
 

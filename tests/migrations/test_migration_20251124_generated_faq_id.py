@@ -13,18 +13,19 @@ Prerequisites:
     - Alembic migrations up to 20251124_add_user_role applied
 """
 
+import os
 import sys
 from pathlib import Path
 
-# Add project root to path
-project_root = Path(__file__).parent
+# Add project root to path (2 levels up from tests/migrations/)
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.pool import NullPool
 
-# Test database connection (adjust as needed)
-DATABASE_URL = "postgresql://aifinance:devpass@localhost:5432/aifinance"
+# Test database connection from environment variable
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost:5432/test")
 
 
 def test_migration():

@@ -188,8 +188,7 @@ assert feedback_record.task_creation_success is True
 
 2. Run migrations on test database:
    ```bash
-   DATABASE_URL="postgresql+asyncpg://postgres:password@localhost:5432/pratiko_ai_test" \
-     uv run alembic upgrade head
+   DATABASE_URL="$DATABASE_URL" uv run alembic upgrade head  # pragma: allowlist secret
    ```
 
 3. Run existing E2E tests to verify setup:
@@ -373,8 +372,7 @@ sqlalchemy.exc.ProgrammingError: relation "users" does not exist
 ```
 **Solution:**
 ```bash
-DATABASE_URL="postgresql+asyncpg://postgres:password@localhost:5432/pratiko_ai_test" \
-  uv run alembic upgrade head
+DATABASE_URL="$DATABASE_URL" uv run alembic upgrade head  # pragma: allowlist secret
 ```
 
 **3. Slow Tests**

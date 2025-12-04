@@ -112,244 +112,67 @@ uv run mypy app/
 
 ---
 
-## 🔴 Technical Debt
+## Q1 2025 (January - March)
+
+### ✅ Completed Tasks
+
+<details>
+<summary>
+<h3>DEV-BE-94: Dual Metadata Registry Migration (CRITICAL)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 60 days (Actual: ~3 days) | <strong>Status:</strong> ✅ COMPLETED (2024-12-01)<br>
+Consolidated all 44 models to SQLModel, eliminating dual metadata registry and enabling proper Alembic migrations.
+</summary>
 
 ### DEV-BE-94: Dual Metadata Registry Migration (CRITICAL)
 
-**Status:** 🟢 COMPLETE - All 44 models converted to SQLModel
+**Status:** ✅ COMPLETED (2024-12-01)
 **Priority:** HIGH - Affects maintainability and Alembic migrations
 **Estimated Effort:** 60 days (8-10 weeks) - REVISED from 37 days
+**Actual Effort:** ~3 days
 **Created:** 2025-11-28
 **Completed:** 2024-12-01
 **Phase 0 Complete:** 2025-11-28 (FK fixes, type fixes, tests, audit, architectural review)
 **Phases 1-4 Complete:** 2024-12-01 (all models converted, merged into DEV-BE-72)
 **Architectural Review:** ADR-014 CONDITIONALLY ACCEPTED by @Egidio
-**Timeline Revision:** 37 days → 60 days (quality over speed) - ACTUALLY COMPLETED IN ~3 DAYS
 
-#### Problem
+#### Problem Solved
 
-The codebase has **TWO separate SQLAlchemy metadata registries** that don't communicate:
+The codebase had **TWO separate SQLAlchemy metadata registries** that didn't communicate:
 
-1. **SQLModel.metadata** (CORRECT ✅)
-   - Used by: User model and SQLModel-based models
-   - Location: `app/models/user.py`
-   - Benefits: Pydantic validation + SQLAlchemy ORM, FastAPI integration, less code duplication
+1. **SQLModel.metadata** (CORRECT ✅) - Used by User model
+2. **Base.metadata** (LEGACY ⚠️) - Used by 44 models across 7 files
 
-2. **Base.metadata** (LEGACY - 44 models! ⚠️)
-   - Used by: 44 models across 7 files
-   - Locations:
-     - `app/models/ccnl_database.py` (9 models + Base definition)
-     - `app/models/ccnl_update_models.py` (5 models + **separate Base!**)
-     - `app/models/faq_automation.py` (5 models)
-     - `app/models/quality_analysis.py` (9 models)
-     - `app/models/regional_taxes.py` (4 models)
-     - `app/models/subscription.py` (4 models)
-     - `app/models/data_export.py` (8 models)
+This caused Alembic migration failures, mapper initialization errors, and database schema drift.
 
-#### Impact
+#### Solution Implemented
 
-- ❌ **Alembic can't detect schema changes** for Base models (only sees SQLModel.metadata)
-- ❌ **Mapper initialization errors** when relationships cross metadata boundaries
-- ❌ **Database schema drift** between production database and code models
-- ❌ **Inconsistent patterns** across codebase (some SQLModel, some Base)
-- ❌ **More boilerplate code** (need separate Pydantic schemas for API validation)
-- ❌ **Developer confusion** about which pattern to use for new models
+Consolidated ALL 44 models to use `SQLModel.metadata`:
 
-#### Current Workaround (2025-11-28)
+- `app/models/ccnl_database.py` (9 models)
+- `app/models/ccnl_update_models.py` (5 models)
+- `app/models/faq_automation.py` (5 models)
+- `app/models/quality_analysis.py` (9 models)
+- `app/models/regional_taxes.py` (4 models)
+- `app/models/subscription.py` (4 models)
+- `app/models/data_export.py` (8 models)
 
-Applied **lambda-based relationships** in `app/models/faq_automation.py`:
+#### Migration Phases Completed
 
-```python
-# Quick fix to resolve cross-metadata relationship errors:
-from app.models.user import User as UserModel
+- ✅ Phase 0: Preparation (FK fixes, type fixes, tests, audit)
+- ✅ Phase 0.5: Alembic Behavior Testing
+- ✅ Phase 1: Simple Models (regional_taxes.py - 4 models)
+- ✅ Phase 2: Core CCNL Models (14 models)
+- ✅ Phase 3: User-Dependent Models (14 models with User FKs)
+- ✅ Phase 4: Complex Business Models (12 models)
 
-# GeneratedFAQ.approver (line 354):
-approver = relationship(lambda: UserModel, foreign_keys=[approved_by])
+#### Key Technical Challenges Resolved
 
-# RSSFAQImpact.action_user (line 459):
-action_user = relationship(lambda: UserModel, foreign_keys=[action_by])
+1. **pgvector Vector columns** - Used `sa_column=Column(Vector(1536))`
+2. **PostgreSQL ARRAY columns** - Used `sa_column=Column(ARRAY(String))`
+3. **JSONB columns** - Used `sa_column=Column(JSONB))`
+4. **Foreign key consistency** - Standardized to `user.id`
 
-# FAQGenerationJob.creator (line 565):
-creator = relationship(lambda: UserModel, foreign_keys=[created_by])
-```
-
-**What this fixes:**
-- ✅ Allows "Corretta" button (expert feedback) to work without 500 errors
-- ✅ Enables golden set FAQ workflow to proceed
-- ✅ Unblocks current development
-
-**What this DOESN'T fix:**
-- ❌ Alembic still can't detect changes to Base models
-- ❌ Dual metadata architecture remains
-- ❌ Future models using Base will have same issues
-- ❌ Database schema drift continues
-
-#### Proper Solution (Future Migration - DEV-BE-94)
-
-**Goal:** Consolidate to use ONLY `SQLModel.metadata` across entire codebase
-
-**Why SQLModel (not migrate backwards to Base):**
-- SQLModel = SQLAlchemy + Pydantic (superset, not replacement)
-- One model serves both database ORM AND API schema validation
-- Better FastAPI integration (recommended by FastAPI creator)
-- Less code duplication
-- Modern best practice for FastAPI applications
-- Automatic validation and serialization
-
-**Migration Phases (REVISED 60-day timeline):**
-
-##### Phase 0: Preparation (5 days) ✅ COMPLETE
-- [x] Fix FK table name inconsistencies: `"users.id"` → `"user.id"` (9 fixes)
-- [x] Fix UUID→Integer type mismatches (14 columns) - **ROOT CAUSE of Corretta failures**
-- [x] Create baseline TDD test suite (75 tests by @Clelia)
-- [x] Comprehensive schema drift audit (8 documents by @Primo)
-- [x] Document conversion patterns (SQLMODEL_CONVERSION_GUIDE.md)
-- [x] Architectural review and ADR-014 (by @Egidio)
-- [x] Rollback strategy documented
-
-##### Phase 0.5: Alembic Behavior Testing (2 days) ✅ COMPLETE
-- [x] Pick 1 simple model for Alembic testing
-- [x] Convert to SQLModel (test conversion)
-- [x] Run `alembic revision --autogenerate`
-- [x] Review generated migration SQL
-- [x] Test upgrade + downgrade reversibility
-- [x] Document any unexpected autogenerate behavior
-- [x] Validate pattern before full Phase 1
-
-##### Phase 1: Simple Models (5 days) ✅ COMPLETE
-- [x] Migrate `app/models/regional_taxes.py` (4 models)
-- [x] Establish migration pattern as proof of concept
-- [x] Validate Alembic detects schema changes correctly
-- [x] Generate consolidated Alembic migration
-- [x] Deploy to QA and validate
-- [x] Update conversion guide with learnings
-
-##### Phase 2: Core CCNL Models (8 days - EXTENDED) ✅ COMPLETE
-- [x] Migrate `app/models/ccnl_database.py` (9 models)
-- [x] Migrate `app/models/ccnl_update_models.py` (5 models + separate Base)
-- [x] Remove BOTH `declarative_base()` definitions
-- [x] Merge into single SQLModel.metadata
-- [x] Test complex relationships and cascade deletes
-- [x] Generate single consolidated migration
-- [x] Deploy to QA and soak test (2 days)
-
-##### Phase 3: User-Dependent Models (15 days - EXTENDED - HIGH RISK) ✅ COMPLETE
-- [x] Migrate `app/models/quality_analysis.py` (9 models with User FKs)
-- [x] Migrate `app/models/faq_automation.py` (5 models with User FKs)
-- [x] Handle pgvector Vector(1536) columns for embeddings
-- [x] Remove lambda relationship workarounds
-- [x] Remove all `use_alter=True` hacks
-- [x] Test all User relationships work correctly
-- [x] **TEST CORRETTA BUTTON E2E** (primary success metric!)
-- [x] Generate single consolidated migration
-- [x] Deploy to QA and soak test (3 days)
-- [x] Validate pgvector NULL handling
-
-##### Phase 4: Complex Business Models (7 days - EXTENDED) ✅ COMPLETE
-- [x] Migrate `app/models/subscription.py` (4 models)
-- [x] Migrate `app/models/data_export.py` (8 models)
-- [x] Test Stripe payment workflows end-to-end
-- [x] Test GDPR export and deletion workflows
-- [x] Generate single consolidated migration
-- [x] Deploy to QA and validate (2 days)
-
-##### Phase 5: Testing & Validation (10 days - EXTENDED)
-- [ ] Run all 75+ baseline tests (must pass!)
-- [ ] Full integration test suite (all 44 models)
-- [ ] Alembic migration reversibility tests (upgrade + downgrade + upgrade)
-- [ ] Verify all 11 FK constraints exist
-- [ ] Check for orphaned records (must be zero)
-- [ ] RAG pipeline performance benchmarking (p95 <200ms, p99 <500ms)
-- [ ] Test coverage validation (target: 75%+)
-- [ ] Update documentation (4 files)
-- [ ] Code review with stakeholder
-- [ ] Generate migration rollback plan
-
-##### Phase 6: Staged Deployment (8 days - NEW)
-- [ ] Deploy to QA environment (2 days continuous monitoring)
-- [ ] Deploy to Preprod environment (3 days soak testing)
-- [ ] Canary deploy to Production 10% traffic (2 days monitoring)
-- [ ] Full Production rollout (1 day)
-- [ ] Post-deployment monitoring (7 days)
-- [ ] Validate zero downtime achieved
-- [ ] Retrospective and lessons learned
-
-#### Key Technical Challenges
-
-1. **pgvector Vector columns** (2 models with embeddings)
-   - Solution: Use `sa_column=Column(Vector(1536))` override in SQLModel Field
-
-2. **PostgreSQL ARRAY columns** (38 occurrences)
-   - Solution: Use `sa_column=Column(ARRAY(String))` override
-
-3. **JSONB columns** (24 PostgreSQL-specific columns)
-   - Solution: Use `sa_column=Column(JSONB))` override
-
-4. **Enum handling** (15 enum columns)
-   - Solution: SQLModel natively supports Python Enums
-
-5. **Foreign key table name consistency**
-   - Some use `user.id` (correct), others use `users.id` (wrong)
-   - Solution: Standardize to `user.id` in Phase 0
-
-6. **Indexes & Constraints** (80+ indexes, 28 check constraints)
-   - Solution: `__table_args__` works identically in SQLModel
-
-#### Conversion Pattern Template
-
-```python
-# BEFORE (SQLAlchemy Base):
-from sqlalchemy import Column, String, Integer, ARRAY, JSONB
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from app.models.ccnl_database import Base
-
-class Example(Base):
-    __tablename__ = "examples"
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    name = Column(String(100), nullable=False)
-    tags = Column(ARRAY(String(50)), default=list)
-    metadata_json = Column(JSONB, default=dict)
-
-# AFTER (SQLModel):
-from uuid import UUID, uuid4
-from sqlmodel import Field, SQLModel, Column
-from sqlalchemy import ARRAY, String
-from sqlalchemy.dialects.postgresql import JSONB
-
-class Example(SQLModel, table=True):
-    __tablename__ = "examples"
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
-    name: str = Field(max_length=100)
-    tags: list[str] = Field(default_factory=list, sa_column=Column(ARRAY(String(50))))
-    metadata_json: dict = Field(default_factory=dict, sa_column=Column(JSONB))
-```
-
-#### Success Criteria
-
-- [ ] All 44 models migrated to SQLModel
-- [ ] Zero remaining `ccnl_database.Base` references
-- [ ] Alembic `autogenerate` detects changes for all models
-- [ ] All tests pass (unit, integration, E2E)
-- [ ] No SQLAlchemy mapper initialization errors
-- [ ] All foreign key relationships function correctly
-- [ ] Database schema matches code models (no drift)
-- [ ] Production deployment successful with zero downtime
-
-#### Estimated Timeline
-
-| Phase | Duration | Models | Risk Level |
-|-------|----------|--------|------------|
-| Phase 0: Preparation | 5 days | - | Medium |
-| Phase 1: Simple Models | 5 days | 4 | Low |
-| Phase 2: Core CCNL | 5 days | 14 | Medium |
-| Phase 3: User-Dependent | 10 days | 14 | High |
-| Phase 4: Complex Models | 5 days | 12 | High |
-| Phase 5: Testing | 7 days | 44 | Medium |
-| **TOTAL** | **37 days** | **44** | - |
-
-**Calendar Time:** 5-7 weeks (accounting for testing iterations)
-
-#### Benefits After Migration
+#### Benefits Achieved
 
 - ✅ Single metadata registry (single source of truth)
 - ✅ Alembic works correctly for all models
@@ -357,21 +180,15 @@ class Example(SQLModel, table=True):
 - ✅ Consistent codebase patterns
 - ✅ Better FastAPI integration
 - ✅ Less code duplication (DB model = API schema)
-- ✅ Automatic Pydantic validation
-- ✅ Easier onboarding for new developers
 
 #### References
 
-- **Quick Fix PR:** [Link to PR with lambda workaround]
-- **Investigation Session:** 2025-11-28 (mapper error debugging)
 - **SQLModel Docs:** https://sqlmodel.tiangolo.com/
 - **Related Issues:** Golden set retrieval workflow blocker, Alembic migration failures
 
+</details>
+
 ---
-
-## Q1 2025 (January - March)
-
-### ✅ Completed Tasks
 
 <details>
 <summary>

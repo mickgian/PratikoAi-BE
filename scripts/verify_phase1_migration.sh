@@ -69,7 +69,7 @@ fi
 echo ""
 
 echo "7. Alembic Recognition:"
-ALEMBIC_CHECK=$(uv run alembic history 2>/dev/null | grep "e1ca2614d620")
+ALEMBIC_CHECK=$(uv run alembic history 2>/dev/null | grep "e1ca2614d620")  # pragma: allowlist secret
 if [ -n "$ALEMBIC_CHECK" ]; then
     echo "   ✅ Migration recognized by Alembic"
     echo "   $ALEMBIC_CHECK"

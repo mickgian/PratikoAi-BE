@@ -539,7 +539,7 @@ docker-compose exec app alembic upgrade head
 **Database Connection:**
 - Always use Docker PostgreSQL (port 5433)
 - Never use local PostgreSQL
-- Connection string: `postgresql+asyncpg://postgres:postgres@localhost:5433/pratikoai`
+- Connection string: Use `$DATABASE_URL` environment variable (see .env)
 
 **Testing:**
 - Tests written but need mocking fixes

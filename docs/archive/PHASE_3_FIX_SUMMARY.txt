@@ -70,7 +70,7 @@ NEXT STEPS
    alembic/versions/c4c0361885e4_phase_3_user_dependent_models.py
 
 2. Apply migration to development database:
-   export DATABASE_URL="postgresql://aifinance:devpass@localhost:5432/aifinance"
+   export DATABASE_URL="$DATABASE_URL (see .env)"
    alembic upgrade head
 
 3. Run full test suite:

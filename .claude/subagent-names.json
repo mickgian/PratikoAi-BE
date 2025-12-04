@@ -69,6 +69,13 @@
       "role": "Debugging Specialist",
       "status": "configured",
       "description": "Bug investigation, root cause analysis, systematic troubleshooting"
+    },
+    "mario": {
+      "type": "business-analyst",
+      "config_file": "business-analyst.md",
+      "role": "Requirements Gathering & Risk Analysis Specialist",
+      "status": "configured",
+      "description": "Interactive requirements elicitation, codebase impact analysis, task specification"
     }
   },
   "aliases": {
@@ -81,6 +88,8 @@
     "database": "primo",
     "performance": "valerio",
     "devops": "silvano",
-    "debugging": "tiziano"
+    "debugging": "tiziano",
+    "business-analyst": "mario",
+    "ba": "mario"
   }
 }

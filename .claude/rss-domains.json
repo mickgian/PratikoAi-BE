@@ -1,0 +1,51 @@
+{
+  "enabled": true,
+  "sandboxing": {
+    "allowedDirectories": [
+      "/Users/micky/PycharmProjects/PratikoAi-BE/",
+      "/Users/micky/WebstormProjects/PratikoAiWebApp/",
+      "/tmp/",
+      "~/.cache/uv/",
+      "~/.cache/npm/",
+      "/usr/local/bin/",
+      "/opt/homebrew/bin/"
+    ],
+    "deniedDirectories": [
+      "/Users/micky/PycharmProjects/PratikoAi-BE/.env*",
+      "/Users/micky/WebstormProjects/PratikoAiWebApp/.env*",
+      "~/.env*",
+      "~/.ssh/",
+      "~/.aws/",
+      "~/.docker/config.json",
+      "~/.gitconfig",
+      "~/.git-credentials"
+    ],
+    "allowedNetworkDomains": [
+      "api.openai.com",
+      "api.anthropic.com",
+      "cloud.langfuse.com",
+      "api.stripe.com",
+      "js.stripe.com",
+      "*.agenziaentrate.gov.it",
+      "*.inps.it",
+      "*.gov.it",
+      "*.gazzettaufficiale.it",
+      "smtp.gmail.com",
+      "smtp.googlemail.com",
+      "pypi.org",
+      "files.pythonhosted.org",
+      "registry.npmjs.org",
+      "*.npmjs.org",
+      "github.com",
+      "hooks.slack.com",
+      "localhost",
+      "127.0.0.1"
+    ],
+    "excludedCommands": [
+      "docker",
+      "docker-compose",
+      "docker compose",
+      "kubectl"
+    ]
+  }
+}

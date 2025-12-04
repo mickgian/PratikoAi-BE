@@ -20,6 +20,14 @@ repos:
         always_run: false
         files: ^(alembic/versions/.*\.py|app/models/.*\.py)$
 
+      - id: validate-rss-sandbox
+        name: Validate RSS feeds in sandbox allowlist
+        entry: uv run python scripts/validate_rss_sandbox.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
   # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0

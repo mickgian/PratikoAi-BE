@@ -596,7 +596,13 @@ Expand knowledge base with 10   new RSS feeds (4-hour schedule) + 2 web scrapers
   - Feeds: Documenti (https://www.mef.gov.it/rss/rss.asp?t=5), Aggiornamenti (https://www.finanze.gov.it/it/rss.xml)
 - **INAIL** (Istituto Nazionale Assicurazione Infortuni sul Lavoro) - Workplace injury insurance
   - Feeds: Notizie (https://www.inail.it/portale/it.rss.news.xml), Eventi (https://www.inail.it/portale/it.rss.eventi.xml)
-- **Gazzetta Ufficiale** - Official government gazette (filtered sections): NO RSS, requires scraping
+- **Gazzetta Ufficiale** - Official government gazette (filtered sections):
+    both scraping and RSS at the following RSS feeds:
+    - Serie Generale: https://www.gazzettaufficiale.it/rss/SG
+    - Corte Costituzionale: https://www.gazzettaufficiale.it/rss/S1
+    - Unione Europea: https://www.gazzettaufficiale.it/rss/S2
+    - Regioni: https://www.gazzettaufficiale.it/rss/S3
+-
 - **Corte di Cassazione** - Supreme Court rulings (tax/employment sections): NO RSS, requires scraping
 
 **Implementation Phases:**

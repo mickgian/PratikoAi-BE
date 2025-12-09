@@ -3,10 +3,18 @@
 TDD tests for verifying feed configuration requirements.
 
 Test Requirements:
-- All 13 feeds exist in feed_status (3 Agenzia Entrate + 4 INPS + 1 Ministero Lavoro + 2 MEF + 2 INAIL + 1 Gazzetta)
+- All 16 feeds exist in feed_status:
+  - 2 Agenzia Entrate (legacy idrss URLs: normativa_prassi, news)
+  - 5 INPS (news, circolari, messaggi, sentenze, comunicati)
+  - 1 Ministero Lavoro (news)
+  - 2 MEF (documenti, aggiornamenti)
+  - 2 INAIL (news, eventi)
+  - 4 Gazzetta Ufficiale (SG serie_generale, S1 corte_costituzionale, S2 unione_europea, S3 regioni)
 - Correct parser assigned to each feed
 - All feeds are enabled
-- Check interval is 240 minutes (4 hours)
+- Check intervals:
+  - Default: 240 minutes (4 hours)
+  - Gazzetta Ufficiale: 1440 minutes (24 hours) - daily publication
 """
 
 import pytest
@@ -21,19 +29,20 @@ class TestRSSFeedConfiguration:
     """Test RSS feed configuration for Phase 1."""
 
     async def test_total_feed_count(self, db_session: AsyncSession):
-        """Test that we have 13 total feeds configured."""
+        """Test that we have 16 total feeds configured."""
         statement = select(FeedStatus)
         result = await db_session.execute(statement)
         feeds = result.scalars().all()
 
-        assert len(feeds) == 13, (
-            f"Expected 13 total feeds, found {len(feeds)}. " f"Feeds: {[f.feed_url for f in feeds]}"
+        assert len(feeds) == 16, (
+            f"Expected 16 total feeds, found {len(feeds)}. " f"Feeds: {[f.feed_url for f in feeds]}"
         )
 
     async def test_inps_feeds_exist(self, db_session: AsyncSession):
-        """Test that all 4 INPS feeds are configured."""
+        """Test that all 5 INPS feeds are configured."""
         expected_inps_urls = [
             "https://www.inps.it/it/it.rss.news.xml",
+            "https://www.inps.it/it/it.rss.comunicati.xml",
             "https://www.inps.it/it/it.rss.circolari.xml",
             "https://www.inps.it/it/it.rss.messaggi.xml",
             "https://www.inps.it/it/it.rss.sentenze.xml",
@@ -44,7 +53,7 @@ class TestRSSFeedConfiguration:
         inps_feeds = result.scalars().all()
         inps_urls = [feed.feed_url for feed in inps_feeds]
 
-        assert len(inps_feeds) == 4, f"Expected 4 INPS feeds, found {len(inps_feeds)}"
+        assert len(inps_feeds) == 5, f"Expected 5 INPS feeds, found {len(inps_feeds)}"
 
         for url in expected_inps_urls:
             assert url in inps_urls, f"Missing INPS feed: {url}"
@@ -142,17 +151,29 @@ class TestRSSFeedConfiguration:
             f"{[f.feed_url for f in disabled_feeds]}"
         )
 
-    async def test_check_interval_240_minutes(self, db_session: AsyncSession):
-        """Test that all feeds have check_interval_minutes=240 (4 hours)."""
+    async def test_check_intervals(self, db_session: AsyncSession):
+        """Test that feeds have correct check intervals.
+
+        Default interval is 240 minutes (4 hours) except:
+        - Gazzetta Ufficiale: 1440 min (24 hours) - publishes daily
+        """
         statement = select(FeedStatus)
         result = await db_session.execute(statement)
         feeds = result.scalars().all()
 
-        wrong_interval = [f for f in feeds if f.check_interval_minutes != 240]
+        # Expected intervals per source
+        expected_intervals = {
+            "gazzetta_ufficiale": 1440,  # 24 hours - daily publication
+        }
+
+        wrong_interval = []
+        for f in feeds:
+            expected = expected_intervals.get(f.source, 240)
+            if f.check_interval_minutes != expected:
+                wrong_interval.append((f.feed_url, f.check_interval_minutes, expected))
 
         assert len(wrong_interval) == 0, (
-            f"All feeds should have check_interval_minutes=240, but found: "
-            f"{[(f.feed_url, f.check_interval_minutes) for f in wrong_interval]}"
+            f"Feeds with wrong check_interval_minutes: " f"{list(wrong_interval)}"
         )
 
     async def test_feed_source_values(self, db_session: AsyncSession):
@@ -217,11 +238,10 @@ class TestRSSFeedConfiguration:
         assert len(missing_feed_type) == 0, f"Found feeds without feed_type: {missing_feed_type}"
 
     async def test_agenzia_entrate_feeds_exist(self, db_session: AsyncSession):
-        """Test that all 3 Agenzia Entrate feeds are configured."""
+        """Test that all 2 Agenzia Entrate legacy feeds are configured."""
         expected_urls = [
-            "https://www.agenziaentrate.gov.it/portale/rss/circolari.xml",
-            "https://www.agenziaentrate.gov.it/portale/rss/risoluzioni.xml",
-            "https://www.agenziaentrate.gov.it/portale/rss/provvedimenti.xml",
+            "https://www.agenziaentrate.gov.it/portale/c/portal/rss/entrate?idrss=0753fcb1-1a42-4f8c-f40d-02793c6aefb4",  # Normativa e prassi
+            "https://www.agenziaentrate.gov.it/portale/c/portal/rss/entrate?idrss=79b071d0-a537-4a3d-86cc-7a7d5a36f2a9",  # News
         ]
 
         statement = select(FeedStatus).where(FeedStatus.source == "agenzia_entrate")
@@ -229,7 +249,7 @@ class TestRSSFeedConfiguration:
         ae_feeds = result.scalars().all()
         ae_urls = [feed.feed_url for feed in ae_feeds]
 
-        assert len(ae_feeds) == 3, f"Expected 3 Agenzia Entrate feeds, found {len(ae_feeds)}"
+        assert len(ae_feeds) == 2, f"Expected 2 Agenzia Entrate feeds, found {len(ae_feeds)}"
 
         for url in expected_urls:
             assert url in ae_urls, f"Missing Agenzia Entrate feed: {url}"
@@ -246,18 +266,52 @@ class TestRSSFeedConfiguration:
                 f"found '{feed.parser}'"
             )
 
-    async def test_gazzetta_ufficiale_feed_exists(self, db_session: AsyncSession):
-        """Test that Gazzetta Ufficiale feed is configured."""
-        expected_url = "https://www.gazzettaufficiale.it/rss/serie_generale.xml"
+    async def test_gazzetta_ufficiale_feeds_exist(self, db_session: AsyncSession):
+        """Test that all 4 Gazzetta Ufficiale feeds are configured.
 
-        statement = select(FeedStatus).where(FeedStatus.feed_url == expected_url)
+        Note: Old URL /rss/serie_generale.xml returns 404 since Dec 2025.
+        New URL format is /rss/{code} where code is SG, S1, S2, S3.
+        Check interval is 1440 min (24 hours) because Gazzetta publishes once daily.
+        """
+        expected_gazzetta_urls = [
+            "https://www.gazzettaufficiale.it/rss/SG",  # Serie Generale
+            "https://www.gazzettaufficiale.it/rss/S1",  # Corte Costituzionale
+            "https://www.gazzettaufficiale.it/rss/S2",  # Unione Europea
+            "https://www.gazzettaufficiale.it/rss/S3",  # Regioni
+        ]
+
+        statement = select(FeedStatus).where(FeedStatus.source == "gazzetta_ufficiale")
         result = await db_session.execute(statement)
-        feed = result.scalar_one_or_none()
+        gazzetta_feeds = result.scalars().all()
+        gazzetta_urls = [feed.feed_url for feed in gazzetta_feeds]
 
-        assert feed is not None, f"Missing Gazzetta Ufficiale feed: {expected_url}"
-        assert feed.source == "gazzetta_ufficiale"
-        assert feed.feed_type == "serie_generale"
-        assert feed.parser == "gazzetta_ufficiale"
+        assert len(gazzetta_feeds) == 4, f"Expected 4 Gazzetta feeds, found {len(gazzetta_feeds)}"
+
+        for url in expected_gazzetta_urls:
+            assert url in gazzetta_urls, f"Missing Gazzetta Ufficiale feed: {url}"
+
+    async def test_gazzetta_ufficiale_feeds_use_gazzetta_parser(self, db_session: AsyncSession):
+        """Test that all Gazzetta Ufficiale feeds use the 'gazzetta_ufficiale' parser."""
+        statement = select(FeedStatus).where(FeedStatus.source == "gazzetta_ufficiale")
+        result = await db_session.execute(statement)
+        gazzetta_feeds = result.scalars().all()
+
+        for feed in gazzetta_feeds:
+            assert feed.parser == "gazzetta_ufficiale", (
+                f"Gazzetta feed {feed.feed_url} should use 'gazzetta_ufficiale' parser, " f"found '{feed.parser}'"
+            )
+
+    async def test_gazzetta_ufficiale_feeds_check_interval(self, db_session: AsyncSession):
+        """Test that all Gazzetta Ufficiale feeds have 24-hour check interval."""
+        statement = select(FeedStatus).where(FeedStatus.source == "gazzetta_ufficiale")
+        result = await db_session.execute(statement)
+        gazzetta_feeds = result.scalars().all()
+
+        for feed in gazzetta_feeds:
+            assert feed.check_interval_minutes == 1440, (
+                f"Gazzetta feed {feed.feed_url} should check every 24 hours (1440 min), "
+                f"found {feed.check_interval_minutes}"
+            )
 
 
 @pytest.mark.asyncio
@@ -354,3 +408,55 @@ class TestSpecificFeedDetails:
         assert feed.parser == "generic"
         assert feed.enabled is True
         assert feed.check_interval_minutes == 240
+
+    async def test_gazzetta_serie_generale_feed_details(self, db_session: AsyncSession):
+        """Test Gazzetta Ufficiale Serie Generale (SG) feed configuration."""
+        statement = select(FeedStatus).where(FeedStatus.feed_url == "https://www.gazzettaufficiale.it/rss/SG")
+        result = await db_session.execute(statement)
+        feed = result.scalar_one_or_none()
+
+        assert feed is not None, "Gazzetta Serie Generale feed not found"
+        assert feed.source == "gazzetta_ufficiale"
+        assert feed.feed_type == "serie_generale"
+        assert feed.parser == "gazzetta_ufficiale"
+        assert feed.enabled is True
+        assert feed.check_interval_minutes == 1440
+
+    async def test_gazzetta_corte_costituzionale_feed_details(self, db_session: AsyncSession):
+        """Test Gazzetta Ufficiale Corte Costituzionale (S1) feed configuration."""
+        statement = select(FeedStatus).where(FeedStatus.feed_url == "https://www.gazzettaufficiale.it/rss/S1")
+        result = await db_session.execute(statement)
+        feed = result.scalar_one_or_none()
+
+        assert feed is not None, "Gazzetta Corte Costituzionale feed not found"
+        assert feed.source == "gazzetta_ufficiale"
+        assert feed.feed_type == "corte_costituzionale"
+        assert feed.parser == "gazzetta_ufficiale"
+        assert feed.enabled is True
+        assert feed.check_interval_minutes == 1440
+
+    async def test_gazzetta_unione_europea_feed_details(self, db_session: AsyncSession):
+        """Test Gazzetta Ufficiale Unione Europea (S2) feed configuration."""
+        statement = select(FeedStatus).where(FeedStatus.feed_url == "https://www.gazzettaufficiale.it/rss/S2")
+        result = await db_session.execute(statement)
+        feed = result.scalar_one_or_none()
+
+        assert feed is not None, "Gazzetta Unione Europea feed not found"
+        assert feed.source == "gazzetta_ufficiale"
+        assert feed.feed_type == "unione_europea"
+        assert feed.parser == "gazzetta_ufficiale"
+        assert feed.enabled is True
+        assert feed.check_interval_minutes == 1440
+
+    async def test_gazzetta_regioni_feed_details(self, db_session: AsyncSession):
+        """Test Gazzetta Ufficiale Regioni (S3) feed configuration."""
+        statement = select(FeedStatus).where(FeedStatus.feed_url == "https://www.gazzettaufficiale.it/rss/S3")
+        result = await db_session.execute(statement)
+        feed = result.scalar_one_or_none()
+
+        assert feed is not None, "Gazzetta Regioni feed not found"
+        assert feed.source == "gazzetta_ufficiale"
+        assert feed.feed_type == "regioni"
+        assert feed.parser == "gazzetta_ufficiale"
+        assert feed.enabled is True
+        assert feed.check_interval_minutes == 1440

@@ -79,19 +79,15 @@ class KnowledgeIntegrator:
             existing_doc = await self._find_existing_document(document_data.get("url", ""), content_hash)
 
             if existing_doc:
-                # Document already exists, check if update is needed
-                if existing_doc.content_hash != content_hash:
-                    # Content has changed, create new version
-                    result = await self.handle_document_update(document_data)
-                    return result
-                else:
-                    logger.info("document_already_exists", url=document_data.get("url"), existing_id=existing_doc.id)
-                    return {
-                        "success": True,
-                        "action": "skipped",
-                        "document_id": str(existing_doc.id),
-                        "reason": "Document already exists with same content",
-                    }
+                # Document already exists - skip (URL-based deduplication)
+                # Note: KnowledgeItem doesn't have content_hash field, so we can't compare content changes
+                logger.info("document_already_exists", url=document_data.get("url"), existing_id=existing_doc.id)
+                return {
+                    "success": True,
+                    "action": "skipped",
+                    "document_id": str(existing_doc.id),
+                    "reason": "Document already exists",
+                }
 
             # Create new knowledge item
             kb_epoch = time.time()
@@ -110,7 +106,6 @@ class KnowledgeIntegrator:
                 subcategory=self._determine_knowledge_subcategory(document_data),
                 source="regulatory_update",
                 source_url=document_data.get("url", ""),
-                content_hash=content_hash,
                 extra_metadata=await self._prepare_metadata(document_data),
                 relevance_score=self._calculate_relevance_score(document_data),
                 language="it",
@@ -447,17 +442,17 @@ class KnowledgeIntegrator:
             logger.error("cache_invalidation_failed", topics=topics, source=source, error=str(e), exc_info=True)
 
     async def _find_existing_document(self, url: str, content_hash: str) -> KnowledgeItem | None:
-        """Find existing document by URL or content hash.
+        """Find existing document by URL.
 
         Args:
             url: Document URL
-            content_hash: Content hash
+            content_hash: Content hash (unused, KnowledgeItem doesn't have this field)
 
         Returns:
             Existing KnowledgeItem or None
         """
         try:
-            # First try to find by URL
+            # Find by URL (KnowledgeItem doesn't have content_hash field)
             query = (
                 select(KnowledgeItem)
                 .where(and_(KnowledgeItem.source_url == url, KnowledgeItem.status == "active"))
@@ -465,25 +460,10 @@ class KnowledgeIntegrator:
             )
 
             result = await self.db.execute(query)
-            item = result.scalar_one_or_none()
-
-            if item:
-                return item
-
-            # If not found by URL, try by content hash
-            hash_query = (
-                select(KnowledgeItem)
-                .where(and_(KnowledgeItem.content_hash == content_hash, KnowledgeItem.status == "active"))
-                .order_by(KnowledgeItem.created_at.desc())
-            )
-
-            hash_result = await self.db.execute(hash_query)
-            return hash_result.scalar_one_or_none()
+            return result.scalar_one_or_none()
 
         except Exception as e:
-            logger.error(
-                "existing_document_search_failed", url=url, content_hash=content_hash, error=str(e), exc_info=True
-            )
+            logger.error("existing_document_search_failed", url=url, error=str(e), exc_info=True)
             return None
 
     async def _create_regulatory_document(self, document_data: dict[str, Any], knowledge_item_id: int) -> None:
@@ -495,18 +475,25 @@ class KnowledgeIntegrator:
         """
         try:
             # Import here to avoid circular imports
+            import uuid
+
             from app.models.regulatory_documents import RegulatoryDocument
 
+            # Generate unique ID from URL or use UUID
+            doc_url = document_data.get("url", "")
+            doc_id = hashlib.sha256(doc_url.encode()).hexdigest()[:50] if doc_url else str(uuid.uuid4())
+
             regulatory_doc = RegulatoryDocument(
+                id=doc_id,
                 source=document_data.get("source", ""),
                 source_type=document_data.get("source_type", ""),
                 title=document_data.get("title", ""),
-                url=document_data.get("url", ""),
+                url=doc_url,
                 published_date=document_data.get("published_date"),
                 content=document_data.get("content", ""),
                 content_hash=self._generate_content_hash(document_data.get("content", "")),
                 document_number=document_data.get("document_number"),
-                metadata=document_data.get("metadata", {}),
+                document_metadata=document_data.get("metadata", {}),
                 knowledge_item_id=knowledge_item_id,
                 version=1,
                 status="active",
@@ -547,17 +534,26 @@ class KnowledgeIntegrator:
             if old_doc:
                 old_doc.status = "superseded"
 
-            # Create new version
+            # Create new version with unique ID
+            import uuid
+
+            doc_url = document_data.get("url", "")
+            # Include version in ID to make it unique per version
+            doc_id = (
+                hashlib.sha256(f"{doc_url}_v{version}".encode()).hexdigest()[:50] if doc_url else str(uuid.uuid4())
+            )
+
             new_regulatory_doc = RegulatoryDocument(
+                id=doc_id,
                 source=document_data.get("source", ""),
                 source_type=document_data.get("source_type", ""),
                 title=document_data.get("title", ""),
-                url=document_data.get("url", ""),
+                url=doc_url,
                 published_date=document_data.get("published_date"),
                 content=document_data.get("content", ""),
                 content_hash=self._generate_content_hash(document_data.get("content", "")),
                 document_number=document_data.get("document_number"),
-                metadata=document_data.get("metadata", {}),
+                document_metadata=document_data.get("metadata", {}),
                 knowledge_item_id=knowledge_item_id,
                 version=version,
                 status="active",

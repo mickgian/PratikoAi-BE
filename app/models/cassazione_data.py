@@ -429,6 +429,7 @@ class CassazioneDecision:
     full_text: str | None = None
     subsection: str | None = None
     summary: str | None = None
+    source_url: str | None = None
     legal_principles: list[str] = field(default_factory=list)
     judge_names: list[str] = field(default_factory=list)
     party_names: list[str] = field(default_factory=list)
@@ -441,7 +442,8 @@ class CassazioneDecision:
     def __post_init__(self):
         """Validate decision data after initialization."""
         # Validate decision number format - should look like a proper court decision
-        if not re.search(r"\d+[/]\d+|cass\.|sentenza|ordinanza", self.decision_number, re.IGNORECASE):
+        # Accept formats: "30016", "30016/2025", or text containing cass./sentenza/ordinanza
+        if not re.search(r"\d{4,}|\d+[/]\d+|cass\.|sentenza|ordinanza", self.decision_number, re.IGNORECASE):
             raise ValueError(f"Invalid decision number format: {self.decision_number}")
 
         # Validate date is not in future

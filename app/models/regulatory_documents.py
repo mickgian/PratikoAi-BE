@@ -36,6 +36,7 @@ class DocumentSource(str, Enum):
     GOVERNO = "governo"
     INAIL = "inail"
     MINISTERO_ECONOMIA = "ministero_economia"
+    MINISTERO_LAVORO = "ministero_lavoro"
     OTHER = "other"
 
 

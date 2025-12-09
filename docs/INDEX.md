@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2025-12-04 16:04:04
+**Auto-generated:** 2025-12-09 14:08:24
 
-> 💡 This directory contains 21 technical documentation files plus 152 architecture documents.
+> 💡 This directory contains 22 technical documentation files plus 153 architecture documents.
 
 ---
 
@@ -13,7 +13,7 @@
 - **[Architecture Overview](architecture/INDEX.md)** - Main architecture index
   - RAG flow implementation documents
   - Policy gated autonomy
-  - 152 total architecture documents including 135 detailed steps
+  - 153 total architecture documents including 135 detailed steps
 
 ---
 
@@ -53,6 +53,8 @@
 
 ## ⚙️ Operations
 
+- **[E2E RSS Feed Testing Strategy](E2E_RSS_TESTING_STRATEGY.md)** ✅ Current
+  - **Task:** DEV-BE-69 - Expand RSS Feed Sources (Phase 6: Testing) **Date:** 2025-12-09
 - **[LLM Retry Mechanisms for PratikoAI](LLM_RETRY_MECHANISMS.md)** ✅ Current
   - This document provides comprehensive documentation for the robust retry mechanisms implemented for LLM API calls in PratikoAI, ensuring production ...
 - **[Load Testing for PratikoAI](LOAD_TESTING.md)** ✅ Current
@@ -65,7 +67,7 @@
 - **[Database Backup System](DATABASE_BACKUP_SYSTEM.md)** ✅ Current
   - **Purpose**: Prevent data loss by maintaining automated daily backups of the PostgreSQL database.
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2025-12-04 16:01:54
+  - **Auto-generated:** 2025-12-04 16:16:47
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
 - **[Pinecone Guardrails Implementation](pinecone-guardrails.md)** ✅ Current
@@ -79,10 +81,10 @@
 
 - **Feature Docs:** 9
 - **Database/Search:** 5
-- **Operations:** 2
-- **Architecture:** 152
-- **Total:** 173
+- **Operations:** 3
+- **Architecture:** 153
+- **Total:** 175
 
 ---
 
-**Last Updated:** 2025-12-04 16:04:04
+**Last Updated:** 2025-12-09 14:08:24

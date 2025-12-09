@@ -73,7 +73,7 @@ class SearchService:
         min_rank: float = 0.01,
         source_pattern: str | None = None,
         publication_year: int | None = None,
-        title_pattern: str | None = None,
+        title_patterns: list[str] | None = None,
     ) -> list[SearchResult]:
         """Perform full-text search on knowledge items.
 
@@ -85,7 +85,8 @@ class SearchService:
             min_rank: Minimum rank score threshold
             source_pattern: Source filter pattern (for LIKE matching, e.g., "agenzia_entrate%")
             publication_year: Filter by publication year (e.g., 2025)
-            title_pattern: Title filter pattern (for LIKE matching on document numbers, e.g., "n. 64")
+            title_patterns: List of title filter patterns (for ILIKE matching on document numbers,
+                           e.g., ["n. 64", "numero 64", "risoluzione n. 64"]). Uses OR for multiple.
 
         Returns:
             List of SearchResult objects ordered by relevance
@@ -99,7 +100,8 @@ class SearchService:
         normalized_query = self._normalize_italian_query(query)
 
         # Check cache (using Redis client directly for custom keys)
-        cache_key = f"search:{normalized_query}:{category}:{limit}:{offset}"
+        # FIX: Include source_pattern and publication_year in cache key to avoid incorrect cache hits
+        cache_key = f"search:{normalized_query}:{category}:{source_pattern}:{publication_year}:{limit}:{offset}"
         redis_client = await self.cache._get_redis()
         cached_results = None
         if redis_client:
@@ -134,7 +136,7 @@ class SearchService:
 
         # Build and execute search query
         results = await self._execute_search(
-            normalized_query, limit, offset, category, min_rank, source_pattern, publication_year, title_pattern
+            normalized_query, limit, offset, category, min_rank, source_pattern, publication_year, title_patterns
         )
 
         # Cache results
@@ -158,23 +160,31 @@ class SearchService:
         min_rank: float,
         source_pattern: str | None = None,
         publication_year: int | None = None,
-        title_pattern: str | None = None,
+        title_patterns: list[str] | None = None,
     ) -> list[SearchResult]:
         """Execute the PostgreSQL full-text search query using strict AND matching"""
         # CRITICAL FIX: Use Python conditionals to build separate SQL for title vs FTS
         # This prevents tsquery evaluation in FROM clause from blocking title ILIKE matching
 
-        if title_pattern:
+        if title_patterns:
             # PATH A: Title-based search (NO FTS, no tsquery in FROM clause)
             # This path is triggered for document number queries like "Risoluzione n. 64"
+            # MULTI-PATTERN: Build dynamic OR conditions for multiple title patterns
             logger.info(
                 "search_path_title_based",
-                title_pattern=title_pattern,
+                title_patterns=title_patterns,
+                patterns_count=len(title_patterns),
                 reason="bypassing_fts_for_document_number_search",
             )
 
+            # Build dynamic OR conditions for title patterns (max 7 patterns)
+            patterns_to_use = title_patterns[:7]
+            pattern_conditions = " OR ".join(
+                [f"ki.title ILIKE '%' || :pattern_{i} || '%'" for i in range(len(patterns_to_use))]
+            )
+
             search_query = text(
-                """
+                f"""
                 WITH search_results AS (
                     SELECT
                         kc.id,
@@ -194,7 +204,7 @@ class SearchService:
                         knowledge_chunks kc
                         JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id
                     WHERE
-                        ki.title ILIKE '%' || :title_pattern || '%'
+                        ({pattern_conditions})
                         AND kc.junk = FALSE
                         AND ki.category = COALESCE(:category, ki.category)
                         AND ki.source LIKE COALESCE(:source_pattern, '%')
@@ -209,18 +219,19 @@ class SearchService:
             """
             )
 
+            # Build params dict with pattern_0, pattern_1, etc.
+            params = {
+                "category": category,
+                "source_pattern": source_pattern,
+                "publication_year": publication_year,
+                "limit": limit,
+                "offset": offset,
+            }
+            for i, pattern in enumerate(patterns_to_use):
+                params[f"pattern_{i}"] = pattern
+
             # Execute title-based query (no search_term or min_rank needed)
-            result = await self.db.execute(
-                search_query,
-                {
-                    "title_pattern": title_pattern,
-                    "category": category,
-                    "source_pattern": source_pattern,
-                    "publication_year": publication_year,
-                    "limit": limit,
-                    "offset": offset,
-                },
-            )
+            result = await self.db.execute(search_query, params)
         else:
             # PATH B: FTS-based search (standard tsquery logic)
             # This path is triggered for natural language queries like "contratti locazione"
@@ -329,7 +340,7 @@ class SearchService:
         min_rank: float = 0.01,
         source_pattern: str | None = None,
         publication_year: int | None = None,
-        title_pattern: str | None = None,
+        title_patterns: list[str] | None = None,
     ) -> list[SearchResult]:
         """Perform full-text search with OR matching (more relaxed than AND).
         Uses plainto_tsquery which creates OR queries for better recall.
@@ -343,6 +354,7 @@ class SearchService:
             category: Filter by category
             min_rank: Minimum rank score threshold
             source_pattern: Source filter pattern (for LIKE matching, e.g., "agenzia_entrate%")
+            title_patterns: List of title filter patterns (for ILIKE matching on document numbers).
 
         Returns:
             List of SearchResult objects ordered by relevance
@@ -358,17 +370,25 @@ class SearchService:
         # CRITICAL FIX: Use Python conditionals to build separate SQL for title vs FTS
         # This prevents tsquery evaluation in FROM clause from blocking title ILIKE matching
 
-        if title_pattern:
+        if title_patterns:
             # PATH A: Title-based search (NO FTS, no tsquery in FROM clause)
             # This path is triggered for document number queries like "Risoluzione n. 64"
+            # MULTI-PATTERN: Build dynamic OR conditions for multiple title patterns
             logger.info(
                 "or_fallback_search_path_title_based",
-                title_pattern=title_pattern,
+                title_patterns=title_patterns,
+                patterns_count=len(title_patterns),
                 reason="bypassing_fts_for_document_number_search",
             )
 
+            # Build dynamic OR conditions for title patterns (max 7 patterns)
+            patterns_to_use = title_patterns[:7]
+            pattern_conditions = " OR ".join(
+                [f"ki.title ILIKE '%' || :pattern_{i} || '%'" for i in range(len(patterns_to_use))]
+            )
+
             search_query = text(
-                """
+                f"""
                 WITH search_results AS (
                     SELECT
                         kc.id,
@@ -388,7 +408,7 @@ class SearchService:
                         knowledge_chunks kc
                         JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id
                     WHERE
-                        ki.title ILIKE '%' || :title_pattern || '%'
+                        ({pattern_conditions})
                         AND kc.junk = FALSE
                         AND ki.category = COALESCE(:category, ki.category)
                         AND ki.source LIKE COALESCE(:source_pattern, '%')
@@ -403,18 +423,19 @@ class SearchService:
             """
             )
 
+            # Build params dict with pattern_0, pattern_1, etc.
+            params = {
+                "category": category,
+                "source_pattern": source_pattern,
+                "publication_year": publication_year,
+                "limit": limit,
+                "offset": offset,
+            }
+            for i, pattern in enumerate(patterns_to_use):
+                params[f"pattern_{i}"] = pattern
+
             # Execute title-based query (no search_term or min_rank needed)
-            result = await self.db.execute(
-                search_query,
-                {
-                    "title_pattern": title_pattern,
-                    "category": category,
-                    "source_pattern": source_pattern,
-                    "publication_year": publication_year,
-                    "limit": limit,
-                    "offset": offset,
-                },
-            )
+            result = await self.db.execute(search_query, params)
         else:
             # PATH B: FTS-based OR search (using plainto_tsquery for better recall)
             # This path is triggered for natural language queries like "contratti locazione"

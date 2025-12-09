@@ -12,6 +12,7 @@ Used by:
 
 import hashlib
 import re
+import ssl
 import tempfile
 import time
 from datetime import (
@@ -26,6 +27,7 @@ from typing import (
     List,
     Optional,
 )
+from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,6 +41,34 @@ from app.core.text.clean import (
 from app.core.text.extract_pdf_plumber import extract_pdf_with_ocr_fallback_plumber
 from app.models.knowledge import KnowledgeItem
 from app.models.knowledge_chunk import KnowledgeChunk
+
+# Domains that require relaxed SSL settings (older TLS ciphers)
+RELAXED_SSL_DOMAINS = {"www.inail.it", "inail.it"}
+
+
+def _get_ssl_context(url: str) -> ssl.SSLContext | bool:
+    """Get appropriate SSL context for a URL.
+
+    Some government sites (e.g., INAIL) use older TLS configurations
+    that require relaxed cipher settings.
+
+    Args:
+        url: The URL to fetch
+
+    Returns:
+        SSLContext for relaxed domains, True for standard SSL verification
+    """
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+
+    if hostname in RELAXED_SSL_DOMAINS:
+        # Create SSL context with relaxed security level for older servers
+        ssl_context = ssl.create_default_context()
+        ssl_context.set_ciphers("DEFAULT:@SECLEVEL=1")
+        return ssl_context
+
+    return True  # Use default SSL verification
+
 
 # Italian month name mapping for date normalization
 ITALIAN_MONTHS = {
@@ -116,7 +146,9 @@ async def download_and_extract_document(url: str) -> dict[str, Any] | None:
         Or None if extraction failed
     """
     try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        # Get appropriate SSL context (relaxed for some government sites like INAIL)
+        ssl_context = _get_ssl_context(url)
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, verify=ssl_context) as client:
             response = await client.get(url)
             response.raise_for_status()
 
@@ -152,8 +184,8 @@ async def download_and_extract_document(url: str) -> dict[str, Any] | None:
             else:
                 content = response.text  # Text decoding for HTML
 
-                # Extract clean text
-                clean_text = extract_text_from_url_content(content, content_type)
+                # Extract clean text (pass URL for quality logging)
+                clean_text = extract_text_from_url_content(content, content_type, url=url)
 
                 if not is_valid_text(clean_text):
                     return None

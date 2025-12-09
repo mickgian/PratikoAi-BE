@@ -5,6 +5,7 @@ and knowledge base integration for Italian regulatory sources.
 """
 
 import asyncio
+import random
 from datetime import (
     UTC,
     datetime,
@@ -112,12 +113,20 @@ class DynamicKnowledgeCollector:
                 {"success": False, "error": str(e), "source": "system", "processing_time_seconds": processing_time}
             ]
 
-    async def process_all_feeds_parallel(self, feeds: dict[str, str], max_concurrent: int = 5) -> list[dict[str, Any]]:
-        """Process multiple RSS feeds concurrently.
+    async def process_all_feeds_parallel(
+        self,
+        feeds: dict[str, str],
+        max_concurrent: int = 5,
+        stagger_delay_min: float = 1.0,
+        stagger_delay_max: float = 3.0,
+    ) -> list[dict[str, Any]]:
+        """Process multiple RSS feeds concurrently with rate limiting.
 
         Args:
             feeds: Dictionary mapping feed names to URLs
             max_concurrent: Maximum concurrent processing tasks
+            stagger_delay_min: Minimum delay between starting tasks (seconds)
+            stagger_delay_max: Maximum delay between starting tasks (seconds)
 
         Returns:
             List of processing results
@@ -125,22 +134,40 @@ class DynamicKnowledgeCollector:
         results = []
         semaphore = asyncio.Semaphore(max_concurrent)
 
-        async def process_feed_with_semaphore(feed_name: str, feed_url: str) -> dict[str, Any]:
+        async def process_feed_with_semaphore(feed_name: str, feed_url: str, delay: float) -> dict[str, Any]:
+            # Apply stagger delay before acquiring semaphore
+            if delay > 0:
+                await asyncio.sleep(delay)
             async with semaphore:
                 return await self.process_single_feed(feed_name, feed_url)
 
-        # Create tasks for concurrent processing
+        # Create tasks for concurrent processing with staggered delays
         # Handle both old dict format and new list format
         if isinstance(feeds, dict):
             # Old format: {name: url}
-            tasks = [asyncio.create_task(process_feed_with_semaphore(name, url)) for name, url in feeds.items()]
+            feed_items = list(feeds.items())
             feed_names = list(feeds.keys())
         else:
             # New format: [{'source': name, 'feed_url': url, ...}]
-            tasks = [
-                asyncio.create_task(process_feed_with_semaphore(feed["source"], feed["feed_url"])) for feed in feeds
-            ]
+            feed_items = [(feed["source"], feed["feed_url"]) for feed in feeds]
             feed_names = [feed["source"] for feed in feeds]
+
+        # Calculate staggered delays for each feed
+        tasks = []
+        for i, (name, url) in enumerate(feed_items):
+            # First task starts immediately, others get staggered delays
+            if i == 0:
+                delay = 0.0
+            else:
+                delay = random.uniform(stagger_delay_min, stagger_delay_max) * i
+            tasks.append(asyncio.create_task(process_feed_with_semaphore(name, url, delay)))
+
+        logger.info(
+            "feed_processing_started_with_stagger",
+            total_feeds=len(tasks),
+            max_concurrent=max_concurrent,
+            stagger_delay_range=f"{stagger_delay_min}-{stagger_delay_max}s",
+        )
 
         # Wait for all tasks to complete
         try:

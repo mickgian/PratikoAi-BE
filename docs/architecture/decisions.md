@@ -30,6 +30,7 @@
 | [010](#adr-010-semantic-caching) | 2025-11 | 🚧 Planned | Redis Semantic Caching (DEV-76) |
 | [011](#adr-011-branch-management-coordination) | 2025-11 | ✅ Active | Branch Management for Parallel Subagent Work |
 | [012](#adr-012-remove-step-131-vector-reindexing) | 2025-11 | ✅ Active | Remove Step 131 Vector Reindexing (Pinecone → pgvector) |
+| [014](#adr-014-multi-pattern-document-title-matching) | 2025-12 | ✅ Active | Multi-Pattern Document Title Matching |
 
 ---
 
@@ -965,6 +966,135 @@ If pgvector triggers prove problematic, restore Step 131 pointing to pgvector:
 
 ---
 
+### ADR-014: Multi-Pattern Document Title Matching
+
+**Date**: 2025-12
+**Status**: ✅ Active
+**Contributors**: Business Analyst (@Mario), Architect (@Egidio)
+**Related Tasks**: DEV-BE-69 (Expand RSS Feed Sources)
+
+**Context**:
+
+Frontend search for "Di cosa parla il Messaggio numero 3585 dell'inps?" returned "Non ho trovato" despite:
+1. Document existing in database (ID 161, 38,577 characters)
+2. BM25 full-text search finding it with rank 0.87
+
+**Root Cause**: The code at `knowledge_search_service.py:711` used a hardcoded pattern:
+```python
+title_filter_pattern = f"n. {doc_number}"  # Only matches "n. 64"
+```
+
+This only matched Agenzia Entrate format ("n. 64") but failed for:
+- INPS documents using "numero" format (e.g., "Messaggio numero 3585")
+- Compound legislative references (e.g., "DPR n. 1124/1965")
+
+**Database Analysis (293 documents):**
+
+| Category | Example Title | Old Pattern Match |
+|----------|---------------|-------------------|
+| INPS | "Messaggio numero 3585 del 27-11-2025" | ❌ FAILED |
+| Cassazione | "Ordinanza n. 26166 del 29/09/2025" | ✅ Works |
+| Agenzia Entrate | "Risoluzione n. 64" | ✅ Works |
+| Legislative | "DPR n. 1124/1965" | ✅ Partial |
+
+**Decision**: Implement multi-pattern title matching with up to 7 patterns per query
+
+**Implementation**:
+
+1. **Extended QueryNormalizer** - Added `year` field for compound references:
+   ```python
+   # Before: {"type": "risoluzione", "number": "64"}
+   # After:  {"type": "messaggio", "number": "3585", "year": null}
+   #         {"type": "DPR", "number": "1124", "year": "1965"}
+   ```
+
+2. **Added `_generate_title_patterns()` method** in KnowledgeSearchService:
+   ```python
+   def _generate_title_patterns(
+       self, doc_type: str | None, doc_number: str, doc_year: str | None = None
+   ) -> list[str]:
+       """Generate up to 7 title patterns ordered by specificity."""
+       patterns = []
+       # Type + number + year (compound)
+       if doc_type and doc_year:
+           patterns.append(f"{doc_type} n. {doc_number}/{doc_year}")
+       # Type + number (base)
+       if doc_type:
+           patterns.append(f"{doc_type} n. {doc_number}")
+           patterns.append(f"{doc_type} numero {doc_number}")
+       # Generic patterns (fallback)
+       patterns.append(f"n. {doc_number}")
+       patterns.append(f"numero {doc_number}")
+       return patterns[:7]
+   ```
+
+3. **Updated SearchService SQL** - Uses OR clauses for multiple patterns:
+   ```sql
+   WHERE (
+       ki.title ILIKE '%' || :pattern_0 || '%'
+       OR ki.title ILIKE '%' || :pattern_1 || '%'
+       OR ki.title ILIKE '%' || :pattern_2 || '%'
+       -- up to 7 patterns
+   )
+   ```
+
+4. **Added unmatched query logging** - Logs warnings for future pattern analysis
+
+**Rationale**:
+
+**Why Multi-Pattern Over Single Pattern:**
+1. **Italian complexity** - Document titles vary by source (INPS vs Agenzia vs Courts)
+2. **Better recall** - Multiple patterns catch more valid matches
+3. **Future-proof** - Easy to add new patterns without code changes
+
+**Why Not Fuzzy Search (pg_trgm):**
+- Overkill for document number matching
+- Would require new index (~500MB for knowledge_items)
+- Multi-pattern ILIKE sufficient for current use cases
+
+**Why Max 7 Patterns:**
+- 100ms latency budget allows 5-7 ILIKE clauses
+- Ordered by specificity (most specific first)
+- Tested with actual database documents
+
+**Trade-offs**:
+- ❌ Slightly more complex SQL (OR clauses)
+- ❌ Pattern generation logic in code (vs config)
+- ✅ INPS documents now searchable
+- ✅ Compound references (DPR 1124/1965) work correctly
+- ✅ Backward compatible with existing queries
+- ✅ No new indexes required
+
+**Performance Impact**:
+- Maximum 7 ILIKE clauses per query
+- Only triggered for document number queries (~20% of searches)
+- Acceptable latency increase: <10ms additional
+
+**Files Modified**:
+- `app/services/query_normalizer.py` - Enhanced prompt, added `year` field
+- `app/services/knowledge_search_service.py` - Added `_generate_title_patterns()`, updated BM25 search
+- `app/services/search_service.py` - Support `title_patterns: list[str]` with OR clauses
+- `tests/e2e/test_document_search_patterns.py` - E2E tests
+- `tests/services/test_query_normalizer.py` - Unit tests for year field
+- `tests/test_knowledge_search_service.py` - Unit tests for pattern generation
+
+**Verification**:
+```bash
+# Unit tests
+pytest tests/test_knowledge_search_service.py::TestGenerateTitlePatterns -v
+
+# E2E test (original bug)
+curl -X POST http://localhost:8000/api/v1/chat \
+  -d '{"message": "Di cosa parla il Messaggio numero 3585 dell'inps?"}'
+# Expected: Returns document about Messaggio 3585
+```
+
+**Impact**: INPS and compound reference documents now searchable via natural language queries
+
+**Related Decisions**: [ADR-002](#adr-002-hybrid-search-strategy) (Hybrid Search)
+
+---
+
 ## Superseded ADRs
 
 _(None yet)_
@@ -1021,6 +1151,7 @@ Why this decision? What alternatives did we consider?
 | 1.0 | 2025-11-17 | Initial ADR collection | Architect Subagent (setup) |
 | 1.1 | 2025-11-17 | Added ADR-011: Branch Management for Parallel Subagent Work | Architect Subagent (@Egidio) |
 | 1.2 | 2025-11-19 | Added ADR-012: Remove Step 131 Vector Reindexing (Pinecone → pgvector) | Architect Subagent (@Egidio) |
+| 1.3 | 2025-12-05 | Added ADR-014: Multi-Pattern Document Title Matching | Backend Expert (@Ezio) |
 
 ---
 

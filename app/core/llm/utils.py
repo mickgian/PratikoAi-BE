@@ -3,6 +3,7 @@
 from typing import (
     Any,
     Union,
+    cast,
 )
 
 from app.schemas.chat import Message
@@ -18,8 +19,8 @@ def get_message_role(msg: dict | Message | Any) -> str:
         The role string ('user', 'assistant', 'system')
     """
     if isinstance(msg, dict):
-        return msg.get("role", "")
-    return getattr(msg, "role", "")
+        return cast(str, msg.get("role", ""))
+    return cast(str, getattr(msg, "role", ""))
 
 
 def get_message_content(msg: dict | Message | Any) -> str:
@@ -32,5 +33,5 @@ def get_message_content(msg: dict | Message | Any) -> str:
         The content string
     """
     if isinstance(msg, dict):
-        return msg.get("content", "")
-    return getattr(msg, "content", "")
+        return cast(str, msg.get("content", ""))
+    return cast(str, getattr(msg, "content", ""))

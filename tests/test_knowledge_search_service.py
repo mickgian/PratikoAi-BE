@@ -541,3 +541,85 @@ async def test_various_query_types(test_queries):
 
             # Should handle all query types without error
             assert isinstance(results, list)
+
+
+class TestGenerateTitlePatterns:
+    """Test suite for _generate_title_patterns method.
+
+    Covers DEV-BE-69: Multi-pattern document title matching for Italian documents.
+    """
+
+    @pytest.fixture
+    def mock_db_session(self):
+        """Create mock database session."""
+        return AsyncMock()
+
+    @pytest.fixture
+    def search_service(self, mock_db_session):
+        """Create search service instance."""
+        return KnowledgeSearchService(db_session=mock_db_session)
+
+    def test_basic_pattern_generation(self, search_service):
+        """Test basic pattern generation for risoluzione."""
+        patterns = search_service._generate_title_patterns("risoluzione", "64")
+
+        assert len(patterns) >= 3
+        assert "risoluzione n. 64" in patterns
+        assert "risoluzione numero 64" in patterns
+        assert "n. 64" in patterns
+        assert "numero 64" in patterns
+
+    def test_pattern_generation_no_type(self, search_service):
+        """Test pattern generation without document type."""
+        patterns = search_service._generate_title_patterns(None, "3585")
+
+        # Should still have generic patterns
+        assert "n. 3585" in patterns
+        assert "n.3585" in patterns
+        assert "numero 3585" in patterns
+        # Should NOT have type-specific patterns
+        assert not any("risoluzione" in p for p in patterns)
+
+    def test_compound_reference_patterns(self, search_service):
+        """Test pattern generation with year (compound reference)."""
+        patterns = search_service._generate_title_patterns("DPR", "1124", "1965")
+
+        # Should have compound patterns
+        assert any("1124/1965" in p for p in patterns)
+        assert "DPR n. 1124/1965" in patterns or "DPR 1124/1965" in patterns
+
+        # Should also have base number patterns
+        assert "DPR n. 1124" in patterns or "DPR numero 1124" in patterns
+
+    def test_inps_messaggio_patterns(self, search_service):
+        """Test pattern generation for INPS messaggio."""
+        patterns = search_service._generate_title_patterns("messaggio", "3585")
+
+        assert "messaggio n. 3585" in patterns
+        assert "messaggio numero 3585" in patterns
+        # Generic patterns as fallback
+        assert "n. 3585" in patterns
+        assert "numero 3585" in patterns
+
+    def test_pattern_limit_enforced(self, search_service):
+        """Test that pattern limit is enforced (max 7)."""
+        patterns = search_service._generate_title_patterns("messaggio", "3585", "2025")
+
+        assert len(patterns) <= 7
+
+    def test_no_space_variant_included(self, search_service):
+        """Test that 'n.X' variant (no space) is included."""
+        patterns = search_service._generate_title_patterns("risoluzione", "64")
+
+        assert "n.64" in patterns
+
+    def test_pattern_order_specificity(self, search_service):
+        """Test that more specific patterns come first."""
+        patterns = search_service._generate_title_patterns("DPR", "1124", "1965")
+
+        # Type + number + year patterns should come before generic patterns
+        type_year_idx = next((i for i, p in enumerate(patterns) if "DPR" in p and "1965" in p), 99)
+        generic_idx = next((i for i, p in enumerate(patterns) if p == "n. 1124"), 99)
+
+        if type_year_idx < 99 and generic_idx < 99:
+            assert type_year_idx < generic_idx, "Specific patterns should come before generic ones"

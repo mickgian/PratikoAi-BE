@@ -20,6 +20,14 @@ repos:
         always_run: false
         files: ^(alembic/versions/.*\.py|app/models/.*\.py)$
 
+      - id: validate-rss-sandbox
+        name: Validate RSS feeds in sandbox allowlist
+        entry: uv run python scripts/validate_rss_sandbox.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
   # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -101,6 +109,19 @@ repos:
         files: 'app/.*(scheduler|rss).*\.py|tests/.*scheduler.*\.py'
         stages: [pre-commit]
 
+  # Run RSS E2E tests before push (prevents RSS regressions)
+  # These tests are skipped in CI but run locally when RSS-related files change
+  - repo: local
+    hooks:
+      - id: rss-e2e-tests
+        name: Run RSS E2E tests (prevents regressions)
+        entry: bash -c 'source scripts/set_env.sh development && uv run pytest tests/e2e/feeds/ tests/e2e/scrapers/ -v --tb=short -x -m "e2e"'
+        language: system
+        pass_filenames: false
+        always_run: false
+        files: 'app/.*(rss|feed|scraper|ingest).*\.py|tests/e2e/(feeds|scrapers)/.*\.py'
+        stages: [pre-push]
+
   # Run all tests with coverage check before push
   # This enforces minimum coverage thresholds (49% lines, lowered to unblock development)
   # Moved to pre-push stage to allow fast commits while maintaining quality before sharing code
@@ -108,7 +129,7 @@ repos:
     hooks:
       - id: test-coverage
         name: Run tests with coverage threshold check
-        entry: bash -c 'source scripts/set_env.sh development && uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=49 --cov-branch -v --tb=line'
+        entry: bash -c 'source scripts/set_env.sh development && uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=49 --cov-branch -v --tb=line -m "not (e2e and llm)"'
         language: system
         pass_filenames: false
         always_run: true

@@ -617,7 +617,7 @@ Found **11** tables:
   },
   {
     "id": 4,
-    "feed_url": "https://www.gazzettaufficiale.it/rss/serie_generale.xml",
+    "feed_url": "https://www.gazzettaufficiale.it/rss/SG",
     "source": "gazzetta_ufficiale",
     "feed_type": "serie_generale",
     "status": "pending",
@@ -628,7 +628,7 @@ Found **11** tables:
     "errors": 0,
     "last_error": null,
     "last_error_at": null,
-    "check_interval_minutes": 240,
+    "check_interval_minutes": 1440,
     "enabled": true,
     "created_at": "2025-10-31 19:02:21.691341+01:00",
     "updated_at": "2025-10-31 19:02:21.691341+01:00"

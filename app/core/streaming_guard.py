@@ -15,7 +15,7 @@ class SinglePassStream:
     Raises RuntimeError if iteration is attempted twice.
     """
 
-    def __init__(self, agen: AsyncGenerator[T]):
+    def __init__(self, agen: AsyncGenerator[T, None]):
         self._agen = agen
         self._used = False
 

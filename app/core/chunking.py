@@ -57,7 +57,7 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 4
 
 
-def chunk_text(text: str, max_tokens: int = None, overlap_tokens: int = None) -> list[TextChunk]:
+def chunk_text(text: str, max_tokens: int | None = None, overlap_tokens: int | None = None) -> list[TextChunk]:
     """Chunk text into smaller pieces with overlap.
 
     Args:
@@ -86,8 +86,8 @@ def chunk_text(text: str, max_tokens: int = None, overlap_tokens: int = None) ->
     # Split text into sentences (Italian-aware)
     sentences = split_into_sentences(text)
 
-    chunks = []
-    current_chunk = []
+    chunks: list[TextChunk] = []
+    current_chunk: list[str] = []
     current_length = 0
     chunk_start = 0
 
@@ -110,7 +110,7 @@ def chunk_text(text: str, max_tokens: int = None, overlap_tokens: int = None) ->
 
             # Start new chunk with overlap
             # Keep last few sentences for context
-            overlap_sentences = []
+            overlap_sentences: list[str] = []
             overlap_length = 0
             for s in reversed(current_chunk):
                 if overlap_length + len(s) <= overlap_chars:
@@ -201,7 +201,11 @@ def split_into_sentences(text: str) -> list[str]:
 
 
 def chunk_document(
-    content: str, title: str = "", max_tokens: int = None, overlap_tokens: int = None, ocr_used: bool = False
+    content: str,
+    title: str = "",
+    max_tokens: int | None = None,
+    overlap_tokens: int | None = None,
+    ocr_used: bool = False,
 ) -> list[dict[str, Any]]:
     """Chunk a document and prepare for database insertion with quality gates.
 

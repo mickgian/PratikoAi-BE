@@ -26,7 +26,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, TypeVar, Union
+from typing import Any, Dict, List, Optional, TypeVar, Union, cast
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -229,7 +229,7 @@ class RetryHandler:
             MaxRetriesExceededError: When all retry attempts fail
         """
         request_id = self._generate_request_id()
-        last_exception = None
+        last_exception: Exception | None = None
         start_time = time.time()
 
         logger.debug(f"[{request_id}] Starting retry execution, max_attempts={self.config.max_attempts}")
@@ -244,7 +244,7 @@ class RetryHandler:
                 logger.debug(f"[{request_id}] Attempt {attempt + 1}/{self.config.max_attempts}")
 
                 # Execute with timeout
-                result = await asyncio.wait_for(func(*args, **kwargs), timeout=self.config.timeout)
+                result: T = await asyncio.wait_for(func(*args, **kwargs), timeout=self.config.timeout)  # type: ignore[arg-type]
 
                 # Success - record and return
                 await self.circuit_breaker.record_success()
@@ -302,7 +302,7 @@ class RetryHandler:
         """Check if HTTP error is retryable."""
         status = error.response.status_code
         # Retry on 429 (rate limit) and 5xx (server errors)
-        return status == 429 or status >= 500
+        return cast(bool, status == 429 or status >= 500)
 
     def _is_retryable_error(self, error: Exception) -> bool:
         """Check if error is generally retryable."""
@@ -463,7 +463,8 @@ class CostAwareRetryHandler(RetryHandler):
 
             # Try once without retries
             try:
-                return await asyncio.wait_for(func(*args, **kwargs), timeout=self.config.timeout)
+                single_result: T = await asyncio.wait_for(func(*args, **kwargs), timeout=self.config.timeout)  # type: ignore[arg-type]
+                return single_result
             except Exception:
                 raise CostBudgetExceededError(user_id, current_costs, self.config.max_retry_cost)
 
@@ -506,7 +507,7 @@ class ErrorCategorizer:
 
         if isinstance(error, httpx.HTTPStatusError):
             status = error.response.status_code
-            return status == 429 or status >= 500
+            return cast(bool, status == 429 or status >= 500)
 
         error_str = str(error).lower()
 
@@ -650,7 +651,8 @@ class RetryMetrics:
             ]
 
             success_count = await self._get_redis_metric(success_key, hours)
-            failure_count = sum(await self._get_redis_metric(key, hours) for key in failure_keys)
+            failure_counts = [await self._get_redis_metric(key, hours) for key in failure_keys]
+            failure_count = sum(failure_counts)
 
             total_requests = success_count + failure_count
             if total_requests == 0:
@@ -672,8 +674,8 @@ class RetryMetrics:
 
             stats = await self.redis.hgetall(key)
 
-            retry_reasons = {}
-            total_retries = 0
+            retry_reasons: dict[str, int] = {}
+            total_retries: int = 0
 
             for field, count in stats.items():
                 field_str = field.decode() if isinstance(field, bytes) else field

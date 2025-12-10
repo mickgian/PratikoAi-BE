@@ -109,24 +109,48 @@ Successfully activated the RSS feed collection system for PratikoAI's Italian re
 - ✅ **Search Speed**: Italian FTS performs fast queries with ranking
 - ✅ **Resilience**: Error handling and partial failure recovery implemented
 
-## Monitored Italian Sources
+## Monitored Italian Sources (16 RSS Feeds + 2 Scrapers)
 
-1. **Agenzia delle Entrate**
-   - Circolari: `https://www.agenziaentrate.gov.it/portale/rss/circolari.xml`
-   - Risoluzioni: `https://www.agenziaentrate.gov.it/portale/rss/risoluzioni.xml`
-   - Provvedimenti: `https://www.agenziaentrate.gov.it/portale/rss/provvedimenti.xml`
+### RSS Feeds (16 total, 4-hour check interval unless specified)
 
-2. **INPS**
-   - Circolari: `https://www.inps.it/rss/circolari.xml`
-   - Messaggi: `https://www.inps.it/rss/messaggi.xml`
+1. **Agenzia delle Entrate** (2 feeds - legacy)
+   - Normativa e prassi: `https://www.agenziaentrate.gov.it/portale/c/portal/rss/entrate?idrss=0753fcb1-1a42-4f8c-f40d-02793c6aefb4`
+   - News: `https://www.agenziaentrate.gov.it/portale/c/portal/rss/entrate?idrss=79b071d0-a537-4a3d-86cc-7a7d5a36f2a9`
 
-3. **Gazzetta Ufficiale**
-   - Serie Generale: `https://www.gazzettaufficiale.it/rss/serie_generale.xml`
-   - Decreti: `https://www.gazzettaufficiale.it/rss/decreti.xml`
+2. **INPS** (5 feeds)
+   - News: `https://www.inps.it/it/it.rss.news.xml`
+   - Comunicati stampa: `https://www.inps.it/it/it.rss.comunicati.xml`
+   - Circolari: `https://www.inps.it/it/it.rss.circolari.xml`
+   - Messaggi: `https://www.inps.it/it/it.rss.messaggi.xml`
+   - Sentenze: `https://www.inps.it/it/it.rss.sentenze.xml`
 
-4. **Governo Italiano**
-   - Decreti-legge: `https://www.governo.it/rss/decreti-legge.xml`
-   - DPCM: `https://www.governo.it/rss/dpcm.xml`
+3. **Ministero del Lavoro** (1 feed)
+   - News: `https://www.lavoro.gov.it/_layouts/15/Lavoro.Web/AppPages/RSS`
+
+4. **MEF - Ministero dell'Economia e delle Finanze** (2 feeds)
+   - Documenti: `https://www.mef.gov.it/rss/rss.asp?t=5`
+   - Aggiornamenti: `https://www.finanze.gov.it/it/rss.xml`
+
+5. **INAIL** (2 feeds)
+   - Notizie: `https://www.inail.it/portale/it.rss.news.xml`
+   - Eventi: `https://www.inail.it/portale/it.rss.eventi.xml`
+
+6. **Gazzetta Ufficiale** (4 feeds - 24h check interval, daily publication)
+   - Serie Generale: `https://www.gazzettaufficiale.it/rss/SG`
+   - Corte Costituzionale: `https://www.gazzettaufficiale.it/rss/S1`
+   - Unione Europea: `https://www.gazzettaufficiale.it/rss/S2`
+   - Regioni: `https://www.gazzettaufficiale.it/rss/S3`
+
+### Web Scrapers (2 total, daily schedule)
+
+1. **Gazzetta Ufficiale Scraper** (partial - complements RSS)
+   - Target: Tax/finance laws, labor/employment laws, official acts
+   - Schedule: Daily (every 24 hours)
+
+2. **Corte di Cassazione Scraper**
+   - Target: Tax section (Tributaria) + Labor section (Lavoro) rulings
+   - Schedule: Daily (every 24 hours)
+   - Note: No RSS available, requires scraping
 
 ## Testing Files Created
 

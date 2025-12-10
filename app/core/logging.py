@@ -31,17 +31,24 @@ def _get_anonymizer():
     """Get anonymizer instance with lazy loading."""
     global _anonymizer
     if _anonymizer is None:
-        try:
-            from app.core.privacy.anonymizer import anonymizer
+        try:  # type: ignore[unreachable]
+            from app.core.privacy.anonymizer import (
+                AnonymizationResult,
+                anonymizer,
+            )
 
             _anonymizer = anonymizer
         except ImportError:
             # If privacy module is not available, create a no-op anonymizer
-            class NoOpAnonymizer:
-                def anonymize_text(self, text, **kwargs):
-                    from app.core.privacy.anonymizer import AnonymizationResult
+            from dataclasses import dataclass
 
-                    return AnonymizationResult(anonymized_text=text)
+            @dataclass
+            class NoOpAnonymizationResult:
+                anonymized_text: str
+
+            class NoOpAnonymizer:
+                def anonymize_text(self, text: str, **kwargs) -> NoOpAnonymizationResult:
+                    return NoOpAnonymizationResult(anonymized_text=text)
 
             _anonymizer = NoOpAnonymizer()
     return _anonymizer

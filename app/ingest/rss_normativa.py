@@ -4,6 +4,7 @@ Fetches documents from the Normativa/Prassi RSS feed, processes them,
 chunks them, generates embeddings, and stores in knowledge_items + knowledge_chunks.
 """
 
+import ssl
 import time
 from datetime import (
     UTC,
@@ -16,6 +17,7 @@ from typing import (
     List,
     Optional,
 )
+from urllib.parse import urlparse
 
 import feedparser
 import httpx
@@ -27,8 +29,63 @@ from app.core.document_ingestion import (
     ingest_document_with_chunks,
 )
 
+# Domains that require relaxed SSL settings (older TLS ciphers)
+RELAXED_SSL_DOMAINS = {"www.inail.it", "inail.it"}
+
+
+def _get_ssl_context(url: str) -> ssl.SSLContext | bool:
+    """Get appropriate SSL context for a URL.
+
+    Some government sites (e.g., INAIL) use older TLS configurations
+    that require relaxed cipher settings.
+
+    Args:
+        url: The URL to fetch
+
+    Returns:
+        SSLContext for relaxed domains, True for standard SSL verification
+    """
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+
+    if hostname in RELAXED_SSL_DOMAINS:
+        # Create SSL context with relaxed security level for older servers
+        ssl_context = ssl.create_default_context()
+        ssl_context.set_ciphers("DEFAULT:@SECLEVEL=1")
+        return ssl_context
+
+    return True  # Use default SSL verification
+
+
 # Target RSS feed
 FEED_URL = "https://www.agenziaentrate.gov.it/portale/c/portal/rss/entrate?idrss=0753fcb1-1a42-4f8c-f40d-02793c6aefb4"
+
+
+def _determine_feed_source(feed_url: str) -> tuple[str, str]:
+    """Determine source name and subcategory from feed URL.
+
+    Args:
+        feed_url: RSS feed URL
+
+    Returns:
+        Tuple of (source_name, subcategory)
+    """
+    url_lower = feed_url.lower()
+
+    if "inps.it" in url_lower:
+        return "inps", "inps"
+    elif "inail.it" in url_lower:
+        return "inail", "inail"
+    elif "agenziaentrate" in url_lower:
+        return "agenzia_entrate", "agenzia_entrate"
+    elif "lavoro.gov.it" in url_lower:
+        return "ministero_lavoro", "ministero_lavoro"
+    elif "mef.gov.it" in url_lower or "finanze.gov.it" in url_lower:
+        return "ministero_economia", "ministero_economia"
+    elif "gazzettaufficiale.it" in url_lower:
+        return "gazzetta_ufficiale", "gazzetta_ufficiale"
+    else:
+        return "generic", "other"
 
 
 async def fetch_rss_feed(feed_url: str = FEED_URL) -> list[dict[str, Any]]:
@@ -38,10 +95,13 @@ async def fetch_rss_feed(feed_url: str = FEED_URL) -> list[dict[str, Any]]:
         feed_url: RSS feed URL
 
     Returns:
-        List of feed items with title, link, published, summary
+        List of feed items with title, link, published, summary, attachment_url.
+        For items without a link, attachment_url is used as fallback.
     """
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # Get appropriate SSL context (relaxed for some government sites)
+        ssl_context = _get_ssl_context(feed_url)
+        async with httpx.AsyncClient(timeout=30.0, verify=ssl_context) as client:
             response = await client.get(feed_url)
             response.raise_for_status()
 
@@ -49,13 +109,29 @@ async def fetch_rss_feed(feed_url: str = FEED_URL) -> list[dict[str, Any]]:
 
         items = []
         for entry in feed.entries:
+            # Extract attachment URL (INPS uses attachment1, attachment2, etc.)
+            attachment_url = None
+            for attr in ["attachment1", "attachment", "enclosure"]:
+                if hasattr(entry, attr):
+                    val = getattr(entry, attr)
+                    if isinstance(val, str) and val.startswith("http"):
+                        attachment_url = val
+                        break
+                    elif hasattr(val, "href"):  # Standard enclosure format
+                        attachment_url = val.href
+                        break
+
+            # Use attachment URL as fallback when link is missing
+            url = entry.get("link", "") or attachment_url
+
             items.append(
                 {
                     "title": entry.get("title", ""),
-                    "link": entry.get("link", ""),
+                    "link": url,
                     "published": entry.get("published", ""),
                     "published_parsed": entry.get("published_parsed"),  # Structured time tuple
                     "summary": entry.get("summary", ""),
+                    "attachment_url": attachment_url,  # Keep original for reference
                 }
             )
 
@@ -94,14 +170,9 @@ async def run_rss_ingestion(
     # Use provided feed_url or default
     url = feed_url or FEED_URL
 
-    # Determine source identifier based on feed_type
-    if feed_type == "news":
-        source_identifier = "agenzia_entrate_news"
-    elif feed_type == "normativa_prassi":
-        source_identifier = "agenzia_entrate_normativa"
-    else:
-        # Fallback for unspecified feed types
-        source_identifier = "agenzia_entrate_generic"
+    # Determine source and subcategory from feed URL
+    source_name, subcategory = _determine_feed_source(url)
+    source_identifier = f"{source_name}_{feed_type or 'generic'}"
 
     print(f"📥 Fetching RSS feed: {url}")
     feed_items = await fetch_rss_feed(url)
@@ -115,7 +186,7 @@ async def run_rss_ingestion(
     if max_items:
         feed_items = feed_items[:max_items]
 
-    stats = {
+    stats: dict[str, Any] = {
         "total_items": len(feed_items),
         "new_documents": 0,
         "skipped_existing": 0,
@@ -140,6 +211,18 @@ async def run_rss_ingestion(
             stats["failed"] += 1
             continue
 
+        # Fallback to RSS summary/description if page content is too short
+        # (handles JavaScript-rendered sites like INPS that need a browser)
+        content = extraction_result["content"]
+        # Check both "summary" (feedparser) and "description" (rss_feed_monitor)
+        rss_summary = item.get("summary", "") or item.get("description", "")
+        MIN_CONTENT_LENGTH = 500  # Minimum expected for real document content
+
+        if len(content.strip()) < MIN_CONTENT_LENGTH and len(rss_summary.strip()) > 50:
+            print(f"⚠️  Page content too short ({len(content)} chars), using RSS summary")
+            extraction_result["content"] = rss_summary
+            extraction_result["extraction_method"] = "rss_summary_fallback"
+
         # Parse RSS publication date (more reliable than content extraction)
         published_date = None
         if item.get("published_parsed"):
@@ -163,7 +246,7 @@ async def run_rss_ingestion(
             published_date=published_date,  # Use RSS pubDate
             source=source_identifier,  # Use feed_type-based source
             category="regulatory_documents",
-            subcategory="agenzia_entrate",
+            subcategory=subcategory,  # Dynamic based on feed source
         )
 
         if result:

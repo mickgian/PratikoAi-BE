@@ -989,6 +989,94 @@ Detailed comparison available in: **REDDIT_ARTICLE_COMPARISON_ANALYSIS.md** (com
 
 ---
 
+## Git Workflow for Tasks (v1.5)
+
+### Branch Strategy
+- **Branch from:** `develop` (always, never from `master`)
+- **Branch naming:** `TASK-ID Task Title` (e.g., `DEV-BE-69 Expand RSS Feed Sources`)
+- **PR target:** `develop` (never directly to `master`)
+- **Merge strategy:** Squash and merge preferred
+
+---
+
+## Code Coverage Requirements for New Tasks (v1.5)
+
+### Coverage Thresholds
+- **Base threshold:** >=49% overall (pre-commit enforcement for entire codebase)
+- **New code threshold:** >=70% for all new files/features
+- **Rationale:** Higher standard for new code ensures quality; legacy code can be improved incrementally
+
+### Enforcement
+- New files must have dedicated test files
+- Coverage measured per-file for new code
+- Pre-commit hook checks overall threshold; PR review checks new code threshold
+
+---
+
+## E2E Testing Requirement (v1.5)
+
+### When E2E Tests Are Required
+- All tasks involving data pipelines (RSS, scrapers, ingestion)
+- Tasks that modify database schemas with data flow
+- Integration with external services (APIs, web scraping)
+
+### E2E Test Standards
+- Validate full flow from data source to database storage
+- Include realistic test data
+- Run E2E tests in CI before merge
+- Document E2E test scenarios in test file docstrings
+
+---
+
+## Architectural Review After Every Phase (v1.5)
+
+### Quality Gate
+- @egidio (Architect) reviews code after EVERY implementation phase
+- Phase cannot proceed until @egidio approves
+- This is mandatory, not optional
+
+### Review Checklist
+- Architectural compliance with existing patterns
+- Codebase conventions followed
+- No unnecessary technical debt introduced
+- No over-engineering
+- Security considerations addressed
+
+---
+
+## Temporary Files for Agent Collaboration (v1.4)
+
+### Principle
+Agents may create temporary working files for detailed collaboration (code snippets, SQL statements, technical analysis) during task implementation. However, task descriptions in ARCHITECTURE_ROADMAP.md must remain concise and code-free.
+
+### Guidelines
+
+**Task Descriptions (ARCHITECTURE_ROADMAP.md):**
+- Express requirements in words, not code
+- Specify which agent (@primo, @ezio, @clelia, etc.) handles each phase
+- Keep acceptance criteria measurable but concise
+- No SQL statements, no code blocks, no implementation details
+
+**Temporary Working Files:**
+- Location: `plans/TASK-ID-*.md` (e.g., `plans/DEV-BE-69-database-schema.md`)
+- Purpose: Detailed code, SQL, technical specs for agent collaboration
+- Example: @primo writes SQL statements, @ezio references them during implementation
+- **MUST be deleted after task completion**
+
+**Lifecycle:**
+1. Agent creates temp file when detailed collaboration needed
+2. Other agents reference file during implementation
+3. Implementation complete → delete temp files
+4. Source of truth: ARCHITECTURE_ROADMAP.md + git history only
+
+**Rationale:**
+- Normal companies don't put code in task descriptions
+- Task descriptions are for planning, not implementation
+- Temp files enable rich collaboration without polluting documentation
+- Clean repo after completion (no stale planning artifacts)
+
+---
+
 ## Next Actions
 
 1. **Review this proposal** - Stakeholder approval of v1.3 enhancements
@@ -1012,7 +1100,7 @@ Detailed comparison available in: **REDDIT_ARTICLE_COMPARISON_ANALYSIS.md** (com
 
 ---
 
-**Document Status:** DRAFT v1.3 - Integrated Reddit Article Enhancements
+**Document Status:** DRAFT v1.5 - Added Quality & Git Workflow Policies
 **Next Step:** Implement Phase 1A (context.json, hooks, pytest-xdist) - 6 hours
 **Estimated Implementation:** Week 1 Phase 1A (6 hours) + 3 weeks for full workflow (6-8 hours/week)
 **Changelog:**
@@ -1025,3 +1113,13 @@ Detailed comparison available in: **REDDIT_ARTICLE_COMPARISON_ANALYSIS.md** (com
   - Test Parallelization (pytest-xdist) for 50% faster tests
   - Updated Implementation Timeline with Phase 1A quick wins
   - Added comprehensive Reddit Article Integration Summary
+- v1.4 (2025-12-04): Added Temporary Files for Agent Collaboration policy:
+  - Task descriptions must be concise (no code in ARCHITECTURE_ROADMAP.md)
+  - Agents may create temp files (`plans/TASK-ID-*.md`) for detailed collaboration
+  - Temp files MUST be deleted after task completion
+  - Source of truth: ARCHITECTURE_ROADMAP.md + git history only
+- v1.5 (2025-12-04): Added Quality & Git Workflow Policies:
+  - Git workflow: Branch from `develop`, naming convention `TASK-ID Task Title`
+  - Code coverage: 70% for new code (higher than 49% base threshold)
+  - E2E testing: Required for data pipelines, scrapers, external integrations
+  - Architectural review: @egidio reviews after EVERY phase (mandatory quality gate)

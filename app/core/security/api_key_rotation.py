@@ -3,7 +3,7 @@
 import hashlib
 import secrets
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import and_, select
 
@@ -105,7 +105,7 @@ class APIKeyRotationManager:
             logger.error("api_key_storage_failed", user_id=user_id, error=str(e), exc_info=True)
             return False
 
-    async def rotate_user_keys(self, user_id: str) -> dict[str, str]:
+    async def rotate_user_keys(self, user_id: str) -> dict[str, str | int]:
         """Rotate all API keys for a user.
 
         Args:
@@ -147,7 +147,7 @@ class APIKeyRotationManager:
             logger.error("key_rotation_failed", user_id=user_id, error=str(e), exc_info=True)
             raise ValueError(f"Key rotation failed: {str(e)}")
 
-    async def validate_api_key(self, api_key: str) -> dict[str, any] | None:
+    async def validate_api_key(self, api_key: str) -> dict[str, Any] | None:
         """Validate API key and return user information.
 
         Args:
@@ -237,7 +237,7 @@ class APIKeyRotationManager:
             logger.error("key_cleanup_failed", error=str(e), exc_info=True)
             return 0
 
-    async def get_key_statistics(self, user_id: str | None = None) -> dict[str, any]:
+    async def get_key_statistics(self, user_id: str | None = None) -> dict[str, Any]:
         """Get API key usage statistics.
 
         Args:

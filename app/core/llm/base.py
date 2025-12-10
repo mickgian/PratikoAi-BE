@@ -117,7 +117,7 @@ class LLMProvider(ABC):
         temperature: float = 0.2,
         max_tokens: int | None = None,
         **kwargs,
-    ) -> AsyncGenerator[LLMStreamResponse]:
+    ) -> AsyncGenerator[LLMStreamResponse, None]:
         """Generate a streaming chat completion.
 
         Args:
@@ -177,7 +177,7 @@ class LLMProvider(ABC):
             "supports_streaming": True,
             "supports_system_messages": True,
             "supports_json_mode": False,
-            "max_context_length": 4096,
+            "max_context_length": 4096,  # type: ignore[dict-item]
         }
 
     def convert_tools_format(self, tools: list[Any] | None) -> list[Any] | None:

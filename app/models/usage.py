@@ -32,7 +32,7 @@ class CostCategory(str, Enum):
     THIRD_PARTY = "third_party"
 
 
-class UsageEvent(SQLModel, table=True):
+class UsageEvent(SQLModel, table=True):  # type: ignore[call-arg]
     """Individual usage event record."""
 
     __tablename__ = "usage_events"
@@ -80,7 +80,7 @@ class UsageEvent(SQLModel, table=True):
     pii_types: str | None = Field(default=None, description="JSON array of PII types found")
 
 
-class UserUsageSummary(SQLModel, table=True):
+class UserUsageSummary(SQLModel, table=True):  # type: ignore[call-arg]
     """Daily usage summary per user for efficient querying."""
 
     __tablename__ = "user_usage_summaries"
@@ -130,7 +130,7 @@ class UserUsageSummary(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("user_id", "date", name="unique_user_date_summary"),)
 
 
-class CostAlert(SQLModel, table=True):
+class CostAlert(SQLModel, table=True):  # type: ignore[call-arg]
     """Cost alert tracking for budget management."""
 
     __tablename__ = "cost_alerts"
@@ -162,7 +162,7 @@ class CostAlert(SQLModel, table=True):
     acknowledged_at: datetime | None = Field(default=None, description="When alert was acknowledged")
 
 
-class UsageQuota(SQLModel, table=True):
+class UsageQuota(SQLModel, table=True):  # type: ignore[call-arg]
     """User usage quotas and limits."""
 
     __tablename__ = "usage_quotas"
@@ -202,7 +202,7 @@ class UsageQuota(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-class CostOptimizationSuggestion(SQLModel, table=True):
+class CostOptimizationSuggestion(SQLModel, table=True):  # type: ignore[call-arg]
     """AI-generated cost optimization suggestions."""
 
     __tablename__ = "cost_optimization_suggestions"

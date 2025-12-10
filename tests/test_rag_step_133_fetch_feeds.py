@@ -411,7 +411,8 @@ class TestStep133FetchFeedsIntegration:
             "rss_feeds": [
                 {
                     "feed_name": "gazzetta_ufficiale_serie_generale",
-                    "url": "https://www.gazzettaufficiale.it/rss/serie_generale.xml",
+                    # Note: URL changed from /rss/serie_generale.xml to /rss/SG in Dec 2025
+                    "url": "https://www.gazzettaufficiale.it/rss/SG",
                     "user_requested": True,
                     "processing_options": {
                         "include_historical": True,

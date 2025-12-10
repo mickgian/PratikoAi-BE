@@ -7,6 +7,7 @@ import os
 from typing import (
     List,
     Optional,
+    cast,
 )
 
 import numpy as np
@@ -41,7 +42,7 @@ async def generate_embedding(text: str) -> list[float] | None:
 
         response = await client.embeddings.create(model=EMBED_MODEL, input=text)
 
-        embedding = response.data[0].embedding
+        embedding = cast(list[float], response.data[0].embedding)
         return embedding
 
     except Exception as e:

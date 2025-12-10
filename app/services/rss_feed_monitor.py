@@ -146,18 +146,38 @@ class RSSFeedMonitor:
             feed = feedparser.parse(feed_data)
             results = []
 
+            # Determine source_type from feed URL
+            source_type = self._determine_inps_source_type(feed_url)
+
             for entry in feed.entries:
                 published_date = self._parse_feed_date(getattr(entry, "published_parsed", None))
 
+                # Extract attachment URL (INPS uses attachment1, attachment2, etc.)
+                attachment_url = None
+                for attr in ["attachment1", "attachment"]:
+                    if hasattr(entry, attr):
+                        val = getattr(entry, attr)
+                        if isinstance(val, str) and val.startswith("http"):
+                            attachment_url = val
+                            break
+
+                # Use attachment URL as fallback when link is missing
+                url = getattr(entry, "link", None) or attachment_url
+
+                if not url:
+                    logger.warning("rss_item_no_url", title=entry.title, feed_url=feed_url)
+                    continue
+
                 item = {
                     "title": entry.title,
-                    "url": entry.link,
+                    "url": url,
                     "description": getattr(entry, "description", ""),
                     "published_date": published_date,
                     "source": "inps",
-                    "source_type": "circolari",  # Most INPS documents are circolari
-                    "guid": getattr(entry, "guid", entry.link),
+                    "source_type": source_type,
+                    "guid": getattr(entry, "guid", url),
                     "authority": "INPS",
+                    "attachment_url": attachment_url,
                 }
 
                 # Extract document number
@@ -174,6 +194,20 @@ class RSSFeedMonitor:
         except Exception as e:
             logger.error("inps_feed_parse_failed", feed_url=feed_url, error=str(e), exc_info=True)
             return []
+
+    def _determine_inps_source_type(self, feed_url: str) -> str:
+        """Determine INPS source type from feed URL."""
+        if "comunicati" in feed_url:
+            return "comunicati"
+        elif "messaggi" in feed_url:
+            return "messaggi"
+        elif "circolari" in feed_url:
+            return "circolari"
+        elif "sentenze" in feed_url:
+            return "sentenze"
+        elif "news" in feed_url:
+            return "news"
+        return "circolari"  # Default fallback
 
     async def parse_gazzetta_ufficiale_feed(self, feed_url: str) -> list[dict[str, Any]]:
         """Parse Gazzetta Ufficiale RSS feed.

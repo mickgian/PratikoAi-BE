@@ -2431,7 +2431,7 @@ class LangGraphAgent:
 
     async def get_stream_response(
         self, messages: list[Message], session_id: str, user_id: str | None = None
-    ) -> AsyncGenerator[str]:
+    ) -> AsyncGenerator[str, None]:
         """Get a hybrid stream response using unified graph for pre-LLM steps.
 
         Phase 4 Implementation: Uses the unified graph to execute all steps (1-63)
@@ -3007,7 +3007,7 @@ class LangGraphAgent:
             self._current_session_id = None
             self._current_classification = None
 
-    async def _stream_with_direct_llm(self, messages: list[Message], session_id: str) -> AsyncGenerator[str]:
+    async def _stream_with_direct_llm(self, messages: list[Message], session_id: str) -> AsyncGenerator[str, None]:
         """Stream directly from LLM provider for simple queries (no tools).
 
         Args:
@@ -3073,7 +3073,7 @@ class LangGraphAgent:
             )
             raise
 
-    async def _stream_with_langgraph_workflow(self, messages: list[Message], session_id: str) -> AsyncGenerator[str]:
+    async def _stream_with_langgraph_workflow(self, messages: list[Message], session_id: str) -> AsyncGenerator[str, None]:
         """Stream using LangGraph workflow for complex queries (with tools).
 
         Args:

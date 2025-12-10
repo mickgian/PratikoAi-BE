@@ -48,7 +48,7 @@ class ScheduledTask:
     interval: ScheduleInterval
     function: Callable
     args: tuple = ()
-    kwargs: dict = None
+    kwargs: dict[Any, Any] | None = None
     enabled: bool = True
     run_immediately: bool = False  # Run task immediately on scheduler startup
     last_run: datetime | None = None
@@ -136,7 +136,7 @@ class SchedulerService:
                     if not task.enabled:
                         continue
 
-                    if current_time >= task.next_run:
+                    if task.next_run is not None and current_time >= task.next_run:
                         await self._execute_task(task)
 
                 # Sleep for 60 seconds before checking again
@@ -156,10 +156,11 @@ class SchedulerService:
             self.logger.info(f"Executing scheduled task: {task.name}")
 
             # Execute the task
+            kwargs = task.kwargs or {}
             if asyncio.iscoroutinefunction(task.function):
-                await task.function(*task.args, **task.kwargs)
+                await task.function(*task.args, **kwargs)
             else:
-                task.function(*task.args, **task.kwargs)
+                task.function(*task.args, **kwargs)
 
             # Update task timing
             task.last_run = datetime.now(UTC)
@@ -190,9 +191,8 @@ class SchedulerService:
             return base_time + timedelta(days=1)
         elif interval == ScheduleInterval.WEEKLY:
             return base_time + timedelta(weeks=1)
-        else:
-            # Default to daily
-            return base_time + timedelta(days=1)
+        # Default to daily
+        return base_time + timedelta(days=1)  # type: ignore[unreachable]
 
     def get_task_status(self) -> dict[str, dict[str, Any]]:
         """Get status of all scheduled tasks."""
@@ -336,7 +336,7 @@ async def collect_rss_feeds_task() -> None:
 
         async with async_session_maker() as session:
             # Query all enabled feeds
-            query = select(FeedStatus).where(FeedStatus.enabled is True)  # type: ignore[arg-type]
+            query = select(FeedStatus).where(FeedStatus.enabled is True)
             result = await session.execute(query)
             feeds = result.scalars().all()
 

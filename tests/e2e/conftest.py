@@ -28,7 +28,7 @@ from app.models.database import get_async_database_url
 
 
 @pytest_asyncio.fixture
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
+async def db_session() -> AsyncGenerator[AsyncSession]:
     """Create database session for E2E tests.
 
     Creates a fresh engine and session for each test to avoid
@@ -59,7 +59,12 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
 
     # Dispose of the engine after the test
-    await engine.dispose()
+    # Wrap in try/except to handle event loop closure during teardown
+    try:
+        await engine.dispose()
+    except RuntimeError as e:
+        if "Event loop is closed" not in str(e):
+            raise
 
 
 @pytest.fixture
@@ -244,7 +249,7 @@ def mock_llm_response():
 
 
 @pytest_asyncio.fixture
-async def db_session_committed() -> AsyncGenerator[AsyncSession, None]:
+async def db_session_committed() -> AsyncGenerator[AsyncSession]:
     """Create database session that COMMITS data for E2E tests.
 
     IMPORTANT: This fixture commits transactions, allowing the golden set
@@ -327,7 +332,13 @@ async def db_session_committed() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await cleanup_session.rollback()
 
-    await engine.dispose()
+    # Dispose of the engine after the test
+    # Wrap in try/except to handle event loop closure during teardown
+    try:
+        await engine.dispose()
+    except RuntimeError as e:
+        if "Event loop is closed" not in str(e):
+            raise
 
 
 @pytest_asyncio.fixture

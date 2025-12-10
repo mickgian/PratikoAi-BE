@@ -112,7 +112,7 @@ uv run mypy app/
 
 ---
 
-## Q1 2025 (January - March)
+## Q4 2024 (October - December)
 
 ### ✅ Completed Tasks
 
@@ -410,20 +410,16 @@ Systematically remove broken tests, measure baseline coverage, and generate comp
 
 </details>
 
----
-
-### 🟢 Completed Tasks
-
 <details>
 <summary>
 <h3>DEV-BE-72: Implement Expert Feedback System</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2 weeks (Actual: 1.5 weeks) | <strong>Dependencies:</strong> None | <strong>Status:</strong> 🟢 COMPLETE<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2 weeks (Actual: 1.5 weeks) | <strong>Dependencies:</strong> None | <strong>Status:</strong> ✅ COMPLETED<br>
 <strong>Completion Date:</strong> 2024-11-25<br>
 Simplified SUPER_USER-only expert feedback system with automatic task generation for improvement tracking.
 </summary>
 
 ### DEV-BE-72: Implement Expert Feedback System
-**Priority:** HIGH | **Effort:** 2 weeks (Actual: 1.5 weeks) | **Dependencies:** None | **Status:** 🟢 COMPLETE
+**Priority:** HIGH | **Effort:** 2 weeks (Actual: 1.5 weeks) | **Dependencies:** None | **Status:** ✅ COMPLETED
 **Completion Date:** 2024-11-25
 
 **Frontend Integration:**
@@ -503,6 +499,56 @@ The original plan included a 3-tier trust scoring system (0.7-0.79, 0.80-0.89, 0
 </details>
 
 ---
+
+<details>
+<summary>
+<h3>DEV-BE-69: Expand RSS Feed Sources</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5 weeks | <strong>Dependencies:</strong> DEV-BE-66 ✅ | <strong>Status:</strong> ✅ COMPLETED<br>
+<strong>Completion Date:</strong> 2024-12-10<br>
+Expanded knowledge base with 11 new RSS feeds (4-hour schedule) + 2 web scrapers (daily schedule) for comprehensive Italian regulatory coverage.
+</summary>
+
+### DEV-BE-69: Expand RSS Feed Sources
+**Priority:** HIGH | **Effort:** 1.5 weeks | **Dependencies:** DEV-BE-66 ✅ (RSS infrastructure complete) | **Status:** ✅ COMPLETED
+**Completion Date:** 2024-12-10
+
+**Git:** Branch from `develop` → `DEV-BE-69-Expand-RSS-Feed-Sources`
+
+**Problem:**
+Currently only 2 RSS feeds configured: Agenzia delle Entrate (Normativa e prassi, News). Missing coverage of INPS, Ministero del Lavoro, MEF, INAIL, Gazzetta Ufficiale, and Corte di Cassazione.
+
+**Solution:**
+Expanded knowledge base with 10 new RSS feeds (4-hour schedule) + 2 web scrapers (daily schedule).
+
+**Sources Added:**
+- **INPS** (5 feeds): News, Comunicati stampa, Circolari, Messaggi, Sentenze
+- **Ministero del Lavoro** (1 feed): RSS feed
+- **MEF** (2 feeds): Documenti, Aggiornamenti
+- **INAIL** (2 feeds): Notizie, Eventi
+- **Gazzetta Ufficiale** (4 feeds + scraper): Serie Generale, Corte Costituzionale, Unione Europea, Regioni
+- **Corte di Cassazione** (scraper): Tax section (Tributaria) + Labor section (Lavoro)
+
+**Key Implementations:**
+- Rate limiting with semaphore (max 5 concurrent feeds) + stagger delay (1-3s)
+- Content deduplication via SHA256 hashing
+- Gazzetta Ufficiale scraper with robots.txt compliance
+- Corte di Cassazione scraper extension
+
+**Acceptance Criteria (All Met):**
+- [x] 11 RSS feeds configured and ingesting (2 existing + 9 new, >0 docs per source)
+- [x] 2 scrapers operational (Gazzetta + Cassazione)
+- [x] Rate limiting active (max 5 concurrent, 1-3s delay)
+- [x] Deduplication working (no cross-source duplicates)
+- [x] Document quality maintained (junk rate <15%)
+- [x] Code coverage >=70% for new code
+- [x] E2E tests passing
+- [x] Security audit passed (@severino)
+
+</details>
+
+---
+
+## Q1 2025 (January - March)
 
 ### 📋 Planned Tasks
 

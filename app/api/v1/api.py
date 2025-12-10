@@ -36,6 +36,7 @@ from app.api.v1.privacy import router as privacy_router
 # from app.api.v1.faq import router as faq_router
 from app.api.v1.regional_taxes import router as regional_taxes_router
 from app.api.v1.regulatory import router as regulatory_router
+from app.api.v1.scrapers import router as scrapers_router
 from app.api.v1.success_criteria import router as success_criteria_router
 from app.core.logging import logger
 
@@ -58,6 +59,7 @@ api_router.include_router(expert_feedback_router)  # Includes /expert-feedback p
 api_router.include_router(monitoring_router, prefix="/monitoring", tags=["monitoring"])
 api_router.include_router(health_router, tags=["health"])
 api_router.include_router(regulatory_router, prefix="/regulatory", tags=["regulatory"])
+api_router.include_router(scrapers_router, prefix="/scrapers", tags=["scrapers"])
 # api_router.include_router(faq_router, tags=["faq"])
 api_router.include_router(regional_taxes_router, prefix="/taxes", tags=["regional-taxes"])
 api_router.include_router(documents_router, tags=["documents"])

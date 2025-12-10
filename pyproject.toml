@@ -44,6 +44,7 @@ dependencies = [
     "feedparser>=6.0.10",
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",
+    "trafilatura>=2.0.0",  # Automatic web content extraction
     "python-dateutil>=2.8.0",
     # Document processing dependencies
     "PyPDF2>=3.0.1",
@@ -82,7 +83,7 @@ test = ["httpx>=0.28.1", "pytest>=8.3.5", "pytest-cov>=6.0.0"]
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "strict"
-asyncio_default_fixture_loop_scope = "function"
+asyncio_default_fixture_loop_scope = "session"
 markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
 python_files = ["test_*.py", "*_test.py", "tests.py"]
 # Coverage enabled with thresholds (matches frontend jest.config.js)

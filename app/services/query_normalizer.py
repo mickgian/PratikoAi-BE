@@ -12,8 +12,10 @@ TDD GREEN Phase 2-1: Minimal implementation to pass unit tests
 
 import json
 from typing import (
+    Any,
     Dict,
     Optional,
+    cast,
 )
 
 from openai import AsyncOpenAI
@@ -34,20 +36,20 @@ class QueryNormalizer:
         self.config = get_settings()
         self.client = AsyncOpenAI(api_key=self.config.OPENAI_API_KEY)
 
-    async def normalize(self, query: str) -> dict[str, str] | None:
+    async def normalize(self, query: str) -> dict[str, str | None] | None:
         """Normalize query to extract document reference.
 
         Args:
             query: Italian natural language query
 
         Returns:
-            {"type": "risoluzione", "number": "64"} if document found
+            {"type": "risoluzione", "number": "64", "year": null} if document found
             None if no document reference or on error
 
         Examples:
-            - "risoluzione sessantaquattro" → {"type": "risoluzione", "number": "64"}
-            - "ris 64" → {"type": "risoluzione", "number": "64"}
-            - "la 64 dell'agenzia" → {"type": "risoluzione", "number": "64"}
+            - "risoluzione sessantaquattro" → {"type": "risoluzione", "number": "64", "year": null}
+            - "messaggio 3585 INPS" → {"type": "messaggio", "number": "3585", "year": null}
+            - "DPR 1124/1965" → {"type": "DPR", "number": "1124", "year": "1965"}
             - "come calcolare le tasse" → None
         """
         try:
@@ -65,19 +67,25 @@ class QueryNormalizer:
 
             # Parse JSON response
             result_text = response.choices[0].message.content.strip()
-            result = json.loads(result_text)
+            result = cast(dict[str, str | None], json.loads(result_text))
 
-            # Return None if no document found
-            if result.get("type") is None:
-                logger.info("query_normalization_no_document_found", query=query[:80])
+            # Check if we have useful information (type OR keywords)
+            has_document_ref = result.get("type") is not None
+            has_keywords = bool(result.get("keywords"))
+
+            # Return None only if NO useful information extracted
+            if not has_document_ref and not has_keywords:
+                logger.info("query_normalization_no_useful_info", query=query[:80])
                 return None
 
-            # Success - document reference extracted
+            # Success - document reference and/or keywords extracted
             logger.info(
                 "query_normalization_success",
                 query=query[:80],
                 extracted_type=result.get("type"),
                 extracted_number=result.get("number"),
+                extracted_year=result.get("year"),
+                extracted_keywords=result.get("keywords", []),
             )
 
             return result
@@ -111,33 +119,73 @@ class QueryNormalizer:
     def _get_system_prompt(self) -> str:
         """Get system prompt for LLM normalization.
 
-        Returns structured JSON with document type and number extraction.
+        Returns structured JSON with document type, number, year, and keywords extraction.
+        Supports all Italian government document sources and formats.
+        Keywords enable semantic search when no document number is found.
         """
-        return """Extract document reference from this Italian tax/legal query.
+        return """Extract document reference AND search keywords from this Italian tax/legal query.
 
-If the query mentions a specific document (risoluzione, circolare, interpello, risposta, decreto, etc.) with a number, extract it.
+Document types to recognize:
+- Agenzia Entrate: risoluzione, circolare, interpello, risposta
+- INPS: messaggio, circolare
+- Judicial: sentenza, ordinanza, provvedimento
+- Legislative: decreto, DPR, DL, DPCM, legge
+
+Number formats to recognize:
+- Standard: "n. 64", "n.64", "numero 64"
+- INPS style: "messaggio numero 3585 del 27-11-2025"
+- Compound: "DPR 1124/1965", "1124 del 1965"
+- Slash notation: "15/E", "45/E/2024"
+
+Keywords extraction rules:
+- Extract SEMANTIC keywords (core concepts, not stopwords)
+- For topic-based queries, keywords enable search when no number exists
+- Normalize to base form: "sicurezza sul lavoro" → ["sicurezza", "lavoro"]
+- Include entity names: "INPS", "IVA", "TFR"
+- Include years if mentioned: "bonus 2025" → keywords include "2025"
 
 Rules:
 1. Convert written numbers to digits: "sessantaquattro" → "64", "venti" → "20"
-2. Expand abbreviations: "ris" → "risoluzione", "circ" → "circolare"
+2. Expand abbreviations: "ris" → "risoluzione", "circ" → "circolare", "msg" → "messaggio", "ord" → "ordinanza"
 3. Correct typos: "risouzione" → "risoluzione", "risluzione" → "risoluzione"
 4. Ignore conversational words: "cosa dice", "mi serve", "parlami di", "la", "dell'"
 5. Infer document type from context if possible
+6. For compound references (e.g., "DPR 1124/1965"), extract both number and year
+7. ALWAYS extract keywords - even for pure topic queries without document numbers
 
 Return ONLY valid JSON (no other text):
 {
   "type": "risoluzione",
-  "number": "64"
+  "number": "64",
+  "year": null,
+  "keywords": []
 }
 
-If no document reference found, return:
-{"type": null}
+For topic-based queries without document number:
+{
+  "type": "DL",
+  "number": null,
+  "year": null,
+  "keywords": ["sicurezza", "lavoro"]
+}
+
+For general topic queries:
+{
+  "type": null,
+  "number": null,
+  "year": "2025",
+  "keywords": ["bonus", "psicologo"]
+}
 
 Examples:
-- "risoluzione sessantaquattro" → {"type": "risoluzione", "number": "64"}
-- "ris 64" → {"type": "risoluzione", "number": "64"}
-- "cosa dice la 64?" → {"type": "risoluzione", "number": "64"}
-- "come calcolare le tasse" → {"type": null}
+- "risoluzione sessantaquattro" → {"type": "risoluzione", "number": "64", "year": null, "keywords": []}
+- "ris 64" → {"type": "risoluzione", "number": "64", "year": null, "keywords": []}
+- "messaggio 3585 INPS" → {"type": "messaggio", "number": "3585", "year": null, "keywords": ["INPS"]}
+- "DPR 1124/1965" → {"type": "DPR", "number": "1124", "year": "1965", "keywords": []}
+- "decreto 212 del 2023" → {"type": "decreto", "number": "212", "year": "2023", "keywords": []}
+- "DL sicurezza lavoro" → {"type": "DL", "number": null, "year": null, "keywords": ["sicurezza", "lavoro"]}
+- "bonus psicologo 2025" → {"type": null, "number": null, "year": "2025", "keywords": ["bonus", "psicologo"]}
+- "come calcolare le tasse" → {"type": null, "number": null, "year": null, "keywords": ["tasse", "calcolo"]}
 """
 
 

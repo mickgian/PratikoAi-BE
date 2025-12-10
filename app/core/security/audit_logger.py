@@ -3,7 +3,7 @@
 import json
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from sqlalchemy import select
 
@@ -416,9 +416,8 @@ class SecurityAuditLogger:
                 ],
             }
 
-            logger.info(
-                "compliance_report_generated", report_type=report_type, total_events=report["summary"]["total_events"]
-            )
+            summary = cast(dict[str, int], report["summary"])
+            logger.info("compliance_report_generated", report_type=report_type, total_events=summary["total_events"])
 
             return report
 

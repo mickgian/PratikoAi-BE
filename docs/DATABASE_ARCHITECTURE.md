@@ -656,7 +656,6 @@ RSS Monitor → Italian Document Collector → Document Processor → Chunking �
 
 **Services:**
 - `app/services/rss_feed_monitor.py` - Monitors Italian regulatory RSS feeds
-- `app/services/italian_document_collector.py` - Fetches government documents
 - `app/services/document_processor.py` - PDF extraction + quality assessment
 - `app/core/chunking.py` - Semantic chunking with overlap
 - `app/core/embed.py` - OpenAI embedding generation

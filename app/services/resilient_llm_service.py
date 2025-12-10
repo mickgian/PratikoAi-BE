@@ -19,7 +19,7 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 from app.core.config import settings
 from app.core.logging import logger
@@ -128,9 +128,9 @@ class ResilientLLMService:
         }
 
         # Initialize provider instances
-        self.providers = {}
-        self.retry_handlers = {}
-        self.circuit_breakers = {}
+        self.providers: dict[str, Any] = {}
+        self.retry_handlers: dict[str, RetryHandler | CostAwareRetryHandler] = {}
+        self.circuit_breakers: dict[str, CircuitBreaker] = {}
 
         for name, config in self.provider_configs.items():
             if config.enabled:
@@ -237,12 +237,16 @@ class ResilientLLMService:
                 logger.debug(f"[{request_id}] Trying provider {provider_name}")
 
                 # Execute with retry
-                response = await retry_handler.execute_with_retry(
-                    self._call_provider,
-                    provider,
-                    request,
-                    user_id=request.user_id,
-                    estimated_cost=request.estimated_cost * self.provider_configs[provider_name].cost_multiplier,
+                estimated_cost = (request.estimated_cost or 0.0) * self.provider_configs[provider_name].cost_multiplier
+                response = cast(
+                    LLMResponse,
+                    await retry_handler.execute_with_retry(
+                        self._call_provider,
+                        provider,
+                        request,
+                        user_id=request.user_id,
+                        estimated_cost=estimated_cost,
+                    ),
                 )
 
                 # Success - create result
@@ -251,7 +255,7 @@ class ResilientLLMService:
                 result = LLMResult(
                     response=response.text,
                     provider_used=provider_name,
-                    model_used=response.model or "unknown",
+                    model_used=response.model,
                     tokens_used=response.tokens_used,
                     actual_cost=response.cost,
                     processing_time=processing_time,
@@ -304,10 +308,10 @@ class ResilientLLMService:
             last_error or "All providers failed",
         )
 
-    async def _call_provider(self, provider, request: LLMRequest) -> LLMResponse:
+    async def _call_provider(self, provider: Any, request: LLMRequest) -> LLMResponse:
         """Call specific provider with request."""
         # Prepare provider-specific parameters
-        params = {"prompt": request.prompt, "user_id": request.user_id}
+        params: dict[str, Any] = {"prompt": request.prompt, "user_id": request.user_id}
 
         if request.model:
             params["model"] = request.model
@@ -321,7 +325,8 @@ class ResilientLLMService:
             params["timeout"] = request.timeout
 
         # Call provider
-        return await provider.complete(**params)
+        response: LLMResponse = await provider.complete(**params)
+        return response
 
     def _get_provider_order(self, preferred_provider: str | None, allow_fallback: bool) -> list[str]:
         """Determine order of providers to try."""

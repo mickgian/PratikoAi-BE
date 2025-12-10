@@ -5,6 +5,7 @@ This module provides common fixtures and configuration for all tests,
 including database mocking and async support.
 """
 
+import asyncio
 import os
 import uuid
 from contextlib import asynccontextmanager, contextmanager
@@ -22,6 +23,20 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlmodel import SQLModel
 
 from app.core.config import settings
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create event loop for the test session.
+
+    Overrides the default pytest-asyncio event_loop fixture to use
+    session scope, ensuring all async fixtures share the same event loop.
+    This prevents 'Event loop is closed' errors when disposing engines.
+    """
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 
 def pytest_addoption(parser):
@@ -110,12 +125,39 @@ def mock_database_session():
 
 @pytest_asyncio.fixture
 async def db_session():
-    """Real async database session for integration tests."""
-    from app.models.database import AsyncSessionLocal
+    """Real async database session for integration tests.
 
-    async with AsyncSessionLocal() as session:
+    Creates a fresh engine and session for each test to avoid
+    event loop conflicts between tests.
+    """
+    from app.core.config import settings
+    from app.models.database import get_async_database_url
+
+    # Create a fresh engine for this test to avoid event loop issues
+    async_database_url = get_async_database_url(settings.POSTGRES_URL)
+    engine = create_async_engine(
+        async_database_url,
+        echo=False,
+        pool_pre_ping=True,
+    )
+
+    # Create session factory
+    test_session_maker = async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+    async with test_session_maker() as session:
         yield session
-        # Note: No explicit close() needed - context manager handles cleanup
+
+    # Dispose of the engine after the test
+    # Wrap in try/except to handle event loop closure during teardown
+    try:
+        await engine.dispose()
+    except RuntimeError as e:
+        if "Event loop is closed" not in str(e):
+            raise
 
 
 @contextmanager

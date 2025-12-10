@@ -58,7 +58,7 @@ class OpenAIProvider(LLMProvider):
     def client(self) -> AsyncOpenAI:
         """Get the OpenAI async client."""
         if self._client is None:
-            self._client = AsyncOpenAI(api_key=self.api_key)  # type: ignore[arg-type]
+            self._client = AsyncOpenAI(api_key=self.api_key)
         return self._client
 
     @property
@@ -66,7 +66,7 @@ class OpenAIProvider(LLMProvider):
         """Get the LangChain OpenAI client."""
         if self._langchain_client is None:
             self._langchain_client = ChatOpenAI(
-                api_key=self.api_key,  # type: ignore[arg-type]
+                api_key=self.api_key,
                 model=self.model,
                 temperature=self.config.get("temperature", 0.2),
                 max_tokens=self.config.get("max_tokens", None),
@@ -181,7 +181,7 @@ class OpenAIProvider(LLMProvider):
                 llm_with_tools = self.langchain_client.bind_tools(tools)
                 # Defensive: if tests/mock make bind_tools async, await it
                 if asyncio.iscoroutine(llm_with_tools):
-                    llm_with_tools = await llm_with_tools  # type: ignore[misc]
+                    llm_with_tools = await llm_with_tools
 
                 response = await llm_with_tools.ainvoke(
                     langchain_messages, temperature=temperature, max_tokens=max_tokens, **kwargs
@@ -204,7 +204,7 @@ class OpenAIProvider(LLMProvider):
                 # Use direct OpenAI client for better control
                 openai_messages = self._convert_messages_to_openai(messages)
 
-                response = await self.client.chat.completions.create(  # type: ignore[call-overload]
+                response = await self.client.chat.completions.create(
                     model=self.model,
                     messages=openai_messages,
                     temperature=temperature,
@@ -245,14 +245,14 @@ class OpenAIProvider(LLMProvider):
             )
             raise
 
-    async def stream_completion(
+    async def stream_completion(  # type: ignore[override]
         self,
         messages: list[Message],
         tools: list[Any] | None = None,
         temperature: float = 0.2,
         max_tokens: int | None = None,
         **kwargs,
-    ) -> AsyncGenerator[LLMStreamResponse]:
+    ) -> AsyncGenerator[LLMStreamResponse, None]:
         """Generate a streaming chat completion using OpenAI.
 
         Args:
@@ -270,7 +270,7 @@ class OpenAIProvider(LLMProvider):
 
             # Note: Streaming with tools is complex, for now we'll disable tools in streaming
             # This can be enhanced later if needed
-            stream = await self.client.chat.completions.create(  # type: ignore[call-overload]
+            stream = await self.client.chat.completions.create(
                 model=self.model,
                 messages=openai_messages,
                 temperature=temperature,
@@ -369,7 +369,7 @@ class OpenAIProvider(LLMProvider):
             # Make a minimal API call to test the connection
             await self.client.chat.completions.create(
                 model=self.model,
-                messages=[{"role": "user", "content": "test"}],  # type: ignore[arg-type]
+                messages=[{"role": "user", "content": "test"}],
                 max_tokens=1,
             )
             return True
@@ -396,7 +396,7 @@ class OpenAIProvider(LLMProvider):
                 {
                     "supports_json_mode": True,
                     "supports_function_calling": True,
-                    "max_context_length": 128000,
+                    "max_context_length": 128000,  # type: ignore[dict-item]
                     "supports_vision": True,
                 }
             )
@@ -405,7 +405,7 @@ class OpenAIProvider(LLMProvider):
                 {
                     "supports_json_mode": True,
                     "supports_function_calling": True,
-                    "max_context_length": 4096,
+                    "max_context_length": 4096,  # type: ignore[dict-item]
                     "supports_vision": False,
                 }
             )

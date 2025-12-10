@@ -95,13 +95,14 @@ def rag_step_log_compat(*args, **kwargs) -> None:
 
     # Generate node_label and step_id from step number
     node_label = f"step_{int(step):03d}" if step is not None else "step_unknown"
-    step_id = f"RAG.step.{int(step):03d}"
+    step_id = f"RAG.step.{int(step):03d}" if step is not None else "RAG.step.unknown"
 
     # Map old "enter"/"exit" events to node_label suffix
     if event:
         node_label = f"{node_label}.{event}"
 
-    return rag_step_log(step=step, step_id=step_id, node_label=node_label, **kwargs)
+    # step defaults to 0 if None for the call to rag_step_log
+    return rag_step_log(step=step if step is not None else 0, step_id=step_id, node_label=node_label, **kwargs)
 
 
 @contextmanager

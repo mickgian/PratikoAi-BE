@@ -4,6 +4,7 @@ from enum import Enum
 from typing import (
     TYPE_CHECKING,
     List,
+    cast,
 )
 
 import bcrypt
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
     from app.models.session import Session
 
 
-class User(BaseModel, table=True):
+class User(BaseModel, table=True):  # type: ignore[call-arg]
     """User model for storing user accounts.
 
     Attributes:
@@ -68,8 +69,10 @@ class User(BaseModel, table=True):
 
         Truncates password to 72 bytes to comply with bcrypt limits.
         """
+        if self.hashed_password is None:
+            return False
         password_bytes = password.encode("utf-8")[:72]
-        return bcrypt.checkpw(password_bytes, self.hashed_password.encode("utf-8"))
+        return cast(bool, bcrypt.checkpw(password_bytes, self.hashed_password.encode("utf-8")))
 
     @staticmethod
     def hash_password(password: str) -> str:
@@ -79,7 +82,7 @@ class User(BaseModel, table=True):
         """
         password_bytes = password.encode("utf-8")[:72]
         salt = bcrypt.gensalt()
-        return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
+        return cast(bytes, bcrypt.hashpw(password_bytes, salt)).decode("utf-8")
 
     def set_refresh_token_hash(self, refresh_token: str) -> None:
         """Set the hash of the refresh token.
@@ -112,7 +115,7 @@ class User(BaseModel, table=True):
         if self.refresh_token_hash is None:
             return False
         token_bytes = refresh_token.encode("utf-8")[:72]
-        return bcrypt.checkpw(token_bytes, self.refresh_token_hash.encode("utf-8"))
+        return cast(bool, bcrypt.checkpw(token_bytes, self.refresh_token_hash.encode("utf-8")))
 
     def revoke_refresh_token(self) -> None:
         """Revoke the current refresh token by clearing its hash.

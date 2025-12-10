@@ -165,13 +165,29 @@ async def test_expert_profile(db_session: AsyncSession):
     Returns ExpertProfile object for use in tests.
     """
     from app.models.quality_analysis import ExpertProfile
+    from app.models.user import User
+
+    # First create a test user (required for foreign key constraint)
+    test_user = User(
+        id=99998,  # Use high ID to avoid conflicts
+        email="test_expert_user@example.com",
+        full_name="Test Expert User",
+        hashed_password="$2b$12$test_hashed_password_placeholder",
+        role="regular_user",
+        is_active=True,
+        email_verified=True,
+        provider="email",
+        created_at=datetime.utcnow(),
+    )
+    db_session.add(test_user)
+    await db_session.flush()
 
     expert_id = uuid4()
 
     # Create expert profile with high trust
     expert = ExpertProfile(
         id=expert_id,
-        user_id=1,  # Test user ID
+        user_id=test_user.id,  # Use the test user's ID
         trust_score=0.95,  # Auto-approve threshold
         is_verified=True,
         is_active=True,
@@ -311,6 +327,7 @@ async def db_session_committed() -> AsyncGenerator[AsyncSession, None]:
             ("expert_feedback", "id"),
             ("expert_profiles", "id"),
             ("knowledge_items", "id"),
+            ('"user"', "id"),  # Clean up test users last (after dependent records)
         ]
 
         for table, id_col in cleanup_order:
@@ -349,12 +366,33 @@ async def test_expert_profile_committed(db_session_committed: AsyncSession):
     the expert profile visible to the golden set workflow.
     """
     from app.models.quality_analysis import ExpertProfile
+    from app.models.user import User
+
+    # First create a test user (required for foreign key constraint)
+    test_user = User(
+        id=99997,  # Use high ID to avoid conflicts
+        email="test_expert_committed_user@example.com",
+        full_name="Test Expert Committed User",
+        hashed_password="$2b$12$test_hashed_password_placeholder",
+        role="regular_user",
+        is_active=True,
+        email_verified=True,
+        provider="email",
+        created_at=datetime.utcnow(),
+    )
+    db_session_committed.add(test_user)
+    await db_session_committed.commit()
+
+    # Track user for cleanup (key must match table name in cleanup_order)
+    if '"user"' not in db_session_committed.cleanup_data:
+        db_session_committed.cleanup_data['"user"'] = []
+    db_session_committed.cleanup_data['"user"'].append(test_user.id)
 
     expert_id = uuid4()
 
     expert = ExpertProfile(
         id=expert_id,
-        user_id=1,
+        user_id=test_user.id,  # Use the test user's ID
         trust_score=0.95,
         is_verified=True,
         is_active=True,

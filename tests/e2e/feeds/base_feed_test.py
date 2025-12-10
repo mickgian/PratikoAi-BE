@@ -114,13 +114,29 @@ class BaseFeedE2ETest(ABC):
             return self.expert_profile
 
         from app.models.quality_analysis import ExpertProfile
+        from app.models.user import User
+
+        # First create a test user (required for FK constraint)
+        test_user = User(
+            id=99996,  # Use high ID to avoid conflicts
+            email="test_e2e_expert@example.com",
+            full_name="Test E2E Expert User",
+            hashed_password="$2b$12$test_hashed_password_placeholder",
+            role="regular_user",
+            is_active=True,
+            email_verified=True,
+            provider="email",
+            created_at=datetime.utcnow(),
+        )
+        self.db_session.add(test_user)
+        await self.db_session.flush()
 
         expert_id = uuid4()
 
         # Create expert profile with high trust
         self.expert_profile = ExpertProfile(
             id=expert_id,
-            user_id=1,  # Test user ID
+            user_id=test_user.id,
             trust_score=0.95,  # Auto-approve threshold
             is_verified=True,
             is_active=True,
@@ -486,12 +502,34 @@ class BaseFeedE2ETestCommitted(ABC):
             return self.expert_profile
 
         from app.models.quality_analysis import ExpertProfile
+        from app.models.user import User
+
+        # First create a test user (required for FK constraint)
+        test_user = User(
+            id=99995,  # Use high ID to avoid conflicts
+            email="test_e2e_committed_expert@example.com",
+            full_name="Test E2E Committed Expert User",
+            hashed_password="$2b$12$test_hashed_password_placeholder",
+            role="regular_user",
+            is_active=True,
+            email_verified=True,
+            provider="email",
+            created_at=datetime.utcnow(),
+        )
+        self.db_session.add(test_user)
+        await self.db_session.commit()
+
+        # Track user for cleanup
+        if hasattr(self.db_session, "cleanup_data"):
+            if '"user"' not in self.db_session.cleanup_data:
+                self.db_session.cleanup_data['"user"'] = []
+            self.db_session.cleanup_data['"user"'].append(test_user.id)
 
         expert_id = uuid4()
 
         self.expert_profile = ExpertProfile(
             id=expert_id,
-            user_id=1,
+            user_id=test_user.id,
             trust_score=0.95,
             is_verified=True,
             is_active=True,

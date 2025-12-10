@@ -852,6 +852,97 @@ await session.commit()
 
 ---
 
+## 14. E2E Testing for RSS Feeds (DEV-BE-69)
+
+### 14.1 Why E2E Tests?
+
+**The Messaggio 3585 Bug:**
+- User query: "Di cosa parla il Messaggio numero 3585 dell'inps?"
+- Document existed: "Messaggio numero 3585 del 27-11-2025"
+- Bug: Query normalizer returned `{'type': 'DL', 'number': None}`
+- Result: Search returned empty, despite document existing
+
+**Root Cause:** Unit tests passed, but integration between components failed.
+
+### 14.2 E2E Test Architecture
+
+```
+tests/e2e/
+├── conftest.py              # Shared fixtures
+├── feeds/
+│   ├── base_feed_test.py    # Base class (4-step flow)
+│   ├── test_inps_feeds.py   # 5 INPS feeds
+│   ├── test_agenzia_entrate_feeds.py  # 3 AE feeds
+│   └── test_other_feeds.py  # INAIL, MEF, etc.
+└── scrapers/
+    ├── test_gazzetta_scraper.py
+    └── test_cassazione_scraper.py
+```
+
+### 14.3 The 4-Step Test Flow
+
+Every feed test validates the complete RAG pipeline:
+
+```python
+async def run_full_test_flow(self, query: str):
+    # Step 1: Search - Documents found via hybrid search
+    search_result = await self._search_for_documents(query)
+    assert search_result["count"] > 0
+
+    # Step 2: Generate - LLM generates response with context
+    llm_result = await self._generate_llm_response(query, search_result)
+    assert llm_result["llm_calls"] > 0
+
+    # Step 3: Save - Golden set created (simulates "Corretta" button)
+    golden_save = await self._save_as_golden_set(query, llm_result)
+    assert golden_save["saved"]
+
+    # Step 4: Cache - Retrieval bypasses LLM (CRITICAL)
+    golden_retrieve = await self._retrieve_from_golden_set(query)
+    assert golden_retrieve["llm_calls"] == 0  # Must not call LLM
+```
+
+### 14.4 Running E2E Tests
+
+```bash
+# Run all E2E tests
+pytest tests/e2e/ -m "e2e" -v
+
+# Run only feed tests
+pytest tests/e2e/feeds/ -v
+
+# Skip slow tests (with LLM calls)
+pytest tests/e2e/ -m "e2e and not slow"
+
+# Run specific feed
+pytest tests/e2e/feeds/test_inps_feeds.py -v
+```
+
+### 14.5 Cost Analysis
+
+| Scenario | Tests | Cost/Run |
+|----------|-------|----------|
+| Quick (no LLM) | 30 | $0.00 |
+| Full (with LLM) | 52 | ~$0.08 |
+
+**Annual cost:** ~$360 (10 runs/day × 30 days × $0.10/run × 12 months)
+
+### 14.6 Test Coverage Matrix
+
+| Source | Feeds | Query Variations |
+|--------|-------|------------------|
+| INPS | 5 | 3 per feed |
+| Agenzia Entrate | 3 | 3 per feed |
+| INAIL | 2 | 3 per feed |
+| MEF | 2 | 3 per feed |
+| Ministero Lavoro | 1 | 3 per feed |
+| Gazzetta Ufficiale | 1 | 3 per feed |
+| **Total** | 14 | 42+ tests |
+
+**Full documentation:** See `docs/E2E_RSS_TESTING_STRATEGY.md`
+
+---
+
 **Document Maintained By:** Engineering Team
 **Review Cycle:** Quarterly (Jan, Apr, Jul, Oct)
 **Next Review:** 2025-01-15

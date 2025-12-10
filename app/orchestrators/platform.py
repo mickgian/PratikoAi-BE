@@ -2952,7 +2952,7 @@ def _create_streaming_generator(ctx: dict[str, Any]) -> Any:
     stream_context.get("session_id")
     stream_context.get("user_id")
 
-    async def response_generator() -> AsyncGenerator[str]:
+    async def response_generator() -> AsyncGenerator[str, None]:
         """Async generator for streaming response chunks."""
         try:
             # This would typically call the LangGraph agent's get_stream_response

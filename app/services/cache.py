@@ -9,10 +9,10 @@ import hashlib
 import json
 from dataclasses import asdict
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 try:
-    import redis.asyncio as redis
+    import redis.asyncio as redis  # type: ignore[import-untyped]
 
     REDIS_AVAILABLE = True
 except ImportError:
@@ -490,7 +490,7 @@ class CacheService:
 
             logger.info("cache_cleared", pattern=pattern or "all", keys_deleted=deleted)
 
-            return deleted
+            return cast(int, deleted)
 
         except Exception as e:
             logger.error("cache_clear_failed", error=str(e), pattern=pattern)

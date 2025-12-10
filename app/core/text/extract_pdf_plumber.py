@@ -179,7 +179,7 @@ def _ocr_page(image: Image.Image, lang: str = OCR_LANGUAGES) -> str:
         return ""
 
 
-def extract_pdf_with_ocr_fallback_plumber(pdf_path: str) -> dict[str, Any]:
+def extract_pdf_with_ocr_fallback_plumber(pdf_path: str | Path) -> dict[str, Any]:
     """Extract PDF text with intelligent OCR fallback for low-quality pages using pdfplumber.
 
     Process:
@@ -204,7 +204,7 @@ def extract_pdf_with_ocr_fallback_plumber(pdf_path: str) -> dict[str, Any]:
         FileNotFoundError: If PDF file doesn't exist
         RuntimeError: If pdfplumber not available
     """
-    pdf_path = Path(pdf_path)
+    pdf_path = Path(pdf_path) if isinstance(pdf_path, str) else pdf_path
 
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF not found: {pdf_path}")

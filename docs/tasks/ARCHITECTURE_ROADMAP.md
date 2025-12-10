@@ -563,31 +563,109 @@ Security audit revealed critical vulnerabilities allowing malicious payloads fro
 
 <details>
 <summary>
-<h3>DEV-BE-69: Expand RSS Feed Sources Beyond Agenzia delle Entrate</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1 week (with Claude Code) | <strong>Dependencies:</strong> DEV-BE-66 ✅ (RSS infrastructure complete) | <strong>Status:</strong> ❌ NOT STARTED<br>
-Expand knowledge base coverage from 2 RSS feeds to 8+ sources including INPS, Ministero del Lavoro, and other critical Italian regulatory authorities.
+<h3>DEV-BE-69: Expand RSS Feed Sources</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5 weeks | <strong>Dependencies:</strong> DEV-BE-66 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
+Expand knowledge base with 11 new RSS feeds (4-hour schedule) + 2 web scrapers (daily schedule) for comprehensive Italian regulatory coverage.
 </summary>
 
-### DEV-BE-69: Expand RSS Feed Sources Beyond Agenzia delle Entrate
-**Priority:** HIGH | **Effort:** 1 week (with Claude Code) | **Dependencies:** DEV-BE-66 ✅ (RSS infrastructure complete)
+### DEV-BE-69: Expand RSS Feed Sources
+**Priority:** HIGH | **Effort:** 1.5 weeks | **Dependencies:** DEV-BE-66 ✅ (RSS infrastructure complete)
+
+**Git:** Branch from `develop` → `DEV-BE-69 Expand RSS Feed Sources`
 
 **Problem:**
-Currently only 2 RSS feeds configured (both from Agenzia delle Entrate). Missing coverage of other critical Italian regulatory sources.
+Currently only 2 RSS feeds configured :Agenzia delle Entrate (
+Normativa e prassi - https://www.agenziaentrate.gov.it/portale/c/portal/rss/entrate?idrss=0753fcb1-1a42-4f8c-f40d-02793c6aefb4,
+News - https://www.agenziaentrate.gov.it/portale/c/portal/rss/entrate?idrss=79b071d0-a537-4a3d-86cc-7a7d5a36f2a9
+Missing coverage of INPS, Ministero del Lavoro, MEF, INAIL, Gazzetta Ufficiale, and Corte di Cassazione.
+
+**Solution:**
+Expand knowledge base with 10   new RSS feeds (4-hour schedule) + 2 web scrapers (daily schedule).
 
 **Target Sources to Add:**
 - **INPS** (Istituto Nazionale Previdenza Sociale) - Social security and pension updates
+  - Feeds to include:
+    News (https://www.inps.it/it/it.rss.news.xml),
+    Comunicati stampa (https://www.inps.it/it/it.rss.comunicati.xml),
+    Circolari (https://www.inps.it/it/it.rss.circolari.xml),
+    Messaggi(https://www.inps.it/it/it.rss.messaggi.xml) - verified manually,
+    Sentenze (https://www.inps.it/it/it.rss.sentenze.xml)
 - **Ministero del Lavoro** - Employment and labor law regulations
-- **Corte di Cassazione** - Supreme Court rulings (tax/employment sections)
+  - Feed: https://www.lavoro.gov.it/_layouts/15/Lavoro.Web/AppPages/RSS
 - **Ministero dell'Economia e delle Finanze (MEF)** - Financial regulations
+  - Feeds: Documenti (https://www.mef.gov.it/rss/rss.asp?t=5), Aggiornamenti (https://www.finanze.gov.it/it/rss.xml)
 - **INAIL** (Istituto Nazionale Assicurazione Infortuni sul Lavoro) - Workplace injury insurance
-- **Gazzetta Ufficiale** - Official government gazette (filtered sections)
+  - Feeds: Notizie (https://www.inail.it/portale/it.rss.news.xml), Eventi (https://www.inail.it/portale/it.rss.eventi.xml)
+- **Gazzetta Ufficiale** - Official government gazette (filtered sections):
+    both scraping and RSS at the following RSS feeds:
+    - Serie Generale: https://www.gazzettaufficiale.it/rss/SG
+    - Corte Costituzionale: https://www.gazzettaufficiale.it/rss/S1
+    - Unione Europea: https://www.gazzettaufficiale.it/rss/S2
+    - Regioni: https://www.gazzettaufficiale.it/rss/S3
+-
+- **Corte di Cassazione** - Supreme Court rulings (tax/employment sections): NO RSS, requires scraping
+
+**Implementation Phases:**
+
+**Phase 1: RSS Feed Configuration** (Agent: @primo, review: @egidio)
+- Add 9 new feed entries to feed_status table
+- Sources: INPS (4 feeds), Ministero del Lavoro (1), MEF (2), INAIL (2)
+- TDD required
+
+**Phase 2: Rate Limiting** (Agent: @ezio, review: @egidio, support: @tiziano)
+- Add semaphore limiting (max 5 concurrent feeds)
+- Add stagger delay (1-3 seconds between requests)
+- Integrate with existing 4-hour scheduler
+- TDD required
+
+**Phase 3: Content Deduplication** (Agent: @primo, review: @egidio)
+- Add content_hash column to knowledge_items (Alembic migration)
+- Note: knowledge_items currently lacks content_hash - needed to prevent cross-source duplicates
+- Implement SHA256 hashing in ingestion pipeline (pattern exists in KnowledgeIntegrator)
+- TDD required
+
+**Phase 4: Gazzetta Ufficiale Scraper** (Agent: @ezio, review: @egidio, security: @severino)
+- Target: Tax/finance laws, labor/employment laws, all official acts
+- Schedule: Daily (every 24 hours)
+- Stack: aiohttp + BeautifulSoup (already installed, no new dependencies)
+- Respect robots.txt and rate limits
+- TDD required
+
+**Phase 5: Corte di Cassazione Scraper** (Agent: @ezio, review: @egidio, security: @severino)
+- Note: `app/services/scrapers/cassazione_scraper.py` already exists - review and extend
+- Target: Tax section (Tributaria) + Labor section (Lavoro) rulings
+- Schedule: Daily (every 24 hours)
+- Stack: aiohttp + BeautifulSoup (already installed, no new dependencies)
+- Respect robots.txt and rate limits
+- TDD required
+
+**Phase 6: Testing** (Agent: @clelia, review: @egidio)
+- Unit tests for all new code
+- Integration tests for feed ingestion
+- E2E tests for full RSS + scraping pipeline
+- Coverage >=70% for new code
+
+**Phase 7: Security Audit** (Agent: @severino, review: @egidio)
+- Verify robots.txt compliance for scrapers
+- GDPR data handling review
+- Rate limit validation
+
+**Phase 8: PR & CI/CD** (Agent: @silvano, review: @egidio)
+- Create PR to develop
+- Monitor CI pipeline
+- Address any failures
 
 **Acceptance Criteria:**
-- ✅ At least 8 RSS feeds configured (2 existing + 6 new)
-- ✅ All feeds successfully ingested (>0 documents from each source)
-- ✅ Feed health monitoring operational (alerts on feed failures)
-- ✅ Duplicate detection working (same doc from multiple sources = 1 entry)
-- ✅ Document quality maintained (junk rate <15%)
+- [ ] 11 RSS feeds configured and ingesting (2 existing + 9 new, >0 docs per source)
+- [ ] 2 scrapers operational (Gazzetta + Cassazione)
+- [ ] Rate limiting active (max 5 concurrent, 1-3s delay)
+- [ ] Deduplication working (no cross-source duplicates)
+- [ ] Document quality maintained (junk rate <15%)
+- [ ] Code coverage >=70% for new code
+- [ ] E2E tests passing
+- [ ] Security audit passed (@severino)
+
+**Temporary Files:** Agents may create working files in `plans/DEV-BE-69-*.md` for collaboration. Delete after task completion.
 
 </details>
 

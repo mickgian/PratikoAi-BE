@@ -11,7 +11,7 @@ from sqlmodel import (
 )
 
 
-class Thread(SQLModel, table=True):
+class Thread(SQLModel, table=True):  # type: ignore[call-arg]
     """Thread model for storing conversation threads.
 
     Attributes:

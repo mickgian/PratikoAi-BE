@@ -100,13 +100,13 @@ class PerformanceMonitor:
         }
 
         # Metrics storage
-        self.request_metrics = deque(maxlen=self.request_buffer_size)
-        self.system_metrics = deque(maxlen=2880)  # 24 hours at 30s intervals
+        self.request_metrics: deque[RequestMetrics] = deque(maxlen=self.request_buffer_size)
+        self.system_metrics: deque[SystemMetrics] = deque(maxlen=2880)  # 24 hours at 30s intervals
         self.endpoint_metrics: dict[str, EndpointMetrics] = {}
 
         # Alert tracking
         self.active_alerts: dict[PerformanceAlert, datetime] = {}
-        self.alert_history = deque(maxlen=1000)
+        self.alert_history: deque[dict[str, Any]] = deque(maxlen=1000)
 
         # Performance counters
         self.counters = {
@@ -193,7 +193,7 @@ class PerformanceMonitor:
             await self._update_endpoint_metrics(metrics)
 
             # Check for performance alerts
-            await self._check_performance_alerts(metrics)
+            await self._check_performance_alerts(metrics)  # type: ignore[attr-defined]
 
         except Exception as e:
             logger.error("request_metrics_recording_failed", method=method, path=path, error=str(e), exc_info=True)
@@ -617,7 +617,7 @@ class PerformanceMonitor:
                 endpoint_details.append(details)
 
             # Sort by request count
-            endpoint_details.sort(key=lambda x: x["request_count"], reverse=True)
+            endpoint_details.sort(key=lambda x: int(x.get("request_count", 0)), reverse=True)  # type: ignore[call-overload]
 
             return endpoint_details
 

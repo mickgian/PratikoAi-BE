@@ -242,14 +242,14 @@ class AnthropicProvider(LLMProvider):
             )
             raise
 
-    async def stream_completion(
+    async def stream_completion(  # type: ignore[override]
         self,
         messages: list[Message],
         tools: list[Any] | None = None,
         temperature: float = 0.2,
         max_tokens: int | None = None,
         **kwargs,
-    ) -> AsyncGenerator[LLMStreamResponse]:
+    ) -> AsyncGenerator[LLMStreamResponse, None]:
         """Generate a streaming chat completion using Anthropic Claude.
 
         Args:
@@ -371,7 +371,7 @@ class AnthropicProvider(LLMProvider):
             # Make a minimal API call to test the connection
             await self.client.messages.create(
                 model=self.model,
-                messages=[{"role": "user", "content": "test"}],  # type: ignore[arg-type]
+                messages=[{"role": "user", "content": "test"}],
                 max_tokens=1,
             )
             return True
@@ -402,7 +402,7 @@ class AnthropicProvider(LLMProvider):
                 {
                     "supports_json_mode": False,
                     "supports_function_calling": True,
-                    "max_context_length": 200000,
+                    "max_context_length": 200000,  # type: ignore[dict-item]
                     "supports_vision": True,
                 }
             )

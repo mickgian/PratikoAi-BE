@@ -26,7 +26,7 @@ from sqlmodel import (
 )
 
 
-class KnowledgeChunk(SQLModel, table=True):
+class KnowledgeChunk(SQLModel, table=True):  # type: ignore[call-arg]
     """Chunked knowledge for hybrid retrieval.
 
     Each chunk has:

@@ -5,6 +5,7 @@ business metrics, and system health.
 """
 
 import os
+import sys
 from typing import Any, Dict
 
 import psutil
@@ -284,7 +285,7 @@ def initialize_metrics():
             {
                 "version": settings.VERSION,
                 "environment": settings.ENVIRONMENT.value,
-                "python_version": os.sys.version.split()[0],
+                "python_version": sys.version.split()[0],
                 "project_name": settings.PROJECT_NAME,
             }
         )
@@ -414,7 +415,7 @@ def track_llm_error(provider: str, error_type: str, model: str):
 
 
 def track_italian_tax_calculation(
-    calculation_type: str, status: str, user_id: str, amount_eur: float = None, tax_year: str = None
+    calculation_type: str, status: str, user_id: str, amount_eur: float | None = None, tax_year: str | None = None
 ):
     """Track Italian tax calculation operation."""
     italian_tax_calculations_total.labels(calculation_type=calculation_type, status=status, user_id=user_id).inc()
@@ -423,7 +424,9 @@ def track_italian_tax_calculation(
         italian_tax_amount_calculated_eur.labels(calculation_type=calculation_type, tax_year=tax_year).inc(amount_eur)
 
 
-def track_document_processing(operation_type: str, document_type: str, status: str, duration_seconds: float = None):
+def track_document_processing(
+    operation_type: str, document_type: str, status: str, duration_seconds: float | None = None
+):
     """Track document processing operation."""
     document_processing_operations_total.labels(
         operation_type=operation_type, document_type=document_type, status=status
@@ -445,7 +448,11 @@ def track_knowledge_base_query(query_type: str, source: str, status: str, durati
 
 
 def track_payment_operation(
-    operation_type: str, payment_method: str, status: str, amount_eur: float = None, duration_seconds: float = None
+    operation_type: str,
+    payment_method: str,
+    status: str,
+    amount_eur: float | None = None,
+    duration_seconds: float | None = None,
 ):
     """Track payment operation."""
     payment_operations_total.labels(operation_type=operation_type, payment_method=payment_method, status=status).inc()
@@ -472,7 +479,11 @@ def track_user_action(action_type: str, feature: str, user_type: str):
 
 
 def track_ccnl_query(
-    query_type: str, sector: str, status: str, duration_seconds: float = None, semantic_search_used: bool = False
+    query_type: str,
+    sector: str,
+    status: str,
+    duration_seconds: float | None = None,
+    semantic_search_used: bool = False,
 ):
     """Track CCNL query metrics.
 
@@ -532,8 +543,8 @@ def track_classification_usage(
     confidence: float,
     fallback_used: bool = False,
     prompt_used: bool = False,
-    old_strategy: str = None,
-    new_strategy: str = None,
+    old_strategy: str | None = None,
+    new_strategy: str | None = None,
 ):
     """Track domain-action classification usage and metrics.
 

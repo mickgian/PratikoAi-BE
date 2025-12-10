@@ -3,6 +3,7 @@
 from typing import (
     List,
     Optional,
+    cast,
 )
 
 from fastapi import HTTPException
@@ -93,7 +94,7 @@ class DatabaseService:
         """
         with Session(self.engine) as session:
             user = session.get(User, user_id)
-            return user
+            return cast(User | None, user)
 
     async def get_user_by_email(self, email: str) -> User | None:
         """Get a user by email.
@@ -107,7 +108,7 @@ class DatabaseService:
         with Session(self.engine) as session:
             statement = select(User).where(User.email == email)
             user = session.exec(statement).first()
-            return user
+            return cast(User | None, user)
 
     async def delete_user_by_email(self, email: str) -> bool:
         """Delete a user by email.
@@ -177,7 +178,7 @@ class DatabaseService:
         """
         with Session(self.engine) as session:
             chat_session = session.get(ChatSession, session_id)
-            return chat_session
+            return cast(ChatSession | None, chat_session)
 
     async def get_user_sessions(self, user_id: int) -> list[ChatSession]:
         """Get all sessions for a user.
@@ -191,7 +192,7 @@ class DatabaseService:
         with Session(self.engine) as session:
             statement = select(ChatSession).where(ChatSession.user_id == user_id).order_by(ChatSession.created_at)
             sessions = session.exec(statement).all()
-            return sessions
+            return cast(list[ChatSession], sessions)
 
     async def update_session_name(self, session_id: str, name: str) -> ChatSession:
         """Update a session's name.
@@ -216,7 +217,7 @@ class DatabaseService:
             session.commit()
             session.refresh(chat_session)
             logger.info("session_name_updated", session_id=session_id, name=name)
-            return chat_session
+            return cast(ChatSession, chat_session)
 
     def get_session_maker(self):
         """Get a session maker for creating database sessions.

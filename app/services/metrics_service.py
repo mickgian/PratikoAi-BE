@@ -20,6 +20,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    cast,
 )
 
 from sqlalchemy import text
@@ -410,7 +411,7 @@ class MetricsService:
         """Get 95th percentile API response time in milliseconds."""
         try:
             # Get performance summary from performance monitor
-            summary = await performance_monitor.get_performance_summary()
+            summary = await performance_monitor.get_performance_summary()  # type: ignore[misc]
 
             # Calculate P95 from request metrics
             response_times = []
@@ -422,7 +423,7 @@ class MetricsService:
 
             response_times.sort()
             p95_index = int(len(response_times) * 0.95)
-            return response_times[p95_index] if p95_index < len(response_times) else response_times[-1]
+            return cast(float, response_times[p95_index] if p95_index < len(response_times) else response_times[-1])
         except Exception as e:
             self.logger.error(f"Error calculating P95 response time: {e}")
             return 0.0
@@ -430,11 +431,11 @@ class MetricsService:
     async def _get_cache_hit_rate(self) -> float:
         """Get cache hit rate percentage."""
         try:
-            stats = await cache_service.get_cache_statistics()
-            total_requests = stats.get("cache_hits", 0) + stats.get("cache_misses", 0)
+            stats = await cache_service.get_cache_statistics()  # type: ignore[attr-defined]
+            total_requests = cast(int, stats.get("cache_hits", 0)) + cast(int, stats.get("cache_misses", 0))
             if total_requests == 0:
                 return 0.0
-            return (stats.get("cache_hits", 0) / total_requests) * 100
+            return (cast(int, stats.get("cache_hits", 0)) / total_requests) * 100
         except Exception as e:
             self.logger.error(f"Error calculating cache hit rate: {e}")
             return 0.0
@@ -453,8 +454,8 @@ class MetricsService:
         """Get number of critical security vulnerabilities."""
         try:
             # Get security summary from security monitor
-            summary = await security_monitor.get_security_summary()
-            return summary.get("critical_threats", 0)
+            summary = await security_monitor.get_security_summary()  # type: ignore[attr-defined]
+            return cast(float, summary.get("critical_threats", 0))
         except Exception as e:
             self.logger.error(f"Error getting security vulnerabilities: {e}")
             return 0.0
@@ -490,8 +491,8 @@ class MetricsService:
         """Get system uptime percentage over last 30 days."""
         try:
             # Get uptime data from performance monitor
-            summary = await performance_monitor.get_performance_summary()
-            return summary.get("uptime_percentage", 99.9)  # Default to high uptime
+            summary = await performance_monitor.get_performance_summary()  # type: ignore[misc]
+            return cast(float, summary.get("uptime_percentage", 99.9))  # Default to high uptime
         except Exception as e:
             self.logger.error(f"Error getting system uptime: {e}")
             return 0.0

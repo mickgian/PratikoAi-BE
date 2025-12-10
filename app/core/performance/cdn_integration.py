@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 from urllib.parse import urljoin, urlparse
 
 from app.core.config import settings
@@ -178,7 +178,8 @@ class CDNManager:
         content_type = content_type.lower()
 
         # Check specific rules first
-        for pattern, cache_control in self.config["cache_rules"].items():
+        cache_rules = cast(dict[str, CacheControl], self.config["cache_rules"])
+        for pattern, cache_control in cache_rules.items():
             if pattern.endswith("*"):
                 prefix = pattern[:-1]
                 if content_type.startswith(prefix):
@@ -512,7 +513,7 @@ class CDNManager:
                     "max_file_size_mb": self.config["max_file_size_mb"],
                     "compression_enabled": self.config["compression_enabled"],
                     "minification_enabled": self.config["minification_enabled"],
-                    "supported_types_count": len(self.config["supported_types"]),
+                    "supported_types_count": len(cast(list[str], self.config["supported_types"])),
                 },
             }
 

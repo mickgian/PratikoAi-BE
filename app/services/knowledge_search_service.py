@@ -61,6 +61,11 @@ DOCUMENT_TYPE_MAPPING = {
     "interpello": "interpell",
     "risposta": "rispost",
     "provvedimento": "provvediment",
+    # Court documents (Cassazione)
+    "ordinanza": "ordinanza",
+    "sentenza": "sentenza",
+    # INPS documents
+    "messaggio": "messaggio",
 }
 
 
@@ -413,6 +418,58 @@ class KnowledgeSearchService:
 
         return cleaned_query if cleaned_query != query.lower() else query
 
+    def _generate_title_patterns(
+        self,
+        doc_type: str | None,
+        doc_number: str,
+        doc_year: str | None = None,
+    ) -> list[str]:
+        """Generate title matching patterns for Italian documents.
+
+        Returns maximum 7 patterns, ordered by specificity (most specific first).
+        Includes BOTH base number and compound patterns for maximum recall.
+
+        Args:
+            doc_type: Document type (e.g., "risoluzione", "messaggio", "DPR")
+            doc_number: Document number (e.g., "64", "3585", "1124")
+            doc_year: Optional year for compound references (e.g., "1965")
+
+        Returns:
+            List of title patterns to search (max 7)
+
+        Examples:
+            _generate_title_patterns("messaggio", "3585")
+            → ["messaggio n. 3585", "messaggio numero 3585", "n. 3585", "n.3585", "numero 3585"]
+
+            _generate_title_patterns("DPR", "1124", "1965")
+            → ["DPR n. 1124/1965", "DPR 1124/1965", "DPR n. 1124", "DPR numero 1124",
+               "n. 1124/1965", "1124/1965", "n. 1124"]
+        """
+        patterns = []
+
+        # 1. Type + number + year (most specific - compound)
+        if doc_type and doc_year:
+            patterns.append(f"{doc_type} n. {doc_number}/{doc_year}")
+            patterns.append(f"{doc_type} {doc_number}/{doc_year}")
+
+        # 2. Type + number (base)
+        if doc_type:
+            patterns.append(f"{doc_type} n. {doc_number}")
+            patterns.append(f"{doc_type} numero {doc_number}")
+
+        # 3. Generic compound patterns (if year provided)
+        if doc_year:
+            patterns.append(f"n. {doc_number}/{doc_year}")
+            patterns.append(f"{doc_number}/{doc_year}")
+
+        # 4. Generic base number patterns (fallback - always included)
+        patterns.append(f"n. {doc_number}")
+        patterns.append(f"n.{doc_number}")  # No space variant
+        patterns.append(f"numero {doc_number}")
+
+        # Limit to 7 patterns max (100ms latency budget allows this)
+        return patterns[:7]
+
     async def _perform_bm25_search(
         self, query: str, canonical_facts: list[str], max_results: int, filters: dict[str, Any]
     ) -> list[dict[str, Any]]:
@@ -563,6 +620,7 @@ class KnowledgeSearchService:
                         original_query=query[:100],
                         extracted_type=llm_doc_ref.get("type"),
                         extracted_number=llm_doc_ref.get("number"),
+                        extracted_year=llm_doc_ref.get("year"),
                         reason="llm_extracted_document_reference",
                     )
                 else:
@@ -590,14 +648,22 @@ class KnowledgeSearchService:
             search_query,
             re.IGNORECASE,
         )
-        is_document_number_query = doc_number_match is not None or llm_doc_ref is not None
+        # Only treat as document number query if we have an actual number
+        # This prevents queries like "DL Sicurezza sul lavoro" (type detected but no number)
+        # from entering the document number path and causing search failures
+        is_document_number_query = doc_number_match is not None or (
+            llm_doc_ref is not None and llm_doc_ref.get("number") is not None
+        )
 
         if is_document_number_query:
-            # TDD INTEGRATION: Handle both LLM and regex extraction
-            if llm_doc_ref and not doc_number_match:
-                # LLM extracted document reference, regex didn't match
+            # ALWAYS prefer LLM when it has a specific document type
+            # (regex might only capture "numero" which is useless for title matching)
+            # This fixes queries like "ordinanza numero 30016" where regex captures
+            # "numero 30016" but LLM correctly extracts type="ordinanza"
+            if llm_doc_ref and llm_doc_ref.get("type"):
+                # LLM extracted document type - use it (more reliable than regex)
                 doc_number = llm_doc_ref.get("number")
-                llm_type = llm_doc_ref.get("type", "").lower()
+                llm_type = str(llm_doc_ref.get("type", "")).lower()
 
                 # Map LLM type to normalized stem using shared constant
                 normalized_type = DOCUMENT_TYPE_MAPPING.get(llm_type, llm_type)
@@ -608,10 +674,11 @@ class KnowledgeSearchService:
                     doc_type=llm_type,
                     doc_number=doc_number,
                     normalized_type=normalized_type,
+                    regex_also_matched=doc_number_match is not None,
                 )
 
-            else:
-                # Regex matched - use existing logic
+            elif doc_number_match:
+                # Fall back to regex when LLM didn't extract a type
                 doc_number = doc_number_match.group(2)
                 doc_type_keyword = doc_number_match.group(1).lower()
 
@@ -660,6 +727,19 @@ class KnowledgeSearchService:
                             normalized_type = correct
                             break
 
+            else:
+                # Edge case: LLM has number but no type, and regex didn't match
+                # Use LLM's number with generic "numero" type
+                doc_number = llm_doc_ref.get("number") if llm_doc_ref else None
+                normalized_type = "numero"
+                doc_type_keyword = "numero"
+
+                logger.info(
+                    "using_llm_number_without_type",
+                    doc_number=doc_number,
+                    normalized_type=normalized_type,
+                )
+
             # Extract temporal context from query (month/year)
             temporal_context = []
             for month in [
@@ -681,7 +761,9 @@ class KnowledgeSearchService:
                     break  # Only first month
 
             # Build simplified query: type + number + temporal context
-            query_parts = [normalized_type, doc_number]
+            query_parts: list[str] = [normalized_type]
+            if doc_number:
+                query_parts.append(doc_number)
             if temporal_context:
                 query_parts.extend(temporal_context)
 
@@ -702,16 +784,29 @@ class KnowledgeSearchService:
                 reason="extracting_core_terms_with_temporal_context",
             )
 
-            # CRITICAL FIX: Add SQL title filter for document number queries
-            # PostgreSQL FTS doesn't index numbers well, so we need a direct LIKE filter
-            # This ensures "Risoluzione n. 64" can be found via title matching
+            # MULTI-PATTERN TITLE MATCHING for document number queries
+            # PostgreSQL FTS doesn't index numbers well, so we need direct ILIKE filters
+            # Generate multiple patterns to handle all Italian document title formats:
+            # - INPS: "Messaggio numero 3585" (uses "numero" not "n.")
+            # - Agenzia Entrate: "Risoluzione n. 64"
+            # - Legislative: "DPR n. 1124/1965" (compound references)
             if doc_number:
-                # Build title filter patterns for common document formats
-                # Examples: "n. 64", "n.64", "numero 64", "Risoluzione n. 64"
-                title_filter_pattern = f"n. {doc_number}"  # Most common format
+                # Get year for compound references (e.g., "DPR 1124/1965")
+                doc_year = llm_doc_ref.get("year") if llm_doc_ref else None
+
+                # Get document type for pattern generation
+                # normalized_type is set above from either LLM or regex extraction
+                doc_type_for_patterns = normalized_type if normalized_type not in ("numero", "n.", "n") else None
+
+                # Generate multiple title patterns for better recall
+                title_patterns = self._generate_title_patterns(
+                    doc_type=doc_type_for_patterns,
+                    doc_number=doc_number,
+                    doc_year=doc_year,
+                )
 
                 # Store for use in search service SQL filter
-                filters["title_pattern"] = title_filter_pattern
+                filters["title_patterns"] = title_patterns
 
                 # CRITICAL: Remove category filter for document number queries
                 # Users reference documents by number regardless of category
@@ -726,10 +821,13 @@ class KnowledgeSearchService:
                     )
 
                 logger.info(
-                    "bm25_document_number_title_filter_added",
+                    "bm25_document_number_title_patterns_generated",
                     doc_number=doc_number,
-                    title_pattern=title_filter_pattern,
-                    reason="fts_does_not_index_numbers_using_sql_like_fallback",
+                    doc_type=doc_type_for_patterns,
+                    doc_year=doc_year,
+                    patterns_count=len(title_patterns),
+                    patterns=title_patterns,
+                    reason="multi_pattern_matching_for_all_document_formats",
                 )
 
         # ITALIAN ORGANIZATION HANDLING: Extract organization from query and map to source filter
@@ -744,6 +842,37 @@ class KnowledgeSearchService:
                 source_pattern=source_pattern,
                 reason="mapping_org_mention_to_source_filter",
             )
+
+        # LLM KEYWORDS HANDLING: Use semantic keywords for topic-based searches
+        # When LLM extracts keywords but no document number, use keywords for better search
+        # This handles queries like "DL sicurezza lavoro" or "bonus psicologo 2025"
+        if llm_doc_ref and not is_document_number_query:
+            raw_keywords = llm_doc_ref.get("keywords")  # Can be list, str, or None
+            llm_keywords: list[str] = raw_keywords if isinstance(raw_keywords, list) else []
+            if llm_keywords:
+                # Build search query from LLM keywords (core semantic concepts)
+                # Include document type if present (e.g., "DL", "decreto")
+                kw_doc_type: str | None = llm_doc_ref.get("type")
+                kw_doc_year: str | None = llm_doc_ref.get("year")
+
+                keyword_parts: list[str] = []
+                if kw_doc_type:
+                    keyword_parts.append(str(kw_doc_type))
+                keyword_parts.extend(llm_keywords)
+                if kw_doc_year:
+                    keyword_parts.append(str(kw_doc_year))
+
+                search_query = " ".join(keyword_parts)
+
+                logger.info(
+                    "bm25_using_llm_keywords_for_topic_search",
+                    original_query=query,
+                    llm_keywords=llm_keywords,
+                    llm_type=kw_doc_type,
+                    llm_year=kw_doc_year,
+                    new_search_query=search_query,
+                    reason="no_document_number_but_keywords_present",
+                )
 
         # For aggregation queries with multiple months, try single-month searches FIRST
         # This avoids strict AND failures when documents only match one month
@@ -801,7 +930,7 @@ class KnowledgeSearchService:
                     min_rank=min_rank * 0.5,  # Lower threshold for multi-month aggregation
                     source_pattern=filters.get("source_pattern"),
                     publication_year=publication_year,
-                    title_pattern=filters.get("title_pattern"),
+                    title_patterns=filters.get("title_patterns"),
                 )
 
                 if month_results:
@@ -836,7 +965,7 @@ class KnowledgeSearchService:
                 min_rank=min_rank,
                 source_pattern=filters.get("source_pattern"),
                 publication_year=publication_year,
-                title_pattern=filters.get("title_pattern"),
+                title_patterns=filters.get("title_patterns"),
             )
 
             # Fallback: if no results with strict AND, try relaxed OR search
@@ -857,7 +986,7 @@ class KnowledgeSearchService:
                     min_rank=min_rank * 0.5,  # Lower threshold for fallback
                     source_pattern=filters.get("source_pattern"),
                     publication_year=publication_year,
-                    title_pattern=filters.get("title_pattern"),
+                    title_patterns=filters.get("title_patterns"),
                 )
 
                 if search_results:
@@ -888,7 +1017,7 @@ class KnowledgeSearchService:
                     min_rank=min_rank * 0.3,  # Very low threshold for last resort
                     source_pattern=None,  # Remove source filter too
                     publication_year=publication_year,
-                    title_pattern=filters.get("title_pattern"),
+                    title_patterns=filters.get("title_patterns"),
                 )
 
                 if search_results:
@@ -912,10 +1041,15 @@ class KnowledgeSearchService:
                 )
 
                 for num in numbers:
-                    # Try each number as a document number (e.g., "n. 64")
+                    # Try each number as a document number using multiple patterns
+                    fallback_patterns = self._generate_title_patterns(
+                        doc_type=None,  # No type context in last-resort fallback
+                        doc_number=num,
+                        doc_year=None,
+                    )
                     fallback_results = await self.search_service.search(
                         query=search_query,
-                        title_pattern=f"n. {num}",
+                        title_patterns=fallback_patterns,
                         limit=max_results,
                         category=category,
                         source_pattern=None,  # Remove restrictive filters
@@ -928,9 +1062,27 @@ class KnowledgeSearchService:
                             "bm25_multipass_number_fallback_success",
                             number=num,
                             results_count=len(fallback_results),
-                            reason=f"found_documents_with_n_{num}_in_title",
+                            patterns_tried=fallback_patterns,
+                            reason=f"found_documents_matching_number_{num}",
                         )
                         break  # Found results, stop trying other numbers
+
+        # Log warning for document number queries that returned no results
+        # This helps identify patterns that need to be added in the future
+        if is_document_number_query and not search_results:
+            title_patterns = filters.get("title_patterns", [])
+            # Variables are defined inside 'if is_document_number_query:' block
+            # so they will be available here when is_document_number_query is True
+            logger.warning(
+                "bm25_document_number_no_results",
+                original_query=query,
+                search_query=search_query,
+                doc_number=doc_number,
+                doc_type=locals().get("doc_type_for_patterns"),
+                doc_year=locals().get("doc_year"),
+                patterns_tried=title_patterns,
+                reason="no_documents_matched_any_title_patterns_may_need_new_pattern",
+            )
 
         # Convert to dict format for consistency
         bm25_results = []
@@ -1100,16 +1252,7 @@ class KnowledgeSearchService:
                 )
                 return 0.0
 
-        # Type check: Ensure we have a datetime object at this point
-        if not isinstance(updated_at, datetime):
-            logger.warning(
-                "unexpected_datetime_type",
-                type=type(updated_at).__name__,
-                value=str(updated_at),
-                reason="not_datetime_or_string",
-            )
-            return 0.0
-
+        # At this point, updated_at is guaranteed to be datetime (str case is handled above)
         # Ensure timezone-aware comparison
         if updated_at.tzinfo is None:
             updated_at = updated_at.replace(tzinfo=UTC)

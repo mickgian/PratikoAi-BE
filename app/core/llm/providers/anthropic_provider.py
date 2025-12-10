@@ -249,7 +249,7 @@ class AnthropicProvider(LLMProvider):
         temperature: float = 0.2,
         max_tokens: int | None = None,
         **kwargs,
-    ) -> AsyncGenerator[LLMStreamResponse]:
+    ) -> AsyncGenerator[LLMStreamResponse, None]:
         """Generate a streaming chat completion using Anthropic Claude.
 
         Args:

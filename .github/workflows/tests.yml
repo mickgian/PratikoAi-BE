@@ -98,11 +98,11 @@ jobs:
       - name: Run all tests with coverage
         continue-on-error: false
         run: |
-          # Skip E2E tests that require real LLM API calls
-          # These are run locally via pre-push hooks to prevent RSS regressions
+          # Skip ALL E2E tests - they require real data/external services
+          # E2E tests are run locally via pre-push hooks to prevent RSS regressions
           uv run pytest tests/ \
             -v \
-            -m "not (e2e and llm)" \
+            -m "not e2e" \
             --cov=app \
             --cov-report=xml \
             --cov-report=html \

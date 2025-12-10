@@ -18,7 +18,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urljoin, urlparse
 
 import aiohttp
@@ -197,6 +197,7 @@ class GazzettaScraper:
 
         try:
             await self._ensure_session()
+            assert self._session is not None  # guaranteed by _ensure_session
             async with self._session.get(self.ROBOTS_TXT_URL) as response:
                 if response.status == 200:
                     content = await response.text()
@@ -259,6 +260,7 @@ class GazzettaScraper:
             return None
 
         await self._ensure_session()
+        assert self._session is not None  # guaranteed by _ensure_session
 
         # Rate limiting
         current_time = time.time()
@@ -278,7 +280,7 @@ class GazzettaScraper:
                         continue
 
                     if response.status == 200:
-                        content = await response.text()
+                        content = cast(str, await response.text())
                         logger.debug("gazzetta_page_fetched", url=url)
                         return content
                     else:
@@ -503,7 +505,7 @@ class GazzettaScraper:
         Returns:
             List of GazzettaDocument objects
         """
-        documents = []
+        documents: list[GazzettaDocument] = []
 
         # Build issue detail URL
         issue_url = (
@@ -896,7 +898,7 @@ async def scrape_gazzetta_daily_task(db_session: AsyncSession | None = None) -> 
                 persistence_enabled=db_session is not None,
             )
 
-            return result
+            return cast(ScrapingResult, result)
 
     except Exception as e:
         logger.error("scheduled_gazzetta_scraping_failed", error=str(e))

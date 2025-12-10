@@ -31,7 +31,7 @@ from sqlmodel import (
 )
 
 
-class KnowledgeItem(SQLModel, table=True):
+class KnowledgeItem(SQLModel, table=True):  # type: ignore[call-arg]
     """Knowledge base item with full-text search support.
 
     This model stores processed knowledge from various sources including:
@@ -173,7 +173,7 @@ class KnowledgeSearchResponse(SQLModel):
     suggestions: list[str] = Field(default_factory=list, description="Search suggestions")
 
 
-class KnowledgeFeedback(SQLModel, table=True):
+class KnowledgeFeedback(SQLModel, table=True):  # type: ignore[call-arg]
     """User feedback on knowledge items"""
 
     __tablename__ = "knowledge_feedback"

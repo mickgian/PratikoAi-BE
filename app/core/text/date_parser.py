@@ -66,7 +66,7 @@ def extract_publication_date(content: str, title: str = "") -> date | None:
             # Handle DD/MM/YYYY (month_name) format
             if len(groups) == 4:
                 day, month_num, year, month_name = groups
-                month = int(month_num)
+                month: int | None = int(month_num)
             # Handle "DD month_name YYYY" format
             else:
                 day, month_name, year = groups

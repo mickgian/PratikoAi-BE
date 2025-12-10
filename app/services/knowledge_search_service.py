@@ -61,6 +61,11 @@ DOCUMENT_TYPE_MAPPING = {
     "interpello": "interpell",
     "risposta": "rispost",
     "provvedimento": "provvediment",
+    # Court documents (Cassazione)
+    "ordinanza": "ordinanza",
+    "sentenza": "sentenza",
+    # INPS documents
+    "messaggio": "messaggio",
 }
 
 
@@ -651,11 +656,14 @@ class KnowledgeSearchService:
         )
 
         if is_document_number_query:
-            # TDD INTEGRATION: Handle both LLM and regex extraction
-            if llm_doc_ref and not doc_number_match:
-                # LLM extracted document reference, regex didn't match
+            # ALWAYS prefer LLM when it has a specific document type
+            # (regex might only capture "numero" which is useless for title matching)
+            # This fixes queries like "ordinanza numero 30016" where regex captures
+            # "numero 30016" but LLM correctly extracts type="ordinanza"
+            if llm_doc_ref and llm_doc_ref.get("type"):
+                # LLM extracted document type - use it (more reliable than regex)
                 doc_number = llm_doc_ref.get("number")
-                llm_type = llm_doc_ref.get("type", "").lower()
+                llm_type = str(llm_doc_ref.get("type", "")).lower()
 
                 # Map LLM type to normalized stem using shared constant
                 normalized_type = DOCUMENT_TYPE_MAPPING.get(llm_type, llm_type)
@@ -666,10 +674,11 @@ class KnowledgeSearchService:
                     doc_type=llm_type,
                     doc_number=doc_number,
                     normalized_type=normalized_type,
+                    regex_also_matched=doc_number_match is not None,
                 )
 
-            else:
-                # Regex matched - use existing logic
+            elif doc_number_match:
+                # Fall back to regex when LLM didn't extract a type
                 doc_number = doc_number_match.group(2)
                 doc_type_keyword = doc_number_match.group(1).lower()
 
@@ -718,6 +727,19 @@ class KnowledgeSearchService:
                             normalized_type = correct
                             break
 
+            else:
+                # Edge case: LLM has number but no type, and regex didn't match
+                # Use LLM's number with generic "numero" type
+                doc_number = llm_doc_ref.get("number") if llm_doc_ref else None
+                normalized_type = "numero"
+                doc_type_keyword = "numero"
+
+                logger.info(
+                    "using_llm_number_without_type",
+                    doc_number=doc_number,
+                    normalized_type=normalized_type,
+                )
+
             # Extract temporal context from query (month/year)
             temporal_context = []
             for month in [
@@ -739,7 +761,9 @@ class KnowledgeSearchService:
                     break  # Only first month
 
             # Build simplified query: type + number + temporal context
-            query_parts = [normalized_type, doc_number]
+            query_parts: list[str] = [normalized_type]
+            if doc_number:
+                query_parts.append(doc_number)
             if temporal_context:
                 query_parts.extend(temporal_context)
 
@@ -823,19 +847,20 @@ class KnowledgeSearchService:
         # When LLM extracts keywords but no document number, use keywords for better search
         # This handles queries like "DL sicurezza lavoro" or "bonus psicologo 2025"
         if llm_doc_ref and not is_document_number_query:
-            llm_keywords = llm_doc_ref.get("keywords", [])
+            raw_keywords = llm_doc_ref.get("keywords")  # Can be list, str, or None
+            llm_keywords: list[str] = raw_keywords if isinstance(raw_keywords, list) else []
             if llm_keywords:
                 # Build search query from LLM keywords (core semantic concepts)
                 # Include document type if present (e.g., "DL", "decreto")
-                llm_type = llm_doc_ref.get("type")
-                llm_year = llm_doc_ref.get("year")
+                kw_doc_type: str | None = llm_doc_ref.get("type")
+                kw_doc_year: str | None = llm_doc_ref.get("year")
 
-                keyword_parts = []
-                if llm_type:
-                    keyword_parts.append(llm_type)
+                keyword_parts: list[str] = []
+                if kw_doc_type:
+                    keyword_parts.append(str(kw_doc_type))
                 keyword_parts.extend(llm_keywords)
-                if llm_year:
-                    keyword_parts.append(llm_year)
+                if kw_doc_year:
+                    keyword_parts.append(str(kw_doc_year))
 
                 search_query = " ".join(keyword_parts)
 
@@ -843,8 +868,8 @@ class KnowledgeSearchService:
                     "bm25_using_llm_keywords_for_topic_search",
                     original_query=query,
                     llm_keywords=llm_keywords,
-                    llm_type=llm_type,
-                    llm_year=llm_year,
+                    llm_type=kw_doc_type,
+                    llm_year=kw_doc_year,
                     new_search_query=search_query,
                     reason="no_document_number_but_keywords_present",
                 )
@@ -1227,16 +1252,7 @@ class KnowledgeSearchService:
                 )
                 return 0.0
 
-        # Type check: Ensure we have a datetime object at this point
-        if not isinstance(updated_at, datetime):
-            logger.warning(
-                "unexpected_datetime_type",
-                type=type(updated_at).__name__,
-                value=str(updated_at),
-                reason="not_datetime_or_string",
-            )
-            return 0.0
-
+        # At this point, updated_at is guaranteed to be datetime (str case is handled above)
         # Ensure timezone-aware comparison
         if updated_at.tzinfo is None:
             updated_at = updated_at.replace(tzinfo=UTC)

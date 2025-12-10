@@ -12,7 +12,7 @@ import re
 import time
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 from urllib.parse import urljoin, urlparse
 
 import aiohttp
@@ -162,6 +162,8 @@ class CassazioneScraper:
         """Check and parse robots.txt for scraping rules."""
         try:
             await self._ensure_session()
+            if self._session is None:
+                return
 
             async with self._session.get(self.ROBOTS_TXT_URL) as response:
                 if response.status == 200:
@@ -245,6 +247,8 @@ class CassazioneScraper:
             raise ScrapingError(f"Path disallowed by robots.txt: {url}", "ROBOTS_DISALLOWED", url=url)
 
         await self._ensure_session()
+        if self._session is None:
+            raise ScrapingError("Session not initialized", "SESSION_ERROR", url=url)
 
         # Rate limiting
         current_time = time.time()
@@ -270,7 +274,7 @@ class CassazioneScraper:
                         )
 
                     if response.status == 200:
-                        content = await response.text()
+                        content = cast(str, await response.text())
                         self.statistics.record_page_scraped(True, duration)
                         return content
                     else:
@@ -520,75 +524,112 @@ class CassazioneScraper:
         return None
 
     def _extract_subject(self, soup: BeautifulSoup) -> str | None:
-        """Extract decision subject/matter."""
-        # Look for subject in various locations
+        """Extract decision subject/matter (Oggetto field on Cassazione website)."""
+        page_text = soup.get_text()
+
+        # Cassazione uses "Oggetto" field which contains the actual subject description
+        # Format: "Oggetto\nRedditi da locazione - Conduttore esercente attività..."
+        oggetto_match = re.search(
+            r"Oggetto\s*\n?(.*?)(?:\n(?:Presidente|Relatore|L'esito|Esito|$))",
+            page_text,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if oggetto_match:
+            subject = oggetto_match.group(1).strip()
+            # Clean up and return if substantial
+            if len(subject) > 10:
+                # Remove extra whitespace
+                subject = " ".join(subject.split())
+                return subject
+
+        # Look for subject in various CSS locations
         selectors = [
             ".decision-subject",
             ".subject",
             ".materia",
-            'h4:contains("MATERIA")',
-            'h4:contains("Materia")',
-            'h4:contains("materia")',
+            ".oggetto",
         ]
 
         for selector in selectors:
             element = soup.select_one(selector)
             if element:
-                # Get text from element or next sibling
-                text = element.get_text(strip=True)
+                text = str(element.get_text(strip=True))
                 if text and len(text) > 10:
                     return text
 
-                # Check next sibling
-                if element.next_sibling:
-                    sibling_text = (
-                        element.next_sibling.get_text(strip=True)
-                        if hasattr(element.next_sibling, "get_text")
-                        else str(element.next_sibling).strip()
-                    )
-                    if sibling_text and len(sibling_text) > 10:
-                        return sibling_text
-
-        # Fallback: look for content after "MATERIA" text
-        page_text = soup.get_text()
-        materia_match = re.search(r"MATERIA[:\s]*([^\n]+)", page_text, re.IGNORECASE)
+        # Fallback: look for content after "MATERIA" text (simpler extraction)
+        materia_match = re.search(r"Materia[:\s]*\n?(\w+)", page_text, re.IGNORECASE)
         if materia_match:
-            return materia_match.group(1).strip()
+            return str(materia_match.group(1).strip())
 
         return None
 
     def _extract_summary(self, soup: BeautifulSoup) -> str | None:
-        """Extract decision summary."""
-        # Look for summary sections
-        selectors = [".summary", ".abstract", ".riassunto"]
+        """Extract decision summary (L'esito in sintesi)."""
+        # Cassazione website uses "L'esito in sintesi" section
+        page_text = soup.get_text()
+
+        # Look for "L'esito in sintesi" section - content comes AFTER this heading
+        esito_match = re.search(
+            r"(?:L')?[Ee]sito in sintesi\s*\n(.*?)(?=\n\s*(?:Allegato|Scarica|$))",
+            page_text,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if esito_match:
+            summary = str(esito_match.group(1).strip())
+            # Clean up excessive whitespace
+            summary = " ".join(summary.split())
+            if len(summary) > 20:
+                return summary
+
+        # Fallback: Look for summary sections with generic selectors
+        selectors = [".summary", ".abstract", ".riassunto", ".esito-sintesi"]
 
         for selector in selectors:
             element = soup.select_one(selector)
             if element:
-                return element.get_text(strip=True)
+                text = str(element.get_text(strip=True))
+                if len(text) > 20:
+                    return text
 
         return None
 
     def _extract_full_text(self, soup: BeautifulSoup) -> str | None:
-        """Extract full decision text."""
+        """Extract full decision text from Cassazione website.
+
+        The Cassazione website structure uses:
+        - .it-page-sections-container for main content
+        - <main> tag as fallback
+        """
         # Remove script and style elements
         for script in soup(["script", "style"]):
             script.decompose()
 
-        # Get text from main content areas
-        content_selectors = [".decision-content", ".content", ".main-content", "#main-content"]
+        # Cassazione-specific selectors (most specific first)
+        content_selectors = [
+            ".it-page-sections-container",  # Main content container on Cassazione site
+            ".sidebar-content",  # Alternative content area
+            "main",  # HTML5 main tag
+            ".decision-content",
+            ".content",
+            ".main-content",
+            "#main-content",
+        ]
 
         for selector in content_selectors:
             element = soup.select_one(selector)
             if element:
-                return element.get_text(separator="\n", strip=True)
+                text = str(element.get_text(separator="\n", strip=True))
+                # Only return if we got substantial content
+                if len(text) > 100:
+                    return text
 
-        # Fallback to entire body
+        # Fallback to entire body (but clean it)
         body = soup.find("body")
         if body:
-            return body.get_text(separator="\n", strip=True)
+            return str(body.get_text(separator="\n", strip=True))
 
-        return soup.get_text(separator="\n", strip=True)
+        return str(soup.get_text(separator="\n", strip=True))
 
     def _extract_decision_type(self, soup: BeautifulSoup) -> DecisionType:
         """Extract decision type."""
@@ -1245,7 +1286,7 @@ class CassazioneScraper:
         """Schedule weekly updates of Cassazione decisions."""
         from app.services.scheduler_service import scheduler_service
 
-        scheduler_service.add_job(
+        scheduler_service.add_job(  # type: ignore[attr-defined]
             func=self.update_recent_decisions_job,
             trigger="cron",
             day_of_week="sun",
@@ -1282,7 +1323,7 @@ class CassazioneScraper:
         """Schedule daily updates of Cassazione decisions (Tax and Labor sections)."""
         from app.services.scheduler_service import scheduler_service
 
-        scheduler_service.add_job(
+        scheduler_service.add_job(  # type: ignore[attr-defined]
             func=self.update_daily_decisions_job,
             trigger="cron",
             hour=3,
@@ -1398,14 +1439,14 @@ class CassazioneScraper:
         if sections is None:
             sections = [CourtSection.TRIBUTARIA, CourtSection.LAVORO]
 
-        documents = []
+        documents: list[dict[str, Any]] = []
         start_date = date.today() - timedelta(days=days_back)
         end_date = date.today()
 
         try:
             # This would call the actual scraping methods
             # For now, return empty list as the scraping implementation is mock
-            logger.info(
+            logger.info(  # type: ignore[call-arg]
                 "cassazione_integration_prepared",
                 document_count=len(documents),
                 sections=[s.value for s in sections],
@@ -1413,7 +1454,7 @@ class CassazioneScraper:
             )
 
         except Exception as e:
-            logger.error("cassazione_integration_error", error=str(e))
+            logger.error("cassazione_integration_error", error=str(e))  # type: ignore[call-arg]
 
         return documents
 
@@ -1431,12 +1472,12 @@ async def scrape_cassazione_daily_task(db_session: AsyncSession | None = None) -
     """
     try:
         async with CassazioneScraper(db_session=db_session) as scraper:
-            result = await scraper.scrape_recent_decisions(
+            result: ScrapingResult = await scraper.scrape_recent_decisions(
                 sections=[CourtSection.TRIBUTARIA, CourtSection.LAVORO],
                 days_back=1,
             )
 
-            logger.info(
+            logger.info(  # type: ignore[call-arg]
                 "scheduled_cassazione_scraping_completed",
                 decisions_found=result.decisions_found,
                 decisions_saved=result.decisions_saved,

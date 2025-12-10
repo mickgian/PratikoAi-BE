@@ -179,7 +179,7 @@ class DatabaseOptimizer:
             Pool optimization results
         """
         try:
-            optimization_results = {
+            optimization_results: dict[str, Any] = {
                 "previous_settings": {},
                 "new_settings": {},
                 "improvements": [],
@@ -425,7 +425,7 @@ class DatabaseOptimizer:
         """Extract JOIN information from query."""
         import re
 
-        join_info = {}
+        join_info: dict[str, list[str]] = {}
 
         # Look for JOIN clauses
         join_pattern = r"JOIN\s+(\w+)\s+.*?ON\s+(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)"

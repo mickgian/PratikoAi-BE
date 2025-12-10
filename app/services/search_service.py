@@ -208,7 +208,9 @@ class SearchService:
                         AND kc.junk = FALSE
                         AND ki.category = COALESCE(:category, ki.category)
                         AND ki.source LIKE COALESCE(:source_pattern, '%')
-                        AND (CAST(:publication_year AS INTEGER) IS NULL OR EXTRACT(YEAR FROM ki.publication_date) = CAST(:publication_year AS INTEGER))
+                        AND (CAST(:publication_year AS INTEGER) IS NULL
+                             OR EXTRACT(YEAR FROM ki.publication_date) = CAST(:publication_year AS INTEGER)
+                             OR ki.publication_date IS NULL)
                     ORDER BY
                         ki.relevance_score DESC,
                         kc.chunk_index ASC
@@ -412,7 +414,9 @@ class SearchService:
                         AND kc.junk = FALSE
                         AND ki.category = COALESCE(:category, ki.category)
                         AND ki.source LIKE COALESCE(:source_pattern, '%')
-                        AND (CAST(:publication_year AS INTEGER) IS NULL OR EXTRACT(YEAR FROM ki.publication_date) = CAST(:publication_year AS INTEGER))
+                        AND (CAST(:publication_year AS INTEGER) IS NULL
+                             OR EXTRACT(YEAR FROM ki.publication_date) = CAST(:publication_year AS INTEGER)
+                             OR ki.publication_date IS NULL)
                     ORDER BY
                         ki.relevance_score DESC,
                         kc.chunk_index ASC
@@ -611,10 +615,11 @@ class SearchService:
         if redis_client:
             try:
                 import json
+                from typing import cast
 
                 cached_data = await redis_client.get(cache_key)
                 if cached_data:
-                    return json.loads(cached_data)
+                    return cast(list[str], json.loads(cached_data))
             except Exception:
                 pass
 

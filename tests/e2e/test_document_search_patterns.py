@@ -135,3 +135,56 @@ class TestDocumentSearchPatterns:
 
         assert len(patterns) <= 7, f"Generated {len(patterns)} patterns, max is 7"
         print(f"Pattern count: {len(patterns)}")
+
+    @pytest.mark.asyncio
+    @pytest.mark.e2e
+    async def test_cassazione_ordinanza_30016_regression(self, db_session):
+        """Regression test: Cassazione ordinanza 30016 must be found.
+
+        Bug description: When user searched for "Corte di cassazione ordinanza
+        numero 30016 del 14/11/2025", the LLM correctly extracted type=ordinanza
+        and number=30016, but regex also matched "numero 30016" and overrode
+        the LLM's document type with "numero" (useless for title matching).
+
+        The fix ensures we prefer LLM's document type when available.
+
+        Document in DB: "Cassazione Sezioni_Unite - Ordinanza n. 30016 del 14/11/2025"
+        """
+        # Test the exact query that was failing
+        query = "Corte di cassazione ordinanza numero 30016 del 14/11/2025"
+        results = await self._search(db_session, query)
+
+        assert len(results) > 0, (
+            "Cassazione ordinanza 30016 NOT found - regression! "
+            "LLM type override or NULL publication_date filter bug."
+        )
+
+        # Verify we found the right document
+        found_30016 = any("30016" in r.title for r in results)
+        assert found_30016, f"Expected to find ordinanza 30016 in title, got: {[r.title for r in results]}"
+
+    @pytest.mark.asyncio
+    @pytest.mark.e2e
+    async def test_cassazione_ordinanza_simple_query(self, db_session):
+        """Test simple Cassazione ordinanza query."""
+        results = await self._search(db_session, "ordinanza 30016")
+
+        if results:
+            found = any("30016" in r.title and "ordinanza" in r.title.lower() for r in results)
+            if found:
+                print(f"Found ordinanza 30016: {results[0].title}")
+
+    @pytest.mark.asyncio
+    @pytest.mark.e2e
+    async def test_cassazione_ordinanza_patterns_generated(self, db_session):
+        """Verify ordinanza patterns are generated correctly."""
+        service = KnowledgeSearchService(db_session=db_session)
+
+        # Test pattern generation for ordinanza (Cassazione style)
+        patterns = service._generate_title_patterns("ordinanza", "30016")
+
+        assert len(patterns) >= 3, f"Expected at least 3 patterns, got {len(patterns)}"
+        assert any(
+            "ordinanza" in p.lower() and "30016" in p for p in patterns
+        ), f"Missing 'ordinanza n. 30016' pattern in: {patterns}"
+        print(f"Generated ordinanza patterns: {patterns}")

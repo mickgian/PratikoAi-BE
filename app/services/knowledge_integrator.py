@@ -16,6 +16,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    cast,
 )
 
 from sqlalchemy import (
@@ -160,7 +161,7 @@ class KnowledgeIntegrator:
             )
 
             # Also create regulatory document record
-            await self._create_regulatory_document(document_data, knowledge_item.id)
+            await self._create_regulatory_document(document_data, cast(int, knowledge_item.id))
 
             # Invalidate relevant caches
             await self.invalidate_relevant_caches(
@@ -200,7 +201,7 @@ class KnowledgeIntegrator:
             existing_query = (
                 select(KnowledgeItem)
                 .where(KnowledgeItem.source_url == document_data.get("url", ""))
-                .order_by(KnowledgeItem.created_at.desc())
+                .order_by(KnowledgeItem.created_at.desc())  # type: ignore[attr-defined]
             )
 
             result = await self.db.execute(existing_query)
@@ -303,7 +304,7 @@ class KnowledgeIntegrator:
             )
 
             # Update regulatory document record
-            await self._update_regulatory_document(document_data, updated_item.id, new_version)
+            await self._update_regulatory_document(document_data, cast(int, updated_item.id), new_version)
 
             # Invalidate caches
             await self.invalidate_relevant_caches(
@@ -456,11 +457,11 @@ class KnowledgeIntegrator:
             query = (
                 select(KnowledgeItem)
                 .where(and_(KnowledgeItem.source_url == url, KnowledgeItem.status == "active"))
-                .order_by(KnowledgeItem.created_at.desc())
+                .order_by(KnowledgeItem.created_at.desc())  # type: ignore[attr-defined]
             )
 
             result = await self.db.execute(query)
-            return result.scalar_one_or_none()
+            return cast(KnowledgeItem | None, result.scalar_one_or_none())
 
         except Exception as e:
             logger.error("existing_document_search_failed", url=url, error=str(e), exc_info=True)
@@ -525,7 +526,7 @@ class KnowledgeIntegrator:
             old_doc_query = (
                 select(RegulatoryDocument)
                 .where(RegulatoryDocument.url == document_data.get("url", ""))
-                .order_by(RegulatoryDocument.created_at.desc())
+                .order_by(RegulatoryDocument.created_at.desc())  # type: ignore[attr-defined]
             )
 
             result = await self.db.execute(old_doc_query)
@@ -631,8 +632,8 @@ class KnowledgeIntegrator:
         Returns:
             Knowledge subcategory string
         """
-        source_type = document_data.get("source_type", "").lower()
-        title = document_data.get("title", "").lower()
+        source_type = cast(str, document_data.get("source_type", "")).lower()
+        title = cast(str, document_data.get("title", "")).lower()
 
         if source_type:
             return source_type
@@ -679,7 +680,7 @@ class KnowledgeIntegrator:
         if not isinstance(citation, dict) or "error" not in citation:
             metadata["citation"] = citation
 
-        return metadata
+        return cast(dict[str, Any], metadata)
 
     def _calculate_relevance_score(self, document_data: dict[str, Any]) -> float:
         """Calculate relevance score for the document.

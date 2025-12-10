@@ -186,7 +186,7 @@ async def run_rss_ingestion(
     if max_items:
         feed_items = feed_items[:max_items]
 
-    stats = {
+    stats: dict[str, Any] = {
         "total_items": len(feed_items),
         "new_documents": 0,
         "skipped_existing": 0,

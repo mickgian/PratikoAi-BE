@@ -337,7 +337,7 @@ class AuditLogger:
 
     def log_processing_event(
         self,
-        user_id: str,
+        user_id: str | None,
         event_type: str,
         details: dict[str, Any],
         ip_address: str | None = None,

@@ -12,8 +12,10 @@ TDD GREEN Phase 2-1: Minimal implementation to pass unit tests
 
 import json
 from typing import (
+    Any,
     Dict,
     Optional,
+    cast,
 )
 
 from openai import AsyncOpenAI
@@ -65,7 +67,7 @@ class QueryNormalizer:
 
             # Parse JSON response
             result_text = response.choices[0].message.content.strip()
-            result = json.loads(result_text)
+            result = cast(dict[str, str | None], json.loads(result_text))
 
             # Check if we have useful information (type OR keywords)
             has_document_ref = result.get("type") is not None

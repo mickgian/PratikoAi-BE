@@ -75,16 +75,18 @@ class SecurityMonitor:
         self.cleanup_interval_minutes = 30
 
         # Event tracking
-        self.recent_events = deque(maxlen=self.event_buffer_size)
-        self.ip_tracking = defaultdict(lambda: defaultdict(list))
-        self.user_tracking = defaultdict(lambda: defaultdict(list))
-        self.session_tracking = defaultdict(lambda: defaultdict(list))
+        self.recent_events: deque[dict[str, Any]] = deque(maxlen=self.event_buffer_size)
+        self.ip_tracking: dict[str, dict[str, list[Any]]] = defaultdict(lambda: defaultdict(list))
+        self.user_tracking: dict[str, dict[str, list[Any]]] = defaultdict(lambda: defaultdict(list))
+        self.session_tracking: dict[str, dict[str, list[Any]]] = defaultdict(lambda: defaultdict(list))
 
         # Active threats and blocks
         self.active_threats: dict[str, SecurityThreat] = {}
         self.blocked_ips: set[str] = set()
         self.blocked_users: set[str] = set()
-        self.rate_limited_ips = defaultdict(lambda: {"count": 0, "reset_time": datetime.utcnow()})
+        self.rate_limited_ips: dict[str, dict[str, int | datetime]] = defaultdict(
+            lambda: {"count": 0, "reset_time": datetime.utcnow()}
+        )
 
         # Security rules
         self.security_rules = self._initialize_security_rules()
@@ -416,20 +418,21 @@ class SecurityMonitor:
             return False
 
         limit_info = self.rate_limited_ips[ip_address]
-        if datetime.utcnow() > limit_info["reset_time"]:
+        if datetime.utcnow() > limit_info["reset_time"]:  # type: ignore[operator]
             # Rate limit expired
             del self.rate_limited_ips[ip_address]
             return False
 
-        return limit_info["count"] <= 0
+        return limit_info["count"] <= 0  # type: ignore[operator]
 
     def get_threat_statistics(self) -> dict[str, Any]:
         """Get security threat statistics."""
         try:
-            active_threats_by_level = defaultdict(int)
+            active_threats_by_level: dict[str, int] = {}
             for threat in self.active_threats.values():
                 if not threat.resolved:
-                    active_threats_by_level[threat.level.value] += 1
+                    level_key = threat.level.value
+                    active_threats_by_level[level_key] = active_threats_by_level.get(level_key, 0) + 1
 
             stats = {
                 "monitoring_status": "active" if self.monitoring_active else "inactive",
@@ -499,7 +502,9 @@ class SecurityMonitor:
 
                 # Clean expired rate limits
                 expired_ips = [
-                    ip for ip, info in self.rate_limited_ips.items() if datetime.utcnow() > info["reset_time"]
+                    ip
+                    for ip, info in self.rate_limited_ips.items()
+                    if datetime.utcnow() > info["reset_time"]  # type: ignore[operator]
                 ]
                 for ip in expired_ips:
                     del self.rate_limited_ips[ip]

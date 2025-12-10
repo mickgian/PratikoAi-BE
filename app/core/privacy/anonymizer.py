@@ -14,6 +14,7 @@ from dataclasses import (
 from datetime import datetime
 from enum import Enum
 from typing import (
+    Any,
     Dict,
     List,
     Optional,
@@ -422,9 +423,9 @@ class PIIAnonymizer:
 
     def anonymize_structured_data(self, data: dict) -> tuple[dict, AnonymizationResult]:
         """Anonymize PII in structured data (dictionaries)."""
-        anonymized_data = {}
-        all_matches = []
-        all_anonymization_map = {}
+        anonymized_data: dict = {}
+        all_matches: list[PIIMatch] = []
+        all_anonymization_map: dict[str, str] = {}
 
         for key, value in data.items():
             if isinstance(value, str):
@@ -440,7 +441,7 @@ class PIIAnonymizer:
                 all_anonymization_map.update(nested_result.anonymization_map)
 
             elif isinstance(value, list):
-                anonymized_list = []
+                anonymized_list: list[Any] = []
                 for item in value:
                     if isinstance(item, str):
                         result = self.anonymize_text(item)

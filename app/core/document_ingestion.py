@@ -206,7 +206,7 @@ def compute_content_hash(text: str) -> str:
     Returns:
         Hex digest of SHA256 hash
     """
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()  # type: ignore[arg-type]
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 async def ingest_document_with_chunks(
@@ -352,7 +352,5 @@ async def check_document_exists(session: AsyncSession, url: str) -> bool:
     """
     from sqlalchemy import select
 
-    result = await session.execute(
-        select(KnowledgeItem).where(KnowledgeItem.source_url == url)  # type: ignore[arg-type]
-    )
+    result = await session.execute(select(KnowledgeItem).where(KnowledgeItem.source_url == url))
     return result.scalar_one_or_none() is not None

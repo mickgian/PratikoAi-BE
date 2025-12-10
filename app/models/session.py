@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class Session(BaseModel, table=True):
+class Session(BaseModel, table=True):  # type: ignore[call-arg]
     """Session model for storing chat sessions.
 
     Attributes:

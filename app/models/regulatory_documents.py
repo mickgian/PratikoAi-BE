@@ -52,7 +52,7 @@ class ProcessingStatus(str, Enum):
     ARCHIVED = "archived"
 
 
-class RegulatoryDocument(SQLModel, table=True):
+class RegulatoryDocument(SQLModel, table=True):  # type: ignore[call-arg]
     """Model for regulatory documents from Italian authorities."""
 
     __tablename__ = "regulatory_documents"
@@ -113,7 +113,7 @@ class RegulatoryDocument(SQLModel, table=True):
     archive_reason: str | None = Field(default=None, description="Reason for archiving")
 
 
-class FeedStatus(SQLModel, table=True):
+class FeedStatus(SQLModel, table=True):  # type: ignore[call-arg]
     """Model for tracking RSS feed monitoring status."""
 
     __tablename__ = "feed_status"
@@ -169,7 +169,7 @@ class FeedStatus(SQLModel, table=True):
     )
 
 
-class DocumentProcessingLog(SQLModel, table=True):
+class DocumentProcessingLog(SQLModel, table=True):  # type: ignore[call-arg]
     """Model for logging document processing activities."""
 
     __tablename__ = "document_processing_log"
@@ -209,7 +209,7 @@ class DocumentProcessingLog(SQLModel, table=True):
     )
 
 
-class DocumentCollection(SQLModel, table=True):
+class DocumentCollection(SQLModel, table=True):  # type: ignore[call-arg]
     """Model for grouping related regulatory documents."""
 
     __tablename__ = "document_collections"

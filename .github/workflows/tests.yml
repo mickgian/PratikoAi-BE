@@ -51,8 +51,8 @@ jobs:
           env | grep -v '^_' | grep -v '^PWD=' | grep -v '^OLDPWD=' | grep -v '^SHLVL=' >> $GITHUB_ENV
           # Override with CI-specific test values
           echo "POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/pratikoai_test" >> $GITHUB_ENV
-          echo "LLM_API_KEY=test-key-for-ci" >> $GITHUB_ENV
-          echo "OPENAI_API_KEY=test-key-for-ci" >> $GITHUB_ENV
+          echo "LLM_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
           echo "JWT_SECRET_KEY=test-jwt-secret-key-for-ci" >> $GITHUB_ENV
           echo "LANGFUSE_PUBLIC_KEY=test-langfuse-public" >> $GITHUB_ENV
           echo "LANGFUSE_SECRET_KEY=test-langfuse-secret" >> $GITHUB_ENV

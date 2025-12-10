@@ -5,6 +5,7 @@ This module provides common fixtures and configuration for all tests,
 including database mocking and async support.
 """
 
+import asyncio
 import os
 import uuid
 from contextlib import asynccontextmanager, contextmanager
@@ -22,6 +23,20 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlmodel import SQLModel
 
 from app.core.config import settings
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create event loop for the test session.
+
+    Overrides the default pytest-asyncio event_loop fixture to use
+    session scope, ensuring all async fixtures share the same event loop.
+    This prevents 'Event loop is closed' errors when disposing engines.
+    """
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 
 def pytest_addoption(parser):

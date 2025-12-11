@@ -999,22 +999,6 @@ Subprocesses spawned: {subprocess_count}
 - Total cost: €10.40/month (VPS + backups)
 ```
 
-#### DEV-BE-88: Deploy Preprod
-**Add Phase 4 (before "Phase 5: Testing"):**
-
-```markdown
-**Phase 4: Enhanced Sandbox & Docker**
-- [ ] Deploy Docker Compose to Hetzner CPX31 (€15.90/month)
-- [ ] Stricter sandbox: Read-only source code, monitored network
-- [ ] Secrets via environment variables (no .env files on server)
-- [ ] Weekly automated review active
-- [ ] Security validation: Test credential blocking, RSS feeds, email
-
-**Docker Strategy:**
-- Same docker-compose.yml as QA (production parity)
-- Total cost: €17.90/month (VPS + backups)
-```
-
 #### DEV-BE-90: Deploy Production
 **Add Phase 4 (before "Phase 5: Monitoring"):**
 
@@ -1064,12 +1048,11 @@ Subprocesses spawned: {subprocess_count}
 **Platform Decision:** Deferred to deployment time (Vercel/Hetzner/AWS evaluation)
 ```
 
-#### DEV-010: Deploy Preprod & Production
+#### DEV-010: Deploy Production
 **Add Phase 3.5:**
 
 ```markdown
 **Phase 3.5: Sandbox Security Configuration**
-- [ ] **Preprod:** Stricter sandbox (read-only source, network monitoring)
 - [ ] **Production (Paranoid Mode):**
   - Minimal filesystem access
   - Strict network (production backend API only)

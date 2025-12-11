@@ -12,7 +12,6 @@ This document describes the vector search architecture with environment-aware gu
 |-------------|-----------------|-------------------|-------------------|
 | `development` | `local` | `VEC_PROVIDER=pinecone` | Always fallback to local if Pinecone fails |
 | `staging` | `local` | Uses `pinecone` if keys present | Fallback to local with WARN |
-| `preprod` | `pinecone` | Required | Fallback to local with ERROR |
 | `production` | `pinecone` | Required | Fallback to local with ERROR |
 
 ### Selection Logic
@@ -20,12 +19,12 @@ This document describes the vector search architecture with environment-aware gu
 ```python
 def select_vector_provider(env: Environment) -> str:
     """Select vector provider based on environment and configuration"""
-    
+
     # Explicit override takes precedence
     explicit_provider = os.getenv("VEC_PROVIDER")
     if explicit_provider in ["local", "pinecone"]:
         return explicit_provider
-    
+
     # Environment-based defaults
     match env:
         case Environment.DEVELOPMENT:
@@ -33,7 +32,7 @@ def select_vector_provider(env: Environment) -> str:
         case Environment.STAGING:
             # Use pinecone if configured, otherwise local
             return "pinecone" if has_pinecone_config() else "local"
-        case Environment.PRODUCTION | Environment.PREPROD:
+        case Environment.PRODUCTION:
             return "pinecone"  # Required for prod environments
         case _:
             return "local"  # Safe fallback
@@ -46,9 +45,9 @@ def select_vector_provider(env: Environment) -> str:
 | Variable | Purpose | Required Environments | Default |
 |----------|---------|----------------------|---------|
 | `VEC_PROVIDER` | Override provider selection | Optional | Environment-based |
-| `PINECONE_API_KEY` | Pinecone authentication | staging, preprod, prod | - |
-| `PINECONE_ENVIRONMENT` | Pinecone region/environment | staging, preprod, prod | `serverless` |
-| `PINECONE_INDEX` | Index name | staging, preprod, prod | Computed |
+| `PINECONE_API_KEY` | Pinecone authentication | staging, prod | - |
+| `PINECONE_ENVIRONMENT` | Pinecone region/environment | staging, prod | `serverless` |
+| `PINECONE_INDEX` | Index name | staging, prod | Computed |
 | `PINECONE_NAMESPACE_PREFIX` | Namespace prefix | Optional | `env=` |
 | `VECTOR_STRICT_EMBEDDER_MATCH` | Dimension validation | Optional | `true` |
 
@@ -76,8 +75,8 @@ All vectors must include these metadata tags:
 
 ```python
 namespace_components = {
-    "env": "dev|staging|preprod|prod",
-    "domain": "ccnl|fiscale|legale|lavoro", 
+    "env": "dev|staging|prod",
+    "domain": "ccnl|fiscale|legale|lavoro",
     "tenant": "default"
 }
 
@@ -90,7 +89,6 @@ namespace_components = {
 |-------------|------------|------------------|---------|
 | development | `pratikoai-embed-384` | `env=dev` | `serverless` |
 | staging | `pratikoai-embed-384` | `env=staging` | `serverless` |
-| preprod | `pratikoai-embed-384` | `env=preprod` | `serverless` |
 | production | `pratikoai-embed-384` | `env=prod` | `serverless` |
 
 ## Safety Mechanisms
@@ -101,24 +99,24 @@ namespace_components = {
 class VectorProviderFactory:
     def get_provider(self, env: Environment) -> VectorProvider:
         """Get vector provider with fallback logic"""
-        
+
         selected_provider = self.select_provider(env)
-        
+
         if selected_provider == "pinecone":
             try:
                 return PineconeProvider(self.config)
             except Exception as e:
                 logger.error("pinecone_initialization_failed", error=str(e))
-                
+
                 # Determine fallback behavior based on environment
-                if env in [Environment.PRODUCTION, Environment.PREPROD]:
+                if env == Environment.PRODUCTION:
                     logger.error("pinecone_required_for_production")
                     if self.config.VECTOR_STRICT_MODE:
                         raise RuntimeError("Pinecone required for production")
-                
+
                 logger.warning("falling_back_to_local_provider")
                 return LocalVectorProvider()
-        
+
         return LocalVectorProvider()
 ```
 
@@ -127,18 +125,18 @@ class VectorProviderFactory:
 ```python
 def validate_embedder_compatibility(provider, embedding_model):
     """Validate embedder dimensions match index configuration"""
-    
+
     model_dimension = embedding_model.get_sentence_embedding_dimension()
-    
+
     if hasattr(provider, 'get_index_dimension'):
         index_dimension = provider.get_index_dimension()
-        
+
         if model_dimension != index_dimension:
             error_msg = f"Dimension mismatch: model={model_dimension}, index={index_dimension}"
-            
+
             if settings.VECTOR_STRICT_EMBEDDER_MATCH:
-                logger.error("embedder_dimension_mismatch_strict", 
-                           model_dim=model_dimension, 
+                logger.error("embedder_dimension_mismatch_strict",
+                           model_dim=model_dimension,
                            index_dim=index_dimension)
                 raise ValueError(f"{error_msg}. Reindex required.")
             else:
@@ -152,10 +150,10 @@ def validate_embedder_compatibility(provider, embedding_model):
 ```python
 def perform_startup_checks():
     """Comprehensive startup validation"""
-    
+
     env = get_environment()
     provider = vector_provider_factory.get_provider(env)
-    
+
     # Log configuration
     logger.info("vector_search_startup",
                provider=provider.name,
@@ -164,10 +162,10 @@ def perform_startup_checks():
                namespace_prefix=provider.namespace_prefix,
                embedding_model=settings.EMBEDDING_MODEL,
                embedding_dimension=settings.EMBEDDING_DIMENSION)
-    
+
     # Validate embedder compatibility
     validate_embedder_compatibility(provider, embedding_model)
-    
+
     # Test connection
     if hasattr(provider, 'test_connection'):
         try:
@@ -183,8 +181,8 @@ def perform_startup_checks():
 
 ```python
 # Provider selection metrics
-vector_provider_active = Gauge("vector_provider_active", 
-                              "Currently active vector provider", 
+vector_provider_active = Gauge("vector_provider_active",
+                              "Currently active vector provider",
                               ["provider"])
 
 # Operation metrics
@@ -192,7 +190,7 @@ vector_queries_total = Counter("vector_queries_total",
                               "Total vector queries",
                               ["provider", "status"])
 
-vector_upserts_total = Counter("vector_upserts_total", 
+vector_upserts_total = Counter("vector_upserts_total",
                               "Total vector upserts",
                               ["provider", "status"])
 
@@ -238,7 +236,7 @@ INFO  | fallback_configuration | enabled=true strict_mode=false
 | Dimension mismatch | WARN | WARN | ERROR** | Configurable (strict/permissive) |
 | Network timeout | Use local | WARN + local | ERROR + local* | Continue with fallback |
 
-\* Production fallback only if `VECTOR_STRICT_MODE=false`  
+\* Production fallback only if `VECTOR_STRICT_MODE=false`
 \** Production dimension mismatch aborts startup if `VECTOR_STRICT_EMBEDDER_MATCH=true`
 
 ## Security Considerations

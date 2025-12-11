@@ -68,7 +68,6 @@ class IngestionAlert:
 ENVIRONMENT_COLORS = {
     Environment.DEVELOPMENT: {"bg": "#6c757d", "name": "DEVELOPMENT", "prefix": "DEV"},
     Environment.QA: {"bg": "#007bff", "name": "QA", "prefix": "QA"},
-    Environment.PREPROD: {"bg": "#fd7e14", "name": "PREPROD", "prefix": "PREPROD"},
     Environment.PRODUCTION: {"bg": "#28a745", "name": "PRODUCTION", "prefix": "PROD"},
 }
 
@@ -857,7 +856,7 @@ class IngestionReportService:
             report = await self.generate_daily_report()
             html_content = self._generate_html_report(report)
 
-            # Environment prefix in subject: [DEV], [QA], [PREPROD], [PROD]
+            # Environment prefix in subject: [DEV], [QA], [PROD]
             env_color = report.environment_color
             subject = f"[{env_color['prefix']}] PratikoAI Daily Ingestion Report - {report.report_date.isoformat()}"
 

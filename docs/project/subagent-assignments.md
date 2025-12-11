@@ -119,7 +119,6 @@
 
 **Candidate Tasks (Future):**
 - DEV-BE-74: GDPR Compliance Audit (QA Environment)
-- DEV-BE-89: GDPR Compliance Audit (Preprod Environment)
 - DEV-BE-91: GDPR Compliance Audit (Production Environment)
 
 ---
@@ -204,7 +203,7 @@
 - PR failure notification to @Ottavio
 - Cost optimization (Hetzner vs AWS, LLM API costs)
 - Infrastructure as Code (Docker, docker-compose)
-- Deployment troubleshooting (QA, Preprod, Prod)
+- Deployment troubleshooting (QA, Prod)
 
 **Key Responsibilities:**
 - Create PRs for completed subagent work

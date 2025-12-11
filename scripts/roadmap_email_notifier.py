@@ -372,7 +372,6 @@ def _generate_email_html(combined_data: dict[str, any]) -> str:
 """
         for env_name, env_label in [
             ("qa", "QA Environment (DEV-BE-75)"),
-            ("preprod", "Preprod Environment (DEV-BE-88)"),
             ("production", "Production Environment (DEV-BE-90)"),
         ]:
             if env_name in backend_timelines:
@@ -402,7 +401,6 @@ def _generate_email_html(combined_data: dict[str, any]) -> str:
 """
         for env_name, env_label in [
             ("qa", "QA Environment (DEV-FE-005)"),
-            ("preprod", "Preprod Environment (DEV-FE-010)"),
             ("production", "Production Environment (DEV-FE-010)"),
         ]:
             if env_name in frontend_timelines:
@@ -486,25 +484,17 @@ if __name__ == "__main__":
                     "optimistic_date_range": "15 Nov - 6 Dec",
                     "conservative_date_range": "15 Nov - 20 Dec",
                 },
-                "preprod": {
-                    "optimistic_weeks": 6.8,
-                    "conservative_weeks": 10.2,
-                    "prerequisites": ["DEV-BE-75", "DEV-BE-87"],
-                    "sequential_sum_days": 47.6,
-                    "optimistic_date_range": "15 Nov - 27 Dec",
-                    "conservative_date_range": "15 Nov - 24 Gen",
-                },
                 "production": {
                     "optimistic_weeks": 7.5,
                     "conservative_weeks": 11.2,
-                    "prerequisites": ["DEV-BE-88", "DEV-BE-89"],
+                    "prerequisites": ["DEV-BE-75", "DEV-BE-87", "DEV-BE-74"],
                     "sequential_sum_days": 52.5,
                     "optimistic_date_range": "15 Nov - 3 Gen",
                     "conservative_date_range": "15 Nov - 31 Gen",
                 },
             },
             "blockers": [
-                {"id": "DEV-BE-87", "title": "Payment System", "reason": "Blocks Preprod/Production deployment"},
+                {"id": "DEV-BE-87", "title": "Payment System", "reason": "Blocks Production deployment"},
                 {"id": "DEV-BE-72", "title": "Expert Feedback", "reason": "Blocks QA deployment"},
             ],
             "tasks": {

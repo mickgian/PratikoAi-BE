@@ -40,7 +40,7 @@ INGESTION_REPORT_ENABLED=true
 ### Notes
 - Same recipients receive emails from ALL environments
 - Environment is clearly identified via:
-  - Email subject prefix: `[DEV]`, `[QA]`, `[PREPROD]`, `[PROD]`
+  - Email subject prefix: `[DEV]`, `[QA]`, `[PROD]`
   - Color-coded header banner in email body
 
 ## Report Structure
@@ -49,7 +49,6 @@ INGESTION_REPORT_ENABLED=true
 - Environment name with color coding:
   - **DEVELOPMENT**: Gray (#6c757d)
   - **QA**: Blue (#007bff)
-  - **PREPROD**: Orange (#fd7e14)
   - **PRODUCTION**: Green (#28a745)
 - Report date and generation timestamp (Europe/Rome timezone)
 

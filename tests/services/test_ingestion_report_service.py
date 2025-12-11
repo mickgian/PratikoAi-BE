@@ -400,7 +400,6 @@ class TestEnvironmentColors:
         """Test that all environments have color configurations."""
         assert Environment.DEVELOPMENT in ENVIRONMENT_COLORS
         assert Environment.QA in ENVIRONMENT_COLORS
-        assert Environment.PREPROD in ENVIRONMENT_COLORS
         assert Environment.PRODUCTION in ENVIRONMENT_COLORS
 
     def test_development_color(self):
@@ -418,14 +417,6 @@ class TestEnvironmentColors:
         assert color["bg"] == "#007bff"  # Blue
         assert color["name"] == "QA"
         assert color["prefix"] == "QA"
-
-    def test_preprod_color(self):
-        """Test preprod environment color."""
-        color = get_environment_color(Environment.PREPROD)
-
-        assert color["bg"] == "#fd7e14"  # Orange
-        assert color["name"] == "PREPROD"
-        assert color["prefix"] == "PREPROD"
 
     def test_production_color(self):
         """Test production environment color."""

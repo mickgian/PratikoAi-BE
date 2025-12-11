@@ -33,7 +33,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from app.core.config import Environment, settings
 
 # Only enable per-request tracing in these environments
-# Note: PREPROD does NOT get traces (mirrors production)
+# Note: Only DEV and QA get traces, PRODUCTION does not
 TRACE_ENABLED_ENVIRONMENTS = {
     Environment.DEVELOPMENT,
     Environment.QA,

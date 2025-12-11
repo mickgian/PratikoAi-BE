@@ -348,11 +348,10 @@ Start Phase 2 when: You're ready to update deployment documentation (not blockin
 
 **Add sandbox phases to:**
 - DEV-BE-75 (QA): Phase 6 - Sandbox & Docker Configuration
-- DEV-BE-88 (Preprod): Phase 4 - Enhanced Sandbox
 - DEV-BE-90 (Production): Phase 4 - Paranoid Mode Sandbox
 
 **Acceptance Criteria:**
-- [ ] All three deployment tasks updated
+- [ ] Both deployment tasks updated
 - [ ] Sandbox phases correctly numbered
 - [ ] Effort estimates included
 
@@ -367,7 +366,7 @@ Start Phase 2 when: You're ready to update deployment documentation (not blockin
 
 **Add sandbox phases to:**
 - DEV-005 (QA): Phase 2 - Environment Configuration & Sandbox
-- DEV-010 (Preprod/Production): Phase 3.5 - Sandbox Security Configuration
+- DEV-010 (Production): Phase 3.5 - Sandbox Security Configuration
 
 **Acceptance Criteria:**
 - [ ] Frontend deployment tasks updated

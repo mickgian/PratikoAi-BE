@@ -19,13 +19,11 @@ class Environment(str, Enum):
     Defines the possible environments the application can run in:
     - development: Local development
     - qa: Quality assurance and testing
-    - preprod: Pre-production simulation that mirrors production
     - production: Live production
     """
 
     DEVELOPMENT = "development"
     QA = "qa"
-    PREPROD = "preprod"
     PRODUCTION = "production"
 
 
@@ -38,7 +36,6 @@ def get_environment() -> Environment:
 
     Supported APP_ENV values:
     - "qa" → Environment.QA
-    - "preprod" → Environment.PREPROD
     - "production" or "prod" → Environment.PRODUCTION
     - default → Environment.DEVELOPMENT
     """
@@ -47,8 +44,6 @@ def get_environment() -> Environment:
     match env_str:
         case "qa":
             return Environment.QA
-        case "preprod":
-            return Environment.PREPROD
         case "production" | "prod":
             return Environment.PRODUCTION
         case _:
@@ -373,7 +368,7 @@ class Settings:
         Settings are applied only if not explicitly set via environment variables.
         This allows for environment-specific defaults while preserving manual overrides.
         """
-        # PRODUCTION config (shared by PRODUCTION and PREPROD)
+        # PRODUCTION config
         production_config = {
             "DEBUG": False,
             "LOG_LEVEL": "WARNING",
@@ -394,7 +389,6 @@ class Settings:
                 "LOG_FORMAT": "json",
                 "RATE_LIMIT_DEFAULT": ["500 per day", "100 per hour"],
             },
-            Environment.PREPROD: production_config.copy(),  # PREPROD mirrors PRODUCTION exactly
             Environment.PRODUCTION: production_config.copy(),
         }
 

@@ -27,22 +27,16 @@ This roadmap tracks planned architectural improvements and enhancements for the 
 - **Prerequisites:** DEV-BE-70, DEV-BE-69, DEV-BE-67, DEV-BE-71, DEV-BE-72...
 - **Total effort (sequential):** 49 days (7.0 weeks)
 
-📅 **Time to Preprod Environment (DEV-BE-88):**
-- **Optimistic:** ~15-17 weeks from now (26 Nov - 28 Mar)
-- **Conservative:** ~22-24 weeks from now (26 Nov - 10 Mag)
-- **Prerequisites:** Path to QA + DEV-BE-75, DEV-BE-87, DEV-BE-68
-- **Total effort (sequential):** 108 days (15.4 weeks)
-
 📅 **Time to Production Environment (DEV-BE-90):**
 - **Optimistic:** ~17-18.3 weeks from now (26 Nov - 3 Apr)
 - **Conservative:** ~25-28 weeks from now (26 Nov - 11 Giu)
-- **Prerequisites:** Path to Preprod + DEV-BE-68, DEV-BE-91, DEV-BE-88
+- **Prerequisites:** Path to QA + DEV-BE-68, DEV-BE-91
 - **Total effort (sequential):** 118 days (16.8 weeks)
 - **Note:** Production launch requires full GDPR compliance and payment system validation
 
 **Key Dependencies:**
 - ⚠️ **DEV-BE-72** - Implement Expert Feedback System: Blocks QA deployment (longest task)
-- ⚠️ **GDPR Audits** - DEV-74, DEV-89, DEV-91: Required before each environment launch
+- ⚠️ **GDPR Audits** - DEV-74, DEV-91: Required before each environment launch
 
 ---
 
@@ -665,8 +659,8 @@ Extend existing `IngestionReportService` to add environment awareness, alert sys
 **Report Structure:**
 
 **1. Header with Environment Badge**
-- Environment name: DEVELOPMENT | QA | PREPROD | PRODUCTION
-- Color coding: Gray (dev) | Blue (qa) | Orange (preprod) | Green (prod)
+- Environment name: DEVELOPMENT | QA | PRODUCTION
+- Color coding: Gray (dev) | Blue (qa) | Green (prod)
 - Report date and generation timestamp (Europe/Rome timezone)
 
 **2. Executive Summary**
@@ -710,7 +704,7 @@ INGESTION_REPORT_ENABLED=true
 ```
 
 **Note:** Same recipients receive emails from ALL environments. The environment is clearly identified via:
-- Email subject prefix: `[DEV]`, `[QA]`, `[PREPROD]`, `[PROD]`
+- Email subject prefix: `[DEV]`, `[QA]`, `[PROD]`
 - Color-coded header banner in email body
 
 **Implementation Tasks:**
@@ -755,7 +749,7 @@ INGESTION_REPORT_ENABLED=true
 - `app/core/config.py` - Add INGESTION_REPORT_* settings
 - `app/services/ingestion_report_service.py` - Enhance existing service
 - `app/services/scheduler_service.py` - Register daily task
-- `.env.example`, `.env.development`, `.env.qa`, `.env.preprod`, `.env.production`
+- `.env.example`, `.env.development`, `.env.qa`, `.env.production`
 
 **Files to Create:**
 - `tests/services/test_ingestion_alerts.py`
@@ -764,7 +758,7 @@ INGESTION_REPORT_ENABLED=true
 **Acceptance Criteria:**
 - [ ] Report includes both RSS feed AND scraper statistics
 - [ ] Environment badge visible in email header with correct color
-- [ ] Email subject includes environment prefix: `[DEV]`, `[QA]`, `[PREPROD]`, `[PROD]`
+- [ ] Email subject includes environment prefix: `[DEV]`, `[QA]`, `[PROD]`
 - [ ] Week-over-week comparison shown in executive summary (+/-% vs last week)
 - [ ] Top 5 new document titles shown per source
 - [ ] Error count + 1-2 sample error messages displayed when errors > 0
@@ -1184,93 +1178,13 @@ Implement complete subscription management system with Stripe integration.
 
 <details>
 <summary>
-<h3>DEV-BE-88: Deploy Preprod Environment (Hetzner VPS)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3-4 days (QA is template) | <strong>Dependencies:</strong> DEV-BE-75 ✅ + DEV-BE-87 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
-Production-like environment for final testing before deploying to production.
-</summary>
-
-### DEV-BE-88: Deploy Preprod Environment (Hetzner VPS)
-**Priority:** HIGH | **Effort:** 3-4 days (QA is template) | **Dependencies:** DEV-BE-75 ✅ (QA deployment complete) + DEV-BE-87 ✅ (payment system testable)
-
-**Problem:**
-Need production-like environment for final testing before deploying to production.
-
-**Solution:**
-Deploy complete PratikoAI backend to separate Hetzner VPS with production-like configuration.
-
-**Implementation Tasks:**
-- [ ] Provision Hetzner CX21 VPS for Preprod (2 vCPU, 4GB RAM)
-- [ ] Configure firewall rules (same as QA)
-- [ ] Install Docker and Docker Compose
-- [ ] Create `.env.preprod` with production-like configuration
-- [ ] Deploy stack
-- [ ] Set up DNS: `api-preprod.pratikoai.com`
-- [ ] Configure SSL with Let's Encrypt
-- [ ] Set up automated backups
-
-**Acceptance Criteria:**
-- ✅ Preprod environment accessible at `https://api-preprod.pratikoai.com`
-- ✅ All services running with production-like configuration
-- ✅ Stripe test mode working
-
-**Infrastructure Cost (Preprod):**
-- Hetzner CX21 VPS: ~$7/month
-- Snapshots/backups: ~$1/month
-- **Total: ~$8/month**
-
-</details>
-
----
-
-<details>
-<summary>
-<h3>DEV-BE-89: GDPR Compliance Audit (Preprod Environment)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2-3 days (QA audit is template) | <strong>Dependencies:</strong> DEV-BE-88 ✅ + DEV-BE-74 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
-Validate GDPR compliance with production-like configuration and data before production launch.
-</summary>
-
-### DEV-BE-89: GDPR Compliance Audit (Preprod Environment)
-**Priority:** HIGH | **Effort:** 2-3 days | **Dependencies:** DEV-BE-88 ✅ (Preprod live) + DEV-BE-74 ✅ (QA audit complete)
-
-**Problem:**
-Need to validate GDPR compliance with production-like configuration and data before production launch.
-
-**Solution:**
-Run same GDPR audit on Preprod environment with production-like data and configuration.
-
-**Audit Focus Areas:**
-
-**1. Production-Like Data Testing**
-- [ ] Test data export with realistic data volume
-- [ ] Test data deletion with production-like database size
-- [ ] Validate performance of GDPR operations at scale
-
-**2. Configuration Validation**
-- [ ] Verify production log levels don't expose PII
-- [ ] Test production monitoring doesn't log sensitive data
-
-**3. Third-Party Integrations**
-- [ ] Verify OpenAI API usage is GDPR compliant
-- [ ] Verify Stripe payment data handling is GDPR compliant
-
-**Acceptance Criteria:**
-- ✅ All GDPR features work at production scale
-- ✅ Payment data handling is GDPR compliant
-- ✅ Stakeholder approval obtained
-
-</details>
-
----
-
-<details>
-<summary>
 <h3>DEV-BE-90: Deploy Production Environment (Hetzner VPS)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1 week (with production hardening) | <strong>Dependencies:</strong> DEV-BE-88 ✅ + DEV-BE-89 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1 week (with production hardening) | <strong>Dependencies:</strong> DEV-BE-75 ✅ + DEV-BE-87 ✅ + DEV-BE-74 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
 Production environment for paying customers. Must be reliable, performant, and cost-effective.
 </summary>
 
 ### DEV-BE-90: Deploy Production Environment (Hetzner VPS)
-**Priority:** CRITICAL | **Effort:** 1 week (with production hardening) | **Dependencies:** DEV-BE-88 ✅ (Preprod validated) + DEV-BE-89 ✅ (Preprod GDPR audit passed)
+**Priority:** CRITICAL | **Effort:** 1 week (with production hardening) | **Dependencies:** DEV-BE-75 ✅ (QA deployed) + DEV-BE-87 ✅ (Payment system) + DEV-BE-74 ✅ (QA GDPR audit)
 
 **Problem:**
 Need production environment for paying customers. Must be reliable, performant, and cost-effective.
@@ -1322,12 +1236,12 @@ Deploy complete PratikoAI backend to Hetzner VPS with production configuration a
 <details>
 <summary>
 <h3>DEV-BE-91: GDPR Compliance Audit (Production Environment)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 4-5 days (requires legal review) | <strong>Dependencies:</strong> DEV-BE-90 ✅ + DEV-BE-89 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 4-5 days (requires legal review) | <strong>Dependencies:</strong> DEV-BE-90 ✅ + DEV-BE-74 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
 Final GDPR compliance validation required before accepting real user data in production.
 </summary>
 
 ### DEV-BE-91: GDPR Compliance Audit (Production Environment)
-**Priority:** CRITICAL | **Effort:** 4-5 days (requires legal review) | **Dependencies:** DEV-BE-90 ✅ (Production live) + DEV-BE-89 ✅ (Preprod audit complete)
+**Priority:** CRITICAL | **Effort:** 4-5 days (requires legal review) | **Dependencies:** DEV-BE-90 ✅ (Production live) + DEV-BE-74 ✅ (QA audit complete)
 
 **Problem:**
 Final GDPR compliance validation required before accepting real user data in production.
@@ -1611,21 +1525,20 @@ This is a low-priority optimization for MVP. Small FAQ volume initially (<100 FA
 | 2024-11-24 | Simplify DEV-BE-72 to SUPER_USER-only | All experts manually vetted, trust scoring adds complexity without value for MVP | DEV-BE-72 |
 | 2024-11-17 | Complete Sprint 0: Multi-Agent System | Establish subagent framework before major development work | DEV-BE-67 |
 | 2024-11-14 | Remove Pinecone entirely | Over-engineered for current scale, pgvector sufficient | DEV-BE-68 |
-| 2024-11-14 | Deploy to Hetzner (not AWS) | Cost: $33/month (all 3 envs) vs $330+/month AWS | DEV-BE-75, DEV-BE-88, DEV-BE-90 |
+| 2024-11-14 | Deploy to Hetzner (not AWS) | Cost: $25/month (both envs) vs $330+/month AWS | DEV-BE-75, DEV-BE-90 |
 
 ---
 
 ## Infrastructure Cost Summary
 
-**All 3 Environments (Hetzner):**
+**Both Environments (Hetzner):**
 - QA: $8/month (CX21 + backups)
-- Preprod: $8/month (CX21 + backups)
 - Production: $17/month (CX31 + backups)
-- **Total: ~$33/month** for complete multi-environment setup
+- **Total: ~$25/month** for complete multi-environment setup
 
 **vs AWS Alternative:**
 - AWS QA alone: $110-135/month
-- **Savings: ~$297-402/month** (90% cost reduction)
+- **Savings: ~$305-410/month** (92% cost reduction)
 
 ---
 

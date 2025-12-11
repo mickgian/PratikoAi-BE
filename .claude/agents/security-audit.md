@@ -34,7 +34,7 @@ You work under the coordination of the **Scrum Master** and collaborate with the
 ## Core Responsibilities
 
 ### 1. GDPR Compliance Auditing
-- **Conduct** comprehensive GDPR audits on QA, Preprod, and Production environments
+- **Conduct** comprehensive GDPR audits on QA and Production environments
 - **Verify** data export functionality (Right to Access)
 - **Verify** data deletion functionality (Right to Erasure)
 - **Test** consent management mechanisms
@@ -94,7 +94,7 @@ You work under the coordination of the **Scrum Master** and collaborate with the
 
 ### Article 15: Right to Access (Data Export)
 
-**Test on QA/Preprod/Production:**
+**Test on QA/Production:**
 1. **Request user data export:**
    ```bash
    POST /api/v1/gdpr/export
@@ -127,7 +127,7 @@ You work under the coordination of the **Scrum Master** and collaborate with the
 
 ### Article 17: Right to Erasure (Data Deletion)
 
-**Test on QA/Preprod/Production:**
+**Test on QA/Production:**
 1. **Request user data deletion:**
    ```bash
    DELETE /api/v1/gdpr/delete
@@ -159,7 +159,7 @@ You work under the coordination of the **Scrum Master** and collaborate with the
 
 ### Article 6: Lawful Basis (Consent Management)
 
-**Test on QA/Preprod/Production:**
+**Test on QA/Production:**
 1. **Verify consent banner:**
    - ✅ Cookie consent displayed on first visit
    - ✅ Opt-in/opt-out mechanisms working
@@ -177,7 +177,7 @@ You work under the coordination of the **Scrum Master** and collaborate with the
 
 ### Article 5: Data Retention
 
-**Test on QA/Preprod/Production:**
+**Test on QA/Production:**
 1. **Verify retention policies:**
    - ✅ **Chat history (query_history): 90 days (NEW: automated cron job)**
    - ✅ Conversation data: 90 days
@@ -200,7 +200,7 @@ You work under the coordination of the **Scrum Master** and collaborate with the
 **STATUS:** Migration in progress (IndexedDB → PostgreSQL)
 **DATE:** 2025-11-29
 
-**Test on QA/Preprod/Production:**
+**Test on QA/Production:**
 
 #### 1. Data Export Test (Article 15)
 ```bash
@@ -287,7 +287,7 @@ curl -X GET "http://localhost:8000/api/v1/chatbot/sessions/OTHER_USER_SESSION/me
 
 ### Article 32: Security Measures
 
-**Test on QA/Preprod/Production:**
+**Test on QA/Production:**
 1. **Encryption at rest:**
    - ✅ PostgreSQL data encrypted
    - ✅ Redis data encrypted
@@ -417,7 +417,7 @@ Subject: PratikoAI Weekly Security & Compliance Report - Week [N], [Year]
 # Security & Compliance Report - Week [N]
 
 **Report Date:** [YYYY-MM-DD]
-**Environment:** [QA / Preprod / Production]
+**Environment:** [QA / Production]
 **Audit Status:** [PASS ✅ / ISSUES FOUND 🟡 / CRITICAL 🔴]
 
 ---
@@ -557,9 +557,6 @@ Subject: PratikoAI Weekly Security & Compliance Report - Week [N], [Year]
 - ✅ Audit report delivered
 
 ---
-
-### DEV-BE-89: GDPR Compliance Audit (Preprod)
-**Same process as DEV-BE-74, but on Preprod environment with production-like data**
 
 ### DEV-BE-91: GDPR Compliance Audit (Production)
 **Same process, but on Production. Requires extra care and stakeholder sign-off.**

@@ -133,7 +133,7 @@ class RoadmapParser:
             priority = self._parse_priority(section)
 
             # Detect special task types
-            is_deployment = "Deploy" in title and ("QA" in title or "Preprod" in title or "Production" in title)
+            is_deployment = "Deploy" in title and ("QA" in title or "Production" in title)
             is_gdpr_audit = "GDPR Compliance Audit" in title
 
             task = Task(
@@ -232,24 +232,22 @@ class TimelineCalculator:
 
     def calculate_deployment_timelines(self) -> dict[str, dict[str, any]]:
         """
-        Calculate timeline estimates for QA, Preprod, and Production deployments.
+        Calculate timeline estimates for QA and Production deployments.
 
-        Returns dict with keys: 'qa', 'preprod', 'production'
+        Returns dict with keys: 'qa', 'production'
         Each containing: optimistic, conservative, prerequisites, critical_path
         """
         timelines = {}
 
         # Auto-detect repository type by checking which deployment tasks exist
-        # Backend: DEV-BE-75, DEV-BE-88, DEV-BE-90
+        # Backend: DEV-BE-75, DEV-BE-90
         # Frontend: DEV-FE-005, DEV-FE-010
         if "DEV-BE-75" in self.tasks:
             qa_task_id = "DEV-BE-75"
-            preprod_task_id = "DEV-BE-88"
             prod_task_id = "DEV-BE-90"
         elif "DEV-FE-005" in self.tasks:
             qa_task_id = "DEV-FE-005"
-            preprod_task_id = "DEV-FE-010"
-            prod_task_id = "DEV-FE-010"  # Frontend uses same task for preprod/prod
+            prod_task_id = "DEV-FE-010"
         else:
             # No deployment tasks found
             return {}
@@ -272,26 +270,6 @@ class TimelineCalculator:
             "task_id": qa_task_id,
             "optimistic_date_range": f"{qa_opt_start} - {qa_opt_end}",
             "conservative_date_range": f"{qa_cons_start} - {qa_cons_end}",
-        }
-
-        # Preprod Environment - Sequential sum of ALL tasks before deployment
-        preprod_prereqs = self._get_prerequisites(preprod_task_id)
-        preprod_sequential_sum = self._calculate_sequential_sum(preprod_task_id)
-        preprod_optimistic = preprod_sequential_sum
-        preprod_conservative = preprod_optimistic * 1.4  # 40% buffer
-
-        # Calculate date ranges
-        preprod_opt_start, preprod_opt_end = calculate_date_range(0, preprod_optimistic / 7 + 2)
-        preprod_cons_start, preprod_cons_end = calculate_date_range(0, preprod_conservative / 7 + 2)
-
-        timelines["preprod"] = {
-            "optimistic_weeks": preprod_optimistic / 7,
-            "conservative_weeks": preprod_conservative / 7,
-            "prerequisites": preprod_prereqs,
-            "sequential_sum_days": preprod_sequential_sum,
-            "task_id": preprod_task_id,
-            "optimistic_date_range": f"{preprod_opt_start} - {preprod_opt_end}",
-            "conservative_date_range": f"{preprod_cons_start} - {preprod_cons_end}",
         }
 
         # Production Environment - Sequential sum of ALL tasks before deployment
@@ -323,14 +301,14 @@ class TimelineCalculator:
 
         # Hard-coded logical prerequisites for deployment tasks
         # These represent the actual deployment flow dependencies
+        # Environment flow: DEVELOPMENT → QA → PRODUCTION
         DEPLOYMENT_PREREQUISITES = {
             # Backend deployment tasks
             "DEV-BE-75": ["DEV-BE-67", "DEV-BE-68", "DEV-BE-69", "DEV-BE-70", "DEV-BE-71", "DEV-BE-72", "DEV-BE-74"],
-            "DEV-BE-88": ["DEV-BE-75", "DEV-BE-87"],  # QA + Payment System
-            "DEV-BE-90": ["DEV-BE-88", "DEV-BE-89", "DEV-BE-91"],  # Preprod + GDPR Audits
+            "DEV-BE-90": ["DEV-BE-75", "DEV-BE-87", "DEV-BE-74"],  # QA + Payment System + GDPR
             # Frontend deployment tasks
             "DEV-FE-005": ["DEV-FE-002", "DEV-FE-003", "DEV-FE-004"],  # QA
-            "DEV-FE-010": ["DEV-FE-005", "DEV-FE-006", "DEV-FE-007", "DEV-FE-008", "DEV-FE-009"],  # Preprod/Production
+            "DEV-FE-010": ["DEV-FE-005", "DEV-FE-006", "DEV-FE-007", "DEV-FE-008", "DEV-FE-009"],  # Production
         }
 
         # If this is a deployment task with known prerequisites, use those
@@ -452,7 +430,7 @@ class TimelineCalculator:
                 {
                     "id": payment_task_id,
                     "title": task.title,
-                    "reason": "Blocks Preprod/Production deployment",
+                    "reason": "Blocks Production deployment",
                     "effort_weeks": task.effort_days_avg / 7,
                 }
             )
@@ -521,7 +499,6 @@ class RoadmapUpdater:
     def _generate_timeline_content(self, timelines: dict[str, dict], blockers: list[dict]) -> str:
         """Generate formatted timeline content."""
         qa = timelines["qa"]
-        preprod = timelines["preprod"]
         prod = timelines["production"]
 
         content = f"""**Deployment Timeline Estimates:**
@@ -532,16 +509,10 @@ class RoadmapUpdater:
 - **Prerequisites:** {", ".join(qa["prerequisites"][:5])}{"..." if len(qa["prerequisites"]) > 5 else ""}
 - **Total effort (sequential):** {qa["sequential_sum_days"]:.0f} days ({qa["sequential_sum_days"] / 7:.1f} weeks)
 
-📅 **Time to Preprod Environment ({preprod["task_id"]}):**
-- **Optimistic:** ~{preprod["optimistic_weeks"]:.0f}-{preprod["optimistic_weeks"] + 2:.0f} weeks from now ({preprod["optimistic_date_range"]})
-- **Conservative:** ~{preprod["conservative_weeks"]:.0f}-{preprod["conservative_weeks"] + 2:.0f} weeks from now ({preprod["conservative_date_range"]})
-- **Prerequisites:** Path to QA + {", ".join(preprod["prerequisites"][-3:])}
-- **Total effort (sequential):** {preprod["sequential_sum_days"]:.0f} days ({preprod["sequential_sum_days"] / 7:.1f} weeks)
-
 📅 **Time to Production Environment ({prod["task_id"]}):**
 - **Optimistic:** ~{prod["optimistic_weeks"]:.0f}-{prod["optimistic_weeks"] + 1.5:.1f} weeks from now ({prod["optimistic_date_range"]})
 - **Conservative:** ~{prod["conservative_weeks"]:.0f}-{prod["conservative_weeks"] + 3:.0f} weeks from now ({prod["conservative_date_range"]})
-- **Prerequisites:** Path to Preprod + {", ".join(prod["prerequisites"][-3:])}
+- **Prerequisites:** Path to QA + {", ".join(prod["prerequisites"][-3:])}
 - **Total effort (sequential):** {prod["sequential_sum_days"]:.0f} days ({prod["sequential_sum_days"] / 7:.1f} weeks)
 - **Note:** Production launch requires full GDPR compliance and payment system validation
 
@@ -688,7 +659,7 @@ def detect_changes(old_data: dict | None, new_data: dict) -> dict[str, any]:
         old_timelines = old_data.get(repo, {}).get("timelines", {})
         new_timelines = new_data.get(repo, {}).get("timelines", {})
 
-        for env in ["qa", "preprod", "production"]:
+        for env in ["qa", "production"]:
             if env not in new_timelines:
                 continue
 

@@ -297,7 +297,6 @@ Needed production hosting. Requirements:
 
 **Deployment Strategy**:
 - QA: Hetzner CPX21 (2 vCPU, 4 GB) - €8.90/month
-- Preprod: Hetzner CPX31 (4 vCPU, 8 GB) - €15.90/month
 - Production: Hetzner CPX41 (8 vCPU, 16 GB) - €31.90/month
 
 **Impact**: **$10,000/year savings** vs AWS

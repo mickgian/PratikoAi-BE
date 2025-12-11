@@ -274,7 +274,7 @@ Next Review: [15th of next month]
 - Cache hit rate: ≥60% (semantic caching)
 
 ### Cost Constraints
-- Infrastructure: <€100/month for all 3 environments (QA, Preprod, Prod)
+- Infrastructure: <€100/month for all environments (QA, Prod)
 - LLM API costs: <€2,000/month at 500 active users
 - Total operational cost target: <€3,000/month
 

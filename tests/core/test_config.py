@@ -21,7 +21,6 @@ class TestEnvironmentEnum:
         """Test environment enum values."""
         assert Environment.DEVELOPMENT == "development"
         assert Environment.QA == "qa"
-        assert Environment.PREPROD == "preprod"
         assert Environment.PRODUCTION == "production"
 
     def test_environment_is_string(self):
@@ -44,12 +43,6 @@ class TestGetEnvironment:
         """Test getting QA environment."""
         env = get_environment()
         assert env == Environment.QA
-
-    @patch.dict(os.environ, {"APP_ENV": "preprod"})
-    def test_get_preprod_environment(self):
-        """Test getting preprod environment."""
-        env = get_environment()
-        assert env == Environment.PREPROD
 
     @patch.dict(os.environ, {"APP_ENV": "production"})
     def test_get_production_environment(self):
@@ -331,19 +324,6 @@ class TestApplyEnvironmentSettings:
     def test_production_settings(self, mock_load_env, mock_get_env):
         """Test production environment settings."""
         mock_get_env.return_value = Environment.PRODUCTION
-
-        settings = Settings()
-
-        assert settings.DEBUG is False
-        assert settings.LOG_LEVEL == "WARNING"
-        assert settings.LOG_FORMAT == "json"
-
-    @patch("app.core.config.get_environment")
-    @patch("app.core.config.load_env_file")
-    @patch.dict(os.environ, {}, clear=True)
-    def test_preprod_mirrors_production(self, mock_load_env, mock_get_env):
-        """Test preprod mirrors production settings."""
-        mock_get_env.return_value = Environment.PREPROD
 
         settings = Settings()
 

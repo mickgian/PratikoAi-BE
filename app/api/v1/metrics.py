@@ -65,7 +65,7 @@ async def get_metrics_report(environment: Environment):
 async def get_all_metrics_reports():
     """Get comprehensive metrics reports for all environments."""
     try:
-        environments = [Environment.DEVELOPMENT, Environment.QA, Environment.PREPROD, Environment.PRODUCTION]
+        environments = [Environment.DEVELOPMENT, Environment.QA, Environment.PRODUCTION]
         reports = []
 
         for env in environments:
@@ -166,7 +166,7 @@ async def get_business_metrics(environment: Environment):
 async def get_health_summary():
     """Get overall system health summary across all environments."""
     try:
-        environments = [Environment.DEVELOPMENT, Environment.QA, Environment.PREPROD, Environment.PRODUCTION]
+        environments = [Environment.DEVELOPMENT, Environment.QA, Environment.PRODUCTION]
         summary = {}
 
         for env in environments:

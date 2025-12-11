@@ -13,8 +13,7 @@
 3. [Environment Strategy at a Glance](#environment-strategy-at-a-glance)
 4. [Development Environment](#development-environment-dev)
 5. [QA Environment](#qa-environment-formerly-staging)
-6. [Preprod Environment](#preprod-environment)
-7. [Production Environment](#production-environment)
+6. [Production Environment](#production-environment)
 8. [Schema Consistency & Migrations](#schema-consistency--migrations)
 9. [Data Strategy by Environment](#data-strategy-by-environment)
 10. [Backup & Recovery Strategy](#backup--recovery-strategy)
@@ -53,7 +52,6 @@ Think of the database architecture like an Android app with different build vari
 |-------------------|-------------------|
 | **Debug build** on emulator | **Development** - Local PostgreSQL in Docker |
 | **Staging build** on test devices | **QA** - Shared database for testing |
-| **Beta build** for limited users | **Preprod** - Production-like environment |
 | **Production build** on Play Store | **Production** - Live user data |
 
 ### Current Architecture
@@ -101,13 +99,12 @@ We chose the local option because:
 
 ## Environment Strategy at a Glance
 
-### The Four Environments
+### The Three Environments
 
 | Environment | Purpose | Data Type | Backup Needed? | Schema Match? | Accessibility |
 |-------------|---------|-----------|----------------|---------------|---------------|
 | **Development** | Local development, rapid iteration | Test/fake data | No | Yes (via migrations) | Developer's laptop only |
 | **QA** | Feature testing, integration tests | Production-like data | Yes (daily) | Yes (same as prod) | Dev team + QA team |
-| **Preprod** | Final production simulation | Sanitized production clone | Yes (daily) | Yes (exact prod mirror) | Ops team only |
 | **Production** | Live user data | Real user data | **YES (hourly)** | Source of truth | Public (via API) |
 
 ### The Golden Rule
@@ -239,7 +236,7 @@ DEBUG=false
 
 1. **Start with production clone (sanitized):**
    ```bash
-   # On production (or preprod)
+   # On production
    pg_dump -h prod-db-host -U pratikoai_prod -d pratikoai_prod \
      --exclude-table=users --exclude-table=conversations --exclude-table=messages \
      > prod_knowledge_base.sql
@@ -307,76 +304,6 @@ ls -lt /backups/qa/qa_backup_*.sql.gz | head -1
 gunzip -c /backups/qa/qa_backup_20251120_080000.sql.gz | \
   psql -h qa-db-host -U pratikoai_qa -d pratikoai_qa
 ```
-
----
-
-## Preprod Environment
-
-### Purpose
-
-**Production dress rehearsal.** Like beta testing an Android app with a small group - final validation before full release. Preprod **mirrors production exactly** (same config, same security, same performance settings).
-
-### Setup
-
-**Database Configuration:**
-```bash
-# .env.preprod
-APP_ENV=preprod
-POSTGRES_URL=postgresql+asyncpg://username:password@preprod-db-host:5432/pratikoai_preprod?ssl=require
-LOG_LEVEL=WARNING  # Same as production
-DEBUG=false
-SSL_REDIRECT=true  # Same as production
-```
-
-### Key Characteristics
-
-| Aspect | Configuration | Why |
-|--------|--------------|-----|
-| **Data** | Production clone (sanitized) | Exact production scenario testing |
-| **Backups** | Daily (automated) | Same backup strategy as prod |
-| **Schema** | **EXACT** production match | Final schema validation |
-| **Performance** | Production settings | Test performance tuning |
-| **Access** | Ops team only | Restricted like production |
-| **SSL** | **Required** (same as prod) | Test SSL certificate setup |
-| **Logging** | Minimal (WARNING level) | Same as production |
-
-### Data Management
-
-**Preprod Data = Sanitized Production Clone**
-
-**Why?** Test the exact database size, index performance, and query patterns you'll see in production.
-
-**Clone Process:**
-```bash
-# 1. On production (during low-traffic window)
-pg_dump -h prod-db-host -U pratikoai_prod -d pratikoai_prod \
-  --exclude-table-data=conversations \
-  --exclude-table-data=messages \
-  --exclude-table-data=users \
-  > prod_clone_knowledge_base.sql
-
-# 2. Export anonymized users (for testing login)
-pg_dump -h prod-db-host -U pratikoai_prod -d pratikoai_prod \
-  --table=users --data-only | \
-  sed 's/@/@preprod-/g' > prod_users_sanitized.sql
-
-# 3. Restore to preprod
-psql -h preprod-db-host -U pratikoai_preprod -d pratikoai_preprod < prod_clone_knowledge_base.sql
-psql -h preprod-db-host -U pratikoai_preprod -d pratikoai_preprod < prod_users_sanitized.sql
-```
-
-**Sanitization Rules:**
-- **Keep:** knowledge_items, knowledge_chunks, feed_status (entire knowledge base)
-- **Sanitize:** users (change emails to @preprod-pratikoai.com)
-- **Delete:** conversations, messages (user chat history contains PII)
-
-### Backups
-
-**Frequency:** Daily (same as production)
-
-**Retention:** 30 days (same as production)
-
-**Why?** Preprod is the final gate before production. If a migration breaks preprod, you need to restore and retry.
 
 ---
 
@@ -479,9 +406,9 @@ crontab -e
 
 **Backup Verification:**
 ```bash
-# Test restore (on preprod, NOT production!)
+# Test restore (on QA, NOT production!)
 gunzip -c /backups/production/hourly/prod_backup_20251120_080000.sql.gz | \
-  psql -h preprod-db-host -U pratikoai_preprod -d pratikoai_preprod
+  psql -h qa-db-host -U pratikoai_qa -d pratikoai_qa_restore_test
 ```
 
 ### Disaster Recovery
@@ -601,20 +528,7 @@ alembic upgrade head
 psql -h qa-db-host -U pratikoai_qa -d pratikoai_qa -c "\d knowledge_items"
 ```
 
-**7. Deploy to Preprod (production dress rehearsal):**
-```bash
-# On Preprod server
-git pull
-alembic upgrade head
-```
-
-**8. Final test on Preprod:**
-```bash
-# Verify migration works with production-like data
-psql -h preprod-db-host -U pratikoai_preprod -d pratikoai_preprod -c "SELECT COUNT(*) FROM knowledge_items WHERE publication_date IS NOT NULL;"
-```
-
-**9. Deploy to Production:**
+**7. Deploy to Production:**
 ```bash
 # On Production server (during low-traffic window)
 git pull
@@ -627,7 +541,7 @@ Before running migration on production:
 
 - [ ] Migration tested on development
 - [ ] Migration tested on QA
-- [ ] Migration tested on preprod (with production-like data)
+- [ ] Migration tested on QA (with production-like data)
 - [ ] Downgrade path tested (rollback plan)
 - [ ] Backup created immediately before migration
 - [ ] Low-traffic window scheduled (if migration is slow)
@@ -679,7 +593,6 @@ def upgrade():
 |-------------|-------------|------|----------------|---------|
 | **Development** | Fake/generated | No | Anytime | Rapid iteration |
 | **QA** | Production clone (sanitized) | No | Weekly | Feature testing |
-| **Preprod** | Production clone (sanitized) | No | Before each prod deploy | Final validation |
 | **Production** | Live users | **YES** | Never | Real users |
 
 ### What Data Should Be the Same?
@@ -694,9 +607,9 @@ def upgrade():
 ### What Data Should Be Different?
 
 **User data (DIFFERENT per environment):**
-- `users` - Test accounts in Dev/QA/Preprod, real users in Production
-- `conversations` - Empty in Dev/QA/Preprod, real chats in Production
-- `messages` - Empty in Dev/QA/Preprod, real messages in Production
+- `users` - Test accounts in Dev/QA, real users in Production
+- `conversations` - Empty in Dev/QA, real chats in Production
+- `messages` - Empty in Dev/QA, real messages in Production
 
 **Why?** User data contains PII (personally identifiable information). GDPR compliance requires protecting PII.
 
@@ -728,27 +641,6 @@ EOF
 echo "QA data refreshed from production knowledge base"
 ```
 
-**Preprod Environment (before each production deployment):**
-```bash
-#!/bin/bash
-# scripts/refresh_preprod_data.sh
-# Runs on-demand before production deployment
-
-# Full production clone (sanitized)
-pg_dump -h prod-db-host -U pratikoai_prod -d pratikoai_prod > prod_full_clone.sql
-
-# Restore to preprod
-psql -h preprod-db-host -U pratikoai_preprod -d pratikoai_preprod < prod_full_clone.sql
-
-# Sanitize user emails
-psql -h preprod-db-host -U pratikoai_preprod -d pratikoai_preprod <<EOF
-UPDATE users SET email = REPLACE(email, '@', '@preprod-');
-TRUNCATE conversations, messages CASCADE;
-EOF
-
-echo "Preprod refreshed from production (sanitized)"
-```
-
 ---
 
 ## Backup & Recovery Strategy
@@ -759,7 +651,6 @@ echo "Preprod refreshed from production (sanitized)"
 |-------------|-----------|-----------|------------|---------|
 | **Development** | Never | N/A | No | N/A |
 | **QA** | Daily | 7 days | Yes | Monthly |
-| **Preprod** | Daily | 30 days | Yes | Weekly |
 | **Production** | **Hourly** | 24h/30d/90d/1y | **Yes** | **Weekly** |
 
 ### Why Different Backup Strategies?
@@ -767,8 +658,6 @@ echo "Preprod refreshed from production (sanitized)"
 **Development:** No backups needed - data is disposable, schema is in Git.
 
 **QA:** Daily backups - can restore if tests corrupt data, but 7 days is enough (data refreshes weekly anyway).
-
-**Preprod:** Daily backups - mirrors production backup strategy for realistic testing.
 
 **Production:** Hourly backups - **critical for business continuity**. Max 1 hour of data loss acceptable.
 
@@ -787,39 +676,37 @@ psql -h qa-db-host -U pratikoai_qa -d qa_backup_test -c "SELECT COUNT(*) FROM kn
 dropdb -h qa-db-host -U pratikoai_qa qa_backup_test
 ```
 
-**Weekly Production Backup Test (on Preprod!):**
+**Weekly Production Backup Test (on QA!):**
 ```bash
 # NEVER test production backups on production database!
-# Use preprod environment for testing
+# Use QA environment for testing
 
-# 1. Restore latest production backup to preprod
+# 1. Restore latest production backup to QA test database
 gunzip -c /backups/production/daily/prod_backup_20251120_000000.sql.gz | \
-  psql -h preprod-db-host -U pratikoai_preprod -d preprod_restore_test
+  psql -h qa-db-host -U pratikoai_qa -d qa_restore_test
 
 # 2. Verify data integrity
-psql -h preprod-db-host -U pratikoai_preprod -d preprod_restore_test <<EOF
+psql -h qa-db-host -U pratikoai_qa -d qa_restore_test <<EOF
 SELECT COUNT(*) FROM knowledge_chunks;
 SELECT COUNT(*) FROM users;
 SELECT COUNT(*) FROM feed_status;
 EOF
 
 # 3. Test application against restored database
-# Update preprod .env to point to preprod_restore_test
+# Update QA .env to point to qa_restore_test
 # Restart app and run smoke tests
 
 # 4. Cleanup
-dropdb -h preprod-db-host -U pratikoai_preprod preprod_restore_test
+dropdb -h qa-db-host -U pratikoai_qa qa_restore_test
 ```
 
 ### Backup Storage
 
-**Local Backups (sufficient for QA/Preprod):**
+**Local Backups (sufficient for QA):**
 ```
 /backups/
-├── qa/
-│   └── qa_backup_YYYYMMDD_HHMMSS.sql.gz
-└── preprod/
-    └── preprod_backup_YYYYMMDD_HHMMSS.sql.gz
+└── qa/
+    └── qa_backup_YYYYMMDD_HHMMSS.sql.gz
 ```
 
 **Production Backups (multiple locations):**
@@ -923,7 +810,6 @@ ALTER INDEX idx_kc_embedding_ivfflat_new RENAME TO idx_kc_embedding_ivfflat_1536
 |-------------|-------------|------------|-----------|
 | **Development** | ~1K | 1 minute | No (CONCURRENTLY) |
 | **QA** | ~100K | 10-15 minutes | No (CONCURRENTLY) |
-| **Preprod** | ~500K | 30-60 minutes | No (CONCURRENTLY) |
 | **Production** | ~500K | 30-60 minutes | No (CONCURRENTLY) |
 
 ### Monitoring Index Health
@@ -965,7 +851,6 @@ WHERE indexname LIKE '%embedding%';
 |-------------|-------------|----------------|----------------|
 | **Development** | Full (superuser) | Individual developer | Password (local only) |
 | **QA** | Read/write | Dev team + QA team | Password (VPN) |
-| **Preprod** | Read/write | Ops team | Password + 2FA |
 | **Production** | Read/write (app), Read-only (humans) | Application (full), Ops team (read-only) | Password + 2FA + SSL |
 
 ### SSL/TLS Requirements
@@ -974,7 +859,6 @@ WHERE indexname LIKE '%embedding%';
 |-------------|---------------|------------------|
 | **Development** | No | N/A (local traffic) |
 | **QA** | Optional | Self-signed OK |
-| **Preprod** | **Yes** | Valid certificate (mirrors prod) |
 | **Production** | **Yes** | Valid certificate (Let's Encrypt or commercial) |
 
 **Production SSL setup:**
@@ -1003,7 +887,7 @@ POSTGRES_URL=postgresql+asyncpg://aifinance:devpass@localhost:5433/aifinance
 POSTGRES_URL=postgresql+asyncpg://pratikoai_qa:qa_secure_password@qa-db-host:5432/pratikoai_qa
 ```
 
-**Preprod/Production:**
+**Production:**
 ```bash
 # Use secrets manager (AWS Secrets Manager, Azure Key Vault, etc.)
 # Never hardcode production credentials!
@@ -1028,7 +912,6 @@ export POSTGRES_URL=$(aws secretsmanager get-secret-value \
 |-------------|-------------|------------------------|
 | **Development** | No | N/A (no PII ever) |
 | **QA** | No | Yes (sanitize before import) |
-| **Preprod** | No | Yes (sanitize before import) |
 | **Production** | **Yes** | N/A (real user data) |
 
 **Sanitization script:**
@@ -1104,15 +987,7 @@ if __name__ == "__main__":
    pytest tests/integration/test_knowledge_items.py
    ```
 
-5. **Deploy to Preprod:**
-   ```bash
-   # On Preprod server
-   git pull
-   alembic upgrade head
-   # Verify schema matches production expectations
-   ```
-
-6. **Schedule production deployment:**
+5. **Schedule production deployment:**
    ```bash
    # During low-traffic window (e.g., 2 AM Sunday)
    # 1. Create backup
@@ -1336,17 +1211,7 @@ if __name__ == "__main__":
    # Expected: HNSW 20-30% faster, 5-10% better recall
    ```
 
-6. **Deploy to Preprod:**
-   ```bash
-   # On Preprod server (production dress rehearsal)
-   alembic upgrade head
-
-   # Monitor for 24 hours
-   # Check application logs for errors
-   # Verify search quality with production-like queries
-   ```
-
-7. **Deploy to Production (during low-traffic window):**
+6. **Deploy to Production (during low-traffic window):**
    ```bash
    # On Production server (Sunday 2 AM)
    # 1. Create backup
@@ -1626,7 +1491,6 @@ ERROR: could not extend file "base/16384/123456": No space left on device
 |-------------|-------------|--------|
 | **Development** | `localhost:5433` | Local only |
 | **QA** | `qa-db.pratikoai.internal:5432` | VPN required |
-| **Preprod** | `preprod-db.pratikoai.internal:5432` | VPN + 2FA |
 | **Production** | `prod-db.pratikoai.com:5432` | SSL + 2FA |
 
 ### Common Commands
@@ -1680,25 +1544,21 @@ ORDER BY pg_relation_size(indexrelid) DESC;
 **Need to reset database?**
 - Dev: Yes, anytime (no backups needed)
 - QA: Yes, with team notification (restore from backup if needed)
-- Preprod: Rarely (only if testing disaster recovery)
 - Production: **NEVER** (restore from backup only)
 
 **Need to backup database?**
 - Dev: No
 - QA: Yes (daily, 7-day retention)
-- Preprod: Yes (daily, 30-day retention)
 - Production: **YES** (hourly, multi-tier retention)
 
 **Need to sanitize data?**
 - Dev: N/A (no PII ever)
 - QA: Yes (before import from production)
-- Preprod: Yes (before import from production)
 - Production: No (real user data)
 
 **Need SSL?**
 - Dev: No
 - QA: Optional
-- Preprod: Yes (mirrors production)
 - Production: **YES** (mandatory)
 
 ### Contact & Support

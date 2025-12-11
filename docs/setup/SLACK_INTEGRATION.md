@@ -167,21 +167,18 @@ Test that Slack notifications are working:
 
 ## Step 7: Production Deployment
 
-When deploying to QA/Preprod/Production:
+When deploying to QA/Production:
 
 1. **Create separate Slack channels for each environment:**
    - `#architect-alerts-qa`
-   - `#architect-alerts-preprod`
    - `#architect-alerts-prod`
    - `#scrum-updates-qa`
-   - `#scrum-updates-preprod`
    - `#scrum-updates-prod`
 
 2. **Create separate webhooks** for each environment
 
 3. **Configure environment-specific .env files:**
    - `.env.qa` - QA webhook
-   - `.env.preprod` - Preprod webhook
    - `.env.production` - Production webhook
 
 ---

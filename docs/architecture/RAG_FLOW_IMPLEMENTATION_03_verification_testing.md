@@ -130,7 +130,7 @@ docker-compose logs app | grep "rss_feeds_4h"
   - `app/core/config.py` - `PINECONE_API_KEY` environment variable
 - **Features**:
   - Environment-aware provider selection:
-    - Production/preprod → Pinecone
+    - Production → Pinecone
     - Development → Local vector provider fallback
   - Index naming: `pratikoai-embed-{dimension}` (e.g., `pratikoai-embed-384`)
   - Namespace structure: `env={environment}:domain={domain}:tenant={tenant_id}`
@@ -1553,7 +1553,7 @@ Phase 9.2 (Pinecone Verification) ← Depends on 9.1
 - Items classified separately after fetch (not in real-time)
 
 ### Pinecone Configuration
-- Environment-aware: prod/preprod use Pinecone, dev uses local fallback
+- Environment-aware: prod uses Pinecone, dev uses local fallback
 - Index naming: `pratikoai-embed-{dimension}` (e.g., `pratikoai-embed-384`)
 - Namespace structure: `env={environment}:domain={domain}:tenant={tenant_id}`
 

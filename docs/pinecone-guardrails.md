@@ -10,7 +10,6 @@ This document describes the implemented Pinecone environment guardrails, provide
 |-------------|------------------|----------|------------------|-------------------|
 | `development` | `local` | `VEC_PROVIDER=pinecone` | No | Always fallback to local |
 | `staging` | `local` | Auto-detect if keys present | Optional | Fallback to local with WARN |
-| `preprod` | `pinecone` | N/A | Yes | Fallback to local with ERROR |
 | `production` | `pinecone` | N/A | Yes | Configurable (strict/permissive) |
 
 ### Resolved Provider Examples
@@ -19,7 +18,7 @@ This document describes the implemented Pinecone environment guardrails, provide
 # Development (default local)
 APP_ENV=development → LocalVectorProvider
 
-# Development with Pinecone override  
+# Development with Pinecone override
 APP_ENV=development VEC_PROVIDER=pinecone → PineconeProvider
 
 # Staging with API keys
@@ -65,11 +64,11 @@ APP_ENV=staging → LocalVectorProvider (with warning)
 # Provider Selection
 vector_provider_selection | preferred=local environment=development
 
-# Provider Initialization  
+# Provider Initialization
 local_provider_created | dimension=384 model=sentence-transformers/all-MiniLM-L6-v2
 
 # Startup Validation
-vector_search_startup | provider=LocalVectorProvider environment=development 
+vector_search_startup | provider=LocalVectorProvider environment=development
                         index=pratikoai-dev namespace_prefix=env=dev
                         embedding_model=sentence-transformers/all-MiniLM-L6-v2
                         embedding_dimension=384
@@ -88,11 +87,11 @@ startup_checks_complete | provider=LocalVectorProvider status=ok warnings=0 erro
 ### Configuration Status
 
 ```log
-enhanced_vector_service_configuration | 
-  environment=development 
-  provider_preference=local 
+enhanced_vector_service_configuration |
+  environment=development
+  provider_preference=local
   is_pinecone_configured=True
-  pinecone_api_key=***REDACTED*** 
+  pinecone_api_key=***REDACTED***
   pinecone_environment=serverless
   pinecone_index_name=pratikoai-dev
   embedding_dimension=384
@@ -122,20 +121,20 @@ enhanced_vector_service_configuration |
 Loading environment: Environment.DEVELOPMENT
 Loaded environment from /Users/micky/PycharmProjects/PratikoAI-BE/.env.development
 
-INFO  | vector_provider_selection     | preferred=local environment=development  
+INFO  | vector_provider_selection     | preferred=local environment=development
 INFO  | local_provider_created        | dimension=384 model=sentence-transformers/all-MiniLM-L6-v2
 INFO  | enhanced_vector_service_provider_initialized | provider=LocalVectorProvider
 INFO  | enhanced_embedding_model_initialized | model=sentence-transformers/all-MiniLM-L6-v2
 
-INFO  | vector_search_startup         | provider=LocalVectorProvider 
-                                        environment=development 
+INFO  | vector_search_startup         | provider=LocalVectorProvider
+                                        environment=development
                                         index_name=pratikoai-dev
                                         namespace_prefix='env=dev'
                                         embedding_model=sentence-transformers/all-MiniLM-L6-v2
                                         embedding_dimension=384
 
 INFO  | vector_provider_connection_ok
-INFO  | embedder_dimension_compatible | dimension=384  
+INFO  | embedder_dimension_compatible | dimension=384
 INFO  | embedder_compatibility_check  | status=OK
 INFO  | startup_checks_complete       | provider=LocalVectorProvider status=ok warnings=0 errors=0
 ```
@@ -157,7 +156,7 @@ Pinecone configured: True
 
 ```log
 ERROR | pinecone_initialization_failed | error=Pinecone configuration missing: PINECONE_API_KEY
-ERROR | pinecone_required_for_production  
+ERROR | pinecone_required_for_production
 FATAL | RuntimeError: Pinecone required for production
 ```
 
@@ -184,7 +183,7 @@ INFO  | local_provider_created | dimension=384
 # Provider selection
 vector_provider_active{provider="local"} = 1
 
-# Operation counters  
+# Operation counters
 vector_queries_total{provider="local", status="success"} = 15
 vector_upserts_total{provider="local", status="success"} = 8
 
@@ -196,13 +195,13 @@ pinecone_api_errors_total{error_type="connection_error"} = 2
 
 ### ✅ Startup Validation
 - [x] Provider selection based on environment
-- [x] Configuration resolution and validation  
+- [x] Configuration resolution and validation
 - [x] Embedding model compatibility check
 - [x] Provider connection test
 - [x] Namespace policy enforcement
 - [x] Comprehensive logging
 
-### ✅ Fallback Behavior  
+### ✅ Fallback Behavior
 - [x] Pinecone failure → Local provider fallback
 - [x] Missing API key → Local provider with warning
 - [x] Network timeout → Local provider with error log

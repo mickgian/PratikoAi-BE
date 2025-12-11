@@ -177,12 +177,7 @@ After deployment, verify:
    - Build approval workflow UI
    - Integrate with S113-S130 flow
 
-3. **Preprod Deployment (After approval)**
-   - Repeat deployment process
-   - Test with production-like data
-   - Stakeholder review
-
-4. **Production Deployment (After approval)**
+3. **Production Deployment (After approval)**
    - Final backup and migration
    - Monitor performance
    - Enable expert feedback collection
@@ -202,7 +197,7 @@ After deployment, verify:
 - ⚠️ First use of PostgreSQL enum types in this project
 
 ### Mitigation:
-- Complete testing on QA before Preprod
+- Complete testing on QA before Production
 - Database backup before deployment
 - Rollback plan ready
 - Scrum Master approval required
@@ -252,7 +247,7 @@ After deployment, verify:
 - **Architect:** Consult on schema changes
 
 ### Deployment Approval:
-- **Scrum Master:** Required for QA → Preprod → Production
+- **Scrum Master:** Required for QA → Production
 - **Stakeholder:** Required for Production deployment
 
 ---
@@ -317,8 +312,7 @@ Deployment is successful if:
 | Environment | Date | Deployed By | Status | Notes |
 |-------------|------|-------------|--------|-------|
 | QA (Hetzner) | TBD | TBD | ⏳ Pending | Initial deployment |
-| Preprod | TBD | TBD | ⏳ Pending | After QA testing |
-| Production | TBD | TBD | ⏳ Pending | After Preprod + approval |
+| Production | TBD | TBD | ⏳ Pending | After QA + approval |
 
 ---
 
@@ -341,4 +335,4 @@ Deployment is successful if:
 **Ready for QA Deployment:** ✅ YES
 **Scrum Master Approval Required:** ✅ YES
 **Estimated Testing Time:** 2-4 hours
-**Estimated Production Deployment:** 2-4 weeks (after QA + Preprod)
+**Estimated Production Deployment:** 2-4 weeks (after QA testing + approval)

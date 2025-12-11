@@ -19,13 +19,11 @@ class Environment(str, Enum):
     Defines the possible environments the application can run in:
     - development: Local development
     - qa: Quality assurance and testing
-    - preprod: Pre-production simulation that mirrors production
     - production: Live production
     """
 
     DEVELOPMENT = "development"
     QA = "qa"
-    PREPROD = "preprod"
     PRODUCTION = "production"
 
 
@@ -38,7 +36,6 @@ def get_environment() -> Environment:
 
     Supported APP_ENV values:
     - "qa" → Environment.QA
-    - "preprod" → Environment.PREPROD
     - "production" or "prod" → Environment.PRODUCTION
     - default → Environment.DEVELOPMENT
     """
@@ -47,8 +44,6 @@ def get_environment() -> Environment:
     match env_str:
         case "qa":
             return Environment.QA
-        case "preprod":
-            return Environment.PREPROD
         case "production" | "prod":
             return Environment.PRODUCTION
         case _:
@@ -301,6 +296,23 @@ class Settings:
         self.METRICS_REPORT_RECIPIENTS_TECH = os.getenv("METRICS_REPORT_RECIPIENTS_TECH", "")
         self.METRICS_REPORT_RECIPIENTS_BUSINESS = os.getenv("METRICS_REPORT_RECIPIENTS_BUSINESS", "")
 
+        # Daily Ingestion Report Configuration
+        # Recipients (comma-separated) - same recipients receive reports from ALL environments
+        self.INGESTION_REPORT_RECIPIENTS = os.getenv("INGESTION_REPORT_RECIPIENTS", "")
+        # Time to send report in HH:MM format (Europe/Rome timezone)
+        self.INGESTION_REPORT_TIME = os.getenv("INGESTION_REPORT_TIME", "06:00")
+        # Enable/disable the daily ingestion report
+        self.INGESTION_REPORT_ENABLED = os.getenv("INGESTION_REPORT_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+
+        # RSS Collection Configuration
+        # Time to run daily RSS collection in HH:MM format (Europe/Rome timezone)
+        self.RSS_COLLECTION_TIME = os.getenv("RSS_COLLECTION_TIME", "01:00")
+
         # Slack Notification Settings (for Subagent System)
         # Modern Slack webhooks require separate webhooks for each channel
         self.SLACK_WEBHOOK_URL_ARCHITECT = os.getenv("SLACK_WEBHOOK_URL_ARCHITECT", "")
@@ -356,7 +368,7 @@ class Settings:
         Settings are applied only if not explicitly set via environment variables.
         This allows for environment-specific defaults while preserving manual overrides.
         """
-        # PRODUCTION config (shared by PRODUCTION and PREPROD)
+        # PRODUCTION config
         production_config = {
             "DEBUG": False,
             "LOG_LEVEL": "WARNING",
@@ -377,7 +389,6 @@ class Settings:
                 "LOG_FORMAT": "json",
                 "RATE_LIMIT_DEFAULT": ["500 per day", "100 per hour"],
             },
-            Environment.PREPROD: production_config.copy(),  # PREPROD mirrors PRODUCTION exactly
             Environment.PRODUCTION: production_config.copy(),
         }
 

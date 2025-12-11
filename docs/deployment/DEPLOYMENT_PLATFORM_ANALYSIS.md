@@ -25,9 +25,8 @@
 
 **Total Infrastructure Cost (Growth Scenario):**
 - **QA:** €10.40/month (CPX21)
-- **Preprod:** €17.90/month (CPX31) *[Optional - add when needed]*
 - **Production:** €31.90/month (CPX41)
-- **TOTAL:** €61.20/month (€734/year)
+- **TOTAL:** €42.30/month (€508/year)
 
 ---
 
@@ -37,7 +36,6 @@
 
 **Infrastructure:**
 - **QA:** Hetzner CPX21 (3 vCPU, 4GB RAM, 80GB SSD)
-- **Preprod:** Hetzner CPX31 (4 vCPU, 8GB RAM, 160GB SSD)
 - **Production:** Hetzner CPX41 (8 vCPU, 16GB RAM, 240GB SSD)
 
 **Cost Breakdown:**
@@ -46,13 +44,11 @@
 |-----------|--------------|--------------|
 | QA VPS | CPX21 | €8.90 |
 | QA Backups | Snapshots | €1.50 |
-| Preprod VPS | CPX31 | €15.90 |
-| Preprod Backups | Snapshots | €2.00 |
 | Production VPS | CPX41 | €31.90 |
 | DNS | Domain | €1.00 |
-| **TOTAL** | | **€61.20/month** |
+| **TOTAL** | | **€43.30/month** |
 
-**Annual Cost:** €734
+**Annual Cost:** €520
 
 **Pros:**
 - ✅ Lowest cost (83-91% cheaper than AWS)
@@ -75,7 +71,6 @@
 
 **Infrastructure:**
 - **QA:** ECS Fargate (0.25 vCPU, 0.5GB) + RDS db.t3.micro
-- **Preprod:** ECS Fargate (0.5 vCPU, 1GB) + RDS db.t3.small
 - **Production:** ECS Fargate (1 vCPU, 2GB) + RDS db.t3.small
 
 **Cost Breakdown:**
@@ -85,16 +80,13 @@
 | QA Compute | Fargate 0.25 vCPU | $20 |
 | QA Database | RDS t3.micro | $15 |
 | QA Cache | ElastiCache t3.micro | $12 |
-| Preprod Compute | Fargate 0.5 vCPU | $40 |
-| Preprod Database | RDS t3.small | $30 |
-| Preprod Cache | ElastiCache t3.micro | $12 |
 | Production Compute | Fargate 1 vCPU | $80 |
 | Production Database | RDS t3.small | $30 |
 | Production Cache | ElastiCache t3.small | $25 |
 | Data Transfer | 100GB/month | $9 |
-| **TOTAL** | | **$273/month** |
+| **TOTAL** | | **$191/month** |
 
-**Annual Cost:** $3,276 (€3,100)
+**Annual Cost:** $2,292 (€2,170)
 
 **Pros:**
 - ✅ Managed services (less operational burden)
@@ -146,7 +138,6 @@
 
 **Infrastructure:**
 - **QA:** Droplet 2GB + Managed PostgreSQL
-- **Preprod:** Droplet 4GB + Managed PostgreSQL
 - **Production:** Droplet 8GB + Managed PostgreSQL
 
 **Cost Breakdown:**
@@ -155,14 +146,12 @@
 |-----------|--------------|--------------|
 | QA Droplet | 2GB RAM | $12 |
 | QA Database | Managed PostgreSQL | $15 |
-| Preprod Droplet | 4GB RAM | $24 |
-| Preprod Database | Managed PostgreSQL | $15 |
 | Production Droplet | 8GB RAM | $48 |
 | Production Database | Managed PostgreSQL | $30 |
 | Redis | Self-hosted or Managed | $0-15 |
-| **TOTAL** | | **$144-159/month** |
+| **TOTAL** | | **$105-120/month** |
 
-**Annual Cost:** $1,728-1,908 (€1,630-1,800)
+**Annual Cost:** $1,260-1,440 (€1,190-1,360)
 
 **Pros:**
 - ✅ Simpler than AWS
@@ -178,18 +167,18 @@
 
 ## 2. Cost Comparison Summary
 
-| Provider | QA | Preprod | Production | Total/Month | Total/Year | vs Hetzner |
-|----------|-----|---------|------------|-------------|------------|------------|
-| **Hetzner** | €10.40 | €17.90 | €31.90 | **€61.20** | **€734** | Baseline |
-| **AWS** | ~$50 | ~$82 | ~$135 | **$273** | **$3,276** | +346% |
-| **Vercel+Supabase** | - | - | ~$85 | **$85** | **$1,020** | +39% |
-| **DigitalOcean** | ~$27 | ~$39 | ~$78 | **$159** | **$1,908** | +160% |
+| Provider | QA | Production | Total/Month | Total/Year | vs Hetzner |
+|----------|-----|------------|-------------|------------|------------|
+| **Hetzner** | €10.40 | €31.90 | **€42.30** | **€508** | Baseline |
+| **AWS** | ~$47 | ~$135 | **$191** | **$2,292** | +351% |
+| **Vercel+Supabase** | - | ~$85 | **$85** | **$1,020** | +101% |
+| **DigitalOcean** | ~$27 | ~$78 | **$113** | **$1,356** | +167% |
 
-**Winner:** Hetzner at €734/year
+**Winner:** Hetzner at €508/year
 
-**Savings vs AWS:** €2,542/year (78% cheaper)
-**Savings vs Vercel:** €286/year (28% cheaper)
-**Savings vs DigitalOcean:** €1,174/year (62% cheaper)
+**Savings vs AWS:** €1,660/year (77% cheaper)
+**Savings vs Vercel:** €455/year (47% cheaper)
+**Savings vs DigitalOcean:** €770/year (60% cheaper)
 
 ---
 
@@ -236,12 +225,10 @@
 - **QA:** CPX11 (€4.75/month)
 - **Production:** CPX21 (€8.90/month)
 - **Total:** €13.65/month (€164/year)
-- **Skip Preprod initially** - use QA for staging, promote to Production when confident
 
 **When to upgrade:**
 - QA CPU >70% sustained: upgrade to CPX21
 - Production RAM >80%: upgrade to CPX31
-- Production users >1,000 active: add Preprod environment
 
 ---
 
@@ -291,35 +278,6 @@ Total:          ~4.3 GB (98% utilization)
 **Use Case:** Integration testing, automated CI/CD, team testing
 
 **Uptime Target:** Best effort (99% acceptable)
-
----
-
-### Preprod Environment (DEV-BE-88)
-
-**Infrastructure:** Hetzner CPX31
-- **CPU:** 4 vCPU (AMD EPYC)
-- **RAM:** 8 GB
-- **Storage:** 160 GB NVMe SSD
-- **Network:** 20 TB traffic
-- **Location:** Falkenstein, Germany
-- **Cost:** €15.90/month
-
-**Services:**
-```
-PostgreSQL:     ~3 GB RAM (larger datasets)
-Redis:          ~1 GB RAM (cache warming)
-Backend:        ~1.5 GB RAM (multiple workers)
-Prometheus:     ~1 GB RAM (30-day retention)
-Grafana:        ~500 MB RAM
-Exporters:      ~300 MB RAM
-System:         ~700 MB RAM
--------------------------------------
-Total:          ~8 GB (100% utilization)
-```
-
-**Use Case:** Production mirror, load testing, final QA before launch
-
-**Uptime Target:** 99% SLA
 
 ---
 
@@ -425,26 +383,7 @@ Total:          ~16 GB (100% utilization)
 
 ---
 
-### Week 5-6: Preprod Environment (DEV-BE-88)
-- Provision Hetzner CPX31
-- Copy QA deployment scripts
-- Deploy with preprod configuration
-- Load sanitized production data
-- Configure monitoring alerts
-- Run load tests
-- GDPR audit (DEV-BE-89)
-
-**Deliverables:**
-- Preprod live at https://api-preprod.pratikoai.com
-- Production-like data loaded
-- Load testing passed (100+ concurrent users)
-- GDPR audit passed
-
-**Effort:** 15.5 hours
-
----
-
-### Week 7-8: Production Environment (DEV-BE-90)
+### Week 5-6: Production Environment (DEV-BE-90)
 - Provision Hetzner CPX41
 - Production hardening (firewall, fail2ban, monitoring)
 - Deploy with production configuration
@@ -464,7 +403,7 @@ Total:          ~16 GB (100% utilization)
 
 ---
 
-**Total Timeline:** 6-8 weeks (52.5 hours of work)
+**Total Timeline:** 4-6 weeks (37 hours of work)
 
 ---
 
@@ -551,8 +490,7 @@ Total:          ~16 GB (100% utilization)
 1. ✅ **Choose Hetzner** for all environments
 2. ✅ **Use Docker Compose** (not Kubernetes - you'll likely never need it)
 3. ✅ **Start small** - CPX11 for QA, CPX21 for Production
-4. ✅ **Skip Preprod initially** - add only when production traffic justifies it
-5. ✅ **Optimize Dockerfile** (multi-stage build)
+4. ✅ **Optimize Dockerfile** (multi-stage build)
 
 **Total Bootstrap Cost:** €13.65/month (€164/year)
 
@@ -560,14 +498,12 @@ Total:          ~16 GB (100% utilization)
 1. Deploy QA environment on CPX11 (Week 2-3)
 2. Deploy Production environment on CPX21 (Week 3-4)
 3. Monitor metrics closely - upgrade only when RAM >80% or CPU >70%
-4. Add Preprod only if needed (usually after 500+ users)
 
 ### Long-term (Months 6-24)
 1. Upgrade Production to CPX31 when metrics demand it (not before)
 2. Consider Managed PostgreSQL only if database becomes operational burden
-3. Add Preprod environment when user base >500 active users
-4. Quarterly cost reviews - resist over-provisioning temptation
-5. **Kubernetes?** Only if >5,000 concurrent users (most startups never get here)
+3. Quarterly cost reviews - resist over-provisioning temptation
+4. **Kubernetes?** Only if >5,000 concurrent users (most startups never get here)
 
 ---
 
@@ -606,7 +542,7 @@ Total:          ~16 GB (100% utilization)
 **Starting Infrastructure Budget:**
 - **Year 1:** €164 (QA + Production only, start small)
 - **Year 2:** €164-380 (upgrade Production to CPX31 if needed)
-- **Year 3:** €380-734 (add Preprod + consider CPX41 if scaling)
+- **Year 3:** €380-508 (consider CPX41 if scaling)
 
 **vs AWS Equivalent:**
 - **Year 1 AWS:** €3,600 (you save **€3,436** = 95% savings)
@@ -618,9 +554,9 @@ Total:          ~16 GB (100% utilization)
 ### Growth Path (if you're a breakout success)
 
 **Infrastructure Budget:**
-- **Year 1:** €734 (QA + Preprod + Production CPX41)
-- **Year 2:** €734-1,000 (if migrating to Managed DB)
-- **Year 3:** €1,000-1,500 (if adding HA/scaling)
+- **Year 1:** €508 (QA + Production CPX41)
+- **Year 2:** €508-800 (if migrating to Managed DB)
+- **Year 3:** €800-1,200 (if adding HA/scaling)
 
 **Total 3-Year Savings vs AWS:** €8,666-12,166 (73-83% cheaper)
 
@@ -638,7 +574,6 @@ Total:          ~16 GB (100% utilization)
 **Week 3-4:**
 1. Deploy Production environment on CPX21 (€8.90/month)
 2. Configure monitoring alerts (upgrade when RAM >80%)
-3. Skip Preprod initially - add later if needed
 
 **Timeline to Production:** 3-4 weeks from start
 

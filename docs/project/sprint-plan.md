@@ -121,8 +121,6 @@ All specialized subagents will be activated in Sprint 1 after configuration is c
 **Critical Path to Production (DEV-BE-90):**
 - Above + DEV-BE-72 (Expert Feedback System - 10 days)
 - DEV-BE-87 (Payment System - 10-15 days)
-- DEV-BE-88 (Preprod Deployment - 3-4 days)
-- DEV-BE-89 (Preprod GDPR Audit - 2-3 days)
 - DEV-BE-90 (Production Deployment - 7 days)
 - DEV-BE-91 (Production GDPR Audit - 4-5 days)
 

@@ -361,10 +361,8 @@ async def step_111__collect_metrics(
             env_lower = environment_str.lower()
             if env_lower in ("production", "prod"):
                 environment = Environment.PRODUCTION
-            elif env_lower in ("qa", "quality", "staging"):  # Support old "staging" name
+            elif env_lower in ("qa", "quality", "staging", "test"):  # Support legacy names
                 environment = Environment.QA
-            elif env_lower in ("preprod", "pre-prod", "test"):  # Support old "test" name
-                environment = Environment.PREPROD
             else:
                 environment = Environment.DEVELOPMENT
 

@@ -262,9 +262,6 @@ def setup_logging() -> None:
     elif settings.ENVIRONMENT == Environment.QA:
         cleanup_old_logs(retention_days=60)  # Keep 60 days in QA
         cleanup_old_rag_traces(retention_days=14)  # Keep 14 days of RAG traces in QA
-    elif settings.ENVIRONMENT == Environment.PREPROD:
-        cleanup_old_logs(retention_days=90)  # Keep 90 days in PREPROD (mirrors production)
-        # No RAG traces in PREPROD (mirrors production - feature disabled)
     else:  # PRODUCTION
         cleanup_old_logs(retention_days=90)  # Keep 90 days in production
         # No RAG traces in production (feature disabled)
@@ -279,7 +276,7 @@ def setup_logging() -> None:
 
     # Get shared processors
     shared_processors = get_structlog_processors(
-        # Include detailed file info only in development (not QA/PREPROD/PROD)
+        # Include detailed file info only in development (not QA/PROD)
         include_file_info=settings.ENVIRONMENT == Environment.DEVELOPMENT
     )
 

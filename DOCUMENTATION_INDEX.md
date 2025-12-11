@@ -1,7 +1,7 @@
 # Master Documentation Index
 
-**Auto-generated:** 2025-12-09 17:18:25
-**Total Documents:** 295 markdown files
+**Auto-generated:** 2025-12-11 09:43:19
+**Total Documents:** 296 markdown files
 
 > 💡 This index is automatically generated. To update, run: `python scripts/generate_docs_index.py`
 
@@ -76,6 +76,10 @@
   - **Created:** November 12, 2025 **Status:** Phase 1-2 Complete, Phase 3-5 Templates Provided
 - **[pgvector Setup Guide](docs/getting-started/PGVECTOR_SETUP_GUIDE.md)** ✅ Current
   - ✅ **Completed**: - Created Alembic migrations for pgvector enablement
+
+### Operations (1 docs)
+- **[Daily Ingestion Collection Email Report](docs/operations/DAILY_REPORTS.md)** ✅ Current
+  - **Task:** DEV-BE-70 **Status:** Implemented
 
 ### Meta Documentation (2 docs)
 - **[Documentation Cleanup Summary](docs/meta/DOCUMENTATION_CLEANUP_SUMMARY.md)** ✅ Current

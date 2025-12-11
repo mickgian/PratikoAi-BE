@@ -301,6 +301,23 @@ class Settings:
         self.METRICS_REPORT_RECIPIENTS_TECH = os.getenv("METRICS_REPORT_RECIPIENTS_TECH", "")
         self.METRICS_REPORT_RECIPIENTS_BUSINESS = os.getenv("METRICS_REPORT_RECIPIENTS_BUSINESS", "")
 
+        # Daily Ingestion Report Configuration
+        # Recipients (comma-separated) - same recipients receive reports from ALL environments
+        self.INGESTION_REPORT_RECIPIENTS = os.getenv("INGESTION_REPORT_RECIPIENTS", "")
+        # Time to send report in HH:MM format (Europe/Rome timezone)
+        self.INGESTION_REPORT_TIME = os.getenv("INGESTION_REPORT_TIME", "06:00")
+        # Enable/disable the daily ingestion report
+        self.INGESTION_REPORT_ENABLED = os.getenv("INGESTION_REPORT_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+
+        # RSS Collection Configuration
+        # Time to run daily RSS collection in HH:MM format (Europe/Rome timezone)
+        self.RSS_COLLECTION_TIME = os.getenv("RSS_COLLECTION_TIME", "01:00")
+
         # Slack Notification Settings (for Subagent System)
         # Modern Slack webhooks require separate webhooks for each channel
         self.SLACK_WEBHOOK_URL_ARCHITECT = os.getenv("SLACK_WEBHOOK_URL_ARCHITECT", "")

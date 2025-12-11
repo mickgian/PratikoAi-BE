@@ -22,6 +22,7 @@ from typing import (
     List,
     Optional,
 )
+from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 from app.core.logging import logger
@@ -53,6 +54,8 @@ class ScheduledTask:
     run_immediately: bool = False  # Run task immediately on scheduler startup
     last_run: datetime | None = None
     next_run: datetime | None = None
+    target_time: str | None = None  # Time of day to run (e.g., "06:00" for 6 AM Europe/Rome)
+    timezone_name: str = "Europe/Rome"  # Timezone for target_time
 
 
 class SchedulerService:
@@ -69,11 +72,18 @@ class SchedulerService:
         if task.kwargs is None:
             task.kwargs = {}
 
-        # Calculate next run time
-        task.next_run = self._calculate_next_run(task.interval)
+        # Calculate next run time - use time-of-day if target_time is set
+        if task.target_time:
+            task.next_run = self._calculate_next_run_at_time(task.target_time, task.timezone_name)
+            self.logger.info(
+                f"Added scheduled task: {task.name} (daily at {task.target_time} {task.timezone_name}, "
+                f"next run: {task.next_run.astimezone(ZoneInfo(task.timezone_name)).strftime('%Y-%m-%d %H:%M %Z')})"
+            )
+        else:
+            task.next_run = self._calculate_next_run(task.interval)
+            self.logger.info(f"Added scheduled task: {task.name} ({task.interval.value})")
 
         self.tasks[task.name] = task
-        self.logger.info(f"Added scheduled task: {task.name} ({task.interval.value})")
 
     def remove_task(self, task_name: str) -> bool:
         """Remove a scheduled task."""
@@ -162,9 +172,12 @@ class SchedulerService:
             else:
                 task.function(*task.args, **kwargs)
 
-            # Update task timing
+            # Update task timing - use time-of-day if target_time is set
             task.last_run = datetime.now(UTC)
-            task.next_run = self._calculate_next_run(task.interval, task.last_run)
+            if task.target_time:
+                task.next_run = self._calculate_next_run_at_time(task.target_time, task.timezone_name)
+            else:
+                task.next_run = self._calculate_next_run(task.interval, task.last_run)
 
             self.logger.info(f"Completed scheduled task: {task.name}. Next run: {task.next_run}")
 
@@ -173,7 +186,10 @@ class SchedulerService:
 
             # Still update next run time even if task failed
             task.last_run = datetime.now(UTC)
-            task.next_run = self._calculate_next_run(task.interval, task.last_run)
+            if task.target_time:
+                task.next_run = self._calculate_next_run_at_time(task.target_time, task.timezone_name)
+            else:
+                task.next_run = self._calculate_next_run(task.interval, task.last_run)
 
     def _calculate_next_run(self, interval: ScheduleInterval, from_time: datetime | None = None) -> datetime:
         """Calculate next run time based on interval."""
@@ -193,6 +209,32 @@ class SchedulerService:
             return base_time + timedelta(weeks=1)
         # Default to daily
         return base_time + timedelta(days=1)  # type: ignore[unreachable]
+
+    def _calculate_next_run_at_time(self, target_time: str, timezone_name: str = "Europe/Rome") -> datetime:
+        """Calculate next occurrence of a specific time of day.
+
+        Args:
+            target_time: Time in HH:MM format (e.g., "06:00" for 6 AM)
+            timezone_name: Timezone name (e.g., "Europe/Rome")
+
+        Returns:
+            Next datetime in UTC when the target time will occur
+        """
+        tz = ZoneInfo(timezone_name)
+        now = datetime.now(tz)
+
+        # Parse target time
+        hour, minute = map(int, target_time.split(":"))
+
+        # Create target datetime for today
+        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+        # If target time has already passed today, schedule for tomorrow
+        if target <= now:
+            target += timedelta(days=1)
+
+        # Convert to UTC for storage
+        return target.astimezone(UTC)
 
     def get_task_status(self) -> dict[str, dict[str, Any]]:
         """Get status of all scheduled tasks."""
@@ -284,6 +326,59 @@ async def send_metrics_report_task() -> None:
 
     except Exception as e:
         logger.error(f"Error in metrics report task: {e}")
+
+
+async def send_daily_ingestion_report_task() -> None:
+    """Scheduled task to send daily ingestion collection email report.
+
+    This task is called by the scheduler service daily at the configured time.
+    DEV-BE-70: Daily Ingestion Collection Email Report
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.services.ingestion_report_service import IngestionReportService
+
+    # Check if report is enabled
+    if not getattr(settings, "INGESTION_REPORT_ENABLED", True):
+        logger.info("Daily ingestion report is disabled via INGESTION_REPORT_ENABLED")
+        return
+
+    # Get recipients from settings
+    recipients_str = getattr(settings, "INGESTION_REPORT_RECIPIENTS", "")
+    if not recipients_str:
+        logger.warning("INGESTION_REPORT_RECIPIENTS not configured, skipping daily ingestion report")
+        return
+
+    recipients = [email.strip() for email in recipients_str.split(",") if email.strip()]
+    if not recipients:
+        logger.warning("No valid recipients configured for daily ingestion report")
+        return
+
+    try:
+        logger.info(f"Sending daily ingestion report to {len(recipients)} recipients")
+
+        # Create async database session
+        postgres_url = settings.POSTGRES_URL
+        if postgres_url.startswith("postgresql://"):
+            postgres_url = postgres_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        engine = create_async_engine(postgres_url, echo=False, pool_pre_ping=True)
+        async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session_maker() as session:
+            service = IngestionReportService(session)
+            success = await service.send_daily_report_email(recipients)
+
+            if success:
+                logger.info("Daily ingestion report sent successfully")
+            else:
+                logger.error("Failed to send daily ingestion report")
+
+        await engine.dispose()
+
+    except Exception as e:
+        logger.error(f"Error in daily ingestion report task: {e}", exc_info=True)
 
 
 async def collect_rss_feeds_task() -> None:
@@ -432,6 +527,82 @@ async def collect_rss_feeds_task() -> None:
         logger.error("rss_feed_collection_task_failed", error=str(e), exc_info=True)
 
 
+async def scrape_gazzetta_task() -> None:
+    """Scheduled task for Gazzetta Ufficiale scraping.
+
+    This task is called by the scheduler service daily at the configured time.
+    Scrapes recent documents from the Italian Official Gazette.
+    """
+    try:
+        from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+        from sqlalchemy.orm import sessionmaker
+
+        from app.services.scrapers.gazzetta_scraper import scrape_gazzetta_daily_task
+
+        logger.info("gazzetta_scraping_task_started")
+
+        # Create async database session
+        postgres_url = settings.POSTGRES_URL
+        if postgres_url.startswith("postgresql://"):
+            postgres_url = postgres_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        engine = create_async_engine(postgres_url, echo=False, pool_pre_ping=True)
+        async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session_maker() as session:
+            result = await scrape_gazzetta_daily_task(db_session=session)
+
+            logger.info(
+                "gazzetta_scraping_task_completed",
+                documents_found=result.documents_found,
+                documents_saved=result.documents_saved,
+                errors=result.errors,
+            )
+
+        await engine.dispose()
+
+    except Exception as e:
+        logger.error("gazzetta_scraping_task_failed", error=str(e), exc_info=True)
+
+
+async def scrape_cassazione_task() -> None:
+    """Scheduled task for Cassazione (Supreme Court) scraping.
+
+    This task is called by the scheduler service daily at the configured time.
+    Scrapes recent court decisions focusing on Tax and Labor sections.
+    """
+    try:
+        from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+        from sqlalchemy.orm import sessionmaker
+
+        from app.services.scrapers.cassazione_scraper import scrape_cassazione_daily_task
+
+        logger.info("cassazione_scraping_task_started")
+
+        # Create async database session
+        postgres_url = settings.POSTGRES_URL
+        if postgres_url.startswith("postgresql://"):
+            postgres_url = postgres_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        engine = create_async_engine(postgres_url, echo=False, pool_pre_ping=True)
+        async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session_maker() as session:
+            result = await scrape_cassazione_daily_task(db_session=session)
+
+            logger.info(
+                "cassazione_scraping_task_completed",
+                decisions_found=result.decisions_found,
+                decisions_saved=result.decisions_saved,
+                errors=result.errors,
+            )
+
+        await engine.dispose()
+
+    except Exception as e:
+        logger.error("cassazione_scraping_task_failed", error=str(e), exc_info=True)
+
+
 def setup_default_tasks() -> None:
     """Setup default scheduled tasks."""
     # Add 12-hour metrics report task
@@ -443,18 +614,60 @@ def setup_default_tasks() -> None:
     )
     scheduler_service.add_task(metrics_report_task)
 
-    # Add RSS feed collection task (every 4 hours) - Database-driven ingestion
+    # Add RSS feed collection task - daily at configured time (default 01:00 Europe/Rome)
     # run_immediately=True ensures feeds are collected right after app startup
+    rss_collection_time = getattr(settings, "RSS_COLLECTION_TIME", "01:00")
     rss_feeds_task = ScheduledTask(
-        name="rss_feeds_4h",
-        interval=ScheduleInterval.EVERY_4_HOURS,
+        name="rss_feeds_daily",
+        interval=ScheduleInterval.DAILY,
         function=collect_rss_feeds_task,
         enabled=True,
         run_immediately=True,  # Collect feeds immediately on startup
+        target_time=rss_collection_time,  # Run daily at configured time
     )
     scheduler_service.add_task(rss_feeds_task)
 
-    logger.info("Default scheduled tasks configured (metrics reports + RSS feed collection)")
+    # Add Gazzetta Ufficiale scraper task - daily at same time as RSS (01:00 Europe/Rome)
+    # Scrapes Italian Official Gazette for tax and labor laws
+    gazzetta_scraper_task = ScheduledTask(
+        name="gazzetta_scraper_daily",
+        interval=ScheduleInterval.DAILY,
+        function=scrape_gazzetta_task,
+        enabled=True,
+        run_immediately=False,  # Don't scrape external site on every startup
+        target_time=rss_collection_time,  # Same time as RSS collection
+    )
+    scheduler_service.add_task(gazzetta_scraper_task)
+
+    # Add Cassazione (Supreme Court) scraper task - daily at same time as RSS (01:00 Europe/Rome)
+    # Scrapes court decisions for Tax (Tributaria) and Labor (Lavoro) sections
+    cassazione_scraper_task = ScheduledTask(
+        name="cassazione_scraper_daily",
+        interval=ScheduleInterval.DAILY,
+        function=scrape_cassazione_task,
+        enabled=True,
+        run_immediately=False,  # Don't scrape external site on every startup
+        target_time=rss_collection_time,  # Same time as RSS collection
+    )
+    scheduler_service.add_task(cassazione_scraper_task)
+
+    # Add daily ingestion report task (DEV-BE-70)
+    # Sends daily email with RSS + scraper metrics, alerts, WoW comparison
+    # Default time: 06:00 Europe/Rome (configured via INGESTION_REPORT_TIME)
+    ingestion_report_enabled = getattr(settings, "INGESTION_REPORT_ENABLED", True)
+    ingestion_report_time = getattr(settings, "INGESTION_REPORT_TIME", "06:00")
+    ingestion_report_task = ScheduledTask(
+        name="daily_ingestion_report",
+        interval=ScheduleInterval.DAILY,
+        function=send_daily_ingestion_report_task,
+        enabled=ingestion_report_enabled,
+        target_time=ingestion_report_time,  # Run daily at configured time
+    )
+    scheduler_service.add_task(ingestion_report_task)
+
+    logger.info(
+        f"Default scheduled tasks configured (metrics reports + RSS feeds + Gazzetta scraper + Cassazione scraper + daily ingestion report [enabled={ingestion_report_enabled}])"
+    )
 
 
 async def start_scheduler() -> None:

@@ -8,6 +8,7 @@ from typing import (
     Literal,
     Optional,
 )
+from uuid import UUID
 
 from pydantic import (
     BaseModel,
@@ -83,12 +84,18 @@ class ChatRequest(BaseModel):
 
     Attributes:
         messages: List of messages in the conversation.
+        attachment_ids: Optional list of uploaded document IDs to include in context.
     """
 
     messages: list[Message] = Field(
         ...,
         description="List of messages in the conversation",
         min_length=1,
+    )
+    attachment_ids: list[UUID] | None = Field(
+        default=None,
+        description="IDs of uploaded documents to include in context",
+        max_length=5,
     )
 
 

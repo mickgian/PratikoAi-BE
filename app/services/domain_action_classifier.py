@@ -58,6 +58,24 @@ class Action(str, Enum):
     CCNL_QUERY = "ccnl_query"
 
 
+class QueryComposition(str, Enum):
+    """Query composition types for adaptive context prioritization.
+
+    DEV-007 Issue 9: When user attaches a document, we use LLM classification
+    to understand their intent and adjust context priority weights accordingly.
+
+    - PURE_KB: Query needs only knowledge base (no attachments, or unrelated query)
+    - PURE_DOCUMENT: Query relates only to attached document
+    - HYBRID: Query needs both document analysis AND knowledge base context
+    - CONVERSATIONAL: Greeting or chitchat (minimal retrieval needed)
+    """
+
+    PURE_KB = "pure_kb"
+    PURE_DOCUMENT = "pure_doc"
+    HYBRID = "hybrid"
+    CONVERSATIONAL = "chat"
+
+
 class DomainActionClassification(BaseModel):
     """Classification result with confidence and metadata"""
 
@@ -1032,3 +1050,137 @@ Rispondi SOLO con formato JSON:
                 for action, patterns in self.action_patterns.items()
             },
         }
+
+    # =========================================================================
+    # DEV-007 Issue 9: Query Composition Detection for Attachment Prioritization
+    # =========================================================================
+
+    async def detect_query_composition(
+        self,
+        query: str,
+        has_attachments: bool,
+        attachment_filename: str | None = None,
+    ) -> QueryComposition:
+        """Detect query composition type for context prioritization.
+
+        DEV-007 Issue 9: Users expect ChatGPT/Claude-level intelligence.
+        When they upload a document and ask "calcola la mia pensione",
+        we must understand they want document analysis, not KB search.
+
+        Strategy:
+        - No attachments: Fast regex-based detection (existing behavior)
+        - Attachments present: LLM classification for accurate intent understanding
+
+        Args:
+            query: User's query text
+            has_attachments: Whether user attached document(s)
+            attachment_filename: Filename of attached document (for context)
+
+        Returns:
+            QueryComposition indicating how to prioritize context sources
+        """
+        if not has_attachments:
+            # Fast path: regex-based for queries without attachments
+            return self._detect_composition_regex(query)
+
+        # LLM path: accurate classification when documents attached
+        return await self._classify_composition_with_llm(query, attachment_filename)
+
+    def _detect_composition_regex(self, query: str) -> QueryComposition:
+        """Fast regex-based detection for queries without attachments.
+
+        Used when no documents are attached - determines if query is
+        conversational (greeting) or knowledge-seeking (KB search).
+        """
+        query_lower = query.lower()
+
+        # Conversational signals (greetings, thanks, etc.)
+        conversational_signals = {
+            "ciao",
+            "grazie",
+            "buongiorno",
+            "buonasera",
+            "come stai",
+            "salve",
+            "arrivederci",
+            "perfetto",
+            "ok",
+            "va bene",
+        }
+
+        if any(s in query_lower for s in conversational_signals):
+            # Check if query is ONLY conversational (not mixed with real question)
+            if len(query_lower.split()) <= 5:
+                return QueryComposition.CONVERSATIONAL
+
+        # Default: Knowledge base search
+        return QueryComposition.PURE_KB
+
+    async def _classify_composition_with_llm(
+        self,
+        query: str,
+        filename: str | None,
+    ) -> QueryComposition:
+        """Use small LLM (haiku/gpt-4o-mini) to classify intent when attachments present.
+
+        This provides ChatGPT/Claude-level understanding of user intent.
+        Trade-off: +200-300ms latency for much better accuracy.
+
+        Args:
+            query: User's query text
+            filename: Attached document filename (provides context)
+
+        Returns:
+            QueryComposition based on LLM's understanding of intent
+        """
+        from app.schemas.chat import Message
+
+        prompt = f"""Sei un classificatore di intenti per un sistema RAG italiano.
+L'utente ha allegato un documento e ha fatto una domanda.
+
+Classifica l'intento dell'utente in una delle seguenti categorie:
+- DOCUMENT_ONLY: L'utente vuole analisi basata SOLO sul documento allegato
+  (es. "calcola la mia pensione", "quanto devo pagare?", "analizza questi dati")
+- HYBRID: L'utente vuole analisi del documento PIÙ contesto normativo/legale
+  (es. "verifica se rispetta la normativa", "confronta con le regole INPS")
+- KB_ONLY: La domanda NON è correlata al documento allegato
+  (caso raro, es. "che tempo fa?")
+
+Query dell'utente: "{query}"
+Nome documento allegato: "{filename or 'documento'}"
+
+Rispondi con UNA SOLA parola: DOCUMENT_ONLY, HYBRID, o KB_ONLY"""
+
+        try:
+            # Use gpt-4o-mini for fast, cheap classification
+            factory = LLMFactory()
+            provider = factory.create_provider(provider_type=LLMProviderType.OPENAI, model="gpt-4o-mini")
+
+            messages = [Message(role="user", content=prompt)]
+            response = await provider.chat_completion(messages=messages, temperature=0.0, max_tokens=20)
+
+            result = response.content.strip().upper()
+
+            logger.info(
+                "query_composition_classified",
+                query_preview=query[:50],
+                filename=filename,
+                llm_result=result,
+            )
+
+            if "HYBRID" in result:
+                return QueryComposition.HYBRID
+            elif "KB_ONLY" in result:
+                return QueryComposition.PURE_KB
+            else:
+                # Default for attachments: document analysis
+                return QueryComposition.PURE_DOCUMENT
+
+        except Exception as e:
+            logger.warning(
+                "query_composition_llm_failed",
+                error=str(e),
+                fallback="PURE_DOCUMENT",
+            )
+            # Safe fallback: if user attached a document, assume they want document analysis
+            return QueryComposition.PURE_DOCUMENT

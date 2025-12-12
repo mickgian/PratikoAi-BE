@@ -15,4 +15,12 @@ def load_system_prompt():
         )
 
 
+def load_document_analysis_prompt():
+    """Load document analysis guidelines (injected conditionally for document queries)."""
+    path = os.path.join(os.path.dirname(__file__), "document_analysis.md")
+    with open(path) as f:
+        return f.read()
+
+
 SYSTEM_PROMPT = load_system_prompt()
+DOCUMENT_ANALYSIS_PROMPT = load_document_analysis_prompt()

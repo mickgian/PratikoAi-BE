@@ -30,6 +30,60 @@ from app.observability.rag_logging import (
 )
 from app.services.knowledge_search_service import SearchResult
 
+# DEV-007 Issue 9: Import QueryComposition for type hints (lazy import to avoid circular)
+# Actual enum imported in get_composition_priority_weights() to avoid import cycles
+
+
+# =============================================================================
+# DEV-007 Issue 9: Adaptive Priority Weights by Query Composition
+# =============================================================================
+# When user attaches a document, LLM classifies their intent and we adjust
+# priority weights accordingly. This ensures document content is prioritized
+# when user wants document analysis, and KB docs when they want regulatory info.
+#
+# Priority weights determine how token budget is allocated:
+# - Higher weight = more tokens allocated to that source
+# - Weights are normalized during budget allocation
+
+COMPOSITION_PRIORITY_WEIGHTS = {
+    # PURE_DOCUMENT: User wants document analysis only
+    # e.g., "calcola la mia pensione" + fondo_pensione.xlsx
+    "pure_doc": {"facts": 0.2, "kb_docs": 0.2, "document_facts": 0.6},
+    # HYBRID: User wants document analysis + regulatory context
+    # e.g., "verifica se rispetta la normativa" + bilancio.xlsx
+    "hybrid": {"facts": 0.25, "kb_docs": 0.5, "document_facts": 0.5},
+    # PURE_KB: No attachments or query unrelated to document
+    # e.g., "aliquote IVA 2024?" (no attachment)
+    "pure_kb": {"facts": 0.3, "kb_docs": 0.6, "document_facts": 0.1},
+    # CONVERSATIONAL: Greetings, chitchat - minimal retrieval needed
+    # e.g., "ciao!"
+    "chat": {"facts": 0.5, "kb_docs": 0.3, "document_facts": 0.2},
+}
+
+
+def get_composition_priority_weights(query_composition: str | None) -> dict[str, float]:
+    """Get priority weights based on query composition type.
+
+    DEV-007 Issue 9: Returns appropriate weights for context source prioritization.
+
+    Args:
+        query_composition: QueryComposition value as string (or None for default)
+
+    Returns:
+        Dict with priority weights for facts, kb_docs, and document_facts
+    """
+    if query_composition and query_composition in COMPOSITION_PRIORITY_WEIGHTS:
+        weights = COMPOSITION_PRIORITY_WEIGHTS[query_composition]
+        logger.info(
+            "composition_weights_applied",
+            composition=query_composition,
+            weights=weights,
+        )
+        return weights
+
+    # Default: PURE_KB behavior (backward compatible)
+    return COMPOSITION_PRIORITY_WEIGHTS["pure_kb"]
+
 
 @dataclass
 class ContextPart:

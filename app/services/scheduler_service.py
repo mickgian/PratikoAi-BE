@@ -431,7 +431,7 @@ async def collect_rss_feeds_task() -> None:
 
         async with async_session_maker() as session:
             # Query all enabled feeds
-            query = select(FeedStatus).where(FeedStatus.enabled is True)
+            query = select(FeedStatus).where(FeedStatus.enabled == True)  # noqa: E712
             result = await session.execute(query)
             feeds = result.scalars().all()
 

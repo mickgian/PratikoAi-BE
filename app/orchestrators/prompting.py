@@ -217,8 +217,21 @@ async def _analyze_user_query(user_query: str) -> dict[str, Any]:
 
 
 async def _get_default_system_prompt(query_analysis: dict[str, Any], context: dict[str, Any]) -> str:
-    """Get appropriate default system prompt based on query analysis and inject context."""
-    from app.core.prompts import SYSTEM_PROMPT
+    """Get appropriate default system prompt based on query analysis and inject context.
+
+    DEV-007 Issue 11: Conditionally injects document analysis guidelines when
+    query_composition is 'pure_doc' or 'hybrid' (ADR-016).
+    """
+    from app.core.prompts import DOCUMENT_ANALYSIS_PROMPT, SYSTEM_PROMPT
+
+    # Start with base system prompt
+    prompt = SYSTEM_PROMPT
+
+    # DEV-007 Issue 11: Inject document analysis guidelines for document queries
+    # Only inject when user has uploaded documents and query is about them
+    query_composition = context.get("query_composition", "pure_kb")
+    if query_composition in ("pure_doc", "hybrid"):
+        prompt = prompt + "\n\n" + DOCUMENT_ANALYSIS_PROMPT
 
     # Extract merged context from state (built in step 40)
     merged_context = context.get("context", "")
@@ -226,10 +239,10 @@ async def _get_default_system_prompt(query_analysis: dict[str, Any], context: di
     # If we have context from knowledge base, inject it into the system prompt
     if merged_context and merged_context.strip():
         context_section = f"\n\n# Relevant Knowledge Base Context\n\n{merged_context}\n"
-        return SYSTEM_PROMPT + context_section
+        return prompt + context_section
 
-    # Otherwise, return standard prompt without context
-    return SYSTEM_PROMPT
+    # Otherwise, return prompt (with or without document analysis guidelines)
+    return prompt
 
 
 async def step_41__select_prompt(
@@ -522,10 +535,13 @@ def step_44__default_sys_prompt(
     1. No classification is available, OR
     2. Classification confidence is below threshold
 
+    DEV-007 Issue 11: Conditionally injects document analysis guidelines when
+    query_composition is 'pure_doc' or 'hybrid' (ADR-016).
+
     This is the orchestrator that coordinates returning the default system prompt.
     """
     from app.core.config import settings
-    from app.core.prompts import SYSTEM_PROMPT
+    from app.core.prompts import DOCUMENT_ANALYSIS_PROMPT, SYSTEM_PROMPT
 
     # Extract parameters from context
     classification = kwargs.get("classification") or (ctx or {}).get("classification")
@@ -585,6 +601,11 @@ def step_44__default_sys_prompt(
 
         # Step 44 logic: Return default SYSTEM_PROMPT with context injection
         prompt = SYSTEM_PROMPT
+
+        # DEV-007 Issue 11: Inject document analysis guidelines for document queries
+        query_composition = (ctx or {}).get("query_composition", "pure_kb")
+        if query_composition in ("pure_doc", "hybrid"):
+            prompt = prompt + "\n\n" + DOCUMENT_ANALYSIS_PROMPT
 
         # Inject KB context if available (from step 40)
         # Step 40 stores in 'context' key, but state may have kb_docs from step 39

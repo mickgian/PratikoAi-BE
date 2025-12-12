@@ -46,6 +46,9 @@ async def node_step_31(state: RAGState) -> RAGState:
             "error": res.get("error"),
         }
 
+        # DEV-007 Issue 11: Copy query_composition to state for conditional prompt injection
+        state["query_composition"] = res.get("query_composition")
+
         # Also store the nested classification dict if present and valid
         if "classification" in res and isinstance(res["classification"], dict):
             state["classification"].update(res["classification"])

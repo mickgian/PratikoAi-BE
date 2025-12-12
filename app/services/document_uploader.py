@@ -5,6 +5,7 @@ tax document uploads with comprehensive error handling and GDPR compliance.
 """
 
 import hashlib
+import math
 import mimetypes
 import os
 import re
@@ -607,7 +608,7 @@ class DocumentUploader:
         for count in frequency:
             if count > 0:
                 probability = count / length
-                entropy -= probability * (probability.bit_length() - 1)
+                entropy -= probability * math.log2(probability)
 
         return entropy
 

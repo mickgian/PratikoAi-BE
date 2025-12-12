@@ -577,6 +577,73 @@ class LangGraphAgent:
 
         return strategy, max_cost
 
+    def _convert_langchain_message_to_dict(self, msg) -> dict:
+        """Convert LangChain message object to plain dict.
+
+        LangGraph checkpointer stores messages as LangChain objects (AIMessage,
+        HumanMessage), but our code expects plain dicts with 'role' and 'content'.
+        """
+        # Already a dict - return as-is
+        if isinstance(msg, dict):
+            return msg
+
+        # LangChain message object - convert to dict
+        if hasattr(msg, "content") and hasattr(msg, "type"):
+            role = "assistant" if msg.type == "ai" else "user"
+            return {"role": role, "content": msg.content}
+
+        # Unknown type - try to extract what we can
+        if hasattr(msg, "content"):
+            return {"role": "user", "content": str(msg.content)}
+
+        # Last resort
+        return {"role": "user", "content": str(msg)}
+
+    async def _get_prior_state(self, session_id: str) -> tuple[list[dict], list]:
+        """Load prior conversation messages and attachments from checkpointer.
+
+        DEV-007 Issue 11e: This method enables conversation context continuity
+        by loading prior state from the LangGraph checkpoint. Without this,
+        each turn is treated as independent and follow-up questions fail.
+
+        Args:
+            session_id: The thread/session ID for checkpoint lookup
+
+        Returns:
+            Tuple of (prior_messages, prior_attachments) from checkpoint.
+            Returns ([], []) if no prior state exists or on error.
+        """
+        if self._graph is None:
+            return [], []
+
+        try:
+            config = {"configurable": {"thread_id": session_id}}
+            state = await self._graph.aget_state(config)
+
+            if state and state.values:
+                raw_messages = state.values.get("messages", [])
+                prior_attachments = state.values.get("attachments", [])
+
+                # DEV-007 Issue 11e FIX: Convert LangChain message objects to dicts
+                # The checkpointer stores AIMessage/HumanMessage objects, not plain dicts
+                prior_messages = [self._convert_langchain_message_to_dict(msg) for msg in raw_messages]
+
+                logger.info(
+                    "prior_state_loaded",
+                    session_id=session_id,
+                    message_count=len(prior_messages),
+                    attachment_count=len(prior_attachments),
+                )
+                return prior_messages, prior_attachments
+        except Exception as e:
+            logger.warning(
+                "failed_to_load_prior_state",
+                session_id=session_id,
+                error=str(e),
+            )
+
+        return [], []
+
     async def _get_system_prompt(
         self, messages: list[Message], classification: Optional["DomainActionClassification"]
     ) -> str:
@@ -2355,6 +2422,7 @@ class LangGraphAgent:
         messages: list[Message],
         session_id: str,
         user_id: str | None = None,
+        attachments: list[dict] | None = None,
     ) -> list[Message]:
         """Get a response from the LLM.
 
@@ -2362,6 +2430,7 @@ class LangGraphAgent:
             messages (list[Message]): The messages to send to the LLM.
             session_id (str): The session ID for Langfuse tracking.
             user_id (Optional[str]): The user ID for Langfuse tracking.
+            attachments (list[dict] | None): Resolved file attachments for context (DEV-007).
 
         Returns:
             list[Message]: The response from the LLM.
@@ -2385,7 +2454,11 @@ class LangGraphAgent:
         }
         try:
             # Type cast: LangGraph accepts dicts matching the state schema
-            input_state: Any = {"messages": dump_messages(messages), "session_id": session_id}
+            input_state: Any = {
+                "messages": dump_messages(messages),
+                "session_id": session_id,
+                "attachments": attachments or [],
+            }
             response = await self._graph.ainvoke(input_state, config)
             return self.__process_messages(response["messages"])
         except Exception as e:
@@ -2430,8 +2503,12 @@ class LangGraphAgent:
         return needs_complex
 
     async def get_stream_response(
-        self, messages: list[Message], session_id: str, user_id: str | None = None
-    ) -> AsyncGenerator[str, None]:
+        self,
+        messages: list[Message],
+        session_id: str,
+        user_id: str | None = None,
+        attachments: list[dict] | None = None,
+    ) -> AsyncGenerator[str]:
         """Get a hybrid stream response using unified graph for pre-LLM steps.
 
         Phase 4 Implementation: Uses the unified graph to execute all steps (1-63)
@@ -2441,6 +2518,7 @@ class LangGraphAgent:
             messages (list[Message]): The messages to send to the LLM.
             session_id (str): The session ID for the conversation.
             user_id (Optional[str]): The user ID for the conversation.
+            attachments (list[dict] | None): Resolved file attachments for context (DEV-007).
 
         Yields:
             str: Raw markdown chunks of the LLM response.
@@ -2484,24 +2562,72 @@ class LangGraphAgent:
 
             logger.debug("graph_initialized_successfully", session_id=session_id)
 
+            # DEV-007 Issue 11e: Load prior conversation state for context continuity
+            # This fixes follow-up questions failing for both regular queries AND document-based queries
+            prior_messages, prior_attachments = await self._get_prior_state(session_id)
+
             # Build initial state for unified graph
             # Convert Message objects to dicts for graph compatibility
-            message_dicts = [{"role": msg.role, "content": msg.content} for msg in messages]
+            current_message_dicts = [{"role": msg.role, "content": msg.content} for msg in messages]
 
-            # Extract user query from messages for knowledge retrieval
+            # DEV-007 Issue 11e: Merge prior messages with current messages
+            # This ensures the LLM has full conversation context for follow-up questions
+            if prior_messages:
+                # Check if current message already in history (edge case: retry/duplicate)
+                last_current = current_message_dicts[-1] if current_message_dicts else None
+                if (
+                    last_current
+                    and prior_messages
+                    and prior_messages[-1].get("content") == last_current.get("content")
+                ):
+                    # Current message already in history, don't duplicate
+                    merged_messages = prior_messages
+                    logger.debug(
+                        "skip_duplicate_message",
+                        session_id=session_id,
+                        reason="current message already in history",
+                    )
+                else:
+                    # Append current user message to history
+                    merged_messages = prior_messages + current_message_dicts
+                    logger.info(
+                        "messages_merged_with_history",
+                        session_id=session_id,
+                        prior_count=len(prior_messages),
+                        current_count=len(current_message_dicts),
+                        total_count=len(merged_messages),
+                    )
+            else:
+                merged_messages = current_message_dicts
+
+            # DEV-007 Issue 11e: Restore attachments from prior state if none provided
+            # This ensures document context persists across follow-up questions
+            resolved_attachments = attachments or []
+            if not resolved_attachments and prior_attachments:
+                resolved_attachments = prior_attachments
+                logger.info(
+                    "attachments_restored_from_checkpoint",
+                    session_id=session_id,
+                    attachment_count=len(resolved_attachments),
+                )
+
+            # DEV-007 Issue 11e FIX: Extract the LAST user message for knowledge retrieval
+            # The frontend sends full conversation history, so we need the LAST user message
+            # (the follow-up question), not the FIRST (the original question)
             user_query_text = ""
-            for msg in messages:
+            for msg in reversed(messages):
                 if msg.role == "user":
                     user_query_text = msg.content
                     break
 
             initial_state = {
                 "request_id": session_id,  # RAGState requires request_id
-                "messages": message_dicts,
+                "messages": merged_messages,  # DEV-007: Now includes full conversation history
                 "session_id": session_id,
                 "user_id": user_id,
                 "user_query": user_query_text,  # User query for KB retrieval
                 "streaming": {"requested": True},  # Nested structure for StreamCheck routing
+                "attachments": resolved_attachments,  # DEV-007: File attachments (current or restored)
             }
 
             logger.info(
@@ -3007,7 +3133,7 @@ class LangGraphAgent:
             self._current_session_id = None
             self._current_classification = None
 
-    async def _stream_with_direct_llm(self, messages: list[Message], session_id: str) -> AsyncGenerator[str, None]:
+    async def _stream_with_direct_llm(self, messages: list[Message], session_id: str) -> AsyncGenerator[str]:
         """Stream directly from LLM provider for simple queries (no tools).
 
         Args:
@@ -3073,7 +3199,7 @@ class LangGraphAgent:
             )
             raise
 
-    async def _stream_with_langgraph_workflow(self, messages: list[Message], session_id: str) -> AsyncGenerator[str, None]:
+    async def _stream_with_langgraph_workflow(self, messages: list[Message], session_id: str) -> AsyncGenerator[str]:
         """Stream using LangGraph workflow for complex queries (with tools).
 
         Args:
@@ -3104,7 +3230,11 @@ class LangGraphAgent:
             )
 
             # Type cast: LangGraph accepts dicts matching the state schema
-            input_state: Any = {"messages": dump_messages(messages), "session_id": session_id}
+            input_state: Any = {
+                "messages": dump_messages(messages),
+                "session_id": session_id,
+                "attachments": [],  # Attachments handled in get_stream_response
+            }
 
             # Stream from LangGraph with filtering to avoid duplicates
             async for token, metadata in self._graph.astream(input_state, config, stream_mode="messages"):

@@ -355,7 +355,12 @@ class IngestionReportService:
         feeds = feed_result.scalars().all()
 
         for feed in feeds:
-            source_name = feed.source or feed.feed_type or "unknown"
+            # Match the source_identifier format used in rss_normativa.py:
+            # source_identifier = f"{source_name}_{feed_type or 'generic'}"
+            if feed.source and feed.feed_type:
+                source_name = f"{feed.source}_{feed.feed_type}"
+            else:
+                source_name = feed.source or feed.feed_type or "unknown"
 
             # Get processing logs for this feed on report_date
             start_dt = datetime.combine(report_date, datetime.min.time()).replace(tzinfo=UTC)

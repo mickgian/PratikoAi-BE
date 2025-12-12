@@ -47,6 +47,10 @@ class RAGState(TypedDict, total=False):
     attachments: list[dict] | None  # incl. hashes
     doc_facts: list[dict] | None
 
+    # DEV-007 Issue 9: Query composition for adaptive context prioritization
+    # Values: "pure_kb", "pure_doc", "hybrid", "chat" (from QueryComposition enum)
+    query_composition: str | None
+
     # golden/knowledge
     golden_hit: bool | None
     golden_answer: str | None  # Answer text from Step 28 for streaming response handler

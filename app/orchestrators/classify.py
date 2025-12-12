@@ -252,6 +252,8 @@ async def step_31__classify_domain(
 
     Performs rule-based classification using the DomainActionClassifier service.
     This orchestrator coordinates domain/action classification with fallback handling.
+
+    DEV-007 Issue 9: Also detects query composition type for adaptive context prioritization.
     """
     from datetime import datetime
 
@@ -265,6 +267,12 @@ async def step_31__classify_domain(
         user_query = kwargs.get("user_query") or (ctx or {}).get("user_query", "")
         classification_service = kwargs.get("classification_service") or (ctx or {}).get("classification_service")
 
+        # DEV-007 Issue 9: Extract attachment info for query composition detection
+        attachments = kwargs.get("attachments") or (ctx or {}).get("attachments", [])
+        has_attachments = bool(attachments and len(attachments) > 0)
+        # Get first attachment filename for LLM classification context
+        attachment_filename = attachments[0].get("filename") if has_attachments and attachments else None
+
         # Initialize classification data
         classification = None
         domain = None
@@ -272,6 +280,7 @@ async def step_31__classify_domain(
         confidence = 0.0
         fallback_used = False
         error = None
+        query_composition = None  # DEV-007 Issue 9
 
         try:
             if not user_query:
@@ -291,6 +300,32 @@ async def step_31__classify_domain(
             confidence = classification.confidence
             fallback_used = classification.fallback_used
 
+            # DEV-007 Issue 9: Detect query composition for adaptive context prioritization
+            # Uses LLM classification when attachments present, regex otherwise
+            try:
+                composition_result = await classification_service.detect_query_composition(
+                    query=user_query,
+                    has_attachments=has_attachments,
+                    attachment_filename=attachment_filename,
+                )
+                query_composition = composition_result.value  # Store enum value as string
+
+                logger.info(
+                    "query_composition_detected",
+                    query_composition=query_composition,
+                    has_attachments=has_attachments,
+                    attachment_filename=attachment_filename,
+                    user_query_preview=user_query[:80] if user_query else "",
+                )
+            except Exception as comp_error:
+                # Non-fatal: default to pure_kb if composition detection fails
+                query_composition = "pure_kb"
+                logger.warning(
+                    "query_composition_detection_failed",
+                    error=str(comp_error),
+                    defaulting_to=query_composition,
+                )
+
         except Exception as e:
             error = str(e)
 
@@ -303,6 +338,8 @@ async def step_31__classify_domain(
             "confidence": confidence,
             "fallback_used": fallback_used,
             "query_length": len(user_query) if user_query else 0,
+            "query_composition": query_composition,  # DEV-007 Issue 9
+            "has_attachments": has_attachments,  # DEV-007 Issue 9
             "error": error,
         }
 

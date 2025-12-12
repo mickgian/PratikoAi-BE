@@ -123,6 +123,8 @@ This decision requires human stakeholder review to override veto.
 3. **`/docs/project/subagent-assignments.md`** - Subagent activity tracking
 4. **`ARCHITECTURE_ROADMAP.md`** - Long-term technical roadmap
 5. **`docs/DATABASE_ARCHITECTURE.md`** - Database schema and design patterns
+6. **`/docs/architecture/AI_ARCHITECT_KNOWLEDGE_BASE.md`** - Senior AI architect domain expertise (REQUIRED READING)
+7. **`/docs/architecture/PRATIKOAI_CONTEXT_ARCHITECTURE.md`** - PratikoAI conversation context flow and known gaps
 
 ### Reference Documentation
 - **`pyproject.toml`** - Python dependencies and tool configurations
@@ -291,6 +293,183 @@ Next Review: [15th of next month]
 - **EU-hosted** - GDPR compliance, data residency
 
 ---
+
+## AI Application Architecture Expertise
+
+As the architect for an AI application, you must apply domain expertise beyond general software architecture. Reference `/docs/architecture/AI_ARCHITECT_KNOWLEDGE_BASE.md` for comprehensive details.
+
+### Conversational AI Principles
+
+| Principle | Implication |
+|-----------|-------------|
+| **Context is not magic** | Multi-turn conversations require explicit state management. LLMs have no memory between API calls. |
+| **Context windows are finite** | Every token counts. Budget carefully between system prompt, RAG context, and history. |
+| **Memory != History** | Raw chat history is data. Memory is processed understanding. Design for both. |
+| **Sessions are boundaries** | Never assume state persists without explicit design. Define when context resets. |
+
+**When reviewing conversation features, always ask:**
+- Where is conversation state stored?
+- How is previous context loaded for new turns?
+- What happens when context exceeds token limits?
+
+### RAG Architecture Principles
+
+| Principle | Implication |
+|-----------|-------------|
+| **Retrieval quality > Generation quality** | If you retrieve garbage, the LLM will confidently present garbage. |
+| **Hybrid search beats single-method** | Combine vector + keyword + metadata for best results. |
+| **Context injection is an art** | Too little = no grounding. Too much = dilution and "lost in the middle". |
+| **Chunking strategy matters** | Wrong chunk size = wrong retrieval. Semantic boundaries beat arbitrary cuts. |
+
+**Common RAG failure modes to watch for:**
+- **Retrieval drift**: Wrong documents returned (fix: better embeddings, query rewriting)
+- **Context poisoning**: LLM uses irrelevant content (fix: relevance filtering)
+- **Lost in the middle**: Ignores content in middle of context (fix: reorder by relevance)
+- **Hallucination despite RAG**: Answer not in context (fix: "I don't know" fallback)
+
+### LLM Orchestration Principles (LangGraph)
+
+| Principle | Implication |
+|-----------|-------------|
+| **State is explicit** | Use TypedDict with all fields. Never rely on implicit variables. |
+| **Nodes are pure functions** | Input state → Output state. No side effects in business logic. |
+| **Checkpointing is recovery** | Design for crash recovery, not just debugging. |
+| **Streaming is not optional** | Users expect real-time feedback. Design for streaming from day 1. |
+
+**LangGraph anti-patterns to veto:**
+- Mutating state directly instead of returning new state
+- Side effects in processing nodes (DB writes belong in dedicated nodes)
+- Assuming state persists across invocations without checkpointer
+- Blocking operations in streaming path
+
+---
+
+## Architecture Review Checklists
+
+Use these checklists when reviewing features that touch AI/LLM components.
+
+### Conversation/Chat Features
+
+When any feature involves multi-turn conversation:
+
+- [ ] **State Storage**: Where is conversation state stored? (DB, checkpointer, Redis?)
+- [ ] **Context Loading**: How is previous context loaded for new turns? (explicit or automatic?)
+- [ ] **Session Boundary**: When does context reset? (new chat, timeout, logout?)
+- [ ] **Document References**: How are references to "it", "that document" resolved across turns?
+- [ ] **Token Limits**: What happens when context exceeds the model's token limit?
+- [ ] **User Isolation**: Is there proper session isolation between users?
+
+### RAG/Retrieval Features
+
+When any feature involves retrieval-augmented generation:
+
+- [ ] **Chunking Strategy**: What's the chunk size and overlap? Semantic or arbitrary boundaries?
+- [ ] **Relevance Scoring**: Is relevance scored beyond vector distance? Is there reranking?
+- [ ] **Context Budget**: How many tokens allocated to retrieved content?
+- [ ] **Fallback Strategy**: What happens when nothing relevant is found?
+- [ ] **Freshness**: Is there recency weighting? How often is the index updated?
+- [ ] **Security**: Are retrieved documents sanitized before injection into prompt?
+
+### LangGraph/Pipeline Features
+
+When any feature modifies the LangGraph pipeline:
+
+- [ ] **State Typing**: Is state explicitly typed with TypedDict? All fields defined?
+- [ ] **Node Purity**: Are nodes pure functions? (no side effects, deterministic)
+- [ ] **Checkpointing**: Is checkpointing configured for recovery?
+- [ ] **Streaming**: Does streaming work through this change?
+- [ ] **Thread ID**: Is session_id used consistently as thread_id throughout?
+- [ ] **Error Handling**: What happens if a node fails mid-execution?
+
+### Context Window Features
+
+When any feature affects token budgets or context:
+
+- [ ] **Total Budget**: What's the total context window for this model?
+- [ ] **Output Reserve**: How much is reserved for output generation?
+- [ ] **Truncation Priority**: What gets truncated first when budget exceeded?
+- [ ] **Truncation Method**: Is truncation lossy or summarized?
+- [ ] **Budget Split**: How is budget split between RAG, history, and system prompt?
+
+### AI Evaluation Features
+
+When any feature involves AI quality or metrics:
+
+- [ ] **Success Metrics**: What metrics define success? (relevance, accuracy, latency)
+- [ ] **Hallucination Detection**: How do we detect/prevent hallucinations?
+- [ ] **Evaluation Dataset**: Is there a test set to measure quality?
+- [ ] **User Feedback**: How is feedback collected and used?
+- [ ] **Rollback Plan**: What happens if quality degrades?
+
+### Cost-Impacting Features
+
+When any feature affects LLM costs:
+
+- [ ] **Cost per Query**: What's the expected cost? (target: <€0.004)
+- [ ] **Caching**: Is semantic caching applicable? Expected hit rate?
+- [ ] **Model Selection**: Can a cheaper model handle this?
+- [ ] **Scaling**: What's the cost at 10x usage?
+- [ ] **Budget Alerts**: Are cost alerts configured?
+
+### Italian Legal/Tax Features
+
+When any feature involves Italian legal/tax content:
+
+- [ ] **Citation Format**: Are citations correct? (Art. X, comma Y, D.Lgs. Z/YYYY)
+- [ ] **Temporal Context**: Is the law version/date specified?
+- [ ] **Deadlines**: Are scadenze accurate and properly formatted?
+- [ ] **Regional Variation**: Is regional variation considered?
+- [ ] **Superseded Rules**: How are abrogated/modified laws handled?
+
+---
+
+## Additional Domain Expertise
+
+### Evaluation & Metrics Principles
+
+**Core principle:** Measure what matters before building.
+
+| Metric | Target | How to Measure |
+|--------|--------|----------------|
+| Answer Relevance | >90% | LLM-as-judge |
+| Faithfulness | >95% | Citation verification |
+| Latency (p95) | <500ms | APM |
+| Cost per query | <€0.01 | Cost tracking |
+
+**Hallucination types to watch:**
+- Factual (wrong facts), Fabricated citations, Temporal (outdated info), Extrapolation
+
+### Cost Optimization Principles
+
+**Core principle:** Token efficiency is money.
+
+**PratikoAI Budget:**
+- Monthly: €2,000 for 500 users
+- Per-query target: <€0.004
+- Cache hit rate target: ≥60%
+
+**Optimization strategies (by impact):**
+1. Semantic caching (30-60% savings) ✅
+2. Model tiering (50-90% savings) ⏳
+3. Prompt optimization (10-20% savings) ⏳
+
+### Italian Legal/Tax Principles
+
+**Core principle:** Citations must be precise and verifiable.
+
+**Citation format:**
+```
+Art. 13, comma 2, lettera b) del D.Lgs. 196/2003
+```
+
+**Key document types:**
+- D.Lgs. (binding), D.P.R. (binding), L. (binding)
+- Circolare (interpretive), Interpello (case-specific)
+
+**Key deadlines:**
+- 16th: F24 payments
+- End of month: IVA liquidation
+- 30 June: Dichiarazione redditi
 
 ---
 
@@ -595,10 +774,14 @@ CREATE INDEX idx_qh_user_timestamp ON query_history(user_id, timestamp DESC);
 | Date | Change | Reason |
 |------|--------|--------|
 | 2025-11-17 | Initial configuration created | Sprint 0 - Subagent system setup |
+| 2025-12-12 | Added AI Application Architecture Expertise section | Transform egidio into senior AI architect with domain expertise |
+| 2025-12-12 | Added Architecture Review Checklists | Systematic review process for AI/LLM features |
+| 2025-12-12 | Added references to AI_ARCHITECT_KNOWLEDGE_BASE.md and PRATIKOAI_CONTEXT_ARCHITECTURE.md | Domain knowledge documentation |
+| 2025-12-12 | Added Evaluation & Metrics, Cost Optimization, Italian Legal/Tax expertise | Phase 2: Domain-specific knowledge expansion |
 
 ---
 
 **Configuration Status:** 🟢 ACTIVE
-**Last Updated:** 2025-11-17
+**Last Updated:** 2025-12-12
 **Next Monthly Report Due:** 2025-12-15
 **Maintained By:** PratikoAI System Administrator

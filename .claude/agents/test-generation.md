@@ -87,6 +87,127 @@ You are the **PratikoAI Test Generation** subagent, responsible for creating com
 
 ---
 
+## AI Domain Awareness
+
+Testing AI systems requires fundamentally different approaches than traditional software testing.
+
+**Required Reading:** `/docs/architecture/AI_ARCHITECT_KNOWLEDGE_BASE.md`
+- Focus on Part 6 (Evaluation & Metrics)
+- Focus on Part 2 (RAG Architecture - for understanding what to test)
+
+**Also Read:** `/docs/architecture/PRATIKOAI_CONTEXT_ARCHITECTURE.md`
+
+### Testing AI Outputs
+
+| Challenge | Testing Approach |
+|-----------|------------------|
+| **Non-deterministic outputs** | Test behavior patterns, not exact strings |
+| **Semantic correctness** | Use evaluation rubrics, not string matching |
+| **Quality variance** | Set statistical pass thresholds (e.g., 80% of runs pass) |
+| **Context dependency** | Test with controlled context fixtures |
+
+### What to Test in RAG Systems
+
+| Component | Test Focus |
+|-----------|------------|
+| **Retrieval precision** | Are the right documents returned for query? |
+| **Answer relevance** | Does the answer address the user's question? |
+| **Faithfulness** | Is the answer grounded in retrieved context? |
+| **Citation accuracy** | Do citations exist and point to correct sources? |
+| **Fallback behavior** | What happens when nothing is found? |
+| **Token limits** | Does context stay within budget? |
+
+### Hallucination Testing Patterns
+
+```python
+# Pattern: Test that citations are valid
+def test_citation_validity():
+    """Verify AI responses cite real sources."""
+    response = get_ai_response("What are the IVA rates?")
+
+    # Extract citations from response
+    citations = extract_citations(response)
+
+    # Verify each citation exists in knowledge base
+    for citation in citations:
+        assert kb_contains(citation), f"Citation not found: {citation}"
+
+# Pattern: Test temporal correctness
+def test_deadline_accuracy():
+    """Verify AI returns correct deadlines."""
+    response = get_ai_response("When is the F24 payment due?")
+
+    # Should mention the 16th, not hallucinate dates
+    assert "16" in response or "sedicesimo" in response
+    assert "2030" not in response  # No future hallucination
+```
+
+### AI-Specific Test Fixtures
+
+```python
+@pytest.fixture
+def mock_llm_response():
+    """Mock LLM for deterministic unit tests."""
+    with patch('app.services.llm_service.call_llm') as mock:
+        mock.return_value = "Mocked response for testing"
+        yield mock
+
+@pytest.fixture
+def controlled_context():
+    """Provide controlled RAG context for testing."""
+    return {
+        "kb_docs": [{"content": "IVA standard rate is 22%", "source": "test"}],
+        "query_composition": "pure_kb"
+    }
+```
+
+### Integration vs Unit Tests for AI
+
+| Test Type | LLM Calls | Purpose |
+|-----------|-----------|---------|
+| **Unit tests** | Mock LLM | Test logic, state handling, parsing |
+| **Integration tests** | Real LLM | Test end-to-end quality |
+| **Evaluation tests** | Real LLM | Measure quality metrics over dataset |
+
+**Rule:** Unit tests should NEVER call real LLMs (expensive, slow, non-deterministic).
+
+### Prompt Regression Testing
+
+**Required Reading:** `/docs/architecture/PROMPT_ENGINEERING_KNOWLEDGE_BASE.md`
+
+When testing prompt changes:
+
+| Test Type | Purpose |
+|-----------|---------|
+| **Before/after comparison** | Compare hallucination rates |
+| **Citation accuracy** | Verify source links are valid |
+| **Fallback triggers** | Test "nothing found" scenarios |
+| **Quality metrics** | Compare clarity, completeness, accuracy |
+
+**Test files for prompts:**
+```bash
+# Prompt orchestration tests
+uv run pytest tests/orchestrators/test_prompting.py -v
+
+# Domain prompt generation (Step 43)
+uv run pytest tests/test_rag_step_43_domain_prompt_generation.py -v
+
+# Default prompt (Step 15)
+uv run pytest tests/test_rag_step_15_default_prompt.py -v
+
+# Run evaluation suite
+uv run pytest evals/ -v
+```
+
+**Prompt change testing checklist:**
+- [ ] Run existing prompt tests (must pass)
+- [ ] Check hallucination rate didn't increase
+- [ ] Verify citation accuracy maintained
+- [ ] Test document analysis injection (if applicable)
+- [ ] Compare quality metrics before/after
+
+---
+
 ## Current Coverage Status
 
 **As of 2025-11-17:**
@@ -507,6 +628,7 @@ uv run pytest --cov=app --cov-report=term
 | Date | Change | Reason |
 |------|--------|--------|
 | 2025-11-17 | Initial configuration created | Sprint 0 setup |
+| 2025-12-12 | Added AI Domain Awareness section | AI testing patterns for RAG/LLM systems |
 
 ---
 

@@ -95,6 +95,7 @@ from app.core.monitoring.metrics import (
 )
 from app.core.prompts import SYSTEM_PROMPT
 from app.schemas import (
+    AttachmentInfo,
     GraphState,
     Message,
 )
@@ -3292,6 +3293,34 @@ class LangGraphAgent:
         # StateSnapshot.values exists but IDE type stubs don't recognize it
         messages = self.__process_messages(state.values["messages"]) if state.values else []  # type: ignore[attr-defined]
 
+        # DEV-007 Issue 3: Extract attachments from checkpoint and attach to first user message
+        # This ensures attachment metadata persists across page refreshes
+        if state.values:  # type: ignore[attr-defined]
+            checkpoint_attachments = state.values.get("attachments", [])  # type: ignore[attr-defined]
+            if checkpoint_attachments and messages:
+                # Convert checkpoint attachment format to AttachmentInfo objects
+                attachment_infos = [
+                    AttachmentInfo(
+                        id=str(a.get("id", "")),
+                        filename=a.get("filename", ""),
+                        type=a.get("mime_type"),
+                    )
+                    for a in checkpoint_attachments
+                    if a.get("id") and a.get("filename")
+                ]
+                # Attach to the first user message (the one that uploaded the file)
+                if attachment_infos:
+                    for msg in messages:
+                        if msg.role == "user":
+                            msg.attachments = attachment_infos
+                            logger.info(
+                                "attachments_restored_to_history",
+                                session_id=session_id,
+                                attachment_count=len(attachment_infos),
+                                filenames=[a.filename for a in attachment_infos],
+                            )
+                            break
+
         # Cache the conversation for future use
         if messages:
             try:
@@ -3336,12 +3365,34 @@ class LangGraphAgent:
 
         # Now convert to OpenAI format
         openai_style_messages = convert_to_openai_messages(base_messages)
+
+        # DEV-007: Debug logging for system message leak investigation
+        all_roles = [m.get("role") for m in openai_style_messages]
+        system_count = sum(1 for r in all_roles if r == "system")
+        if system_count > 0:
+            logger.warning(
+                "system_messages_in_checkpoint",
+                system_count=system_count,
+                all_roles=all_roles,
+                msg_preview=[m.get("content", "")[:50] for m in openai_style_messages if m.get("role") == "system"],
+            )
+
         # keep just assistant and user messages
-        return [
+        filtered = [
             Message(**message)
             for message in openai_style_messages
             if message["role"] in ["assistant", "user"] and message["content"]
         ]
+
+        logger.debug(
+            "process_messages_filtered",
+            original_count=len(openai_style_messages),
+            filtered_count=len(filtered),
+            roles_before=all_roles,
+            roles_after=[m.role for m in filtered],
+        )
+
+        return filtered
 
     async def clear_chat_history(self, session_id: str) -> None:
         """Clear all chat history for a given thread ID.

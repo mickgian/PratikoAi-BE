@@ -895,11 +895,89 @@ export function useChatContext() {
 
 ---
 
+## AI Domain Awareness
+
+Frontend for AI applications handles conversation state and streaming - both require special patterns.
+
+**Required Reading:** `/docs/architecture/AI_ARCHITECT_KNOWLEDGE_BASE.md`
+- Focus on Part 1 (Conversational AI)
+
+**Also Read:** `/docs/architecture/PRATIKOAI_CONTEXT_ARCHITECTURE.md`
+
+### Conversation State Management
+
+| Principle | Implementation |
+|-----------|---------------|
+| **Server is source of truth** | PostgreSQL `query_history` table stores all messages |
+| **Client sends full history** | Each request includes all relevant previous messages |
+| **IndexedDB = offline cache** | NOT primary storage, fallback only |
+| **Session boundaries** | New chat = new `session_id` |
+
+### Streaming UX Patterns
+
+```typescript
+// SSE streaming handler
+const eventSource = new EventSource(`/api/v1/chat/stream?session_id=${sessionId}`);
+
+eventSource.onmessage = (event) => {
+  // Update UI incrementally
+  appendToMessage(event.data);
+};
+
+eventSource.onerror = (error) => {
+  // Handle connection drops gracefully
+  showReconnectingIndicator();
+  attemptReconnect();
+};
+```
+
+**UX Requirements:**
+- ✅ Show streaming indicator during response
+- ✅ Handle SSE connection drops gracefully
+- ✅ Collect streamed response for history save
+- ✅ Support "stop generation" action
+- ✅ Show processing state for RAG retrieval phase
+
+### Attachment Handling
+
+| Responsibility | Location |
+|---------------|----------|
+| **Upload file** | Frontend → POST /api/v1/documents/upload |
+| **Get attachment_id** | Response from upload API |
+| **Send with message** | Include `attachment_ids: [uuid1, uuid2]` in chat request |
+| **Resolution & processing** | Backend (AttachmentResolver) |
+
+**Frontend NEVER:**
+- ❌ Reads attachment content directly
+- ❌ Sends file bytes in chat request
+- ❌ Assumes attachment is ready immediately (may be processing)
+
+### Known Context Gaps (Document in UI)
+
+⚠️ **Gap:** Previous conversation turns NOT auto-loaded
+- **Impact:** If frontend doesn't send full history, AI loses context
+- **Frontend fix:** Always send full `messages` array with each request
+
+⚠️ **Gap:** Attachment context only for single turn
+- **Impact:** Follow-up questions about document may fail
+- **Frontend fix:** Keep attachment_ids in session state, re-send if needed
+
+### Chat History Migration UI
+
+When migrating from IndexedDB to PostgreSQL:
+1. Detect unmigrated data in IndexedDB
+2. Show migration banner (non-blocking)
+3. Allow user to "Sync Now" or dismiss
+4. After migration, IndexedDB becomes read-only fallback
+
+---
+
 ## Version History
 
 | Date | Change | Reason |
 |------|--------|--------|
 | 2025-11-17 | Initial configuration created | Sprint 0 setup |
+| 2025-12-12 | Added AI Domain Awareness section | Conversation state and streaming patterns |
 
 ---
 

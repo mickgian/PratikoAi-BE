@@ -276,11 +276,74 @@ locust -f locustfile.py --host=https://api-qa.pratikoai.com \
 
 ---
 
+## AI Domain Awareness
+
+Performance optimization for AI systems focuses on cost and latency - both are critical business constraints.
+
+**Required Reading:** `/docs/architecture/AI_ARCHITECT_KNOWLEDGE_BASE.md`
+- Focus on Parts 4 (Context Windows), 7 (Cost Optimization)
+
+**Also Read:** `/docs/architecture/PRATIKOAI_CONTEXT_ARCHITECTURE.md`
+
+### Cost Optimization Priorities
+
+| Strategy | Savings Potential | Implementation Effort |
+|----------|------------------|----------------------|
+| **Semantic caching** | 30-60% | Medium (pgvector similarity) |
+| **Model tiering** | 50-90% | Low (route simple queries to cheaper models) |
+| **Prompt optimization** | 10-20% | Low (reduce token count) |
+| **Response limits** | 10-30% | Low (max_tokens parameter) |
+
+### PratikoAI Budget Context
+
+```
+Monthly LLM budget: €2,000 for 500 users
+Per-query target: <€0.004
+Cache hit rate target: ≥60%
+```
+
+**Current cache issue (DEV-BE-76):** Cache key includes `doc_hashes` → 95%+ miss rate
+**Fix:** Remove doc_hashes, use semantic similarity for near-miss queries
+
+### Latency Optimization
+
+| Component | Target | Optimization |
+|-----------|--------|--------------|
+| **RAG query** | p95 <500ms | Parallelize retrieval steps |
+| **Vector search** | p95 <50ms | HNSW index, pre-compute embeddings |
+| **Context building** | p95 <100ms | Efficient token counting |
+| **LLM call** | N/A (external) | Streaming reduces perceived latency |
+
+### Token Budget Impact on Performance
+
+| Budget | Performance Tradeoff |
+|--------|---------------------|
+| **3500 tokens** | Faster, cheaper, may truncate context |
+| **8000 tokens** | Slower, more expensive, better answers |
+
+**Key insight:** Token counting happens BEFORE LLM call. Store `token_count` in chunks to avoid re-computation.
+
+### Caching Strategy for RAG
+
+```python
+# Semantic cache lookup (target: 60% hit rate)
+cache_key = hash(
+    query_embedding,      # NOT exact query text
+    model_name,
+    temperature,
+    kb_epoch              # Invalidate when KB updates
+    # DO NOT include: doc_hashes (causes misses)
+)
+```
+
+---
+
 ## Version History
 
 | Date | Change | Reason |
 |------|--------|--------|
 | 2025-11-17 | Initial configuration created | Sprint 0 setup |
+| 2025-12-12 | Added AI Domain Awareness section | Cost/latency optimization for AI systems |
 
 ---
 

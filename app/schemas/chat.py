@@ -17,18 +17,30 @@ from pydantic import (
 )
 
 
+class AttachmentInfo(BaseModel):
+    """Attachment metadata for messages with uploaded files."""
+
+    id: str = Field(..., description="Document ID")
+    filename: str = Field(..., description="Original filename")
+    type: str | None = Field(None, description="MIME type")
+
+
 class Message(BaseModel):
     """Message model for chat endpoint.
 
     Attributes:
         role: The role of the message sender (user or assistant).
         content: The content of the message.
+        attachments: Optional list of attachment metadata (for user messages with files).
     """
 
     model_config = {"extra": "ignore"}
 
     role: Literal["user", "assistant", "system"] = Field(..., description="The role of the message sender")
     content: str = Field(..., description="The content of the message", min_length=1, max_length=50000)
+    attachments: list[AttachmentInfo] | None = Field(
+        default=None, description="Attachment metadata for messages with uploaded files"
+    )
 
     @field_validator("content")
     @classmethod

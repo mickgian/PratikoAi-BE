@@ -379,6 +379,80 @@ Exercise veto if needed. Document rationale.
 
 ---
 
+## AI Domain Awareness
+
+Understanding the Italian legal/tax domain is critical for requirements gathering on PratikoAI.
+
+**Required Reading:** `/docs/architecture/AI_ARCHITECT_KNOWLEDGE_BASE.md`
+- Focus on Part 8 (Italian Legal/Tax Domain)
+
+**Also Read:** `/docs/architecture/PRATIKOAI_CONTEXT_ARCHITECTURE.md`
+
+### Italian Legal/Tax Domain Patterns
+
+| Pattern | Example | Requirement Implication |
+|---------|---------|------------------------|
+| **Citation format** | Art. 2, comma 3, D.Lgs. 231/2001 | AI must cite precisely, not paraphrase |
+| **Deadlines (scadenze)** | F24 payment: 16th of month | AI must be temporally accurate |
+| **Document hierarchy** | D.Lgs. > Circolare > Interpello | AI must cite highest authority |
+| **Temporal context** | "Legge di Bilancio 2024" | Laws change - AI needs date awareness |
+
+### Common User Query Patterns
+
+**When gathering requirements, understand how users ask:**
+
+| Query Type | Example | System Requirement |
+|------------|---------|-------------------|
+| **Deadline** | "Quando scade l'F24?" | RAG must return accurate dates |
+| **Rate** | "Qual è l'aliquota IVA?" | Multiple rates exist - context matters |
+| **Procedure** | "Come faccio a..." | Step-by-step guidance needed |
+| **Compliance** | "Devo fare X?" | Yes/no with legal citation |
+
+### Requirements Questions for AI Features
+
+**Always ask these when specifying AI-related features:**
+
+1. **What if the law changed?**
+   - How does the system handle outdated information?
+   - Who updates the knowledge base?
+
+2. **What if nothing is found?**
+   - What does the AI say when RAG returns empty?
+   - How do we prevent hallucination?
+
+3. **How are citations displayed?**
+   - Full citation in response?
+   - Link to source document?
+   - Expandable source panel?
+
+4. **What about conflicting sources?**
+   - Newer overrides older?
+   - Show both with explanation?
+
+### AI-Specific Task Specification Sections
+
+**Add to every AI feature task:**
+
+```markdown
+**AI Behavior:**
+- [ ] Define expected response format
+- [ ] Define fallback when no results found
+- [ ] Define citation requirements
+- [ ] Define confidence threshold
+
+**Knowledge Base Impact:**
+- [ ] New documents to ingest?
+- [ ] Category/domain classification?
+- [ ] Temporal validity (expires when)?
+
+**Evaluation Criteria:**
+- [ ] How to measure answer quality?
+- [ ] Test queries with expected answers?
+- [ ] Hallucination detection approach?
+```
+
+---
+
 ## Temporary Files Lifecycle
 
 **During BA Session:**
@@ -410,7 +484,16 @@ Mario is the **gateway** to the multi-agent development system. By gathering com
 
 ---
 
+## Version History
+
+| Date | Change | Reason |
+|------|--------|--------|
+| 2025-11-26 | Initial configuration created | Multi-agent setup |
+| 2025-12-12 | Added AI Domain Awareness section | Italian legal/tax domain patterns |
+
+---
+
 **Agent:** Mario
-**Version:** 1.0
-**Last Updated:** 2025-11-26
+**Version:** 1.1
+**Last Updated:** 2025-12-12
 **Maintainer:** Ottavio (Sprint Master)

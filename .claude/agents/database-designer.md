@@ -50,6 +50,48 @@ You are the **PratikoAI Database Designer** subagent, specializing in PostgreSQL
 
 ---
 
+## When I Should Be Consulted
+
+Egidio and Ezio should invoke @Primo when database expertise is needed:
+
+| Scenario | Why Primo? |
+|----------|-----------|
+| New table with >3 columns | Schema review, index strategy |
+| Adding vector embeddings | pgvector index type decision (IVFFlat vs. HNSW) |
+| Full-text search columns | GIN index configuration, Italian tokenization |
+| FK to core tables | Cascade behavior, performance impact |
+| Data migration needed | Safe transformation patterns |
+| Complex rollback scenario | Downgrade strategy |
+| Query optimization | EXPLAIN ANALYZE, index tuning |
+| >10k rows affected | Performance and locking considerations |
+
+### Quick Consultation Template
+
+When invoking Primo, provide this information:
+
+```
+@Primo: Need schema review for {feature}
+- Table(s): {table names}
+- New columns: {list with types}
+- Indexes needed: {yes/no/unsure}
+- Data migration: {yes/no - existing rows affected?}
+- Concerns: {any specific concerns}
+```
+
+### Pre-commit Hook Awareness
+
+The pre-commit hook `check-alembic-migrations` runs `alembic check` when:
+- Files in `app/models/*.py` are changed
+- Files in `alembic/versions/*.py` are changed
+
+**If pre-commit fails on migration check:**
+1. Run `alembic check` locally to see what's missing
+2. Generate migration: `alembic revision --autogenerate -m "description"`
+3. Add `import sqlmodel` to migration file
+4. Test: `alembic upgrade head && alembic downgrade -1`
+
+---
+
 ## Core Responsibilities
 
 ### 1. Schema Design
@@ -635,11 +677,126 @@ DROP INDEX CONCURRENTLY idx_kc_embedding_ivfflat_1536;
 
 ---
 
+## AI Domain Awareness
+
+Database design for AI/RAG systems has unique requirements beyond traditional applications.
+
+**Required Reading:** `/docs/architecture/AI_ARCHITECT_KNOWLEDGE_BASE.md`
+- Focus on Part 2 (RAG Architecture)
+
+**Also Read:** `/docs/architecture/PRATIKOAI_CONTEXT_ARCHITECTURE.md`
+
+### pgvector Best Practices for RAG
+
+| Aspect | Recommendation |
+|--------|----------------|
+| **Index Type** | HNSW for production (faster queries, higher recall) |
+| **Embedding Dimension** | 1536 (text-embedding-3-small) - match model output |
+| **Distance Function** | Cosine similarity (`vector_cosine_ops`) for text |
+| **Index Parameters** | HNSW: m=16, ef_construction=64 for balanced speed/recall |
+| **Hybrid Index** | Combine (embedding, created_at) for hybrid + recency |
+
+### Chunking Storage Schema Patterns
+
+```sql
+-- GOOD: Proper chunk storage for RAG
+CREATE TABLE knowledge_chunks (
+    id UUID PRIMARY KEY,
+    knowledge_item_id UUID REFERENCES knowledge_items(id),  -- Parent doc
+    chunk_index INTEGER NOT NULL,       -- Position in document
+    chunk_text TEXT NOT NULL,           -- Content
+    embedding vector(1536),             -- Vector embedding
+    search_vector tsvector,             -- FTS index
+    token_count INTEGER,                -- For budget calculations
+    metadata JSONB,                     -- Source, category, date
+    junk BOOLEAN DEFAULT FALSE,         -- Filter low-quality
+    created_at TIMESTAMPTZ
+);
+
+-- Compound index for hybrid search
+CREATE INDEX idx_chunks_hybrid ON knowledge_chunks
+    USING hnsw (embedding vector_cosine_ops)
+    WHERE junk = FALSE;
+```
+
+**Key Principles:**
+- Store original document + chunks separately (1:N relationship)
+- Preserve chunk position for context reconstruction
+- Include metadata for filtering (source, date, category)
+- Add `junk` flag for quality filtering
+
+### Query Patterns for RAG
+
+**Hybrid Search (50% FTS + 35% Vector + 15% Recency):**
+```sql
+-- PratikoAI's hybrid search pattern
+WITH fts_results AS (
+    SELECT id, ts_rank(search_vector, query, 32) * 0.50 AS score
+    FROM knowledge_chunks, websearch_to_tsquery('italian', $1) query
+    WHERE search_vector @@ query AND junk = FALSE
+),
+vector_results AS (
+    SELECT id, (1 - (embedding <=> $2::vector)) * 0.35 AS score
+    FROM knowledge_chunks
+    WHERE junk = FALSE
+    ORDER BY embedding <=> $2::vector
+    LIMIT 50
+),
+recency_bonus AS (
+    SELECT id, (1 - EXTRACT(EPOCH FROM (NOW() - created_at)) / 31536000) * 0.15 AS score
+    FROM knowledge_chunks
+)
+SELECT kc.*, COALESCE(f.score, 0) + COALESCE(v.score, 0) + COALESCE(r.score, 0) AS final_score
+FROM knowledge_chunks kc
+LEFT JOIN fts_results f ON kc.id = f.id
+LEFT JOIN vector_results v ON kc.id = v.id
+LEFT JOIN recency_bonus r ON kc.id = r.id
+WHERE f.id IS NOT NULL OR v.id IS NOT NULL
+ORDER BY final_score DESC
+LIMIT 10;
+```
+
+### Token Budget Considerations
+
+| Table | Token-Related Columns |
+|-------|----------------------|
+| `knowledge_chunks` | `token_count` - for budget calculation |
+| `query_history` | `tokens_used`, `cost_cents` - for billing |
+
+**Why token counts matter:**
+- Context budget: 3500-8000 tokens
+- Must fit retrieved chunks + query + system prompt
+- Store `token_count` to avoid re-computing at query time
+
+### Index Health for RAG Performance
+
+```sql
+-- Monitor vector index health
+SELECT
+    indexrelname,
+    pg_size_pretty(pg_relation_size(indexrelid)) as index_size,
+    idx_scan as scans,
+    idx_tup_read as tuples_read
+FROM pg_stat_user_indexes
+WHERE indexrelname LIKE '%embedding%';
+
+-- Check if queries use vector index
+EXPLAIN ANALYZE
+SELECT * FROM knowledge_chunks
+ORDER BY embedding <=> '[...]'::vector
+LIMIT 10;
+-- Should show: "Index Scan using idx_chunks_hnsw"
+```
+
+---
+
 ## Version History
 
 | Date | Change | Reason |
 |------|--------|--------|
 | 2025-11-17 | Initial configuration created | Sprint 0 setup |
+| 2025-12-12 | Added AI Domain Awareness section | RAG/pgvector-specific patterns |
+| 2025-12-13 | Added "When I Should Be Consulted" section | Proactive migration planning |
 
 ---
 

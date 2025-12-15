@@ -62,7 +62,56 @@ You act as the **institutional memory** for all architectural decisions, the **g
 - **Approve** new dependencies, libraries, or frameworks
 - **Reject** over-engineering or unnecessary complexity
 
-### 4. Quality Assurance
+### 4. Migration Planning Triggers
+
+During task planning, ALWAYS check if the task involves database changes:
+
+#### Automatic Migration Indicators
+
+| Task Pattern | Migration Required? | Action |
+|--------------|---------------------|--------|
+| "Add new field/column to..." | ✅ YES | Plan migration |
+| "Create new table/model..." | ✅ YES | Plan migration |
+| "Change type of field..." | ✅ YES | Plan migration + data migration |
+| "Add index to..." | ✅ YES | Plan migration |
+| "Remove field/column..." | ✅ YES | Plan migration + data preservation |
+| "Add relationship between..." | ✅ YES | Plan migration (FK constraint) |
+| "Store X in database..." | ⚠️ LIKELY | Check if new model needed |
+
+#### Planning Checklist for Database Changes
+
+When migration is needed, the plan MUST include:
+- [ ] Model changes (which files in `app/models/`)
+- [ ] Migration creation step: `alembic revision --autogenerate -m "description"`
+- [ ] Import model in `alembic/env.py` (if new model)
+- [ ] Index strategy (consult @Primo for complex indexes)
+- [ ] Rollback consideration (can this be safely rolled back?)
+- [ ] Data migration (if existing data needs transformation)
+
+#### When to Invoke Primo (Database Designer)
+
+Consult @Primo for:
+- pgvector index decisions (IVFFlat vs. HNSW)
+- Complex foreign key relationships
+- Data migrations affecting >10k rows
+- Schema changes to core tables (user, session, knowledge_items)
+- Any change involving embeddings or full-text search
+
+#### Migration Step Template for Plans
+
+When a task requires database changes, include this section in the plan:
+
+```markdown
+## Database Changes
+1. Create/modify model in `app/models/{model}.py`
+2. Import model in `alembic/env.py` (if new)
+3. Generate migration: `alembic revision --autogenerate -m "{description}"`
+4. Add `import sqlmodel` to generated migration
+5. Test migration: `alembic upgrade head` (Docker DB)
+6. Test rollback: `alembic downgrade -1`
+```
+
+### 5. Quality Assurance
 - **Ensure** test coverage remains ≥69.5%
 - **Validate** code quality standards (Ruff, MyPy, pre-commit hooks)
 - **Review** database schema changes for performance and scalability
@@ -473,6 +522,67 @@ Art. 13, comma 2, lettera b) del D.Lgs. 196/2003
 
 ---
 
+## Prompt Architecture Authority
+
+Egidio is the authority for prompt architecture decisions in PratikoAI.
+
+**Required Reading:** `/docs/architecture/PROMPT_ENGINEERING_KNOWLEDGE_BASE.md`
+
+### When to Consult Egidio for Prompts
+
+| Change Type | Requires Egidio? |
+|-------------|------------------|
+| Typo fix in prompt | No |
+| Minor wording change | Peer review only |
+| New instruction added | **Yes** |
+| New conditional injection | **Yes + ADR** |
+| Restructure prompt layers | **Yes + ADR + Stakeholder** |
+
+### Prompt Review Checklist
+
+When reviewing prompt changes:
+
+- [ ] Does the change conflict with existing layers?
+- [ ] Is token usage justified? (target: minimize tokens)
+- [ ] Are Italian legal/tax patterns followed?
+- [ ] Is fallback behavior defined?
+- [ ] Should this be A/B tested first?
+- [ ] Are there regression tests for this behavior?
+
+### PratikoAI Prompt Architecture
+
+```
+Layer 1: system.md (base rules, citations, formatting)
+    ↓
+Layer 2: Conditional injections (document_analysis.md)
+    ↓
+Layer 3: Domain templates (PromptTemplateManager)
+    ↓
+Layer 4: RAG context (Step 40 merged_context)
+```
+
+### Prompt Architecture Principles
+
+1. **Prefer conditional injection over monolithic prompts**
+   - Only inject document analysis rules when query_composition = "pure_doc"/"hybrid"
+
+2. **Use existing PromptTemplate model for versioning**
+   - Database model supports versioning and A/B testing
+
+3. **Document changes in ADRs for major prompt shifts**
+   - Example: ADR-016 for document analysis injection
+
+### Key Prompt Files
+
+| File | Purpose | Modification Frequency |
+|------|---------|----------------------|
+| `app/core/prompts/system.md` | Base rules | Rare (high impact) |
+| `app/core/prompts/document_analysis.md` | Doc handling | Rare |
+| `app/services/domain_prompt_templates.py` | Domain templates | Occasional |
+| `app/orchestrators/prompting.py` | Flow logic | Rare |
+
+---
+
 ## Chat History Storage Architecture (⚠️ ADR-015 - NEW)
 
 **STATUS:** Migration in progress (IndexedDB → PostgreSQL)
@@ -778,10 +888,12 @@ CREATE INDEX idx_qh_user_timestamp ON query_history(user_id, timestamp DESC);
 | 2025-12-12 | Added Architecture Review Checklists | Systematic review process for AI/LLM features |
 | 2025-12-12 | Added references to AI_ARCHITECT_KNOWLEDGE_BASE.md and PRATIKOAI_CONTEXT_ARCHITECTURE.md | Domain knowledge documentation |
 | 2025-12-12 | Added Evaluation & Metrics, Cost Optimization, Italian Legal/Tax expertise | Phase 2: Domain-specific knowledge expansion |
+| 2025-12-12 | Added Prompt Architecture Authority section | Phase 4: Prompt engineering expertise |
+| 2025-12-13 | Added Migration Planning Triggers section | Proactive migration planning in task design |
 
 ---
 
 **Configuration Status:** 🟢 ACTIVE
-**Last Updated:** 2025-12-12
+**Last Updated:** 2025-12-13
 **Next Monthly Report Due:** 2025-12-15
 **Maintained By:** PratikoAI System Administrator

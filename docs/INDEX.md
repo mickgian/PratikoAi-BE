@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2025-12-12 19:22:10
+**Auto-generated:** 2025-12-15 09:07:03
 
-> 💡 This directory contains 22 technical documentation files plus 155 architecture documents.
+> 💡 This directory contains 22 technical documentation files plus 156 architecture documents.
 
 ---
 
@@ -13,7 +13,7 @@
 - **[Architecture Overview](architecture/INDEX.md)** - Main architecture index
   - RAG flow implementation documents
   - Policy gated autonomy
-  - 155 total architecture documents including 135 detailed steps
+  - 156 total architecture documents including 135 detailed steps
 
 ---
 
@@ -67,7 +67,7 @@
 - **[Database Backup System](DATABASE_BACKUP_SYSTEM.md)** ✅ Current
   - **Purpose**: Prevent data loss by maintaining automated daily backups of the PostgreSQL database.
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2025-12-11 12:17:10
+  - **Auto-generated:** 2025-12-12 19:22:10
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
 - **[Pinecone Guardrails Implementation](pinecone-guardrails.md)** ✅ Current
@@ -82,9 +82,9 @@
 - **Feature Docs:** 9
 - **Database/Search:** 5
 - **Operations:** 3
-- **Architecture:** 155
-- **Total:** 177
+- **Architecture:** 156
+- **Total:** 178
 
 ---
 
-**Last Updated:** 2025-12-12 19:22:10
+**Last Updated:** 2025-12-15 09:07:03

@@ -415,6 +415,25 @@ async def step_41__select_prompt(
                         # Extract the generated prompt
                         if domain_prompt_result and domain_prompt_result.get("prompt_generated"):
                             domain_prompt = domain_prompt_result.get("domain_prompt", "")
+
+                            # DEV-007 Issue 1 FIX: Inject document analysis override at TOP
+                            # Override at TOP ensures LLM prioritizes these instructions
+                            query_composition = (ctx or {}).get("query_composition", "pure_kb")
+                            if query_composition in ("pure_doc", "hybrid"):
+                                from app.core.prompts import DOCUMENT_ANALYSIS_OVERRIDE
+
+                                # Inject at TOP, not end
+                                domain_prompt = DOCUMENT_ANALYSIS_OVERRIDE + "\n\n---\n\n" + domain_prompt
+                                logger.info(
+                                    "document_analysis_override_injected_to_domain_prompt",
+                                    extra={
+                                        "query_composition": query_composition,
+                                        "request_id": request_id,
+                                        "domain": domain,
+                                        "action": action,
+                                        "override_length": len(DOCUMENT_ANALYSIS_OVERRIDE),
+                                    },
+                                )
                         else:
                             # Step 43 failed to generate prompt
                             raise Exception(
@@ -600,12 +619,34 @@ def step_44__default_sys_prompt(
         )
 
         # Step 44 logic: Return default SYSTEM_PROMPT with context injection
-        prompt = SYSTEM_PROMPT
-
-        # DEV-007 Issue 11: Inject document analysis guidelines for document queries
+        # DEV-007 Issue 1 FIX: Inject document analysis override at TOP for document queries
+        # This ensures the LLM prioritizes document analysis instructions over KB instructions
         query_composition = (ctx or {}).get("query_composition", "pure_kb")
+        from app.core.logging import logger as step44_logger
+        from app.core.prompts import DOCUMENT_ANALYSIS_OVERRIDE
+
+        step44_logger.debug(
+            "step_44_query_composition_check",
+            extra={
+                "query_composition": query_composition,
+                "ctx_keys": list((ctx or {}).keys()),
+                "trigger_reason": trigger_reason,
+            },
+        )
+
         if query_composition in ("pure_doc", "hybrid"):
-            prompt = prompt + "\n\n" + DOCUMENT_ANALYSIS_PROMPT
+            # DEV-007 FIX: Override at TOP, not end - LLM gives priority to first instructions
+            prompt = DOCUMENT_ANALYSIS_OVERRIDE + "\n\n---\n\n" + SYSTEM_PROMPT
+            step44_logger.info(
+                "document_analysis_override_injected_at_top",
+                extra={
+                    "query_composition": query_composition,
+                    "trigger_reason": trigger_reason,
+                    "override_length": len(DOCUMENT_ANALYSIS_OVERRIDE),
+                },
+            )
+        else:
+            prompt = SYSTEM_PROMPT
 
         # Inject KB context if available (from step 40)
         # Step 40 stores in 'context' key, but state may have kb_docs from step 39

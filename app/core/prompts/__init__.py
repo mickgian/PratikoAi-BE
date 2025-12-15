@@ -22,5 +22,13 @@ def load_document_analysis_prompt():
         return f.read()
 
 
+def load_document_analysis_override():
+    """Load short directive override prompt for document analysis (injected at TOP of prompt)."""
+    path = os.path.join(os.path.dirname(__file__), "document_analysis_override.md")
+    with open(path) as f:
+        return f.read()
+
+
 SYSTEM_PROMPT = load_system_prompt()
 DOCUMENT_ANALYSIS_PROMPT = load_document_analysis_prompt()
+DOCUMENT_ANALYSIS_OVERRIDE = load_document_analysis_override()

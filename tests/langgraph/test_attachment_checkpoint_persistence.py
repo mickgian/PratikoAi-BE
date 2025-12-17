@@ -357,3 +357,199 @@ class TestCheckpointUpdateIntegration:
         assert resolved[0]["filename"] == "Payslip 8.pdf"  # New first
         assert resolved[1]["filename"] == "Payslip 9.pdf"  # New second
         assert resolved[2]["filename"] == "Payslip 10.pdf"  # Prior last
+
+
+class TestMergeMessagesLangChainObjects:
+    """P0.8 FIX: Test merge_messages handles LangChain message objects.
+
+    DEV-007 Bug: When page refreshes, first assistant response is duplicated.
+
+    Root cause: Checkpoint contains AIMessage objects, but merge_messages only
+    deduplicated dict messages. When new messages (as dicts) were merged,
+    the AIMessage object wasn't recognized as a duplicate.
+
+    Fix: merge_messages now extracts (role, content) from both dicts AND
+    LangChain message objects (AIMessage, HumanMessage, etc.)
+    """
+
+    def test_merge_messages_deduplicates_aimessage_vs_dict(self):
+        """P0.8 CRITICAL: AIMessage object should deduplicate with equivalent dict."""
+        from langchain_core.messages import AIMessage
+
+        from app.core.langgraph.types import merge_messages
+
+        # Given: Checkpoint contains AIMessage object (from step_028__serve_golden)
+        existing = [
+            {"role": "user", "content": "Spiegami questa fattura"},
+            AIMessage(content="Analysis of Payslip 10..."),  # LangChain object
+        ]
+
+        # Given: New messages include dict version of same AI response
+        # (happens when _get_prior_state converts messages to dicts)
+        new = [
+            {"role": "user", "content": "Spiegami questa fattura"},
+            {"role": "assistant", "content": "Analysis of Payslip 10..."},  # Dict
+            {"role": "user", "content": "E queste?"},  # New Turn 2 message
+        ]
+
+        # When: Reducer merges
+        result = merge_messages(existing, new)
+
+        # Then: Should NOT have duplicate AI responses
+        ai_contents = [
+            m.get("content") if isinstance(m, dict) else getattr(m, "content", None)
+            for m in result
+            if (isinstance(m, dict) and m.get("role") == "assistant")
+            or (hasattr(m, "type") and getattr(m, "type", None) == "ai")
+        ]
+        assert (
+            ai_contents.count("Analysis of Payslip 10...") == 1
+        ), "AIMessage and dict with same content should deduplicate"
+
+    def test_merge_messages_deduplicates_humanmessage_vs_dict(self):
+        """HumanMessage object should deduplicate with equivalent dict."""
+        from langchain_core.messages import HumanMessage
+
+        from app.core.langgraph.types import merge_messages
+
+        # Given: Checkpoint contains HumanMessage object
+        existing = [
+            HumanMessage(content="Hello"),  # LangChain object
+        ]
+
+        # Given: New messages include dict version
+        new = [
+            {"role": "user", "content": "Hello"},  # Dict
+            {"role": "user", "content": "World"},  # New
+        ]
+
+        # When
+        result = merge_messages(existing, new)
+
+        # Then: Only 2 messages (Hello deduplicated, World added)
+        assert len(result) == 2
+
+    def test_merge_messages_handles_mixed_langchain_and_dicts(self):
+        """Merger should handle lists with both LangChain objects and dicts."""
+        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
+        from app.core.langgraph.types import merge_messages
+
+        # Given: Mixed existing messages
+        existing = [
+            SystemMessage(content="You are an assistant"),
+            {"role": "user", "content": "Hello"},
+            AIMessage(content="Hi there!"),
+        ]
+
+        # Given: Mixed new messages
+        new = [
+            {"role": "system", "content": "You are an assistant"},  # Duplicate
+            HumanMessage(content="Hello"),  # Duplicate
+            {"role": "assistant", "content": "Hi there!"},  # Duplicate
+            {"role": "user", "content": "How are you?"},  # New
+        ]
+
+        # When
+        result = merge_messages(existing, new)
+
+        # Then: Only 4 messages (3 existing + 1 new)
+        assert len(result) == 4
+
+    def test_extract_message_key_handles_aimessage(self):
+        """_extract_message_key should correctly extract from AIMessage."""
+        from langchain_core.messages import AIMessage
+
+        from app.core.langgraph.types import _extract_message_key
+
+        msg = AIMessage(content="Test response")
+        key = _extract_message_key(msg)
+
+        assert key == ("assistant", "Test response")
+
+    def test_extract_message_key_handles_humanmessage(self):
+        """_extract_message_key should correctly extract from HumanMessage."""
+        from langchain_core.messages import HumanMessage
+
+        from app.core.langgraph.types import _extract_message_key
+
+        msg = HumanMessage(content="Test query")
+        key = _extract_message_key(msg)
+
+        assert key == ("user", "Test query")
+
+    def test_extract_message_key_handles_systemmessage(self):
+        """_extract_message_key should correctly extract from SystemMessage."""
+        from langchain_core.messages import SystemMessage
+
+        from app.core.langgraph.types import _extract_message_key
+
+        msg = SystemMessage(content="System prompt")
+        key = _extract_message_key(msg)
+
+        assert key == ("system", "System prompt")
+
+    def test_extract_message_key_handles_dict(self):
+        """_extract_message_key should correctly extract from dict."""
+        from app.core.langgraph.types import _extract_message_key
+
+        msg = {"role": "assistant", "content": "Test"}
+        key = _extract_message_key(msg)
+
+        assert key == ("assistant", "Test")
+
+
+class TestPageRefreshDuplicationScenario:
+    """End-to-end regression test for the exact page refresh duplication bug."""
+
+    def test_page_refresh_does_not_duplicate_first_response(self):
+        """P0.8 REGRESSION: Exact scenario that caused message duplication.
+
+        Flow:
+        1. Turn 1: User asks about Payslip 10 -> AI responds
+        2. Checkpoint saves [user_dict, AIMessage(response)]
+        3. User refreshes page
+        4. Frontend loads history (converted to dicts)
+        5. User sends Turn 2 message
+        6. merge_messages merges checkpoint [user_dict, AIMessage] with
+           new messages [user_dict, ai_dict, user2_dict]
+        7. BUG: AIMessage wasn't deduplicated, so both AIMessage AND ai_dict remained
+        8. Result: First AI response appeared TWICE
+
+        This test verifies the fix prevents duplication.
+        """
+        from langchain_core.messages import AIMessage
+
+        from app.core.langgraph.types import merge_messages
+
+        # Given: Checkpoint state after Turn 1 (contains AIMessage object)
+        checkpoint_messages = [
+            {"role": "user", "content": "Spiegami questa fattura"},
+            AIMessage(content="Il documento Payslip 10 contiene..."),
+        ]
+
+        # Given: Turn 2 initial_state with prior messages converted to dicts + new message
+        # This is what happens in graph.py when loading prior state
+        turn2_messages = [
+            {"role": "user", "content": "Spiegami questa fattura"},  # Prior (dict)
+            {"role": "assistant", "content": "Il documento Payslip 10 contiene..."},  # Prior (dict)
+            {"role": "user", "content": "E queste?"},  # New Turn 2
+        ]
+
+        # When: merge_messages reducer fires (as it does in ainvoke)
+        result = merge_messages(checkpoint_messages, turn2_messages)
+
+        # Then: Should have exactly 3 messages (not 4 with duplicate)
+        # Count how many times the AI response content appears
+        ai_response_content = "Il documento Payslip 10 contiene..."
+        count = sum(
+            1
+            for m in result
+            if (isinstance(m, dict) and m.get("content") == ai_response_content)
+            or (hasattr(m, "content") and getattr(m, "content", None) == ai_response_content)
+        )
+
+        assert count == 1, (
+            f"AI response should appear exactly once, but appeared {count} times. "
+            f"This indicates the P0.8 fix for AIMessage vs dict deduplication is broken."
+        )

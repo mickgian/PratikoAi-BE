@@ -15,6 +15,36 @@ from typing import (
 logger = logging.getLogger(__name__)
 
 
+def _extract_message_key(msg: Any) -> tuple[str | None, str | None] | None:
+    """Extract (role, content) from a message, handling both dicts and LangChain message objects.
+
+    DEV-007 P0.8 FIX: LangChain message objects (AIMessage, HumanMessage, etc.) have
+    .type/.role and .content attributes, while dicts use .get(). This helper normalizes
+    both to prevent message duplication on page refresh.
+
+    Args:
+        msg: A message as dict or LangChain BaseMessage object
+
+    Returns:
+        (role, content) tuple for deduplication, or None if can't extract
+    """
+    if isinstance(msg, dict):
+        return (msg.get("role"), msg.get("content"))
+
+    # LangChain message objects have .type (ai, human, system) or .role attribute
+    # and .content attribute
+    if hasattr(msg, "content"):
+        # Get role from .type (LangChain standard) or .role attribute
+        role = getattr(msg, "type", None) or getattr(msg, "role", None)
+        content = getattr(msg, "content", None)
+        # Map LangChain types to OpenAI roles
+        role_map = {"ai": "assistant", "human": "user", "system": "system"}
+        normalized_role = role_map.get(role, role) if role else None
+        return (normalized_role, content)
+
+    return None
+
+
 def merge_messages(existing: list[dict] | None, new: list[dict] | None) -> list[dict]:
     """Custom reducer that MERGES messages instead of replacing.
 
@@ -25,6 +55,11 @@ def merge_messages(existing: list[dict] | None, new: list[dict] | None) -> list[
     DEV-007 FIX: Prevents page refresh checkpoint corruption where
     Turn 2's messages would be lost/corrupted because checkpoint
     REPLACED messages instead of MERGING them.
+
+    DEV-007 P0.8 FIX: Now handles both dict messages AND LangChain message objects
+    (AIMessage, HumanMessage, etc.) for deduplication. This prevents message
+    duplication on page refresh when checkpoint contains AIMessage objects but
+    new messages are passed as dicts.
 
     Args:
         existing: Current messages in checkpoint (may be None)
@@ -38,19 +73,47 @@ def merge_messages(existing: list[dict] | None, new: list[dict] | None) -> list[
     if new is None:
         return existing
 
+    # DEV-007 P0.11 DIAGNOSTIC: Log merger inputs for debugging
+    def _get_role(msg):
+        if isinstance(msg, dict):
+            return msg.get("role")
+        return getattr(msg, "type", None) or getattr(msg, "role", None)
+
+    existing_roles = [_get_role(m) for m in existing]
+    new_roles = [_get_role(m) for m in new]
+    logger.info(
+        f"DEV007_merge_messages_called: existing_count={len(existing)}, new_count={len(new)}, "
+        f"existing_roles={existing_roles}, new_roles={new_roles}"
+    )
+
     # Build set of existing (role, content) tuples for deduplication
-    existing_keys = {(msg.get("role"), msg.get("content")) for msg in existing if isinstance(msg, dict)}
+    # DEV-007 P0.8: Handle both dicts AND LangChain message objects
+    existing_keys: set[tuple[str | None, str | None]] = set()
+    for msg in existing:
+        key = _extract_message_key(msg)
+        if key:
+            existing_keys.add(key)
 
     # Start with existing messages
     merged = list(existing)
 
     # Add new messages that don't already exist
+    added_count = 0
+    skipped_count = 0
     for msg in new:
-        if isinstance(msg, dict):
-            key = (msg.get("role"), msg.get("content"))
-            if key not in existing_keys:
-                merged.append(msg)
-                existing_keys.add(key)
+        key = _extract_message_key(msg)
+        if key and key not in existing_keys:
+            merged.append(msg)
+            existing_keys.add(key)
+            added_count += 1
+        else:
+            skipped_count += 1
+
+    merged_roles = [_get_role(m) for m in merged]
+    logger.info(
+        f"DEV007_merge_messages_result: merged_count={len(merged)}, merged_roles={merged_roles}, "
+        f"added_count={added_count}, skipped_count={skipped_count}"
+    )
 
     return merged
 

@@ -2607,39 +2607,70 @@ class LangGraphAgent:
             # Convert Message objects to dicts for graph compatibility
             current_message_dicts = [{"role": msg.role, "content": msg.content} for msg in messages]
 
-            # DEV-007 Issue 11e: Merge prior messages with current messages
+            # DEV-007 Issue 11e + P0.10 FIX: Merge prior messages with current messages
             # This ensures the LLM has full conversation context for follow-up questions
+            #
+            # P0.10 FIX: The frontend sends ALL messages (including Turn 1's user+assistant).
+            # Simply concatenating prior + current causes duplicates.
+            # Instead, we must deduplicate by (role, content) tuple.
+
+            # DEV-007 P0.11 DIAGNOSTIC: Log incoming messages for debugging
+            prior_roles = [m.get("role") for m in prior_messages] if prior_messages else []
+            current_roles = [m.get("role") for m in current_message_dicts]
+            logger.info(
+                "DEV007_P0.11_message_merge_inputs",
+                session_id=session_id,
+                prior_count=len(prior_messages) if prior_messages else 0,
+                prior_roles=prior_roles,
+                current_count=len(current_message_dicts),
+                current_roles=current_roles,
+            )
+
             if prior_messages:
-                # Check if current message already in history (edge case: retry/duplicate)
-                last_current = current_message_dicts[-1] if current_message_dicts else None
-                last_prior = prior_messages[-1] if prior_messages else None
-                # DEV-007 FIX: Check BOTH role AND content to prevent false matches
-                # Previously only checked content, which could cause Turn 2 to be skipped
-                if (
-                    last_current
-                    and last_prior
-                    and last_prior.get("role") == last_current.get("role")
-                    and last_prior.get("content") == last_current.get("content")
-                ):
-                    # Current message already in history, don't duplicate
-                    merged_messages = prior_messages
-                    logger.debug(
-                        "skip_duplicate_message",
-                        session_id=session_id,
-                        reason="current message already in history (role+content match)",
-                    )
-                else:
-                    # Append current user message to history
-                    merged_messages = prior_messages + current_message_dicts
-                    logger.info(
-                        "messages_merged_with_history",
-                        session_id=session_id,
-                        prior_count=len(prior_messages),
-                        current_count=len(current_message_dicts),
-                        total_count=len(merged_messages),
-                    )
+                # Build set of (role, content) tuples from prior messages for deduplication
+                prior_keys = {(m.get("role"), m.get("content")) for m in prior_messages}
+
+                # Start with prior messages as base (they're from the checkpoint)
+                merged_messages = list(prior_messages)
+
+                # DEV-007 P0.12 FIX: Only add NEW USER messages from current
+                # CRITICAL: The frontend may send assistant messages with slightly different
+                # content (e.g., SSE streaming chunks vs final saved response).
+                # We MUST NOT add assistant messages from frontend - only from checkpoint.
+                # This prevents the duplicate assistant message bug on page refresh.
+                new_messages_added = 0
+                skipped_assistant = 0
+                for msg in current_message_dicts:
+                    role = msg.get("role")
+                    # Skip assistant messages - checkpoint is the source of truth
+                    if role == "assistant":
+                        skipped_assistant += 1
+                        continue
+                    key = (role, msg.get("content"))
+                    if key not in prior_keys:
+                        merged_messages.append(msg)
+                        prior_keys.add(key)  # Prevent duplicates within current_message_dicts
+                        new_messages_added += 1
+
+                merged_roles = [m.get("role") for m in merged_messages]
+                logger.info(
+                    "DEV007_P0.12_message_merge_result",
+                    session_id=session_id,
+                    prior_count=len(prior_messages),
+                    current_count=len(current_message_dicts),
+                    new_messages_added=new_messages_added,
+                    skipped_assistant=skipped_assistant,
+                    total_count=len(merged_messages),
+                    merged_roles=merged_roles,
+                )
             else:
                 merged_messages = current_message_dicts
+                logger.info(
+                    "DEV007_P0.11_no_prior_messages",
+                    session_id=session_id,
+                    using_current_count=len(current_message_dicts),
+                    current_roles=current_roles,
+                )
 
             # DEV-007 FIX: Merge attachments and track message_index for correct restoration
             # Each attachment needs to know which user message it belongs to
@@ -2775,26 +2806,35 @@ class LangGraphAgent:
                 graph_has_checkpointer=hasattr(self._graph, "checkpointer") if self._graph else False,
             )
 
-            # DEV-007 P0.6 FIX: Update checkpoint state with merged attachments BEFORE ainvoke()
+            # DEV-007 P0.6 FIX: Update checkpoint state with merged data BEFORE ainvoke()
             # ROOT CAUSE: LangGraph checkpoint restoration REPLACES initial_state when ainvoke() is called
-            # The merge_attachments reducer only fires on state UPDATES during graph execution, NOT on checkpoint LOAD
-            # So we must update the checkpoint state with merged attachments BEFORE calling ainvoke()
-            if resolved_attachments and config_to_use.get("configurable", {}).get("thread_id"):
+            # The reducers only fire on state UPDATES during graph execution, NOT on checkpoint LOAD
+            # So we must update the checkpoint state with merged data BEFORE calling ainvoke()
+            #
+            # DEV-007 P0.9 FIX: Also update messages to include the new user message
+            # Without this, Turn 2 user message is lost because checkpoint replaces initial_state.messages
+            if config_to_use.get("configurable", {}).get("thread_id"):
                 try:
+                    update_values = {
+                        "current_message_index": current_message_index,
+                        "messages": merged_messages,  # P0.9: Include new user message
+                    }
+                    if resolved_attachments:
+                        update_values["attachments"] = resolved_attachments
                     await self._graph.aupdate_state(
                         config=config_to_use,
-                        values={
-                            "attachments": resolved_attachments,
-                            "current_message_index": current_message_index,
-                        },
+                        values=update_values,
                     )
                     logger.info(
                         "DEV007_checkpoint_state_updated_before_ainvoke",
                         session_id=session_id,
-                        attachment_count=len(resolved_attachments),
+                        message_count=len(merged_messages),
+                        attachment_count=len(resolved_attachments) if resolved_attachments else 0,
                         current_message_index=current_message_index,
-                        attachment_ids=[a.get("id") for a in resolved_attachments],
-                        filenames=[a.get("filename", "unknown") for a in resolved_attachments],
+                        attachment_ids=[a.get("id") for a in resolved_attachments] if resolved_attachments else [],
+                        filenames=[a.get("filename", "unknown") for a in resolved_attachments]
+                        if resolved_attachments
+                        else [],
                     )
                 except Exception as e:
                     # Log but don't fail - initial_state will still work for first turn

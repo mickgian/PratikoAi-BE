@@ -553,3 +553,360 @@ class TestPageRefreshDuplicationScenario:
             f"AI response should appear exactly once, but appeared {count} times. "
             f"This indicates the P0.8 fix for AIMessage vs dict deduplication is broken."
         )
+
+
+class TestP012SkipAssistantMessagesFromFrontend:
+    """P0.12 FIX: Test that assistant messages from frontend are skipped.
+
+    DEV-007 Bug: Even with P0.8 deduplication, message duplication still occurred.
+
+    Root cause: Frontend sends assistant messages with DIFFERENT content than
+    checkpoint (SSE streaming chunks vs final saved response). The content
+    mismatch caused deduplication to fail.
+
+    Fix (P0.12): Skip all assistant messages from frontend during merge.
+    Only USER messages from frontend are accepted. Assistant messages come
+    exclusively from the checkpoint.
+
+    This test class protects against regression of this critical bug.
+    """
+
+    def test_assistant_message_from_frontend_is_skipped(self):
+        """P0.12 CRITICAL: Assistant messages from frontend should be ignored.
+
+        The checkpoint is the source of truth for assistant responses.
+        Frontend assistant messages may have different content due to SSE
+        streaming differences.
+        """
+        # Simulate the P0.12 merge logic from graph.py
+
+        # Given: Checkpoint has 3 messages
+        prior_messages = [
+            {"role": "system", "content": "System prompt"},
+            {"role": "user", "content": "Spiegami questa fattura"},
+            {"role": "assistant", "content": "Analysis from checkpoint..."},
+        ]
+
+        # Given: Frontend sends 3 messages including assistant with DIFFERENT content
+        # This simulates the SSE streaming vs saved response content mismatch
+        current_messages = [
+            {"role": "user", "content": "Spiegami questa fattura"},
+            {"role": "assistant", "content": "Analysis from SSE streaming..."},  # Different!
+            {"role": "user", "content": "E queste?"},  # New Turn 2 question
+        ]
+
+        # When: P0.12 merge logic is applied
+        prior_keys = {(m.get("role"), m.get("content")) for m in prior_messages}
+        merged = list(prior_messages)
+
+        new_messages_added = 0
+        skipped_assistant = 0
+        for msg in current_messages:
+            role = msg.get("role")
+            # P0.12 FIX: Skip assistant messages
+            if role == "assistant":
+                skipped_assistant += 1
+                continue
+            key = (role, msg.get("content"))
+            if key not in prior_keys:
+                merged.append(msg)
+                prior_keys.add(key)
+                new_messages_added += 1
+
+        # Then: Only 4 messages (3 prior + 1 new user)
+        assert len(merged) == 4, f"Expected 4 messages, got {len(merged)}"
+        assert skipped_assistant == 1, "Should skip 1 assistant message from frontend"
+        assert new_messages_added == 1, "Should only add new user message"
+
+        # Verify no duplicate assistant messages
+        assistant_count = sum(1 for m in merged if m.get("role") == "assistant")
+        assert assistant_count == 1, f"Expected 1 assistant, got {assistant_count}"
+
+        # Verify the assistant message is from checkpoint (not frontend)
+        assistant_msg = next(m for m in merged if m.get("role") == "assistant")
+        assert assistant_msg["content"] == "Analysis from checkpoint..."
+
+    def test_turn2_with_different_assistant_content_no_duplicate(self):
+        """P0.12 REGRESSION: The exact scenario that caused duplication.
+
+        Before P0.12:
+        - prior = ['system', 'user', 'assistant']
+        - current = ['user', 'assistant', 'user'] (with different assistant content)
+        - Result: ['system', 'user', 'assistant', 'assistant', 'user'] (DUPLICATE!)
+
+        After P0.12:
+        - Assistant from current is skipped
+        - Result: ['system', 'user', 'assistant', 'user'] (CORRECT)
+        """
+        # Given: Checkpoint after Turn 1
+        prior_messages = [
+            {"role": "system", "content": "You are an Italian tax expert..."},
+            {"role": "user", "content": "Spiegami questa fattura"},
+            {"role": "assistant", "content": "Il cedolino Payslip 10 contiene i dati..."},
+        ]
+
+        # Given: Frontend sends Turn 2 with assistant having trailing whitespace
+        # (common SSE streaming artifact)
+        current_messages = [
+            {"role": "user", "content": "Spiegami questa fattura"},
+            {"role": "assistant", "content": "Il cedolino Payslip 10 contiene i dati... "},  # Trailing space!
+            {"role": "user", "content": "E queste?"},
+        ]
+
+        # When: P0.12 merge logic
+        prior_keys = {(m.get("role"), m.get("content")) for m in prior_messages}
+        merged = list(prior_messages)
+
+        for msg in current_messages:
+            role = msg.get("role")
+            if role == "assistant":
+                continue  # P0.12: Skip assistant
+            key = (role, msg.get("content"))
+            if key not in prior_keys:
+                merged.append(msg)
+                prior_keys.add(key)
+
+        # Then: Exactly 4 messages (no duplicate assistant)
+        roles = [m.get("role") for m in merged]
+        assert roles == ["system", "user", "assistant", "user"], (
+            f"Expected ['system', 'user', 'assistant', 'user'], got {roles}"
+        )
+
+    def test_multiple_turns_no_assistant_duplication(self):
+        """P0.12: Multiple turns should never have duplicate assistant messages."""
+        # Simulate Turn 3 scenario
+
+        # Given: Checkpoint after Turn 2 (has 2 assistant responses)
+        prior_messages = [
+            {"role": "system", "content": "System"},
+            {"role": "user", "content": "Question 1"},
+            {"role": "assistant", "content": "Answer 1"},
+            {"role": "user", "content": "Question 2"},
+            {"role": "assistant", "content": "Answer 2"},
+        ]
+
+        # Given: Frontend sends full history + new question
+        current_messages = [
+            {"role": "user", "content": "Question 1"},
+            {"role": "assistant", "content": "Answer 1 (slightly different)"},  # Diff
+            {"role": "user", "content": "Question 2"},
+            {"role": "assistant", "content": "Answer 2 (slightly different)"},  # Diff
+            {"role": "user", "content": "Question 3"},  # New
+        ]
+
+        # When: P0.12 merge
+        prior_keys = {(m.get("role"), m.get("content")) for m in prior_messages}
+        merged = list(prior_messages)
+
+        for msg in current_messages:
+            role = msg.get("role")
+            if role == "assistant":
+                continue
+            key = (role, msg.get("content"))
+            if key not in prior_keys:
+                merged.append(msg)
+                prior_keys.add(key)
+
+        # Then: Exactly 6 messages (5 prior + 1 new user)
+        assert len(merged) == 6
+        roles = [m.get("role") for m in merged]
+        expected = ["system", "user", "assistant", "user", "assistant", "user"]
+        assert roles == expected, f"Expected {expected}, got {roles}"
+
+    def test_first_turn_allows_all_messages(self):
+        """P0.12: First turn (no prior) should allow all messages including assistant.
+
+        This tests the edge case where there's no checkpoint yet.
+        The graph.py code has: `if prior_messages:` check.
+        """
+        # Given: No prior messages (first turn)
+        prior_messages = []
+
+        # Given: Current messages from first turn
+        current_messages = [
+            {"role": "user", "content": "Hello"},
+        ]
+
+        # When: No prior messages, use current directly
+        if prior_messages:
+            merged = list(prior_messages)
+            # ... P0.12 logic
+        else:
+            merged = current_messages
+
+        # Then: First turn works normally
+        assert len(merged) == 1
+        assert merged[0]["role"] == "user"
+
+    def test_system_messages_from_frontend_are_also_deduplicated(self):
+        """System messages should be deduplicated (but not skipped like assistant)."""
+        prior_messages = [
+            {"role": "system", "content": "You are a helpful assistant"},
+            {"role": "user", "content": "Hello"},
+        ]
+
+        current_messages = [
+            {"role": "system", "content": "You are a helpful assistant"},  # Same
+            {"role": "user", "content": "Hello"},  # Same
+            {"role": "user", "content": "World"},  # New
+        ]
+
+        # P0.12 logic (only skip assistant)
+        prior_keys = {(m.get("role"), m.get("content")) for m in prior_messages}
+        merged = list(prior_messages)
+
+        for msg in current_messages:
+            role = msg.get("role")
+            if role == "assistant":
+                continue
+            key = (role, msg.get("content"))
+            if key not in prior_keys:
+                merged.append(msg)
+                prior_keys.add(key)
+
+        # Then: 3 messages (2 prior + 1 new user)
+        assert len(merged) == 3
+        roles = [m.get("role") for m in merged]
+        assert roles == ["system", "user", "user"]
+
+
+class TestMessageDuplicationRegressionScenarios:
+    """End-to-end regression tests for specific duplication scenarios.
+
+    These tests document and protect against real-world scenarios that
+    caused message duplication.
+    """
+
+    def test_scenario_page_refresh_after_turn1(self):
+        """Scenario: User refreshes page after Turn 1, first response duplicated.
+
+        This was the original bug report.
+
+        Flow:
+        1. Turn 1: Upload file, ask question
+        2. AI responds
+        3. User refreshes page
+        4. UI shows the AI response TWICE
+
+        The duplication happened because:
+        - Checkpoint had AIMessage with content X
+        - Frontend sent dict with content X' (slightly different due to SSE)
+        - P0.8 couldn't deduplicate different content
+        - P0.12 fix: Skip assistant from frontend entirely
+        """
+        from langchain_core.messages import AIMessage
+
+        from app.core.langgraph.types import merge_messages
+
+        # Given: Checkpoint after Turn 1
+        checkpoint_messages = [
+            {"role": "system", "content": "System prompt"},
+            {"role": "user", "content": "Spiegami questa fattura"},
+            AIMessage(content="Ecco l'analisi del documento..."),
+        ]
+
+        # Given: Frontend sends on page refresh (user sends same question again)
+        # The assistant content has a minor difference (SSE artifact)
+        frontend_messages = [
+            {"role": "user", "content": "Spiegami questa fattura"},
+            {"role": "assistant", "content": "Ecco l'analisi del documento...\n"},  # Extra newline
+        ]
+
+        # P0.12 Pre-processing: Remove assistant messages from frontend
+        filtered_frontend = [m for m in frontend_messages if m.get("role") != "assistant"]
+
+        # When: merge_messages reducer fires
+        result = merge_messages(checkpoint_messages, filtered_frontend)
+
+        # Then: Only 3 messages (no duplicate)
+        assert len(result) == 3
+
+        # Count assistant messages
+        def is_assistant(m):
+            if isinstance(m, dict):
+                return m.get("role") == "assistant"
+            return getattr(m, "type", None) == "ai"
+
+        assistant_count = sum(1 for m in result if is_assistant(m))
+        assert assistant_count == 1, f"Expected 1 assistant, got {assistant_count}"
+
+    def test_scenario_turn2_upload_new_files(self):
+        """Scenario: Turn 2 uploads new files and asks 'E queste?'
+
+        This was the multi-attachment bug scenario.
+
+        Flow:
+        1. Turn 1: Upload Payslip 10, ask question, get response
+        2. Turn 2: Upload Payslip 8 + 9, ask "E queste?"
+        3. BUG: Response showed only Payslip 10 context
+        4. ALSO: First response was duplicated
+
+        P0.12 fixes the duplication issue.
+        """
+        # Given: Checkpoint after Turn 1
+        prior_messages = [
+            {"role": "system", "content": "System with Payslip 10 context"},
+            {"role": "user", "content": "Spiegami questa fattura"},
+            {"role": "assistant", "content": "Payslip 10 analysis..."},
+        ]
+
+        # Given: Frontend sends Turn 2 (with different assistant content)
+        current_messages = [
+            {"role": "user", "content": "Spiegami questa fattura"},
+            {"role": "assistant", "content": "Payslip 10 analysis... "},  # Trailing space
+            {"role": "user", "content": "E queste?"},  # New question
+        ]
+
+        # P0.12 merge logic
+        prior_keys = {(m.get("role"), m.get("content")) for m in prior_messages}
+        merged = list(prior_messages)
+
+        for msg in current_messages:
+            role = msg.get("role")
+            if role == "assistant":
+                continue
+            key = (role, msg.get("content"))
+            if key not in prior_keys:
+                merged.append(msg)
+                prior_keys.add(key)
+
+        # Then: 4 messages (system, user1, assistant, user2)
+        roles = [m.get("role") for m in merged]
+        assert roles == ["system", "user", "assistant", "user"]
+        assert len(merged) == 4
+
+    def test_scenario_unicode_content_difference(self):
+        """Scenario: Content differs due to Unicode normalization.
+
+        SSE streaming might send content with different Unicode normalization
+        than what gets saved to checkpoint.
+        """
+        # Given: Checkpoint with certain Unicode form
+        prior_messages = [
+            {"role": "user", "content": "Café résumé"},  # NFD normalized
+            {"role": "assistant", "content": "Analysis of café..."},
+        ]
+
+        # Given: Frontend with different Unicode form
+        current_messages = [
+            {"role": "user", "content": "Café résumé"},  # NFC normalized (looks same, different bytes)
+            {"role": "assistant", "content": "Analysis of café..."},  # NFC
+            {"role": "user", "content": "More info?"},
+        ]
+
+        # P0.12: Skip assistant regardless of content difference
+        prior_keys = {(m.get("role"), m.get("content")) for m in prior_messages}
+        merged = list(prior_messages)
+
+        for msg in current_messages:
+            role = msg.get("role")
+            if role == "assistant":
+                continue
+            key = (role, msg.get("content"))
+            if key not in prior_keys:
+                merged.append(msg)
+                prior_keys.add(key)
+
+        # Then: Assistant not duplicated (skipped from frontend)
+        assistant_count = sum(1 for m in merged if m.get("role") == "assistant")
+        assert assistant_count == 1

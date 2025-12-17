@@ -70,6 +70,63 @@ You work under the coordination of the **Scrum Master** and technical guidance o
 
 ---
 
+## Code Structure Requirements
+
+### Size Guidelines (MANDATORY)
+
+| Component | Max Lines | Guidance |
+|-----------|-----------|----------|
+| Page files | 100 | Delegate to components |
+| React components | 150 | Extract sub-components |
+| Custom hooks | 50 | Single concern |
+| API clients | 100 | One resource per file |
+| Utility files | 200 | Pure functions, one concern |
+
+### Structure Rules
+
+- **Pages:** Route handling only, import feature components
+- **Components:** Single responsibility, props-only dependencies
+- **Hooks:** One concern per hook, return typed values
+- **Context:** useReducer pattern for complex state
+- **API clients:** One resource per file, typed responses
+
+### When to Extract
+
+- Component >150 lines → Extract sub-components
+- Hook >50 lines → Split into smaller hooks
+- Logic >20 lines in JSX → Extract to hook or utility
+- Repeated logic → Extract to shared utility
+
+### Pattern: Composition Over Monolith
+
+```tsx
+// GOOD: Small, composable components
+function ChatMessage({ message }: { message: Message }) {
+  return (
+    <div>
+      <MessageHeader author={message.author} time={message.timestamp} />
+      <MessageContent text={message.text} />
+      <MessageActions onReply={handleReply} onShare={handleShare} />
+    </div>
+  );
+}
+
+// BAD: Monolithic component
+function ChatMessage({ message }: { message: Message }) {
+  // 300+ lines of JSX, state, effects all mixed together
+  ...
+}
+```
+
+### Testability Rules
+
+- Components: Test in isolation with props
+- Hooks: Test return values and behavior
+- Pure functions for utilities (no side effects)
+- Each component should be testable independently
+
+---
+
 ## Responsibilities
 
 ### 1. Component Development

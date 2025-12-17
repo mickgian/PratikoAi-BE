@@ -152,7 +152,10 @@ class TestDocumentContentPIIAnonymization:
 
 
 class TestConvertAttachmentsAppliesSecurity:
-    """Test that _convert_attachments_to_doc_facts applies security measures."""
+    """Test that _convert_attachments_to_doc_facts applies security measures.
+
+    DEV-007 PII: Function now returns tuple (doc_facts, deanonymization_map).
+    """
 
     def test_sanitization_applied_to_extracted_text(self):
         """Prompt injection patterns are sanitized in extracted_text."""
@@ -167,11 +170,11 @@ class TestConvertAttachmentsAppliesSecurity:
             }
         ]
 
-        result = _convert_attachments_to_doc_facts(attachments)
+        doc_facts, deanon_map = _convert_attachments_to_doc_facts(attachments)
 
-        assert len(result) == 1
-        assert "[CONTENUTO_FILTRATO]" in result[0]
-        assert "ignore all previous" not in result[0].lower()
+        assert len(doc_facts) == 1
+        assert "[CONTENUTO_FILTRATO]" in doc_facts[0]
+        assert "ignore all previous" not in doc_facts[0].lower()
 
     def test_pii_anonymized_in_extracted_text(self):
         """PII in extracted_text is anonymized before context building."""
@@ -186,15 +189,19 @@ class TestConvertAttachmentsAppliesSecurity:
             }
         ]
 
-        result = _convert_attachments_to_doc_facts(attachments)
+        doc_facts, deanon_map = _convert_attachments_to_doc_facts(attachments)
 
-        assert len(result) == 1
+        assert len(doc_facts) == 1
         # Codice Fiscale should be anonymized
-        assert "RSSMRA80A01H501U" not in result[0]
+        assert "RSSMRA80A01H501U" not in doc_facts[0]
         # Email should be anonymized
-        assert "test@example.com" not in result[0]
+        assert "test@example.com" not in doc_facts[0]
         # But document structure should be preserved
-        assert "Contratto" in result[0]
+        assert "Contratto" in doc_facts[0]
+        # DEV-007 PII: Deanonymization map should contain original values
+        map_values = list(deanon_map.values())
+        assert "RSSMRA80A01H501U" in map_values
+        assert "test@example.com" in map_values
 
     def test_security_applied_to_extracted_data(self):
         """Security measures applied to extracted_data values too."""
@@ -213,14 +220,14 @@ class TestConvertAttachmentsAppliesSecurity:
             }
         ]
 
-        result = _convert_attachments_to_doc_facts(attachments)
+        doc_facts, deanon_map = _convert_attachments_to_doc_facts(attachments)
 
-        assert len(result) == 1
+        assert len(doc_facts) == 1
         # PII in extracted_data should be anonymized
-        assert "RSSMRA80A01H501U" not in result[0]
-        assert "secret@company.com" not in result[0]
+        assert "RSSMRA80A01H501U" not in doc_facts[0]
+        assert "secret@company.com" not in doc_facts[0]
         # Non-PII values should be preserved
-        assert "1500.00" in result[0]
+        assert "1500.00" in doc_facts[0]
 
 
 class TestConditionalPromptInjection:

@@ -85,7 +85,7 @@ class TestStep41DocumentAnalysisInjection:
         )
         # Verify override is at TOP (starts with it)
         assert selected_prompt.startswith(
-            "# DOCUMENT ANALYSIS MODE"
+            "[System context"
         ), "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
 
     @pytest.mark.asyncio
@@ -134,7 +134,7 @@ class TestStep41DocumentAnalysisInjection:
         )
         # Verify override is at TOP (starts with it)
         assert selected_prompt.startswith(
-            "# DOCUMENT ANALYSIS MODE"
+            "[System context"
         ), "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
 
     @pytest.mark.asyncio
@@ -302,7 +302,7 @@ class TestStep44DocumentAnalysisInjection:
         assert DOCUMENT_ANALYSIS_OVERRIDE in result, "DOCUMENT_ANALYSIS_OVERRIDE should be in result for pure_doc"
         # Verify override is at TOP (starts with it)
         assert result.startswith(
-            "# DOCUMENT ANALYSIS MODE"
+            "[System context"
         ), "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
 
     @patch("app.orchestrators.prompting.rag_step_log")
@@ -333,7 +333,7 @@ class TestStep44DocumentAnalysisInjection:
         assert DOCUMENT_ANALYSIS_OVERRIDE in result, "DOCUMENT_ANALYSIS_OVERRIDE should be in result for hybrid"
         # Verify override is at TOP (starts with it)
         assert result.startswith(
-            "# DOCUMENT ANALYSIS MODE"
+            "[System context"
         ), "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
 
     @patch("app.orchestrators.prompting.rag_step_log")

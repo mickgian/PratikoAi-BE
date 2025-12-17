@@ -444,8 +444,11 @@ class DocumentUploader:
                 threats.append("Document contains excessive null bytes")
 
         # Check for truncated files
-        if content.startswith(b"%PDF") and not content.endswith(b"%%EOF"):
-            threats.append("PDF file appears truncated or malformed")
+        # PDF spec allows trailing whitespace/newlines after %%EOF, so check last 1024 bytes
+        if content.startswith(b"%PDF"):
+            tail = content[-1024:] if len(content) > 1024 else content
+            if b"%%EOF" not in tail:
+                threats.append("PDF file appears truncated or malformed")
 
         return threats
 

@@ -69,6 +69,7 @@ class PIIAnonymizer:
         """Initialize the anonymizer with Italian-specific patterns."""
         self._patterns = self._build_patterns()
         self._name_patterns = self._build_name_patterns()
+        self._street_patterns = self._build_street_patterns()  # DEV-007
         self._anonymization_cache: dict[str, str] = {}
 
     def _build_patterns(self) -> dict[PIIType, list[re.Pattern]]:
@@ -156,6 +157,49 @@ class PIIAnonymizer:
             # Names in quotes or after "mi chiamo", "sono", etc.
             re.compile(r"(?:mi chiamo|sono|il mio nome è)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)", re.IGNORECASE),
             re.compile(r'"([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)"'),
+            # DEV-007: English labels for document/payslip formats
+            # Matches: "Name: John Doe", "Full Name John Smith", "Surname: Rossi"
+            re.compile(
+                r"(?:Name|Full\s*Name|Surname|Nome|Cognome)\s*[:\s]\s*([A-ZÀ-ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-ÿ][a-zà-ÿ]+)*)",
+                re.IGNORECASE,
+            ),
+            # DEV-007: Surname Firstname format with employee code
+            # Matches: "Giannone Michele (MICGIA)"
+            re.compile(
+                r"\b([A-ZÀ-ÿ][a-zà-ÿ]+\s+[A-ZÀ-ÿ][a-zà-ÿ]+)\s*\([A-Z]{3,10}\)",
+                re.IGNORECASE,
+            ),
+            # DEV-007: "Name" followed directly by name on same line
+            # Matches: "Name Giannone Michele"
+            re.compile(
+                r"(?:^|\n)\s*Name\s+([A-ZÀ-ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-ÿ][a-zà-ÿ]+)+)",
+                re.MULTILINE | re.IGNORECASE,
+            ),
+        ]
+
+    def _build_street_patterns(self) -> list[re.Pattern]:
+        """Build patterns for street address detection (NOT CAP/city).
+
+        DEV-007: Only anonymize street name + number.
+        Keep CAP (zip code) and city visible for knowledge base matching.
+
+        Example: "Via dei ciclamini 32, 96018 Pachino Italy"
+        - Anonymize: "Via dei ciclamini 32" → "[INDIRIZZO_XXXX]"
+        - Keep visible: "96018 Pachino Italy"
+        """
+        # Common street prefixes
+        street_prefixes = r"(?:Via|Viale|Piazza|Corso|Largo|P\.za|V\.le|Vicolo|Strada|Contrada|Loc\.|Località)"
+        # Civic number with optional letter suffix (e.g., 32, 15/A, 100B)
+        civic_number = r"\d+(?:\s*[/]?\s*[a-zA-Z])?"
+
+        return [
+            # Italian street patterns: Via/Viale/Piazza + name + civic number
+            # Captures only the street part, stops before comma or CAP (5 digits)
+            re.compile(
+                rf"({street_prefixes}\s+[A-Za-zÀ-ÿ\s']+\s*{civic_number})"
+                r"(?=\s*,\s*\d{5}|\s*\d{5}|\s*$)",  # Lookahead: stops before comma+CAP, CAP, or end
+                re.IGNORECASE,
+            ),
         ]
 
     def _generate_anonymous_replacement(self, pii_type: PIIType, original: str) -> str:
@@ -293,10 +337,39 @@ class PIIAnonymizer:
                         )
                     )
 
-        # Sort matches by position (reverse order for replacement)
-        matches.sort(key=lambda x: x.start_pos, reverse=True)
+        # DEV-007: Check for street addresses (preserving CAP/city for KB matching)
+        for pattern in self._street_patterns:
+            for match in pattern.finditer(text):
+                street = match.group(1) if match.groups() else match.group(0)
+                # Skip if it looks like a very short match (false positive)
+                if len(street) < 8:
+                    continue
+                anonymized_value = self._generate_anonymous_replacement(PIIType.ADDRESS, street)
+                matches.append(
+                    PIIMatch(
+                        pii_type=PIIType.ADDRESS,
+                        original_value=street,
+                        anonymized_value=anonymized_value,
+                        start_pos=match.start(1) if match.groups() else match.start(),
+                        end_pos=match.end(1) if match.groups() else match.end(),
+                        confidence=0.9,
+                    )
+                )
 
-        return matches
+        # DEV-007: Deduplicate matches by (start_pos, end_pos) to avoid double replacement
+        # Multiple patterns can match the same text, causing position corruption
+        seen_positions: set[tuple[int, int]] = set()
+        deduplicated_matches: list[PIIMatch] = []
+        for match in matches:
+            pos_key = (match.start_pos, match.end_pos)
+            if pos_key not in seen_positions:
+                seen_positions.add(pos_key)
+                deduplicated_matches.append(match)
+
+        # Sort matches by position (reverse order for replacement)
+        deduplicated_matches.sort(key=lambda x: x.start_pos, reverse=True)
+
+        return deduplicated_matches
 
     def _calculate_confidence(self, pii_type: PIIType, value: str) -> float:
         """Calculate confidence score for PII detection."""
@@ -475,6 +548,7 @@ class PIIAnonymizer:
             "cached_anonymizations": len(self._anonymization_cache),
             "patterns_count": sum(len(patterns) for patterns in self._patterns.values()),
             "name_patterns_count": len(self._name_patterns),
+            "street_patterns_count": len(self._street_patterns),  # DEV-007
         }
 
     def clear_cache(self):

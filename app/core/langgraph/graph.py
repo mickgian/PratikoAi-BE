@@ -578,19 +578,37 @@ class LangGraphAgent:
 
         return strategy, max_cost
 
-    def _convert_langchain_message_to_dict(self, msg) -> dict:
+    def _convert_langchain_message_to_dict(self, msg) -> dict | None:
         """Convert LangChain message object to plain dict.
 
         LangGraph checkpointer stores messages as LangChain objects (AIMessage,
-        HumanMessage), but our code expects plain dicts with 'role' and 'content'.
+        HumanMessage, SystemMessage), but our code expects plain dicts with
+        'role' and 'content'.
+
+        DEV-007 FIX: System messages are NOW INCLUDED (not filtered).
+        Filtering happens ONLY in __process_messages() for frontend display.
+        This prevents Steps 45-47 from re-inserting system messages every turn,
+        which was causing message index shift and attachment misalignment.
         """
-        # Already a dict - return as-is
+        # Already a dict - pass through (including system role!)
         if isinstance(msg, dict):
             return msg
 
         # LangChain message object - convert to dict
         if hasattr(msg, "content") and hasattr(msg, "type"):
-            role = "assistant" if msg.type == "ai" else "user"
+            # Handle all message types explicitly
+            if msg.type == "system":
+                role = "system"  # Include system messages for graph processing
+            elif msg.type == "ai":
+                role = "assistant"
+            else:
+                role = "user"
+            return {"role": role, "content": msg.content}
+
+        # Handle Pydantic Message objects with role attribute (not type)
+        # DEV-007 FIX: System messages with 'role' attribute are now included.
+        if hasattr(msg, "role") and hasattr(msg, "content"):
+            role = getattr(msg, "role", "user")
             return {"role": role, "content": msg.content}
 
         # Unknown type - try to extract what we can
@@ -627,12 +645,21 @@ class LangGraphAgent:
 
                 # DEV-007 Issue 11e FIX: Convert LangChain message objects to dicts
                 # The checkpointer stores AIMessage/HumanMessage objects, not plain dicts
-                prior_messages = [self._convert_langchain_message_to_dict(msg) for msg in raw_messages]
+                # DEV-007 FIX: Filter out None values (system messages) to prevent prompt leakage
+                prior_messages = [
+                    converted
+                    for msg in raw_messages
+                    if (converted := self._convert_langchain_message_to_dict(msg)) is not None
+                ]
 
+                # Log if any messages were filtered (system messages)
+                filtered_count = len(raw_messages) - len(prior_messages)
                 logger.info(
                     "prior_state_loaded",
                     session_id=session_id,
+                    raw_message_count=len(raw_messages),
                     message_count=len(prior_messages),
+                    filtered_system_messages=filtered_count,
                     attachment_count=len(prior_attachments),
                 )
                 return prior_messages, prior_attachments
@@ -2545,6 +2572,15 @@ class LangGraphAgent:
         self._current_user_id = user_id
         self._current_session_id = session_id
 
+        # DEV-007 FIX: Invalidate conversation cache BEFORE processing new message
+        # This ensures that after page refresh, the fresh checkpoint data is loaded
+        # instead of stale cached data from before this message was processed
+        await cache_service.invalidate_conversation(session_id)
+        logger.debug(
+            "conversation_cache_invalidated_for_new_message",
+            session_id=session_id,
+        )
+
         try:
             logger.debug("checking_graph_initialization", session_id=session_id)
 
@@ -2576,17 +2612,21 @@ class LangGraphAgent:
             if prior_messages:
                 # Check if current message already in history (edge case: retry/duplicate)
                 last_current = current_message_dicts[-1] if current_message_dicts else None
+                last_prior = prior_messages[-1] if prior_messages else None
+                # DEV-007 FIX: Check BOTH role AND content to prevent false matches
+                # Previously only checked content, which could cause Turn 2 to be skipped
                 if (
                     last_current
-                    and prior_messages
-                    and prior_messages[-1].get("content") == last_current.get("content")
+                    and last_prior
+                    and last_prior.get("role") == last_current.get("role")
+                    and last_prior.get("content") == last_current.get("content")
                 ):
                     # Current message already in history, don't duplicate
                     merged_messages = prior_messages
                     logger.debug(
                         "skip_duplicate_message",
                         session_id=session_id,
-                        reason="current message already in history",
+                        reason="current message already in history (role+content match)",
                     )
                 else:
                     # Append current user message to history
@@ -2601,16 +2641,70 @@ class LangGraphAgent:
             else:
                 merged_messages = current_message_dicts
 
-            # DEV-007 Issue 11e: Restore attachments from prior state if none provided
-            # This ensures document context persists across follow-up questions
-            resolved_attachments = attachments or []
-            if not resolved_attachments and prior_attachments:
+            # DEV-007 FIX: Merge attachments and track message_index for correct restoration
+            # Each attachment needs to know which user message it belongs to
+            if attachments:
+                # Calculate message index = count of user messages in PRIOR messages (0-indexed)
+                # First user message = index 0, second user message = index 1, etc.
+                user_msg_count = sum(1 for m in prior_messages if m.get("role") == "user")
+
+                # Add message_index to new attachments
+                for att in attachments:
+                    att["message_index"] = user_msg_count
+
+                # DEV-007 P0.3 FIX: MERGE with deduplication by attachment ID
+                # CRITICAL: Add NEW attachments FIRST, then PRIOR
+                # This ensures new uploads override stale prior attachments with wrong message_index
+                # If user re-uploads same file, the NEW version (with correct message_index) takes precedence
+                seen_ids = set()
+                resolved_attachments = []
+                duplicates_skipped = 0
+
+                # Add NEW attachments FIRST (they have the CORRECT current message_index)
+                for att in attachments:
+                    att_id = att.get("id")
+                    if att_id and att_id not in seen_ids:
+                        seen_ids.add(att_id)
+                        resolved_attachments.append(att)
+
+                # Add PRIOR attachments (skip if already in new - they have stale message_index)
+                for att in prior_attachments:
+                    att_id = att.get("id")
+                    if att_id and att_id not in seen_ids:
+                        seen_ids.add(att_id)
+                        resolved_attachments.append(att)
+                    elif att_id in seen_ids:
+                        duplicates_skipped += 1
+                        logger.info(
+                            "prior_attachment_superseded_by_new",
+                            att_id=att_id,
+                            filename=att.get("filename"),
+                            reason="new_upload_takes_precedence",
+                        )
+
+                logger.info(
+                    "attachments_merged",
+                    session_id=session_id,
+                    new_count=len(attachments),
+                    prior_count=len(prior_attachments),
+                    total=len(resolved_attachments),
+                    duplicates_skipped=duplicates_skipped,
+                    message_index=user_msg_count,
+                    filenames=[a.get("filename", "unknown") for a in attachments],
+                    # DEV-007 DIAGNOSTIC: Log full merged order to verify prior+new sequence
+                    merged_order=[a.get("filename", "unknown") for a in resolved_attachments],
+                    prior_filenames=[a.get("filename", "unknown") for a in prior_attachments],
+                )
+            elif prior_attachments:
+                # No new attachments, restore from checkpoint for follow-up questions
                 resolved_attachments = prior_attachments
                 logger.info(
                     "attachments_restored_from_checkpoint",
                     session_id=session_id,
-                    attachment_count=len(resolved_attachments),
+                    attachment_count=len(prior_attachments),
                 )
+            else:
+                resolved_attachments = []
 
             # DEV-007 Issue 11e FIX: Extract the LAST user message for knowledge retrieval
             # The frontend sends full conversation history, so we need the LAST user message
@@ -2621,6 +2715,10 @@ class LangGraphAgent:
                     user_query_text = msg.content
                     break
 
+            # DEV-007 FIX: Calculate current message index for marking current vs prior attachments
+            # This is the count of prior user messages (0-indexed: first user msg = 0)
+            current_message_index = sum(1 for m in prior_messages if m.get("role") == "user")
+
             initial_state = {
                 "request_id": session_id,  # RAGState requires request_id
                 "messages": merged_messages,  # DEV-007: Now includes full conversation history
@@ -2629,6 +2727,7 @@ class LangGraphAgent:
                 "user_query": user_query_text,  # User query for KB retrieval
                 "streaming": {"requested": True},  # Nested structure for StreamCheck routing
                 "attachments": resolved_attachments,  # DEV-007: File attachments (current or restored)
+                "current_message_index": current_message_index,  # DEV-007 FIX: For marking current vs prior attachments
             }
 
             logger.info(
@@ -2675,6 +2774,37 @@ class LangGraphAgent:
                 graph_exists=self._graph is not None,
                 graph_has_checkpointer=hasattr(self._graph, "checkpointer") if self._graph else False,
             )
+
+            # DEV-007 P0.6 FIX: Update checkpoint state with merged attachments BEFORE ainvoke()
+            # ROOT CAUSE: LangGraph checkpoint restoration REPLACES initial_state when ainvoke() is called
+            # The merge_attachments reducer only fires on state UPDATES during graph execution, NOT on checkpoint LOAD
+            # So we must update the checkpoint state with merged attachments BEFORE calling ainvoke()
+            if resolved_attachments and config_to_use.get("configurable", {}).get("thread_id"):
+                try:
+                    await self._graph.aupdate_state(
+                        config=config_to_use,
+                        values={
+                            "attachments": resolved_attachments,
+                            "current_message_index": current_message_index,
+                        },
+                    )
+                    logger.info(
+                        "DEV007_checkpoint_state_updated_before_ainvoke",
+                        session_id=session_id,
+                        attachment_count=len(resolved_attachments),
+                        current_message_index=current_message_index,
+                        attachment_ids=[a.get("id") for a in resolved_attachments],
+                        filenames=[a.get("filename", "unknown") for a in resolved_attachments],
+                    )
+                except Exception as e:
+                    # Log but don't fail - initial_state will still work for first turn
+                    logger.warning(
+                        "DEV007_checkpoint_state_update_failed",
+                        session_id=session_id,
+                        error=str(e),
+                        error_type=type(e).__name__,
+                        fallback="using_initial_state",
+                    )
 
             # CRITICAL: Yield SSE comment immediately to establish connection
             # This prevents timeout during the 33-second graph execution in ainvoke()
@@ -2980,6 +3110,28 @@ class LangGraphAgent:
             )
 
             if content:
+                # DEV-007 FIX: De-anonymize PII placeholders in buffered content
+                # Previously only the fallback streaming path de-anonymized.
+                # The buffered path was saving PII placeholders to chat history.
+                privacy = state.get("privacy") or {}
+                deanonymization_map = privacy.get("document_deanonymization_map", {})
+                if deanonymization_map:
+                    original_length = len(content)
+                    for placeholder, original in sorted(
+                        deanonymization_map.items(),
+                        key=lambda x: len(x[0]),
+                        reverse=True,
+                    ):
+                        content = content.replace(placeholder, original)
+                    if len(content) != original_length:
+                        logger.info(
+                            "DEV007_buffered_content_deanonymized",
+                            session_id=session_id,
+                            original_length=original_length,
+                            deanonymized_length=len(content),
+                            placeholders_available=len(deanonymization_map),
+                        )
+
                 # Stream the buffered content by chunking at word boundaries
                 logger.info(
                     "DIAGNOSTIC_starting_buffered_streaming_loop",  # pragma: allowlist secret
@@ -3096,6 +3248,17 @@ class LangGraphAgent:
                 provider=provider.provider_type.value if provider else None,
                 model=provider.model if provider else None,
             )
+
+            # DEV-007 FIX: Get de-anonymization map for PII restoration in fallback path
+            privacy = state.get("privacy") or {}
+            deanonymization_map = privacy.get("document_deanonymization_map", {})
+            if deanonymization_map:
+                logger.info(
+                    "fallback_streaming_with_deanonymization",
+                    session_id=session_id,
+                    placeholder_count=len(deanonymization_map),
+                )
+
             async for chunk in provider.stream_completion(  # type: ignore[misc]
                 messages=processed_messages,
                 tools=None,
@@ -3103,12 +3266,25 @@ class LangGraphAgent:
                 max_tokens=settings.MAX_TOKENS,
             ):
                 # Handle both LLMStreamResponse objects and plain strings
+                chunk_content: str | None = None
                 if isinstance(chunk, str):
-                    yield chunk
+                    chunk_content = chunk
                 elif hasattr(chunk, "content") and chunk.content:
-                    yield chunk.content
-                    if hasattr(chunk, "done") and chunk.done:
-                        break
+                    chunk_content = chunk.content
+
+                if chunk_content:
+                    # DEV-007 FIX: De-anonymize streaming content
+                    if deanonymization_map:
+                        for placeholder, original in sorted(
+                            deanonymization_map.items(),
+                            key=lambda x: len(x[0]),
+                            reverse=True,
+                        ):
+                            chunk_content = chunk_content.replace(placeholder, original)
+                    yield chunk_content
+
+                if hasattr(chunk, "done") and chunk.done:
+                    break
 
         except Exception as stream_error:
             # Step 8: InitAgent - Failure logging
@@ -3268,22 +3444,19 @@ class LangGraphAgent:
     async def get_chat_history(self, session_id: str) -> list[Message]:
         """Get the chat history for a given thread ID.
 
+        DEV-007 FIX: ALWAYS read from checkpoint first to prevent race conditions.
+        The cache can contain stale data if page refresh happens during Turn 2 processing.
+        Reading from checkpoint ensures we get the most recent persisted state.
+
         Args:
             session_id (str): The session ID for the conversation.
 
         Returns:
             list[Message]: The chat history.
         """
-        # Try to get cached conversation first
-        try:
-            cached_messages = await cache_service.get_conversation_cache(session_id)
-            if cached_messages:
-                logger.info("conversation_cache_hit", session_id=session_id, message_count=len(cached_messages))
-                return cached_messages
-        except Exception as e:
-            logger.error("conversation_cache_get_failed", error=str(e), session_id=session_id)
-
-        # Get from database if not cached
+        # DEV-007 FIX: Always read from checkpoint for consistency
+        # Previously checked cache first, causing race conditions on page refresh
+        # where Turn 2's user message would show Turn 1's content
         if self._graph is None:
             self._graph = await self.create_graph()
 
@@ -3293,33 +3466,65 @@ class LangGraphAgent:
         # StateSnapshot.values exists but IDE type stubs don't recognize it
         messages = self.__process_messages(state.values["messages"]) if state.values else []  # type: ignore[attr-defined]
 
-        # DEV-007 Issue 3: Extract attachments from checkpoint and attach to first user message
-        # This ensures attachment metadata persists across page refreshes
+        # DEV-007 FIX: Restore attachments to correct messages using message_index
+        # Each attachment has a message_index indicating which user message it belongs to
         if state.values:  # type: ignore[attr-defined]
             checkpoint_attachments = state.values.get("attachments", [])  # type: ignore[attr-defined]
             if checkpoint_attachments and messages:
-                # Convert checkpoint attachment format to AttachmentInfo objects
-                attachment_infos = [
-                    AttachmentInfo(
-                        id=str(a.get("id", "")),
-                        filename=a.get("filename", ""),
-                        type=a.get("mime_type"),
-                    )
-                    for a in checkpoint_attachments
-                    if a.get("id") and a.get("filename")
-                ]
-                # Attach to the first user message (the one that uploaded the file)
-                if attachment_infos:
-                    for msg in messages:
-                        if msg.role == "user":
-                            msg.attachments = attachment_infos
+                # Group attachments by message_index
+                attachments_by_msg_idx: dict[int, list[dict]] = {}
+                for a in checkpoint_attachments:
+                    if a.get("id") and a.get("filename"):
+                        idx = a.get("message_index", 0)  # Default to 0 for backwards compat
+                        attachments_by_msg_idx.setdefault(idx, []).append(a)
+
+                # Assign attachments to correct user messages
+                user_msg_idx = 0
+                for msg in messages:
+                    if msg.role == "user":
+                        if user_msg_idx in attachments_by_msg_idx:
+                            msg.attachments = [
+                                AttachmentInfo(
+                                    id=str(a.get("id", "")),
+                                    filename=a.get("filename", ""),
+                                    type=a.get("mime_type"),
+                                )
+                                for a in attachments_by_msg_idx[user_msg_idx]
+                            ]
                             logger.info(
-                                "attachments_restored_to_history",
+                                "attachments_restored_to_message",
                                 session_id=session_id,
-                                attachment_count=len(attachment_infos),
-                                filenames=[a.filename for a in attachment_infos],
+                                message_index=user_msg_idx,
+                                attachment_count=len(msg.attachments),
+                                filenames=[a.filename for a in msg.attachments],
                             )
-                            break
+                        user_msg_idx += 1
+
+                # DEV-007 FIX: De-anonymize PII placeholders before returning to frontend
+                # PII placeholders like [NOME_E478], [INDIRIZZO_2D50] should be replaced
+                # with original values using pii_map stored with each attachment
+                combined_pii_map: dict[str, str] = {}
+                for att in checkpoint_attachments:
+                    if att.get("pii_map"):
+                        combined_pii_map.update(att["pii_map"])
+
+                if combined_pii_map and messages:
+                    deanon_count = 0
+                    for msg in messages:
+                        if msg.content:
+                            original_content = msg.content
+                            for placeholder, original_value in combined_pii_map.items():
+                                msg.content = msg.content.replace(placeholder, original_value)
+                            if msg.content != original_content:
+                                deanon_count += 1
+
+                    if deanon_count > 0:
+                        logger.info(
+                            "pii_deanonymized_in_chat_history",
+                            session_id=session_id,
+                            messages_deanonymized=deanon_count,
+                            pii_map_size=len(combined_pii_map),
+                        )
 
         # Cache the conversation for future use
         if messages:

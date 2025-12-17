@@ -138,6 +138,71 @@ As the backend developer for an AI application, you must understand AI-specific 
 ⚠️ **Gap 2:** Attachment context only available for single turn (doesn't persist)
 ⚠️ **Gap 3:** query_composition and context_metadata not persisted to query_history
 
+---
+
+## Code Structure Requirements
+
+### Size Guidelines (MANDATORY)
+
+| Component | Max Lines | Guidance |
+|-----------|-----------|----------|
+| Functions | 50 | Extract helpers if larger |
+| Classes | 200 | Split into focused services |
+| Files | 400 | Create submodules |
+| Route handlers | 30 | Delegate to services |
+| LangGraph nodes | 100 | Delegate to orchestrators |
+
+### Structure Rules
+
+- **API Routes:** HTTP handling only, delegate business logic to services
+- **Services:** Single responsibility, use dependency injection via `Depends()`
+- **Orchestrators:** Coordinate multiple services for complex workflows
+- **LangGraph Nodes:** Thin wrappers (<100 lines), call orchestrators/services
+- **Models:** Data definitions only, no business logic
+
+### When to Extract
+
+- Function >50 lines → Extract helper functions
+- Class >200 lines → Split into focused services
+- Method doing multiple things → Split into single-responsibility methods
+- Repeated logic → Extract to utility function
+
+### Pattern: Composition Over Monolith
+
+```python
+# GOOD: Small, composable units
+class ClientService:
+    async def create_client(self, data: ClientCreate) -> Client:
+        self._validate_fiscal_code(data.codice_fiscale)  # ~10 lines
+        client = self._build_client_model(data)          # ~15 lines
+        return await self._persist_client(client)        # ~10 lines
+
+    def _validate_fiscal_code(self, cf: str) -> None:
+        # Validation logic here (single responsibility)
+        ...
+
+    def _build_client_model(self, data: ClientCreate) -> Client:
+        # Model building logic here
+        ...
+
+    async def _persist_client(self, client: Client) -> Client:
+        # Persistence logic here
+        ...
+
+# BAD: Monolithic method
+class ClientService:
+    async def create_client(self, data: ClientCreate) -> Client:
+        # 200+ lines of validation, building, persistence all mixed together
+        ...
+```
+
+### Testability Rules
+
+- Pure functions for business logic (no side effects)
+- Services with DI → Easy to mock dependencies
+- Thin nodes → Test orchestrator logic separately
+- Each method should be testable in isolation
+
 ### Prompt Implementation Patterns
 
 **Required Reading:** `/docs/architecture/PROMPT_ENGINEERING_KNOWLEDGE_BASE.md`

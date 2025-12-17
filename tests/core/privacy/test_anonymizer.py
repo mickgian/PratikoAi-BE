@@ -230,3 +230,172 @@ class TestGlobalAnonymizerInstance:
         assert result.anonymized_text != text
         assert result.pii_matches
         assert "test@example.com" not in result.anonymized_text
+
+
+class TestDEV007EnglishLabelsAndStreetPatterns:
+    """Test cases for DEV-007: English name labels and street address anonymization.
+
+    Critical security fix: Ensures names and addresses in uploaded documents
+    (e.g., payslips with English labels) are anonymized before LLM.
+    """
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.anonymizer = PIIAnonymizer()
+
+    def test_anonymize_english_name_label(self):
+        """Test name after 'Name' label is anonymized."""
+        text = "Name Giannone Michele (MICGIA)"
+        result = self.anonymizer.anonymize_text(text)
+
+        # Name should be anonymized
+        assert "Giannone Michele" not in result.anonymized_text
+        # Placeholder should be present
+        name_matches = [m for m in result.pii_matches if m.pii_type == PIIType.NAME]
+        assert len(name_matches) >= 1
+
+    def test_anonymize_name_with_colon(self):
+        """Test name after 'Name:' label is anonymized."""
+        text = "Name: Mario Rossi"
+        result = self.anonymizer.anonymize_text(text)
+
+        assert "Mario Rossi" not in result.anonymized_text
+        name_matches = [m for m in result.pii_matches if m.pii_type == PIIType.NAME]
+        assert len(name_matches) >= 1
+
+    def test_anonymize_surname_label(self):
+        """Test name after 'Surname' label is anonymized."""
+        text = "Surname: Bianchi"
+        result = self.anonymizer.anonymize_text(text)
+
+        assert "Bianchi" not in result.anonymized_text
+
+    def test_anonymize_full_name_label(self):
+        """Test name after 'Full Name' label is anonymized."""
+        text = "Full Name Giuseppe Verdi"
+        result = self.anonymizer.anonymize_text(text)
+
+        assert "Giuseppe Verdi" not in result.anonymized_text
+
+    def test_anonymize_italian_nome_cognome_labels(self):
+        """Test Italian Nome/Cognome labels are anonymized."""
+        # Test Nome label
+        text1 = "Nome: Luca Bianchi"
+        result1 = self.anonymizer.anonymize_text(text1)
+        assert "Luca Bianchi" not in result1.anonymized_text
+
+        # Test Cognome label separately
+        text2 = "Cognome: Ferrari"
+        result2 = self.anonymizer.anonymize_text(text2)
+        assert "Ferrari" not in result2.anonymized_text
+
+    def test_anonymize_surname_firstname_with_code(self):
+        """Test surname + firstname format with employee code is anonymized."""
+        text = "Employee: Rossi Marco (MARROS)"
+        result = self.anonymizer.anonymize_text(text)
+
+        # The name pattern should match "Rossi Marco" before the code
+        name_matches = [m for m in result.pii_matches if m.pii_type == PIIType.NAME]
+        assert len(name_matches) >= 1
+
+    def test_anonymize_street_preserves_cap_and_city(self):
+        """Test only street name/number anonymized, CAP and city preserved.
+
+        DEV-007: CAP and city are needed for knowledge base matching (tax rules, etc.)
+        """
+        text = "Address Via dei ciclamini 32, 96018 Pachino Italy"
+        result = self.anonymizer.anonymize_text(text)
+
+        # Street should be anonymized
+        assert "Via dei ciclamini" not in result.anonymized_text
+        # Placeholder should be present
+        address_matches = [m for m in result.pii_matches if m.pii_type == PIIType.ADDRESS]
+        assert len(address_matches) >= 1
+        assert "[INDIRIZZO_" in result.anonymized_text
+        # CAP and city should be preserved (needed for KB matching)
+        assert "96018" in result.anonymized_text
+        assert "Pachino" in result.anonymized_text
+
+    def test_anonymize_via_with_cap(self):
+        """Test Via pattern with CAP is correctly anonymized."""
+        text = "Residenza: Via Roma 123, 00100 Roma"
+        result = self.anonymizer.anonymize_text(text)
+
+        # Street should be anonymized
+        assert "Via Roma 123" not in result.anonymized_text
+        # CAP and city preserved
+        assert "00100" in result.anonymized_text
+        assert "Roma" in result.anonymized_text
+
+    def test_anonymize_piazza_address(self):
+        """Test Piazza addresses are anonymized."""
+        text = "Piazza Duomo 5, 20100 Milano"
+        result = self.anonymizer.anonymize_text(text)
+
+        assert "Piazza Duomo 5" not in result.anonymized_text
+        assert "20100" in result.anonymized_text
+        assert "Milano" in result.anonymized_text
+
+    def test_anonymize_viale_address(self):
+        """Test Viale addresses are anonymized."""
+        text = "Viale della Libertà 42, 90100 Palermo"
+        result = self.anonymizer.anonymize_text(text)
+
+        assert "Viale della Libertà 42" not in result.anonymized_text
+        assert "90100" in result.anonymized_text
+
+    def test_anonymize_corso_address(self):
+        """Test Corso addresses are anonymized."""
+        text = "Corso Vittorio Emanuele 100, 10100 Torino"
+        result = self.anonymizer.anonymize_text(text)
+
+        assert "Corso Vittorio Emanuele 100" not in result.anonymized_text
+        assert "10100" in result.anonymized_text
+
+    def test_anonymize_address_with_letter_suffix(self):
+        """Test addresses with letter suffixes (e.g., 32/A) are anonymized."""
+        text = "Via Garibaldi 15/B, 16100 Genova"
+        result = self.anonymizer.anonymize_text(text)
+
+        # Should capture the full civic number with letter
+        assert "Via Garibaldi" not in result.anonymized_text
+        assert "16100" in result.anonymized_text
+
+    def test_payslip_document_full_anonymization(self):
+        """Test full payslip-style document anonymization.
+
+        Simulates a payslip PDF with English labels and Italian address.
+        """
+        text = """
+        PAYSLIP - December 2024
+
+        Name Giannone Michele (MICGIA)
+        Address Via dei ciclamini 32, 96018 Pachino Italy
+        Codice Fiscale: GNNMHL80A01H501U
+        Email: giannone.m@company.com
+
+        Gross Salary: 3500.00 EUR
+        Net Salary: 2450.00 EUR
+        """
+        result = self.anonymizer.anonymize_text(text)
+
+        # All PII should be anonymized
+        assert "Giannone Michele" not in result.anonymized_text
+        assert "Via dei ciclamini" not in result.anonymized_text
+        assert "GNNMHL80A01H501U" not in result.anonymized_text
+        assert "giannone.m@company.com" not in result.anonymized_text
+
+        # Non-PII should be preserved
+        assert "PAYSLIP" in result.anonymized_text
+        assert "December 2024" in result.anonymized_text
+        assert "3500.00" in result.anonymized_text
+        assert "2450.00" in result.anonymized_text
+        # CAP and city preserved
+        assert "96018" in result.anonymized_text
+        assert "Pachino" in result.anonymized_text
+
+    def test_stats_include_street_patterns(self):
+        """Test that stats include street pattern count."""
+        stats = self.anonymizer.get_stats()
+        assert "street_patterns_count" in stats
+        assert stats["street_patterns_count"] > 0

@@ -117,6 +117,153 @@ When a task requires database changes, include this section in the plan:
 - **Review** database schema changes for performance and scalability
 - **Verify** GDPR compliance in data handling decisions
 
+### 6. Task Planning Standards (MANDATORY)
+
+When planning ANY task, follow the standard task structure below. ALL sections are mandatory.
+
+#### Mandatory Task Template
+
+Every task MUST include these sections in this exact order:
+
+```markdown
+### DEV-XXX: [Task Title]
+
+**Reference:** [Link to feature reference document]
+
+**Priority:** [CRITICAL|HIGH|MEDIUM|LOW] | **Effort:** [Xh] | **Status:** NOT STARTED
+
+**Problem:**
+[1-2 sentences describing why this task is needed]
+
+**Solution:**
+[1-2 sentences describing the approach]
+
+**Agent Assignment:** @[Primary] (primary), @[Secondary] (tests/review)
+
+**Dependencies:**
+- **Blocking:** [Tasks that must complete first, or "None"]
+- **Unlocks:** [Tasks enabled by this one]
+
+**Error Handling:** (for Service/API tasks)
+- [Error condition]: HTTP [code], `"[Italian error message]"`
+- ...
+- **Logging:** All errors MUST be logged with context (user_id, operation, resource_id) at ERROR level
+
+**Performance Requirements:** (for Service/API tasks)
+- [Operation]: <[X]ms
+- ...
+
+**Edge Cases:**
+- **[Category]:** [Edge case description] → [expected behavior]
+- ...
+
+**File:** `[path/to/file.py]`
+
+**Fields/Methods/Components:** (depending on task type)
+- [Name]: [type/signature] - [description]
+- ...
+
+**Testing Requirements:**
+- **TDD:** Write `tests/[path]/test_[name].py` FIRST
+- **Unit Tests:**
+  - `test_[name]_[scenario]` - [description]
+  - ...
+- **Edge Case Tests:**
+  - `test_[name]_[edge_case]` - [description]
+  - ...
+- **Integration Tests:** `tests/[path]/test_[name]_integration.py`
+- **Regression Tests:** Run `pytest tests/[path]/` to verify no conflicts
+- **Coverage Target:** [X]%+ for new code
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| [Risk] | [CRITICAL/HIGH/MEDIUM/LOW] | [How to mitigate] |
+
+**Code Structure:**
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] [Criterion 1]
+- [ ] [Criterion 2]
+- [ ] [X]%+ test coverage achieved
+- [ ] All existing tests still pass (regression)
+```
+
+#### Section Requirements by Task Type
+
+| Section | Model | Service | API | LangGraph | Frontend |
+|---------|-------|---------|-----|-----------|----------|
+| Reference | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Priority/Effort/Status | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Agent Assignment | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Dependencies | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Error Handling | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Performance Reqs | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Edge Cases | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Problem/Solution | ✅ | ✅ | ✅ | ✅ | ✅ |
+| File | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Fields/Methods | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Testing Requirements | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Risks & Mitigations | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Code Structure | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Acceptance Criteria | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+#### Code Size Limits (Backend - Python/FastAPI)
+
+| Component | Max Lines | Action if Exceeded |
+|-----------|-----------|-------------------|
+| Functions | 50 | Extract helper functions |
+| Classes | 200 | Split into focused services |
+| Files | 400 | Create submodules |
+| LangGraph nodes | 100 | Delegate to orchestrators |
+| API route handlers | 30 | Delegate to services |
+
+#### Code Size Limits (Frontend - Next.js/React)
+
+| Component | Max Lines | Action if Exceeded |
+|-----------|-----------|-------------------|
+| Page files | 100 | Delegate to components |
+| React components | 150 | Extract sub-components |
+| Custom hooks | 50 | Split into smaller hooks |
+| API clients | 100 | One resource per file |
+
+#### Edge Cases Categories (Required Coverage)
+
+Every task MUST address these edge case categories where applicable:
+
+1. **Nulls/Empty:** Null fields, empty strings, missing optional values
+2. **Boundaries:** Limits (100 clients), pagination (page 0, beyond max)
+3. **Concurrency:** Race conditions, advisory locks, optimistic locking
+4. **Validation:** Invalid formats, special characters, normalization
+5. **Soft Delete:** Deleted item queries, reactivation, cascade effects
+6. **Tenant Isolation:** Wrong tenant, null tenant, cross-tenant access
+7. **Error Recovery:** Partial failures, retries, graceful degradation
+
+#### Structure Principles to Enforce
+
+- **API Routes:** HTTP handling only, delegate business logic to services
+- **Services:** Single responsibility, use dependency injection
+- **Orchestrators:** Coordinate multiple services for complex workflows
+- **LangGraph Nodes:** Thin wrappers (<100 lines), call orchestrators/services
+- **Components:** Single responsibility, props-only dependencies
+- **Hooks:** One concern per hook, return typed values
+
+#### When to Flag Task Quality Issues
+
+Reject or request revision if:
+- Missing mandatory sections (see template above)
+- No Edge Cases section or fewer than 5 edge cases for service tasks
+- No Error Handling section for service/API tasks
+- Error Handling section missing logging requirements
+- Testing Requirements missing Edge Case Tests
+- Dependencies section incomplete (missing Blocking or Unlocks)
+- Acceptance Criteria doesn't include TDD and coverage requirements
+- Task implies a single 500+ line file without submodule plan
+
 ---
 
 ## Veto Authority
@@ -334,6 +481,57 @@ Next Review: [15th of next month]
 - Code quality: 100% Ruff compliance, MyPy validation
 - Documentation: Every ADR includes context, decision, consequences
 - GDPR: 100% compliance (data export, deletion, consent management)
+
+### Error Handling & Logging Standards (MANDATORY)
+
+**All error handling MUST include structured logging for Docker log visibility.**
+
+**Why:** In containerized environments (Docker/Kubernetes), logs are the primary debugging tool. Silent error handling makes production issues impossible to diagnose.
+
+**Logging Requirements:**
+- Every caught exception MUST be logged before handling
+- Use appropriate log levels:
+  - `ERROR`: Exceptions, failures, data corruption
+  - `WARNING`: Recoverable issues, retries, fallbacks
+  - `INFO`: Successful operations (optional, for auditing)
+  - `DEBUG`: Development/troubleshooting (disabled in prod)
+- Include context in every log entry:
+  - `user_id`: Who triggered the action
+  - `operation`: What was being attempted
+  - `resource_id`: What resource was affected (client_id, studio_id, etc.)
+  - `error_type`: Exception class name
+  - `error_message`: Human-readable description
+
+**Structured Logging Format (JSON for Docker parsing):**
+```python
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+# Example: Logging an error
+try:
+    result = await service.process(data)
+except NotFoundException as e:
+    logger.error(
+        "resource_not_found",
+        user_id=current_user.id,
+        operation="client_lookup",
+        client_id=client_id,
+        error_type=type(e).__name__,
+        error_message=str(e),
+    )
+    raise HTTPException(status_code=404, detail="Cliente non trovato")
+except Exception as e:
+    logger.exception(
+        "unexpected_error",
+        user_id=current_user.id,
+        operation="client_lookup",
+        client_id=client_id,
+    )
+    raise HTTPException(status_code=500, detail="Errore interno del server")
+```
+
+**Veto Trigger:** Any code that catches exceptions without logging will be REJECTED.
 
 ### Technology Preferences
 - **Simplicity over cleverness** - Avoid over-engineering
@@ -890,10 +1088,12 @@ CREATE INDEX idx_qh_user_timestamp ON query_history(user_id, timestamp DESC);
 | 2025-12-12 | Added Evaluation & Metrics, Cost Optimization, Italian Legal/Tax expertise | Phase 2: Domain-specific knowledge expansion |
 | 2025-12-12 | Added Prompt Architecture Authority section | Phase 4: Prompt engineering expertise |
 | 2025-12-13 | Added Migration Planning Triggers section | Proactive migration planning in task design |
+| 2025-12-16 | Added Task Planning Standards section | Complete mandatory task template with all required sections, edge case categories, and quality flags |
+| 2025-12-16 | Added Error Handling & Logging Standards | Mandatory structured logging for Docker log visibility |
 
 ---
 
 **Configuration Status:** 🟢 ACTIVE
-**Last Updated:** 2025-12-13
+**Last Updated:** 2025-12-16
 **Next Monthly Report Due:** 2025-12-15
 **Maintained By:** PratikoAI System Administrator

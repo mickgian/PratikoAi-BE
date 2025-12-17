@@ -175,6 +175,159 @@ class TestConversationContextMergingLogic:
         assert resolved_attachments[0]["filename"] == "new_file.pdf"
 
 
+class TestSystemMessageFiltering:
+    """Tests for DEV-007 system message handling.
+
+    System messages are included in graph processing to prevent duplicate insertion.
+    Filtering for frontend happens ONLY in __process_messages().
+    """
+
+    @pytest.mark.asyncio
+    async def test_includes_system_messages_in_prior_state(self):
+        """Should INCLUDE system messages in prior state for graph processing.
+
+        DEV-007 FIX: System messages are now included (not filtered) to prevent
+        Steps 45-47 from re-inserting system messages every turn.
+        Filtering happens ONLY in __process_messages() for frontend display.
+        """
+        agent = LangGraphAgent()
+        agent._graph = MagicMock()
+
+        # Simulate checkpoint with system message
+        mock_system_msg = MagicMock()
+        mock_system_msg.type = "system"
+        mock_system_msg.content = "You are PratikoAI, an expert assistant..."
+
+        mock_user_msg = MagicMock()
+        mock_user_msg.type = "human"
+        mock_user_msg.content = "What is INPS message 3585?"
+
+        mock_ai_msg = MagicMock()
+        mock_ai_msg.type = "ai"
+        mock_ai_msg.content = "INPS message 3585 is about..."
+
+        mock_state = MagicMock()
+        mock_state.values = {
+            "messages": [mock_system_msg, mock_user_msg, mock_ai_msg],
+            "attachments": [],
+        }
+        agent._graph.aget_state = AsyncMock(return_value=mock_state)
+
+        prior_messages, _ = await agent._get_prior_state("session-123")
+
+        # System message should now be INCLUDED for graph processing
+        assert len(prior_messages) == 3
+        assert prior_messages[0]["role"] == "system"
+        assert prior_messages[0]["content"] == "You are PratikoAI, an expert assistant..."
+        assert prior_messages[1]["role"] == "user"
+        assert prior_messages[1]["content"] == "What is INPS message 3585?"
+        assert prior_messages[2]["role"] == "assistant"
+        assert prior_messages[2]["content"] == "INPS message 3585 is about..."
+
+    @pytest.mark.asyncio
+    async def test_includes_system_dict_in_prior_state(self):
+        """Should INCLUDE dict-based system messages for graph processing."""
+        agent = LangGraphAgent()
+        agent._graph = MagicMock()
+
+        mock_state = MagicMock()
+        mock_state.values = {
+            "messages": [
+                {"role": "system", "content": "System prompt..."},
+                {"role": "user", "content": "Hello"},
+                {"role": "assistant", "content": "Hi there!"},
+            ],
+            "attachments": [],
+        }
+        agent._graph.aget_state = AsyncMock(return_value=mock_state)
+
+        prior_messages, _ = await agent._get_prior_state("session-456")
+
+        # System message should be INCLUDED
+        assert len(prior_messages) == 3
+        assert prior_messages[0]["role"] == "system"
+        assert prior_messages[1]["role"] == "user"
+        assert prior_messages[2]["role"] == "assistant"
+
+    def test_convert_langchain_message_includes_system(self):
+        """_convert_langchain_message_to_dict should INCLUDE system messages as dicts.
+
+        DEV-007 FIX: System messages are now included (not filtered) to prevent
+        Steps 45-47 from re-inserting system messages every turn.
+        Filtering happens ONLY in __process_messages() for frontend display.
+        """
+        agent = LangGraphAgent()
+
+        # Test LangChain SystemMessage object
+        mock_system_msg = MagicMock()
+        mock_system_msg.type = "system"
+        mock_system_msg.content = "System prompt..."
+
+        result = agent._convert_langchain_message_to_dict(mock_system_msg)
+        assert result == {"role": "system", "content": "System prompt..."}
+
+        # Test dict with role="system" - should pass through unchanged
+        dict_system_msg = {"role": "system", "content": "System prompt..."}
+        result = agent._convert_langchain_message_to_dict(dict_system_msg)
+        assert result == {"role": "system", "content": "System prompt..."}
+
+    def test_convert_pydantic_message_includes_system(self):
+        """_convert_langchain_message_to_dict should INCLUDE Pydantic Message with role=system.
+
+        DEV-007 FIX: System messages are now included (not filtered) to prevent
+        Steps 45-47 from re-inserting system messages every turn.
+        """
+        agent = LangGraphAgent()
+
+        # Simulate Pydantic Message object (has 'role', not 'type')
+        mock_pydantic_msg = MagicMock(spec=["role", "content"])  # Only has role and content
+        mock_pydantic_msg.role = "system"
+        mock_pydantic_msg.content = "You are PratikoAI, an expert assistant..."
+
+        result = agent._convert_langchain_message_to_dict(mock_pydantic_msg)
+        assert result == {"role": "system", "content": "You are PratikoAI, an expert assistant..."}
+
+    def test_convert_pydantic_message_handles_user_and_assistant(self):
+        """_convert_langchain_message_to_dict should properly convert Pydantic Message objects."""
+        agent = LangGraphAgent()
+
+        # Test Pydantic Message with role="user"
+        mock_user_msg = MagicMock(spec=["role", "content"])
+        mock_user_msg.role = "user"
+        mock_user_msg.content = "Hello, how can you help?"
+
+        result = agent._convert_langchain_message_to_dict(mock_user_msg)
+        assert result == {"role": "user", "content": "Hello, how can you help?"}
+
+        # Test Pydantic Message with role="assistant"
+        mock_assistant_msg = MagicMock(spec=["role", "content"])
+        mock_assistant_msg.role = "assistant"
+        mock_assistant_msg.content = "I can help with tax questions."
+
+        result = agent._convert_langchain_message_to_dict(mock_assistant_msg)
+        assert result == {"role": "assistant", "content": "I can help with tax questions."}
+
+    def test_convert_langchain_message_handles_user_and_assistant(self):
+        """_convert_langchain_message_to_dict should properly convert user/assistant."""
+        agent = LangGraphAgent()
+
+        # Test AI message
+        mock_ai_msg = MagicMock()
+        mock_ai_msg.type = "ai"
+        mock_ai_msg.content = "Response"
+
+        result = agent._convert_langchain_message_to_dict(mock_ai_msg)
+        assert result == {"role": "assistant", "content": "Response"}
+
+        # Test human message
+        mock_human_msg = MagicMock()
+        mock_human_msg.type = "human"
+        mock_human_msg.content = "Question"
+
+        result = agent._convert_langchain_message_to_dict(mock_human_msg)
+        assert result == {"role": "user", "content": "Question"}
+
+
 class TestRealWorldScenariosMergeLogic:
     """Test merging logic for real-world scenarios."""
 

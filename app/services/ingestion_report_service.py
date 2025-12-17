@@ -381,10 +381,7 @@ class IngestionReportService:
             ki_result = await self.db.execute(ki_query)
             documents_added = ki_result.scalar() or 0
 
-            # Skip feeds with no documents on this date
-            if documents_added == 0:
-                continue
-
+            # Show ALL feeds (even with 0 documents) so user can see complete picture
             # Documents in KnowledgeItem are successfully processed
             # (failed documents don't get added to the knowledge base)
             stats = SourceStats(
@@ -481,6 +478,33 @@ class IngestionReportService:
                     documents_processed=cassazione_count,
                     documents_succeeded=cassazione_count,
                     documents_added_to_db=cassazione_count,
+                    total_chunks=chunk_stats["total"],
+                    junk_chunks=chunk_stats["junk"],
+                )
+            )
+
+        # Fallback: Check for regulatory_update (legacy source name from before fix)
+        # This catches documents created before KnowledgeIntegrator was fixed to use
+        # the source from document_data
+        regulatory_query = select(func.count(KnowledgeItem.id)).where(
+            and_(
+                KnowledgeItem.source == "regulatory_update",
+                KnowledgeItem.created_at >= start_dt,
+                KnowledgeItem.created_at < end_dt,
+            )
+        )
+        regulatory_result = await self.db.execute(regulatory_query)
+        regulatory_count = regulatory_result.scalar() or 0
+
+        if regulatory_count > 0:
+            chunk_stats = await self._get_chunk_stats_for_source("regulatory_update", start_dt, end_dt)
+            stats_list.append(
+                SourceStats(
+                    source_name="Regulatory Update (Legacy)",
+                    source_type="scraper",
+                    documents_processed=regulatory_count,
+                    documents_succeeded=regulatory_count,
+                    documents_added_to_db=regulatory_count,
                     total_chunks=chunk_stats["total"],
                     junk_chunks=chunk_stats["junk"],
                 )

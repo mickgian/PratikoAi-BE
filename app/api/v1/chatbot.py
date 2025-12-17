@@ -724,7 +724,9 @@ async def get_session_history(
             )
 
         # Retrieve history from PostgreSQL
+        # DEV-007 FIX: Add required user_id parameter
         messages = await chat_history_service.get_session_history(
+            user_id=session.user_id,
             session_id=session_id,
             limit=limit,
             offset=offset,

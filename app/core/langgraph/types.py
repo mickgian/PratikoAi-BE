@@ -4,6 +4,7 @@ import logging
 import time
 from contextlib import contextmanager
 from typing import (
+    Annotated,
     Any,
     List,
     Optional,
@@ -12,6 +13,93 @@ from typing import (
 
 # Get logger for rag_step_log
 logger = logging.getLogger(__name__)
+
+
+def merge_messages(existing: list[dict] | None, new: list[dict] | None) -> list[dict]:
+    """Custom reducer that MERGES messages instead of replacing.
+
+    LangGraph calls this reducer when state["messages"] is updated.
+    Without a reducer, updates REPLACE the entire list.
+    With this reducer, new messages are APPENDED, avoiding duplicates.
+
+    DEV-007 FIX: Prevents page refresh checkpoint corruption where
+    Turn 2's messages would be lost/corrupted because checkpoint
+    REPLACED messages instead of MERGING them.
+
+    Args:
+        existing: Current messages in checkpoint (may be None)
+        new: New messages being set (may be None)
+
+    Returns:
+        Merged list with duplicates removed by (role, content) tuple
+    """
+    if existing is None:
+        return new or []
+    if new is None:
+        return existing
+
+    # Build set of existing (role, content) tuples for deduplication
+    existing_keys = {(msg.get("role"), msg.get("content")) for msg in existing if isinstance(msg, dict)}
+
+    # Start with existing messages
+    merged = list(existing)
+
+    # Add new messages that don't already exist
+    for msg in new:
+        if isinstance(msg, dict):
+            key = (msg.get("role"), msg.get("content"))
+            if key not in existing_keys:
+                merged.append(msg)
+                existing_keys.add(key)
+
+    return merged
+
+
+def merge_attachments(existing: list[dict] | None, new: list[dict] | None) -> list[dict]:
+    """Custom reducer that MERGES attachments instead of replacing.
+
+    LangGraph calls this reducer when state["attachments"] is updated.
+    Without a reducer, updates REPLACE the entire list.
+    With this reducer, new attachments are MERGED, with newer uploads
+    taking priority over stale checkpoint data.
+
+    DEV-007 P0.5 FIX: Prevents attachments from being lost during
+    graph execution when nodes update state without including attachments.
+
+    Priority: NEW attachments override PRIOR attachments with same ID
+    (because new uploads have correct current message_index).
+
+    Args:
+        existing: Current attachments in checkpoint (may be None)
+        new: New attachments being set (may be None)
+
+    Returns:
+        Merged list with duplicates removed by attachment ID,
+        preferring newer attachments over existing ones.
+    """
+    if existing is None:
+        return new or []
+    if new is None:
+        return existing
+
+    # Build map of existing attachments by ID
+    merged_by_id = {}
+
+    # Add existing attachments first
+    for att in existing:
+        if isinstance(att, dict):
+            att_id = att.get("id")
+            if att_id:
+                merged_by_id[att_id] = att
+
+    # Add/override with new attachments (NEW takes priority)
+    for att in new:
+        if isinstance(att, dict):
+            att_id = att.get("id")
+            if att_id:
+                merged_by_id[att_id] = att  # Override existing with new
+
+    return list(merged_by_id.values())
 
 
 class RAGState(TypedDict, total=False):
@@ -26,7 +114,10 @@ class RAGState(TypedDict, total=False):
     session_id: str
     user_id: str | None
     user_query: str | None  # Original user query text
-    messages: list[dict]  # original request messages (as dicts)
+    # DEV-007 FIX: Use merge_messages reducer to MERGE messages in checkpoint
+    # Without reducer: checkpoint REPLACES messages (causes Turn 2 corruption after refresh)
+    # With reducer: checkpoint MERGES messages (appends new, dedupes by role+content)
+    messages: Annotated[list[dict], merge_messages]  # original request messages (as dicts)
     streaming: dict | None  # Phase 7: {requested, setup, mode, channel, chunks_sent, done, ...}
 
     # Phase 6 Request/Privacy fields
@@ -44,12 +135,18 @@ class RAGState(TypedDict, total=False):
     # facts & attachments
     atomic_facts: list[dict] | None
     canonical_facts: list[dict] | None
-    attachments: list[dict] | None  # incl. hashes
+    # DEV-007 P0.5 FIX: Use merge_attachments reducer to MERGE attachments in checkpoint
+    # Without reducer: checkpoint REPLACES attachments (causes Turn 2 new uploads to be lost)
+    # With reducer: checkpoint MERGES attachments (new uploads preserved with correct message_index)
+    attachments: Annotated[list[dict] | None, merge_attachments]  # incl. hashes
     doc_facts: list[dict] | None
 
     # DEV-007 Issue 9: Query composition for adaptive context prioritization
     # Values: "pure_kb", "pure_doc", "hybrid", "chat" (from QueryComposition enum)
     query_composition: str | None
+
+    # DEV-007 FIX: Index of current user message for marking current vs prior attachments
+    current_message_index: int | None
 
     # golden/knowledge
     golden_hit: bool | None
@@ -159,6 +256,6 @@ def rag_step_timer(step: int):
 
 
 # For backwards compatibility, also export GraphState
-from app.schemas.graph import GraphState
+from app.schemas.graph import GraphState  # noqa: E402
 
-__all__ = ["RAGState", "rag_step_log", "rag_step_timer", "GraphState"]
+__all__ = ["RAGState", "rag_step_log", "rag_step_timer", "GraphState", "merge_messages", "merge_attachments"]

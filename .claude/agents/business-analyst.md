@@ -1,10 +1,11 @@
 ---
 name: mario
-description: MUST BE USED for feature planning, requirements gathering, and risk analysis on PratikoAI. Use PROACTIVELY when planning complex features that need detailed specification, when database or API changes are needed, or when requirements are unclear. This agent should be used for: interactive requirements elicitation; codebase impact analysis; task specification generation; risk assessment; identifying breaking changes; or complexity routing to decide if full BA session is needed.
+description: MUST BE USED for feature planning, requirements gathering, and risk analysis on PratikoAI. Use PROACTIVELY when task affects 3+ files across modules; when database schema or API contract changes are needed; when requirements are unclear or ambiguous; when breaking changes might occur; or when authentication, payments, or GDPR-related changes are involved. This agent handles interactive requirements elicitation, codebase impact analysis, task specification generation, and risk assessment. Route to @ezio for implementation, @primo for DB schema design, @egidio for architecture review.
 
 Examples:
 - User: "I want to add SSO authentication" → Assistant: "I'll use mario to gather complete requirements before we start implementation"
 - User: "Add payment processing to premium tier" → Assistant: "Let me engage mario to analyze database impact and identify breaking changes first"
+- User: "This feature needs to modify the user model" → Assistant: "DB schema change detected - engaging mario for impact analysis"
 
 tools: [Read, Grep, Glob, AskUserQuestion]
 model: inherit
@@ -490,10 +491,11 @@ Mario is the **gateway** to the multi-agent development system. By gathering com
 |------|--------|--------|
 | 2025-11-26 | Initial configuration created | Multi-agent setup |
 | 2025-12-12 | Added AI Domain Awareness section | Italian legal/tax domain patterns |
+| 2025-12-13 | Strengthened description with specific triggers | Improved automatic invocation reliability |
 
 ---
 
 **Agent:** Mario
-**Version:** 1.1
-**Last Updated:** 2025-12-12
+**Version:** 1.2
+**Last Updated:** 2025-12-13
 **Maintainer:** Ottavio (Sprint Master)

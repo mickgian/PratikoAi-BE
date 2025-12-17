@@ -1116,12 +1116,13 @@ class CassazioneScraper:
                     if not page_decisions:
                         break
 
-                    # Filter by date range and sections
+                    # Filter by date range only (section filtering deferred to detail page)
+                    # Note: Section detection from list page is unreliable - we filter after
+                    # fetching the detail page where section keywords are present
                     for dec in page_decisions:
                         if dec.get("decision_date"):
                             if start_date <= dec["decision_date"] <= end_date:
-                                if dec.get("section") in sections:
-                                    all_decisions.append(dec)
+                                all_decisions.append(dec)
 
                     # Check if we've gone past the date range (decisions are sorted newest first)
                     oldest_on_page = min(
@@ -1176,6 +1177,15 @@ class CassazioneScraper:
                     decisions_processed += 1
 
                     if decision:
+                        # Filter by section (now that we have the detail page with accurate section info)
+                        if decision.section not in sections:
+                            logger.debug(
+                                f"cassazione_decision_skipped_section "
+                                f"decision_number={decision.decision_number} "
+                                f"section={decision.section} requested_sections={sections}"
+                            )
+                            continue
+
                         # Save to database via KnowledgeIntegrator
                         result = await self.save_decision_to_database(decision)
                         if result.get("success"):

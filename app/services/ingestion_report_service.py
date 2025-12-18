@@ -341,6 +341,9 @@ class IngestionReportService:
     async def _get_rss_stats(self, report_date: date) -> list[SourceStats]:
         """Get statistics for RSS feed ingestion.
 
+        Query KnowledgeItem directly instead of relying on DocumentProcessingLog,
+        since RSS ingestion writes to KnowledgeItem but not DocumentProcessingLog.
+
         Args:
             report_date: Date to get stats for
 
@@ -354,13 +357,43 @@ class IngestionReportService:
         feed_result = await self.db.execute(feed_query)
         feeds = feed_result.scalars().all()
 
+        # Time range for the report date
+        start_dt = datetime.combine(report_date, datetime.min.time()).replace(tzinfo=UTC)
+        end_dt = start_dt + timedelta(days=1)
+
         for feed in feeds:
-            source_name = feed.source or feed.feed_type or "unknown"
+            # Match the source_identifier format used in rss_normativa.py:
+            # source_identifier = f"{source_name}_{feed_type or 'generic'}"
+            if feed.source and feed.feed_type:
+                source_name = f"{feed.source}_{feed.feed_type}"
+            else:
+                source_name = feed.source or feed.feed_type or "unknown"
 
-            # Get processing logs for this feed on report_date
-            start_dt = datetime.combine(report_date, datetime.min.time()).replace(tzinfo=UTC)
-            end_dt = start_dt + timedelta(days=1)
+            # Query KnowledgeItem directly to count documents for this source
+            # RSS ingestion writes to KnowledgeItem, not DocumentProcessingLog
+            ki_query = select(func.count(KnowledgeItem.id)).where(
+                and_(
+                    KnowledgeItem.source == source_name,
+                    KnowledgeItem.created_at >= start_dt,
+                    KnowledgeItem.created_at < end_dt,
+                )
+            )
+            ki_result = await self.db.execute(ki_query)
+            documents_added = ki_result.scalar() or 0
 
+            # Show ALL feeds (even with 0 documents) so user can see complete picture
+            # Documents in KnowledgeItem are successfully processed
+            # (failed documents don't get added to the knowledge base)
+            stats = SourceStats(
+                source_name=source_name,
+                source_type="rss",
+                documents_processed=documents_added,
+                documents_succeeded=documents_added,
+                documents_failed=0,  # If in KB, it succeeded
+                documents_added_to_db=documents_added,
+            )
+
+            # Optionally get processing time from DocumentProcessingLog if available
             log_query = select(DocumentProcessingLog).where(
                 and_(
                     DocumentProcessingLog.feed_url == feed.feed_url,
@@ -371,33 +404,12 @@ class IngestionReportService:
             log_result = await self.db.execute(log_query)
             logs = log_result.scalars().all()
 
-            if not logs:
-                continue
-
-            # Calculate metrics
-            stats = SourceStats(
-                source_name=source_name,
-                source_type="rss",
-                documents_processed=len(logs),
-                documents_succeeded=len([log for log in logs if log.status == "success"]),
-                documents_failed=len([log for log in logs if log.status == "failed"]),
-            )
-
-            # Get avg processing time
-            processing_times = [log.processing_time_ms for log in logs if log.processing_time_ms]
-            if processing_times:
-                stats.avg_processing_time_ms = sum(processing_times) / len(processing_times)
-
-            # Get documents added to knowledge base for this source
-            ki_query = select(func.count(KnowledgeItem.id)).where(
-                and_(
-                    KnowledgeItem.source == source_name,
-                    KnowledgeItem.created_at >= start_dt,
-                    KnowledgeItem.created_at < end_dt,
-                )
-            )
-            ki_result = await self.db.execute(ki_query)
-            stats.documents_added_to_db = ki_result.scalar() or 0
+            if logs:
+                processing_times = [log.processing_time_ms for log in logs if log.processing_time_ms]
+                if processing_times:
+                    stats.avg_processing_time_ms = sum(processing_times) / len(processing_times)
+                # Update failed count if logs show failures
+                stats.documents_failed = len([log for log in logs if log.status == "failed"])
 
             # Get chunk statistics
             chunk_stats = await self._get_chunk_stats_for_source(source_name, start_dt, end_dt)
@@ -432,19 +444,23 @@ class IngestionReportService:
         gazzetta_result = await self.db.execute(gazzetta_query)
         gazzetta_count = gazzetta_result.scalar() or 0
 
-        if gazzetta_count > 0:
-            chunk_stats = await self._get_chunk_stats_for_source("gazzetta_ufficiale", start_dt, end_dt)
-            stats_list.append(
-                SourceStats(
-                    source_name="Gazzetta Ufficiale",
-                    source_type="scraper",
-                    documents_processed=gazzetta_count,
-                    documents_succeeded=gazzetta_count,
-                    documents_added_to_db=gazzetta_count,
-                    total_chunks=chunk_stats["total"],
-                    junk_chunks=chunk_stats["junk"],
-                )
+        # Always show Gazzetta in report, even with 0 documents
+        chunk_stats = (
+            await self._get_chunk_stats_for_source("gazzetta_ufficiale", start_dt, end_dt)
+            if gazzetta_count > 0
+            else {"total": 0, "junk": 0}
+        )
+        stats_list.append(
+            SourceStats(
+                source_name="Gazzetta Ufficiale",
+                source_type="scraper",
+                documents_processed=gazzetta_count,
+                documents_succeeded=gazzetta_count,
+                documents_added_to_db=gazzetta_count,
+                total_chunks=chunk_stats["total"],
+                junk_chunks=chunk_stats["junk"],
             )
+        )
 
         # Check for Cassazione scraper activity
         cassazione_query = select(func.count(KnowledgeItem.id)).where(
@@ -457,15 +473,46 @@ class IngestionReportService:
         cassazione_result = await self.db.execute(cassazione_query)
         cassazione_count = cassazione_result.scalar() or 0
 
-        if cassazione_count > 0:
-            chunk_stats = await self._get_chunk_stats_for_source("cassazione", start_dt, end_dt)
+        # Always show Cassazione in report, even with 0 documents
+        chunk_stats = (
+            await self._get_chunk_stats_for_source("cassazione", start_dt, end_dt)
+            if cassazione_count > 0
+            else {"total": 0, "junk": 0}
+        )
+        stats_list.append(
+            SourceStats(
+                source_name="Cassazione",
+                source_type="scraper",
+                documents_processed=cassazione_count,
+                documents_succeeded=cassazione_count,
+                documents_added_to_db=cassazione_count,
+                total_chunks=chunk_stats["total"],
+                junk_chunks=chunk_stats["junk"],
+            )
+        )
+
+        # Fallback: Check for regulatory_update (legacy source name from before fix)
+        # This catches documents created before KnowledgeIntegrator was fixed to use
+        # the source from document_data
+        regulatory_query = select(func.count(KnowledgeItem.id)).where(
+            and_(
+                KnowledgeItem.source == "regulatory_update",
+                KnowledgeItem.created_at >= start_dt,
+                KnowledgeItem.created_at < end_dt,
+            )
+        )
+        regulatory_result = await self.db.execute(regulatory_query)
+        regulatory_count = regulatory_result.scalar() or 0
+
+        if regulatory_count > 0:
+            chunk_stats = await self._get_chunk_stats_for_source("regulatory_update", start_dt, end_dt)
             stats_list.append(
                 SourceStats(
-                    source_name="Cassazione",
+                    source_name="Regulatory Update (Legacy)",
                     source_type="scraper",
-                    documents_processed=cassazione_count,
-                    documents_succeeded=cassazione_count,
-                    documents_added_to_db=cassazione_count,
+                    documents_processed=regulatory_count,
+                    documents_succeeded=regulatory_count,
+                    documents_added_to_db=regulatory_count,
                     total_chunks=chunk_stats["total"],
                     junk_chunks=chunk_stats["junk"],
                 )
@@ -650,6 +697,9 @@ class IngestionReportService:
     async def _get_previous_week_stats(self, report_date: date) -> dict[str, Any] | None:
         """Get statistics from previous week for WoW comparison.
 
+        Query KnowledgeItem directly since RSS ingestion writes to KnowledgeItem,
+        not DocumentProcessingLog.
+
         Args:
             report_date: Current report date
 
@@ -660,20 +710,8 @@ class IngestionReportService:
         start_dt = datetime.combine(prev_week_date, datetime.min.time()).replace(tzinfo=UTC)
         end_dt = start_dt + timedelta(days=1)
 
-        # Get processing logs from previous week
-        log_query = select(DocumentProcessingLog).where(
-            and_(
-                DocumentProcessingLog.created_at >= start_dt,
-                DocumentProcessingLog.created_at < end_dt,
-            )
-        )
-        log_result = await self.db.execute(log_query)
-        logs = log_result.scalars().all()
-
-        documents_processed = len(logs)
-        documents_succeeded = len([log for log in logs if log.status == "success"])
-
-        # Get documents added from previous week
+        # Get documents added from previous week (from KnowledgeItem directly)
+        # Documents in KnowledgeItem are successfully processed
         ki_query = select(func.count(KnowledgeItem.id)).where(
             and_(
                 KnowledgeItem.created_at >= start_dt,
@@ -682,6 +720,9 @@ class IngestionReportService:
         )
         ki_result = await self.db.execute(ki_query)
         documents_added = ki_result.scalar() or 0
+
+        # Documents processed = documents added (documents in KB are successfully processed)
+        documents_processed = documents_added
 
         # Get chunk stats from previous week
         chunk_query = select(KnowledgeItem.id).where(
@@ -709,7 +750,8 @@ class IngestionReportService:
             junk_r = await self.db.execute(junk_q)
             junk_chunks = junk_r.scalar() or 0
 
-        success_rate = (documents_succeeded / documents_processed * 100) if documents_processed > 0 else 0.0
+        # Success rate is 100% for documents in KB (they succeeded to be stored)
+        success_rate = 100.0 if documents_processed > 0 else 0.0
         junk_rate = (junk_chunks / total_chunks * 100) if total_chunks > 0 else 0.0
 
         return {

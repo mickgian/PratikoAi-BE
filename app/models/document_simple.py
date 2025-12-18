@@ -19,6 +19,9 @@ class DocumentType(str, Enum):
     EXCEL_XLS = "xls"
     CSV = "csv"
     XML = "xml"  # For Fattura Elettronica
+    WORD_DOCX = "docx"  # Word documents
+    IMAGE_JPEG = "jpeg"  # Images (JPEG)
+    IMAGE_PNG = "png"  # Images (PNG)
 
 
 class ProcessingStatus(str, Enum):
@@ -81,7 +84,7 @@ class Document(SQLModel):
     """Document model with GDPR compliance fields"""
 
     id: UUID | None = Field(default_factory=uuid4, primary_key=True)
-    user_id: UUID | None = None
+    user_id: int | None = None  # Must be int to match User.id
     filename: str = ""
     original_filename: str = ""
     file_type: str = ""
@@ -183,7 +186,7 @@ class DocumentAnalysis(SQLModel):
 
     id: UUID | None = Field(default_factory=uuid4, primary_key=True)
     document_id: UUID | None = None
-    user_id: UUID | None = None
+    user_id: int | None = None  # Must be int to match User.id
     query: str = ""
     analysis_type: str = "general"
     analysis_result: dict[str, Any] | None = None
@@ -223,6 +226,11 @@ DOCUMENT_CONFIG = {
         "text/csv": DocumentType.CSV,
         "application/xml": DocumentType.XML,
         "text/xml": DocumentType.XML,
+        # Word documents (DEV-007)
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": DocumentType.WORD_DOCX,
+        # Images (DEV-007)
+        "image/jpeg": DocumentType.IMAGE_JPEG,
+        "image/png": DocumentType.IMAGE_PNG,
     },
     "PROCESSING_TIMEOUT_SECONDS": 300,
     "CLEANUP_INTERVAL_HOURS": 1,

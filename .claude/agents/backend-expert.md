@@ -91,6 +91,225 @@ You work under the coordination of the **Scrum Master** and technical guidance o
 
 ---
 
+## AI Domain Awareness
+
+As the backend developer for an AI application, you must understand AI-specific patterns and pitfalls.
+
+**Required Reading:** `/docs/architecture/AI_ARCHITECT_KNOWLEDGE_BASE.md`
+- Focus on Parts 2 (RAG), 3 (LLM Orchestration), 4 (Context Windows), 7 (Cost Optimization)
+
+**Also Read:** `/docs/architecture/PRATIKOAI_CONTEXT_ARCHITECTURE.md`
+- Understand the 134-step LangGraph pipeline
+- Know the current gaps (conversation context, attachment lifecycle)
+
+### When Implementing RAG Features
+
+| Pattern | Requirement |
+|---------|-------------|
+| **Hybrid Search** | Always use vector + FTS + recency (50% + 35% + 15%) |
+| **Token Budgets** | Context budget: 3500-8000 tokens, respect limits |
+| **Chunking** | Use semantic boundaries, not arbitrary character cuts |
+| **Fallback** | Always have "nothing found" behavior defined |
+| **Relevance** | Score relevance beyond vector distance, filter low scores |
+
+### When Modifying LangGraph Pipeline
+
+| Pattern | Requirement |
+|---------|-------------|
+| **State Typing** | All state fields in RAGState TypedDict |
+| **Node Purity** | Nodes return new state, no side effects in logic |
+| **Session ID** | Use session_id as thread_id consistently |
+| **State Mutation** | Never mutate state directly, always return new dict |
+| **Checkpointing** | Ensure changes work with AsyncPostgresSaver |
+
+### When Adding LLM Calls
+
+| Pattern | Requirement |
+|---------|-------------|
+| **Caching** | Check if semantic caching applies (target: ≥60% hit rate) |
+| **Model Selection** | Use cheapest model that works (GPT-3.5 for simple tasks) |
+| **Cost Tracking** | Track cost via query_history.cost_cents |
+| **Token Efficiency** | Optimize prompts to reduce token count |
+| **Budget** | Per-query target: <€0.004, monthly: <€2,000 |
+
+### Known Context Gaps (Read PRATIKOAI_CONTEXT_ARCHITECTURE.md)
+
+⚠️ **Gap 1:** Previous conversation turns NOT auto-loaded for new requests
+⚠️ **Gap 2:** Attachment context only available for single turn (doesn't persist)
+⚠️ **Gap 3:** query_composition and context_metadata not persisted to query_history
+
+---
+
+## Code Structure Requirements
+
+### Size Guidelines (MANDATORY)
+
+| Component | Max Lines | Guidance |
+|-----------|-----------|----------|
+| Functions | 50 | Extract helpers if larger |
+| Classes | 200 | Split into focused services |
+| Files | 400 | Create submodules |
+| Route handlers | 30 | Delegate to services |
+| LangGraph nodes | 100 | Delegate to orchestrators |
+
+### Structure Rules
+
+- **API Routes:** HTTP handling only, delegate business logic to services
+- **Services:** Single responsibility, use dependency injection via `Depends()`
+- **Orchestrators:** Coordinate multiple services for complex workflows
+- **LangGraph Nodes:** Thin wrappers (<100 lines), call orchestrators/services
+- **Models:** Data definitions only, no business logic
+
+### When to Extract
+
+- Function >50 lines → Extract helper functions
+- Class >200 lines → Split into focused services
+- Method doing multiple things → Split into single-responsibility methods
+- Repeated logic → Extract to utility function
+
+### Pattern: Composition Over Monolith
+
+```python
+# GOOD: Small, composable units
+class ClientService:
+    async def create_client(self, data: ClientCreate) -> Client:
+        self._validate_fiscal_code(data.codice_fiscale)  # ~10 lines
+        client = self._build_client_model(data)          # ~15 lines
+        return await self._persist_client(client)        # ~10 lines
+
+    def _validate_fiscal_code(self, cf: str) -> None:
+        # Validation logic here (single responsibility)
+        ...
+
+    def _build_client_model(self, data: ClientCreate) -> Client:
+        # Model building logic here
+        ...
+
+    async def _persist_client(self, client: Client) -> Client:
+        # Persistence logic here
+        ...
+
+# BAD: Monolithic method
+class ClientService:
+    async def create_client(self, data: ClientCreate) -> Client:
+        # 200+ lines of validation, building, persistence all mixed together
+        ...
+```
+
+### Testability Rules
+
+- Pure functions for business logic (no side effects)
+- Services with DI → Easy to mock dependencies
+- Thin nodes → Test orchestrator logic separately
+- Each method should be testable in isolation
+
+### Prompt Implementation Patterns
+
+**Required Reading:** `/docs/architecture/PROMPT_ENGINEERING_KNOWLEDGE_BASE.md`
+
+When implementing prompt-related features:
+
+#### Key Prompt Files
+
+| File | Purpose | When to Modify |
+|------|---------|---------------|
+| `app/core/prompts/system.md` | Base system prompt | Rare - consult egidio |
+| `app/core/prompts/document_analysis.md` | Doc handling rules | Rare |
+| `app/services/domain_prompt_templates.py` | PromptTemplateManager | For new domains/actions |
+| `app/orchestrators/prompting.py` | Steps 15, 41, 44-47 | For injection logic |
+
+#### Prompt Flow (Steps 15, 41-47)
+
+```
+Step 15 → Set default prompt
+    ↓
+Step 41 → Check classification confidence (threshold: 0.6)
+    ↓
+├── >= 0.6 → Step 43: Domain-specific prompt (PromptTemplateManager)
+└── < 0.6 → Step 44: Default system prompt
+    ↓
+Steps 45-47 → Insert/replace system message in messages
+```
+
+#### Implementation Rules
+
+| Rule | Implementation |
+|------|---------------|
+| **Document analysis injection** | Inject when query_composition = "pure_doc" or "hybrid" |
+| **Domain templates** | Use `PromptTemplateManager.get_prompt(domain, action, query)` |
+| **Conditional injection** | Only inject what's needed, don't bloat all prompts |
+| **Testing** | Run `tests/orchestrators/test_prompting.py` after changes |
+
+---
+
+## Regression Prevention Workflow (MANDATORY for MODIFYING/RESTRUCTURING tasks)
+
+When assigned a task classified as **MODIFYING** or **RESTRUCTURING**, follow this workflow:
+
+### Phase 1: Pre-Implementation (BEFORE writing any code)
+
+1. **Read the Task Classification**
+   - If `ADDITIVE` → Skip to implementation (new code only)
+   - If `MODIFYING` or `RESTRUCTURING` → Continue with this workflow
+
+2. **Run Baseline Tests**
+   ```bash
+   # Copy the Baseline Command from the task's Impact Analysis
+   pytest tests/services/test_X_service.py tests/api/test_X.py -v
+   ```
+   - Document the output (which tests pass/fail)
+   - If any tests fail BEFORE you start, note them as "pre-existing failures"
+
+3. **Review Existing Code**
+   - Read the **Primary File** listed in Impact Analysis
+   - Read each **Affected File** to understand consumers
+   - Identify integration points that could break
+
+4. **Verify Pre-Implementation Checklist**
+   - Check the boxes in the task's **Pre-Implementation Verification** section:
+     - [ ] Baseline tests pass
+     - [ ] Existing code reviewed
+     - [ ] No pre-existing test failures
+
+### Phase 2: During Implementation
+
+5. **Incremental Testing**
+   - After each significant change, run the baseline tests
+   - If a previously-passing test fails → STOP and investigate immediately
+
+6. **Don't Modify Test Expectations**
+   - If existing tests fail, fix your code, NOT the test
+   - Exception: Consult @Clelia if test is genuinely wrong
+
+### Phase 3: Post-Implementation (AFTER writing code)
+
+7. **Run Final Baseline** - ALL previously-passing tests must still pass
+
+8. **[EZIO-SPECIFIC] Verify API Contract (if modifying API endpoint)**
+   ```bash
+   # Generate current spec and compare
+   python -c "from app.main import app; import json; print(json.dumps(app.openapi()))"
+   ```
+   - Existing request/response schemas must not change (backwards compatible)
+   - New fields: optional only (don't break existing clients)
+
+9. **[EZIO-SPECIFIC] Integration Tests**
+   ```bash
+   pytest tests/integration/ -v -k "affected_service"
+   ```
+   - Run integration tests for affected service cluster
+
+10. **Run Regression Suite** and verify coverage doesn't decrease
+    ```bash
+    pytest tests/services/ -v
+    pytest --cov=app/services/[modified_file] --cov-report=term-missing -v
+    ```
+
+11. **Update Acceptance Criteria**
+    - Check the "All existing tests still pass (regression)" checkbox in the task
+
+---
+
 ## Responsibilities
 
 ### 1. Feature Implementation
@@ -406,6 +625,35 @@ CHAT_RETENTION_DAYS=90  # Auto-delete messages older than 90 days
 - ✅ Indexes created as specified (check with \d+ table_name in psql)
 - ✅ Foreign key constraints enforced
 - ✅ Data types appropriate for use case
+
+#### Pre-Implementation Migration Check
+
+**BEFORE writing any model code, verify:**
+1. Is this a new model or modification to existing?
+2. Does the model need to be imported in `alembic/env.py`?
+3. Are there existing rows that need data migration?
+
+#### Migration Implementation Workflow
+
+```
+1. ✅ Model changes in app/models/
+2. ✅ Import in alembic/env.py (new models only)
+3. ✅ Run: alembic revision --autogenerate -m "add_feature_table"
+4. ✅ Edit migration: Add `import sqlmodel` at top
+5. ✅ Review autogenerated migration for correctness
+6. ✅ Test: alembic upgrade head
+7. ✅ Test: alembic downgrade -1 && alembic upgrade head
+8. ✅ Commit model + migration together
+```
+
+#### Common Migration Gotchas
+
+| Issue | Solution |
+|-------|----------|
+| `NameError: sqlmodel` | Add `import sqlmodel` to migration file |
+| pgvector index not created | Add manually - autogenerate doesn't detect |
+| Migration conflicts | Merge migrations, fix `down_revision` chain |
+| Pre-commit fails on `alembic check` | Run `alembic check` locally to diagnose |
 
 ---
 
@@ -1067,6 +1315,9 @@ Query is slow (500ms), EXPLAIN shows Sequential Scan instead of Index Scan
 | Date | Change | Reason |
 |------|--------|--------|
 | 2025-11-17 | Initial configuration created | Sprint 0 - Subagent system setup |
+| 2025-12-12 | Added AI Domain Awareness section | Domain knowledge for RAG, LangGraph, cost optimization |
+| 2025-12-12 | Added Prompt Implementation Patterns section | Phase 4: Prompt engineering expertise |
+| 2025-12-13 | Enhanced Category 3 with Pre-Implementation Migration Check | Proactive migration planning |
 
 ---
 

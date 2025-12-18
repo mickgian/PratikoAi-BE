@@ -32,11 +32,16 @@ class TestRAGStep31ClassifyDomain:
             fallback_used=False,
         )
 
+        # Create mock for QueryCompositionType enum
+        mock_composition = MagicMock()
+        mock_composition.value = "pure_kb"
+
         ctx = {
             "user_query": "Qual è l'aliquota IVA per i servizi professionali?",
             "classification_service": AsyncMock(),
         }
         ctx["classification_service"].classify.return_value = classification
+        ctx["classification_service"].detect_query_composition.return_value = mock_composition
 
         # Call the orchestrator function
         result = await step_31__classify_domain(ctx=ctx)
@@ -55,10 +60,15 @@ class TestRAGStep31ClassifyDomain:
             "Qual è l'aliquota IVA per i servizi professionali?"
         )
 
-        # Verify logging was called
-        mock_logger.info.assert_called_once()
-        log_call = mock_logger.info.call_args
-        assert "Rule-based classification completed" in log_call[0][0]
+        # Verify logging was called (may be called multiple times - once for query composition, once for classification)
+        assert mock_logger.info.call_count >= 1
+        # Find the classification log call (not the query_composition_detected one)
+        classification_log_calls = [
+            call for call in mock_logger.info.call_args_list
+            if len(call[0]) > 0 and "Rule-based classification completed" in call[0][0]
+        ]
+        assert len(classification_log_calls) == 1
+        log_call = classification_log_calls[0]
         assert log_call[1]["extra"]["classification_event"] == "rule_based_classification"
         assert log_call[1]["extra"]["domain"] == "tax"
         assert log_call[1]["extra"]["confidence"] == 0.85

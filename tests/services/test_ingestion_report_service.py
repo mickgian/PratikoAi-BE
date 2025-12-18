@@ -217,7 +217,12 @@ class TestIngestionReportServiceAsync:
         return mock
 
     async def test_generate_daily_report_empty(self, mock_db_session):
-        """Test generating report with no data."""
+        """Test generating report with no data.
+
+        Note: Scrapers (Gazzetta, Cassazione) are always shown in report
+        even when they have 0 documents - this is intentional to provide
+        visibility into scraper activity.
+        """
         # Mock empty results - need to handle both scalars().all() and scalar() calls
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
@@ -237,7 +242,14 @@ class TestIngestionReportServiceAsync:
 
         assert report.report_date == date.today()
         assert len(report.rss_sources) == 0
-        assert len(report.scraper_sources) == 0
+        # Scrapers always appear in report, even with 0 documents (Gazzetta + Cassazione)
+        assert len(report.scraper_sources) == 2
+        # Verify both scrapers are included with 0 documents
+        scraper_names = [s.source_name for s in report.scraper_sources]
+        assert "Gazzetta Ufficiale" in scraper_names
+        assert "Cassazione" in scraper_names
+        for scraper in report.scraper_sources:
+            assert scraper.documents_processed == 0
 
     async def test_send_daily_report_no_recipients(self, mock_db_session):
         """Test sending report with no recipients."""

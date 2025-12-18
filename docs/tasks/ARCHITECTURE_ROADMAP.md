@@ -1,8 +1,8 @@
 # PratikoAi Backend - Development Roadmap
 
-**Last Updated:** 2024-11-24
+**Last Updated:** 2025-12-12
 **Status:** Active Development
-**Next Task ID:** DEV-BE-94
+**Next Task ID:** DEV-BE-95
 
 ---
 
@@ -13,11 +13,12 @@ This roadmap tracks planned architectural improvements and enhancements for the 
 **Current Architecture:** See `docs/DATABASE_ARCHITECTURE.md` for detailed documentation of the production system.
 
 **Recent Completed Work:**
+- DEV-007: Implement File Attachment Feature (2025-12-12)
+- DEV-BE-94: Dual Metadata Registry Migration (2024-12-01)
 - DEV-BE-92: Test Coverage to 49% Threshold (2024-11-24)
 - DEV-BE-71: Disable Emoji in LLM Responses (2024-11-24)
 - DEV-BE-68: Remove Pinecone Integration Code (2024-11-24)
 - DEV-BE-67: Sprint 0: Multi-Agent System Setup (2024-11-17)
-- DEV-BE-66: RSS feed setup and initial monitoring (2024-11-13)
 
 **Deployment Timeline Estimates:**
 

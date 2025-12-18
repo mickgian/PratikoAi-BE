@@ -4,7 +4,7 @@ Database models for handling document uploads, processing, and metadata
 for Italian tax professional document analysis.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
@@ -72,7 +72,7 @@ class Document(BaseModel, table=True):
     file_hash: str = Field(max_length=64, index=True)  # SHA-256 hash
 
     # Upload tracking
-    upload_timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
+    upload_timestamp: datetime = Field(default_factory=lambda: datetime.utcnow(), index=True)
     upload_ip: str | None = Field(default=None, max_length=45)  # IPv4/IPv6 address
 
     # Processing status
@@ -121,12 +121,12 @@ class Document(BaseModel, table=True):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not self.expires_at:
-            self.expires_at = datetime.now(UTC) + timedelta(hours=48)  # 48-hour default expiration
+            self.expires_at = datetime.utcnow() + timedelta(hours=48)  # 48-hour default expiration
 
     @property
     def is_expired(self) -> bool:
         """Check if document has expired"""
-        return datetime.now(UTC) > self.expires_at
+        return datetime.utcnow() > self.expires_at
 
     @property
     def processing_time_seconds(self) -> int | None:
@@ -186,7 +186,7 @@ class DocumentAnalysis(BaseModel, table=True):
     analysis_type: str = Field(default="general", max_length=50)
 
     # Analysis timing
-    requested_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    requested_at: datetime = Field(default_factory=lambda: datetime.utcnow())
     completed_at: datetime | None = Field(default=None)
     duration_seconds: int | None = Field(default=None)
 
@@ -261,7 +261,7 @@ class DocumentProcessingJob(BaseModel, table=True):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not self.expires_at:
-            self.expires_at = datetime.now(UTC) + timedelta(hours=24)  # 24-hour job expiration
+            self.expires_at = datetime.utcnow() + timedelta(hours=24)  # 24-hour job expiration
 
 
 # Document processing configuration

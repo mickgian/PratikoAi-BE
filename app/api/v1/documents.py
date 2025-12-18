@@ -9,15 +9,15 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_user
-from app.core.database import get_db
 from app.core.logging import logger
-from app.models.document_simple import DOCUMENT_CONFIG, Document, DocumentAnalysis, DocumentType, ProcessingStatus
+from app.models.database import get_db
+from app.models.document import DOCUMENT_CONFIG, Document, DocumentAnalysis, DocumentType, ProcessingStatus
 from app.models.user import User
 from app.services.document_processing_service import DocumentProcessingError, DocumentProcessor
 from app.services.document_uploader import DocumentUploader, UploadValidationError
@@ -29,7 +29,6 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 @router.post("/upload", response_model=dict[str, Any])
 async def upload_documents(
-    background_tasks: BackgroundTasks,
     files: list[UploadFile] = File(..., description="Documents to upload (max 5 files, 10MB each)"),
     analysis_query: str | None = Form(None, description="Optional analysis question"),
     db: AsyncSession = Depends(get_db),
@@ -39,6 +38,14 @@ async def upload_documents(
 
     Supports PDF, Excel (.xlsx, .xls), and CSV files for Italian tax document analysis.
     """
+    # DEV-007: Log upload request for debugging
+    logger.info(
+        "document_upload_request",
+        user_id=str(current_user.id),
+        file_count=len(files),
+        filenames=[f.filename for f in files],
+    )
+
     document_uploader = DocumentUploader()
     secure_storage = SecureDocumentStorage()
 
@@ -80,11 +87,67 @@ async def upload_documents(
                 storage_result = await secure_storage.store_document(document, file_content)
 
                 if storage_result["success"]:
-                    document.processing_status = ProcessingStatus.PROCESSING.value
                     document.processing_started_at = datetime.utcnow()
 
-                    # Queue background processing
-                    background_tasks.add_task(process_document_background, document.id, analysis_query)
+                    # DEV-007 Issue 8: Process document SYNCHRONOUSLY (not in background)
+                    # This ensures document is ready when user sends chat message
+                    processor = DocumentProcessor()
+
+                    try:
+                        # Update status to EXTRACTING
+                        document.processing_status = ProcessingStatus.EXTRACTING.value
+                        await db.commit()
+
+                        # Extract text
+                        text_result = await processor.extract_text(document)
+                        if text_result["success"]:
+                            document.extracted_text = text_result["text"]
+
+                            # Update status to ANALYZING
+                            document.processing_status = ProcessingStatus.ANALYZING.value
+                            await db.commit()
+
+                            # Extract structured data
+                            structured_result = await processor.extract_structured_data(document)
+                            if structured_result["success"]:
+                                document.extracted_data = structured_result["data"]
+
+                            # Classify document
+                            classification = await processor.classify_document(document)
+                            document.document_category = classification["category"]
+                            document.document_confidence = classification["confidence"]
+
+                            # Mark as COMPLETED
+                            document.processing_status = ProcessingStatus.COMPLETED.value
+                            document.processing_completed_at = datetime.utcnow()
+                            document.processing_duration_seconds = int(
+                                (document.processing_completed_at - document.processing_started_at).total_seconds()
+                            )
+
+                            logger.info(
+                                "document_processing_completed",
+                                document_id=str(document.id),
+                                filename=document.original_filename,
+                                duration_seconds=document.processing_duration_seconds,
+                            )
+                        else:
+                            document.processing_status = ProcessingStatus.FAILED.value
+                            document.error_message = text_result.get("error", "Text extraction failed")
+                            logger.warning(
+                                "document_text_extraction_failed",
+                                document_id=str(document.id),
+                                error=document.error_message,
+                            )
+
+                    except Exception as proc_error:
+                        logger.error(
+                            "document_processing_error",
+                            document_id=str(document.id),
+                            error=str(proc_error),
+                            exc_info=True,
+                        )
+                        document.processing_status = ProcessingStatus.FAILED.value
+                        document.error_message = str(proc_error)
 
                     uploaded_documents.append(
                         {
@@ -94,6 +157,7 @@ async def upload_documents(
                             "file_size": document.file_size,
                             "file_size_mb": round(document.file_size / (1024 * 1024), 2),
                             "status": document.processing_status,
+                            "document_category": document.document_category,
                             "upload_timestamp": document.upload_timestamp.isoformat(),
                             "expires_at": document.expires_at.isoformat(),
                         }
@@ -119,15 +183,25 @@ async def upload_documents(
         # Commit all successful uploads
         await db.commit()
 
-        return {
+        response = {
             "success": len(uploaded_documents) > 0,
             "uploaded_documents": uploaded_documents,
             "total_uploaded": len(uploaded_documents),
             "errors": processing_errors,
-            "message": f"Caricati {len(uploaded_documents)} documenti su {len(files)}. Elaborazione in corso..."
+            "message": f"Caricati ed elaborati {len(uploaded_documents)} documenti su {len(files)}."
             if uploaded_documents
             else "Nessun documento caricato con successo.",
         }
+
+        # DEV-007: Log response for debugging
+        logger.info(
+            "document_upload_response",
+            success=response["success"],
+            total_uploaded=response["total_uploaded"],
+            error_count=len(processing_errors),
+        )
+
+        return response
 
     except Exception as e:
         await db.rollback()
@@ -552,5 +626,5 @@ async def process_document_background(document_id: UUID, analysis_query: str | N
                 document.processing_status = ProcessingStatus.FAILED.value
                 document.error_message = str(e)
                 await db.commit()
-            except:
+            except Exception:
                 pass

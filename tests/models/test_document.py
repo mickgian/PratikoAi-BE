@@ -1,6 +1,6 @@
 """Tests for document models."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -119,7 +119,8 @@ class TestDocument:
         )
 
         # Should expire in ~48 hours
-        now = datetime.now(UTC)
+        # Note: Document uses naive datetime (utcnow)
+        now = datetime.utcnow()
         time_until_expiry = (doc.expires_at - now).total_seconds()
 
         # Allow some tolerance for test execution time
@@ -137,7 +138,8 @@ class TestDocument:
             mime_type="application/pdf",
             file_hash="abc123",
         )
-        doc.expires_at = datetime.now(UTC) - timedelta(hours=1)
+        # Note: Document uses naive datetime (utcnow)
+        doc.expires_at = datetime.utcnow() - timedelta(hours=1)
 
         assert doc.is_expired is True
 
@@ -152,7 +154,8 @@ class TestDocument:
             mime_type="application/pdf",
             file_hash="abc123",
         )
-        doc.expires_at = datetime.now(UTC) + timedelta(hours=1)
+        # Note: Document uses naive datetime (utcnow)
+        doc.expires_at = datetime.utcnow() + timedelta(hours=1)
 
         assert doc.is_expired is False
 
@@ -171,8 +174,8 @@ class TestDocument:
         # No processing times set
         assert doc.processing_time_seconds is None
 
-        # Set processing times
-        doc.processing_started_at = datetime.now(UTC)
+        # Set processing times (using naive datetime to match model)
+        doc.processing_started_at = datetime.utcnow()
         doc.processing_completed_at = doc.processing_started_at + timedelta(seconds=30)
 
         assert doc.processing_time_seconds == 30
@@ -311,7 +314,8 @@ class TestDocumentProcessingJob:
         )
 
         # Should expire in ~24 hours
-        now = datetime.now(UTC)
+        # Note: Model uses naive datetime (utcnow)
+        now = datetime.utcnow()
         time_until_expiry = (job.expires_at - now).total_seconds()
 
         # Allow some tolerance

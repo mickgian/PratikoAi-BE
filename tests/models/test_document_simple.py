@@ -30,7 +30,7 @@ class TestDocumentType:
 
     def test_document_type_enum_members(self):
         """Test that all expected document types exist."""
-        expected = {"PDF", "EXCEL_XLSX", "EXCEL_XLS", "CSV", "XML"}
+        expected = {"PDF", "EXCEL_XLSX", "EXCEL_XLS", "CSV", "XML", "WORD_DOCX", "IMAGE_JPEG", "IMAGE_PNG"}
         actual = {member.name for member in DocumentType}
         assert actual == expected
 
@@ -151,7 +151,7 @@ class TestDocument:
 
     def test_document_with_user(self):
         """Test document with user ID."""
-        user_id = uuid4()
+        user_id = 12345  # User.id is int, not UUID
         doc = Document(
             user_id=user_id,
             filename="user_doc.pdf",
@@ -426,7 +426,7 @@ class TestDocumentAnalysis:
     def test_analysis_with_document(self):
         """Test analysis with document and user references."""
         doc_id = uuid4()
-        user_id = uuid4()
+        user_id = 12345  # User.id is int, not UUID
 
         analysis = DocumentAnalysis(
             document_id=doc_id,
@@ -474,7 +474,7 @@ class TestDocumentAnalysis:
     def test_analysis_to_dict(self):
         """Test to_dict conversion."""
         doc_id = uuid4()
-        user_id = uuid4()
+        user_id = 12345  # User.id is int, not UUID
 
         analysis = DocumentAnalysis(
             document_id=doc_id,

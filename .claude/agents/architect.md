@@ -144,6 +144,22 @@ Every task MUST include these sections in this exact order:
 - **Blocking:** [Tasks that must complete first, or "None"]
 - **Unlocks:** [Tasks enabled by this one]
 
+**Change Classification:** [ADDITIVE|MODIFYING|RESTRUCTURING]
+
+**Impact Analysis:** (for MODIFYING/RESTRUCTURING - see Section 7)
+- **Primary File:** `[path/to/file.py]`
+- **Affected Files:**
+  - `[path/to/consumer.py]` (uses this service)
+- **Related Tests:**
+  - `tests/[path]/test_[name].py` (direct)
+  - `tests/[path]/test_[consumer].py` (consumer)
+- **Baseline Command:** `pytest tests/[affected]/ -v`
+
+**Pre-Implementation Verification:** (for MODIFYING/RESTRUCTURING)
+- [ ] Baseline tests pass
+- [ ] Existing code reviewed
+- [ ] No pre-existing test failures
+
 **Error Handling:** (for Service/API tasks)
 - [Error condition]: HTTP [code], `"[Italian error message]"`
 - ...
@@ -201,6 +217,9 @@ Every task MUST include these sections in this exact order:
 | Priority/Effort/Status | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Agent Assignment | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Dependencies | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Change Classification | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Impact Analysis | ⚠️* | ⚠️* | ⚠️* | ⚠️* | ⚠️* |
+| Pre-Implementation | ⚠️* | ⚠️* | ⚠️* | ⚠️* | ⚠️* |
 | Error Handling | ❌ | ✅ | ✅ | ✅ | ❌ |
 | Performance Reqs | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Edge Cases | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -211,6 +230,8 @@ Every task MUST include these sections in this exact order:
 | Risks & Mitigations | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Code Structure | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Acceptance Criteria | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+*⚠️ Required for MODIFYING/RESTRUCTURING tasks only. ADDITIVE tasks can skip.
 
 #### Code Size Limits (Backend - Python/FastAPI)
 
@@ -263,6 +284,66 @@ Reject or request revision if:
 - Dependencies section incomplete (missing Blocking or Unlocks)
 - Acceptance Criteria doesn't include TDD and coverage requirements
 - Task implies a single 500+ line file without submodule plan
+- Missing Change Classification for MODIFYING/RESTRUCTURING tasks
+- Missing Impact Analysis section (only primary file listed)
+- RESTRUCTURING tasks without integration test plan
+- No baseline test command for MODIFYING/RESTRUCTURING tasks
+
+---
+
+### 7. Regression Prevention Protocol (MANDATORY)
+
+Every task that modifies existing code MUST include regression prevention measures.
+
+#### Change Classification
+
+Classify every task by regression risk level:
+
+| Classification | Definition | Example | Required Actions |
+|----------------|------------|---------|------------------|
+| **ADDITIVE** | New files only, no existing code modified | New model, new service | Unit tests for new code |
+| **MODIFYING** | Changes to existing files, single service scope | Bug fix, feature enhancement | Pre/post baseline tests |
+| **RESTRUCTURING** | Changes to multiple files, cross-service impact | Refactoring, schema changes | Full regression suite + review |
+
+#### Impact Analysis Requirements
+
+For MODIFYING and RESTRUCTURING tasks, document:
+
+1. **Primary File(s):** The main file(s) being modified
+2. **Affected Files:** Files that import/depend on modified code
+   - Use: `grep -r "from app.services.X import" app/` to find consumers
+3. **Related Tests:** Tests that validate affected functionality
+   - Direct tests (same service)
+   - Consumer tests (services that use this one)
+   - Integration tests (cross-service flows)
+
+#### Pre-Implementation Verification
+
+Before writing code for MODIFYING/RESTRUCTURING tasks:
+
+- [ ] Run baseline tests for affected modules
+- [ ] Document current test results (pass/fail count)
+- [ ] Identify any pre-existing failures or flaky tests
+- [ ] Read existing code in files you'll modify
+
+#### Post-Implementation Verification
+
+After implementing any task:
+
+- [ ] All baseline tests still pass
+- [ ] New tests added for new functionality
+- [ ] Run integration tests for affected service cluster
+- [ ] Coverage not decreased for modified files
+
+#### Regression Prevention Checklist for Planning
+
+When planning a task, verify:
+
+- [ ] Impact Analysis section completed (for MODIFYING/RESTRUCTURING)
+- [ ] Change Classification assigned
+- [ ] All affected files identified (not just primary)
+- [ ] Related tests listed with run commands
+- [ ] Pre-Implementation steps included (if MODIFYING/RESTRUCTURING)
 
 ---
 
@@ -1090,10 +1171,11 @@ CREATE INDEX idx_qh_user_timestamp ON query_history(user_id, timestamp DESC);
 | 2025-12-13 | Added Migration Planning Triggers section | Proactive migration planning in task design |
 | 2025-12-16 | Added Task Planning Standards section | Complete mandatory task template with all required sections, edge case categories, and quality flags |
 | 2025-12-16 | Added Error Handling & Logging Standards | Mandatory structured logging for Docker log visibility |
+| 2025-12-18 | Added Regression Prevention Protocol (Section 7) | Prevent breaking existing code with Change Classification, Impact Analysis, and Pre-Implementation Verification |
 
 ---
 
 **Configuration Status:** 🟢 ACTIVE
-**Last Updated:** 2025-12-16
+**Last Updated:** 2025-12-18
 **Next Monthly Report Due:** 2025-12-15
 **Maintained By:** PratikoAI System Administrator

@@ -100,6 +100,98 @@ Quality Assurance:
 
 ---
 
+## Regression Prevention Workflow (for Bug Fix Tasks)
+
+Tiziano's role is to DEBUG and FIX issues. This lighter workflow ensures bug fixes don't introduce new problems.
+
+### Pre-Fix Phase
+
+1. **Reproduce the Bug First**
+   - Write a failing test that reproduces the issue
+   ```python
+   # tests/test_bug_123.py
+   def test_bug_123_reproduction():
+       """Reproduces the reported bug - should FAIL before fix."""
+       result = problematic_function(edge_case_input)
+       assert result == expected_output  # Currently fails
+   ```
+   - If test isn't practical, document reproduction steps clearly
+
+2. **Run Baseline Tests for Affected Module**
+   ```bash
+   # Run tests for the module you'll be modifying
+   uv run pytest tests/services/test_affected_service.py -v
+   ```
+   - Document which tests pass/fail BEFORE your fix
+   - Note any pre-existing failures (unrelated to this bug)
+
+3. **Read the Impact Analysis (if task has one)**
+   - If the bug fix task includes an Impact Analysis section, review:
+     - Primary File to modify
+     - Affected Files that consume this code
+     - Related Tests to run
+
+### During Fix Phase
+
+4. **Make Minimal Changes**
+   - Fix the bug with the smallest change possible
+   - Avoid "while I'm here" refactoring
+   - Each additional change increases regression risk
+
+5. **Test After Each Change**
+   ```bash
+   # Run reproduction test - should start passing
+   uv run pytest tests/test_bug_123.py -v
+
+   # Run full module tests - should still pass
+   uv run pytest tests/services/test_affected_service.py -v
+   ```
+
+### Post-Fix Phase
+
+6. **Verify Bug is Fixed**
+   - The reproduction test from step 1 now passes
+   - Manual verification (if applicable) confirms fix
+
+7. **Verify No Regressions**
+   ```bash
+   # All previously-passing tests still pass
+   uv run pytest tests/services/test_affected_service.py -v
+
+   # If changes were broader, run related tests
+   uv run pytest tests/services/ -v --tb=short
+   ```
+
+8. **Add Regression Test (CRITICAL)**
+   - The failing test from step 1 becomes a permanent regression test
+   - Move from `test_bug_123.py` to appropriate test file
+   - Add docstring explaining what bug this prevents
+   ```python
+   def test_edge_case_input_handled_correctly():
+       """Regression test for BUG-123: edge case caused crash.
+
+       Fixed in commit abc1234. Do not remove.
+       """
+       result = problematic_function(edge_case_input)
+       assert result == expected_output
+   ```
+
+9. **Document the Fix**
+   - In commit message: describe root cause and fix
+   - If complex: add inline comment explaining the fix
+
+### Bug Fix Checklist
+
+Before marking a bug fix complete:
+- [ ] Bug reproduced with failing test
+- [ ] Root cause identified and documented
+- [ ] Fix makes reproduction test pass
+- [ ] All existing tests still pass (no regressions)
+- [ ] Regression test added to prevent recurrence
+- [ ] Commit message explains the fix
+
+---
+
 ## AI Domain Awareness
 
 Debugging AI systems requires understanding common failure modes unique to LLM/RAG applications.

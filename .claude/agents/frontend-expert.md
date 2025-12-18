@@ -127,6 +127,73 @@ function ChatMessage({ message }: { message: Message }) {
 
 ---
 
+## Regression Prevention Workflow (MANDATORY for MODIFYING/RESTRUCTURING tasks)
+
+When assigned a task classified as **MODIFYING** or **RESTRUCTURING**, follow this workflow:
+
+### Phase 1: Pre-Implementation (BEFORE writing any code)
+
+1. **Read the Task Classification**
+   - If `ADDITIVE` → Skip to implementation (new code only)
+   - If `MODIFYING` or `RESTRUCTURING` → Continue with this workflow
+
+2. **[LIVIA-SPECIFIC] Run Baseline Tests**
+   ```bash
+   # Frontend uses npm test, not pytest
+   npm test -- --watchAll=false
+   ```
+   - Document the output (which tests pass/fail)
+   - If any tests fail BEFORE you start, note them as "pre-existing failures"
+
+3. **Review Existing Code**
+   - Read the **Primary File** listed in Impact Analysis
+   - Read each **Affected File** (components that import this)
+   - Identify props/context dependencies that could break
+
+4. **Verify Pre-Implementation Checklist**
+   - Check the boxes in the task's **Pre-Implementation Verification** section:
+     - [ ] Baseline tests pass
+     - [ ] Existing code reviewed
+     - [ ] No pre-existing test failures
+
+### Phase 2: During Implementation
+
+5. **Incremental Testing**
+   - After each significant change, run the tests
+   - If a previously-passing test fails → STOP and investigate immediately
+
+6. **Don't Modify Test Expectations**
+   - If existing tests fail, fix your code, NOT the test
+   - Exception: Consult @Clelia if test is genuinely wrong
+
+### Phase 3: Post-Implementation (AFTER writing code)
+
+7. **Run Final Baseline**
+   ```bash
+   npm test -- --watchAll=false
+   ```
+   - ALL previously-passing tests must still pass
+
+8. **[LIVIA-SPECIFIC] Type Check**
+   ```bash
+   npx tsc --noEmit
+   ```
+   - No new TypeScript errors allowed
+
+9. **[LIVIA-SPECIFIC] Visual Regression (if UI changed)**
+   - Take screenshots before/after if component renders differently
+   - Verify no unintended visual changes
+
+10. **Run E2E Tests (if affected)**
+    ```bash
+    npx playwright test --grep "affected_feature"
+    ```
+
+11. **Update Acceptance Criteria**
+    - Check the "All existing tests still pass (regression)" checkbox in the task
+
+---
+
 ## Responsibilities
 
 ### 1. Component Development

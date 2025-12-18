@@ -444,19 +444,23 @@ class IngestionReportService:
         gazzetta_result = await self.db.execute(gazzetta_query)
         gazzetta_count = gazzetta_result.scalar() or 0
 
-        if gazzetta_count > 0:
-            chunk_stats = await self._get_chunk_stats_for_source("gazzetta_ufficiale", start_dt, end_dt)
-            stats_list.append(
-                SourceStats(
-                    source_name="Gazzetta Ufficiale",
-                    source_type="scraper",
-                    documents_processed=gazzetta_count,
-                    documents_succeeded=gazzetta_count,
-                    documents_added_to_db=gazzetta_count,
-                    total_chunks=chunk_stats["total"],
-                    junk_chunks=chunk_stats["junk"],
-                )
+        # Always show Gazzetta in report, even with 0 documents
+        chunk_stats = (
+            await self._get_chunk_stats_for_source("gazzetta_ufficiale", start_dt, end_dt)
+            if gazzetta_count > 0
+            else {"total": 0, "junk": 0}
+        )
+        stats_list.append(
+            SourceStats(
+                source_name="Gazzetta Ufficiale",
+                source_type="scraper",
+                documents_processed=gazzetta_count,
+                documents_succeeded=gazzetta_count,
+                documents_added_to_db=gazzetta_count,
+                total_chunks=chunk_stats["total"],
+                junk_chunks=chunk_stats["junk"],
             )
+        )
 
         # Check for Cassazione scraper activity
         cassazione_query = select(func.count(KnowledgeItem.id)).where(
@@ -469,19 +473,23 @@ class IngestionReportService:
         cassazione_result = await self.db.execute(cassazione_query)
         cassazione_count = cassazione_result.scalar() or 0
 
-        if cassazione_count > 0:
-            chunk_stats = await self._get_chunk_stats_for_source("cassazione", start_dt, end_dt)
-            stats_list.append(
-                SourceStats(
-                    source_name="Cassazione",
-                    source_type="scraper",
-                    documents_processed=cassazione_count,
-                    documents_succeeded=cassazione_count,
-                    documents_added_to_db=cassazione_count,
-                    total_chunks=chunk_stats["total"],
-                    junk_chunks=chunk_stats["junk"],
-                )
+        # Always show Cassazione in report, even with 0 documents
+        chunk_stats = (
+            await self._get_chunk_stats_for_source("cassazione", start_dt, end_dt)
+            if cassazione_count > 0
+            else {"total": 0, "junk": 0}
+        )
+        stats_list.append(
+            SourceStats(
+                source_name="Cassazione",
+                source_type="scraper",
+                documents_processed=cassazione_count,
+                documents_succeeded=cassazione_count,
+                documents_added_to_db=cassazione_count,
+                total_chunks=chunk_stats["total"],
+                junk_chunks=chunk_stats["junk"],
             )
+        )
 
         # Fallback: Check for regulatory_update (legacy source name from before fix)
         # This catches documents created before KnowledgeIntegrator was fixed to use

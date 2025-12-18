@@ -256,6 +256,12 @@ Create a `Studio` SQLModel as the tenant root entity. All client data will be is
 - **Blocking:** None (foundation task)
 - **Unlocks:** DEV-208 (StudioService), DEV-215 (User-Studio), DEV-207 (Migration)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -323,6 +329,12 @@ Create `Client` SQLModel with encrypted PII fields using existing `EncryptedTaxI
 **Dependencies:**
 - **Blocking:** DEV-200 (Studio model for studio_id FK)
 - **Unlocks:** DEV-202 (ClientProfile), DEV-209 (ClientService), DEV-207 (Migration)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -404,6 +416,12 @@ Create `ClientProfile` as a 1:1 extension of `Client` containing business/fiscal
 **Dependencies:**
 - **Blocking:** DEV-201 (Client model for client_id FK)
 - **Unlocks:** DEV-220 (MatchingService), DEV-222 (Vector Generation), DEV-207 (Migration)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -491,6 +509,12 @@ Create `MatchingRule` model with JSONB conditions supporting AND/OR operators an
 - **Blocking:** None (standalone model)
 - **Unlocks:** DEV-220 (MatchingService), DEV-221 (Pre-configured Rules), DEV-207 (Migration)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -565,6 +589,12 @@ Create `Communication` model with status workflow (DRAFT → PENDING_REVIEW → 
 **Dependencies:**
 - **Blocking:** DEV-200 (Studio), DEV-201 (Client for client_id FK)
 - **Unlocks:** DEV-230 (CommunicationService), DEV-207 (Migration)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -642,6 +672,12 @@ Create `ProceduralGuide` model with JSONB steps array containing checklists, doc
 - **Blocking:** None (standalone model)
 - **Unlocks:** DEV-206 (GuideProgress), DEV-240 (GuideService), DEV-207 (Migration)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -713,6 +749,12 @@ Create `GuideProgress` model linking user, studio, guide, and optionally client.
 **Dependencies:**
 - **Blocking:** DEV-200 (Studio), DEV-201 (Client), DEV-205 (ProceduralGuide)
 - **Unlocks:** DEV-240 (GuideService), DEV-207 (Migration)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -786,6 +828,24 @@ Create single Alembic migration creating all Phase 0 tables with HNSW vector ind
 **Dependencies:**
 - **Blocking:** DEV-200, DEV-201, DEV-202, DEV-203, DEV-204, DEV-205, DEV-206 (all models)
 - **Unlocks:** ALL Phase 1 tasks (DEV-208-219)
+
+**Change Classification:** RESTRUCTURING
+
+**Impact Analysis:**
+- **Primary File:** `alembic/versions/YYYYMMDD_add_pratikoai_2_0_models.py`
+- **Affected Files:**
+  - `alembic/env.py` (import new models)
+  - All Phase 1+ services (depend on new tables)
+- **Related Tests:**
+  - `tests/migrations/test_phase0_migration.py` (direct)
+  - `tests/models/test_*.py` (all model tests)
+- **Baseline Command:** `pytest tests/models/ -v && alembic check`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Database backup completed
+- [ ] Staging environment available
+- [ ] Rollback procedure documented
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -875,6 +935,12 @@ Create `StudioService` with async CRUD methods following existing service patter
 **Dependencies:**
 - **Blocking:** DEV-200 (Studio model), DEV-207 (Migration)
 - **Unlocks:** DEV-211 (Studio API), DEV-215 (User-Studio)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -970,6 +1036,12 @@ Create `ClientService` with CRUD methods that enforce business rules. Reuse exis
 **Dependencies:**
 - **Blocking:** DEV-201 (Client model), DEV-207 (Migration)
 - **Unlocks:** DEV-212 (Client API), DEV-213 (Import), DEV-214 (Export), DEV-220 (Matching)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid CF format: HTTP 422, `"Codice fiscale non valido"`
@@ -1081,6 +1153,12 @@ Create `ClientProfileService` for profile CRUD with automatic profile vector gen
 - **Blocking:** DEV-202 (ClientProfile model), DEV-209 (ClientService), DEV-207 (Migration)
 - **Unlocks:** DEV-211 (combined in API), DEV-222 (Vector Generation)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Profile already exists: HTTP 409, `"Profilo cliente già esistente"`
 - Client not found: HTTP 404, `"Cliente non trovato"`
@@ -1158,6 +1236,12 @@ Create Studio router with CRUD endpoints following FastAPI patterns.
 **Dependencies:**
 - **Blocking:** DEV-208 (StudioService)
 - **Unlocks:** DEV-215 (User-Studio), Frontend integration
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Unauthorized: HTTP 401, `"Autenticazione richiesta"`
@@ -1251,6 +1335,12 @@ Create Client router with CRUD endpoints and list with pagination.
 **Dependencies:**
 - **Blocking:** DEV-209 (ClientService), DEV-210 (ClientProfileService)
 - **Unlocks:** DEV-213 (Import), DEV-214 (Export), Frontend integration
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Unauthorized: HTTP 401, `"Autenticazione richiesta"`
@@ -1348,6 +1438,12 @@ Create import service supporting both Excel (openpyxl) and PDF (using existing d
 **Dependencies:**
 - **Blocking:** DEV-209 (ClientService), DEV-212 (Client API)
 - **Unlocks:** None (leaf task)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid file format: HTTP 415, `"Formato file non supportato. Usa Excel (.xlsx) o PDF"`
@@ -1470,6 +1566,12 @@ Create export service generating Excel file with all client data (decrypted for 
 - **Blocking:** DEV-209 (ClientService)
 - **Unlocks:** DEV-217 (GDPR Deletion - uses export for portability)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - No clients to export: HTTP 204, no content
 - Export generation failure: HTTP 500, `"Errore generazione export"`
@@ -1554,6 +1656,24 @@ Add nullable `studio_id` FK to User model. Migration creates column as nullable.
 - **Blocking:** DEV-200 (Studio model), DEV-207 (Migration), DEV-208 (StudioService)
 - **Unlocks:** DEV-216 (Tenant Middleware), All multi-tenant features
 
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/models/user.py`
+- **Affected Files:**
+  - `app/services/auth_service.py` (uses User model)
+  - `app/api/v1/endpoints/auth.py` (registration flow)
+  - `alembic/versions/` (migration required)
+- **Related Tests:**
+  - `tests/models/test_user.py` (direct)
+  - `tests/api/test_auth.py` (consumer)
+- **Baseline Command:** `pytest tests/models/test_user.py tests/api/test_auth.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing User model reviewed
+- [ ] Auth flow documented
+
 **Error Handling:**
 - User without studio accessing client features: HTTP 403, `"Associazione studio richiesta"`
 - Invalid studio_id assignment: HTTP 400, `"Studio non trovato"`
@@ -1633,6 +1753,12 @@ Create middleware that extracts `studio_id` from JWT and sets it in request stat
 - **Blocking:** DEV-215 (User-Studio Association)
 - **Unlocks:** All multi-tenant service operations
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Missing studio_id in JWT: HTTP 403, `"Contesto studio non disponibile"`
 - Invalid studio_id: HTTP 403, `"Studio non valido"`
@@ -1711,6 +1837,12 @@ Create GDPR deletion service using existing patterns from `app/services/gdpr_del
 **Dependencies:**
 - **Blocking:** DEV-209 (ClientService), DEV-214 (Client Export - for data portability before deletion)
 - **Unlocks:** None (end of GDPR chain)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Client not found: HTTP 404, `"Cliente non trovato"`
@@ -1805,6 +1937,12 @@ Create unit tests for all Phase 1 services with 80%+ coverage target.
 - **Blocking:** DEV-208 (StudioService), DEV-209 (ClientService), DEV-210 (ClientProfileService), DEV-213 (Import), DEV-214 (Export), DEV-217 (GDPR) - all Phase 1 services
 - **Unlocks:** DEV-219 (Integration Tests), Phase 2 start
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -1869,6 +2007,12 @@ Create integration tests using pytest-asyncio and httpx test client.
 - **Blocking:** DEV-211 (Studio API), DEV-212 (Client API), DEV-218 (Unit Tests)
 - **Unlocks:** Phase 2 start (all Phase 1 complete)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -1932,6 +2076,12 @@ Create `NormativeMatchingService` with hybrid matching: first structured (fast, 
 **Dependencies:**
 - **Blocking:** DEV-202 (ClientProfile), DEV-209 (ClientService), DEV-221 (Matching Rules), DEV-222 (Vector Generation)
 - **Unlocks:** DEV-223 (LangGraph Node), DEV-225 (Background Job), DEV-228 (Tests)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - No clients in studio: Return empty matches (not error)
@@ -2033,6 +2183,12 @@ Define 15 matching rules covering common scenarios and seed via migration.
 - **Blocking:** DEV-204 (MatchingRule model), DEV-207 (Migration)
 - **Unlocks:** DEV-220 (NormativeMatchingService)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -2110,6 +2266,12 @@ Create embedding service using existing LLM infrastructure. Generate vector when
 **Dependencies:**
 - **Blocking:** DEV-202 (ClientProfile with profile_vector column), DEV-207 (HNSW index migration)
 - **Unlocks:** DEV-220 (NormativeMatchingService - semantic fallback)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Embedding API failure: HTTP 503, `"Servizio embedding non disponibile"` + use stale vector
@@ -2198,6 +2360,23 @@ Create LangGraph node inserted after domain classification (step 35). Query clie
 **Dependencies:**
 - **Blocking:** DEV-220 (NormativeMatchingService), DEV-216 (Tenant Middleware - for studio_id)
 - **Unlocks:** DEV-227 (Response Enrichment), DEV-228 (Tests)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/core/langgraph/graph.py`
+- **Affected Files:**
+  - `app/core/langgraph/nodes/` (existing node patterns)
+  - `app/schemas/rag_state.py` (adds matched_clients to state)
+- **Related Tests:**
+  - `tests/langgraph/test_graph.py` (direct)
+  - `tests/integration/test_rag_pipeline.py` (consumer)
+- **Baseline Command:** `pytest tests/langgraph/ -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing graph.py reviewed
+- [ ] Node insertion point identified (after step 35)
 
 **Error Handling:**
 - Matching service timeout: Skip node, continue pipeline (graceful degradation)
@@ -2293,6 +2472,12 @@ Create `ProactiveSuggestion` model to store matches found by background job.
 - **Blocking:** DEV-200 (Studio model - FK), DEV-207 (Migration)
 - **Unlocks:** DEV-225 (Background Matching Job), DEV-226 (Matching API)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -2364,6 +2549,12 @@ Create background job using FastAPI BackgroundTasks. Run after RSS ingestion com
 **Dependencies:**
 - **Blocking:** DEV-220 (NormativeMatchingService), DEV-224 (ProactiveSuggestion model)
 - **Unlocks:** DEV-226 (Matching API - trigger endpoint), DEV-228 (Performance Tests)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Job failure: Log error, retry up to 3 times with exponential backoff
@@ -2444,6 +2635,12 @@ Create Matching router with endpoints for suggestions management.
 **Dependencies:**
 - **Blocking:** DEV-220 (NormativeMatchingService), DEV-224 (ProactiveSuggestion model), DEV-225 (Background Job)
 - **Unlocks:** DEV-229 (Unit Tests), Frontend integration
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - No suggestions: HTTP 200, empty array (not 404)
@@ -2538,6 +2735,12 @@ Create comprehensive security tests covering all access patterns. Target 95%+ co
 - **Blocking:** DEV-209 (ClientService), DEV-216 (Tenant Middleware), DEV-220 (MatchingService)
 - **Unlocks:** Production deployment (security gate)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -2603,6 +2806,12 @@ Create performance tests with realistic data volumes.
 - **Blocking:** DEV-220 (NormativeMatchingService), DEV-223 (LangGraph Node), DEV-225 (Background Job)
 - **Unlocks:** Production deployment (performance gate)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -2663,6 +2872,12 @@ Comprehensive unit tests for matching service and rules.
 **Dependencies:**
 - **Blocking:** DEV-220 (NormativeMatchingService), DEV-221 (Matching Rules), DEV-222 (Vector Generation), DEV-223 (LangGraph Node)
 - **Unlocks:** Phase 3 start (all Phase 2 complete)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -2729,6 +2944,12 @@ Create `CommunicationService` with state machine workflow: DRAFT → PENDING_REV
 **Dependencies:**
 - **Blocking:** DEV-205 (Communication model), DEV-209 (ClientService), DEV-207 (Migration)
 - **Unlocks:** DEV-232 (Communication API), DEV-233 (Email), DEV-234 (WhatsApp), DEV-235 (Bulk)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} → {to}"`
@@ -2825,6 +3046,12 @@ Create `CommunicationGeneratorTool` following existing tool patterns in `app/cor
 - **Blocking:** DEV-230 (CommunicationService), Existing LangGraph tools pattern
 - **Unlocks:** DEV-232 (Communication API - generation endpoint)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - LLM generation failure: Retry up to 3 times, then HTTP 503, `"Generazione temporaneamente non disponibile"`
 - Invalid client context: HTTP 400, `"Dati cliente insufficienti per generazione"`
@@ -2896,6 +3123,12 @@ Create Communication router with endpoints for the full workflow.
 **Dependencies:**
 - **Blocking:** DEV-230 (CommunicationService), DEV-231 (Generation Tool)
 - **Unlocks:** DEV-239 (Integration Tests), Frontend integration
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - See DEV-230 for state transition errors
@@ -2991,6 +3224,12 @@ Create email sending service using existing patterns. Handle retries, failures, 
 - **Blocking:** DEV-230 (CommunicationService - APPROVED state required)
 - **Unlocks:** DEV-239 (Integration Tests)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - SMTP connection failure: HTTP 503, `"Servizio email non disponibile"` + retry queue
 - Invalid recipient email: HTTP 400, `"Indirizzo email non valido"`
@@ -3080,6 +3319,12 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
 **Dependencies:**
 - **Blocking:** DEV-230 (CommunicationService), DEV-209 (ClientService - for phone numbers)
 - **Unlocks:** DEV-239 (Integration Tests)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid phone format: HTTP 400, `"Formato numero di telefono non valido"`
@@ -3179,6 +3424,22 @@ Add bulk creation endpoint that creates draft communications for multiple client
 - **Blocking:** DEV-230 (CommunicationService), DEV-220 (Matching - for matched client IDs)
 - **Unlocks:** DEV-239 (E2E Tests)
 
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/services/communication_service.py`
+- **Affected Files:**
+  - `app/api/v1/communications.py` (bulk endpoint addition)
+- **Related Tests:**
+  - `tests/services/test_communication_service.py` (direct)
+  - `tests/api/test_communications_api.py` (consumer)
+- **Baseline Command:** `pytest tests/services/test_communication_service.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing CommunicationService reviewed
+- [ ] Bulk operation patterns documented
+
 **Error Handling:**
 - Empty client list: HTTP 400, `"Seleziona almeno un cliente"`
 - Max clients exceeded (>50): HTTP 400, `"Massimo 50 clienti per operazione bulk"`
@@ -3260,6 +3521,12 @@ Create template model and service for managing communication templates.
 - **Blocking:** DEV-205 (Communication model), DEV-207 (Migration)
 - **Unlocks:** DEV-231 (Generation Tool can use templates)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Missing Variables:** Template has {{client_name}} but client has no name → use fallback "Cliente"
 - **Invalid Variable Syntax:** Template has {client_name} not {{}} → treat as literal text
@@ -3326,6 +3593,23 @@ Modify `response_formatter_node.py` to append suggestions when matched_clients e
 **Dependencies:**
 - **Blocking:** DEV-223 (LangGraph Matching Node - provides matched_clients)
 - **Unlocks:** DEV-239 (E2E Tests)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/core/langgraph/nodes/response_formatter_node.py`
+- **Affected Files:**
+  - `app/core/langgraph/graph.py` (node consumer)
+  - `app/schemas/rag_state.py` (uses matched_clients field)
+- **Related Tests:**
+  - `tests/langgraph/test_response_formatter_node.py` (direct)
+  - `tests/integration/test_rag_pipeline.py` (consumer)
+- **Baseline Command:** `pytest tests/langgraph/ -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing response_formatter_node.py reviewed
+- [ ] RAGState matched_clients field available
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -3398,6 +3682,22 @@ Use existing `SecurityAuditLogger` to log all communication actions.
 - **Blocking:** DEV-230 (CommunicationService), Existing SecurityAuditLogger
 - **Unlocks:** DEV-239 (E2E Tests), GDPR compliance verification
 
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/services/communication_service.py`
+- **Affected Files:**
+  - `app/services/security_audit_logger.py` (integrates with)
+- **Related Tests:**
+  - `tests/services/test_communication_service.py` (direct)
+  - `tests/security/test_audit_logging.py` (consumer)
+- **Baseline Command:** `pytest tests/services/test_communication_service.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing CommunicationService reviewed
+- [ ] SecurityAuditLogger patterns understood
+
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
@@ -3465,6 +3765,12 @@ Create comprehensive E2E tests for communication flow.
 - **Blocking:** DEV-230 (CommunicationService), DEV-232 (API), DEV-233 (Email), DEV-234 (WhatsApp), DEV-237 (Response Formatter), DEV-238 (Audit)
 - **Unlocks:** Phase 4 start (all Phase 3 complete)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -3523,6 +3829,12 @@ Create `GuideService` for guide management and progress tracking.
 **Dependencies:**
 - **Blocking:** DEV-206 (ProceduralGuide model), DEV-207 (GuideProgress model), DEV-207 (Migration)
 - **Unlocks:** DEV-242 (Guide API), DEV-243 (Checklist), DEV-245 (Chat Context), DEV-246 (Analytics)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Guide not found: HTTP 404, `"Guida non trovata"`
@@ -3618,6 +3930,12 @@ Define 10-15 guides and seed via migration.
 - **Blocking:** DEV-206 (ProceduralGuide model), DEV-207 (Migration)
 - **Unlocks:** DEV-240 (GuideService - needs guides to operate on)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -3688,6 +4006,12 @@ Create Guides router with endpoints.
 **Dependencies:**
 - **Blocking:** DEV-240 (GuideService), DEV-241 (Pre-configured Guides)
 - **Unlocks:** DEV-247 (E2E Tests), Frontend integration
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - See DEV-240 for service-level errors
@@ -3773,6 +4097,22 @@ Extend progress tracking to include checklist item completion.
 - **Blocking:** DEV-240 (GuideService), DEV-207 (GuideProgress model)
 - **Unlocks:** DEV-247 (E2E Tests)
 
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/models/guide_progress.py`
+- **Affected Files:**
+  - `app/services/guide_service.py` (uses GuideProgress model)
+- **Related Tests:**
+  - `tests/models/test_guide_progress.py` (direct)
+  - `tests/services/test_guide_service.py` (consumer)
+- **Baseline Command:** `pytest tests/models/test_guide_progress.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing GuideProgress model reviewed
+- [ ] Checklist structure designed
+
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
@@ -3838,6 +4178,23 @@ Add notes field to GuideProgress and document attachment support.
 - **Blocking:** DEV-240 (GuideService), DEV-207 (GuideProgress model)
 - **Unlocks:** DEV-247 (E2E Tests)
 
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/models/guide_progress.py`
+- **Affected Files:**
+  - `app/services/guide_service.py` (uses GuideProgress model)
+  - `app/api/v1/guides.py` (notes endpoint)
+- **Related Tests:**
+  - `tests/models/test_guide_progress.py` (direct)
+  - `tests/services/test_guide_service.py` (consumer)
+- **Baseline Command:** `pytest tests/models/test_guide_progress.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing GuideProgress model reviewed
+- [ ] Notes storage approach designed
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -3896,6 +4253,23 @@ Add guide context to RAGState when user has active guide progress.
 - **Blocking:** DEV-240 (GuideService), Existing context_builder_node
 - **Unlocks:** DEV-247 (E2E Tests)
 
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/core/langgraph/nodes/context_builder_node.py`
+- **Affected Files:**
+  - `app/core/langgraph/graph.py` (node consumer)
+  - `app/schemas/rag_state.py` (adds guide_context field)
+- **Related Tests:**
+  - `tests/langgraph/test_context_builder_node.py` (direct)
+  - `tests/integration/test_rag_pipeline.py` (consumer)
+- **Baseline Command:** `pytest tests/langgraph/test_context_builder_node.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing context_builder_node.py reviewed
+- [ ] Guide context structure designed
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -3953,6 +4327,21 @@ Add analytics methods to GuideService.
 **Dependencies:**
 - **Blocking:** DEV-240 (GuideService), DEV-207 (GuideProgress model)
 - **Unlocks:** Dashboard analytics (post-MVP)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/services/guide_service.py`
+- **Affected Files:**
+  - `app/api/v1/guides.py` (analytics endpoint)
+- **Related Tests:**
+  - `tests/services/test_guide_service.py` (direct)
+- **Baseline Command:** `pytest tests/services/test_guide_service.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing GuideService reviewed
+- [ ] Analytics metrics defined
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -4019,6 +4408,12 @@ Create comprehensive E2E tests for guide flow.
 - **Blocking:** DEV-240 (GuideService), DEV-241 (Guides), DEV-242 (API), DEV-243 (Checklist), DEV-244 (Notes), DEV-245 (Chat Context)
 - **Unlocks:** Phase 5 start (all Phase 4 complete)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -4075,6 +4470,23 @@ Modify calculation tools to accept optional client_id and use profile data.
 **Dependencies:**
 - **Blocking:** DEV-202 (ClientProfile), DEV-209 (ClientService), Existing calculation tools
 - **Unlocks:** DEV-249 (IRPEF), DEV-250 (INPS), DEV-251 (IMU)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/core/langgraph/tools/` (multiple tools)
+- **Affected Files:**
+  - `app/core/langgraph/nodes/` (tool consumers)
+  - `app/services/` (calculation services)
+- **Related Tests:**
+  - `tests/langgraph/tools/test_irpef_tool.py` (direct)
+  - `tests/langgraph/tools/test_inps_tool.py` (direct)
+- **Baseline Command:** `pytest tests/langgraph/tools/ -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing calculation tools reviewed
+- [ ] Client context injection pattern designed
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -4140,6 +4552,21 @@ Enhance IRPEF calculator with regime-aware calculations.
 **Dependencies:**
 - **Blocking:** DEV-248 (Client Context Injection), Existing IRPEF calculator
 - **Unlocks:** DEV-252 (Calculation History), DEV-253 (Accuracy Tests)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/services/irpef_calculator.py`
+- **Affected Files:**
+  - `app/core/langgraph/tools/irpef_tool.py` (uses calculator)
+- **Related Tests:**
+  - `tests/services/test_irpef_calculator.py` (direct)
+- **Baseline Command:** `pytest tests/services/test_irpef_calculator.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing IRPEF calculator reviewed
+- [ ] Regime-aware logic designed
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -4211,6 +4638,21 @@ Enhance INPS calculator with ATECO-based rates.
 - **Blocking:** DEV-248 (Client Context Injection), Existing INPS calculator
 - **Unlocks:** DEV-252 (Calculation History), DEV-253 (Accuracy Tests)
 
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/services/inps_calculator.py`
+- **Affected Files:**
+  - `app/core/langgraph/tools/inps_tool.py` (uses calculator)
+- **Related Tests:**
+  - `tests/services/test_inps_calculator.py` (direct)
+- **Baseline Command:** `pytest tests/services/test_inps_calculator.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing INPS calculator reviewed
+- [ ] ATECO-based rates researched
+
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
@@ -4279,6 +4721,12 @@ Create IMU calculator that can use client property data.
 **Dependencies:**
 - **Blocking:** DEV-248 (Client Context Injection)
 - **Unlocks:** DEV-252 (Calculation History), DEV-253 (Accuracy Tests)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -4349,6 +4797,12 @@ Create CalculationHistory model to store calculations.
 - **Blocking:** DEV-249 (IRPEF), DEV-250 (INPS), DEV-251 (IMU), DEV-207 (Migration)
 - **Unlocks:** DEV-253 (Accuracy Tests), DEV-255 (Dashboard)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -4406,6 +4860,12 @@ Create exhaustive test suite for all calculation scenarios.
 **Dependencies:**
 - **Blocking:** DEV-249 (IRPEF), DEV-250 (INPS), DEV-251 (IMU), DEV-252 (History)
 - **Unlocks:** Phase 6 start (all Phase 5 complete)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -4465,6 +4925,12 @@ Create metrics service calculating ROI and usage statistics.
 **Dependencies:**
 - **Blocking:** DEV-209 (ClientService), DEV-230 (CommunicationService), DEV-240 (GuideService)
 - **Unlocks:** DEV-255 (Dashboard Aggregation), DEV-256 (Dashboard API)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -4551,6 +5017,12 @@ Create dashboard service aggregating data from multiple sources.
 - **Blocking:** DEV-254 (ROI Metrics), DEV-220 (Matching - for match stats)
 - **Unlocks:** DEV-256 (Dashboard API), DEV-258 (Caching)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
@@ -4630,6 +5102,12 @@ Create dashboard endpoint returning aggregated data.
 **Dependencies:**
 - **Blocking:** DEV-254 (ROI Metrics), DEV-255 (Dashboard Aggregation)
 - **Unlocks:** DEV-259 (E2E Tests), Frontend integration
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -4713,6 +5191,12 @@ Create activity model or view aggregating actions.
 - **Blocking:** DEV-207 (Migration)
 - **Unlocks:** DEV-255 (Dashboard Aggregation)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Same Timestamp:** Two activities same millisecond → secondary sort by ID
 - **Deleted Entity:** Referenced client deleted → activity preserved with `"entity_deleted": true`
@@ -4779,6 +5263,23 @@ Add Redis caching to dashboard service.
 **Dependencies:**
 - **Blocking:** DEV-255 (Dashboard Aggregation), Existing Redis cache infrastructure
 - **Unlocks:** DEV-259 (E2E Tests)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/services/dashboard_service.py`
+- **Affected Files:**
+  - `app/api/v1/dashboard.py` (uses cached service)
+  - `app/core/redis.py` (cache infrastructure)
+- **Related Tests:**
+  - `tests/services/test_dashboard_service.py` (direct)
+  - `tests/api/test_dashboard.py` (consumer)
+- **Baseline Command:** `pytest tests/services/test_dashboard_service.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing dashboard_service.py reviewed
+- [ ] Redis cache patterns understood
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -4860,6 +5361,12 @@ Create E2E tests for dashboard flow.
 - **Blocking:** DEV-254 (ROI Metrics), DEV-255 (Aggregation), DEV-256 (API), DEV-257 (Activity), DEV-258 (Caching)
 - **Unlocks:** Phase 7 start (all Phase 6 complete)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -4915,6 +5422,12 @@ Create bilancio parser using existing document parsing infrastructure.
 **Dependencies:**
 - **Blocking:** Existing document parsing infrastructure
 - **Unlocks:** DEV-262 (Client Document Association), DEV-263 (Chat Context), DEV-265 (Integration Tests)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -4999,6 +5512,12 @@ Create CU parser for extracting income and withholding data.
 - **Blocking:** Existing document parsing infrastructure
 - **Unlocks:** DEV-262 (Client Document Association), DEV-265 (Integration Tests)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
@@ -5082,6 +5601,12 @@ Create client-document linking with automatic CF matching.
 - **Blocking:** DEV-209 (ClientService), DEV-260 (Bilancio Parser), DEV-261 (CU Parser)
 - **Unlocks:** DEV-263 (Chat Context), DEV-264 (API), DEV-265 (Integration Tests)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
@@ -5157,6 +5682,23 @@ Include client documents in RAGState context.
 - **Blocking:** DEV-262 (Client Document Association), Existing context_builder_node
 - **Unlocks:** DEV-265 (Integration Tests)
 
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/core/langgraph/nodes/context_builder_node.py`
+- **Affected Files:**
+  - `app/core/langgraph/graph.py` (node consumer)
+  - `app/schemas/rag_state.py` (adds document context to state)
+- **Related Tests:**
+  - `tests/langgraph/test_context_builder_node.py` (direct)
+  - `tests/integration/test_rag_pipeline.py` (consumer)
+- **Baseline Command:** `pytest tests/langgraph/test_context_builder_node.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing context_builder_node.py reviewed
+- [ ] Document retrieval patterns understood
+
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
 |------|--------|------------|
@@ -5222,6 +5764,12 @@ Create document router with endpoints.
 **Dependencies:**
 - **Blocking:** DEV-262 (Client Document Association)
 - **Unlocks:** DEV-265 (Integration Tests), Frontend integration
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -5310,6 +5858,12 @@ Create integration tests with sample PDFs.
 - **Blocking:** DEV-260 (Bilancio Parser), DEV-261 (CU Parser), DEV-262 (Association), DEV-263 (Chat Context), DEV-264 (API)
 - **Unlocks:** Phase 8 start (all Phase 7 complete)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -5366,6 +5920,12 @@ Add schema validation and generate TypeScript types.
 **Dependencies:**
 - **Blocking:** All API endpoints (DEV-211, DEV-212, DEV-226, DEV-232, DEV-242, DEV-256, DEV-264)
 - **Unlocks:** DEV-270 (Frontend SDK Types)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -5437,6 +5997,23 @@ Standardize error response format across all endpoints.
 - **Blocking:** All existing API endpoints (foundation must exist)
 - **Unlocks:** DEV-270 (Frontend SDK Types), all future API development
 
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/api/error_handlers.py`
+- **Affected Files:**
+  - `app/api/v1/*.py` (all API endpoints use error handlers)
+  - `app/core/exceptions.py` (exception definitions)
+- **Related Tests:**
+  - `tests/api/test_error_handlers.py` (direct)
+  - `tests/api/test_*.py` (all API tests may be affected)
+- **Baseline Command:** `pytest tests/api/ -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing error handling patterns reviewed
+- [ ] All API endpoints identified for migration
+
 **Error Handling:**
 - This task DEFINES error handling - implement standard format:
   - `{"error": {"code": "ERROR_CODE", "message": "Human readable", "details": {...}}}`
@@ -5506,6 +6083,12 @@ Standardize pagination across all list endpoints.
 - **Blocking:** DEV-212 (Client API), DEV-226 (Matching API), DEV-232 (Communication API) - any list endpoint
 - **Unlocks:** All list endpoints use consistent pagination
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Invalid page: HTTP 400, `"Numero pagina non valido"`
 - Invalid per_page: HTTP 400, `"Items per pagina deve essere tra 1 e 100"`
@@ -5571,6 +6154,12 @@ Create WebSocket endpoint for real-time events.
 **Dependencies:**
 - **Blocking:** DEV-220 (NormativeMatchingService), DEV-230 (CommunicationService) - event sources
 - **Unlocks:** Real-time frontend updates, DEV-286 (Calendar Widget live updates)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Connection failure: Auto-reconnect with exponential backoff
@@ -5642,6 +6231,12 @@ Set up automatic type generation from OpenAPI.
 - **Blocking:** DEV-266 (OpenAPI Schema Validation), DEV-267 (Error Response Standardization)
 - **Unlocks:** Type-safe frontend development, reduces integration bugs
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Performance Requirements:**
 - Type generation: <30s (build-time, not runtime)
 - Types must regenerate on every OpenAPI change
@@ -5704,6 +6299,12 @@ Create complete E2E test from registration to dashboard.
   - DEV-230-239 (Communications), DEV-240-253 (Guides/Calculations)
   - DEV-254-265 (Document Analysis), DEV-266-270 (API Quality)
 - **Unlocks:** Production deployment gate (must pass)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Performance Requirements:**
 - Full E2E test suite: <60s total execution
@@ -5770,6 +6371,12 @@ Create DPA model with version tracking and acceptance records.
 **Dependencies:**
 - **Blocking:** DEV-200 (Studio model), DEV-207 (Migration infrastructure)
 - **Unlocks:** DEV-273 (DPA Acceptance Workflow), DEV-278 (GDPR Dashboard)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Missing DPA version: HTTP 500 (system config error), alert ops team
@@ -5845,6 +6452,12 @@ Create DPA service with acceptance workflow and API enforcement.
 **Dependencies:**
 - **Blocking:** DEV-272 (DPA Model)
 - **Unlocks:** DEV-209 (ClientService) - cannot create clients without DPA, DEV-278 (Dashboard)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - DPA not accepted: HTTP 403, `"Accettare il DPA prima di aggiungere clienti"`
@@ -5922,6 +6535,12 @@ Create breach notification model with status tracking.
 - **Blocking:** DEV-207 (Migration infrastructure)
 - **Unlocks:** DEV-275 (Breach Notification Service), DEV-278 (GDPR Dashboard)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Invalid status transition: HTTP 400, `"Transizione stato violazione non valida"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -5997,6 +6616,12 @@ Create breach service with workflow and deadline tracking.
 **Dependencies:**
 - **Blocking:** DEV-274 (Breach Model), DEV-233 (Email sending for notifications)
 - **Unlocks:** DEV-278 (GDPR Dashboard), DEV-279 (GDPR E2E Tests)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Notification send failure: Retry 3x, then HTTP 500, log for manual follow-up
@@ -6077,6 +6702,12 @@ Create processing register model and service.
 - **Blocking:** DEV-200 (Studio model), DEV-207 (Migration infrastructure)
 - **Unlocks:** DEV-278 (GDPR Dashboard), DEV-279 (GDPR E2E Tests)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Invalid purpose: HTTP 422, `"Finalità trattamento non valida"`
 - Missing legal basis: HTTP 422, `"Base giuridica richiesta"`
@@ -6153,6 +6784,12 @@ Create data rights API for client self-service.
 **Dependencies:**
 - **Blocking:** DEV-209 (ClientService), existing GDPR deletion service
 - **Unlocks:** DEV-278 (GDPR Dashboard), DEV-279 (GDPR E2E Tests)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Client not found: HTTP 404, `"Cliente non trovato"`
@@ -6241,6 +6878,12 @@ Create compliance dashboard endpoint.
 - **Blocking:** DEV-272 (DPA), DEV-273 (DPA Workflow), DEV-274-275 (Breach), DEV-276 (Register), DEV-277 (Data Rights)
 - **Unlocks:** DEV-279 (GDPR E2E Tests)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Dashboard aggregation failure: Return partial data with `"incomplete": true` flag
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -6319,6 +6962,12 @@ Create comprehensive GDPR E2E test suite.
 - **Blocking:** DEV-272-278 (All Phase 9 GDPR tasks)
 - **Unlocks:** Production deployment gate (GDPR compliance required)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Performance Requirements:**
 - Full GDPR E2E suite: <120s execution
 - Individual test: <15s
@@ -6387,6 +7036,12 @@ Create `Deadline` SQLModel to store deadline metadata and `ClientDeadline` for t
 **Dependencies:**
 - **Blocking:** DEV-200 (Studio model), DEV-201 (Client model), DEV-207 (Migration infrastructure)
 - **Unlocks:** DEV-281 (DeadlineService), DEV-282 (Extraction), DEV-283 (Matching), DEV-284 (Notifications), DEV-285 (API)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid deadline_type: HTTP 422, `"Tipo scadenza non valido"`
@@ -6493,6 +7148,12 @@ Create DeadlineService with full CRUD and status management.
 - **Blocking:** DEV-280 (Deadline model)
 - **Unlocks:** DEV-282 (Extraction), DEV-283 (Matching), DEV-284 (Notifications), DEV-285 (API), DEV-287 (E2E Tests)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Deadline not found: HTTP 404, `"Scadenza non trovata"`
 - Unauthorized studio: HTTP 403, `"Accesso non autorizzato alla scadenza"`
@@ -6590,6 +7251,12 @@ Create DeadlineExtractionService that processes KB items and extracts deadline m
 - **Blocking:** DEV-281 (DeadlineService), existing KB/RSS ingestion system
 - **Unlocks:** DEV-283 (Client matching for extracted deadlines), DEV-287 (E2E Tests)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - No dates found: Log warning, skip item
 - Invalid date format: Log warning, attempt alternative parsing
@@ -6686,6 +7353,12 @@ Create DeadlineMatchingService that matches deadlines to clients using the same 
 - **Blocking:** DEV-281 (DeadlineService), DEV-202 (ClientProfile), DEV-220 (NormativeMatchingService criteria engine)
 - **Unlocks:** DEV-284 (Notifications use matched clients), DEV-287 (E2E Tests)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - No matching clients: Log info, deadline remains without ClientDeadline records
 - Criteria evaluation error: Log error, skip client, continue with others
@@ -6772,6 +7445,12 @@ Create background job that runs daily and sends notifications for upcoming deadl
 **Dependencies:**
 - **Blocking:** DEV-281 (DeadlineService), DEV-283 (Client-Deadline Matching), DEV-233 (Email sending)
 - **Unlocks:** DEV-287 (E2E Tests)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Notification send failure: Retry 3x, log for manual follow-up
@@ -6867,6 +7546,12 @@ Create REST endpoints for deadline management and queries.
 **Dependencies:**
 - **Blocking:** DEV-281 (DeadlineService)
 - **Unlocks:** DEV-286 (Calendar Widget), DEV-287 (E2E Tests)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Deadline not found: HTTP 404, `"Scadenza non trovata"`
@@ -6975,6 +7660,12 @@ Create React calendar component showing deadlines with color-coding by type and 
 - **Blocking:** DEV-285 (Deadlines API), DEV-270 (Frontend SDK Types)
 - **Unlocks:** DEV-287 (E2E Tests - frontend integration)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Performance Requirements:**
 - Calendar render: <200ms
 - Month navigation: <100ms
@@ -7045,6 +7736,12 @@ Create E2E test suite for deadline system.
 **Dependencies:**
 - **Blocking:** DEV-280-286 (All Phase 10 Deadline tasks)
 - **Unlocks:** Production deployment gate (deadline system must work)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Performance Requirements:**
 - Full deadline E2E suite: <120s execution
@@ -7123,6 +7820,12 @@ Create shared PDF generation service using WeasyPrint or ReportLab.
 **Dependencies:**
 - **Blocking:** None (independent utility service)
 - **Unlocks:** Guide export, calculation export, dashboard reports, communication archive
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - PDF generation failure: HTTP 500, `"Generazione PDF fallita"`
@@ -7209,6 +7912,12 @@ Integrate OCR service (Tesseract or cloud-based) into document processing pipeli
 - **Blocking:** None (independent utility service)
 - **Unlocks:** DEV-263 (Document Context) enhancement, DEV-291 (F24 Parser) scanned support
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - OCR failure: HTTP 500, `"Estrazione testo fallita"`
 - Low confidence: Return text with `"low_confidence": true` flag
@@ -7292,6 +8001,12 @@ Create background job that deletes documents older than 30 minutes.
 - **Blocking:** DEV-263 (Document Context) or existing document storage
 - **Unlocks:** GDPR compliance (data minimization requirement)
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - File deletion failure: Log error, retry next cycle
 - DB record deletion failure: Log critical, alert ops (orphaned file)
@@ -7374,6 +8089,12 @@ Create specialized parser for F24 documents.
 **Dependencies:**
 - **Blocking:** DEV-263 (Document Context) for PDF parsing, optionally DEV-289 (OCR) for scanned F24
 - **Unlocks:** Tax calculation validation, payment tracking features
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Invalid F24 format: HTTP 422, `"Formato F24 non riconosciuto"`
@@ -7460,6 +8181,12 @@ Create configuration system for regional tax rates.
 **Dependencies:**
 - **Blocking:** None (independent configuration system)
 - **Unlocks:** DEV-260 (TaxCalculatorService) enhancement for regional accuracy
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Region not found: HTTP 404, `"Regione non trovata"`
@@ -7550,6 +8277,12 @@ Create feature flag system with studio-level and global flags.
 - **Blocking:** DEV-200 (Studio model) for per-studio flags
 - **Unlocks:** Safe gradual rollout of all new features
 
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
 **Error Handling:**
 - Flag not found: Return default (false), log warning
 - Redis unavailable: Fall back to environment defaults
@@ -7639,6 +8372,12 @@ Implement rate limiting using Redis with configurable limits per endpoint.
 **Dependencies:**
 - **Blocking:** None (independent middleware)
 - **Unlocks:** Production deployment security gate
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
 - Rate limit exceeded: HTTP 429, `"Troppe richieste. Riprova tra {seconds} secondi"`

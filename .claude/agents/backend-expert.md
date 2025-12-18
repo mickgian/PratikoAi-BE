@@ -242,6 +242,74 @@ Steps 45-47 → Insert/replace system message in messages
 
 ---
 
+## Regression Prevention Workflow (MANDATORY for MODIFYING/RESTRUCTURING tasks)
+
+When assigned a task classified as **MODIFYING** or **RESTRUCTURING**, follow this workflow:
+
+### Phase 1: Pre-Implementation (BEFORE writing any code)
+
+1. **Read the Task Classification**
+   - If `ADDITIVE` → Skip to implementation (new code only)
+   - If `MODIFYING` or `RESTRUCTURING` → Continue with this workflow
+
+2. **Run Baseline Tests**
+   ```bash
+   # Copy the Baseline Command from the task's Impact Analysis
+   pytest tests/services/test_X_service.py tests/api/test_X.py -v
+   ```
+   - Document the output (which tests pass/fail)
+   - If any tests fail BEFORE you start, note them as "pre-existing failures"
+
+3. **Review Existing Code**
+   - Read the **Primary File** listed in Impact Analysis
+   - Read each **Affected File** to understand consumers
+   - Identify integration points that could break
+
+4. **Verify Pre-Implementation Checklist**
+   - Check the boxes in the task's **Pre-Implementation Verification** section:
+     - [ ] Baseline tests pass
+     - [ ] Existing code reviewed
+     - [ ] No pre-existing test failures
+
+### Phase 2: During Implementation
+
+5. **Incremental Testing**
+   - After each significant change, run the baseline tests
+   - If a previously-passing test fails → STOP and investigate immediately
+
+6. **Don't Modify Test Expectations**
+   - If existing tests fail, fix your code, NOT the test
+   - Exception: Consult @Clelia if test is genuinely wrong
+
+### Phase 3: Post-Implementation (AFTER writing code)
+
+7. **Run Final Baseline** - ALL previously-passing tests must still pass
+
+8. **[EZIO-SPECIFIC] Verify API Contract (if modifying API endpoint)**
+   ```bash
+   # Generate current spec and compare
+   python -c "from app.main import app; import json; print(json.dumps(app.openapi()))"
+   ```
+   - Existing request/response schemas must not change (backwards compatible)
+   - New fields: optional only (don't break existing clients)
+
+9. **[EZIO-SPECIFIC] Integration Tests**
+   ```bash
+   pytest tests/integration/ -v -k "affected_service"
+   ```
+   - Run integration tests for affected service cluster
+
+10. **Run Regression Suite** and verify coverage doesn't decrease
+    ```bash
+    pytest tests/services/ -v
+    pytest --cov=app/services/[modified_file] --cov-report=term-missing -v
+    ```
+
+11. **Update Acceptance Criteria**
+    - Check the "All existing tests still pass (regression)" checkbox in the task
+
+---
+
 ## Responsibilities
 
 ### 1. Feature Implementation

@@ -124,6 +124,75 @@ The pre-commit hook `check-alembic-migrations` runs `alembic check` when:
 
 ---
 
+## Regression Prevention Workflow (MANDATORY for MODIFYING/RESTRUCTURING tasks)
+
+When assigned a task classified as **MODIFYING** or **RESTRUCTURING**, follow this workflow:
+
+### Phase 1: Pre-Implementation (BEFORE writing any code)
+
+1. **Read the Task Classification**
+   - If `ADDITIVE` → Skip to implementation (new code only)
+   - If `MODIFYING` or `RESTRUCTURING` → Continue with this workflow
+
+2. **Run Baseline Tests**
+   ```bash
+   # Copy the Baseline Command from the task's Impact Analysis
+   pytest tests/models/test_user.py tests/api/test_auth.py -v
+   ```
+   - Document the output (which tests pass/fail)
+   - If any tests fail BEFORE you start, note them as "pre-existing failures"
+
+3. **Review Existing Code**
+   - Read the **Primary File** listed in Impact Analysis
+   - Read each **Affected File** to understand consumers
+   - Identify integration points that could break
+
+4. **Verify Pre-Implementation Checklist**
+   - Check the boxes in the task's **Pre-Implementation Verification** section:
+     - [ ] Baseline tests pass
+     - [ ] Existing code reviewed
+     - [ ] No pre-existing test failures
+
+### Phase 2: During Implementation
+
+5. **Incremental Testing**
+   - After each significant change, run the baseline tests
+   - If a previously-passing test fails → STOP and investigate immediately
+
+6. **Don't Modify Test Expectations**
+   - If existing tests fail, fix your code, NOT the test
+   - Exception: Consult @Clelia if test is genuinely wrong
+
+### Phase 3: Post-Implementation (AFTER writing code)
+
+7. **Run Final Baseline** - ALL previously-passing tests must still pass
+
+8. **[PRIMO-SPECIFIC] Verify Migration Rollback**
+   ```bash
+   # CRITICAL for database changes
+   alembic upgrade head
+   alembic downgrade -1
+   alembic upgrade head
+   ```
+   - Migration must be reversible without data loss
+
+9. **[PRIMO-SPECIFIC] Check Index Performance**
+   ```bash
+   EXPLAIN ANALYZE [query from affected endpoint]
+   ```
+   - Verify new indexes are used, no sequential scans on large tables
+
+10. **Run Regression Suite** and verify coverage doesn't decrease
+    ```bash
+    pytest tests/models/ -v
+    pytest --cov=app/models/[modified_file] --cov-report=term-missing -v
+    ```
+
+11. **Update Acceptance Criteria**
+    - Check the "All existing tests still pass (regression)" checkbox in the task
+
+---
+
 ## Technical Expertise
 
 ### PostgreSQL Mastery

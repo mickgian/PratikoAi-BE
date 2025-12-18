@@ -62,7 +62,12 @@ async def upload_documents_demo(
 
     This is a demonstration endpoint that validates files and returns mock responses.
     In the full implementation, this would process documents and store them securely.
+
+    Returns response format matching the real endpoint for frontend compatibility.
     """
+    from datetime import datetime, timedelta
+    from uuid import uuid4
+
     try:
         # Basic validation
         if len(files) > DOCUMENT_CONFIG["MAX_FILES_PER_UPLOAD"]:
@@ -71,7 +76,9 @@ async def upload_documents_demo(
                 detail=f"Too many files. Maximum {DOCUMENT_CONFIG['MAX_FILES_PER_UPLOAD']} files allowed.",
             )
 
-        results = []
+        uploaded_documents = []
+        processing_errors = []
+
         for file in files:
             file_size = 0
             if hasattr(file, "size") and file.size:
@@ -83,36 +90,46 @@ async def upload_documents_demo(
                 await file.seek(0)  # Reset
 
             if file_size > DOCUMENT_CONFIG["MAX_FILE_SIZE_MB"] * 1024 * 1024:
-                results.append(
+                processing_errors.append(
                     {
                         "filename": file.filename,
-                        "status": "error",
                         "error": f"File too large (max {DOCUMENT_CONFIG['MAX_FILE_SIZE_MB']}MB)",
                     }
                 )
                 continue
 
-            # Mock successful upload
-            results.append(
+            # Determine file type from extension
+            filename = file.filename or "unknown"
+            ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "unknown"
+            file_type_map = {"pdf": "pdf", "xlsx": "excel", "xls": "excel", "csv": "csv", "xml": "xml", "docx": "word"}
+            file_type = file_type_map.get(ext, ext)
+
+            # Generate mock document data matching real endpoint format
+            now = datetime.utcnow()
+            uploaded_documents.append(
                 {
-                    "filename": file.filename,
-                    "status": "uploaded",
+                    "id": str(uuid4()),  # Generate unique ID for frontend
+                    "original_filename": filename,
+                    "file_type": file_type,
                     "file_size": file_size,
                     "file_size_mb": round(file_size / (1024 * 1024), 2),
-                    "message": "File uploaded successfully (demo mode)",
-                    "processing_status": "demo",
+                    "status": "processing",  # Match real endpoint status
+                    "upload_timestamp": now.isoformat(),
+                    "expires_at": (now + timedelta(hours=48)).isoformat(),
                 }
             )
 
-        logger.info(f"Demo upload: {len(files)} files processed")
+        logger.info(f"Demo upload: {len(files)} files processed, {len(uploaded_documents)} successful")
 
+        # Return format matching real endpoint for frontend compatibility
         return {
-            "success": True,
-            "message": f"Demo: {len(results)} files processed",
-            "files": results,
-            "analysis_query": analysis_query,
-            "demo_mode": True,
-            "note": "This is a demonstration. In production, files would be processed and analyzed by AI.",
+            "success": len(uploaded_documents) > 0,
+            "uploaded_documents": uploaded_documents,
+            "total_uploaded": len(uploaded_documents),
+            "errors": processing_errors,
+            "message": f"Caricati {len(uploaded_documents)} documenti su {len(files)}. Elaborazione in corso..."
+            if uploaded_documents
+            else "Nessun documento caricato con successo.",
         }
 
     except Exception as e:

@@ -5,7 +5,10 @@
 import asyncio
 from contextlib import nullcontext
 from datetime import UTC, datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from app.schemas.chat import Message
 
 try:
     from app.observability.rag_logging import rag_step_log, rag_step_timer
@@ -982,9 +985,12 @@ async def step_11__convert_messages(
 
             return result
 
-
 async def _convert_single_message(raw_msg: Any, index: int) -> Optional["Message"]:
-    """Convert a single message from any format to Message object."""
+    """Convert a single message from any format to Message object.
+
+    DEV-007 FIX: Properly handles LangChain BaseMessage objects which have
+    .type attribute (not .role) with values like "human", "ai", "system".
+    """
     from app.core.logging import logger
     from app.schemas.chat import Message
 
@@ -1004,7 +1010,24 @@ async def _convert_single_message(raw_msg: Any, index: int) -> Optional["Message
         elif isinstance(raw_msg, Message):
             return raw_msg
 
-        # Handle LangChain BaseMessage objects
+        # DEV-007 FIX: Handle LangChain BaseMessage objects (HumanMessage, AIMessage, etc.)
+        # These have .type attribute (not .role) with values like "human", "ai", "system"
+        elif hasattr(raw_msg, "type") and hasattr(raw_msg, "content"):
+            # Map LangChain types to standard roles
+            type_to_role = {
+                "human": "user",
+                "ai": "assistant",
+                "system": "system",
+                "assistant": "assistant",
+                "user": "user",
+            }
+            msg_type = getattr(raw_msg, "type", "human")
+            role = type_to_role.get(msg_type, "user")
+            content = str(getattr(raw_msg, "content", ""))
+
+            return Message(role=role, content=content)
+
+        # Fallback: Handle objects with .role and .content attributes
         elif hasattr(raw_msg, "role") and hasattr(raw_msg, "content"):
             role = getattr(raw_msg, "role", "user")
             content = getattr(raw_msg, "content", "")
@@ -2952,7 +2975,7 @@ def _create_streaming_generator(ctx: dict[str, Any]) -> Any:
     stream_context.get("session_id")
     stream_context.get("user_id")
 
-    async def response_generator() -> AsyncGenerator[str, None]:
+    async def response_generator() -> AsyncGenerator[str]:
         """Async generator for streaming response chunks."""
         try:
             # This would typically call the LangGraph agent's get_stream_response

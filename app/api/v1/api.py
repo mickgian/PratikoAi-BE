@@ -13,7 +13,7 @@ from app.api.v1.ccnl_search import router as ccnl_search_router
 from app.api.v1.chatbot import router as chatbot_router
 from app.api.v1.data_sources import router as data_sources_router
 from app.api.v1.demo import router as demo_router
-from app.api.v1.documents_minimal import router as documents_router
+from app.api.v1.documents import router as documents_router
 from app.api.v1.expert_feedback import router as expert_feedback_router
 
 # from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router

@@ -11,6 +11,21 @@ from typing import (
     Optional,
 )
 
+
+def _get_msg_role(msg: Any) -> str | None:
+    """Get role from message, handling both dict and Pydantic Message formats.
+
+    DEV-007 FIX: Messages in state can be dicts or Pydantic objects.
+    - Dicts use .get("role")
+    - Pydantic objects use .role attribute
+    Using getattr() on a dict always returns None, causing system_exists
+    to be False and system messages to be inserted on every turn.
+    """
+    if isinstance(msg, dict):
+        return msg.get("role")
+    return getattr(msg, "role", None)
+
+
 try:
     from app.observability.rag_logging import (
         rag_step_log,
@@ -217,8 +232,21 @@ async def _analyze_user_query(user_query: str) -> dict[str, Any]:
 
 
 async def _get_default_system_prompt(query_analysis: dict[str, Any], context: dict[str, Any]) -> str:
-    """Get appropriate default system prompt based on query analysis and inject context."""
-    from app.core.prompts import SYSTEM_PROMPT
+    """Get appropriate default system prompt based on query analysis and inject context.
+
+    DEV-007 Issue 11: Conditionally injects document analysis guidelines when
+    query_composition is 'pure_doc' or 'hybrid' (ADR-016).
+    """
+    from app.core.prompts import DOCUMENT_ANALYSIS_PROMPT, SYSTEM_PROMPT
+
+    # Start with base system prompt
+    prompt = SYSTEM_PROMPT
+
+    # DEV-007 Issue 11: Inject document analysis guidelines for document queries
+    # Only inject when user has uploaded documents and query is about them
+    query_composition = context.get("query_composition", "pure_kb")
+    if query_composition in ("pure_doc", "hybrid"):
+        prompt = prompt + "\n\n" + DOCUMENT_ANALYSIS_PROMPT
 
     # Extract merged context from state (built in step 40)
     merged_context = context.get("context", "")
@@ -226,10 +254,10 @@ async def _get_default_system_prompt(query_analysis: dict[str, Any], context: di
     # If we have context from knowledge base, inject it into the system prompt
     if merged_context and merged_context.strip():
         context_section = f"\n\n# Relevant Knowledge Base Context\n\n{merged_context}\n"
-        return SYSTEM_PROMPT + context_section
+        return prompt + context_section
 
-    # Otherwise, return standard prompt without context
-    return SYSTEM_PROMPT
+    # Otherwise, return prompt (with or without document analysis guidelines)
+    return prompt
 
 
 async def step_41__select_prompt(
@@ -391,6 +419,7 @@ async def step_41__select_prompt(
                         domain_prompt_result = await step_43__domain_prompt(
                             messages=messages,
                             ctx={
+                                **(ctx or {}),  # DEV-007 FIX: Preserve "context" from Step 40
                                 "classification": classification,
                                 "prompt_template_manager": prompt_template_manager,
                                 "user_query": user_query,
@@ -402,6 +431,42 @@ async def step_41__select_prompt(
                         # Extract the generated prompt
                         if domain_prompt_result and domain_prompt_result.get("prompt_generated"):
                             domain_prompt = domain_prompt_result.get("domain_prompt", "")
+
+                            # DEV-007 Issue 1 FIX: Inject document analysis override at TOP
+                            # Override at TOP ensures LLM prioritizes these instructions
+                            query_composition = (ctx or {}).get("query_composition", "pure_kb")
+                            if query_composition in ("pure_doc", "hybrid"):
+                                from app.core.prompts import DOCUMENT_ANALYSIS_OVERRIDE
+
+                                # Inject at TOP, not end
+                                domain_prompt = DOCUMENT_ANALYSIS_OVERRIDE + "\n\n---\n\n" + domain_prompt
+                                logger.info(
+                                    "document_analysis_override_injected_to_domain_prompt",
+                                    extra={
+                                        "query_composition": query_composition,
+                                        "request_id": request_id,
+                                        "domain": domain,
+                                        "action": action,
+                                        "override_length": len(DOCUMENT_ANALYSIS_OVERRIDE),
+                                    },
+                                )
+
+                            # DEV-007 FIX: Inject KB/document context into domain prompt
+                            # (Same pattern as step_44 lines 668-691)
+                            # Without this, document content from Step 40 never reaches LLM
+                            merged_context = (ctx or {}).get("context", "")
+                            if merged_context and merged_context.strip():
+                                context_section = f"\n\n# Relevant Knowledge Base Context\n\n{merged_context}\n"
+                                domain_prompt = domain_prompt + context_section
+                                logger.info(
+                                    "context_injected_to_domain_prompt",
+                                    extra={
+                                        "request_id": request_id,
+                                        "context_length": len(merged_context),
+                                        "domain": domain,
+                                        "action": action,
+                                    },
+                                )
                         else:
                             # Step 43 failed to generate prompt
                             raise Exception(
@@ -522,10 +587,13 @@ def step_44__default_sys_prompt(
     1. No classification is available, OR
     2. Classification confidence is below threshold
 
+    DEV-007 Issue 11: Conditionally injects document analysis guidelines when
+    query_composition is 'pure_doc' or 'hybrid' (ADR-016).
+
     This is the orchestrator that coordinates returning the default system prompt.
     """
     from app.core.config import settings
-    from app.core.prompts import SYSTEM_PROMPT
+    from app.core.prompts import DOCUMENT_ANALYSIS_PROMPT, SYSTEM_PROMPT
 
     # Extract parameters from context
     classification = kwargs.get("classification") or (ctx or {}).get("classification")
@@ -584,7 +652,34 @@ def step_44__default_sys_prompt(
         )
 
         # Step 44 logic: Return default SYSTEM_PROMPT with context injection
-        prompt = SYSTEM_PROMPT
+        # DEV-007 Issue 1 FIX: Inject document analysis override at TOP for document queries
+        # This ensures the LLM prioritizes document analysis instructions over KB instructions
+        query_composition = (ctx or {}).get("query_composition", "pure_kb")
+        from app.core.logging import logger as step44_logger
+        from app.core.prompts import DOCUMENT_ANALYSIS_OVERRIDE
+
+        step44_logger.debug(
+            "step_44_query_composition_check",
+            extra={
+                "query_composition": query_composition,
+                "ctx_keys": list((ctx or {}).keys()),
+                "trigger_reason": trigger_reason,
+            },
+        )
+
+        if query_composition in ("pure_doc", "hybrid"):
+            # DEV-007 FIX: Override at TOP, not end - LLM gives priority to first instructions
+            prompt = DOCUMENT_ANALYSIS_OVERRIDE + "\n\n---\n\n" + SYSTEM_PROMPT
+            step44_logger.info(
+                "document_analysis_override_injected_at_top",
+                extra={
+                    "query_composition": query_composition,
+                    "trigger_reason": trigger_reason,
+                    "override_length": len(DOCUMENT_ANALYSIS_OVERRIDE),
+                },
+            )
+        else:
+            prompt = SYSTEM_PROMPT
 
         # Inject KB context if available (from step 40)
         # Step 40 stores in 'context' key, but state may have kb_docs from step 39
@@ -613,6 +708,24 @@ def step_44__default_sys_prompt(
         if merged_context and merged_context.strip():
             context_section = f"\n\n# Relevant Knowledge Base Context\n\n{merged_context}\n"
             prompt = prompt + context_section
+            # DEV-007 DIAGNOSTIC: Log context injection
+            step44_logger.info(
+                "DEV007_step44_context_injected",
+                extra={
+                    "context_length": len(merged_context),
+                    "context_preview": merged_context[:500] if len(merged_context) > 500 else merged_context,
+                    "prompt_final_length": len(prompt),
+                },
+            )
+        else:
+            # DEV-007 DIAGNOSTIC: Log when NO context is injected
+            step44_logger.warning(
+                "DEV007_step44_no_context_to_inject",
+                extra={
+                    "merged_context_value": repr(merged_context)[:200] if merged_context else "None",
+                    "ctx_has_context_key": "context" in (ctx or {}),
+                },
+            )
 
         # Determine specific trigger reason if not provided
         if trigger_reason == "unknown":
@@ -679,7 +792,7 @@ def step_45__check_sys_msg(*, messages: list[Any] | None = None, ctx: dict[str, 
     # Check system message existence
     original_count = len(messages)
     messages_empty = original_count == 0
-    system_exists = bool(messages and getattr(messages[0], "role", None) == "system")
+    system_exists = bool(messages and _get_msg_role(messages[0]) == "system")
 
     # Extract classification details for logging
     has_classification = classification is not None
@@ -766,8 +879,10 @@ def step_45__check_sys_msg(*, messages: list[Any] | None = None, ctx: dict[str, 
         )
 
         # Return decision result for routing
+        # DEV-007 FIX: Key MUST be 'sys_msg_exists' (not 'system_exists')
+        # Node wrapper expects this exact key name for router decision
         return {
-            "system_exists": system_exists,
+            "sys_msg_exists": system_exists,
             "has_classification": has_classification,
             "action": action_taken,
             "next_step": next_step,
@@ -793,11 +908,18 @@ def step_46__replace_msg(*, messages: list[Any] | None = None, ctx: dict[str, An
         messages = []
 
     # Extract parameters from context
-    new_system_prompt = kwargs.get("new_system_prompt") or (ctx or {}).get("new_system_prompt")
+    # DEV-007 P0.7 FIX: Step 44 stores the prompt as "system_prompt", not "new_system_prompt"
+    # Check both keys for compatibility - "system_prompt" is the correct key from Step 44
+    new_system_prompt = (
+        kwargs.get("new_system_prompt")
+        or kwargs.get("system_prompt")
+        or (ctx or {}).get("new_system_prompt")
+        or (ctx or {}).get("system_prompt")  # DEV-007: This is where Step 44 stores it
+    )
     classification = kwargs.get("classification") or (ctx or {}).get("classification")
 
     # Check preconditions for Step 46
-    system_exists = bool(messages and getattr(messages[0], "role", None) == "system")
+    system_exists = bool(messages and _get_msg_role(messages[0]) == "system")
     has_classification = classification is not None
 
     with rag_step_timer(46, "RAG.prompting.replace.system.message", "ReplaceMsg", stage="start"):
@@ -914,7 +1036,7 @@ def step_47__insert_msg(*, messages: list[Any] | None = None, ctx: dict[str, Any
     classification = kwargs.get("classification") or (ctx or {}).get("classification")
 
     # Check preconditions for Step 47
-    system_exists = bool(messages and getattr(messages[0], "role", None) == "system")
+    system_exists = bool(messages and _get_msg_role(messages[0]) == "system")
     has_classification = classification is not None
     messages_empty = len(messages) == 0
 

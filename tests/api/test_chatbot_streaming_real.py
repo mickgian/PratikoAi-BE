@@ -2,12 +2,24 @@
 
 These tests validate actual SSE streaming behavior with the real agent,
 testing connection timing, chunk delivery, and format compliance.
+
+NOTE: Skipped in CI - requires full app infrastructure and real LangGraph agent.
 """
+
+import os
+
+import pytest
+
+# Skip in CI - TestClient(app) triggers slow app startup
+if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
+    pytest.skip(
+        "Real streaming tests require full app infrastructure - skipped in CI",
+        allow_module_level=True,
+    )
 
 import json
 import time
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.api.v1.auth import get_current_session

@@ -99,6 +99,62 @@ def sanitize_list(data: list[Any]) -> list[Any]:
     return sanitized
 
 
+def sanitize_document_content(text: str) -> str:
+    """Sanitize document content to prevent prompt injection attacks.
+
+    DEV-007 Issue 11: This function detects and neutralizes common prompt injection
+    patterns that could be embedded in user-uploaded documents to manipulate LLM behavior.
+
+    Args:
+        text: The document content to sanitize
+
+    Returns:
+        str: The sanitized document content with injection patterns neutralized
+    """
+    if not text:
+        return text
+
+    # Common prompt injection patterns to detect and neutralize
+    injection_patterns = [
+        # Direct instruction override attempts
+        r"ignore\s+(all\s+)?previous\s+instructions?",
+        r"disregard\s+(all\s+)?previous\s+(instructions?|context)",
+        r"forget\s+(all\s+)?previous\s+(instructions?|context|rules)",
+        # Role/mode manipulation
+        r"you\s+are\s+now\s+in\s+\w+\s+mode",
+        r"switch\s+to\s+\w+\s+mode",
+        r"activate\s+\w+\s+mode",
+        r"enter\s+(developer|admin|root|debug|jailbreak)\s+mode",
+        # System prompt override attempts
+        r"system\s*:\s*",
+        r"<\s*system\s*>",
+        r"\[system\]",
+        r"##\s*system\s*prompt",
+        # OpenAI special tokens (prevent token manipulation)
+        r"<\|.*?\|>",
+        r"<\|im_start\|>",
+        r"<\|im_end\|>",
+        r"<\|endoftext\|>",
+        # Claude special sequences
+        r"<\|assistant\|>",
+        r"<\|human\|>",
+        r"\[INST\]",
+        r"\[/INST\]",
+        # Delimiter manipulation
+        r"```+\s*(system|prompt|instruction)",
+        r"---+\s*(system|prompt|instruction)",
+        # Italian variants (since PratikoAI is for Italian professionals)
+        r"ignora\s+(tutte\s+le\s+)?istruzioni\s+precedenti",
+        r"dimentica\s+(tutte\s+le\s+)?istruzioni",
+    ]
+
+    # Replace detected patterns with sanitized marker
+    for pattern in injection_patterns:
+        text = re.sub(pattern, "[CONTENUTO_FILTRATO]", text, flags=re.IGNORECASE)
+
+    return text
+
+
 def validate_password_strength(password: str) -> bool:
     """Validate password strength.
 

@@ -70,6 +70,130 @@ You work under the coordination of the **Scrum Master** and technical guidance o
 
 ---
 
+## Code Structure Requirements
+
+### Size Guidelines (MANDATORY)
+
+| Component | Max Lines | Guidance |
+|-----------|-----------|----------|
+| Page files | 100 | Delegate to components |
+| React components | 150 | Extract sub-components |
+| Custom hooks | 50 | Single concern |
+| API clients | 100 | One resource per file |
+| Utility files | 200 | Pure functions, one concern |
+
+### Structure Rules
+
+- **Pages:** Route handling only, import feature components
+- **Components:** Single responsibility, props-only dependencies
+- **Hooks:** One concern per hook, return typed values
+- **Context:** useReducer pattern for complex state
+- **API clients:** One resource per file, typed responses
+
+### When to Extract
+
+- Component >150 lines → Extract sub-components
+- Hook >50 lines → Split into smaller hooks
+- Logic >20 lines in JSX → Extract to hook or utility
+- Repeated logic → Extract to shared utility
+
+### Pattern: Composition Over Monolith
+
+```tsx
+// GOOD: Small, composable components
+function ChatMessage({ message }: { message: Message }) {
+  return (
+    <div>
+      <MessageHeader author={message.author} time={message.timestamp} />
+      <MessageContent text={message.text} />
+      <MessageActions onReply={handleReply} onShare={handleShare} />
+    </div>
+  );
+}
+
+// BAD: Monolithic component
+function ChatMessage({ message }: { message: Message }) {
+  // 300+ lines of JSX, state, effects all mixed together
+  ...
+}
+```
+
+### Testability Rules
+
+- Components: Test in isolation with props
+- Hooks: Test return values and behavior
+- Pure functions for utilities (no side effects)
+- Each component should be testable independently
+
+---
+
+## Regression Prevention Workflow (MANDATORY for MODIFYING/RESTRUCTURING tasks)
+
+When assigned a task classified as **MODIFYING** or **RESTRUCTURING**, follow this workflow:
+
+### Phase 1: Pre-Implementation (BEFORE writing any code)
+
+1. **Read the Task Classification**
+   - If `ADDITIVE` → Skip to implementation (new code only)
+   - If `MODIFYING` or `RESTRUCTURING` → Continue with this workflow
+
+2. **[LIVIA-SPECIFIC] Run Baseline Tests**
+   ```bash
+   # Frontend uses npm test, not pytest
+   npm test -- --watchAll=false
+   ```
+   - Document the output (which tests pass/fail)
+   - If any tests fail BEFORE you start, note them as "pre-existing failures"
+
+3. **Review Existing Code**
+   - Read the **Primary File** listed in Impact Analysis
+   - Read each **Affected File** (components that import this)
+   - Identify props/context dependencies that could break
+
+4. **Verify Pre-Implementation Checklist**
+   - Check the boxes in the task's **Pre-Implementation Verification** section:
+     - [ ] Baseline tests pass
+     - [ ] Existing code reviewed
+     - [ ] No pre-existing test failures
+
+### Phase 2: During Implementation
+
+5. **Incremental Testing**
+   - After each significant change, run the tests
+   - If a previously-passing test fails → STOP and investigate immediately
+
+6. **Don't Modify Test Expectations**
+   - If existing tests fail, fix your code, NOT the test
+   - Exception: Consult @Clelia if test is genuinely wrong
+
+### Phase 3: Post-Implementation (AFTER writing code)
+
+7. **Run Final Baseline**
+   ```bash
+   npm test -- --watchAll=false
+   ```
+   - ALL previously-passing tests must still pass
+
+8. **[LIVIA-SPECIFIC] Type Check**
+   ```bash
+   npx tsc --noEmit
+   ```
+   - No new TypeScript errors allowed
+
+9. **[LIVIA-SPECIFIC] Visual Regression (if UI changed)**
+   - Take screenshots before/after if component renders differently
+   - Verify no unintended visual changes
+
+10. **Run E2E Tests (if affected)**
+    ```bash
+    npx playwright test --grep "affected_feature"
+    ```
+
+11. **Update Acceptance Criteria**
+    - Check the "All existing tests still pass (regression)" checkbox in the task
+
+---
+
 ## Responsibilities
 
 ### 1. Component Development
@@ -895,11 +1019,89 @@ export function useChatContext() {
 
 ---
 
+## AI Domain Awareness
+
+Frontend for AI applications handles conversation state and streaming - both require special patterns.
+
+**Required Reading:** `/docs/architecture/AI_ARCHITECT_KNOWLEDGE_BASE.md`
+- Focus on Part 1 (Conversational AI)
+
+**Also Read:** `/docs/architecture/PRATIKOAI_CONTEXT_ARCHITECTURE.md`
+
+### Conversation State Management
+
+| Principle | Implementation |
+|-----------|---------------|
+| **Server is source of truth** | PostgreSQL `query_history` table stores all messages |
+| **Client sends full history** | Each request includes all relevant previous messages |
+| **IndexedDB = offline cache** | NOT primary storage, fallback only |
+| **Session boundaries** | New chat = new `session_id` |
+
+### Streaming UX Patterns
+
+```typescript
+// SSE streaming handler
+const eventSource = new EventSource(`/api/v1/chat/stream?session_id=${sessionId}`);
+
+eventSource.onmessage = (event) => {
+  // Update UI incrementally
+  appendToMessage(event.data);
+};
+
+eventSource.onerror = (error) => {
+  // Handle connection drops gracefully
+  showReconnectingIndicator();
+  attemptReconnect();
+};
+```
+
+**UX Requirements:**
+- ✅ Show streaming indicator during response
+- ✅ Handle SSE connection drops gracefully
+- ✅ Collect streamed response for history save
+- ✅ Support "stop generation" action
+- ✅ Show processing state for RAG retrieval phase
+
+### Attachment Handling
+
+| Responsibility | Location |
+|---------------|----------|
+| **Upload file** | Frontend → POST /api/v1/documents/upload |
+| **Get attachment_id** | Response from upload API |
+| **Send with message** | Include `attachment_ids: [uuid1, uuid2]` in chat request |
+| **Resolution & processing** | Backend (AttachmentResolver) |
+
+**Frontend NEVER:**
+- ❌ Reads attachment content directly
+- ❌ Sends file bytes in chat request
+- ❌ Assumes attachment is ready immediately (may be processing)
+
+### Known Context Gaps (Document in UI)
+
+⚠️ **Gap:** Previous conversation turns NOT auto-loaded
+- **Impact:** If frontend doesn't send full history, AI loses context
+- **Frontend fix:** Always send full `messages` array with each request
+
+⚠️ **Gap:** Attachment context only for single turn
+- **Impact:** Follow-up questions about document may fail
+- **Frontend fix:** Keep attachment_ids in session state, re-send if needed
+
+### Chat History Migration UI
+
+When migrating from IndexedDB to PostgreSQL:
+1. Detect unmigrated data in IndexedDB
+2. Show migration banner (non-blocking)
+3. Allow user to "Sync Now" or dismiss
+4. After migration, IndexedDB becomes read-only fallback
+
+---
+
 ## Version History
 
 | Date | Change | Reason |
 |------|--------|--------|
 | 2025-11-17 | Initial configuration created | Sprint 0 setup |
+| 2025-12-12 | Added AI Domain Awareness section | Conversation state and streaming patterns |
 
 ---
 

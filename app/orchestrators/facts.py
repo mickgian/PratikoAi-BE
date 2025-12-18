@@ -5,11 +5,15 @@
 from contextlib import nullcontext
 from datetime import UTC
 from typing import (
+    TYPE_CHECKING,
     Any,
     Dict,
     List,
     Optional,
 )
+
+if TYPE_CHECKING:
+    from app.schemas.chat import Message
 
 from app.core.logging import logger
 
@@ -25,6 +29,73 @@ except Exception:  # pragma: no cover
 
     def rag_step_timer(*args, **kwargs):
         return nullcontext()
+
+
+def _normalize_messages_to_pydantic(messages: list[Any]) -> list["Message"]:
+    """Convert messages from any format to pydantic Message objects.
+
+    DEV-007 FIX: Handle LangChain BaseMessage objects that result from
+    add_messages reducer in LangGraph checkpoint merging.
+
+    Supported formats:
+    - dict: {"role": "user", "content": "text"}
+    - pydantic Message: Already correct format
+    - LangChain BaseMessage: HumanMessage, AIMessage, SystemMessage
+      (these have .type attribute: "human", "ai", "system")
+
+    Args:
+        messages: List of messages in any supported format
+
+    Returns:
+        List of pydantic Message objects
+    """
+    from app.schemas.chat import Message
+
+    if not messages:
+        return []
+
+    result = []
+    for msg in messages:
+        # Already a pydantic Message
+        if isinstance(msg, Message):
+            result.append(msg)
+            continue
+
+        # Dict format (common case)
+        if isinstance(msg, dict):
+            result.append(Message.model_validate(msg))
+            continue
+
+        # LangChain BaseMessage (HumanMessage, AIMessage, SystemMessage)
+        # These have .type attribute instead of .role
+        if hasattr(msg, "type") and hasattr(msg, "content"):
+            # Map LangChain types to standard roles
+            type_to_role = {
+                "human": "user",
+                "ai": "assistant",
+                "system": "system",
+                "assistant": "assistant",
+                "user": "user",
+            }
+            msg_type = getattr(msg, "type", "human")
+            role = type_to_role.get(msg_type, "user")
+            content = str(getattr(msg, "content", ""))
+            result.append(Message(role=role, content=content))
+            continue
+
+        # Fallback: try to extract role and content attributes
+        if hasattr(msg, "role") and hasattr(msg, "content"):
+            role = getattr(msg, "role", "user")
+            if role not in ("user", "assistant", "system"):
+                role = "user"
+            content = str(getattr(msg, "content", ""))
+            result.append(Message(role=role, content=content))
+            continue
+
+        # Last resort: convert to string
+        result.append(Message(role="user", content=str(msg)))
+
+    return result
 
 
 async def step_14__extract_facts(
@@ -311,6 +382,202 @@ async def step_29__pre_context_from_golden(
     return result
 
 
+def _convert_attachments_to_doc_facts(
+    attachments: list[dict] | None,
+    current_message_index: int | None = None,
+) -> tuple[list[str], dict[str, str]]:
+    """Convert resolved attachments to document_facts format for context building.
+
+    This helper bridges the gap between AttachmentResolver output and ContextBuilder input.
+    The attachments from DEV-007 contain extracted_text and extracted_data which
+    need to be formatted as document_facts strings for ContextBuilderMerge.
+
+    DEV-007 Issue 11 Security (per @severino):
+    - Applies prompt injection protection to prevent malicious document content
+    - Applies MANDATORY PII anonymization before sending to LLM (GDPR compliance)
+    - Returns deanonymization map for reversing PII placeholders in LLM response
+
+    DEV-007 FIX: Stores pii_map with each attachment to preserve de-anonymization
+    across conversation turns. Prior attachments use their stored pii_map instead
+    of re-anonymizing (which would create different tokens).
+
+    Args:
+        attachments: List of resolved attachment dicts from AttachmentResolver.
+            Each dict may contain: id, filename, extracted_text, extracted_data,
+            document_category, mime_type, file_size, processing_status, is_expired.
+        current_message_index: Index of the current user message (for markers).
+
+    Returns:
+        Tuple of:
+        - List of formatted document fact strings for ContextBuilderMerge
+        - Dict mapping placeholder -> original value (for de-anonymization)
+    """
+    from app.core.privacy.anonymizer import PIIAnonymizer
+    from app.utils.sanitization import sanitize_document_content
+
+    if not attachments:
+        return [], {}
+
+    # DEV-007 P0.4 FIX: Reorder attachments so CURRENT ones come FIRST
+    # This ensures current attachments get higher priority in context building
+    # (the context merger gives higher priority to documents with lower index)
+    # CRITICAL: Use att.get("message_index") without default - missing index means PRIOR context
+    if current_message_index is not None:
+        current_atts = [att for att in attachments if att.get("message_index") == current_message_index]
+        prior_atts = [att for att in attachments if att.get("message_index") != current_message_index]
+        attachments = current_atts + prior_atts
+        # DEV-007 DIAGNOSTIC: Log attachment reordering with filenames to verify order
+        logger.info(
+            "attachments_reordered_for_priority",
+            current_count=len(current_atts),
+            prior_count=len(prior_atts),
+            current_message_index=current_message_index,
+            current_filenames=[att.get("filename", "unknown") for att in current_atts],
+            prior_filenames=[att.get("filename", "unknown") for att in prior_atts],
+            final_order=[att.get("filename", "unknown") for att in attachments],
+        )
+
+    # Initialize anonymizer once for all attachments
+    anonymizer = PIIAnonymizer()
+
+    doc_facts = []
+    # Combined deanonymization map: placeholder -> original (REVERSE of anonymization_map)
+    combined_deanonymization_map: dict[str, str] = {}
+
+    for att in attachments:
+        filename = att.get("filename", "unknown")
+        extracted_text = att.get("extracted_text")
+        extracted_data = att.get("extracted_data")
+
+        # DEV-007 FIX: Check if attachment already has pii_map from prior processing
+        # If yes, use stored map and anonymized text to ensure consistent tokens
+        stored_pii_map = att.get("pii_map")
+        stored_anonymized_text = att.get("extracted_text_anonymized")
+
+        # DEV-007 DIAGNOSTIC: Log attachment state for debugging PII placeholder issues
+        logger.info(
+            "convert_attachments_diagnostic",
+            filename=filename,
+            has_extracted_text=bool(extracted_text),
+            has_stored_pii_map=bool(stored_pii_map),
+            stored_pii_map_size=len(stored_pii_map) if stored_pii_map else 0,
+            has_stored_anonymized_text=bool(stored_anonymized_text),
+            message_index=att.get("message_index"),
+            current_message_index=current_message_index,
+            will_use_stored="YES" if (stored_pii_map and stored_anonymized_text) else "NO_WILL_REANONYMIZE",
+        )
+
+        # DEV-007 P0.2 FIX: Add marker to distinguish current vs prior attachments
+        # Use None instead of 0 as default to avoid false positives when current_message_index is 0
+        att_msg_index = att.get("message_index")  # None if not set
+        if att_msg_index is None:
+            # Treat missing index as prior context (defensive - should not happen)
+            is_current = False
+            logger.warning(
+                "attachment_missing_message_index",
+                filename=filename,
+                current_message_index=current_message_index,
+            )
+        else:
+            is_current = current_message_index is not None and att_msg_index == current_message_index
+        marker = "[DOCUMENTI ALLEGATI ORA]" if is_current else "[CONTESTO PRECEDENTE]"
+
+        # Build fact parts starting with filename header and marker
+        fact_parts = [f"{marker} [Documento: {filename}]"]
+
+        # DEV-007 Issue 10 FIX: ALWAYS include extracted_text first (the actual document content)
+        # The previous logic used "elif" which skipped extracted_text when extracted_data existed
+        if extracted_text or stored_anonymized_text:
+            # DEV-007 FIX: Use stored anonymized text and pii_map if available
+            if stored_pii_map and stored_anonymized_text:
+                # Prior attachment: use stored data to preserve consistent tokens
+                text = stored_anonymized_text
+                combined_deanonymization_map.update(stored_pii_map)
+                logger.info(
+                    "document_pii_map_restored_from_prior",
+                    filename=filename,
+                    pii_count=len(stored_pii_map),
+                    message_index=att_msg_index,
+                )
+            elif extracted_text:
+                # New attachment: anonymize and store for future use
+                # Step 1: Sanitize to prevent prompt injection attacks
+                text = sanitize_document_content(extracted_text)
+
+                # Step 2: MANDATORY PII anonymization (GDPR compliance per @severino)
+                anonymization_result = anonymizer.anonymize_text(text)
+                text = anonymization_result.anonymized_text
+
+                # Build REVERSE map for de-anonymization (placeholder -> original)
+                att_pii_map: dict[str, str] = {}
+                for original, placeholder in anonymization_result.anonymization_map.items():
+                    combined_deanonymization_map[placeholder] = original
+                    att_pii_map[placeholder] = original
+
+                # DEV-007 FIX: Store pii_map and anonymized text with attachment
+                # This preserves de-anonymization across conversation turns
+                att["pii_map"] = att_pii_map
+                att["extracted_text_anonymized"] = text
+
+                if anonymization_result.pii_matches:
+                    logger.info(
+                        "document_pii_anonymized_and_stored",
+                        filename=filename,
+                        pii_count=len(anonymization_result.pii_matches),
+                        pii_types=[m.pii_type.value for m in anonymization_result.pii_matches],
+                        message_index=att_msg_index,
+                        # GDPR: Never log actual PII values or the mapping itself
+                    )
+            else:
+                text = ""
+
+            # Step 3: Truncate to limit context size (8000 chars for deep analysis)
+            text = text[:8000] if len(text) > 8000 else text
+            if text:
+                fact_parts.append(text)
+
+        # THEN add extracted_data fields as additional metadata (skip redundant document_type)
+        if extracted_data and isinstance(extracted_data, dict) and len(extracted_data) > 0:
+            for key, value in extracted_data.items():
+                # Skip document_type as it's redundant with filename context
+                if value and key not in ("document_type",):
+                    # Apply sanitization and anonymization to extracted_data values too
+                    value_str = str(value)
+                    value_str = sanitize_document_content(value_str)
+                    anon_result = anonymizer.anonymize_text(value_str)
+                    fact_parts.append(f"{key}: {anon_result.anonymized_text}")
+                    # Add to deanonymization map
+                    for original, placeholder in anon_result.anonymization_map.items():
+                        combined_deanonymization_map[placeholder] = original
+        elif extracted_data and not isinstance(extracted_data, dict):
+            # Apply sanitization and anonymization to non-dict extracted_data
+            data_str = str(extracted_data)
+            data_str = sanitize_document_content(data_str)
+            anon_result = anonymizer.anonymize_text(data_str)
+            fact_parts.append(anon_result.anonymized_text)
+            # Add to deanonymization map
+            for original, placeholder in anon_result.anonymization_map.items():
+                combined_deanonymization_map[placeholder] = original
+
+        # Only add if we have more than just the header
+        if len(fact_parts) > 1:
+            doc_facts.append("\n".join(fact_parts))
+
+    # DEV-007: Add summary log for document tracking observability
+    logger.info(
+        "doc_facts_conversion_complete",
+        extra={
+            "attachments_received": len(attachments),
+            "doc_facts_created": len(doc_facts),
+            "documents_skipped": len(attachments) - len(doc_facts),
+            "pii_placeholders_total": len(combined_deanonymization_map),
+            "current_message_index": current_message_index,
+        },
+    )
+
+    return doc_facts, combined_deanonymization_map
+
+
 async def step_40__build_context(
     *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
@@ -321,13 +588,18 @@ async def step_40__build_context(
     Performs context merging by combining canonical facts, KB search results, and
     optional document facts into unified context for LLM processing. Thin orchestration
     that preserves existing ContextBuilderMerge behavior.
+
+    DEV-007 Issue 9: Uses query_composition from Step 31 to select adaptive priority weights.
     """
     from datetime import (
         datetime,
         timezone,
     )
 
-    from app.services.context_builder_merge import ContextBuilderMerge
+    from app.services.context_builder_merge import (
+        ContextBuilderMerge,
+        get_composition_priority_weights,
+    )
 
     with rag_step_timer(
         40, "RAG.facts.contextbuilder.merge.facts.and.kb.docs.and.optional.doc.facts", "BuildContext", stage="start"
@@ -340,6 +612,31 @@ async def step_40__build_context(
             kwargs.get("kb_results") or (ctx or {}).get("knowledge_items", []) or (ctx or {}).get("kb_docs", [])
         )  # From Step 39
         document_facts = kwargs.get("document_facts") or (ctx or {}).get("document_facts", [])
+
+        # DEV-007: Convert chat attachments to document_facts if present
+        # This bridges AttachmentResolver output -> ContextBuilder input
+        # FIX: Always convert attachments for THIS message - they represent files attached NOW
+        attachments = kwargs.get("attachments") or (ctx or {}).get("attachments", [])
+        # DEV-007 FIX: Get current message index to mark current vs prior attachments
+        current_message_index = kwargs.get("current_message_index") or (ctx or {}).get("current_message_index")
+        document_deanonymization_map: dict[str, str] = {}  # For reversing PII placeholders
+        if attachments:
+            # Convert attachments from this message to document_facts
+            # Pass current_message_index for marking current vs prior attachments
+            new_doc_facts, document_deanonymization_map = _convert_attachments_to_doc_facts(
+                attachments, current_message_index=current_message_index
+            )
+            # Replace existing document_facts with new ones (current message's attachments take priority)
+            document_facts = new_doc_facts
+            logger.info(
+                "attachments_converted_to_doc_facts",
+                attachment_count=len(attachments),
+                doc_facts_count=len(document_facts),
+                pii_placeholders_count=len(document_deanonymization_map),
+                current_message_index=current_message_index,
+                request_id=request_id,
+            )
+
         query = kwargs.get("query") or (ctx or {}).get("user_message", "") or (ctx or {}).get("search_query", "")
         user_id = kwargs.get("user_id") or (ctx or {}).get("user_id")
         session_id = kwargs.get("session_id") or (ctx or {}).get("session_id")
@@ -376,7 +673,22 @@ async def step_40__build_context(
                 "manual_token_budget_used", manual_budget=max_context_tokens, source="explicit_context_parameter"
             )
 
+        # DEV-007 Issue 9: Get priority weights based on query composition
+        # query_composition comes from Step 31 (ClassifyDomain)
+        query_composition = kwargs.get("query_composition") or (ctx or {}).get("query_composition")
         priority_weights = kwargs.get("priority_weights") or (ctx or {}).get("priority_weights", {})
+
+        # If no explicit priority_weights provided, use composition-based weights
+        if not priority_weights and query_composition:
+            priority_weights = get_composition_priority_weights(query_composition)
+            logger.info(
+                "composition_priority_weights_applied",
+                query_composition=query_composition,
+                priority_weights=priority_weights,
+                has_attachments=bool(attachments),
+                doc_facts_count=len(document_facts) if document_facts else 0,
+                request_id=request_id,
+            )
 
         # Initialize result variables
         context_merged = False
@@ -465,6 +777,17 @@ async def step_40__build_context(
                 extra={"request_id": request_id, "error": error, "step": 40, "query": query[:100] if query else ""},
             )
 
+        # DEV-007 DIAGNOSTIC: Log final deanonymization_map before returning
+        logger.info(
+            "step40_final_deanonymization_map",
+            map_size=len(document_deanonymization_map),
+            placeholder_samples=list(document_deanonymization_map.keys())[:5] if document_deanonymization_map else [],
+            attachment_count=len(attachments) if attachments else 0,
+            doc_facts_count=len(document_facts) if document_facts else 0,
+            request_id=request_id,
+            session_id=session_id,
+        )
+
         # Build result preserving behavior while adding coordination metadata
         result = {
             "context_merged": context_merged,
@@ -482,6 +805,9 @@ async def step_40__build_context(
             "trace_id": trace_id,
             "request_id": request_id,
             "max_context_tokens": max_context_tokens,
+            "query_composition": query_composition,  # DEV-007 Issue 9
+            "priority_weights": priority_weights,  # DEV-007 Issue 9
+            "document_deanonymization_map": document_deanonymization_map,  # DEV-007 PII reversible
             "timestamp": datetime.now(UTC).isoformat(),
             "error": error,
         }
@@ -497,6 +823,7 @@ async def step_40__build_context(
             context_merged=context_merged,
             token_count=token_count,
             source_distribution=source_distribution,
+            query_composition=query_composition,  # DEV-007 Issue 9
             context_quality_score=context_quality_score,
         )
 
@@ -565,11 +892,8 @@ def step_49__route_strategy(
         session_id = params.get("session_id")
 
         try:
-            # Convert dict messages to Message objects if needed
-            from app.schemas.chat import Message
-
-            if messages and isinstance(messages[0], dict):
-                messages = [Message.model_validate(msg) for msg in messages]
+            # DEV-007 FIX: Normalize messages from any format (dict, BaseMessage, Message)
+            messages = _normalize_messages_to_pydantic(messages or [])
 
             # Get the LLM factory and apply routing strategy
             factory = get_llm_factory()

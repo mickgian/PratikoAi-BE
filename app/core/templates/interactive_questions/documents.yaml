@@ -1,0 +1,506 @@
+# Interactive Question Templates for Documents
+# PratikoAI v1.5 - Proactive Assistant
+#
+# This file contains question templates for document-related queries:
+# - Document classification (when auto-detection fails)
+# - Document verification workflows
+# - Document analysis specifications
+#
+# Schema Reference: DEV-150 app/schemas/proactivity.py
+
+questions:
+  # ============================================================================
+  # DOCUMENT CLASSIFICATION (WHEN AUTO-DETECTION FAILS)
+  # ============================================================================
+
+  documento_tipo:
+    id: documento_tipo
+    text: "Ho ricevuto un documento. Di che tipo si tratta?"
+    question_type: single_choice
+    options:
+      - id: fattura
+        label: "Fattura elettronica"
+        icon: file-text
+        leads_to: fattura_tipo
+      - id: f24
+        label: "Modello F24"
+        icon: file-minus
+        leads_to: f24_tipo
+      - id: bilancio
+        label: "Bilancio / Situazione contabile"
+        icon: bar-chart-2
+        leads_to: bilancio_tipo
+      - id: cu
+        label: "CU - Certificazione Unica"
+        icon: file
+        leads_to: cu_anno
+      - id: contratto_lavoro
+        label: "Contratto di lavoro"
+        icon: file-text
+        leads_to: contratto_tipo
+      - id: busta_paga
+        label: "Busta paga / Cedolino"
+        icon: credit-card
+        leads_to: busta_paga_periodo
+      - id: altro
+        label: "Altro documento (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il tipo di documento..."
+
+  # ============================================================================
+  # FATTURA FLOW
+  # ============================================================================
+
+  fattura_tipo:
+    id: fattura_tipo
+    text: "Che tipo di fattura è?"
+    question_type: single_choice
+    prefilled_params:
+      documento_tipo: fattura
+    options:
+      - id: fattura_vendita
+        label: "Fattura di vendita (emessa)"
+        icon: arrow-up-right
+        leads_to: fattura_verifica
+      - id: fattura_acquisto
+        label: "Fattura di acquisto (ricevuta)"
+        icon: arrow-down-left
+        leads_to: fattura_verifica
+      - id: nota_credito
+        label: "Nota di credito"
+        icon: minus-circle
+        leads_to: fattura_verifica
+      - id: autofattura
+        label: "Autofattura"
+        icon: refresh-cw
+        leads_to: fattura_verifica
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il tipo di fattura..."
+
+  fattura_verifica:
+    id: fattura_verifica
+    text: "Cosa vuoi verificare della fattura?"
+    question_type: single_choice
+    options:
+      - id: correttezza_formale
+        label: "Correttezza formale (dati obbligatori)"
+        icon: check-circle
+      - id: calcolo_iva
+        label: "Calcolo IVA"
+        icon: percent
+      - id: dati_destinatario
+        label: "Dati del destinatario/fornitore"
+        icon: user
+      - id: registrazione_contabile
+        label: "Registrazione contabile"
+        icon: book
+      - id: tutto
+        label: "Verifica completa"
+        icon: check-square
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica cosa vuoi verificare..."
+
+  # ============================================================================
+  # F24 FLOW
+  # ============================================================================
+
+  f24_tipo:
+    id: f24_tipo
+    text: "Di quale modello F24 si tratta?"
+    question_type: single_choice
+    prefilled_params:
+      documento_tipo: f24
+    options:
+      - id: f24_ordinario
+        label: "F24 Ordinario"
+        icon: file
+        leads_to: f24_verifica
+      - id: f24_semplificato
+        label: "F24 Semplificato"
+        icon: file-minus
+        leads_to: f24_verifica
+      - id: f24_accise
+        label: "F24 Accise"
+        icon: file
+        leads_to: f24_verifica
+      - id: f24_elide
+        label: "F24 ELIDE"
+        icon: file
+        leads_to: f24_verifica
+      - id: altro
+        label: "Non sono sicuro"
+        icon: help-circle
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il modello F24..."
+
+  f24_verifica:
+    id: f24_verifica
+    text: "Cosa vuoi verificare del modello F24?"
+    question_type: single_choice
+    options:
+      - id: codici_tributo
+        label: "Correttezza codici tributo"
+        icon: hash
+      - id: scadenza
+        label: "Data di scadenza"
+        icon: calendar
+      - id: importi
+        label: "Calcolo importi"
+        icon: calculator
+      - id: ravvedimento
+        label: "Calcolo ravvedimento operoso"
+        icon: alert-triangle
+      - id: istruzioni
+        label: "Istruzioni compilazione"
+        icon: book-open
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica cosa vuoi verificare..."
+
+  # ============================================================================
+  # BILANCIO FLOW
+  # ============================================================================
+
+  bilancio_tipo:
+    id: bilancio_tipo
+    text: "Di quale documento contabile si tratta?"
+    question_type: single_choice
+    prefilled_params:
+      documento_tipo: bilancio
+    options:
+      - id: bilancio_esercizio
+        label: "Bilancio d'esercizio"
+        icon: file-text
+        leads_to: bilancio_analisi
+      - id: bilancio_provvisorio
+        label: "Bilancio provvisorio / Situazione contabile"
+        icon: file-minus
+        leads_to: bilancio_analisi
+      - id: nota_integrativa
+        label: "Nota integrativa"
+        icon: file
+        leads_to: bilancio_analisi
+      - id: rendiconto_finanziario
+        label: "Rendiconto finanziario"
+        icon: trending-up
+        leads_to: bilancio_analisi
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il documento contabile..."
+
+  bilancio_analisi:
+    id: bilancio_analisi
+    text: "Che tipo di analisi vuoi effettuare?"
+    question_type: single_choice
+    options:
+      - id: indici_bilancio
+        label: "Calcolo indici di bilancio"
+        icon: bar-chart-2
+      - id: confronto_anni
+        label: "Confronto con esercizi precedenti"
+        icon: git-compare
+      - id: margini
+        label: "Analisi margini e redditività"
+        icon: trending-up
+      - id: liquidita
+        label: "Analisi liquidità e solvibilità"
+        icon: droplet
+      - id: riepilogo
+        label: "Riepilogo dati principali"
+        icon: list
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il tipo di analisi..."
+
+  # ============================================================================
+  # CU - CERTIFICAZIONE UNICA FLOW
+  # ============================================================================
+
+  cu_anno:
+    id: cu_anno
+    text: "A quale anno si riferisce la Certificazione Unica?"
+    question_type: single_choice
+    prefilled_params:
+      documento_tipo: cu
+    options:
+      - id: anno_2025
+        label: "CU 2025 (redditi 2024)"
+        icon: calendar
+        leads_to: cu_verifica
+      - id: anno_2024
+        label: "CU 2024 (redditi 2023)"
+        icon: calendar
+        leads_to: cu_verifica
+      - id: anno_2023
+        label: "CU 2023 (redditi 2022)"
+        icon: calendar
+        leads_to: cu_verifica
+      - id: altro
+        label: "Altro anno"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica l'anno della CU..."
+
+  cu_verifica:
+    id: cu_verifica
+    text: "Cosa vuoi verificare della Certificazione Unica?"
+    question_type: single_choice
+    options:
+      - id: coerenza_dati
+        label: "Coerenza dati con dichiarazione redditi"
+        icon: check-circle
+      - id: ritenute
+        label: "Calcolo ritenute applicate"
+        icon: percent
+      - id: compensi
+        label: "Riepilogo compensi"
+        icon: credit-card
+      - id: simulazione_irpef
+        label: "Simulazione IRPEF da CU"
+        icon: calculator
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica cosa vuoi verificare..."
+
+  # ============================================================================
+  # CONTRATTO DI LAVORO FLOW
+  # ============================================================================
+
+  contratto_tipo:
+    id: contratto_tipo
+    text: "Di che tipo di contratto si tratta?"
+    question_type: single_choice
+    prefilled_params:
+      documento_tipo: contratto_lavoro
+    options:
+      - id: subordinato
+        label: "Contratto di lavoro subordinato"
+        icon: briefcase
+        leads_to: contratto_verifica
+      - id: collaborazione
+        label: "Contratto di collaborazione (Co.Co.Co)"
+        icon: users
+        leads_to: contratto_verifica
+      - id: tirocinio
+        label: "Contratto di tirocinio/stage"
+        icon: book-open
+        leads_to: contratto_verifica
+      - id: somministrazione
+        label: "Contratto di somministrazione"
+        icon: refresh-cw
+        leads_to: contratto_verifica
+      - id: altro
+        label: "Altro tipo (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il tipo di contratto..."
+
+  contratto_verifica:
+    id: contratto_verifica
+    text: "Cosa vuoi verificare del contratto?"
+    question_type: single_choice
+    options:
+      - id: clausole
+        label: "Analisi clausole contrattuali"
+        icon: file-text
+      - id: retribuzione
+        label: "Verifica retribuzione e livello"
+        icon: credit-card
+      - id: durata
+        label: "Verifica durata e scadenze"
+        icon: calendar
+      - id: ccnl
+        label: "Conformità al CCNL"
+        icon: check-circle
+      - id: dimissioni
+        label: "Calcolo preavviso dimissioni"
+        icon: log-out
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica cosa vuoi verificare..."
+
+  # ============================================================================
+  # BUSTA PAGA FLOW
+  # ============================================================================
+
+  busta_paga_periodo:
+    id: busta_paga_periodo
+    text: "A quale periodo si riferisce la busta paga?"
+    question_type: single_choice
+    prefilled_params:
+      documento_tipo: busta_paga
+    options:
+      - id: mese_corrente
+        label: "Mese corrente"
+        icon: calendar
+        leads_to: busta_paga_verifica
+      - id: mese_precedente
+        label: "Mese precedente"
+        icon: calendar
+        leads_to: busta_paga_verifica
+      - id: tredicesima
+        label: "Tredicesima mensilità"
+        icon: gift
+        leads_to: busta_paga_verifica
+      - id: quattordicesima
+        label: "Quattordicesima mensilità"
+        icon: gift
+        leads_to: busta_paga_verifica
+      - id: tfr
+        label: "Liquidazione TFR"
+        icon: trending-up
+        leads_to: busta_paga_verifica
+      - id: altro
+        label: "Altro periodo (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica il periodo..."
+
+  busta_paga_verifica:
+    id: busta_paga_verifica
+    text: "Cosa vuoi verificare della busta paga?"
+    question_type: single_choice
+    options:
+      - id: lordo_netto
+        label: "Calcolo dal lordo al netto"
+        icon: calculator
+      - id: contributi_inps
+        label: "Contributi INPS"
+        icon: shield
+      - id: ritenute_irpef
+        label: "Ritenute IRPEF"
+        icon: percent
+      - id: tfr
+        label: "Accantonamento TFR"
+        icon: piggy-bank
+      - id: straordinari
+        label: "Calcolo straordinari/premi"
+        icon: clock
+      - id: ferie_permessi
+        label: "Ferie e permessi residui"
+        icon: calendar
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica cosa vuoi verificare..."
+
+  # ============================================================================
+  # VISURA CAMERALE FLOW
+  # ============================================================================
+
+  visura_tipo:
+    id: visura_tipo
+    text: "Di che tipo di visura camerale si tratta?"
+    question_type: single_choice
+    options:
+      - id: visura_ordinaria
+        label: "Visura ordinaria"
+        icon: file
+        leads_to: visura_verifica
+      - id: visura_storica
+        label: "Visura storica"
+        icon: clock
+        leads_to: visura_verifica
+      - id: visura_protesti
+        label: "Visura protesti"
+        icon: alert-triangle
+        leads_to: visura_verifica
+      - id: bilanci_depositati
+        label: "Bilanci depositati"
+        icon: bar-chart-2
+        leads_to: visura_verifica
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il tipo di visura..."
+
+  visura_verifica:
+    id: visura_verifica
+    text: "Cosa vuoi analizzare della visura?"
+    question_type: single_choice
+    options:
+      - id: dati_anagrafici
+        label: "Dati anagrafici azienda"
+        icon: info
+      - id: assetto_societario
+        label: "Assetto societario e partecipazioni"
+        icon: users
+      - id: cariche
+        label: "Cariche e poteri"
+        icon: award
+      - id: capitale
+        label: "Capitale sociale"
+        icon: coins
+      - id: sede
+        label: "Sedi e unità locali"
+        icon: map-pin
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica cosa vuoi analizzare..."
+
+  # ============================================================================
+  # DOCUMENTO FISCALE GENERICO
+  # ============================================================================
+
+  documento_fiscale_azione:
+    id: documento_fiscale_azione
+    text: "Cosa vuoi fare con questo documento fiscale?"
+    question_type: single_choice
+    options:
+      - id: verifica
+        label: "Verificare la correttezza"
+        icon: check-circle
+      - id: analisi
+        label: "Analizzare nel dettaglio"
+        icon: search
+      - id: calcolo
+        label: "Effettuare calcoli correlati"
+        icon: calculator
+      - id: confronto
+        label: "Confrontare con altri documenti"
+        icon: git-compare
+      - id: archiviazione
+        label: "Indicazioni per archiviazione"
+        icon: folder
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi cosa vuoi fare..."

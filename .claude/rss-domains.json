@@ -28,6 +28,7 @@
       "js.stripe.com",
       "*.agenziaentrate.gov.it",
       "*.inps.it",
+      "*.inail.it",
       "*.gov.it",
       "*.gazzettaufficiale.it",
       "smtp.gmail.com",

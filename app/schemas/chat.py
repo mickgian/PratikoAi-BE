@@ -1,4 +1,7 @@
-"""This file contains the chat schema for the application."""
+"""This file contains the chat schema for the application.
+
+Security: Includes prompt injection detection in monitoring mode (V-003).
+"""
 
 import re
 from typing import (
@@ -34,22 +37,42 @@ class Message(BaseModel):
     def validate_content(cls, v: str) -> str:
         """Validate the message content.
 
+        Security: Detects prompt injection patterns (V-003) in monitoring mode.
+        Patterns are logged but NOT blocked to avoid false positives on
+        legitimate Italian legal/tax queries.
+
         Args:
             v: The content to validate
 
         Returns:
-            str: The validated content
+            str: The validated content (always returns, logs warnings only)
 
         Raises:
-            ValueError: If the content contains disallowed patterns
+            ValueError: If the content contains disallowed patterns (XSS, null bytes)
         """
-        # Check for potentially harmful content
+        # Check for potentially harmful content (XSS)
         if re.search(r"<script.*?>.*?</script>", v, re.IGNORECASE | re.DOTALL):
             raise ValueError("Content contains potentially harmful script tags")
 
         # Check for null bytes
         if "\0" in v:
             raise ValueError("Content contains null bytes")
+
+        # Prompt injection detection (MONITORING MODE - log only, don't block)
+        # This addresses V-003 from security audit
+        # Import inside function to avoid circular import
+        from app.utils.security import detect_prompt_injection, log_injection_attempt
+
+        detected, pattern = detect_prompt_injection(v)
+        if detected:
+            # Log the attempt but allow the request to proceed
+            # This prevents false positives from blocking legitimate users
+            log_injection_attempt(
+                text=v,
+                pattern=pattern or "unknown",
+                user_id=None,  # User context not available in schema validation
+                request_id=None,
+            )
 
         return v
 

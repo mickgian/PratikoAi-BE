@@ -15,21 +15,46 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class FeedbackSubmission(BaseModel):
-    """Request schema for submitting expert feedback."""
+    """Request schema for submitting expert feedback.
+
+    Security: Field length limits enforced to prevent DoS attacks (V-002).
+    """
 
     query_id: UUID = Field(..., description="UUID of the query being reviewed")
     feedback_type: str = Field(..., description="Type of feedback: 'correct', 'incomplete', or 'incorrect'")
     category: str | None = Field(None, description="Italian category for detailed feedback")
-    query_text: str = Field(..., description="Original question text", min_length=1)
-    original_answer: str = Field(..., description="AI-generated answer being reviewed", min_length=1)
-    expert_answer: str | None = Field(None, description="Expert's corrected answer")
-    improvement_suggestions: list[str] | None = Field(default=None, description="List of improvement suggestions")
-    regulatory_references: list[str] | None = Field(default=None, description="List of regulatory references")
+    query_text: str = Field(
+        ...,
+        description="Original question text",
+        min_length=1,
+        max_length=2000,  # V-002: Enforce max length
+    )
+    original_answer: str = Field(
+        ...,
+        description="AI-generated answer being reviewed",
+        min_length=1,
+        max_length=5000,  # V-002: Enforce max length
+    )
+    expert_answer: str | None = Field(
+        None,
+        description="Expert's corrected answer",
+        max_length=5000,  # V-002: Enforce max length
+    )
+    improvement_suggestions: list[str] | None = Field(
+        default=None,
+        description="List of improvement suggestions (max 500 chars each)",
+    )
+    regulatory_references: list[str] | None = Field(
+        default=None,
+        description="List of regulatory references (max 500 chars each)",
+    )
     confidence_score: float = Field(..., description="Expert confidence (0.0-1.0)", ge=0.0, le=1.0)
     time_spent_seconds: int = Field(..., description="Time spent reviewing (seconds)", gt=0)
     complexity_rating: int | None = Field(None, description="Complexity rating (1-5)", ge=1, le=5)
     additional_details: str | None = Field(
-        None, description="Additional details for task generation (required for incomplete/incorrect feedback)"
+        None,
+        description="Additional details for task generation (required for incomplete/incorrect feedback)",
+        max_length=2000,  # V-002: Enforce max length
     )
 
     @field_validator("feedback_type")
@@ -97,6 +122,56 @@ class FeedbackSubmission(BaseModel):
         if not normalized_value:
             raise ValueError("query_text cannot be empty or whitespace-only.")
 
+        return v
+
+    @field_validator("improvement_suggestions")
+    @classmethod
+    def validate_improvement_suggestions(cls, v: list[str] | None) -> list[str] | None:
+        """Validate each improvement suggestion does not exceed max length.
+
+        Security: Prevents V-002 by enforcing per-item length limits.
+
+        Args:
+            v: List of improvement suggestions to validate
+
+        Returns:
+            The validated list (unchanged if valid)
+
+        Raises:
+            ValueError: If any suggestion exceeds 500 characters
+        """
+        if v is None:
+            return v
+
+        max_length = 500
+        for i, suggestion in enumerate(v):
+            if len(suggestion) > max_length:
+                raise ValueError(f"Suggerimento {i + 1} troppo lungo: massimo {max_length} caratteri")
+        return v
+
+    @field_validator("regulatory_references")
+    @classmethod
+    def validate_regulatory_references(cls, v: list[str] | None) -> list[str] | None:
+        """Validate each regulatory reference does not exceed max length.
+
+        Security: Prevents V-002 by enforcing per-item length limits.
+
+        Args:
+            v: List of regulatory references to validate
+
+        Returns:
+            The validated list (unchanged if valid)
+
+        Raises:
+            ValueError: If any reference exceeds 500 characters
+        """
+        if v is None:
+            return v
+
+        max_length = 500
+        for i, ref in enumerate(v):
+            if len(ref) > max_length:
+                raise ValueError(f"Riferimento normativo {i + 1} troppo lungo: massimo {max_length} caratteri")
         return v
 
     class Config:

@@ -1,8 +1,8 @@
 # PratikoAi Backend - Development Roadmap
 
-**Last Updated:** 2024-11-24
+**Last Updated:** 2025-12-18
 **Status:** Active Development
-**Next Task ID:** DEV-BE-94
+**Next Task ID:** DEV-BE-95
 
 ---
 
@@ -13,11 +13,11 @@ This roadmap tracks planned architectural improvements and enhancements for the 
 **Current Architecture:** See `docs/DATABASE_ARCHITECTURE.md` for detailed documentation of the production system.
 
 **Recent Completed Work:**
+- DEV-BE-70: Daily Ingestion Collection Email Report (2024-12-18)
+- DEV-BE-69: Expand RSS Feed Sources (2024-12-10)
 - DEV-BE-92: Test Coverage to 49% Threshold (2024-11-24)
 - DEV-BE-71: Disable Emoji in LLM Responses (2024-11-24)
 - DEV-BE-68: Remove Pinecone Integration Code (2024-11-24)
-- DEV-BE-67: Sprint 0: Multi-Agent System Setup (2024-11-17)
-- DEV-BE-66: RSS feed setup and initial monitoring (2024-11-13)
 
 **Deployment Timeline Estimates:**
 
@@ -562,6 +562,49 @@ Expandeed knowledge base with 10   new RSS feeds (4-hour schedule) + 2 web scrap
 
 ---
 
+<details>
+<summary>
+<h3>DEV-BE-70: Daily Ingestion Collection Email Report</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4-5 days | <strong>Status:</strong> ✅ COMPLETED (2024-12-18)<br>
+Daily email report covering ALL ingestion sources (RSS feeds + web scrapers) with environment identification, WoW comparison, and alert system.
+</summary>
+
+### DEV-BE-70: Daily Ingestion Collection Email Report
+**Priority:** MEDIUM | **Effort:** 4-5 days | **Dependencies:** DEV-BE-69 ✅ | **Status:** ✅ COMPLETED (2024-12-18)
+
+**Problem:**
+No visibility into daily knowledge base ingestion across ALL sources. Team lacked insight into which RSS feeds and web scrapers were working vs. failing, document collection volumes, data quality metrics, and proactive alerts.
+
+**Solution:**
+Extended existing `IngestionReportService` with environment awareness, alert system, and scheduler integration. Daily email report covering ALL ingestion sources with clear environment identification (DEV/QA/PROD badges).
+
+**Key Features Implemented:**
+- Environment badge with color coding (Gray=dev, Blue=qa, Green=prod)
+- Week-over-week comparison in executive summary
+- Alert system (FEED_DOWN, FEED_STALE, HIGH_ERROR_RATE, HIGH_JUNK_RATE, ZERO_DOCUMENTS)
+- Time-of-day scheduling with Europe/Rome timezone
+- New documents preview (top 5 titles per source)
+- Error sample collection for debugging
+
+**Files Created/Modified:**
+- `app/services/ingestion_report_service.py` (enhanced)
+- `app/core/config.py` (INGESTION_REPORT_* settings)
+- `tests/services/test_ingestion_alerts.py`
+- `docs/operations/DAILY_REPORTS.md`
+
+**Acceptance Criteria (All Met):**
+- ✅ Report includes both RSS feed AND scraper statistics
+- ✅ Environment badge visible in email header
+- ✅ Email subject includes environment prefix
+- ✅ Week-over-week comparison in executive summary
+- ✅ Alert system operational
+- ✅ Configurable via environment variables
+- ✅ HTML renders correctly in Gmail/Outlook/Apple Mail
+
+</details>
+
+---
+
 ## Q1 2025 (January - March)
 
 ### 📋 Planned Tasks
@@ -616,171 +659,6 @@ Security audit revealed critical vulnerabilities allowing malicious payloads fro
 - [ ] Log injection prevented (newlines/control chars escaped)
 - [ ] Coverage ≥95% for `app/utils/security/` modules
 - [ ] Performance overhead <5ms per request
-
-</details>
-
----
-
-<details>
-<summary>
-<h3>DEV-BE-70: Daily Ingestion Collection Email Report</h3>
-<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4-5 days (with Claude Code) | <strong>Dependencies:</strong> DEV-BE-69 ✅ (RSS feeds expanded) | <strong>Status:</strong> ❌ NOT STARTED<br>
-Daily email report covering ALL ingestion sources (RSS feeds + web scrapers) with environment identification, WoW comparison, and alert system.
-</summary>
-
-### DEV-BE-70: Daily Ingestion Collection Email Report
-**Priority:** MEDIUM | **Effort:** 4-5 days (with Claude Code) | **Dependencies:** DEV-BE-69 ✅ (RSS feeds expanded)
-
-**Problem:**
-No visibility into daily knowledge base ingestion across ALL sources. Team lacks insight into:
-- Which RSS feeds and web scrapers are working vs. failing
-- Document collection volumes by source type (RSS vs scraper)
-- Data quality metrics (junk detection, deduplication rates)
-- Which **environment** the data comes from (critical for debugging)
-- Proactive alerts when sources go stale or error rates spike
-
-**Solution:**
-Extend existing `IngestionReportService` to add environment awareness, alert system, and scheduler integration. Daily email report covering ALL ingestion sources with clear environment identification.
-
-**Data Sources:**
-
-**RSS Feeds (13 total from DEV-BE-69):**
-- Agenzia Entrate (Normativa, News)
-- INPS (News, Comunicati, Circolari, Messaggi, Sentenze)
-- Ministero del Lavoro
-- MEF (Documenti, Aggiornamenti)
-- INAIL (Notizie, Eventi)
-- Gazzetta Ufficiale RSS (Serie Generale, Corte Costituzionale, UE, Regioni)
-
-**Web Scrapers (2 total from DEV-BE-69):**
-- Gazzetta Ufficiale (full scraper)
-- Corte di Cassazione (decisions scraper)
-
-**Report Structure:**
-
-**1. Header with Environment Badge**
-- Environment name: DEVELOPMENT | QA | PRODUCTION
-- Color coding: Gray (dev) | Blue (qa) | Green (prod)
-- Report date and generation timestamp (Europe/Rome timezone)
-
-**2. Executive Summary**
-- Total documents collected (all sources) + WoW change (e.g., "+15% vs last week")
-- Total documents added to DB (after deduplication) + WoW change
-- Overall success rate (%) + WoW change
-- Overall junk rate (%) + WoW change
-- Alert count by severity
-
-**3. RSS Feeds Section (Table)** - Exact document counts per source
-| Feed Name | Processed | Added | Success % | Junk % | Last Check | Status |
-
-**4. Web Scrapers Section (Table)** - Exact document counts per source
-| Scraper Name | Processed | Added | Success % | Junk % | Last Run | Status |
-
-**5. Alerts Section**
-| Alert Type | Condition | Severity |
-|------------|-----------|----------|
-| FEED_DOWN | HTTP 4xx/5xx for 2+ consecutive checks | HIGH |
-| FEED_STALE | No new items in 7+ days | MEDIUM |
-| HIGH_ERROR_RATE | >10% parse failures in 24h | MEDIUM |
-| HIGH_JUNK_RATE | >25% junk detection rate | LOW |
-| ZERO_DOCUMENTS | No documents from any source in 24h | HIGH |
-
-**6. New Documents Preview**
-- Top 5 new document TITLES (by source) added in last 24h
-- Format: "Source: Document Title" (truncated to 100 chars)
-
-**7. Error Details**
-- Per-source error count
-- 1-2 sample error messages for debugging (when errors > 0)
-
-**Environment Configuration:**
-```env
-# Recipients - same for all environments (comma-separated)
-INGESTION_REPORT_RECIPIENTS=your-email@pratikoai.com
-
-# Timing (24h format, Europe/Rome timezone)
-INGESTION_REPORT_TIME=08:00
-INGESTION_REPORT_ENABLED=true
-```
-
-**Note:** Same recipients receive emails from ALL environments. The environment is clearly identified via:
-- Email subject prefix: `[DEV]`, `[QA]`, `[PROD]`
-- Color-coded header banner in email body
-
-**Implementation Tasks:**
-
-**Day 1: Environment Awareness + Configuration**
-- [ ] Add `INGESTION_REPORT_*` config variables to `app/core/config.py`
-- [ ] Add `environment` field to `DailyIngestionReport` dataclass
-- [ ] Add environment color mapping utility
-- [ ] Update `.env.example` files with new variables
-
-**Day 2: Alert System + Error Details**
-- [ ] Create `IngestionAlert` dataclass (type, severity, message, source_name)
-- [ ] Implement `_detect_alerts()` method with 5 alert types
-- [ ] Add queries for stale/down feed detection
-- [ ] Implement error sample collection (1-2 sample messages per source)
-- [ ] Write tests: `tests/services/test_ingestion_alerts.py`
-
-**Day 3: Week-over-Week Comparison + Document Titles**
-- [ ] Implement `_get_previous_week_stats()` method
-- [ ] Add WoW change calculation (percentage vs last week)
-- [ ] Implement `_get_new_document_titles()` - top 5 titles per source
-- [ ] Add WoW display to executive summary
-
-**Day 4: HTML Template + Scheduler Integration**
-- [ ] Add environment badge to HTML template (color-coded header)
-- [ ] Add alerts section with severity icons
-- [ ] Add "New Documents Preview" section with titles
-- [ ] Add error sample messages section
-- [ ] Update email subject: `[{ENV}] PratikoAI Daily Ingestion Report - {DATE}`
-- [ ] Register `daily_ingestion_report` task in `SchedulerService`
-- [ ] Implement retry logic (3 attempts with exponential backoff)
-
-**Day 5: Testing + Documentation**
-- [ ] Unit tests for alert detection logic
-- [ ] Unit tests for WoW comparison logic
-- [ ] Unit tests for environment badge rendering
-- [ ] Integration test with mocked SMTP
-- [ ] Test HTML rendering in Gmail/Outlook
-- [ ] Document in `docs/operations/DAILY_REPORTS.md`
-
-**Files to Modify:**
-- `app/core/config.py` - Add INGESTION_REPORT_* settings
-- `app/services/ingestion_report_service.py` - Enhance existing service
-- `app/services/scheduler_service.py` - Register daily task
-- `.env.example`, `.env.development`, `.env.qa`, `.env.production`
-
-**Files to Create:**
-- `tests/services/test_ingestion_alerts.py`
-- `docs/operations/DAILY_REPORTS.md`
-
-**Acceptance Criteria:**
-- [ ] Report includes both RSS feed AND scraper statistics
-- [ ] Environment badge visible in email header with correct color
-- [ ] Email subject includes environment prefix: `[DEV]`, `[QA]`, `[PROD]`
-- [ ] Week-over-week comparison shown in executive summary (+/-% vs last week)
-- [ ] Top 5 new document titles shown per source
-- [ ] Error count + 1-2 sample error messages displayed when errors > 0
-- [ ] Alerts generated for stale feeds (7+ days no new items)
-- [ ] Alerts generated for high error rate (>10%)
-- [ ] Alerts generated for zero documents
-- [ ] Recipients configurable via environment variables
-- [ ] Report sends at configured time (default 08:00 Europe/Rome)
-- [ ] Report sends even with no activity (shows "0 documents")
-- [ ] HTML renders correctly in Gmail/Outlook/Apple Mail
-- [ ] Retry logic handles SMTP failures (3 attempts)
-- [ ] All unit tests pass (minimum 10 tests)
-- [ ] Coverage >= 49%
-
-**Rollback Plan:**
-- Disable via `INGESTION_REPORT_ENABLED=false` - no database changes required
-
-**Architecture Notes:**
-- Leverage existing `IngestionReportService` (already has RSS + scraper metrics)
-- Use existing `SchedulerService` for daily scheduling
-- Use existing SMTP configuration (same for all environments)
-- RSS/scraper data is PUBLIC regulatory information
 
 </details>
 
@@ -1179,30 +1057,71 @@ Implement complete subscription management system with Stripe integration.
 <details>
 <summary>
 <h3>DEV-BE-90: Deploy Production Environment (Hetzner VPS)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1 week (with production hardening) | <strong>Dependencies:</strong> DEV-BE-75 ✅ + DEV-BE-87 ✅ + DEV-BE-74 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1 week | <strong>Status:</strong> NOT STARTED<br>
 Production environment for paying customers. Must be reliable, performant, and cost-effective.
 </summary>
 
 ### DEV-BE-90: Deploy Production Environment (Hetzner VPS)
-**Priority:** CRITICAL | **Effort:** 1 week (with production hardening) | **Dependencies:** DEV-BE-75 ✅ (QA deployed) + DEV-BE-87 ✅ (Payment system) + DEV-BE-74 ✅ (QA GDPR audit)
+
+**Reference:** ADR-006 (Hetzner over AWS), QA deployment learnings
+
+**Priority:** CRITICAL | **Effort:** 1 week | **Status:** NOT STARTED
 
 **Problem:**
 Need production environment for paying customers. Must be reliable, performant, and cost-effective.
 
 **Solution:**
-Deploy complete PratikoAI backend to Hetzner VPS with production configuration and enhanced resources.
+Deploy complete PratikoAI backend to Hetzner VPS with production configuration, security hardening, and enhanced resources.
+
+**Agent Assignment:** @Silvano (primary), @Severino (security hardening), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-BE-75 (QA deployed), DEV-BE-87 (Payment system), DEV-BE-74 (QA GDPR audit)
+- **Unlocks:** DEV-BE-91 (Production GDPR audit)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Deployment failure: Automatic rollback to previous version
+- SSL renewal failure: Alert at CRITICAL level
+- Health check failure: Automatic service restart
+- **Logging:** All deployment events MUST be logged with timestamps
+
+**Performance Requirements:**
+- API response time: <100ms (p95)
+- Database connection: <30ms
+- Zero downtime deployments
+
+**Edge Cases:**
+- **Rollback:** Instant rollback if health check fails
+- **SSL:** Handle certificate renewal edge cases
+- **DNS:** Handle DNS propagation delays
+
+**Files:**
+
+**New Files:**
+- `.env.production` (production configuration)
+- `scripts/deploy_production.sh` (deployment automation)
+- `docs/infrastructure/PRODUCTION_DEPLOYMENT.md`
+
+**Testing Requirements:**
+- **TDD:** Write deployment verification tests FIRST
+- **Unit Tests:**
+  - `test_production_health_check` - All services healthy
+  - `test_ssl_certificate_valid` - SSL properly configured
+- **Integration Tests:** Full production smoke test suite
 
 **Implementation Tasks:**
 
 **Week 1: VPS Setup**
 - [ ] Provision Hetzner CX31 VPS (2 vCPU, 8GB RAM, 80GB SSD)
-- [ ] Configure strict firewall rules
+- [ ] Configure strict firewall rules (UFW)
 - [ ] Set up fail2ban for SSH brute force protection
 - [ ] Configure automatic security updates
 
 **Week 2: Deployment & Hardening**
 - [ ] Create `.env.production` with secure configuration
-- [ ] Deploy stack
+- [ ] Deploy stack with docker-compose
 - [ ] Set up DNS: `api.pratikoai.com`
 - [ ] Configure SSL with Let's Encrypt (with auto-renewal)
 - [ ] Set up automated daily backups
@@ -1216,18 +1135,30 @@ Deploy complete PratikoAI backend to Hetzner VPS with production configuration a
 - [ ] Enable PostgreSQL SSL connections
 - [ ] Configure Redis password authentication
 
-**Acceptance Criteria:**
-- ✅ Production environment accessible at `https://api.pratikoai.com`
-- ✅ SSL certificate valid and auto-renewing
-- ✅ All API endpoints responding with <100ms latency (p95)
-- ✅ Stripe live mode working
-- ✅ Security hardening complete
-- ✅ Zero downtime deployment process documented
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Deployment breaks production | CRITICAL | Blue-green deployment, instant rollback |
+| Security breach | CRITICAL | Follow hardening checklist |
+| Data loss | CRITICAL | Daily backups, off-site replication |
+
+**Code Structure:**
+- Deployment scripts: <100 lines, modular functions
 
 **Infrastructure Cost (Production):**
 - Hetzner CX31 VPS: ~$15/month
 - Snapshots/backups: ~$2/month
 - **Total: ~$17/month**
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE deployment verification
+- [ ] Production environment accessible at `https://api.pratikoai.com`
+- [ ] SSL certificate valid and auto-renewing
+- [ ] All API endpoints responding with <100ms latency (p95)
+- [ ] Stripe live mode working
+- [ ] Security hardening complete
+- [ ] Zero downtime deployment process documented
+- [ ] All existing tests still pass (regression)
 
 </details>
 
@@ -1236,18 +1167,59 @@ Deploy complete PratikoAI backend to Hetzner VPS with production configuration a
 <details>
 <summary>
 <h3>DEV-BE-91: GDPR Compliance Audit (Production Environment)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 4-5 days (requires legal review) | <strong>Dependencies:</strong> DEV-BE-90 ✅ + DEV-BE-74 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 4-5 days | <strong>Status:</strong> NOT STARTED<br>
 Final GDPR compliance validation required before accepting real user data in production.
 </summary>
 
 ### DEV-BE-91: GDPR Compliance Audit (Production Environment)
-**Priority:** CRITICAL | **Effort:** 4-5 days (requires legal review) | **Dependencies:** DEV-BE-90 ✅ (Production live) + DEV-BE-74 ✅ (QA audit complete)
+
+**Reference:** GDPR Articles 15-17, QA audit learnings, `docs/compliance/GDPR_AUDIT_QA.md`
+
+**Priority:** CRITICAL | **Effort:** 4-5 days | **Status:** NOT STARTED
 
 **Problem:**
 Final GDPR compliance validation required before accepting real user data in production.
 
 **Solution:**
-Comprehensive production GDPR audit with security hardening and compliance documentation.
+Comprehensive production GDPR audit with security hardening, compliance documentation, and legal sign-off.
+
+**Agent Assignment:** @Severino (primary), @Clelia (compliance tests)
+
+**Dependencies:**
+- **Blocking:** DEV-BE-90 (Production live), DEV-BE-74 (QA audit complete)
+- **Unlocks:** Production launch (accepting paying customers)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Audit failure: Document finding, create remediation task
+- Legal review delay: Escalate to stakeholder
+- **Logging:** All audit activities MUST be logged with timestamps
+
+**Performance Requirements:**
+- SSL Labs rating: A+
+- Data export: <30 seconds per user
+- Data deletion: <10 seconds per user
+
+**Edge Cases:**
+- **Payment Data:** Stripe data handled separately (Stripe DPA)
+- **Legal Review:** May require multiple iterations
+- **Vendor DPAs:** Track expiration dates
+
+**Files:**
+
+**New Files:**
+- `docs/compliance/GDPR_AUDIT_PRODUCTION.md`
+- `docs/compliance/DATA_PROTECTION_IMPACT_ASSESSMENT.md`
+- `docs/compliance/INCIDENT_RESPONSE_PLAN.md`
+
+**Testing Requirements:**
+- **TDD:** Write compliance verification tests FIRST
+- **Unit Tests:**
+  - `test_data_export_complete` - All user data exported
+  - `test_data_deletion_complete` - All user data deleted
+  - `test_ssl_a_plus_rating` - SSL properly configured
+- **Integration Tests:** Full GDPR feature validation
 
 **Audit Activities:**
 
@@ -1293,38 +1265,103 @@ Comprehensive production GDPR audit with security hardening and compliance docum
 <details>
 <summary>
 <h3>DEV-BE-79: Upgrade to HNSW Index</h3>
-<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 3-5 days (with Claude Code) | <strong>Dependencies:</strong> None | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 3-5 days | <strong>Status:</strong> ❌ NOT STARTED<br>
 HNSW provides 90-95% recall and 20-30% faster queries vs IVFFlat.
 </summary>
 
 ### DEV-BE-79: Upgrade to HNSW Index
-**Priority:** MEDIUM | **Effort:** 3-5 days (with Claude Code) | **Dependencies:** None
+
+**Reference:** pgvector 0.5.0+ documentation, `docs/DATABASE_ARCHITECTURE.md`
+
+**Priority:** MEDIUM | **Effort:** 3-5 days | **Status:** NOT STARTED
 
 **Problem:**
-Current IVFFlat index has 85-90% recall. HNSW (Hierarchical Navigable Small World) provides 90-95% recall and 20-30% faster queries.
+Current IVFFlat index has 85-90% recall. HNSW (Hierarchical Navigable Small World) provides 90-95% recall and 20-30% faster queries, improving RAG response quality.
 
-**Implementation:**
-```sql
--- Drop existing IVFFlat
-DROP INDEX idx_kc_embedding_ivfflat_1536;
+**Solution:**
+Replace IVFFlat vector index with HNSW using `CREATE INDEX CONCURRENTLY` for zero-downtime migration.
 
--- Create HNSW (requires pgvector 0.5.0+)
-CREATE INDEX CONCURRENTLY idx_kc_embedding_hnsw_1536
-ON knowledge_chunks
-USING hnsw (embedding vector_cosine_ops)
-WITH (m = 16, ef_construction = 64);
-```
+**Agent Assignment:** @Primo (primary), @Clelia (tests), @Valerio (benchmarking)
 
-**Tasks:**
-- [ ] Test HNSW build time on QA (expect 2-4 hours for 500K vectors)
-- [ ] Benchmark query performance (HNSW vs IVFFlat)
-- [ ] Plan production migration: Create index CONCURRENTLY during low-traffic window
-- [ ] Document rollback procedure
+**Dependencies:**
+- **Blocking:** None
+- **Unlocks:** Improved retrieval quality for all RAG queries
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** Alembic migration (new)
+- **Affected Files:**
+  - `app/services/search_service.py` (may need query tuning)
+  - `app/services/context_builder.py` (retrieval quality)
+- **Related Tests:**
+  - `tests/services/test_search_service.py`
+  - `tests/integration/test_retrieval.py`
+- **Baseline Command:** `pytest tests/services/test_search_service.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Current IVFFlat index verified on QA
+- [ ] pgvector version ≥0.5.0 confirmed
+
+**Error Handling:**
+- Index creation failure: Automatic rollback, alert at CRITICAL level
+- Query performance degradation: Revert to IVFFlat
+- **Logging:** Index build progress logged every 10%
+
+**Performance Requirements:**
+- Vector search: <30ms (p95), improved from <40ms
+- Index build: <4 hours for 500K vectors
+- Zero query failures during migration
+
+**Edge Cases:**
+- **Large Dataset:** Build time may exceed 4 hours → use `maintenance_work_mem` tuning
+- **Concurrent Queries:** CONCURRENTLY ensures no blocking
+- **Rollback:** Keep IVFFlat index until HNSW verified
+
+**Files:**
+
+**New Files:**
+- `alembic/versions/YYYYMMDD_upgrade_to_hnsw_index.py`
+- `scripts/ops/benchmark_vector_index.py`
+- `docs/operations/VECTOR_INDEX_MIGRATION.md`
+
+**Modified Files:**
+- `app/services/search_service.py` (query hints if needed)
+
+**Fields/Methods:**
+- Migration: `DROP INDEX ... CASCADE` + `CREATE INDEX CONCURRENTLY`
+- HNSW params: `m=16, ef_construction=64`
+
+**Testing Requirements:**
+- **TDD:** Write benchmark tests FIRST
+- **Unit Tests:**
+  - `test_hnsw_index_exists` - Index created successfully
+  - `test_vector_search_latency` - <30ms p95
+  - `test_recall_improvement` - ≥90% recall
+- **Integration Tests:** Full RAG query comparison (HNSW vs IVFFlat)
+- **Regression Tests:** Run `pytest tests/services/test_search_service.py`
+- **Coverage Target:** 80%+ for migration scripts
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Build time exceeds window | MEDIUM | Schedule during lowest traffic (2-5 AM) |
+| Performance regression | HIGH | A/B test before dropping IVFFlat |
+| pgvector version incompatible | MEDIUM | Verify version in pre-checks |
+
+**Code Structure:**
+- Migration script: <100 lines
+- Benchmark script: <150 lines
 
 **Acceptance Criteria:**
-- ✅ Vector search latency reduced by 20-30% (30-40ms → 20-30ms)
-- ✅ Recall improved from 85-90% to 90-95%
-- ✅ Zero downtime during migration
+- [ ] Tests written BEFORE migration
+- [ ] HNSW index created with `CREATE INDEX CONCURRENTLY`
+- [ ] Vector search latency reduced by 20-30% (30-40ms → 20-30ms)
+- [ ] Recall improved from 85-90% to 90-95%
+- [ ] Zero downtime during migration
+- [ ] Rollback procedure documented
+- [ ] All existing tests still pass (regression)
 
 </details>
 
@@ -1333,32 +1370,91 @@ WITH (m = 16, ef_construction = 64);
 <details>
 <summary>
 <h3>DEV-BE-80: Italian Financial Dictionary</h3>
-<strong>Priority:</strong> LOW | <strong>Effort:</strong> 1 week (with Claude Code generating dictionary) | <strong>Dependencies:</strong> None | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 1 week | <strong>Status:</strong> ❌ NOT STARTED<br>
 Custom Italian financial dictionary with synonym mappings for better FTS recall.
 </summary>
 
 ### DEV-BE-80: Italian Financial Dictionary
-**Priority:** LOW | **Effort:** 1 week (with Claude Code generating dictionary) | **Dependencies:** None
+
+**Reference:** PostgreSQL Text Search docs, `app/services/search_service.py`
+
+**Priority:** LOW | **Effort:** 1 week | **Status:** NOT STARTED
 
 **Problem:**
-PostgreSQL `italian` dictionary handles general Italian well, but misses domain-specific acronyms and synonyms common in tax/legal documents.
+PostgreSQL `italian` dictionary handles general Italian well, but misses domain-specific acronyms and synonyms common in tax/legal documents, reducing FTS recall for specialized queries.
 
 **Solution:**
-Custom Italian financial dictionary with synonym mappings:
+Create custom Italian financial dictionary with 100-200 synonym mappings for tax/legal terminology, integrated with existing PostgreSQL text search configuration.
 
-**Tasks:**
-- [ ] Compile synonym list (100-200 terms):
-  - "IVA" → "imposta sul valore aggiunto"
-  - "IRPEF" → "imposta sul reddito delle persone fisiche"
-  - "cedolare secca" → "regime di tassazione sostitutiva"
-- [ ] Create PostgreSQL synonym dictionary
-- [ ] Update search configuration
-- [ ] Test FTS recall improvement on domain queries
+**Agent Assignment:** @Primo (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** None
+- **Unlocks:** Improved FTS recall for domain-specific queries
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Dictionary load failure: Fall back to standard `italian` dictionary
+- Synonym conflict: Log warning, use first match
+- **Logging:** Dictionary load time and term count at startup
+
+**Performance Requirements:**
+- FTS query: No performance regression (<50ms)
+- Dictionary load: <5 seconds at startup
+
+**Edge Cases:**
+- **Case Sensitivity:** Normalize all terms to lowercase
+- **Plural Forms:** Include singular and plural variants
+- **Abbreviations:** Handle with/without periods (I.V.A. vs IVA)
+- **Compound Terms:** "cedolare secca" → multiple tokens
+
+**Files:**
+
+**New Files:**
+- `app/data/italian_financial_synonyms.txt` (synonym mappings)
+- `alembic/versions/YYYYMMDD_add_italian_financial_dictionary.py`
+- `tests/services/test_italian_dictionary.py`
+- `docs/operations/FTS_DICTIONARY.md`
+
+**Modified Files:**
+- `app/services/search_service.py` (use new dictionary config)
+
+**Fields/Methods:**
+- Synonym format: `IVA imposta valore aggiunto` (space-separated)
+- Dictionary: `CREATE TEXT SEARCH DICTIONARY italian_financial_syn`
+- Configuration: `ALTER TEXT SEARCH CONFIGURATION italian_financial`
+
+**Testing Requirements:**
+- **TDD:** Write recall benchmark tests FIRST
+- **Unit Tests:**
+  - `test_acronym_expansion` - IVA → imposta sul valore aggiunto
+  - `test_synonym_matching` - cedolare secca queries
+  - `test_backward_compatibility` - existing queries unchanged
+- **Integration Tests:** FTS recall comparison (before/after)
+- **Regression Tests:** Run `pytest tests/services/test_search_service.py`
+- **Coverage Target:** 80%+ for dictionary code
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Performance regression | MEDIUM | Benchmark before deployment |
+| Synonym conflicts | LOW | Manual review of all 200 terms |
+| Breaking existing searches | HIGH | A/B test, feature flag |
+
+**Code Structure:**
+- Synonym file: Plain text, 200 lines max
+- Migration: <50 lines
+- Service changes: <30 lines
 
 **Acceptance Criteria:**
-- ✅ +5-10% FTS recall on tax-specific queries
-- ✅ Better handling of Italian acronyms
-- ✅ Backward compatible
+- [ ] Tests written BEFORE implementation
+- [ ] 100-200 Italian financial synonyms compiled
+- [ ] PostgreSQL synonym dictionary created
+- [ ] +5-10% FTS recall on tax-specific queries
+- [ ] Better handling of Italian acronyms (IVA, IRPEF, INPS)
+- [ ] Backward compatible (existing queries unchanged)
+- [ ] All existing tests still pass (regression)
 
 </details>
 
@@ -1367,18 +1463,88 @@ Custom Italian financial dictionary with synonym mappings:
 <details>
 <summary>
 <h3>DEV-BE-81: Expand Monitoring Dashboards</h3>
-<strong>Priority:</strong> LOW | <strong>Effort:</strong> 2-3 days (with Claude Code) | <strong>Dependencies:</strong> DEV-BE-77 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 2-3 days | <strong>Status:</strong> ❌ NOT STARTED<br>
 Additional Grafana dashboards for document ingestion and user behavior metrics.
 </summary>
 
 ### DEV-BE-81: Expand Monitoring Dashboards
-**Priority:** LOW | **Effort:** 2-3 days (with Claude Code) | **Dependencies:** DEV-BE-77 ✅
 
-**Tasks:**
-- [ ] Add "Document Ingestion" dashboard
-- [ ] Add "User Behavior" dashboard (query patterns, popular categories)
-- [ ] Set up Grafana data source for PostgreSQL (direct DB queries)
-- [ ] Create weekly email reports (Grafana Cloud feature)
+**Reference:** DEV-BE-77 Grafana setup, `docs/operations/MONITORING.md`
+
+**Priority:** LOW | **Effort:** 2-3 days | **Status:** NOT STARTED
+
+**Problem:**
+Current monitoring covers system health but lacks visibility into document ingestion metrics and user behavior patterns needed for content and UX optimization.
+
+**Solution:**
+Add 2 new Grafana dashboards (Document Ingestion, User Behavior) with PostgreSQL data source and weekly email reports.
+
+**Agent Assignment:** @Silvano (primary), @Valerio (performance queries)
+
+**Dependencies:**
+- **Blocking:** DEV-BE-77 (Prometheus + Grafana setup)
+- **Unlocks:** Data-driven content and UX decisions
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Dashboard query timeout: Alert at WARNING level
+- PostgreSQL data source connection failure: Fall back to cached data
+- **Logging:** Query execution time for slow queries (>5s)
+
+**Performance Requirements:**
+- Dashboard load: <3 seconds
+- Individual panel queries: <2 seconds
+- No impact on production DB (read replica if available)
+
+**Edge Cases:**
+- **Large Date Ranges:** Limit to 90 days max per query
+- **Empty Data:** Show "No data" message, not error
+- **High Cardinality:** Aggregate by day, not minute
+
+**Files:**
+
+**New Files:**
+- `grafana/dashboards/document_ingestion.json`
+- `grafana/dashboards/user_behavior.json`
+- `docs/operations/GRAFANA_DASHBOARDS.md`
+
+**Modified Files:**
+- `grafana/provisioning/datasources.yaml` (add PostgreSQL)
+- `docker-compose.yml` (mount dashboard JSON files)
+
+**Fields/Methods:**
+- Document Ingestion panels: docs/day, source breakdown, junk rate trend
+- User Behavior panels: queries/day, popular categories, session duration
+- PostgreSQL queries: CTEs with date filtering
+
+**Testing Requirements:**
+- **TDD:** Write dashboard validation tests FIRST
+- **Unit Tests:**
+  - `test_dashboard_json_valid` - JSON schema validation
+  - `test_queries_execute` - All queries run without error
+- **Integration Tests:** Dashboard renders in Grafana
+- **Manual Tests:** Visual verification of panel layout
+- **Coverage Target:** N/A (JSON configs)
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Slow queries impact prod DB | HIGH | Use read replica or off-peak queries |
+| Dashboard complexity | LOW | Start with 5-6 panels per dashboard |
+| Grafana version incompatibility | LOW | Test on QA first |
+
+**Code Structure:**
+- Dashboard JSON: <500 lines each
+- SQL queries: <50 lines each
+
+**Acceptance Criteria:**
+- [ ] "Document Ingestion" dashboard created
+- [ ] "User Behavior" dashboard created
+- [ ] PostgreSQL data source configured
+- [ ] Dashboard load time <3 seconds
+- [ ] Weekly email reports configured (Grafana Cloud)
+- [ ] All existing tests still pass (regression)
 
 </details>
 
@@ -1389,31 +1555,116 @@ Additional Grafana dashboards for document ingestion and user behavior metrics.
 <details>
 <summary>
 <h3>DEV-BE-82: LLM Fallback to Claude/Gemini</h3>
-<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1 week (with Claude Code) | <strong>Dependencies:</strong> None | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1 week | <strong>Status:</strong> ❌ NOT STARTED<br>
 Multi-LLM fallback strategy to reduce single point of failure on OpenAI.
 </summary>
 
 ### DEV-BE-82: LLM Fallback to Claude/Gemini
-**Priority:** MEDIUM (reduces SPOF) | **Effort:** 1 week (with Claude Code) | **Dependencies:** None
 
-**Problem:** If OpenAI API fails (outage, rate limits, account issues), entire RAG system stops working.
+**Reference:** `app/services/resilient_llm_service.py`, OpenAI/Anthropic/Google API docs
 
-**Solution:** Multi-LLM fallback strategy:
+**Priority:** MEDIUM | **Effort:** 1 week | **Status:** NOT STARTED
+
+**Problem:**
+If OpenAI API fails (outage, rate limits, account issues), entire RAG system stops working. Single point of failure for core functionality.
+
+**Solution:**
+Implement multi-LLM fallback strategy with automatic provider switching:
 1. Primary: OpenAI (gpt-4-turbo)
 2. Fallback 1: Anthropic Claude (claude-3-sonnet)
 3. Fallback 2: Google Gemini (gemini-1.5-pro)
 
-**Tasks:**
-- [ ] Create `app/services/llm_provider.py` with fallback logic
-- [ ] Add Anthropic + Google API keys to config
-- [ ] Implement retry logic with exponential backoff
-- [ ] Add metrics: LLM provider used per request, fallback rate
-- [ ] Test all three providers with identical prompts
+**Agent Assignment:** @Ezio (primary), @Clelia (tests), @Valerio (benchmarking)
+
+**Dependencies:**
+- **Blocking:** None
+- **Unlocks:** Production reliability, reduced downtime risk
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/services/resilient_llm_service.py`
+- **Affected Files:**
+  - `app/core/langgraph/nodes/generate_response.py` (uses LLM service)
+  - `app/orchestrators/rag_orchestrator.py` (error handling)
+- **Related Tests:**
+  - `tests/services/test_resilient_llm_service.py`
+  - `tests/integration/test_rag_flow.py`
+- **Baseline Command:** `pytest tests/services/test_resilient_llm_service.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Current LLM service code reviewed
+- [ ] API keys obtained for Anthropic + Google
+
+**Error Handling:**
+- Provider timeout (30s): Switch to next provider
+- Rate limit (429): Exponential backoff, then switch provider
+- Auth error (401/403): Alert CRITICAL, skip provider
+- All providers fail: Return graceful error message in Italian
+- **Logging:** Provider used, latency, fallback events at INFO level
+
+**Performance Requirements:**
+- Primary response: <5s (p95)
+- Fallback switch: <100ms
+- Total request (with 1 fallback): <10s
+
+**Edge Cases:**
+- **Simultaneous Failures:** All 3 providers down → cached response or maintenance message
+- **Partial Response:** Provider dies mid-stream → retry with full request
+- **Rate Limit Recovery:** Track per-provider cooldown periods
+- **Prompt Compatibility:** Adapt system prompts for Claude/Gemini differences
+
+**Files:**
+
+**New Files:**
+- `app/services/llm_provider_factory.py` (provider abstraction)
+- `tests/services/test_llm_fallback.py`
+- `docs/operations/LLM_FALLBACK.md`
+
+**Modified Files:**
+- `app/services/resilient_llm_service.py` (add multi-provider support)
+- `app/core/config.py` (Anthropic + Google API keys)
+- `.env.example` (new environment variables)
+
+**Fields/Methods:**
+- `LLMProviderFactory.get_provider(name: str) -> LLMProvider`
+- `LLMProvider.generate(prompt: str, **kwargs) -> str`
+- `FallbackChain.execute(prompt: str) -> str` with retry logic
+- Config: `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `LLM_FALLBACK_ORDER`
+
+**Testing Requirements:**
+- **TDD:** Write fallback scenario tests FIRST
+- **Unit Tests:**
+  - `test_primary_provider_success` - OpenAI responds normally
+  - `test_fallback_on_timeout` - Switch to Claude after 30s
+  - `test_fallback_on_rate_limit` - Switch provider on 429
+  - `test_all_providers_fail` - Graceful error message
+  - `test_exponential_backoff` - Retry timing correct
+- **Integration Tests:** Full RAG flow with mocked provider failures
+- **Regression Tests:** Run `pytest tests/services/test_resilient_llm_service.py`
+- **Coverage Target:** 90%+ for fallback logic
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Response quality varies | MEDIUM | Benchmark all providers, tune prompts |
+| API cost increase | LOW | Track usage per provider, set alerts |
+| Prompt incompatibility | MEDIUM | Abstract prompt formatting per provider |
+
+**Code Structure:**
+- Provider factory: <100 lines
+- Fallback chain: <150 lines
+- Provider adapters: <50 lines each
 
 **Acceptance Criteria:**
-- ✅ System stays online during OpenAI outage
-- ✅ Automatic fallback within 5 seconds
-- ✅ Quality comparable across providers
+- [ ] Tests written BEFORE implementation
+- [ ] Multi-provider fallback implemented
+- [ ] System stays online during OpenAI outage
+- [ ] Automatic fallback within 5 seconds
+- [ ] Metrics: provider used, fallback rate tracked
+- [ ] Quality comparable across providers (manual verification)
+- [ ] All existing tests still pass (regression)
 
 </details>
 
@@ -1422,14 +1673,60 @@ Multi-LLM fallback strategy to reduce single point of failure on OpenAI.
 <details>
 <summary>
 <h3>DEV-BE-84: Multi-Tenancy Support</h3>
-<strong>Priority:</strong> LOW | <strong>Effort:</strong> 3-4 weeks (with Claude Code) | <strong>Dependencies:</strong> None | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 3-4 weeks | <strong>Status:</strong> ❌ NOT STARTED<br>
 Multi-tenant architecture for white-label deployment.
 </summary>
 
 ### DEV-BE-84: Multi-Tenancy Support
-**Priority:** LOW (only if white-label deployment needed) | **Effort:** 3-4 weeks (with Claude Code) | **Dependencies:** None
 
-**Trigger:** White-label product requirement
+**Reference:** White-label product requirements (TBD), ADR-TBD
+
+**Priority:** LOW | **Effort:** 3-4 weeks | **Status:** NOT STARTED
+
+**Trigger:** White-label product requirement confirmed by stakeholders
+
+**Problem:**
+Current architecture is single-tenant. If white-label deployment is required, need tenant isolation for data, configuration, and branding.
+
+**Solution:**
+Implement multi-tenant architecture with schema-per-tenant isolation, tenant-aware middleware, and configurable branding.
+
+**Agent Assignment:** @Egidio (architecture), @Ezio (implementation), @Primo (database), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** None (deferred until business requirement confirmed)
+- **Unlocks:** White-label product offering, B2B sales
+
+**Change Classification:** RESTRUCTURING
+
+**High-Level Scope:**
+1. Tenant model and database schema isolation
+2. Tenant-aware middleware for request routing
+3. Tenant configuration (branding, limits, features)
+4. Data migration tooling for existing single-tenant data
+5. Admin portal for tenant management
+
+**Edge Cases:**
+- **Tenant Isolation:** Cross-tenant data leak prevention
+- **Shared Resources:** Knowledge base can be shared or tenant-specific
+- **Tenant Limits:** Rate limiting, storage quotas per tenant
+- **Tenant Deletion:** Full data cleanup on tenant removal
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Data leak between tenants | CRITICAL | Schema isolation, comprehensive tests |
+| Performance degradation | HIGH | Connection pooling per tenant |
+| Migration complexity | HIGH | Phased rollout, feature flags |
+
+**Acceptance Criteria:**
+- [ ] Architecture document approved by @Egidio
+- [ ] Tenant isolation verified (security audit)
+- [ ] Performance benchmarked (no regression)
+- [ ] Admin portal functional
+- [ ] All existing tests still pass (regression)
+
+**Note:** This task requires full business analysis and architecture review before implementation. Do not start without explicit stakeholder approval.
 
 </details>
 
@@ -1512,8 +1809,8 @@ This is a low-priority optimization for MVP. Small FAQ volume initially (<100 FA
 - [x] **No emojis in responses:** Professional, formal tone (DEV-BE-71) ✅
 - [x] **Test coverage 49%:** Pre-commit hooks passing (DEV-BE-92) ✅
 - [x] **Expert feedback system:** Complete S113-S130 flow (DEV-BE-72) ✅
-- [ ] **RSS feeds expanded:** 8+ sources configured (DEV-BE-69)
-- [ ] **Daily RSS email reports:** Automated feed monitoring (DEV-BE-70)
+- [x] **RSS feeds expanded:** 8+ sources configured (DEV-BE-69) ✅
+- [x] **Daily RSS email reports:** Automated feed monitoring (DEV-BE-70) ✅
 - [ ] **QA environment deployed:** On Hetzner (DEV-BE-75)
 
 ---

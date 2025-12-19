@@ -2,8 +2,13 @@
 
 **Version:** 1.5
 **Date:** December 2025
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
 **Total Effort:** ~33h (2-3 weeks at 2-3h/day) *(with Claude Code)*
+
+**Recent Completed Work:**
+- DEV-151: Create YAML Template Loader Service (2024-12-19)
+- DEV-153: Create Interactive Question Templates YAML (2024-12-19)
+- DEV-150: Create Pydantic Models for Actions and Interactive Questions (2024-12-19)
 
 ---
 
@@ -217,156 +222,146 @@ DEV-166 ─── DEV-167 (Mobile Styling)
 
 ---
 
-## Phase 1: Foundation (Backend) - 9h
+## Completed Tasks
+
+<details>
+<summary>
+<h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
+Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
+</summary>
 
 ### DEV-150: Create Pydantic Models for Actions and Interactive Questions
 
-**Reference:** [Section 4.3: Data Models](./PRATIKO_1.5_REFERENCE.md#43-data-models)
-
-**Priority:** CRITICAL | **Effort:** 0.5h | **Status:** NOT STARTED
+**Status:** ✅ COMPLETED (2024-12-19)
+**Priority:** CRITICAL | **Effort:** 0.5h (Actual: ~0.5h)
 
 **Problem:**
-The system needs structured data models for suggested actions and interactive questions to ensure type safety and API contract clarity.
+The system needed structured data models for suggested actions and interactive questions to ensure type safety and API contract clarity.
 
 **Solution:**
-Create Pydantic V2 models in `app/schemas/proactivity.py` defining Action, InteractiveQuestion, InteractiveOption, and ExtractedParameter schemas.
+Created Pydantic V2 models in `app/schemas/proactivity.py` with comprehensive test coverage.
 
-**Agent Assignment:** @ezio (primary), @clelia (tests)
+**Files Created:**
+- `app/schemas/proactivity.py` (168 lines)
+- `tests/schemas/test_proactivity.py` (708 lines, 41 tests)
 
-**Dependencies:**
-- **Blocking:** None
-- **Unlocks:** DEV-151, DEV-154, DEV-155, DEV-157
-
-**Change Classification:** ADDITIVE
-
-**File:** `app/schemas/proactivity.py`
-
-**Fields/Methods/Components:**
+**Models Implemented:**
 - `ActionCategory(str, Enum)` - CALCULATE, SEARCH, VERIFY, EXPORT, EXPLAIN
 - `Action(BaseModel)` - id, label, icon, category, prompt_template, requires_input, input_placeholder, input_type
 - `InteractiveOption(BaseModel)` - id, label, icon, leads_to, requires_input
-- `InteractiveQuestion(BaseModel)` - id, trigger_query, text, question_type, options, allow_custom_input, custom_input_placeholder, prefilled_params
-- `ExtractedParameter(BaseModel)` - name, value, confidence, source
-- `ParameterExtractionResult(BaseModel)` - intent, extracted, missing_required, coverage, can_proceed
+- `InteractiveQuestion(BaseModel)` - id, trigger_query, text, question_type, options, allow_custom_input, custom_input_placeholder, prefilled_params (min 2 options validation)
+- `ExtractedParameter(BaseModel)` - name, value, confidence (0.0-1.0), source
+- `ParameterExtractionResult(BaseModel)` - intent, extracted, missing_required, coverage (0.0-1.0), can_proceed
 
-**Edge Cases:**
-- **Empty options list:** Validation error, minimum 2 options required
-- **Invalid confidence:** Must be 0.0-1.0 range
-- **Missing required fields:** Pydantic validation error with clear message
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 41 tests
+- ✅ All models use Pydantic V2 syntax
+- ✅ JSON serialization works correctly
+- ✅ Model validation provides clear error messages
+- ✅ 96.2% test coverage achieved (target was 95%+)
 
-**Testing Requirements:**
-- **TDD:** Write `tests/schemas/test_proactivity.py` FIRST
-- **Unit Tests:**
-  - `test_action_validation` - Validate Action schema constraints
-  - `test_interactive_question_options_required` - At least 2 options required
-  - `test_extracted_parameter_confidence_range` - Confidence 0.0-1.0
-  - `test_action_category_enum_values` - All enum values valid
-- **Edge Case Tests:**
-  - `test_action_empty_label_rejected` - Empty label not allowed
-  - `test_question_single_option_rejected` - Single option rejected
-- **Coverage Target:** 95%+
+**Git:** Branch `DEV-150-Create-Pydantic-Models-for-Actions-and-Interactive-Questions`
 
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Schema changes break API contracts | MEDIUM | Version schemas, use optional fields for additions |
-| Pydantic V2 migration issues | LOW | Follow official migration guide |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] All models use Pydantic V2 syntax
-- [ ] JSON serialization works correctly
-- [ ] Model validation provides clear error messages
-- [ ] 95%+ test coverage achieved
+</details>
 
 ---
 
+<details>
+<summary>
+<h3>DEV-153: Create Interactive Question Templates YAML</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 0.75h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
+Created 46 interactive questions across 3 YAML template files with validation script.
+</summary>
+
+### DEV-153: Create Interactive Question Templates YAML
+
+**Status:** ✅ COMPLETED (2024-12-19)
+**Priority:** HIGH | **Effort:** 0.75h (Actual: ~1h)
+
+**Problem:**
+Interactive questions for parameter clarification needed predefined templates for common scenarios (IRPEF calculation, apertura attivita, regime fiscale).
+
+**Solution:**
+Created YAML template files in `app/core/templates/interactive_questions/` covering calculation, procedure, and document classification scenarios.
+
+**Files Created:**
+- `app/core/templates/interactive_questions/calculations.yaml` (12.9 KB) - IRPEF, IVA, INPS, ravvedimento operoso flows
+- `app/core/templates/interactive_questions/procedures.yaml` (15.4 KB) - apertura attività, regime fiscale, società flows
+- `app/core/templates/interactive_questions/documents.yaml` (15.5 KB) - document classification for fattura, F24, bilancio, CU, contratto, busta paga
+- `scripts/validate_question_templates.py` - validation script for leads_to references and "altro" options
+
+**Key Statistics:**
+- **Total Questions:** 46 questions across 3 files
+- **All leads_to references valid:** ✅ Verified by validation script
+- **All questions include "altro" option:** ✅
+
+**Acceptance Criteria (All Met):**
+- ✅ IRPEF calculation flow covered (tipo_contribuente -> reddito)
+- ✅ Apertura attivita flow covered (tipo_attivita -> settore -> regime)
+- ✅ Document classification questions covered
+- ✅ All multi-step flows have valid leads_to references
+- ✅ All questions include "Altro" option
+
+**Git:** Branch `DEV-153-Create-Interactive-Question-Templates-YAML`, merged via PR #778
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-151: Create YAML Template Loader Service</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
+Created ActionTemplateService for loading and caching YAML templates with 30 tests and 95.2% coverage.
+</summary>
+
 ### DEV-151: Create YAML Template Loader Service
 
-**Reference:** [Section 4.4: Template Storage](./PRATIKO_1.5_REFERENCE.md#44-template-storage)
-
-**Priority:** HIGH | **Effort:** 1h | **Status:** NOT STARTED
+**Status:** ✅ COMPLETED (2024-12-19)
+**Priority:** HIGH | **Effort:** 1h (Actual: ~1h)
 
 **Problem:**
 Action and question templates need to be loaded from YAML files for version control and hot-reloading in development.
 
 **Solution:**
-Create ActionTemplateService that loads templates from `app/core/templates/`, caches in memory, and provides lookup by domain/action type.
+Created ActionTemplateService that loads templates from `app/core/templates/`, caches in memory, and provides lookup by domain/action type with fallback to default domain.
 
-**Agent Assignment:** @ezio (primary), @clelia (tests)
+**Files Created:**
+- `app/services/action_template_service.py` (418 lines)
+- `tests/services/test_action_template_service.py` (873 lines, 30 tests)
 
-**Dependencies:**
-- **Blocking:** DEV-150
-- **Unlocks:** DEV-152, DEV-153, DEV-155
+**Service Features:**
+- `ActionTemplateService` class with dependency injection
+- `load_templates()` - Load all YAML files from suggested_actions/ and interactive_questions/
+- `get_actions_for_domain(domain, action_type)` - Lookup with fallback to 'default' domain
+- `get_actions_for_document(document_type)` - Document-specific actions
+- `get_question(question_id)` - Question lookup by ID
+- `reload_templates()` - Force reload for hot-reloading in dev mode
+- `_validate_templates()` - Return validation errors
+- `ConfigurationError` custom exception for invalid YAML syntax
 
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- Template file not found: WARNING log, return empty list, "Nessuna azione suggerita disponibile"
-- Invalid YAML syntax: ERROR log, raise ConfigurationError, fail fast on startup
-- Schema validation failure: ERROR log, skip invalid template, continue loading others
-- **Logging:** All errors MUST be logged with context (template_path, domain, action_type) at ERROR level
-
-**Performance Requirements:**
+**Performance:**
 - Template lookup: <5ms (memory cache)
 - Cold start load: <100ms for all templates
 
-**Edge Cases:**
-- **Empty templates:** Return empty action list, no error
-- **Missing domain:** Fall back to 'default' domain templates
-- **Hot reload:** File watcher in dev mode only (ENVIRONMENT != production)
-- **Circular leads_to:** Detect and warn, break cycle
-- **Duplicate IDs:** Last definition wins, log warning
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 30 tests
+- ✅ Templates loaded from YAML files
+- ✅ Cache mechanism working
+- ✅ Fallback to default domain works
+- ✅ Clear error messages on validation failure
+- ✅ 95.2% test coverage achieved (target was 90%+)
 
-**File:** `app/services/action_template_service.py`
+**Git:** Branch `DEV-153-Create-Interactive-Question-Templates-YAML`
 
-**Fields/Methods/Components:**
-- `ActionTemplateService` class with dependency injection
-- `__init__(templates_path: Path)` - Initialize with configurable path
-- `load_templates() -> dict[str, dict[str, list[Action]]]` - Load all YAML files
-- `get_actions_for_domain(domain: str, action_type: str) -> list[Action]` - Lookup with fallback
-- `get_actions_for_document(document_type: str) -> list[Action]` - Document-specific actions
-- `reload_templates() -> None` - Force reload (dev mode)
-- `_cache: dict` - In-memory template cache
-- `_validate_templates(templates: dict) -> list[str]` - Return validation errors
+</details>
 
-**Testing Requirements:**
-- **TDD:** Write `tests/services/test_action_template_service.py` FIRST
-- **Unit Tests:**
-  - `test_load_valid_yaml` - Successfully loads templates
-  - `test_domain_fallback` - Falls back to default when domain not found
-  - `test_cache_hit` - Second lookup uses cache
-  - `test_document_type_lookup` - Document-specific actions returned
-- **Edge Case Tests:**
-  - `test_missing_file_graceful` - Handles missing files
-  - `test_invalid_yaml_error` - Raises on syntax errors
-  - `test_duplicate_id_warning` - Logs warning for duplicates
-  - `test_empty_directory` - Returns empty dict, no error
-- **Coverage Target:** 90%+
+---
 
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| YAML parsing errors on startup | HIGH | Validate on load, fail fast with clear message |
-| Memory bloat from large templates | LOW | Templates are small (<1MB total expected) |
+## Phase 1: Foundation (Backend) - 9h
 
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Templates loaded from YAML files
-- [ ] Cache mechanism working
-- [ ] Fallback to default domain works
-- [ ] Clear error messages on validation failure
-- [ ] 90%+ test coverage achieved
+**Note:** DEV-150, DEV-151, and DEV-153 moved to Completed Tasks section above.
 
 ---
 
@@ -448,88 +443,6 @@ actions:
 - [ ] All templates validate against schema
 - [ ] No duplicate action IDs
 - [ ] Prompt templates use consistent placeholder format
-
----
-
-### DEV-153: Create Interactive Question Templates YAML
-
-**Reference:** [Appendix A.2: Template Domande Interattive](./PRATIKO_1.5_REFERENCE.md#a2-template-domande-interattive)
-
-**Priority:** HIGH | **Effort:** 0.75h | **Status:** NOT STARTED
-
-**Problem:**
-Interactive questions for parameter clarification need predefined templates for common scenarios (IRPEF calculation, apertura attivita, regime fiscale).
-
-**Solution:**
-Create YAML template files in `app/core/templates/interactive_questions/` covering calculation and procedure scenarios.
-
-**Agent Assignment:** @ezio (primary), @egidio (review)
-
-**Dependencies:**
-- **Blocking:** DEV-151
-- **Unlocks:** DEV-155
-
-**Change Classification:** ADDITIVE
-
-**Files:**
-- `app/core/templates/interactive_questions/calculations.yaml`
-- `app/core/templates/interactive_questions/procedures.yaml`
-- `app/core/templates/interactive_questions/documents.yaml`
-
-**Fields/Methods/Components:**
-YAML structure for each template:
-```yaml
-questions:
-  irpef_calculation:
-    id: irpef_tipo_contribuente
-    text: "Per quale tipo di contribuente vuoi calcolare l'IRPEF?"
-    question_type: single_choice
-    options:
-      - id: dipendente
-        label: "Persona fisica (dipendente)"
-        icon: briefcase
-        leads_to: irpef_income_input
-      - id: autonomo
-        label: "Persona fisica (autonomo/P.IVA)"
-        icon: building
-        leads_to: irpef_income_input
-      - id: altro
-        label: "Altro (specifica)"
-        icon: edit
-        requires_input: true
-    allow_custom_input: true
-    custom_input_placeholder: "Descrivi la situazione..."
-```
-
-**Edge Cases:**
-- **Orphan leads_to:** Question references non-existent follow-up
-- **Circular flows:** A leads to B leads to A
-- **Missing default option:** Always include "Altro" option
-
-**Testing Requirements:**
-- **Validation Tests:**
-  - `test_all_questions_valid_yaml` - All YAML files parse correctly
-  - `test_all_questions_have_min_options` - At least 2 options per question
-  - `test_question_flow_valid` - All leads_to references exist
-  - `test_no_circular_flows` - No infinite loops in question flows
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Circular question flows | HIGH | Validate at load time, detect cycles |
-| Orphan leads_to references | MEDIUM | Schema validation on startup |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] IRPEF calculation flow covered (tipo_contribuente -> reddito)
-- [ ] Apertura attivita flow covered (tipo_attivita -> settore -> regime)
-- [ ] Document classification questions covered
-- [ ] All multi-step flows have valid leads_to references
-- [ ] All questions include "Altro" option
 
 ---
 

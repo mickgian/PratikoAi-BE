@@ -1,0 +1,213 @@
+# Action Templates for Tax Domain
+# PratikoAI v1.5 - Proactive Assistant
+#
+# This file contains suggested action templates for tax-related queries:
+# - IRPEF calculations
+# - IVA calculations
+# - INPS contributions
+# - F24 verification
+# - Tax deadlines
+#
+# Schema Reference: DEV-150 app/schemas/proactivity.py
+# ActionCategory: calculate, search, verify, export, explain
+
+domain: tax
+
+actions:
+  # ============================================================================
+  # FISCAL CALCULATIONS
+  # ============================================================================
+  fiscal_calculation:
+    - id: tax_calculate_irpef
+      label: "Calcola IRPEF"
+      icon: calculator
+      category: calculate
+      prompt_template: "Calcola l'IRPEF per {tipo_contribuente} con reddito lordo di {reddito} euro"
+      requires_input: false
+
+    - id: tax_calculate_irpef_custom
+      label: "Calcola IRPEF con importo specifico"
+      icon: calculator
+      category: calculate
+      prompt_template: "Calcola l'IRPEF per un reddito lordo di {amount} euro"
+      requires_input: true
+      input_placeholder: "Inserisci il reddito lordo annuo"
+      input_type: number
+
+    - id: tax_calculate_iva
+      label: "Calcola IVA"
+      icon: percent
+      category: calculate
+      prompt_template: "Calcola l'IVA al {aliquota}% su un imponibile di {imponibile} euro"
+      requires_input: false
+
+    - id: tax_calculate_iva_custom
+      label: "Calcola IVA su importo"
+      icon: percent
+      category: calculate
+      prompt_template: "Calcola l'IVA su un importo di {amount} euro"
+      requires_input: true
+      input_placeholder: "Inserisci l'imponibile"
+      input_type: number
+
+    - id: tax_calculate_inps
+      label: "Calcola contributi INPS"
+      icon: building
+      category: calculate
+      prompt_template: "Calcola i contributi INPS per {categoria_lavoratore} con reddito {reddito} euro"
+      requires_input: false
+
+    - id: tax_calculate_inps_custom
+      label: "Calcola contributi INPS su importo"
+      icon: building
+      category: calculate
+      prompt_template: "Calcola i contributi INPS per un reddito di {amount} euro"
+      requires_input: true
+      input_placeholder: "Inserisci il reddito imponibile"
+      input_type: number
+
+    - id: tax_calculate_ravvedimento
+      label: "Calcola ravvedimento operoso"
+      icon: alert-circle
+      category: calculate
+      prompt_template: "Calcola il ravvedimento operoso per un importo di {importo} euro con {giorni_ritardo} giorni di ritardo"
+      requires_input: false
+
+    - id: tax_recalculate
+      label: "Ricalcola con nuovo importo"
+      icon: refresh-cw
+      category: calculate
+      prompt_template: "Ricalcola con un importo di {amount} euro"
+      requires_input: true
+      input_placeholder: "Nuovo importo"
+      input_type: number
+
+  # ============================================================================
+  # TAX SEARCHES
+  # ============================================================================
+  tax_search:
+    - id: tax_search_normativa
+      label: "Cerca normativa fiscale"
+      icon: search
+      category: search
+      prompt_template: "Cerca la normativa fiscale relativa a {argomento}"
+      requires_input: true
+      input_placeholder: "Es: detrazioni lavoro dipendente"
+      input_type: text
+
+    - id: tax_search_aliquote
+      label: "Cerca aliquote vigenti"
+      icon: search
+      category: search
+      prompt_template: "Quali sono le aliquote vigenti per {tipo_imposta}?"
+      requires_input: true
+      input_placeholder: "Es: IRPEF, IVA, IRAP"
+      input_type: text
+
+    - id: tax_search_detrazioni
+      label: "Cerca detrazioni disponibili"
+      icon: search
+      category: search
+      prompt_template: "Quali detrazioni sono disponibili per {tipo_contribuente}?"
+      requires_input: false
+
+    - id: tax_search_scadenze
+      label: "Cerca scadenze fiscali"
+      icon: calendar
+      category: search
+      prompt_template: "Quali sono le prossime scadenze fiscali per {mese_anno}?"
+      requires_input: true
+      input_placeholder: "Es: gennaio 2025"
+      input_type: text
+
+  # ============================================================================
+  # TAX VERIFICATIONS
+  # ============================================================================
+  tax_verify:
+    - id: tax_verify_f24
+      label: "Verifica codici tributo F24"
+      icon: check-circle
+      category: verify
+      prompt_template: "Verifica il codice tributo {codice_tributo} per il modello F24"
+      requires_input: true
+      input_placeholder: "Es: 4001, 3800"
+      input_type: text
+
+    - id: tax_verify_scadenza
+      label: "Verifica scadenza"
+      icon: clock
+      category: verify
+      prompt_template: "La scadenza per {adempimento} del {data} è corretta?"
+      requires_input: false
+
+    - id: tax_verify_deducibilita
+      label: "Verifica deducibilità"
+      icon: check-circle
+      category: verify
+      prompt_template: "Il costo di {tipo_costo} è deducibile fiscalmente?"
+      requires_input: true
+      input_placeholder: "Es: auto aziendale, telefono"
+      input_type: text
+
+    - id: tax_verify_regime
+      label: "Verifica regime fiscale"
+      icon: shield
+      category: verify
+      prompt_template: "Verifica i requisiti per il regime {tipo_regime}"
+      requires_input: true
+      input_placeholder: "Es: forfettario, ordinario"
+      input_type: text
+
+  # ============================================================================
+  # TAX EXPORTS
+  # ============================================================================
+  tax_export:
+    - id: tax_export_calcolo_pdf
+      label: "Esporta calcolo in PDF"
+      icon: file-text
+      category: export
+      prompt_template: "Esporta il calcolo fiscale in formato PDF"
+      requires_input: false
+
+    - id: tax_export_riepilogo
+      label: "Esporta riepilogo Excel"
+      icon: table
+      category: export
+      prompt_template: "Esporta il riepilogo fiscale in formato Excel"
+      requires_input: false
+
+  # ============================================================================
+  # TAX EXPLANATIONS
+  # ============================================================================
+  tax_explain:
+    - id: tax_explain_irpef
+      label: "Spiega calcolo IRPEF"
+      icon: help-circle
+      category: explain
+      prompt_template: "Spiega come viene calcolato l'IRPEF e quali sono gli scaglioni"
+      requires_input: false
+
+    - id: tax_explain_iva
+      label: "Spiega aliquote IVA"
+      icon: help-circle
+      category: explain
+      prompt_template: "Spiega le diverse aliquote IVA e quando si applicano"
+      requires_input: false
+
+    - id: tax_explain_dettaglio
+      label: "Spiega nel dettaglio"
+      icon: info
+      category: explain
+      prompt_template: "Spiega nel dettaglio {argomento}"
+      requires_input: true
+      input_placeholder: "Cosa vuoi approfondire?"
+      input_type: text
+
+    - id: tax_explain_differenza
+      label: "Spiega la differenza"
+      icon: git-compare
+      category: explain
+      prompt_template: "Qual è la differenza tra {opzione_a} e {opzione_b}?"
+      requires_input: true
+      input_placeholder: "Es: regime forfettario e ordinario"
+      input_type: text

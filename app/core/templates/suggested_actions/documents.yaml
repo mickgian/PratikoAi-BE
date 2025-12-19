@@ -1,0 +1,313 @@
+# Action Templates for Document Types
+# PratikoAI v1.5 - Proactive Assistant
+#
+# This file contains document-specific action templates for:
+# - Fattura (Invoice)
+# - F24 (Tax payment form)
+# - Bilancio (Balance sheet)
+# - CU (Certificazione Unica)
+# - Busta paga (Payslip)
+# - Contratto (Contract)
+#
+# Schema Reference: DEV-150 app/schemas/proactivity.py
+# ActionCategory: calculate, search, verify, export, explain
+
+domain: documents
+
+# Document-specific actions are organized by document type
+document_actions:
+  # ============================================================================
+  # FATTURA (INVOICE) ACTIONS
+  # ============================================================================
+  fattura:
+    - id: doc_fattura_verifica_iva
+      label: "Verifica aliquota IVA"
+      icon: percent
+      category: verify
+      prompt_template: "Verifica che l'aliquota IVA del {aliquota}% sia corretta per questo tipo di fattura"
+      requires_input: false
+
+    - id: doc_fattura_calcola_totale
+      label: "Calcola totale fattura"
+      icon: calculator
+      category: calculate
+      prompt_template: "Calcola il totale della fattura con imponibile {imponibile} euro e IVA {aliquota}%"
+      requires_input: false
+
+    - id: doc_fattura_verifica_dati
+      label: "Verifica dati obbligatori"
+      icon: check-circle
+      category: verify
+      prompt_template: "Verifica che la fattura contenga tutti i dati obbligatori secondo la normativa"
+      requires_input: false
+
+    - id: doc_fattura_cerca_normativa
+      label: "Cerca normativa fatturazione"
+      icon: search
+      category: search
+      prompt_template: "Cerca la normativa relativa alla fatturazione per {tipo_operazione}"
+      requires_input: true
+      input_placeholder: "Es: operazioni intracomunitarie"
+      input_type: text
+
+    - id: doc_fattura_spiega_regime
+      label: "Spiega regime IVA"
+      icon: help-circle
+      category: explain
+      prompt_template: "Spiega il regime IVA applicabile a questa fattura"
+      requires_input: false
+
+    - id: doc_fattura_esporta
+      label: "Esporta analisi fattura"
+      icon: file-text
+      category: export
+      prompt_template: "Esporta l'analisi della fattura in formato PDF"
+      requires_input: false
+
+  # ============================================================================
+  # F24 (TAX PAYMENT FORM) ACTIONS
+  # ============================================================================
+  f24:
+    - id: doc_f24_verifica_codice
+      label: "Verifica codice tributo"
+      icon: check-circle
+      category: verify
+      prompt_template: "Verifica il codice tributo {codice_tributo} per il modello F24"
+      requires_input: true
+      input_placeholder: "Es: 4001, 3800, 1040"
+      input_type: text
+
+    - id: doc_f24_calcola_totale
+      label: "Calcola totale F24"
+      icon: calculator
+      category: calculate
+      prompt_template: "Calcola il totale dovuto sommando tutti gli importi del modello F24"
+      requires_input: false
+
+    - id: doc_f24_verifica_scadenza
+      label: "Verifica scadenza"
+      icon: calendar
+      category: verify
+      prompt_template: "Verifica che la scadenza per questo F24 sia corretta"
+      requires_input: false
+
+    - id: doc_f24_cerca_istruzioni
+      label: "Cerca istruzioni compilazione"
+      icon: search
+      category: search
+      prompt_template: "Cerca le istruzioni per compilare il modello F24 per {tipo_pagamento}"
+      requires_input: true
+      input_placeholder: "Es: IRPEF, IVA periodica"
+      input_type: text
+
+    - id: doc_f24_spiega_sezioni
+      label: "Spiega le sezioni"
+      icon: help-circle
+      category: explain
+      prompt_template: "Spiega come compilare le diverse sezioni del modello F24"
+      requires_input: false
+
+    - id: doc_f24_calcola_ravvedimento
+      label: "Calcola ravvedimento"
+      icon: alert-circle
+      category: calculate
+      prompt_template: "Calcola gli importi per il ravvedimento operoso di questo F24"
+      requires_input: false
+
+  # ============================================================================
+  # BILANCIO (BALANCE SHEET) ACTIONS
+  # ============================================================================
+  bilancio:
+    - id: doc_bilancio_analizza_indici
+      label: "Analizza indici di bilancio"
+      icon: bar-chart-2
+      category: calculate
+      prompt_template: "Calcola e analizza i principali indici di bilancio"
+      requires_input: false
+
+    - id: doc_bilancio_verifica_conformita
+      label: "Verifica conformità"
+      icon: check-circle
+      category: verify
+      prompt_template: "Verifica la conformità del bilancio ai principi contabili {tipo_principi}"
+      requires_input: true
+      input_placeholder: "Es: OIC, IAS/IFRS"
+      input_type: text
+
+    - id: doc_bilancio_calcola_roi
+      label: "Calcola ROI/ROE"
+      icon: trending-up
+      category: calculate
+      prompt_template: "Calcola ROI, ROE e altri indici di redditività dal bilancio"
+      requires_input: false
+
+    - id: doc_bilancio_cerca_normativa
+      label: "Cerca normativa bilancio"
+      icon: search
+      category: search
+      prompt_template: "Cerca la normativa relativa a {voce_bilancio}"
+      requires_input: true
+      input_placeholder: "Es: ammortamenti, fondi rischi"
+      input_type: text
+
+    - id: doc_bilancio_spiega_voce
+      label: "Spiega voce di bilancio"
+      icon: help-circle
+      category: explain
+      prompt_template: "Spiega il significato e la composizione della voce {voce}"
+      requires_input: true
+      input_placeholder: "Es: immobilizzazioni, ratei"
+      input_type: text
+
+    - id: doc_bilancio_esporta_analisi
+      label: "Esporta analisi bilancio"
+      icon: file-text
+      category: export
+      prompt_template: "Esporta l'analisi completa del bilancio in formato PDF"
+      requires_input: false
+
+  # ============================================================================
+  # CU (CERTIFICAZIONE UNICA) ACTIONS
+  # ============================================================================
+  cu:
+    - id: doc_cu_verifica_dati
+      label: "Verifica dati CU"
+      icon: check-circle
+      category: verify
+      prompt_template: "Verifica la correttezza dei dati riportati nella Certificazione Unica"
+      requires_input: false
+
+    - id: doc_cu_calcola_irpef
+      label: "Verifica IRPEF trattenuta"
+      icon: calculator
+      category: calculate
+      prompt_template: "Verifica che l'IRPEF trattenuta sia corretta rispetto al reddito {reddito}"
+      requires_input: false
+
+    - id: doc_cu_verifica_detrazioni
+      label: "Verifica detrazioni"
+      icon: check-circle
+      category: verify
+      prompt_template: "Verifica le detrazioni applicate nella CU"
+      requires_input: false
+
+    - id: doc_cu_cerca_istruzioni
+      label: "Cerca istruzioni CU"
+      icon: search
+      category: search
+      prompt_template: "Cerca le istruzioni per la compilazione della CU per {tipo_reddito}"
+      requires_input: true
+      input_placeholder: "Es: lavoro dipendente, collaborazioni"
+      input_type: text
+
+    - id: doc_cu_spiega_campi
+      label: "Spiega campi CU"
+      icon: help-circle
+      category: explain
+      prompt_template: "Spiega il significato dei campi della sezione {sezione}"
+      requires_input: true
+      input_placeholder: "Es: dati fiscali, previdenziali"
+      input_type: text
+
+    - id: doc_cu_esporta
+      label: "Esporta riepilogo CU"
+      icon: file-text
+      category: export
+      prompt_template: "Esporta il riepilogo della Certificazione Unica in formato PDF"
+      requires_input: false
+
+  # ============================================================================
+  # BUSTA PAGA (PAYSLIP) ACTIONS
+  # ============================================================================
+  busta_paga:
+    - id: doc_bustapaga_verifica_voci
+      label: "Verifica voci retributive"
+      icon: check-circle
+      category: verify
+      prompt_template: "Verifica la correttezza delle voci retributive in busta paga"
+      requires_input: false
+
+    - id: doc_bustapaga_calcola_netto
+      label: "Calcola netto"
+      icon: calculator
+      category: calculate
+      prompt_template: "Calcola lo stipendio netto partendo dal lordo di {lordo} euro"
+      requires_input: false
+
+    - id: doc_bustapaga_verifica_contributi
+      label: "Verifica contributi"
+      icon: shield
+      category: verify
+      prompt_template: "Verifica i contributi INPS e le altre trattenute"
+      requires_input: false
+
+    - id: doc_bustapaga_spiega_voci
+      label: "Spiega le voci"
+      icon: help-circle
+      category: explain
+      prompt_template: "Spiega le voci della busta paga"
+      requires_input: false
+
+    - id: doc_bustapaga_cerca_ccnl
+      label: "Confronta con CCNL"
+      icon: search
+      category: search
+      prompt_template: "Confronta questa busta paga con le tabelle del CCNL {ccnl}"
+      requires_input: true
+      input_placeholder: "Es: Commercio, Metalmeccanico"
+      input_type: text
+
+    - id: doc_bustapaga_esporta
+      label: "Esporta analisi"
+      icon: file-text
+      category: export
+      prompt_template: "Esporta l'analisi della busta paga in formato PDF"
+      requires_input: false
+
+  # ============================================================================
+  # CONTRATTO (CONTRACT) ACTIONS
+  # ============================================================================
+  contratto:
+    - id: doc_contratto_verifica_clausole
+      label: "Verifica clausole"
+      icon: check-circle
+      category: verify
+      prompt_template: "Verifica le clausole essenziali del contratto"
+      requires_input: false
+
+    - id: doc_contratto_cerca_normativa
+      label: "Cerca normativa applicabile"
+      icon: search
+      category: search
+      prompt_template: "Cerca la normativa applicabile a questo tipo di contratto"
+      requires_input: false
+
+    - id: doc_contratto_verifica_conformita
+      label: "Verifica conformità legale"
+      icon: shield
+      category: verify
+      prompt_template: "Verifica la conformità del contratto alla normativa vigente"
+      requires_input: false
+
+    - id: doc_contratto_spiega_clausola
+      label: "Spiega clausola"
+      icon: help-circle
+      category: explain
+      prompt_template: "Spiega il significato e le implicazioni della clausola {clausola}"
+      requires_input: true
+      input_placeholder: "Es: clausola penale, risoluzione"
+      input_type: text
+
+    - id: doc_contratto_calcola_termini
+      label: "Calcola termini"
+      icon: calendar
+      category: calculate
+      prompt_template: "Calcola i termini contrattuali importanti (scadenze, rinnovi)"
+      requires_input: false
+
+    - id: doc_contratto_esporta
+      label: "Esporta analisi contratto"
+      icon: file-text
+      category: export
+      prompt_template: "Esporta l'analisi del contratto in formato PDF"
+      requires_input: false

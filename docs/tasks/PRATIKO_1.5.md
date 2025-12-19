@@ -6,6 +6,7 @@
 **Total Effort:** ~33h (2-3 weeks at 2-3h/day) *(with Claude Code)*
 
 **Recent Completed Work:**
+- DEV-152: Create Action Templates YAML Files (2024-12-19)
 - DEV-151: Create YAML Template Loader Service (2024-12-19)
 - DEV-153: Create Interactive Question Templates YAML (2024-12-19)
 - DEV-150: Create Pydantic Models for Actions and Interactive Questions (2024-12-19)
@@ -359,90 +360,68 @@ Created ActionTemplateService that loads templates from `app/core/templates/`, c
 
 ---
 
-## Phase 1: Foundation (Backend) - 9h
-
-**Note:** DEV-150, DEV-151, and DEV-153 moved to Completed Tasks section above.
-
----
+<details>
+<summary>
+<h3>DEV-152: Create Action Templates YAML Files</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
+Created comprehensive action templates for tax, labor, legal domains plus document-specific actions with 18 validation tests.
+</summary>
 
 ### DEV-152: Create Action Templates YAML Files
 
-**Reference:** [Appendix A.1: Template Azioni per Documenti](./PRATIKO_1.5_REFERENCE.md#a1-template-azioni-per-documenti)
-
-**Priority:** HIGH | **Effort:** 1h | **Status:** NOT STARTED
+**Status:** ✅ COMPLETED (2024-12-19)
+**Priority:** HIGH | **Effort:** 1h (Actual: ~1h)
 
 **Problem:**
 The system needs predefined action templates for different domains (tax, labor, legal) and document types (fattura, F24, bilancio, CU).
 
 **Solution:**
-Create YAML template files in `app/core/templates/suggested_actions/` covering all scenarios defined in the requirements.
+Created YAML template files in `app/core/templates/suggested_actions/` covering all scenarios.
 
-**Agent Assignment:** @ezio (primary), @egidio (review)
+**Files Created:**
+- `app/core/templates/suggested_actions/tax.yaml` - Tax domain actions (IRPEF, IVA, INPS, etc.)
+- `app/core/templates/suggested_actions/labor.yaml` - Labor domain actions (CCNL, salary, TFR, etc.)
+- `app/core/templates/suggested_actions/legal.yaml` - Legal domain actions (jurisprudence, court rulings, etc.)
+- `app/core/templates/suggested_actions/documents.yaml` - Document-specific actions (fattura, F24, bilancio, CU, busta_paga, contratto)
+- `app/core/templates/suggested_actions/default.yaml` - Default fallback actions
+- `tests/templates/test_action_templates.py` - 18 validation tests
 
-**Dependencies:**
-- **Blocking:** DEV-151
-- **Unlocks:** DEV-155
-
-**Change Classification:** ADDITIVE
-
-**Files:**
-- `app/core/templates/suggested_actions/tax.yaml`
-- `app/core/templates/suggested_actions/labor.yaml`
-- `app/core/templates/suggested_actions/legal.yaml`
-- `app/core/templates/suggested_actions/documents.yaml`
-- `app/core/templates/suggested_actions/default.yaml`
-
-**Fields/Methods/Components:**
-YAML structure for each template:
+**Template Structure:**
 ```yaml
 domain: tax
 actions:
   fiscal_calculation:
-    - id: calculate_irpef
-      label: Calcola IRPEF
-      icon: calculate
+    - id: tax_calculate_irpef
+      label: "Calcola IRPEF"
+      icon: calculator
       category: calculate
       prompt_template: "Calcola l'IRPEF per {tipo_contribuente} con reddito {reddito}"
       requires_input: false
-    - id: recalculate
-      label: Ricalcola
-      icon: refresh
-      category: calculate
-      prompt_template: "Ricalcola con importo {amount}"
-      requires_input: true
-      input_placeholder: "Nuovo importo"
-      input_type: number
 ```
 
-**Edge Cases:**
-- **Missing icon:** Use default icon per category
-- **Empty prompt_template:** Use label as prompt
-- **Special characters in prompts:** Escape properly
+**Coverage:**
+- **Domains:** tax, labor, legal, documents, default
+- **Document Types:** fattura, F24, bilancio, CU, busta_paga, contratto
+- **Action Categories:** calculate, search, verify, export, explain
+- **Total Actions:** 100+ actions across all domains
 
-**Testing Requirements:**
-- **Validation Tests:**
-  - `test_all_templates_valid_yaml` - All YAML files parse correctly
-  - `test_all_templates_match_schema` - All templates conform to Action schema
-  - `test_no_duplicate_action_ids` - Action IDs unique within domain
-  - `test_all_prompt_templates_have_placeholders` - Placeholders are valid
+**Acceptance Criteria (All Met):**
+- ✅ All document types covered (fattura, F24, bilancio, CU, busta_paga, contratto)
+- ✅ All domains covered (tax, labor, legal, default)
+- ✅ All templates validate against Action schema
+- ✅ No duplicate action IDs
+- ✅ Prompt templates use consistent placeholder format {name}
+- ✅ 18 validation tests passing
 
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Template syntax errors break loading | HIGH | Validate on startup, fail fast |
-| Missing templates for scenarios | MEDIUM | Comprehensive coverage checklist |
+**Git:** Branch `DEV-152-Create-Action-Templates-YAML-Files`
 
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
+</details>
 
-**Acceptance Criteria:**
-- [ ] All document types covered (fattura, F24, bilancio, CU)
-- [ ] All domains covered (tax, labor, legal)
-- [ ] All templates validate against schema
-- [ ] No duplicate action IDs
-- [ ] Prompt templates use consistent placeholder format
+---
+
+## Phase 1: Foundation (Backend) - 9h
+
+**Note:** DEV-150, DEV-151, DEV-152, and DEV-153 moved to Completed Tasks section above.
 
 ---
 

@@ -1,0 +1,198 @@
+# Default Action Templates
+# PratikoAI v1.5 - Proactive Assistant
+#
+# This file contains default/fallback action templates used when:
+# - No specific domain is detected
+# - User query is general or ambiguous
+# - Domain-specific templates are not available
+#
+# These actions provide general-purpose functionality across all domains.
+#
+# Schema Reference: DEV-150 app/schemas/proactivity.py
+# ActionCategory: calculate, search, verify, export, explain
+
+domain: default
+
+actions:
+  # ============================================================================
+  # GENERAL SEARCHES
+  # ============================================================================
+  general_search:
+    - id: default_search_normativa
+      label: "Cerca normativa"
+      icon: search
+      category: search
+      prompt_template: "Cerca la normativa relativa a {argomento}"
+      requires_input: true
+      input_placeholder: "Inserisci l'argomento da cercare"
+      input_type: text
+
+    - id: default_search_giurisprudenza
+      label: "Cerca giurisprudenza"
+      icon: gavel
+      category: search
+      prompt_template: "Cerca giurisprudenza su {argomento}"
+      requires_input: true
+      input_placeholder: "Inserisci l'argomento da cercare"
+      input_type: text
+
+    - id: default_search_scadenze
+      label: "Cerca scadenze"
+      icon: calendar
+      category: search
+      prompt_template: "Quali sono le prossime scadenze per {periodo}?"
+      requires_input: true
+      input_placeholder: "Es: questo mese, gennaio 2025"
+      input_type: text
+
+    - id: default_search_documentazione
+      label: "Cerca documentazione"
+      icon: file-search
+      category: search
+      prompt_template: "Cerca documentazione su {argomento}"
+      requires_input: true
+      input_placeholder: "Inserisci l'argomento"
+      input_type: text
+
+  # ============================================================================
+  # GENERAL VERIFICATIONS
+  # ============================================================================
+  general_verify:
+    - id: default_verify_requisiti
+      label: "Verifica requisiti"
+      icon: check-circle
+      category: verify
+      prompt_template: "Verifica i requisiti per {azione}"
+      requires_input: true
+      input_placeholder: "Es: apertura P.IVA, assunzione"
+      input_type: text
+
+    - id: default_verify_conformita
+      label: "Verifica conformità"
+      icon: shield
+      category: verify
+      prompt_template: "Verifica la conformità di {elemento} alla normativa vigente"
+      requires_input: true
+      input_placeholder: "Es: contratto, fattura"
+      input_type: text
+
+    - id: default_verify_scadenza
+      label: "Verifica scadenza"
+      icon: clock
+      category: verify
+      prompt_template: "La scadenza per {adempimento} è ancora valida?"
+      requires_input: true
+      input_placeholder: "Es: dichiarazione IVA"
+      input_type: text
+
+  # ============================================================================
+  # GENERAL CALCULATIONS
+  # ============================================================================
+  general_calculate:
+    - id: default_calculate_custom
+      label: "Calcola"
+      icon: calculator
+      category: calculate
+      prompt_template: "Calcola {operazione}"
+      requires_input: true
+      input_placeholder: "Descrivi cosa vuoi calcolare"
+      input_type: text
+
+    - id: default_calculate_percentuale
+      label: "Calcola percentuale"
+      icon: percent
+      category: calculate
+      prompt_template: "Calcola il {percentuale}% di {importo} euro"
+      requires_input: true
+      input_placeholder: "Inserisci l'importo base"
+      input_type: number
+
+    - id: default_recalculate
+      label: "Ricalcola"
+      icon: refresh-cw
+      category: calculate
+      prompt_template: "Ricalcola con un nuovo valore di {amount}"
+      requires_input: true
+      input_placeholder: "Inserisci il nuovo valore"
+      input_type: number
+
+  # ============================================================================
+  # GENERAL EXPORTS
+  # ============================================================================
+  general_export:
+    - id: default_export_pdf
+      label: "Esporta in PDF"
+      icon: file-text
+      category: export
+      prompt_template: "Esporta questa conversazione in formato PDF"
+      requires_input: false
+
+    - id: default_export_excel
+      label: "Esporta in Excel"
+      icon: table
+      category: export
+      prompt_template: "Esporta i dati in formato Excel"
+      requires_input: false
+
+    - id: default_export_riepilogo
+      label: "Esporta riepilogo"
+      icon: file-plus
+      category: export
+      prompt_template: "Genera ed esporta un riepilogo completo"
+      requires_input: false
+
+  # ============================================================================
+  # GENERAL EXPLANATIONS
+  # ============================================================================
+  general_explain:
+    - id: default_explain_approfondisci
+      label: "Approfondisci"
+      icon: info
+      category: explain
+      prompt_template: "Approfondisci {argomento}"
+      requires_input: true
+      input_placeholder: "Cosa vuoi approfondire?"
+      input_type: text
+
+    - id: default_explain_semplifica
+      label: "Spiega in modo semplice"
+      icon: message-circle
+      category: explain
+      prompt_template: "Spiega in modo semplice {concetto}"
+      requires_input: true
+      input_placeholder: "Quale concetto vuoi semplificare?"
+      input_type: text
+
+    - id: default_explain_esempio
+      label: "Fammi un esempio"
+      icon: lightbulb
+      category: explain
+      prompt_template: "Fammi un esempio pratico di {argomento}"
+      requires_input: true
+      input_placeholder: "Di cosa vuoi un esempio?"
+      input_type: text
+
+    - id: default_explain_differenza
+      label: "Spiega la differenza"
+      icon: git-compare
+      category: explain
+      prompt_template: "Qual è la differenza tra {opzione_a} e {opzione_b}?"
+      requires_input: true
+      input_placeholder: "Es: SRL e SPA"
+      input_type: text
+
+    - id: default_explain_procedura
+      label: "Spiega la procedura"
+      icon: list
+      category: explain
+      prompt_template: "Spiega la procedura per {azione}"
+      requires_input: true
+      input_placeholder: "Es: apertura P.IVA"
+      input_type: text
+
+    - id: default_explain_riepilogo
+      label: "Fai un riepilogo"
+      icon: align-left
+      category: explain
+      prompt_template: "Fai un riepilogo di quanto discusso finora"
+      requires_input: false

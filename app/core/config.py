@@ -446,9 +446,32 @@ REPAIR_LIMIT_DEFAULT = int(os.getenv("REPAIR_LIMIT_DEFAULT", "20"))  # Default r
 QUALITY_MIN_DOC = float(os.getenv("QUALITY_MIN_DOC", "0.60"))  # Min quality threshold for repair
 
 # Hybrid Retrieval Weights (must sum to ~1.0)
-HYBRID_WEIGHT_FTS = float(os.getenv("HYBRID_WEIGHT_FTS", "0.50"))
-HYBRID_WEIGHT_VEC = float(os.getenv("HYBRID_WEIGHT_VEC", "0.35"))
-HYBRID_WEIGHT_RECENCY = float(os.getenv("HYBRID_WEIGHT_RECENCY", "0.15"))
+# DEV-BE-78: Rebalanced weights to include quality and source authority
+# Original: FTS=0.50, Vec=0.35, Recency=0.15
+# New: FTS=0.45, Vec=0.30, Recency=0.10, Quality=0.10, Source=0.05
+HYBRID_WEIGHT_FTS = float(os.getenv("HYBRID_WEIGHT_FTS", "0.45"))
+HYBRID_WEIGHT_VEC = float(os.getenv("HYBRID_WEIGHT_VEC", "0.30"))
+HYBRID_WEIGHT_RECENCY = float(os.getenv("HYBRID_WEIGHT_RECENCY", "0.10"))
+HYBRID_WEIGHT_QUALITY = float(os.getenv("HYBRID_WEIGHT_QUALITY", "0.10"))
+HYBRID_WEIGHT_SOURCE = float(os.getenv("HYBRID_WEIGHT_SOURCE", "0.05"))
+
+# Source Authority Weights for official Italian sources
+# Used by ranking_utils.get_source_authority_boost()
+SOURCE_AUTHORITY_WEIGHTS = {
+    # Official government sources: +0.15 boost
+    "agenzia_entrate": 0.15,
+    "inps": 0.15,
+    "mef": 0.15,
+    "gazzetta_ufficiale": 0.15,
+    "ministero_lavoro": 0.15,
+    "inail": 0.15,
+    "corte_cassazione": 0.15,
+    # Semi-official professional associations: +0.10 boost
+    "confindustria": 0.10,
+    "ordine_commercialisti": 0.10,
+    "consiglio_nazionale_forense": 0.10,
+    "cndcec": 0.10,
+}
 
 # Retrieval Parameters
 HYBRID_K_FTS = int(os.getenv("HYBRID_K_FTS", "20"))  # Top-K for FTS candidates

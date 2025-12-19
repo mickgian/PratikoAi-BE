@@ -46,11 +46,13 @@ class TestKnowledgeSearchService:
 
     @pytest.fixture
     def search_config(self):
-        """Create search configuration for testing."""
+        """Create search configuration for testing (DEV-BE-78 updated weights)."""
         return KnowledgeSearchConfig(
-            bm25_weight=0.4,
-            vector_weight=0.4,
-            recency_weight=0.2,
+            bm25_weight=0.40,
+            vector_weight=0.30,
+            recency_weight=0.10,
+            quality_weight=0.10,
+            source_weight=0.10,
             max_results=10,
             min_score_threshold=0.1,
             recency_decay_days=90,
@@ -338,9 +340,22 @@ class TestKnowledgeSearchConfig:
 
     def test_config_validation(self):
         """Test that configuration validation works correctly."""
-        # Valid configuration
-        valid_config = KnowledgeSearchConfig(bm25_weight=0.4, vector_weight=0.4, recency_weight=0.2)
-        assert valid_config.bm25_weight + valid_config.vector_weight + valid_config.recency_weight == 1.0
+        # Valid configuration (all 5 weights must sum to 1.0)
+        valid_config = KnowledgeSearchConfig(
+            bm25_weight=0.40,
+            vector_weight=0.30,
+            recency_weight=0.10,
+            quality_weight=0.10,
+            source_weight=0.10,
+        )
+        total = (
+            valid_config.bm25_weight
+            + valid_config.vector_weight
+            + valid_config.recency_weight
+            + valid_config.quality_weight
+            + valid_config.source_weight
+        )
+        assert abs(total - 1.0) < 0.01
 
         # Weights should sum to 1.0
         with pytest.raises(ValueError):
@@ -348,14 +363,20 @@ class TestKnowledgeSearchConfig:
                 bm25_weight=0.5,
                 vector_weight=0.5,
                 recency_weight=0.5,  # Sum > 1.0
+                quality_weight=0.1,
+                source_weight=0.1,
             )
 
     def test_config_defaults(self):
-        """Test default configuration values."""
+        """Test default configuration values (DEV-BE-78 updated weights)."""
         config = KnowledgeSearchConfig()
-        assert config.bm25_weight == 0.4
-        assert config.vector_weight == 0.4
-        assert config.recency_weight == 0.2
+        # DEV-BE-78: Weights updated to include quality and source
+        # FTS=0.45, Vec=0.30, Recency=0.10, Quality=0.10, Source=0.05
+        assert config.bm25_weight == 0.45
+        assert config.vector_weight == 0.30
+        assert config.recency_weight == 0.10
+        assert config.quality_weight == 0.10
+        assert config.source_weight == 0.05
         assert config.max_results == 10
         assert config.min_score_threshold == 0.1
 

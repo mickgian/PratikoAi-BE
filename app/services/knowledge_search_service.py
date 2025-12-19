@@ -79,11 +79,17 @@ class SearchMode(str, Enum):
 
 @dataclass
 class KnowledgeSearchConfig:
-    """Configuration for knowledge search service."""
+    """Configuration for knowledge search service.
 
-    bm25_weight: float = 0.4  # Weight for BM25 text search scores
-    vector_weight: float = 0.4  # Weight for vector similarity scores
-    recency_weight: float = 0.2  # Weight for recency boost
+    DEV-BE-78: Updated to include quality and source authority weights.
+    Uses global config values from app/core/config.py for consistency.
+    """
+
+    bm25_weight: float | None = None  # Weight for BM25 text search scores
+    vector_weight: float | None = None  # Weight for vector similarity scores
+    recency_weight: float | None = None  # Weight for recency boost
+    quality_weight: float | None = None  # Weight for text quality score
+    source_weight: float | None = None  # Weight for source authority boost
     max_results: int = 10  # Maximum number of results to return
     min_score_threshold: float = 0.1  # Minimum combined score threshold
     recency_decay_days: int = 90  # Days for recency decay calculation
@@ -91,8 +97,32 @@ class KnowledgeSearchConfig:
     bm25_top_k: int = 50  # Top-k results from BM25 search
 
     def __post_init__(self):
-        """Validate configuration weights sum to 1.0."""
-        total_weight = self.bm25_weight + self.vector_weight + self.recency_weight
+        """Initialize weights from global config and validate they sum to 1.0."""
+        # Import here to avoid circular imports
+        from app.core.config import (
+            HYBRID_WEIGHT_FTS,
+            HYBRID_WEIGHT_QUALITY,
+            HYBRID_WEIGHT_RECENCY,
+            HYBRID_WEIGHT_SOURCE,
+            HYBRID_WEIGHT_VEC,
+        )
+
+        # Use global config values if not explicitly provided
+        if self.bm25_weight is None:
+            self.bm25_weight = HYBRID_WEIGHT_FTS
+        if self.vector_weight is None:
+            self.vector_weight = HYBRID_WEIGHT_VEC
+        if self.recency_weight is None:
+            self.recency_weight = HYBRID_WEIGHT_RECENCY
+        if self.quality_weight is None:
+            self.quality_weight = HYBRID_WEIGHT_QUALITY
+        if self.source_weight is None:
+            self.source_weight = HYBRID_WEIGHT_SOURCE
+
+        # Validate weights sum to 1.0
+        total_weight = (
+            self.bm25_weight + self.vector_weight + self.recency_weight + self.quality_weight + self.source_weight
+        )
         if not math.isclose(total_weight, 1.0, rel_tol=1e-5):
             raise ValueError(f"Search weights must sum to 1.0, got {total_weight}")
 
@@ -1197,9 +1227,15 @@ class KnowledgeSearchService:
         return list(results_by_id.values())
 
     def _apply_hybrid_scoring(self, results: list[SearchResult]) -> list[SearchResult]:
-        """Apply hybrid scoring combining BM25, vector similarity, and recency boost."""
+        """Apply hybrid scoring combining BM25, vector, recency, quality, and source authority.
+
+        DEV-BE-78: Enhanced scoring with text_quality and source authority weighting.
+        """
         if not results:
             return results
+
+        # Import ranking utilities
+        from app.services.ranking_utils import clamp_quality, get_source_authority_boost
 
         # Normalize scores to 0-1 range for fair combination
         bm25_scores = [r.bm25_score for r in results if r.bm25_score is not None]
@@ -1222,11 +1258,32 @@ class KnowledgeSearchService:
             recency_boost = self._calculate_recency_boost(result.updated_at)
             result.recency_score = recency_boost
 
-            # Combine scores using configured weights
+            # DEV-BE-78: Calculate text quality score
+            # Get quality from metadata or use neutral value (0.5)
+            raw_quality = result.metadata.get("text_quality")
+            quality_score = clamp_quality(raw_quality)
+
+            # DEV-BE-78: Calculate source authority boost
+            source_boost = get_source_authority_boost(result.source)
+
+            # Store additional scores in metadata for debugging/logging
+            result.metadata["quality_score"] = quality_score
+            result.metadata["source_boost"] = source_boost
+
+            # Combine scores using configured weights (sum to 1.0)
+            # Weights are guaranteed non-None after __post_init__
+            bm25_w = self.config.bm25_weight or 0.0
+            vector_w = self.config.vector_weight or 0.0
+            recency_w = self.config.recency_weight or 0.0
+            quality_w = self.config.quality_weight or 0.0
+            source_w = self.config.source_weight or 0.0
+
             combined_score = (
-                self.config.bm25_weight * norm_bm25
-                + self.config.vector_weight * norm_vector
-                + self.config.recency_weight * recency_boost
+                bm25_w * norm_bm25
+                + vector_w * norm_vector
+                + recency_w * recency_boost
+                + quality_w * quality_score
+                + source_w * source_boost
             )
 
             result.score = combined_score

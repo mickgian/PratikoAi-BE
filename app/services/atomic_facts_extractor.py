@@ -15,9 +15,60 @@ from typing import (
     Dict,
     List,
     Optional,
+    TypedDict,
 )
 
 from app.core.logging import logger
+from app.schemas.proactivity import ExtractedParameter, ParameterExtractionResult
+
+
+class IntentSchema(TypedDict):
+    """Schema defining required and optional parameters for an intent."""
+
+    required: list[str]
+    optional: list[str]
+    defaults: dict[str, int | str | float]
+
+
+# Intent schemas defining required/optional parameters per intent type
+# DEV-154: Parameter coverage calculation for proactive assistant
+INTENT_SCHEMAS: dict[str, IntentSchema] = {
+    "calcolo_irpef": {
+        "required": ["tipo_contribuente", "reddito"],
+        "optional": ["detrazioni", "anno_fiscale", "regione"],
+        "defaults": {"anno_fiscale": 2025},
+    },
+    "calcolo_iva": {
+        "required": ["importo"],
+        "optional": ["aliquota", "tipo_operazione"],
+        "defaults": {"aliquota": 22},
+    },
+    "calcolo_contributi_inps": {
+        "required": ["importo", "tipo_contribuente"],
+        "optional": ["anno"],
+        "defaults": {"anno": 2025},
+    },
+    "calcolo_tfr": {
+        "required": ["retribuzione_annua", "anni_servizio"],
+        "optional": ["rivalutazione"],
+        "defaults": {},
+    },
+    "calcolo_netto": {
+        "required": ["importo_lordo"],
+        "optional": ["tipo_contratto", "regione"],
+        "defaults": {},
+    },
+    "verifica_scadenza": {
+        "required": ["tipo_adempimento"],
+        "optional": ["data_riferimento"],
+        "defaults": {},
+    },
+    "cerca_normativa": {
+        "required": ["argomento"],
+        "optional": ["anno", "tipo_documento"],
+        "defaults": {},
+    },
+}
 
 
 @dataclass
@@ -1141,3 +1192,302 @@ class AtomicFactsExtractor:
                 return value
 
         return level_text
+
+    # =========================================================================
+    # DEV-154: Parameter Coverage Calculation Methods
+    # =========================================================================
+
+    def _parse_italian_number(self, text: str) -> float | None:
+        """Parse Italian number format to float.
+
+        Handles both Italian (1.000,50) and standard (1000.50) formats.
+
+        Args:
+            text: Number string to parse
+
+        Returns:
+            Float value or None if parsing fails
+        """
+        if not text or not text.strip():
+            return None
+
+        text = text.strip()
+
+        try:
+            return self._canonicalize_number(text)
+        except (ValueError, AttributeError):
+            return None
+
+    def calculate_coverage(
+        self,
+        intent: str,
+        extracted: list[ExtractedParameter],
+    ) -> float:
+        """Calculate parameter coverage for an intent.
+
+        Coverage is the ratio of extracted required parameters to total required
+        parameters. Parameters with confidence < 0.7 are not counted.
+
+        Args:
+            intent: The intent to calculate coverage for
+            extracted: List of extracted parameters
+
+        Returns:
+            Coverage ratio (0.0 to 1.0), 0.0 for unknown intents
+        """
+        if intent not in INTENT_SCHEMAS:
+            logger.warning(f"Unknown intent for coverage calculation: {intent}")
+            return 0.0
+
+        schema = INTENT_SCHEMAS[intent]
+        required_params = set(schema["required"])
+
+        if not required_params:
+            return 1.0  # No required params means full coverage
+
+        # Build map of param name to highest confidence value
+        confidence_threshold = 0.7
+        param_confidences: dict[str, float] = {}
+
+        for param in extracted:
+            if param.confidence >= confidence_threshold:
+                current = param_confidences.get(param.name, 0.0)
+                param_confidences[param.name] = max(current, param.confidence)
+
+        # Count how many required params are covered
+        covered_count = sum(1 for p in required_params if p in param_confidences)
+
+        return covered_count / len(required_params)
+
+    def get_missing_required(
+        self,
+        intent: str,
+        extracted: list[ExtractedParameter],
+    ) -> list[str]:
+        """Get list of missing required parameters for an intent.
+
+        Parameters with confidence < 0.7 are considered missing.
+
+        Args:
+            intent: The intent to check
+            extracted: List of extracted parameters
+
+        Returns:
+            List of missing required parameter names
+        """
+        if intent not in INTENT_SCHEMAS:
+            return []
+
+        schema = INTENT_SCHEMAS[intent]
+        required_params = set(schema["required"])
+
+        # Get params that meet confidence threshold
+        confidence_threshold = 0.7
+        covered_params: set[str] = set()
+
+        for param in extracted:
+            if param.confidence >= confidence_threshold:
+                covered_params.add(param.name)
+
+        # Return missing required params
+        return [p for p in required_params if p not in covered_params]
+
+    def extract_with_coverage(
+        self,
+        query: str,
+        intent: str | None = None,
+    ) -> ParameterExtractionResult:
+        """Extract parameters from query and calculate coverage.
+
+        This method extracts atomic facts from the query, maps them to
+        intent parameters, and calculates coverage against the intent schema.
+
+        Args:
+            query: User query to extract from
+            intent: Optional intent to calculate coverage for
+
+        Returns:
+            ParameterExtractionResult with extracted params, coverage, and can_proceed
+        """
+        # Default result for unknown/missing intent
+        if not intent:
+            intent = "unknown"
+
+        extracted_params: list[ExtractedParameter] = []
+
+        try:
+            # Extract atomic facts
+            facts = self.extract(query)
+
+            # Map extracted facts to intent parameters
+            extracted_params = self._map_facts_to_params(facts, intent, query)
+
+        except Exception as e:
+            logger.error(
+                f"Error during parameter extraction: {e}",
+                extra={"query": query, "intent": intent},
+                exc_info=True,
+            )
+            # Smart fallback - allow proceeding on extraction failure
+            return ParameterExtractionResult(
+                intent=intent,
+                extracted=[],
+                missing_required=[],
+                coverage=0.0,
+                can_proceed=True,
+            )
+
+        # Calculate coverage
+        coverage = self.calculate_coverage(intent, extracted_params)
+
+        # Get missing required params
+        missing_required = self.get_missing_required(intent, extracted_params)
+
+        # Determine if can proceed (coverage >= 0.8 for smart fallback)
+        can_proceed = coverage >= 0.8
+
+        logger.debug(
+            "Parameter extraction complete",
+            extra={
+                "intent": intent,
+                "coverage": coverage,
+                "can_proceed": can_proceed,
+                "extracted_count": len(extracted_params),
+                "missing_count": len(missing_required),
+            },
+        )
+
+        return ParameterExtractionResult(
+            intent=intent,
+            extracted=extracted_params,
+            missing_required=missing_required,
+            coverage=coverage,
+            can_proceed=can_proceed,
+        )
+
+    def _map_facts_to_params(
+        self,
+        facts: "AtomicFacts",
+        intent: str,
+        query: str,
+    ) -> list[ExtractedParameter]:
+        """Map extracted atomic facts to intent parameters.
+
+        Args:
+            facts: Extracted atomic facts
+            intent: The intent to map parameters for
+            query: Original query for context
+
+        Returns:
+            List of ExtractedParameter objects
+        """
+        params: list[ExtractedParameter] = []
+
+        # Extract monetary amounts as 'importo', 'reddito', etc.
+        if facts.monetary_amounts:
+            # Get highest confidence monetary amount
+            best_amount = max(facts.monetary_amounts, key=lambda x: x.confidence)
+
+            if not best_amount.is_percentage:
+                # Map to intent-specific parameter name
+                if intent == "calcolo_irpef":
+                    param_name = "reddito"
+                elif intent in ("calcolo_iva", "calcolo_contributi_inps"):
+                    param_name = "importo"
+                elif intent == "calcolo_netto":
+                    param_name = "importo_lordo"
+                elif intent == "calcolo_tfr":
+                    param_name = "retribuzione_annua"
+                else:
+                    param_name = "importo"
+
+                params.append(
+                    ExtractedParameter(
+                        name=param_name,
+                        value=str(best_amount.amount),
+                        confidence=best_amount.confidence,
+                        source="query",
+                    )
+                )
+
+        # Extract contributor type from query text
+        contributor_type = self._extract_contributor_type(query)
+        if contributor_type:
+            params.append(
+                ExtractedParameter(
+                    name="tipo_contribuente",
+                    value=contributor_type,
+                    confidence=0.9,
+                    source="query",
+                )
+            )
+
+        # Extract tax year from dates
+        for date_fact in facts.dates:
+            if date_fact.date_type == "tax_year" and date_fact.tax_year:
+                params.append(
+                    ExtractedParameter(
+                        name="anno_fiscale",
+                        value=str(date_fact.tax_year),
+                        confidence=date_fact.confidence,
+                        source="query",
+                    )
+                )
+                break
+
+        # Extract regions from geographic info
+        for geo in facts.geographic_info:
+            if geo.region:
+                params.append(
+                    ExtractedParameter(
+                        name="regione",
+                        value=geo.region,
+                        confidence=geo.confidence,
+                        source="query",
+                    )
+                )
+                break
+
+        return params
+
+    def _extract_contributor_type(self, query: str) -> str | None:
+        """Extract contributor type from query text.
+
+        Args:
+            query: User query
+
+        Returns:
+            Contributor type string or None
+        """
+        query_lower = query.lower()
+
+        # Define contributor type patterns
+        contributor_patterns = {
+            "dipendente": [
+                r"\blavoratore\s+dipendente\b",
+                r"\bdipendente\b",
+                r"\blavoro\s+dipendente\b",
+            ],
+            "autonomo": [
+                r"\blavoratore\s+autonomo\b",
+                r"\bautonomo\b",
+                r"\bpartita\s+iva\b",
+                r"\blibero\s+professionista\b",
+                r"\bprofessionista\b",
+            ],
+            "pensionato": [
+                r"\bpensionato\b",
+                r"\bpensione\b",
+            ],
+            "imprenditore": [
+                r"\bimprenditore\b",
+                r"\bditta\s+individuale\b",
+            ],
+        }
+
+        for contrib_type, patterns in contributor_patterns.items():
+            for pattern in patterns:
+                if re.search(pattern, query_lower):
+                    return contrib_type
+
+        return None

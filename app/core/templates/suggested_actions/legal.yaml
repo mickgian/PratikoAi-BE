@@ -1,0 +1,209 @@
+# Action Templates for Legal Domain
+# PratikoAI v1.5 - Proactive Assistant
+#
+# This file contains suggested action templates for legal-related queries:
+# - Jurisprudence searches
+# - Legal document verification
+# - Regulatory compliance
+# - Court decisions and rulings
+# - Administrative procedures
+#
+# Schema Reference: DEV-150 app/schemas/proactivity.py
+# ActionCategory: calculate, search, verify, export, explain
+
+domain: legal
+
+actions:
+  # ============================================================================
+  # LEGAL CALCULATIONS
+  # ============================================================================
+  legal_calculation:
+    - id: legal_calculate_termini
+      label: "Calcola termini processuali"
+      icon: calendar
+      category: calculate
+      prompt_template: "Calcola i termini processuali a partire dalla data {data_notifica} per {tipo_atto}"
+      requires_input: false
+
+    - id: legal_calculate_prescrizione
+      label: "Calcola prescrizione"
+      icon: clock
+      category: calculate
+      prompt_template: "Calcola la prescrizione per {tipo_diritto} dalla data {data_evento}"
+      requires_input: true
+      input_placeholder: "Es: credito, risarcimento danni"
+      input_type: text
+
+    - id: legal_calculate_interessi
+      label: "Calcola interessi legali"
+      icon: percent
+      category: calculate
+      prompt_template: "Calcola gli interessi legali su {importo} euro dal {data_decorrenza}"
+      requires_input: true
+      input_placeholder: "Inserisci l'importo capitale"
+      input_type: number
+
+    - id: legal_calculate_contributo
+      label: "Calcola contributo unificato"
+      icon: calculator
+      category: calculate
+      prompt_template: "Calcola il contributo unificato per una causa di valore {valore} euro"
+      requires_input: true
+      input_placeholder: "Inserisci il valore della causa"
+      input_type: number
+
+  # ============================================================================
+  # LEGAL SEARCHES
+  # ============================================================================
+  legal_search:
+    - id: legal_search_giurisprudenza
+      label: "Cerca giurisprudenza"
+      icon: search
+      category: search
+      prompt_template: "Cerca giurisprudenza su {argomento}"
+      requires_input: true
+      input_placeholder: "Es: licenziamento per giusta causa"
+      input_type: text
+
+    - id: legal_search_cassazione
+      label: "Cerca sentenze Cassazione"
+      icon: gavel
+      category: search
+      prompt_template: "Cerca sentenze della Corte di Cassazione su {argomento}"
+      requires_input: true
+      input_placeholder: "Es: responsabilità contrattuale"
+      input_type: text
+
+    - id: legal_search_normativa
+      label: "Cerca normativa"
+      icon: book-open
+      category: search
+      prompt_template: "Cerca la normativa relativa a {argomento}"
+      requires_input: true
+      input_placeholder: "Es: privacy, appalti pubblici"
+      input_type: text
+
+    - id: legal_search_codice
+      label: "Cerca articolo codice"
+      icon: book
+      category: search
+      prompt_template: "Cerca l'articolo {articolo} del {codice}"
+      requires_input: true
+      input_placeholder: "Es: art. 2043 c.c."
+      input_type: text
+
+    - id: legal_search_precedenti
+      label: "Cerca precedenti"
+      icon: history
+      category: search
+      prompt_template: "Cerca precedenti giurisprudenziali per {fattispecie}"
+      requires_input: true
+      input_placeholder: "Es: inadempimento contrattuale"
+      input_type: text
+
+  # ============================================================================
+  # LEGAL VERIFICATIONS
+  # ============================================================================
+  legal_verify:
+    - id: legal_verify_competenza
+      label: "Verifica competenza giudice"
+      icon: map-pin
+      category: verify
+      prompt_template: "Qual è il giudice competente per {tipo_controversia} con valore {valore} euro?"
+      requires_input: true
+      input_placeholder: "Es: controversia di lavoro"
+      input_type: text
+
+    - id: legal_verify_termini
+      label: "Verifica termini scadenza"
+      icon: clock
+      category: verify
+      prompt_template: "I termini per {tipo_atto} sono ancora validi? Data di partenza: {data}"
+      requires_input: true
+      input_placeholder: "Es: appello, ricorso"
+      input_type: text
+
+    - id: legal_verify_requisiti
+      label: "Verifica requisiti azione"
+      icon: check-circle
+      category: verify
+      prompt_template: "Quali sono i requisiti per proporre {tipo_azione}?"
+      requires_input: true
+      input_placeholder: "Es: azione revocatoria"
+      input_type: text
+
+    - id: legal_verify_procedura
+      label: "Verifica procedura"
+      icon: list
+      category: verify
+      prompt_template: "Qual è la procedura corretta per {adempimento}?"
+      requires_input: true
+      input_placeholder: "Es: notifica atto giudiziario"
+      input_type: text
+
+  # ============================================================================
+  # LEGAL EXPORTS
+  # ============================================================================
+  legal_export:
+    - id: legal_export_ricerca_pdf
+      label: "Esporta ricerca in PDF"
+      icon: file-text
+      category: export
+      prompt_template: "Esporta i risultati della ricerca giurisprudenziale in formato PDF"
+      requires_input: false
+
+    - id: legal_export_sentenze
+      label: "Esporta elenco sentenze"
+      icon: table
+      category: export
+      prompt_template: "Esporta l'elenco delle sentenze trovate in formato Excel"
+      requires_input: false
+
+  # ============================================================================
+  # LEGAL EXPLANATIONS
+  # ============================================================================
+  legal_explain:
+    - id: legal_explain_procedura
+      label: "Spiega la procedura"
+      icon: help-circle
+      category: explain
+      prompt_template: "Spiega la procedura per {tipo_procedura}"
+      requires_input: true
+      input_placeholder: "Es: decreto ingiuntivo"
+      input_type: text
+
+    - id: legal_explain_istituto
+      label: "Spiega istituto giuridico"
+      icon: book-open
+      category: explain
+      prompt_template: "Spiega l'istituto giuridico di {istituto}"
+      requires_input: true
+      input_placeholder: "Es: fideiussione, pegno"
+      input_type: text
+
+    - id: legal_explain_sentenza
+      label: "Spiega la sentenza"
+      icon: gavel
+      category: explain
+      prompt_template: "Spiega il contenuto e le implicazioni della sentenza {riferimento}"
+      requires_input: true
+      input_placeholder: "Es: Cass. n. 12345/2024"
+      input_type: text
+
+    - id: legal_explain_differenza
+      label: "Spiega la differenza"
+      icon: git-compare
+      category: explain
+      prompt_template: "Qual è la differenza tra {istituto_a} e {istituto_b}?"
+      requires_input: true
+      input_placeholder: "Es: locazione e affitto"
+      input_type: text
+
+    - id: legal_explain_dettaglio
+      label: "Approfondisci"
+      icon: info
+      category: explain
+      prompt_template: "Approfondisci {argomento}"
+      requires_input: true
+      input_placeholder: "Cosa vuoi approfondire?"
+      input_type: text

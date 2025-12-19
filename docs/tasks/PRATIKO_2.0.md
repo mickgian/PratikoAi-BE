@@ -1,9 +1,9 @@
 # PratikoAI 2.0 - Professional Engagement Platform
 
-**Last Updated:** 2025-12-15
+**Last Updated:** 2025-12-19
 **Status:** Active Development
 **Task ID Range:** DEV-200 to DEV-294
-**Timeline:** 18 weeks (~95 tasks)
+**Timeline:** 10-12 weeks (~95 tasks, accelerated with Claude Code)
 **Target:** MVP Launch
 
 ---
@@ -262,6 +262,16 @@ Create a `Studio` SQLModel as the tenant root entity. All client data will be is
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -335,6 +345,16 @@ Create `Client` SQLModel with encrypted PII fields using existing `EncryptedTaxI
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -422,6 +442,16 @@ Create `ClientProfile` as a 1:1 extension of `Client` containing business/fiscal
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -515,6 +545,16 @@ Create `MatchingRule` model with JSONB conditions supporting AND/OR operators an
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -595,6 +635,16 @@ Create `Communication` model with status workflow (DRAFT → PENDING_REVIEW → 
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -678,6 +728,16 @@ Create `ProceduralGuide` model with JSONB steps array containing checklists, doc
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -755,6 +815,16 @@ Create `GuideProgress` model linking user, studio, guide, and optionally client.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -847,12 +917,26 @@ Create single Alembic migration creating all Phase 0 tables with HNSW vector ind
 - [ ] Staging environment available
 - [ ] Rollback procedure documented
 
+**Error Handling:**
+- Migration syntax error: Alembic stops with detailed error message
+- Table already exists: Migration skipped with warning (idempotent check)
+- Index creation failure: Log error, continue with partial migration, manual fix required
+- Foreign key violation: Migration rolled back, detailed constraint error logged
+- Disk space exhausted: Migration rolled back, error logged
+- **Logging:** All errors MUST be logged with context (migration_id, operation, table_name) at ERROR level
+
+**Performance Requirements:**
+- Total migration time: <30s for empty database
+- Lock time per table: <1s (use CONCURRENTLY for indexes)
+- HNSW index creation: <5s (empty table, scales with data)
+- Rollback time: <10s
+
 **Edge Cases:**
-- **Nulls/Empty:** Handle null or empty input values gracefully
-- **Validation:** Validate input formats before processing
-- **Error Recovery:** Handle partial failures with clear error messages
-- **Boundaries:** Test boundary conditions (limits, max values)
-- **Concurrency:** Consider concurrent access scenarios
+- **Partial Migration:** If migration fails mid-way, ensure atomicity via transaction
+- **Concurrent Migrations:** Multiple pods -> only first applies, others skip (Alembic lock)
+- **Large Existing Data:** N/A for new tables, but plan for future data migrations
+- **Index Creation:** Use CONCURRENTLY to avoid table locks
+- **Rollback:** Ensure downgrade() drops tables in reverse dependency order
 
 **File:** `alembic/versions/YYYYMMDD_add_pratikoai_2_0_models.py`
 
@@ -941,6 +1025,9 @@ Create `StudioService` with async CRUD methods following existing service patter
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -1042,6 +1129,9 @@ Create `ClientService` with CRUD methods that enforce business rules. Reuse exis
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Invalid CF format: HTTP 422, `"Codice fiscale non valido"`
@@ -1160,6 +1250,9 @@ Create `ClientProfileService` for profile CRUD with automatic profile vector gen
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Profile already exists: HTTP 409, `"Profilo cliente già esistente"`
 - Client not found: HTTP 404, `"Cliente non trovato"`
 - Invalid ATECO format: HTTP 422, `"Formato codice ATECO non valido (XX.XX.XX)"`
@@ -1242,6 +1335,9 @@ Create Studio router with CRUD endpoints following FastAPI patterns.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Unauthorized: HTTP 401, `"Autenticazione richiesta"`
@@ -1341,6 +1437,9 @@ Create Client router with CRUD endpoints and list with pagination.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Unauthorized: HTTP 401, `"Autenticazione richiesta"`
@@ -1444,6 +1543,9 @@ Create import service supporting both Excel (openpyxl) and PDF (using existing d
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Invalid file format: HTTP 415, `"Formato file non supportato. Usa Excel (.xlsx) o PDF"`
@@ -1573,6 +1675,9 @@ Create export service generating Excel file with all client data (decrypted for 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - No clients to export: HTTP 204, no content
 - Export generation failure: HTTP 500, `"Errore generazione export"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -1679,6 +1784,11 @@ Add nullable `studio_id` FK to User model. Migration creates column as nullable.
 - Invalid studio_id assignment: HTTP 400, `"Studio non trovato"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
+**Performance Requirements:**
+- Add studio_id column: <1s (ALTER TABLE)
+- Auto-create studio migration: <5s for 1000 existing users
+- FK lookup on login: <10ms
+
 **Edge Cases:**
 - **Existing Users:** Migration finds user without studio → auto-create personal studio
 - **Concurrent Migration:** Multiple pods running migration → only first creates studio (DB constraint)
@@ -1758,6 +1868,9 @@ Create middleware that extracts `studio_id` from JWT and sets it in request stat
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Missing studio_id in JWT: HTTP 403, `"Contesto studio non disponibile"`
@@ -1843,6 +1956,9 @@ Create GDPR deletion service using existing patterns from `app/services/gdpr_del
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Client not found: HTTP 404, `"Cliente non trovato"`
@@ -1943,6 +2059,16 @@ Create unit tests for all Phase 1 services with 80%+ coverage target.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -1958,7 +2084,34 @@ Create unit tests for all Phase 1 services with 80%+ coverage target.
 - `tests/services/test_client_export_service.py`
 - `tests/services/test_client_gdpr_service.py`
 
+**Test Methods:**
+- `test_studio_service_crud` - StudioService CRUD operations
+- `test_studio_service_slug_validation` - Slug uniqueness and format
+- `test_client_service_crud` - ClientService CRUD operations
+- `test_client_service_limit_enforcement` - 100 client limit
+- `test_client_service_cf_piva_validation` - CF/P.IVA format validation
+- `test_client_service_tenant_isolation` - Cross-studio access prevention
+- `test_client_profile_service_crud` - ClientProfileService operations
+- `test_client_profile_service_vector_generation` - Auto-vector on create/update
+- `test_client_import_service_excel` - Excel file parsing and import
+- `test_client_import_service_pdf` - PDF table extraction and import
+- `test_client_import_service_validation` - Row-level validation errors
+- `test_client_export_service_excel` - Excel export generation
+- `test_client_export_service_gdpr` - GDPR data portability export
+- `test_client_gdpr_service_deletion` - Soft delete with anonymization
+- `test_client_gdpr_service_cascade` - CASCADE to related entities
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **Unit Tests:** See individual service tasks for test cases
 - **Test Categories:**
@@ -2013,6 +2166,16 @@ Create integration tests using pytest-asyncio and httpx test client.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -2022,7 +2185,35 @@ Create integration tests using pytest-asyncio and httpx test client.
 
 **File:** `tests/api/test_client_api.py`
 
+**Test Methods:**
+- `test_create_client_201_success` - Valid client creation returns 201
+- `test_create_client_400_limit_exceeded` - Rejects when 100 client limit reached
+- `test_create_client_422_invalid_cf` - Rejects invalid codice fiscale format
+- `test_create_client_409_duplicate_cf` - Rejects duplicate CF in same studio
+- `test_list_clients_200_paginated` - Returns paginated results
+- `test_list_clients_200_filtered` - Filters by stato_cliente, tipo_cliente
+- `test_get_client_200_success` - Returns client details
+- `test_get_client_404_wrong_studio` - Returns 404 for other studio's client (not 403)
+- `test_update_client_200_success` - Updates client fields
+- `test_update_client_404_not_found` - Returns 404 for non-existent client
+- `test_delete_client_204_success` - Soft deletes client
+- `test_import_excel_201_success` - Imports valid Excel file
+- `test_import_excel_422_validation_errors` - Returns row-level errors
+- `test_import_pdf_201_success` - Imports valid PDF with tables
+- `test_export_excel_200_success` - Exports clients to Excel
+- `test_export_excel_204_empty` - Returns 204 when no clients to export
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **Integration Tests:**
   - Create client (success, validation error, limit exceeded)
@@ -2082,6 +2273,9 @@ Create `NormativeMatchingService` with hybrid matching: first structured (fast, 
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - No clients in studio: Return empty matches (not error)
@@ -2189,6 +2383,8 @@ Define 15 matching rules covering common scenarios and seed via migration.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -2197,6 +2393,17 @@ Define 15 matching rules covering common scenarios and seed via migration.
 - **Concurrency:** Consider concurrent access scenarios
 
 **File:** `app/data/matching_rules.json`
+
+**Error Handling:**
+- Invalid JSON schema: Migration aborted, `"Schema regole non valido"`
+- Duplicate rule name: Migration aborted, `"Nome regola duplicato: {name}"`
+- Missing required fields: Migration aborted, `"Campi obbligatori mancanti: {fields}"`
+- **Logging:** All errors MUST be logged with context at ERROR level
+
+**Performance Requirements:**
+- Migration execution: <30s
+- Rule loading at startup: <500ms
+- Rule validation: <100ms per rule
 
 **Rules (15 total):**
 1. **Rottamazione Quater** - regime_fiscale IN [FORFETTARIO, ORDINARIO]
@@ -2214,6 +2421,11 @@ Define 15 matching rules covering common scenarios and seed via migration.
 13. **NASPI Disoccupazione** - tipo_cliente = PERSONA_FISICA (general info)
 14. **Bonus Mamme Lavoratrici** - tipo_cliente IN [DITTA_INDIVIDUALE, AZIENDA] AND n_dipendenti > 0
 15. **Esonero Contributivo Giovani** - tipo_cliente = AZIENDA AND n_dipendenti > 0
+
+**Methods:**
+- `load_rules()` - Load rules from JSON file
+- `validate_rule(rule)` - Validate rule structure and conditions
+- `seed_rules(session)` - Insert rules into database via migration
 
 **Testing Requirements:**
 - **TDD:** Write rule tests FIRST
@@ -2273,6 +2485,10 @@ Create embedding service using existing LLM infrastructure. Generate vector when
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 **Error Handling:**
 - Embedding API failure: HTTP 503, `"Servizio embedding non disponibile"` + use stale vector
 - Invalid profile data: Skip vector generation, log warning
@@ -2401,6 +2617,12 @@ Create LangGraph node inserted after domain classification (step 35). Query clie
 
 **File:** `app/core/langgraph/nodes/client_matching_node.py`
 
+**Methods:**
+- `match_clients_node(state)` - Main node entry point
+- `should_match(state)` - Check if matching should run
+- `extract_matching_criteria(state)` - Extract criteria from classification
+- `limit_matches(matches, max_count)` - Limit to top N matches
+
 **Testing Requirements:**
 - **TDD:** Write `tests/langgraph/test_client_matching_node.py` FIRST
 - **Unit Tests:**
@@ -2475,9 +2697,16 @@ Create `ProactiveSuggestion` model to store matches found by background job.
 **Change Classification:** ADDITIVE
 
 **Impact Analysis:** N/A (new code only)
+**Error Handling:**
+- Invalid suggestion data: HTTP 422, `"Dati suggerimento non validi"`
+- Studio not found: HTTP 404, `"Studio non trovato"`
+- Knowledge item not found: HTTP 404, `"Normativa di riferimento non trovata"`
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
-**Pre-Implementation Verification:** N/A (ADDITIVE)
-
+**Performance Requirements:**
+- Suggestion creation: <100ms
+- List suggestions: <50ms
+- JSONB operations: <20ms
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -2557,6 +2786,8 @@ Create background job using FastAPI BackgroundTasks. Run after RSS ingestion com
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+**Error Handling:**
 - Job failure: Log error, retry up to 3 times with exponential backoff
 - Partial failure: Continue with remaining items, report failures
 - Database unavailable: Abort job, reschedule for next cycle
@@ -2635,13 +2866,6 @@ Create Matching router with endpoints for suggestions management.
 **Dependencies:**
 - **Blocking:** DEV-220 (NormativeMatchingService), DEV-224 (ProactiveSuggestion model), DEV-225 (Background Job)
 - **Unlocks:** DEV-229 (Unit Tests), Frontend integration
-
-**Change Classification:** ADDITIVE
-
-**Impact Analysis:** N/A (new code only)
-
-**Pre-Implementation Verification:** N/A (ADDITIVE)
-
 **Error Handling:**
 - No suggestions: HTTP 200, empty array (not 404)
 - Suggestion not found: HTTP 404, `"Suggerimento non trovato"`
@@ -2741,6 +2965,17 @@ Create comprehensive security tests covering all access patterns. Target 95%+ co
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Cross-tenant access attempt: HTTP 404, `"Risorsa non trovata"` (not 403 to avoid info leak)
+- SQL injection attempt: HTTP 400, `"Parametri non validi"`
+- Direct ID access: HTTP 404, `"Risorsa non trovata"`
+- **Logging:** All security violations MUST be logged at WARN level with full context
+
+**Performance Requirements:**
+- Security test suite: <60s total runtime
+- Individual isolation check: <50ms
+- Full cross-tenant matrix: <10s
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -2750,7 +2985,26 @@ Create comprehensive security tests covering all access patterns. Target 95%+ co
 
 **File:** `tests/security/test_tenant_isolation.py`
 
+**Methods:**
+- `test_cannot_get_other_tenant_clients()` - GET returns 404
+- `test_cannot_update_other_tenant_clients()` - UPDATE fails
+- `test_cannot_delete_other_tenant_clients()` - DELETE fails
+- `test_cannot_see_other_tenant_matches()` - matches isolated
+- `test_cannot_see_other_tenant_communications()` - communications isolated
+- `test_404_not_403()` - no information leakage
+- `test_sql_injection_blocked()` - injection attempts fail
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **Security Tests:**
   - `test_cannot_get_other_tenant_clients` - GET returns 404
@@ -2812,60 +3066,91 @@ Create performance tests with realistic data volumes.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- Performance test timeout: Mark test as FAILED, log actual duration
+- Database connection slow: Log warning, still measure actual performance
+- Memory limit exceeded: Fail test, log memory usage
+- **Logging:** All performance violations MUST be logged at WARN level
+
+**Performance Requirements:**
+- Test suite completion: <60s total
+- Individual benchmark: <5s timeout
+- Memory profiling: Track peak usage
+
 **Edge Cases:**
-- **Nulls/Empty:** Handle null or empty input values gracefully
-- **Validation:** Validate input formats before processing
-- **Error Recovery:** Handle partial failures with clear error messages
-- **Boundaries:** Test boundary conditions (limits, max values)
-- **Concurrency:** Consider concurrent access scenarios
+- **Cold Start:** First query after server restart may be slower
+- **Database Load:** Test with concurrent queries
+- **Large Datasets:** Scale tests with 1000+ clients
+- **Index Rebuilds:** Performance during index maintenance
+- **Memory Pressure:** Behavior under low memory conditions
 
 **File:** `tests/performance/test_matching_performance.py`
 
+**Methods:**
+- `test_inline_matching_latency()` - Verify <100ms for inline matching
+- `test_batch_matching_100_clients()` - Verify <5s for 100 clients
+- `test_concurrent_matching_load()` - Test under concurrent load
+- `benchmark_structured_vs_semantic()` - Compare matching strategies
+- `profile_memory_usage()` - Track memory during matching
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **Performance Tests:**
-  - `test_inline_matching_under_100ms` - inline <100ms
-  - `test_background_scan_100_clients_under_5s` - 100 clients <5s
-  - `test_vector_similarity_under_50ms` - vector search <50ms
-  - `test_matching_with_1000_rules` - scales with rules
+  - `test_inline_matching_p95_under_100ms` - inline latency benchmark
+  - `test_batch_100_clients_under_5s` - batch performance
+  - `test_concurrent_10_requests` - concurrent load test
+  - `test_memory_stable_under_load` - memory profiling
 - **Benchmarks:**
 
 | Operation | Target | Volume |
 |-----------|--------|--------|
-| Inline matching | <100ms | 1 regulation |
-| Background scan | <5s | 100 clients |
-| Vector similarity | <50ms | 100 profiles |
+| Inline matching | <100ms (p95) | Single client |
+| Batch matching | <5s | 100 clients |
+| Concurrent matching | <200ms (p95) | 10 parallel requests |
+
+**Acceptance Criteria:**
+- [ ] Inline matching <100ms (p95)
+- [ ] Batch 100 clients <5s
+- [ ] Results logged for monitoring
+- [ ] Benchmarks documented
 
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Implementation complexity | MEDIUM | Follow existing service patterns |
-| Test coverage gaps | LOW | TDD approach with edge case tests |
+| Flaky performance tests | MEDIUM | Use p95 thresholds, warm-up phase |
+| CI environment variance | LOW | Document baseline environment |
 
 **Code Structure:**
 - Max function: 50 lines, extract helpers if larger
 - Max class: 200 lines, split into focused services
 - Max file: 400 lines, create submodules
 
-**Acceptance Criteria:**
-- [ ] 100 clients matched in <5 seconds
-- [ ] Inline matching <100ms
-- [ ] Results logged for monitoring
-- [ ] Benchmarks documented
-
 ---
 
-### DEV-229: Unit Tests for Matching Engine
+### DEV-229: Unit Tests for Matching Services
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
-Matching engine is complex business logic that must be thoroughly tested to prevent false positives/negatives.
+Matching services need comprehensive unit tests to ensure correctness of rule evaluation, scoring, and edge case handling.
 
 **Solution:**
-Comprehensive unit tests for matching service and rules.
+Create unit tests for NormativeMatchingService, ProfileEmbeddingService, and related components.
 
 **Agent Assignment:** @Clelia (primary)
 
@@ -2879,6 +3164,20 @@ Comprehensive unit tests for matching service and rules.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- Test fixture setup failure: Mark test as ERROR, log setup issue
+- Mock configuration error: Fail test, log expected vs actual mock setup
+- Assertion failure: Provide detailed diff in log output
+- **Logging:** All test failures MUST be logged with context at ERROR level
+
+**Performance Requirements:**
+- Unit test suite: <30s total runtime
+- Individual test: <500ms
+- Coverage analysis: <10s
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -2890,7 +3189,26 @@ Comprehensive unit tests for matching service and rules.
 - `tests/services/test_normative_matching_service.py`
 - `tests/services/test_profile_embedding_service.py`
 
+**Methods:**
+- `test_rule_condition_evaluation()` - Test rule condition parsing
+- `test_ateco_matching_exact()` - Exact ATECO code matching
+- `test_ateco_matching_prefix()` - ATECO prefix matching (e.g., 43.*)
+- `test_regime_matching()` - Fiscal regime filtering
+- `test_score_calculation()` - Match score computation
+- `test_no_clients_returns_empty()` - Empty studio handling
+- `test_no_rules_returns_empty()` - No matching rules
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **Unit Tests:**
   - Rule condition evaluation
@@ -2905,6 +3223,12 @@ Comprehensive unit tests for matching service and rules.
   - Performance tests
 - **Coverage Target:** 80%+ for all matching code
 
+**Acceptance Criteria:**
+- [ ] All matching service methods tested
+- [ ] Edge cases covered
+- [ ] 80%+ coverage achieved
+- [ ] All tests pass
+
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
 |------|--------|------------|
@@ -2912,20 +3236,10 @@ Comprehensive unit tests for matching service and rules.
 | Test coverage gaps | LOW | TDD approach with edge case tests |
 
 **Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] All matching logic tested
-- [ ] Rule conditions tested
-- [ ] Score calculation verified
-- [ ] Edge cases covered
-- [ ] 80%+ coverage achieved
 
 ---
 
-## Phase 3: Communication Generation (Week 7-8) - 10 Tasks
+## Phase 3: Communications (Week 7-8) - 10 Tasks
 
 ### DEV-230: CommunicationService with Draft/Approve Workflow
 
@@ -2934,16 +3248,16 @@ Comprehensive unit tests for matching service and rules.
 **Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
 
 **Problem:**
-Professionals need to send AI-generated communications to clients about regulations. These must go through an approval workflow to ensure accuracy before sending.
+Professionals need to send communications to clients about relevant regulations. Communications require a review/approval workflow to ensure quality.
 
 **Solution:**
-Create `CommunicationService` with state machine workflow: DRAFT → PENDING_REVIEW → APPROVED → SENT. Enforce that creator cannot approve own communications.
+Create `CommunicationService` with draft/review/approve/send workflow state machine.
 
-**Agent Assignment:** @Ezio (primary), @Severino (workflow security), @Clelia (tests)
+**Agent Assignment:** @Ezio (primary), @Severino (workflow review), @Clelia (tests)
 
 **Dependencies:**
 - **Blocking:** DEV-205 (Communication model), DEV-209 (ClientService), DEV-207 (Migration)
-- **Unlocks:** DEV-232 (Communication API), DEV-233 (Email), DEV-234 (WhatsApp), DEV-235 (Bulk)
+- **Unlocks:** DEV-231 (LLM Generation), DEV-232 (Communication API), DEV-233 (Email), DEV-234 (WhatsApp)
 
 **Change Classification:** ADDITIVE
 
@@ -2952,7 +3266,7 @@ Create `CommunicationService` with state machine workflow: DRAFT → PENDING_REV
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
-- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} → {to}"`
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 - Self-approval attempted: HTTP 403, `"Non puoi approvare le tue comunicazioni"`
 - Communication not found: HTTP 404, `"Comunicazione non trovata"`
 - Client not in studio: HTTP 403, `"Cliente non appartenente allo studio"`
@@ -3009,10 +3323,11 @@ Create `CommunicationService` with state machine workflow: DRAFT → PENDING_REV
 - **Coverage Target:** 95%+ for workflow logic
 
 **Risks & Mitigations:**
+**Risks & Mitigations:**
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Implementation complexity | MEDIUM | Follow existing service patterns |
-| Test coverage gaps | LOW | TDD approach with edge case tests |
+| Workflow complexity | MEDIUM | State machine pattern |
+| Concurrent approvals | LOW | Optimistic locking |
 
 **Code Structure:**
 - Max function: 50 lines, extract helpers if larger
@@ -3021,36 +3336,40 @@ Create `CommunicationService` with state machine workflow: DRAFT → PENDING_REV
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
-- [ ] State machine workflow implemented
-- [ ] Self-approval blocked (DB constraint + service check)
-- [ ] Audit trail for all transitions
+- [ ] Create draft communication
+- [ ] Submit for review workflow
+- [ ] Approve/reject workflow
+- [ ] Self-approval blocked
 - [ ] 95%+ test coverage achieved
 
 ---
 
-### DEV-231: Communication Generation LangGraph Tool
+### DEV-231: LLM Communication Generation Tool
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
-**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
-AI needs to generate professional communications based on regulations and client context. Must follow existing LangGraph tool patterns.
+Professionals need AI-generated communication drafts based on regulations and client context.
 
 **Solution:**
-Create `CommunicationGeneratorTool` following existing tool patterns in `app/core/langgraph/tools/`.
+Create LangGraph tool for generating communication content using LLM.
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-230 (CommunicationService), Existing LangGraph tools pattern
-- **Unlocks:** DEV-232 (Communication API - generation endpoint)
+- **Blocking:** DEV-230 (CommunicationService), DEV-220 (NormativeMatchingService - for context)
+- **Unlocks:** DEV-232 (Communication API), DEV-239 (E2E Tests)
 
 **Change Classification:** ADDITIVE
 
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - LLM generation failure: Retry up to 3 times, then HTTP 503, `"Generazione temporaneamente non disponibile"`
@@ -3071,6 +3390,12 @@ Create `CommunicationGeneratorTool` following existing tool patterns in `app/cor
 
 **File:** `app/core/langgraph/tools/communication_generator_tool.py`
 
+**Methods:**
+- `generate_communication(regulation, client_profile, channel)` - Generate draft content
+- `format_for_email(content)` - Format content for email channel
+- `format_for_whatsapp(content)` - Format content for WhatsApp (shorter)
+- `personalize_content(content, client)` - Insert client-specific details
+
 **Testing Requirements:**
 - **TDD:** Write `tests/langgraph/tools/test_communication_generator_tool.py` FIRST
 - **Unit Tests:**
@@ -3082,27 +3407,27 @@ Create `CommunicationGeneratorTool` following existing tool patterns in `app/cor
   - `test_professional_tone` - appropriate tone
 - **Integration Tests:** Test with real LLM
 - **E2E Tests:** Part of DEV-239
-- **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:** Run `pytest tests/langgraph/`
 - **Coverage Target:** 80%+ for tool code
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Generate email-formatted communications
+- [ ] Generate WhatsApp-formatted communications
+- [ ] Include client context in generation
+- [ ] Include regulation references
+- [ ] 80%+ test coverage achieved
 
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Implementation complexity | MEDIUM | Follow existing service patterns |
-| Test coverage gaps | LOW | TDD approach with edge case tests |
+| LLM inconsistency | MEDIUM | Temperature tuning, validation |
+| Cost overruns | LOW | Budget tracking, caching |
 
 **Code Structure:**
 - Max function: 50 lines, extract helpers if larger
 - Max class: 200 lines, split into focused services
 - Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Generate professional communications
-- [ ] Support EMAIL and WHATSAPP formats
-- [ ] Include client personalization
-- [ ] 80%+ test coverage achieved
 
 ---
 
@@ -3113,22 +3438,25 @@ Create `CommunicationGeneratorTool` following existing tool patterns in `app/cor
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
-Frontend needs API endpoints to manage communications, create drafts, and go through approval workflow.
+Frontend needs API endpoints for the full communication workflow: create, review, approve, reject, send.
 
 **Solution:**
-Create Communication router with endpoints for the full workflow.
+Create Communication API router with all workflow endpoints.
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-230 (CommunicationService), DEV-231 (Generation Tool)
-- **Unlocks:** DEV-239 (Integration Tests), Frontend integration
+- **Blocking:** DEV-230 (CommunicationService), DEV-231 (LLM Generation Tool)
+- **Unlocks:** DEV-233 (Email Sending), DEV-234 (WhatsApp), DEV-239 (E2E Tests)
 
 **Change Classification:** ADDITIVE
 
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - See DEV-230 for state transition errors
@@ -3141,13 +3469,13 @@ Create Communication router with endpoints for the full workflow.
 - Pagination: 20 items default, max 100
 
 **Edge Cases:**
-- **Concurrent Submit:** Two users submit same draft → first wins, second gets HTTP 409
-- **Approve Own Draft:** API blocks even if UI bypassed → HTTP 403
-- **Invalid UUID Format:** Malformed ID → HTTP 422 with clear format hint
-- **Missing Required Fields:** POST with missing fields → HTTP 422 with field-level errors
-- **Pagination Edge:** page=0 → treated as page=1; per_page=0 → default 20
-- **Status Filter Invalid:** ?status=INVALID → HTTP 400 with valid options
-- **Delete Pending Review:** Cannot delete while in review → HTTP 400
+- **Concurrent Submit:** Two users submit same draft - first wins, second gets HTTP 409
+- **Approve Own Draft:** API blocks even if UI bypassed - HTTP 403
+- **Invalid UUID Format:** Malformed ID - HTTP 422 with clear format hint
+- **Missing Required Fields:** POST with missing fields - HTTP 422 with field-level errors
+- **Pagination Edge:** page=0 - treated as page=1; per_page=0 - default 20
+- **Status Filter Invalid:** ?status=INVALID - HTTP 400 with valid options
+- **Delete Pending Review:** Cannot delete while in review - HTTP 400
 - **Rate Limit Per User:** 30 requests/minute per endpoint per user
 
 **File:** `app/api/v1/communications.py`
@@ -3182,30 +3510,26 @@ Create Communication router with endpoints for the full workflow.
   - `test_invalid_status_filter_400` - invalid filter rejected
   - `test_delete_pending_review_400` - cannot delete in review
   - `test_rate_limit_exceeded_429` - rate limiting enforced
-- **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:** Run `pytest tests/api/`
 - **Coverage Target:** 80%+ for API code
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] All workflow endpoints implemented
+- [ ] Proper error messages for invalid transitions
+- [ ] Tenant isolation enforced
+- [ ] 80%+ test coverage achieved
 
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Implementation complexity | MEDIUM | Follow existing service patterns |
+| Implementation complexity | MEDIUM | Follow existing API patterns |
 | Test coverage gaps | LOW | TDD approach with edge case tests |
 
 **Code Structure:**
 - Max function: 50 lines, extract helpers if larger
 - Max class: 200 lines, split into focused services
 - Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] All workflow endpoints
-- [ ] Proper error messages for invalid transitions
-- [ ] Tenant isolation enforced
-- [ ] 80%+ test coverage achieved
-
----
-
 ### DEV-233: Email Sending Integration
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
@@ -3217,19 +3541,6 @@ Need to actually send approved communications via email. Must integrate with exi
 
 **Solution:**
 Create email sending service using existing patterns. Handle retries, failures, and status tracking.
-
-**Agent Assignment:** @Ezio (primary), @Severino (security review), @Clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-230 (CommunicationService - APPROVED state required)
-- **Unlocks:** DEV-239 (Integration Tests)
-
-**Change Classification:** ADDITIVE
-
-**Impact Analysis:** N/A (new code only)
-
-**Pre-Implementation Verification:** N/A (ADDITIVE)
-
 **Error Handling:**
 - SMTP connection failure: HTTP 503, `"Servizio email non disponibile"` + retry queue
 - Invalid recipient email: HTTP 400, `"Indirizzo email non valido"`
@@ -3325,6 +3636,10 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
 **Error Handling:**
 - Invalid phone format: HTTP 400, `"Formato numero di telefono non valido"`
@@ -3462,6 +3777,11 @@ Add bulk creation endpoint that creates draft communications for multiple client
 
 **File:** `app/services/communication_service.py` (extend)
 
+**Methods:**
+- `log_action(communication_id, action, user_id)` - Log communication action
+- `get_audit_trail(communication_id)` - Retrieve audit history
+- `redact_pii(log_entry)` - Remove PII from audit logs
+
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
 - **Unit Tests:**
@@ -3527,6 +3847,20 @@ Create template model and service for managing communication templates.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- Template not found: HTTP 404, `"Template non trovato"`
+- Invalid template syntax: HTTP 422, `"Sintassi template non valida"`
+- Variable substitution failure: Log warning, use fallback value
+- **Logging:** All errors MUST be logged with context at ERROR level
+
+**Performance Requirements:**
+- Template rendering: <50ms
+- Variable substitution: <10ms per variable
+- Template listing: <100ms
+
 **Edge Cases:**
 - **Missing Variables:** Template has {{client_name}} but client has no name → use fallback "Cliente"
 - **Invalid Variable Syntax:** Template has {client_name} not {{}} → treat as literal text
@@ -3537,6 +3871,17 @@ Create template model and service for managing communication templates.
 - **Long Template:** Template body >10KB → reject, suggest splitting
 
 **File:** `app/models/communication_template.py`
+
+**Fields:**
+- `id`: UUID (primary key)
+- `name`: String (template name)
+- `category`: Enum (EMAIL, WHATSAPP)
+- `subject_template`: String (email subject with variables)
+- `body_template`: Text (body with {{variable}} placeholders)
+- `variables`: JSONB (list of required variables)
+- `studio_id`: UUID (FK, null for global templates)
+- `created_at`: DateTime
+- `updated_at`: DateTime
 
 **Testing Requirements:**
 - **TDD:** Write `tests/models/test_communication_template.py` FIRST
@@ -3632,6 +3977,12 @@ Modify `response_formatter_node.py` to append suggestions when matched_clients e
 
 **File:** `app/core/langgraph/nodes/response_formatter_node.py` (MODIFY)
 
+**Methods:**
+- `format_response_with_suggestions(state)` - Main node entry point
+- `append_client_match_suggestion(response, matched_clients)` - Add suggestion text
+- `format_suggestion_text(count)` - Generate Italian suggestion text
+- `should_include_suggestion(state)` - Check if suggestions apply
+
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
 - **Unit Tests:**
@@ -3704,7 +4055,10 @@ Use existing `SecurityAuditLogger` to log all communication actions.
 - Unauthorized: HTTP 403, `"Accesso non autorizzato"`
 - Server error: HTTP 500, `"Errore interno del server"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
-
+**Performance Requirements:**
+- Audit log write: <10ms (non-blocking)
+- Log retrieval: <100ms for 1000 entries
+- No impact on API response time
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -3713,6 +4067,11 @@ Use existing `SecurityAuditLogger` to log all communication actions.
 - **Concurrency:** Consider concurrent access scenarios
 
 **File:** `app/services/communication_service.py` (extend)
+
+**Methods:**
+- `log_action(communication_id, action, user_id)` - Log communication action
+- `get_audit_trail(communication_id)` - Retrieve audit history
+- `redact_pii(log_entry)` - Remove PII from audit logs
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
@@ -3771,16 +4130,34 @@ Create comprehensive E2E tests for communication flow.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- Test environment setup failure: Mark test as ERROR, log setup issue
+- External service unavailable: Skip test with SKIP, log reason
+- Assertion failure: Provide detailed diff in log output
+- **Logging:** All test failures MUST be logged at ERROR level
+
+**Performance Requirements:**
+- E2E test suite: <120s total runtime
+- Individual flow test: <30s
+- Setup/teardown: <5s
+
 **Edge Cases:**
-- **Nulls/Empty:** Handle null or empty input values gracefully
-- **Validation:** Validate input formats before processing
-- **Error Recovery:** Handle partial failures with clear error messages
-- **Boundaries:** Test boundary conditions (limits, max values)
-- **Concurrency:** Consider concurrent access scenarios
+- **Service Unavailable:** External services down - skip or mock
+- **Concurrent Tests:** Ensure test isolation
+- **Data Cleanup:** Clean test data after each test
 
 **File:** `tests/e2e/test_communication_flow.py`
 
-**Testing Requirements:**
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **E2E Tests:**
   - `test_create_draft_to_send_email_flow` - full email flow
@@ -3829,13 +4206,6 @@ Create `GuideService` for guide management and progress tracking.
 **Dependencies:**
 - **Blocking:** DEV-206 (ProceduralGuide model), DEV-207 (GuideProgress model), DEV-207 (Migration)
 - **Unlocks:** DEV-242 (Guide API), DEV-243 (Checklist), DEV-245 (Chat Context), DEV-246 (Analytics)
-
-**Change Classification:** ADDITIVE
-
-**Impact Analysis:** N/A (new code only)
-
-**Pre-Implementation Verification:** N/A (ADDITIVE)
-
 **Error Handling:**
 - Guide not found: HTTP 404, `"Guida non trovata"`
 - Progress not found: HTTP 404, `"Progresso non trovato"`
@@ -3910,6 +4280,11 @@ Create `GuideService` for guide management and progress tracking.
 - [ ] Resume functionality
 - [ ] 80%+ test coverage achieved
 
+**Methods:**
+- `load_guides()` - Load guides from JSON file
+- `validate_guide(guide)` - Validate guide structure and steps
+- `seed_guides(session)` - Insert guides into database via migration
+
 ---
 
 ### DEV-241: 10-15 Pre-configured Guides
@@ -3935,6 +4310,20 @@ Define 10-15 guides and seed via migration.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+**Error Handling:**
+- Invalid JSON schema: Migration aborted, `"Schema guide non valido"`
+- Duplicate guide code: Migration aborted, `"Codice guida duplicato: {code}"`
+- Missing required steps: Migration aborted, `"Step obbligatori mancanti"`
+- **Logging:** All errors MUST be logged with context at ERROR level
+
+**Performance Requirements:**
+- Migration execution: <30s
+- Guide loading at startup: <500ms
+- Guide validation: <100ms per guide
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -4013,6 +4402,8 @@ Create Guides router with endpoints.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 **Error Handling:**
 - See DEV-240 for service-level errors
 - Validation errors: HTTP 422, detailed field-level errors
@@ -4122,6 +4513,16 @@ Extend progress tracking to include checklist item completion.
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
+
+**Performance Requirements:**
+- Checklist item toggle: <50ms
+- Step auto-completion check: <20ms
+- Progress update: <100ms
+
+**Methods:**
+- `toggle_checklist_item(progress_id, step_num, item_idx)` - Toggle item completion
+- `get_checklist_status(progress_id, step_num)` - Get step checklist status
+- `check_step_completion(progress_id, step_num)` - Auto-complete if all items done
 - **Validation:** Validate input formats before processing
 - **Error Recovery:** Handle partial failures with clear error messages
 - **Boundaries:** Test boundary conditions (limits, max values)
@@ -4196,6 +4597,23 @@ Add notes field to GuideProgress and document attachment support.
 - [ ] Notes storage approach designed
 
 **Edge Cases:**
+
+**Error Handling:**
+- Note too long: HTTP 422, `"Nota troppo lunga (max 5000 caratteri)"`
+- Attachment too large: HTTP 413, `"File troppo grande (max 10MB)"`
+- Invalid file type: HTTP 422, `"Tipo file non supportato"`
+- Progress not found: HTTP 404, `"Progresso non trovato"`
+- **Logging:** All errors MUST be logged with context at ERROR level
+
+**Performance Requirements:**
+- Add note: <100ms
+- Update note: <50ms
+- Attachment upload: <5s (for 10MB file)
+
+**Methods:**
+- `add_note(progress_id, step_num, content)` - Add note to step
+- `update_note(progress_id, step_num, content)` - Update existing note
+- `add_attachment(progress_id, step_num, file)` - Upload attachment
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
 - **Error Recovery:** Handle partial failures with clear error messages
@@ -4270,6 +4688,12 @@ Add guide context to RAGState when user has active guide progress.
 - [ ] Existing context_builder_node.py reviewed
 - [ ] Guide context structure designed
 
+**Error Handling:**
+- Guide service unavailable: Skip context injection, continue pipeline
+- Invalid guide progress: Log warning, continue without guide context
+- Context too large: Truncate guide context, prioritize current step
+- **Logging:** All errors MUST be logged with context at ERROR level
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -4278,6 +4702,18 @@ Add guide context to RAGState when user has active guide progress.
 - **Concurrency:** Consider concurrent access scenarios
 
 **File:** `app/core/langgraph/nodes/context_builder_node.py` (extend)
+
+**Methods:**
+- `inject_document_context(state, client_id)` - Inject client documents into RAGState
+- `summarize_document(document)` - Summarize large documents for context window
+- `filter_relevant_documents(documents, query)` - Filter documents by relevance to query
+- `format_document_context(documents)` - Format documents for LLM consumption
+
+**Performance Requirements:**
+- Document context injection: <200ms
+- Document summarization: <500ms per document
+- Context building: <300ms total
+- Database queries: <50ms (p95)
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
@@ -4350,6 +4786,17 @@ Add analytics methods to GuideService.
 - Server error: HTTP 500, `"Errore interno del server"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
+**Performance Requirements:**
+- Analytics query: <200ms
+- Aggregation calculations: <100ms
+- Historical data (30 days): <500ms
+
+**Methods:**
+- `get_started_count(studio_id, guide_id, period)` - Count started guides
+- `get_completed_count(studio_id, guide_id, period)` - Count completed guides
+- `get_completion_rate(studio_id, guide_id, period)` - Calculate completion rate
+- `get_average_time(studio_id, guide_id)` - Calculate average completion time
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -4414,6 +4861,20 @@ Create comprehensive E2E tests for guide flow.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- Test environment setup failure: Mark test as ERROR, log setup issue
+- External service unavailable: Skip test with SKIP, log reason
+- Assertion failure: Provide detailed diff in log output
+- **Logging:** All test failures MUST be logged at ERROR level
+
+**Performance Requirements:**
+- E2E test suite: <90s total runtime
+- Individual flow test: <20s
+- Setup/teardown: <5s
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -4423,7 +4884,23 @@ Create comprehensive E2E tests for guide flow.
 
 **File:** `tests/e2e/test_guide_flow.py`
 
+**Methods:**
+- `test_list_start_complete_guide_flow()` - Full guide workflow
+- `test_resume_guide_flow()` - Resume from progress
+- `test_guide_with_client_flow()` - Client-specific guide
+- `test_guide_chat_context_flow()` - Chat during guide
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **E2E Tests:**
   - `test_list_start_complete_guide_flow` - full flow
@@ -4503,6 +4980,17 @@ Modify calculation tools to accept optional client_id and use profile data.
 - **Concurrency:** Consider concurrent access scenarios
 
 **File:** `app/core/langgraph/tools/` (multiple tools)
+
+**Methods:**
+- `inject_client_context(tool_input, client_id)` - Inject client profile into calculation
+- `extract_regime_fiscale(client_profile)` - Extract fiscal regime for IRPEF
+- `extract_ateco_codes(client_profile)` - Extract ATECO codes for INPS
+- `extract_property_data(client_profile)` - Extract immobili for IMU
+
+**Performance Requirements:**
+- Client context lookup: <50ms
+- Context injection: <10ms
+- Response time: <200ms (p95)
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
@@ -4589,6 +5077,12 @@ Enhance IRPEF calculator with regime-aware calculations.
 
 **File:** `app/services/irpef_calculator.py` (extend)
 
+**Methods:**
+- `calculate_irpef_ordinario(reddito, detrazioni)` - Calculate IRPEF with ordinary regime
+- `calculate_irpef_forfettario(reddito, coefficiente)` - Calculate IRPEF with forfettario regime (5% or 15%)
+- `apply_deductions(irpef_lordo, detrazioni)` - Apply eligible deductions
+- `get_tax_bracket(reddito)` - Determine applicable tax bracket
+
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
 - **Unit Tests (parametrized):**
@@ -4674,6 +5168,12 @@ Enhance INPS calculator with ATECO-based rates.
 
 **File:** `app/services/inps_calculator.py` (extend)
 
+**Methods:**
+- `calculate_inps_artigiano(reddito, ateco)` - Calculate INPS for artigiano
+- `calculate_inps_commerciante(reddito, ateco)` - Calculate INPS for commerciante
+- `calculate_gestione_separata(reddito, aliquota)` - Calculate gestione separata contributions
+- `get_minimum_contribution(categoria)` - Get minimum contribution amount
+
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
 - **Unit Tests (parametrized):**
@@ -4729,6 +5229,9 @@ Create IMU calculator that can use client property data.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
 - Unauthorized: HTTP 403, `"Accesso non autorizzato"`
@@ -4748,6 +5251,12 @@ Create IMU calculator that can use client property data.
 - **Concurrency:** Consider concurrent access scenarios
 
 **File:** `app/services/imu_calculator.py`
+
+**Methods:**
+- `calculate_imu(immobile, comune)` - Calculate IMU for single property
+- `calculate_imu_prima_casa(rendita, comune)` - Calculate IMU for primary residence (often exempt)
+- `calculate_imu_seconda_casa(rendita, comune, aliquota)` - Calculate IMU for secondary properties
+- `get_aliquota_comunale(comune, tipo_immobile)` - Get municipal IMU rate
 
 **Testing Requirements:**
 - **TDD:** Write `tests/services/test_imu_calculator.py` FIRST
@@ -4803,6 +5312,16 @@ Create CalculationHistory model to store calculations.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -4811,6 +5330,28 @@ Create CalculationHistory model to store calculations.
 - **Concurrency:** Consider concurrent access scenarios
 
 **File:** `app/models/calculation_history.py`
+
+**Fields:**
+- `id`: UUID (primary key)
+- `studio_id`: UUID (FK to Studio)
+- `client_id`: int (FK to Client, nullable)
+- `calculation_type`: enum (IRPEF, INPS, IMU, IVA)
+- `input_parameters`: JSONB (input values used)
+- `result`: JSONB (calculation result)
+- `calculated_by`: int (FK to User)
+- `calculated_at`: datetime
+- `notes`: text (nullable)
+
+**Error Handling:**
+- Invalid calculation type: HTTP 400, `"Tipo calcolo non valido"`
+- Missing parameters: HTTP 422, `"Parametri mancanti per il calcolo"`
+- Storage failure: HTTP 500, `"Errore salvataggio storico"`
+- **Logging:** All errors MUST be logged with context at ERROR level
+
+**Performance Requirements:**
+- History storage: <100ms
+- History retrieval: <200ms (paginated)
+- Database queries: <50ms (p95)
 
 **Testing Requirements:**
 - **TDD:** Write `tests/models/test_calculation_history.py` FIRST
@@ -4867,6 +5408,16 @@ Create exhaustive test suite for all calculation scenarios.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -4876,7 +5427,27 @@ Create exhaustive test suite for all calculation scenarios.
 
 **File:** `tests/services/test_calculation_accuracy.py`
 
+**Error Handling:**
+- Test assertion failures: Descriptive error messages with expected vs actual
+- Test setup failures: Clear logging of fixture initialization errors
+- **Logging:** All test failures logged with context for debugging
+
+**Performance Requirements:**
+- Individual test execution: <500ms
+- Full accuracy suite: <30s
+- Parametrized test expansion: <5ms per case
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **Unit Tests (parametrized):**
   - 20+ IRPEF scenarios
@@ -4931,6 +5502,9 @@ Create metrics service calculating ROI and usage statistics.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -5024,6 +5598,9 @@ Create dashboard service aggregating data from multiple sources.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
 - Unauthorized: HTTP 403, `"Accesso non autorizzato"`
@@ -5045,6 +5622,13 @@ Create dashboard service aggregating data from multiple sources.
 - **Future Date Request:** Period end > today → cap at today
 
 **File:** `app/services/dashboard_service.py`
+
+**Methods:**
+- `aggregate_client_stats(studio_id)` - Aggregate client counts and status
+- `aggregate_communication_stats(studio_id, period)` - Aggregate communication metrics
+- `aggregate_guide_stats(studio_id)` - Aggregate guide progress statistics
+- `aggregate_match_stats(studio_id, period)` - Aggregate recent match statistics
+- `build_dashboard_response(studio_id, period)` - Build complete dashboard data
 
 **Testing Requirements:**
 - **TDD:** Write `tests/services/test_dashboard_service.py` FIRST
@@ -5108,6 +5692,9 @@ Create dashboard endpoint returning aggregated data.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -5197,6 +5784,16 @@ Create activity model or view aggregating actions.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Edge Cases:**
 - **Same Timestamp:** Two activities same millisecond → secondary sort by ID
 - **Deleted Entity:** Referenced client deleted → activity preserved with `"entity_deleted": true`
@@ -5207,6 +5804,22 @@ Create activity model or view aggregating actions.
 - **Timezone Display:** Store UTC, display in user's TZ → conversion in API layer
 
 **File:** `app/models/activity.py`
+
+**Fields:**
+- `id`: UUID (primary key)
+- `studio_id`: UUID (FK to Studio)
+- `user_id`: int (FK to User, nullable for system activities)
+- `activity_type`: enum (CLIENT_CREATED, COMMUNICATION_SENT, GUIDE_COMPLETED, MATCH_FOUND, etc.)
+- `entity_type`: str (client, communication, guide, match)
+- `entity_id`: str (ID of the related entity)
+- `description`: str (human-readable description)
+- `metadata`: JSONB (additional context)
+- `created_at`: datetime
+
+**Performance Requirements:**
+- Activity creation: <50ms
+- Timeline retrieval: <200ms (paginated, limit 50)
+- Database queries: <50ms (p95)
 
 **Testing Requirements:**
 - **TDD:** Write `tests/models/test_activity.py` FIRST
@@ -5304,6 +5917,12 @@ Add Redis caching to dashboard service.
 
 **File:** `app/services/dashboard_service.py` (extend)
 
+**Methods:**
+- `get_cached_dashboard(studio_id, period)` - Retrieve from cache if available
+- `set_dashboard_cache(studio_id, period, data)` - Store dashboard data in cache
+- `invalidate_dashboard_cache(studio_id)` - Invalidate cache on data changes
+- `get_cache_key(studio_id, period)` - Generate cache key with period hash
+
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
 - **Unit Tests:**
@@ -5367,6 +5986,16 @@ Create E2E tests for dashboard flow.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -5376,7 +6005,27 @@ Create E2E tests for dashboard flow.
 
 **File:** `tests/e2e/test_dashboard_flow.py`
 
+**Error Handling:**
+- Test assertion failures: Descriptive error messages with expected vs actual
+- Fixture setup failures: Clear logging of data setup errors
+- **Logging:** All test failures logged with context for debugging
+
+**Performance Requirements:**
+- Individual E2E test: <5s
+- Full dashboard E2E suite: <30s
+- Data accuracy verification: <2s per check
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **E2E Tests:**
   - `test_dashboard_data_accuracy` - data matches source
@@ -5430,6 +6079,9 @@ Create bilancio parser using existing document parsing infrastructure.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
 - Unauthorized: HTTP 403, `"Accesso non autorizzato"`
@@ -5452,6 +6104,13 @@ Create bilancio parser using existing document parsing infrastructure.
 - **Format Year Variance:** 2020 vs 2024 format → version detection + appropriate parser
 
 **File:** `app/services/bilancio_parser_service.py`
+
+**Methods:**
+- `parse_bilancio(file_path)` - Parse bilancio PDF and extract data
+- `extract_fatturato(parsed_data)` - Extract revenue from parsed bilancio
+- `extract_utile(parsed_data)` - Extract profit from parsed bilancio
+- `extract_attivo_passivo(parsed_data)` - Extract balance sheet data
+- `detect_bilancio_type(file_path)` - Detect if abbreviato or ordinario
 
 **Testing Requirements:**
 - **TDD:** Write `tests/services/test_bilancio_parser_service.py` FIRST
@@ -5519,6 +6178,9 @@ Create CU parser for extracting income and withholding data.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
 - Unauthorized: HTTP 403, `"Accesso non autorizzato"`
@@ -5541,6 +6203,13 @@ Create CU parser for extracting income and withholding data.
 - **Euro Cents:** Amount with cents → preserve decimal precision
 
 **File:** `app/services/cu_parser_service.py`
+
+**Methods:**
+- `parse_cu(file_path)` - Parse CU PDF and extract data
+- `extract_redditi(parsed_data)` - Extract income data from CU
+- `extract_ritenute(parsed_data)` - Extract withholdings from CU
+- `extract_codice_fiscale(parsed_data)` - Extract CF from CU
+- `detect_cu_type(file_path)` - Detect if dipendente or autonomo
 
 **Testing Requirements:**
 - **TDD:** Write `tests/services/test_cu_parser_service.py` FIRST
@@ -5608,6 +6277,9 @@ Create client-document linking with automatic CF matching.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
 - Unauthorized: HTTP 403, `"Accesso non autorizzato"`
@@ -5624,6 +6296,18 @@ Create client-document linking with automatic CF matching.
 - **Orphan Document:** Association removed → document remains, `client_id: null`
 
 **File:** `app/services/client_document_service.py`
+
+**Methods:**
+- `associate_document(document_id, client_id, studio_id)` - Link document to client
+- `auto_match_by_cf(document_id, studio_id)` - Automatically match document to client by CF
+- `list_client_documents(client_id, studio_id)` - List all documents for a client
+- `disassociate_document(document_id)` - Remove client association from document
+
+**Performance Requirements:**
+- Document association: <100ms
+- CF auto-match: <200ms
+- Document listing: <200ms (paginated)
+- Database queries: <50ms (p95)
 
 **Testing Requirements:**
 - **TDD:** Write `tests/services/test_client_document_service.py` FIRST
@@ -5716,6 +6400,18 @@ Include client documents in RAGState context.
 
 **File:** `app/core/langgraph/nodes/context_builder_node.py` (extend)
 
+**Methods:**
+- `inject_document_context(state, client_id)` - Inject client documents into RAGState
+- `summarize_document(document)` - Summarize large documents for context window
+- `filter_relevant_documents(documents, query)` - Filter documents by relevance to query
+- `format_document_context(documents)` - Format documents for LLM consumption
+
+**Performance Requirements:**
+- Document context injection: <200ms
+- Document summarization: <500ms per document
+- Context building: <300ms total
+- Database queries: <50ms (p95)
+
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
 - **Unit Tests:**
@@ -5770,6 +6466,9 @@ Create document router with endpoints.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
@@ -5864,6 +6563,16 @@ Create integration tests with sample PDFs.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
@@ -5873,7 +6582,28 @@ Create integration tests with sample PDFs.
 
 **File:** `tests/integration/test_document_parsers.py`
 
+**Error Handling:**
+- Parser failures: Descriptive error messages with file context
+- Invalid PDF format: Clear logging of format detection errors
+- OCR failures: Log OCR confidence and fallback behavior
+- **Logging:** All test failures logged with context for debugging
+
+**Performance Requirements:**
+- Individual parser test: <2s (including PDF processing)
+- Full parser integration suite: <30s
+- Performance benchmark tests: <5s per document type
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **Integration Tests:**
   - `test_bilancio_parser_real_pdf` - real bilancio
@@ -5928,6 +6658,9 @@ Add schema validation and generate TypeScript types.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Invalid input: HTTP 400, `"Dati non validi"`
 - Not found: HTTP 404, `"Risorsa non trovata"`
 - Unauthorized: HTTP 403, `"Accesso non autorizzato"`
@@ -5947,6 +6680,12 @@ Add schema validation and generate TypeScript types.
 - **Concurrency:** Consider concurrent access scenarios
 
 **File:** `app/api/openapi.py`
+
+**Methods:**
+- `validate_openapi_schema()` - Validate OpenAPI schema completeness
+- `check_endpoint_documentation()` - Verify all endpoints are documented
+- `validate_response_schemas()` - Ensure all responses have schemas
+- `generate_typescript_types()` - Generate TypeScript types from schema
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
@@ -6033,6 +6772,13 @@ Standardize error response format across all endpoints.
 
 **File:** `app/api/error_handlers.py`
 
+**Methods:**
+- `format_error_response(error, status_code)` - Format error to standard structure
+- `handle_validation_error(exc)` - Handle Pydantic validation errors (HTTP 400)
+- `handle_not_found_error(exc)` - Handle not found errors (HTTP 404)
+- `handle_server_error(exc)` - Handle internal server errors (HTTP 500)
+- `log_error_context(error, request)` - Log error with request context
+
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
 - **Unit Tests:**
@@ -6090,6 +6836,9 @@ Standardize pagination across all list endpoints.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Invalid page: HTTP 400, `"Numero pagina non valido"`
 - Invalid per_page: HTTP 400, `"Items per pagina deve essere tra 1 e 100"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -6106,6 +6855,12 @@ Standardize pagination across all list endpoints.
 - **Concurrency:** Consider concurrent access scenarios
 
 **File:** `app/api/pagination.py`
+
+**Methods:**
+- `paginate(query, page, per_page)` - Apply pagination to SQLAlchemy query
+- `build_pagination_metadata(total, page, per_page)` - Build pagination metadata
+- `build_pagination_links(request, total, page, per_page)` - Build next/prev links
+- `validate_pagination_params(page, per_page)` - Validate pagination parameters
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
@@ -6162,6 +6917,9 @@ Create WebSocket endpoint for real-time events.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Connection failure: Auto-reconnect with exponential backoff
 - Invalid token: Close with 4001, `"Token non valido"`
 - Tenant mismatch: Close with 4003, `"Accesso non autorizzato"`
@@ -6180,6 +6938,15 @@ Create WebSocket endpoint for real-time events.
 - **Concurrency:** Consider concurrent access scenarios
 
 **File:** `app/api/websocket.py`
+
+**Endpoints:**
+- `WS /api/v1/ws/events` - WebSocket endpoint for real-time events
+
+**Event Types:**
+- `MATCH_FOUND` - New normative match discovered
+- `COMMUNICATION_STATUS` - Communication status changed
+- `GUIDE_PROGRESS` - Guide progress updated
+- `DEADLINE_REMINDER` - Upcoming deadline notification
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
@@ -6237,6 +7004,16 @@ Set up automatic type generation from OpenAPI.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Performance Requirements:**
 - Type generation: <30s (build-time, not runtime)
 - Types must regenerate on every OpenAPI change
@@ -6249,6 +7026,17 @@ Set up automatic type generation from OpenAPI.
 - **Concurrency:** Consider concurrent access scenarios
 
 **File:** `scripts/generate_types.sh`
+
+**Methods:**
+- `generate_types.sh` - Shell script to generate TypeScript types
+- `validate_types()` - Validate generated types compile correctly
+- `compare_types()` - Compare with previous version for breaking changes
+
+**Error Handling:**
+- OpenAPI fetch failure: Exit with error code 1, log URL
+- Type generation failure: Log generator output, exit with error
+- Compilation failure: Log TypeScript errors, exit with error
+- **Logging:** All errors logged to stderr with timestamp
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
@@ -6306,6 +7094,16 @@ Create complete E2E test from registration to dashboard.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Performance Requirements:**
 - Full E2E test suite: <60s total execution
 - Individual test steps: <5s each
@@ -6319,7 +7117,23 @@ Create complete E2E test from registration to dashboard.
 
 **File:** `tests/e2e/test_pratikoai_2_0_flow.py`
 
+**Error Handling:**
+- Step failures: Descriptive error messages with step number and context
+- Integration failures: Clear logging of which service failed
+- Timeout failures: Log step duration and timeout threshold
+- **Logging:** All test failures logged with full step trace
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **E2E Tests:**
   - Step 1: Register new user
@@ -6379,6 +7193,9 @@ Create DPA model with version tracking and acceptance records.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Missing DPA version: HTTP 500 (system config error), alert ops team
 - Concurrent acceptance: Use optimistic locking to prevent race conditions
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -6396,6 +7213,23 @@ Create DPA model with version tracking and acceptance records.
 - **Audit Trail Immutable:** Acceptance records cannot be modified or deleted
 
 **File:** `app/models/dpa.py`
+
+**Fields:**
+- `id`: UUID (primary key)
+- `version`: str (e.g., "1.0", "2.0")
+- `content`: text (full DPA text)
+- `effective_date`: date (when this version becomes active)
+- `is_current`: bool (is this the current version)
+- `created_at`: datetime
+
+**DPAAcceptance Fields:**
+- `id`: UUID (primary key)
+- `studio_id`: UUID (FK to Studio)
+- `user_id`: int (FK to User who accepted)
+- `dpa_id`: UUID (FK to DPA version)
+- `accepted_at`: datetime
+- `ip_address`: str (nullable)
+- `user_agent`: str (nullable)
 
 **Testing Requirements:**
 - **TDD:** Write `tests/models/test_dpa.py` FIRST
@@ -6460,6 +7294,9 @@ Create DPA service with acceptance workflow and API enforcement.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - DPA not accepted: HTTP 403, `"Accettare il DPA prima di aggiungere clienti"`
 - DPA version outdated: HTTP 428, `"Nuova versione DPA disponibile, riaccettazione richiesta"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -6478,6 +7315,13 @@ Create DPA service with acceptance workflow and API enforcement.
 - **Version Rollback:** Downgrade DPA version → reject, only forward upgrades allowed
 
 **File:** `app/services/dpa_service.py`
+
+**Methods:**
+- `get_current_dpa()` - Get the current DPA version
+- `check_dpa_accepted(studio_id)` - Check if studio has accepted current DPA
+- `accept_dpa(studio_id, user_id, ip_address)` - Record DPA acceptance
+- `require_dpa_acceptance(studio_id)` - Middleware to enforce DPA acceptance
+- `get_acceptance_history(studio_id)` - Get DPA acceptance history for studio
 
 **Testing Requirements:**
 - **TDD:** Write `tests/services/test_dpa_service.py` FIRST
@@ -6542,6 +7386,9 @@ Create breach notification model with status tracking.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Invalid status transition: HTTP 400, `"Transizione stato violazione non valida"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
@@ -6559,6 +7406,23 @@ Create breach notification model with status tracking.
 - **Deadline Extension:** Legitimate extension needed → record reason, update deadline with audit
 
 **File:** `app/models/breach_notification.py`
+
+**Fields:**
+- `id`: UUID (primary key)
+- `studio_id`: UUID (FK to Studio, nullable for platform-wide breaches)
+- `reported_by`: int (FK to User)
+- `breach_type`: enum (DATA_LEAK, UNAUTHORIZED_ACCESS, SYSTEM_COMPROMISE, etc.)
+- `severity`: enum (LOW, MEDIUM, HIGH, CRITICAL)
+- `description`: text (description of the breach)
+- `affected_data_categories`: ARRAY[str] (types of data affected)
+- `estimated_affected_count`: int (number of affected data subjects)
+- `status`: enum (REPORTED, ASSESSING, NOTIFYING_AUTHORITY, NOTIFYING_USERS, RESOLVED, CLOSED)
+- `discovered_at`: datetime
+- `reported_at`: datetime
+- `deadline_at`: datetime (72h from discovery)
+- `authority_notified_at`: datetime (nullable)
+- `users_notified_at`: datetime (nullable)
+- `resolution_notes`: text (nullable)
 
 **Testing Requirements:**
 - **TDD:** Write `tests/models/test_breach_notification.py` FIRST
@@ -6624,6 +7488,9 @@ Create breach service with workflow and deadline tracking.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Notification send failure: Retry 3x, then HTTP 500, log for manual follow-up
 - Authority API unavailable: Queue for retry, alert compliance team
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -6648,6 +7515,15 @@ Create breach service with workflow and deadline tracking.
 - **Concurrent Assessment:** Two users assess same breach → merge assessments, log conflict
 
 **File:** `app/services/breach_notification_service.py`
+
+**Methods:**
+- `report_breach(studio_id, breach_data)` - Create new breach report
+- `assess_breach(breach_id, assessment)` - Complete breach assessment
+- `notify_authority(breach_id)` - Notify data protection authority
+- `notify_affected_users(breach_id)` - Notify affected data subjects
+- `check_deadline_compliance()` - Background job to check 72h deadlines
+- `get_active_breaches(studio_id)` - Get all unresolved breaches
+- `resolve_breach(breach_id, resolution_notes)` - Mark breach as resolved
 
 **Testing Requirements:**
 - **TDD:** Write `tests/services/test_breach_notification_service.py` FIRST
@@ -6709,6 +7585,9 @@ Create processing register model and service.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Invalid purpose: HTTP 422, `"Finalità trattamento non valida"`
 - Missing legal basis: HTTP 422, `"Base giuridica richiesta"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -6727,6 +7606,22 @@ Create processing register model and service.
 - **Activity Terminated:** Processing stops → archive entry, preserve for audit (6 years)
 
 **File:** `app/models/processing_register.py`
+
+**Fields:**
+- `id`: UUID (primary key)
+- `studio_id`: UUID (FK to Studio)
+- `activity_name`: str (name of processing activity)
+- `purpose`: text (purpose of processing)
+- `legal_basis`: ARRAY[enum] (CONSENT, CONTRACT, LEGAL_OBLIGATION, VITAL_INTEREST, PUBLIC_TASK, LEGITIMATE_INTEREST)
+- `data_categories`: ARRAY[str] (categories of personal data processed)
+- `data_subjects`: ARRAY[str] (categories of data subjects)
+- `recipients`: ARRAY[str] (recipients of the data)
+- `retention_period`: str (how long data is retained)
+- `cross_border_transfers`: JSONB (nullable, details of EU exit transfers)
+- `security_measures`: text (description of security measures)
+- `created_at`: datetime
+- `updated_at`: datetime
+- `archived_at`: datetime (nullable)
 
 **Testing Requirements:**
 - **TDD:** Write `tests/models/test_processing_register.py` FIRST
@@ -6790,6 +7685,9 @@ Create data rights API for client self-service.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Client not found: HTTP 404, `"Cliente non trovato"`
@@ -6885,6 +7783,9 @@ Create compliance dashboard endpoint.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Dashboard aggregation failure: Return partial data with `"incomplete": true` flag
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
@@ -6968,6 +7869,16 @@ Create comprehensive GDPR E2E test suite.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Performance Requirements:**
 - Full GDPR E2E suite: <120s execution
 - Individual test: <15s
@@ -6981,7 +7892,28 @@ Create comprehensive GDPR E2E test suite.
 
 **File:** `tests/e2e/test_gdpr_compliance.py`
 
+**Error Handling:**
+- GDPR workflow failures: Descriptive error messages with compliance context
+- DPA enforcement failures: Clear logging of blocked operations
+- Breach notification failures: Log deadline status and notification attempts
+- **Logging:** All test failures logged with GDPR compliance context
+
+**Performance Requirements:**
+- Individual GDPR test: <10s
+- Full GDPR E2E suite: <120s
+- Data rights operations: <5s per operation
+
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **E2E Tests:**
   - `test_dpa_acceptance_flow` - full DPA workflow
@@ -7042,6 +7974,9 @@ Create `Deadline` SQLModel to store deadline metadata and `ClientDeadline` for t
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Invalid deadline_type: HTTP 422, `"Tipo scadenza non valido"`
@@ -7155,6 +8090,9 @@ Create DeadlineService with full CRUD and status management.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Deadline not found: HTTP 404, `"Scadenza non trovata"`
 - Unauthorized studio: HTTP 403, `"Accesso non autorizzato alla scadenza"`
 - Invalid status transition: HTTP 400, `"Transizione stato non valida"`
@@ -7256,6 +8194,9 @@ Create DeadlineExtractionService that processes KB items and extracts deadline m
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - No dates found: Log warning, skip item
@@ -7360,6 +8301,9 @@ Create DeadlineMatchingService that matches deadlines to clients using the same 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - No matching clients: Log info, deadline remains without ClientDeadline records
 - Criteria evaluation error: Log error, skip client, continue with others
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -7451,6 +8395,9 @@ Create background job that runs daily and sends notifications for upcoming deadl
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Notification send failure: Retry 3x, log for manual follow-up
@@ -7552,6 +8499,9 @@ Create REST endpoints for deadline management and queries.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Deadline not found: HTTP 404, `"Scadenza non trovata"`
@@ -7666,19 +8616,39 @@ Create React calendar component showing deadlines with color-coding by type and 
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- API fetch failure: Show error toast, `"Impossibile caricare le scadenze"`
+- Empty calendar: Show placeholder, `"Nessuna scadenza in questo mese"`
+- Mark complete failure: Show error toast, `"Impossibile completare la scadenza"`
+- WebSocket disconnect: Fallback to polling every 30s
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
 **Performance Requirements:**
 - Calendar render: <200ms
 - Month navigation: <100ms
 - Real-time updates via DEV-269 WebSocket
 
 **Edge Cases:**
-- **Nulls/Empty:** Handle null or empty input values gracefully
-- **Validation:** Validate input formats before processing
-- **Error Recovery:** Handle partial failures with clear error messages
-- **Boundaries:** Test boundary conditions (limits, max values)
-- **Concurrency:** Consider concurrent access scenarios
+- **Empty Month:** No deadlines in selected month -> show placeholder with next deadline info
+- **Past Deadlines:** Deadlines in past months -> allow navigation back, gray out past dates
+- **Today Boundary:** Deadline due today -> highlight with "TODAY" badge, yellow color
+- **Many Deadlines:** Day with 5+ deadlines -> show first 3 + "+N more" popover
+- **Month Navigation:** Navigate to month with no deadlines -> show empty state, suggest nearest month
+- **Long Title Truncation:** Deadline title > 30 chars -> truncate with "..." in calendar cell
+- **Timezone Mismatch:** User in different TZ than server -> use user TZ for display
+- **Rapid Click:** Double-click on deadline -> debounce, open modal only once
 
 **File:** `src/components/deadlines/DeadlineCalendar.tsx`
+
+**Components:**
+- `DeadlineCalendar` - Main calendar container with month navigation
+- `DeadlineDay` - Single day cell with deadline indicators
+- `DeadlinePopover` - Click-to-view detail popover
+- `DeadlineFilters` - Type/status filter controls
+- `DeadlineList` - Mobile-friendly list view alternative
 
 **Features:**
 - Monthly calendar view
@@ -7696,7 +8666,13 @@ Create React calendar component showing deadlines with color-coding by type and 
   - `test_click_deadline` - detail modal opens
   - `test_mark_completed` - action works
   - `test_responsive_mobile` - mobile view works
+- **Edge Case Tests:**
+  - `test_api_failure_shows_error` - error toast displayed
+  - `test_empty_month_placeholder` - empty state shown
+  - `test_websocket_disconnect_fallback` - polling fallback works
+  - `test_mark_complete_failure_retry` - error allows retry
 - **E2E Tests:** Full calendar interaction
+- **Coverage Target:** 80%+ for component code
 
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
@@ -7743,18 +8719,38 @@ Create E2E test suite for deadline system.
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
+- Test environment failure: Retry 3x, then skip with clear message
+- Database reset failure: Log error, continue with existing data
+- Assertion failure: Capture full state for debugging
+- Timeout exceeded: Kill test, log timeout context
+- **Logging:** All test failures MUST be logged with context (test_name, step, error) at ERROR level
+
 **Performance Requirements:**
 - Full deadline E2E suite: <120s execution
 - Individual test flow: <15s
 
 **Edge Cases:**
-- **Nulls/Empty:** Handle null or empty input values gracefully
-- **Validation:** Validate input formats before processing
-- **Error Recovery:** Handle partial failures with clear error messages
-- **Boundaries:** Test boundary conditions (limits, max values)
-- **Concurrency:** Consider concurrent access scenarios
+- **Database Reset:** Test DB reset fails -> log error, continue with existing data
+- **Parallel Test Run:** Tests run in parallel -> ensure data isolation per test
+- **Flaky Network:** Network timeout during API call -> retry 2x with backoff
+- **Timezone Boundaries:** Deadline at midnight UTC -> verify correct date in user TZ
+- **Large Data Volume:** Create 100 deadlines -> verify list performance <500ms
+- **Concurrent Notification:** Two notifications same deadline -> verify no duplicate sends
+- **State Cleanup:** Test failure mid-flow -> ensure cleanup hook removes test data
+- **Cross-Browser:** Calendar widget tested on Chrome, Firefox, Safari
 
 **File:** `tests/e2e/test_deadline_system.py`
+
+**Test Classes:**
+- `TestDeadlineCreationFlow` - Deadline creation and client assignment
+- `TestDeadlineExtractionFlow` - KB extraction to deadline creation
+- `TestDeadlineNotificationFlow` - Notification timing and delivery
+- `TestDeadlineCompletionFlow` - Status transitions and completion
+- `TestDeadlineOverdueFlow` - Overdue detection and marking
 
 **Test Flows:**
 1. **Deadline Creation Flow**
@@ -7769,6 +8765,16 @@ Create E2E test suite for deadline system.
    - Create past deadline → Run job → Verify marked overdue
 
 **Testing Requirements:**
+
+**File:** `tests/e2e/test_communication_flow.py`
+
+**Methods:**
+- `test_create_draft_to_send_email_flow()` - Full email workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_rejection_flow()` - Draft -> review -> reject -> revise
+- `test_bulk_communication_flow()` - Multiple clients
+- `test_self_approval_blocked()` - Security check E2E
+
 - **This IS the testing task**
 - **E2E Tests:**
   - `test_deadline_creation_assigns_clients` - full creation flow
@@ -7826,6 +8832,9 @@ Create shared PDF generation service using WeasyPrint or ReportLab.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - PDF generation failure: HTTP 500, `"Generazione PDF fallita"`
@@ -7919,6 +8928,9 @@ Integrate OCR service (Tesseract or cloud-based) into document processing pipeli
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - OCR failure: HTTP 500, `"Estrazione testo fallita"`
 - Low confidence: Return text with `"low_confidence": true` flag
 - Unsupported format: HTTP 422, `"Formato immagine non supportato"`
@@ -8006,6 +9018,9 @@ Create background job that deletes documents older than 30 minutes.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - File deletion failure: Log error, retry next cycle
@@ -8097,6 +9112,9 @@ Create specialized parser for F24 documents.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Invalid F24 format: HTTP 422, `"Formato F24 non riconosciuto"`
 - Missing required fields: HTTP 422, `"Campo obbligatorio mancante: {field}"`
 - Calculation mismatch: Log warning, return parsed with `"total_mismatch": true`
@@ -8118,6 +9136,13 @@ Create specialized parser for F24 documents.
 - **Old F24 Format:** Pre-2020 layout → fallback parser, flag `"legacy_format": true`
 
 **File:** `app/services/document_parsers/f24_parser.py`
+
+**Methods:**
+- `parse_f24(file)` - Parse F24 document and extract all fields
+- `detect_f24_variant(file)` - Detect F24 variant (standard, elide, semplificato)
+- `extract_codici_tributo(content)` - Extract tributo codes and amounts
+- `validate_totals(parsed)` - Verify totale calculations match
+- `extract_contribuente_data(content)` - Extract codice fiscale and anagrafica
 
 **Extracted Fields:**
 - Codice fiscale contribuente
@@ -8187,6 +9212,9 @@ Create configuration system for regional tax rates.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Region not found: HTTP 404, `"Regione non trovata"`
@@ -8284,6 +9312,9 @@ Create feature flag system with studio-level and global flags.
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
+
+**Error Handling:**
 - Flag not found: Return default (false), log warning
 - Redis unavailable: Fall back to environment defaults
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -8378,6 +9409,9 @@ Implement rate limiting using Redis with configurable limits per endpoint.
 **Impact Analysis:** N/A (new code only)
 
 **Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Error Handling:**
+- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
 - Rate limit exceeded: HTTP 429, `"Troppe richieste. Riprova tra {seconds} secondi"`

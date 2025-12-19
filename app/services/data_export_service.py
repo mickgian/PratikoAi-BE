@@ -2,6 +2,8 @@
 
 This service handles complete user data exports with Italian market compliance,
 privacy protection, and secure handling of sensitive information.
+
+Security: Applies XSS sanitization to exported data (V-004).
 """
 
 import asyncio
@@ -42,6 +44,7 @@ from app.models.subscription import Invoice, Subscription, SubscriptionPlan
 from app.models.user import User
 from app.services.cache import get_redis_client
 from app.services.email_service import EmailService
+from app.utils.security import sanitize_for_export
 
 
 class ExportLimitExceeded(Exception):
@@ -832,20 +835,27 @@ class DataExportService:
     async def _generate_export_files(
         self, user_data: dict[str, Any], export_request: DataExportRequest
     ) -> dict[str, Any]:
-        """Generate export files in requested formats"""
+        """Generate export files in requested formats.
+
+        Security: Applies XSS sanitization to all user data before export (V-004).
+        This prevents malicious content from being included in exported files.
+        """
+        # V-004: Sanitize all user data to prevent XSS in exported files
+        sanitized_data = sanitize_for_export(user_data)
+
         generator = ExportFileGenerator()
         files = {}
 
         if export_request.format in [ExportFormat.JSON, ExportFormat.BOTH]:
-            json_content = await generator.generate_json_export(user_data)
+            json_content = await generator.generate_json_export(sanitized_data)
             files["dati_completi.json"] = json_content
 
         if export_request.format in [ExportFormat.CSV, ExportFormat.BOTH]:
-            csv_files = await generator.generate_csv_exports(user_data)
+            csv_files = await generator.generate_csv_exports(sanitized_data)
             files.update(csv_files)
 
         # Add manifest file
-        manifest = await generator.generate_manifest(user_data, export_request)
+        manifest = await generator.generate_manifest(sanitized_data, export_request)
         files["LEGGIMI.txt"] = manifest.encode("utf-8")
 
         return files

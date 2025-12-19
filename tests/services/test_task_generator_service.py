@@ -235,14 +235,19 @@ class TestMarkdownGeneration:
     def test_create_task_markdown_includes_regulatory_references(
         self, task_generator_service, sample_feedback, sample_expert
     ):
-        """Test markdown includes regulatory references when present."""
+        """Test markdown includes regulatory references when present.
+
+        Note: Regulatory references are escaped to prevent markdown injection (V-001).
+        Periods are escaped as \\. in the output.
+        """
         sample_feedback.regulatory_references = ["Art. 1, L. 190/2014", "D.L. 119/2018"]
 
         markdown = task_generator_service._create_task_markdown("QUERY-08", "TASK", sample_feedback, sample_expert)
 
         assert "**Riferimenti normativi citati dall'esperto:**" in markdown
-        assert "Art. 1, L. 190/2014" in markdown
-        assert "D.L. 119/2018" in markdown
+        # Markdown escaping converts . to \. for security (V-001)
+        assert r"Art\. 1, L\. 190/2014" in markdown
+        assert r"D\.L\. 119/2018" in markdown
 
     def test_create_task_markdown_includes_improvement_suggestions(
         self, task_generator_service, sample_feedback, sample_expert

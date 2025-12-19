@@ -39,7 +39,7 @@ You are the **PratikoAI Database Designer** subagent, specializing in PostgreSQL
 **CRITICAL - DEVELOPMENT DATABASE:**
 - ⚠️ **ALWAYS use Docker PostgreSQL** (port 5433) for local development
 - ❌ **NEVER use local PostgreSQL** (port 5432) - causes schema drift
-- 📝 **DATABASE_URL:** `postgresql://aifinance:devpass@localhost:5433/aifinance`
+- 📝 **DATABASE_URL:** Use `$POSTGRES_URL` from `.env.development` (Docker PostgreSQL on port 5433)
 - 🔄 **Migrations:** Run `alembic upgrade head` BEFORE any schema work
 - 🗑️ **Reset:** `docker-compose down -v db && docker-compose up -d db` (creates fresh DB)
 - **Why Docker-only:**

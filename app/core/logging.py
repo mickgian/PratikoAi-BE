@@ -3,6 +3,8 @@
 This module provides structured logging configuration using structlog,
 with environment-specific formatters and handlers. It supports both
 console-friendly development logging and JSON-formatted production logging.
+
+Security: Includes log injection prevention (V-005) via escape_log_message.
 """
 
 import json
@@ -23,8 +25,9 @@ from app.core.config import (
     settings,
 )
 
-# Lazy import to avoid circular dependencies
+# Lazy imports to avoid circular dependencies
 _anonymizer = None
+_escape_log_message = None
 
 
 def _get_anonymizer():
@@ -52,6 +55,27 @@ def _get_anonymizer():
 
             _anonymizer = NoOpAnonymizer()
     return _anonymizer
+
+
+def _get_escape_log_message():
+    """Get escape_log_message function with lazy loading.
+
+    Security: Prevents log injection attacks (V-005) by escaping
+    newlines, control characters, and ANSI codes in log messages.
+    """
+    global _escape_log_message
+    if _escape_log_message is None:
+        try:
+            from app.utils.security import escape_log_message
+
+            _escape_log_message = escape_log_message
+        except ImportError:
+            # Fallback: no-op if security module is not available
+            def _noop_escape(text: str) -> str:
+                return text
+
+            _escape_log_message = _noop_escape
+    return _escape_log_message
 
 
 def _anonymize_pii_processor(logger, method_name, event_dict):
@@ -88,6 +112,45 @@ def _anonymize_pii_processor(logger, method_name, event_dict):
                         event_dict[f"{field}_pii_anonymized"] = len(result.pii_matches)
             except Exception:
                 # If anonymization fails, continue without anonymizing
+                # We don't want logging failures to break the application
+                pass
+
+    return event_dict
+
+
+def _escape_log_injection_processor(logger, method_name, event_dict):
+    """Structlog processor to prevent log injection attacks.
+
+    Security: Addresses vulnerability V-005 from security audit.
+    Escapes newlines, control characters, and ANSI codes in log messages
+    to prevent attackers from injecting fake log entries or hiding malicious activity.
+    """
+    escape_func = _get_escape_log_message()
+
+    # Fields that should be escaped to prevent log injection
+    # These are fields that could contain user-provided data
+    fields_to_escape = [
+        "event",  # Main log message
+        "message",
+        "error",
+        "user_input",
+        "query",
+        "response",
+        "content",
+        "text",
+        "request_body",
+        "path",
+        "user_agent",
+        "ip_address",
+        "exception",
+    ]
+
+    for field in fields_to_escape:
+        if field in event_dict and isinstance(event_dict[field], str):
+            try:
+                event_dict[field] = escape_func(event_dict[field])
+            except Exception:
+                # If escaping fails, continue without escaping
                 # We don't want logging failures to break the application
                 pass
 
@@ -243,7 +306,11 @@ def get_structlog_processors(include_file_info: bool = True) -> list[Any]:
     # Add environment info
     processors.append(lambda _, __, event_dict: {**event_dict, "environment": settings.ENVIRONMENT.value})
 
-    # Add PII anonymization processor
+    # Security: Add log injection prevention processor (V-005)
+    # This escapes control characters, newlines, and ANSI codes
+    processors.append(_escape_log_injection_processor)
+
+    # Add PII anonymization processor (runs after log escaping)
     processors.append(_anonymize_pii_processor)
 
     return processors

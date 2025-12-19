@@ -13,6 +13,7 @@ Features:
 - Appends to docs/tasks/QUERY_ISSUES_ROADMAP.md (auto-creates if missing)
 - Stores record in expert_generated_tasks table (primary source of truth)
 - Logs success/failure (doesn't raise exceptions to avoid blocking feedback)
+- Security: All user-provided content is escaped to prevent markdown injection (V-001)
 """
 
 import re
@@ -26,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import logger
 from app.models.database import AsyncSessionLocal
 from app.models.quality_analysis import ExpertFeedback, ExpertGeneratedTask, ExpertProfile
+from app.utils.security import escape_markdown_code_block, sanitize_for_markdown_file
 
 
 class TaskGeneratorService:
@@ -242,6 +244,9 @@ class TaskGeneratorService:
     ) -> str:
         """Create markdown task format for QUERY_ISSUES_ROADMAP.md.
 
+        Security: All user-provided content is escaped to prevent markdown injection.
+        This addresses vulnerability V-001 from security audit.
+
         Args:
             task_id: Task ID (e.g., "QUERY-08")
             task_name: Task name (e.g., "CALCOLO_IVA")
@@ -249,29 +254,39 @@ class TaskGeneratorService:
             expert: ExpertProfile of the expert
 
         Returns:
-            str: Formatted markdown task
+            str: Formatted markdown task with escaped user content
         """
         # Map feedback type to Italian
         feedback_type_it = {"incomplete": "Incompleta", "incorrect": "Errata"}.get(
             feedback.feedback_type.value, feedback.feedback_type.value
         )
 
-        # Format category if present
+        # Format category if present (category value is from enum, safe)
         category_str = f"- Categoria: {feedback.category.value}\n" if feedback.category else ""
 
-        # Format regulatory references if present
+        # Format regulatory references if present - ESCAPE user content
         regulatory_refs_str = ""
         if feedback.regulatory_references:
             regulatory_refs_str = "\n**Riferimenti normativi citati dall'esperto:**\n"
             for ref in feedback.regulatory_references:
-                regulatory_refs_str += f"- {ref}\n"
+                # Escape each reference to prevent markdown injection
+                safe_ref = sanitize_for_markdown_file(ref, max_length=500)
+                regulatory_refs_str += f"- {safe_ref}\n"
 
-        # Format improvement suggestions if present
+        # Format improvement suggestions if present - ESCAPE user content
         suggestions_str = ""
         if feedback.improvement_suggestions:
             suggestions_str = "\n**Suggerimenti per il miglioramento:**\n"
             for suggestion in feedback.improvement_suggestions:
-                suggestions_str += f"- {suggestion}\n"
+                # Escape each suggestion to prevent markdown injection
+                safe_suggestion = sanitize_for_markdown_file(suggestion, max_length=500)
+                suggestions_str += f"- {safe_suggestion}\n"
+
+        # Escape user-provided content that will appear in code blocks
+        # Using escape_markdown_code_block to prevent code block breakout
+        safe_query_text = escape_markdown_code_block(feedback.query_text or "")
+        safe_original_answer = escape_markdown_code_block(feedback.original_answer or "")
+        safe_additional_details = escape_markdown_code_block(feedback.additional_details or "")
 
         markdown = f"""
 ---
@@ -289,17 +304,17 @@ La risposta fornita dal sistema è stata marcata come **{feedback_type_it}** dal
 
 **Domanda originale:**
 ```
-{feedback.query_text}
+{safe_query_text}
 ```
 
 **Risposta fornita (incompleta/errata):**
 ```
-{feedback.original_answer}
+{safe_original_answer}
 ```
 
 **Dettagli aggiuntivi dall'esperto:**
 ```
-{feedback.additional_details}
+{safe_additional_details}
 ```
 
 **Feedback dell'esperto:**
@@ -316,7 +331,7 @@ La risposta fornita dal sistema è stata marcata come **{feedback_type_it}** dal
 - [ ] Testare la risposta con domande simili
 - [ ] Far validare la correzione da un esperto fiscale
 
-**Status:** 🔴 TODO
+**Status:** TODO
 
 **Note:**
 Questo task è stato generato automaticamente dal sistema di feedback esperti.

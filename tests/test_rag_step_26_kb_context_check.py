@@ -41,6 +41,8 @@ class TestRAGStep26KBContextCheck:
             recency_weight=0.3,  # Higher weight for recency for context check
             bm25_weight=0.4,
             vector_weight=0.3,
+            quality_weight=0.0,  # Disable for this test
+            source_weight=0.0,  # Disable for this test
         )
         return KnowledgeSearchService(db_session=mock_db_session, vector_service=mock_vector_service, config=config)
 

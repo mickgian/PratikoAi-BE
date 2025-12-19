@@ -1,0 +1,219 @@
+# Action Templates for Labor Domain
+# PratikoAI v1.5 - Proactive Assistant
+#
+# This file contains suggested action templates for labor-related queries:
+# - CCNL searches and calculations
+# - Salary and payroll calculations
+# - Employment contract verifications
+# - INPS/INAIL contributions
+# - Labor rights and obligations
+#
+# Schema Reference: DEV-150 app/schemas/proactivity.py
+# ActionCategory: calculate, search, verify, export, explain
+
+domain: labor
+
+actions:
+  # ============================================================================
+  # SALARY AND PAYROLL CALCULATIONS
+  # ============================================================================
+  salary_calculation:
+    - id: labor_calculate_stipendio_netto
+      label: "Calcola stipendio netto"
+      icon: calculator
+      category: calculate
+      prompt_template: "Calcola lo stipendio netto partendo da un lordo di {stipendio_lordo} euro per un {tipo_contratto}"
+      requires_input: false
+
+    - id: labor_calculate_stipendio_custom
+      label: "Calcola stipendio netto da lordo"
+      icon: calculator
+      category: calculate
+      prompt_template: "Calcola lo stipendio netto partendo da un lordo di {amount} euro"
+      requires_input: true
+      input_placeholder: "Inserisci lo stipendio lordo mensile"
+      input_type: number
+
+    - id: labor_calculate_costo_azienda
+      label: "Calcola costo aziendale"
+      icon: building
+      category: calculate
+      prompt_template: "Calcola il costo aziendale per uno stipendio lordo di {stipendio_lordo} euro"
+      requires_input: false
+
+    - id: labor_calculate_costo_custom
+      label: "Calcola costo aziendale da lordo"
+      icon: building
+      category: calculate
+      prompt_template: "Calcola il costo aziendale per uno stipendio lordo di {amount} euro"
+      requires_input: true
+      input_placeholder: "Inserisci lo stipendio lordo"
+      input_type: number
+
+    - id: labor_calculate_tfr
+      label: "Calcola TFR"
+      icon: piggy-bank
+      category: calculate
+      prompt_template: "Calcola il TFR maturato per {anni_lavoro} anni di servizio con retribuzione {retribuzione} euro"
+      requires_input: false
+
+    - id: labor_calculate_tfr_custom
+      label: "Calcola TFR specifico"
+      icon: piggy-bank
+      category: calculate
+      prompt_template: "Calcola il TFR per una retribuzione annua di {amount} euro"
+      requires_input: true
+      input_placeholder: "Inserisci la retribuzione annua lorda"
+      input_type: number
+
+    - id: labor_calculate_ferie
+      label: "Calcola giorni ferie"
+      icon: sun
+      category: calculate
+      prompt_template: "Calcola i giorni di ferie maturati per {mesi_lavorati} mesi secondo il CCNL {ccnl}"
+      requires_input: false
+
+    - id: labor_calculate_straordinario
+      label: "Calcola straordinario"
+      icon: clock
+      category: calculate
+      prompt_template: "Calcola la retribuzione per {ore} ore di straordinario {tipo_straordinario}"
+      requires_input: true
+      input_placeholder: "Numero ore straordinario"
+      input_type: number
+
+  # ============================================================================
+  # CCNL SEARCHES
+  # ============================================================================
+  ccnl_search:
+    - id: labor_search_ccnl
+      label: "Cerca nel CCNL"
+      icon: search
+      category: search
+      prompt_template: "Cerca nel CCNL {ccnl} informazioni su {argomento}"
+      requires_input: true
+      input_placeholder: "Es: preavviso, ferie, malattia"
+      input_type: text
+
+    - id: labor_search_livello
+      label: "Cerca livello contrattuale"
+      icon: layers
+      category: search
+      prompt_template: "Qual è il livello contrattuale appropriato per {mansione} nel CCNL {ccnl}?"
+      requires_input: true
+      input_placeholder: "Es: impiegato amministrativo"
+      input_type: text
+
+    - id: labor_search_tabelle
+      label: "Cerca tabelle retributive"
+      icon: table
+      category: search
+      prompt_template: "Mostra le tabelle retributive del CCNL {ccnl} per il livello {livello}"
+      requires_input: true
+      input_placeholder: "Es: Commercio, Metalmeccanico"
+      input_type: text
+
+    - id: labor_search_scadenze
+      label: "Cerca scadenze contrattuali"
+      icon: calendar
+      category: search
+      prompt_template: "Quali sono le prossime scadenze per il CCNL {ccnl}?"
+      requires_input: true
+      input_placeholder: "Es: Commercio"
+      input_type: text
+
+  # ============================================================================
+  # LABOR VERIFICATIONS
+  # ============================================================================
+  labor_verify:
+    - id: labor_verify_preavviso
+      label: "Verifica periodo preavviso"
+      icon: check-circle
+      category: verify
+      prompt_template: "Qual è il periodo di preavviso per un {tipo_contratto} con {anni_anzianita} anni di anzianità nel CCNL {ccnl}?"
+      requires_input: false
+
+    - id: labor_verify_contributi
+      label: "Verifica contributi INPS"
+      icon: shield
+      category: verify
+      prompt_template: "Verifica le aliquote contributive INPS per {categoria_lavoratore}"
+      requires_input: true
+      input_placeholder: "Es: dipendente, apprendista"
+      input_type: text
+
+    - id: labor_verify_contratto
+      label: "Verifica tipologia contratto"
+      icon: file-text
+      category: verify
+      prompt_template: "Verifica se il contratto {tipo_contratto} è applicabile per {situazione}"
+      requires_input: true
+      input_placeholder: "Es: tempo determinato, apprendistato"
+      input_type: text
+
+    - id: labor_verify_malattia
+      label: "Verifica indennità malattia"
+      icon: heart
+      category: verify
+      prompt_template: "Verifica l'indennità di malattia per {giorni} giorni secondo il CCNL {ccnl}"
+      requires_input: true
+      input_placeholder: "Numero giorni malattia"
+      input_type: number
+
+  # ============================================================================
+  # LABOR EXPORTS
+  # ============================================================================
+  labor_export:
+    - id: labor_export_cedolino
+      label: "Esporta simulazione cedolino"
+      icon: file-text
+      category: export
+      prompt_template: "Esporta la simulazione del cedolino in formato PDF"
+      requires_input: false
+
+    - id: labor_export_riepilogo
+      label: "Esporta riepilogo retributivo"
+      icon: table
+      category: export
+      prompt_template: "Esporta il riepilogo retributivo in formato Excel"
+      requires_input: false
+
+  # ============================================================================
+  # LABOR EXPLANATIONS
+  # ============================================================================
+  labor_explain:
+    - id: labor_explain_ccnl
+      label: "Spiega il CCNL"
+      icon: help-circle
+      category: explain
+      prompt_template: "Spiega le caratteristiche principali del CCNL {ccnl}"
+      requires_input: true
+      input_placeholder: "Es: Commercio, Metalmeccanico"
+      input_type: text
+
+    - id: labor_explain_busta_paga
+      label: "Spiega voci busta paga"
+      icon: info
+      category: explain
+      prompt_template: "Spiega le voci della busta paga: {voce}"
+      requires_input: true
+      input_placeholder: "Es: contributi INPS, IRPEF"
+      input_type: text
+
+    - id: labor_explain_diritti
+      label: "Spiega diritti lavoratore"
+      icon: shield
+      category: explain
+      prompt_template: "Quali sono i diritti del lavoratore in caso di {situazione}?"
+      requires_input: true
+      input_placeholder: "Es: licenziamento, maternità"
+      input_type: text
+
+    - id: labor_explain_dettaglio
+      label: "Spiega nel dettaglio"
+      icon: info
+      category: explain
+      prompt_template: "Spiega nel dettaglio {argomento}"
+      requires_input: true
+      input_placeholder: "Cosa vuoi approfondire?"
+      input_type: text

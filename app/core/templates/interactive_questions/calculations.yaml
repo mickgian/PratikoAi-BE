@@ -1,0 +1,420 @@
+# Interactive Question Templates for Calculations
+# PratikoAI v1.5 - Proactive Assistant
+#
+# This file contains question templates for calculation-related queries:
+# - IRPEF calculation
+# - IVA calculation
+# - INPS contributions
+# - Ravvedimento operoso
+#
+# Schema Reference: DEV-150 app/schemas/proactivity.py
+
+questions:
+  # ============================================================================
+  # IRPEF CALCULATION FLOW
+  # ============================================================================
+
+  irpef_tipo_contribuente:
+    id: irpef_tipo_contribuente
+    text: "Per quale tipo di contribuente vuoi calcolare l'IRPEF?"
+    question_type: single_choice
+    options:
+      - id: dipendente
+        label: "Persona fisica (dipendente)"
+        icon: briefcase
+        leads_to: irpef_reddito_dipendente
+      - id: autonomo
+        label: "Persona fisica (autonomo/P.IVA)"
+        icon: building
+        leads_to: irpef_reddito_autonomo
+      - id: societa_persone
+        label: "Società di persone (SAS, SNC, SS)"
+        icon: users
+        leads_to: irpef_reddito_societa
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi la situazione del contribuente..."
+
+  irpef_reddito_dipendente:
+    id: irpef_reddito_dipendente
+    text: "Qual è il reddito annuo lordo del dipendente?"
+    question_type: single_choice
+    prefilled_params:
+      tipo_contribuente: dipendente
+    options:
+      - id: fascia_15000
+        label: "Fino a 15.000 euro"
+        icon: coins
+      - id: fascia_28000
+        label: "Da 15.001 a 28.000 euro"
+        icon: coins
+      - id: fascia_50000
+        label: "Da 28.001 a 50.000 euro"
+        icon: coins
+      - id: oltre_50000
+        label: "Oltre 50.000 euro"
+        icon: coins
+      - id: altro
+        label: "Inserisci importo specifico"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci il reddito lordo annuo (es: 35000)"
+
+  irpef_reddito_autonomo:
+    id: irpef_reddito_autonomo
+    text: "Qual è il reddito imponibile del lavoratore autonomo?"
+    question_type: single_choice
+    prefilled_params:
+      tipo_contribuente: autonomo
+    options:
+      - id: fascia_15000
+        label: "Fino a 15.000 euro"
+        icon: coins
+      - id: fascia_28000
+        label: "Da 15.001 a 28.000 euro"
+        icon: coins
+      - id: fascia_50000
+        label: "Da 28.001 a 50.000 euro"
+        icon: coins
+      - id: oltre_50000
+        label: "Oltre 50.000 euro"
+        icon: coins
+      - id: altro
+        label: "Inserisci importo specifico"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci il reddito imponibile (es: 45000)"
+
+  irpef_reddito_societa:
+    id: irpef_reddito_societa
+    text: "Qual è il reddito imponibile della società di persone?"
+    question_type: single_choice
+    prefilled_params:
+      tipo_contribuente: societa_persone
+    options:
+      - id: fascia_28000
+        label: "Fino a 28.000 euro"
+        icon: coins
+      - id: fascia_50000
+        label: "Da 28.001 a 50.000 euro"
+        icon: coins
+      - id: fascia_100000
+        label: "Da 50.001 a 100.000 euro"
+        icon: coins
+      - id: oltre_100000
+        label: "Oltre 100.000 euro"
+        icon: coins
+      - id: altro
+        label: "Inserisci importo specifico"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci il reddito imponibile della società..."
+
+  # ============================================================================
+  # IVA CALCULATION FLOW
+  # ============================================================================
+
+  iva_tipo_operazione:
+    id: iva_tipo_operazione
+    text: "Per quale tipo di operazione vuoi calcolare l'IVA?"
+    question_type: single_choice
+    options:
+      - id: cessione_beni
+        label: "Cessione di beni"
+        icon: package
+        leads_to: iva_aliquota
+      - id: prestazione_servizi
+        label: "Prestazione di servizi"
+        icon: briefcase
+        leads_to: iva_aliquota
+      - id: importazione
+        label: "Importazione"
+        icon: truck
+        leads_to: iva_aliquota
+      - id: intracomunitaria
+        label: "Operazione intracomunitaria"
+        icon: globe
+        leads_to: iva_aliquota
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il tipo di operazione..."
+
+  iva_aliquota:
+    id: iva_aliquota
+    text: "Quale aliquota IVA si applica?"
+    question_type: single_choice
+    options:
+      - id: aliquota_22
+        label: "22% (ordinaria)"
+        icon: percent
+      - id: aliquota_10
+        label: "10% (ridotta)"
+        icon: percent
+      - id: aliquota_5
+        label: "5% (super ridotta)"
+        icon: percent
+      - id: aliquota_4
+        label: "4% (minima)"
+        icon: percent
+      - id: esente
+        label: "Esente IVA"
+        icon: ban
+      - id: altro
+        label: "Non sono sicuro"
+        icon: help-circle
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il bene/servizio per determinare l'aliquota..."
+
+  iva_importo:
+    id: iva_importo
+    text: "Qual è l'importo su cui calcolare l'IVA?"
+    question_type: single_choice
+    options:
+      - id: importo_small
+        label: "Fino a 1.000 euro"
+        icon: coins
+      - id: importo_medium
+        label: "Da 1.001 a 10.000 euro"
+        icon: coins
+      - id: importo_large
+        label: "Da 10.001 a 50.000 euro"
+        icon: coins
+      - id: importo_xlarge
+        label: "Oltre 50.000 euro"
+        icon: coins
+      - id: altro
+        label: "Inserisci importo specifico"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci l'importo (es: 2500)"
+
+  # ============================================================================
+  # INPS CONTRIBUTIONS FLOW
+  # ============================================================================
+
+  inps_tipo_gestione:
+    id: inps_tipo_gestione
+    text: "A quale gestione INPS appartiene il contribuente?"
+    question_type: single_choice
+    options:
+      - id: gestione_artigiani
+        label: "Gestione Artigiani"
+        icon: hammer
+        leads_to: inps_reddito
+      - id: gestione_commercianti
+        label: "Gestione Commercianti"
+        icon: shopping-cart
+        leads_to: inps_reddito
+      - id: gestione_separata
+        label: "Gestione Separata"
+        icon: user
+        leads_to: inps_reddito_separata
+      - id: dipendente
+        label: "Lavoratore dipendente"
+        icon: briefcase
+        leads_to: inps_reddito_dipendente
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi la situazione previdenziale..."
+
+  inps_reddito:
+    id: inps_reddito
+    text: "Qual è il reddito imponibile per il calcolo dei contributi?"
+    question_type: single_choice
+    options:
+      - id: reddito_minimale
+        label: "Reddito minimale (circa 18.415 euro per 2025)"
+        icon: coins
+      - id: fascia_30000
+        label: "Da minimale a 30.000 euro"
+        icon: coins
+      - id: fascia_55000
+        label: "Da 30.001 a 55.448 euro"
+        icon: coins
+      - id: oltre_massimale
+        label: "Oltre il massimale"
+        icon: coins
+      - id: altro
+        label: "Inserisci importo specifico"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci il reddito imponibile..."
+
+  inps_reddito_separata:
+    id: inps_reddito_separata
+    text: "Qual è il compenso lordo per la Gestione Separata?"
+    question_type: single_choice
+    prefilled_params:
+      tipo_gestione: gestione_separata
+    options:
+      - id: fascia_15000
+        label: "Fino a 15.000 euro"
+        icon: coins
+      - id: fascia_30000
+        label: "Da 15.001 a 30.000 euro"
+        icon: coins
+      - id: fascia_massimale
+        label: "Da 30.001 al massimale"
+        icon: coins
+      - id: altro
+        label: "Inserisci importo specifico"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci il compenso lordo annuo..."
+
+  inps_reddito_dipendente:
+    id: inps_reddito_dipendente
+    text: "Qual è la retribuzione lorda mensile del dipendente?"
+    question_type: single_choice
+    prefilled_params:
+      tipo_gestione: dipendente
+    options:
+      - id: retribuzione_1500
+        label: "Fino a 1.500 euro/mese"
+        icon: coins
+      - id: retribuzione_2500
+        label: "Da 1.501 a 2.500 euro/mese"
+        icon: coins
+      - id: retribuzione_4000
+        label: "Da 2.501 a 4.000 euro/mese"
+        icon: coins
+      - id: retribuzione_oltre
+        label: "Oltre 4.000 euro/mese"
+        icon: coins
+      - id: altro
+        label: "Inserisci importo specifico"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci la retribuzione lorda mensile..."
+
+  # ============================================================================
+  # RAVVEDIMENTO OPEROSO FLOW
+  # ============================================================================
+
+  ravvedimento_tipo_tributo:
+    id: ravvedimento_tipo_tributo
+    text: "Per quale tipo di tributo vuoi calcolare il ravvedimento?"
+    question_type: single_choice
+    options:
+      - id: iva_periodica
+        label: "IVA periodica"
+        icon: file-text
+        leads_to: ravvedimento_dati
+      - id: ritenute
+        label: "Ritenute d'acconto"
+        icon: file-minus
+        leads_to: ravvedimento_dati
+      - id: irpef_saldo
+        label: "IRPEF saldo/acconto"
+        icon: file
+        leads_to: ravvedimento_dati
+      - id: imu_tasi
+        label: "IMU/TASI"
+        icon: home
+        leads_to: ravvedimento_dati
+      - id: contributi_inps
+        label: "Contributi INPS"
+        icon: shield
+        leads_to: ravvedimento_dati
+      - id: altro
+        label: "Altro tributo (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica il tipo di tributo..."
+
+  ravvedimento_dati:
+    id: ravvedimento_dati
+    text: "Quando era la scadenza originale del pagamento?"
+    question_type: single_choice
+    options:
+      - id: entro_14_giorni
+        label: "Meno di 14 giorni fa"
+        icon: clock
+      - id: entro_30_giorni
+        label: "Da 15 a 30 giorni fa"
+        icon: clock
+      - id: entro_90_giorni
+        label: "Da 31 a 90 giorni fa"
+        icon: clock
+      - id: entro_1_anno
+        label: "Da 91 giorni a 1 anno fa"
+        icon: clock
+      - id: oltre_1_anno
+        label: "Oltre 1 anno fa"
+        icon: clock
+      - id: altro
+        label: "Inserisci data specifica"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci la data di scadenza (GG/MM/AAAA)..."
+
+  ravvedimento_importo:
+    id: ravvedimento_importo
+    text: "Qual è l'importo del tributo non versato?"
+    question_type: single_choice
+    options:
+      - id: importo_small
+        label: "Fino a 500 euro"
+        icon: coins
+      - id: importo_medium
+        label: "Da 501 a 2.000 euro"
+        icon: coins
+      - id: importo_large
+        label: "Da 2.001 a 10.000 euro"
+        icon: coins
+      - id: importo_xlarge
+        label: "Oltre 10.000 euro"
+        icon: coins
+      - id: altro
+        label: "Inserisci importo specifico"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci l'importo del tributo non versato..."
+
+  # ============================================================================
+  # GENERIC CALCULATION INPUT
+  # ============================================================================
+
+  calcolo_generico_importo:
+    id: calcolo_generico_importo
+    text: "Qual è l'importo da utilizzare per il calcolo?"
+    question_type: single_choice
+    options:
+      - id: importo_small
+        label: "Fino a 5.000 euro"
+        icon: coins
+      - id: importo_medium
+        label: "Da 5.001 a 20.000 euro"
+        icon: coins
+      - id: importo_large
+        label: "Da 20.001 a 50.000 euro"
+        icon: coins
+      - id: importo_xlarge
+        label: "Oltre 50.000 euro"
+        icon: coins
+      - id: altro
+        label: "Inserisci importo specifico"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci l'importo esatto..."

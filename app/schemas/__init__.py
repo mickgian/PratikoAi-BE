@@ -2,6 +2,7 @@
 
 from app.schemas.auth import Token
 from app.schemas.chat import (
+    AttachmentInfo,
     ChatRequest,
     ChatResponse,
     Message,
@@ -10,6 +11,7 @@ from app.schemas.chat import (
 from app.schemas.graph import GraphState
 
 __all__ = [
+    "AttachmentInfo",
     "Token",
     "ChatRequest",
     "ChatResponse",

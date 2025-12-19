@@ -2966,9 +2966,6 @@ Create comprehensive security tests covering all access patterns. Target 95%+ co
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
-- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
-
-**Error Handling:**
 - Cross-tenant access attempt: HTTP 404, `"Risorsa non trovata"` (not 403 to avoid info leak)
 - SQL injection attempt: HTTP 400, `"Parametri non validi"`
 - Direct ID access: HTTP 404, `"Risorsa non trovata"`
@@ -2978,6 +2975,7 @@ Create comprehensive security tests covering all access patterns. Target 95%+ co
 - Security test suite: <60s total runtime
 - Individual isolation check: <50ms
 - Full cross-tenant matrix: <10s
+
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing

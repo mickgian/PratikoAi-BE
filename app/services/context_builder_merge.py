@@ -30,6 +30,60 @@ from app.observability.rag_logging import (
 )
 from app.services.knowledge_search_service import SearchResult
 
+# DEV-007 Issue 9: Import QueryComposition for type hints (lazy import to avoid circular)
+# Actual enum imported in get_composition_priority_weights() to avoid import cycles
+
+
+# =============================================================================
+# DEV-007 Issue 9: Adaptive Priority Weights by Query Composition
+# =============================================================================
+# When user attaches a document, LLM classifies their intent and we adjust
+# priority weights accordingly. This ensures document content is prioritized
+# when user wants document analysis, and KB docs when they want regulatory info.
+#
+# Priority weights determine how token budget is allocated:
+# - Higher weight = more tokens allocated to that source
+# - Weights are normalized during budget allocation
+
+COMPOSITION_PRIORITY_WEIGHTS = {
+    # PURE_DOCUMENT: User wants document analysis only
+    # e.g., "calcola la mia pensione" + fondo_pensione.xlsx
+    "pure_doc": {"facts": 0.2, "kb_docs": 0.2, "document_facts": 0.6},
+    # HYBRID: User wants document analysis + regulatory context
+    # e.g., "verifica se rispetta la normativa" + bilancio.xlsx
+    "hybrid": {"facts": 0.25, "kb_docs": 0.5, "document_facts": 0.5},
+    # PURE_KB: No attachments or query unrelated to document
+    # e.g., "aliquote IVA 2024?" (no attachment)
+    "pure_kb": {"facts": 0.3, "kb_docs": 0.6, "document_facts": 0.1},
+    # CONVERSATIONAL: Greetings, chitchat - minimal retrieval needed
+    # e.g., "ciao!"
+    "chat": {"facts": 0.5, "kb_docs": 0.3, "document_facts": 0.2},
+}
+
+
+def get_composition_priority_weights(query_composition: str | None) -> dict[str, float]:
+    """Get priority weights based on query composition type.
+
+    DEV-007 Issue 9: Returns appropriate weights for context source prioritization.
+
+    Args:
+        query_composition: QueryComposition value as string (or None for default)
+
+    Returns:
+        Dict with priority weights for facts, kb_docs, and document_facts
+    """
+    if query_composition and query_composition in COMPOSITION_PRIORITY_WEIGHTS:
+        weights = COMPOSITION_PRIORITY_WEIGHTS[query_composition]
+        logger.info(
+            "composition_weights_applied",
+            composition=query_composition,
+            weights=weights,
+        )
+        return weights
+
+    # Default: PURE_KB behavior (backward compatible)
+    return COMPOSITION_PRIORITY_WEIGHTS["pure_kb"]
+
 
 @dataclass
 class ContextPart:
@@ -105,9 +159,10 @@ class ContextBuilderMerge:
 
         # Default configuration
         # Base budget: 3500 tokens (efficient for most queries)
-        # Dynamic scaling: increases in 500-token steps up to 8000 based on content needs
+        # Dynamic scaling: increases in 500-token steps up to 30000 based on content needs
+        # DEV-007: Increased from 8000 to 30000 to support 5 documents at ~5000 tokens each
         self.default_max_tokens = 3500
-        self.max_budget_limit = 8000
+        self.max_budget_limit = 30000
         self.budget_step_size = 500
         self.default_priority_weights = {"facts": 0.3, "kb_docs": 0.5, "document_facts": 0.2}
 
@@ -191,8 +246,26 @@ class ContextBuilderMerge:
         trace_id = context_data.get("trace_id")
         user_id = context_data.get("user_id")
         session_id = context_data.get("session_id")
-        max_tokens = context_data.get("max_context_tokens", self.default_max_tokens)
+        base_max_tokens = context_data.get("max_context_tokens", self.default_max_tokens)
         priority_weights = context_data.get("priority_weights", self.default_priority_weights)
+
+        # DEV-007 FIX: Dynamic budget increase for multiple document_facts
+        # Each document (payslip, invoice, etc.) can be 1500-2500 tokens
+        # Without this fix, second+ documents get truncated due to budget exhaustion
+        if document_facts and len(document_facts) > 1:
+            # Add 2500 tokens per additional document (conservative estimate for payslips)
+            additional_budget = (len(document_facts) - 1) * 2500
+            max_tokens = min(base_max_tokens + additional_budget, self.max_budget_limit)
+            logger.info(
+                "multi_document_budget_increase",
+                document_count=len(document_facts),
+                base_budget=base_max_tokens,
+                additional_budget=additional_budget,
+                final_budget=max_tokens,
+                max_limit=self.max_budget_limit,
+            )
+        else:
+            max_tokens = base_max_tokens
 
         try:
             # Use timer context manager for performance tracking
@@ -396,19 +469,21 @@ class ContextBuilderMerge:
 
         # Process document facts
         if document_facts:
+            # DEV-007 FIX: Give ALL document_facts equal high priority
+            # Previously: priority decreased with index (0.15 / (i + 1))
+            # This caused later documents (Payslip 9) to be deprioritized/truncated
+            # Now: All document_facts get the same high priority to ensure inclusion
+            base_doc_priority = priority_weights.get("document_facts", 0.2) + 0.15
             for i, doc_fact in enumerate(document_facts):
                 if doc_fact and doc_fact.strip():
                     tokens = self._estimate_tokens(doc_fact)
-                    priority = priority_weights.get("document_facts", 0.2) + (
-                        0.15 / (i + 1)
-                    )  # High priority for early doc facts
 
                     parts.append(
                         ContextPart(
                             type="document_facts",
                             content=doc_fact.strip(),
                             tokens=tokens,
-                            priority_score=priority,
+                            priority_score=base_doc_priority,  # Equal priority for all docs
                             metadata={"index": i, "source": "document_facts"},
                         )
                     )
@@ -510,7 +585,11 @@ class ContextBuilderMerge:
     def _apply_token_budget(
         self, context_parts: list[ContextPart], max_tokens: int
     ) -> tuple[list[ContextPart], bool, bool]:
-        """Apply token budget constraints with priority-based selection."""
+        """Apply token budget constraints with priority-based selection.
+
+        DEV-007 FIX: Removed `break` statement that was silently dropping remaining
+        documents after truncation. Now continues loop to track all excluded parts.
+        """
         if not context_parts:
             return [], False, False
 
@@ -518,17 +597,20 @@ class ContextBuilderMerge:
         sorted_parts = sorted(context_parts, key=lambda x: x.priority_score, reverse=True)
 
         selected_parts = []
+        excluded_parts = []  # DEV-007: Track excluded parts for logging
         total_tokens = 0
         content_truncated = False
         budget_exceeded = False
 
-        for part in sorted_parts:
+        for idx, part in enumerate(sorted_parts):
             if total_tokens + part.tokens <= max_tokens:
                 selected_parts.append(part)
                 total_tokens += part.tokens
             else:
                 # Try to fit truncated content
                 remaining_tokens = max_tokens - total_tokens
+                part_included = False
+
                 if remaining_tokens > 50:  # Minimum meaningful content
                     truncated_content = self._truncate_content(part.content, remaining_tokens)
                     if truncated_content:
@@ -542,9 +624,46 @@ class ContextBuilderMerge:
                         selected_parts.append(truncated_part)
                         content_truncated = True
                         total_tokens = max_tokens
-                        break
+                        part_included = True
+                        # DEV-007 FIX: REMOVED `break` - continue to track excluded parts
+
+                # DEV-007: Track and log excluded parts
+                if not part_included:
+                    excluded_parts.append(part)
+
+                    # Log exclusion with details
+                    logger.warning(
+                        "context_part_excluded_budget",
+                        extra={
+                            "part_index": idx,
+                            "part_type": part.type,
+                            "part_content_preview": part.content[:100] if part.content else "",
+                            "tokens_needed": part.tokens,
+                            "tokens_available": remaining_tokens,
+                            "priority_score": part.priority_score,
+                            "exclusion_reason": "insufficient_budget",
+                        },
+                    )
 
                 budget_exceeded = True
+
+        # DEV-007: Log budget summary
+        if excluded_parts:
+            doc_parts_excluded = sum(1 for p in excluded_parts if p.type == "document_facts")
+            logger.info(
+                "token_budget_application_complete",
+                extra={
+                    "parts_received": len(context_parts),
+                    "parts_included": len(selected_parts),
+                    "parts_excluded": len(excluded_parts),
+                    "doc_parts_excluded": doc_parts_excluded,
+                    "total_tokens_used": total_tokens,
+                    "max_tokens": max_tokens,
+                    "budget_utilization_pct": round(total_tokens / max_tokens * 100, 1) if max_tokens > 0 else 0,
+                    "content_truncated": content_truncated,
+                    "budget_exceeded": budget_exceeded,
+                },
+            )
 
         return selected_parts, content_truncated, budget_exceeded
 
@@ -694,8 +813,57 @@ class ContextBuilderMerge:
             )
 
         # Document facts section
+        # DEV-007 FIX: Use clear document separators (---) instead of spaces
+        # This ensures the LLM can clearly distinguish between multiple uploaded documents
         if doc_parts:
-            doc_text = "\n\nFrom your documents:\n" + " ".join([p.content for p in doc_parts])
+            # DEV-007 DIAGNOSTIC: Log document part order before joining
+            import re
+
+            doc_part_order = []
+            current_uploads = []
+            prior_context = []
+
+            for i, p in enumerate(doc_parts):
+                # Extract marker and filename from content
+                match = re.search(
+                    r"\[(DOCUMENTI ALLEGATI ORA|CONTESTO PRECEDENTE)\] \[Documento: ([^\]]+)\]", p.content
+                )
+                if match:
+                    marker, filename = match.groups()
+                    doc_part_order.append({"index": i, "marker": marker, "filename": filename})
+                    if marker == "DOCUMENTI ALLEGATI ORA":
+                        current_uploads.append(filename)
+                    else:
+                        prior_context.append(filename)
+
+            logger.info(
+                "doc_parts_order_before_joining",
+                doc_parts_count=len(doc_parts),
+                doc_part_order=doc_part_order,
+                current_uploads=current_uploads,
+                prior_context=prior_context,
+                first_part_preview=doc_parts[0].content[:200] if doc_parts else None,
+            )
+
+            # DEV-007 FIX: Add VERY PROMINENT header listing current uploads
+            # This helps the LLM understand which documents to analyze
+            doc_header_parts = ["From your documents:"]
+
+            if current_uploads:
+                upload_count = len(current_uploads)
+                upload_list = ", ".join(current_uploads)
+                doc_header_parts.append(
+                    f"\n\n**>>> NUOVI DOCUMENTI APPENA CARICATI ({upload_count}): {upload_list} <<<**"
+                )
+                doc_header_parts.append(
+                    "**ANALIZZA QUESTI DOCUMENTI - sono quelli che l'utente vuole analizzare ORA.**"
+                )
+
+            if prior_context:
+                doc_header_parts.append(f"\n(Documenti dal contesto precedente: {len(prior_context)})")
+
+            doc_header = "\n".join(doc_header_parts)
+            doc_text = "\n\n" + doc_header + "\n\n" + "\n\n---\n\n".join([p.content for p in doc_parts])
             sections.append(doc_text)
 
         return "\n".join(sections).strip()

@@ -105,7 +105,7 @@ class KnowledgeIntegrator:
                 content=content,
                 category=self._determine_knowledge_category(document_data),
                 subcategory=self._determine_knowledge_subcategory(document_data),
-                source="regulatory_update",
+                source=document_data.get("source", "regulatory_update"),
                 source_url=document_data.get("url", ""),
                 extra_metadata=await self._prepare_metadata(document_data),
                 relevance_score=self._calculate_relevance_score(document_data),

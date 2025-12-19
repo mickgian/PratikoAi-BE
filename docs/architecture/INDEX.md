@@ -36,10 +36,16 @@ This directory contains comprehensive documentation of the RAG system, including
 
 ## 📋 Other Architecture Docs
 
+- **[AI Application Architect Knowledge Base](AI_ARCHITECT_KNOWLEDGE_BASE.md)** ✅ Current
+  - **Purpose:** Domain expertise for reviewing and designing AI/LLM applications **Audience:** Egidio (Architect Agent) and human architects
 - **[Architectural Decision Records (ADRs)](decisions.md)** ✅ Current
   - | ADR | Date | Status | Title | |-----|------|--------|-------|
+- **[PratikoAI Conversation Context Architecture](PRATIKOAI_CONTEXT_ARCHITECTURE.md)** ✅ Current
+  - **Purpose:** Document how conversation context flows through PratikoAI's RAG pipeline **Audience:** Developers and architects working on PratikoAI
 - **[PratikoAI RAG — Multi-Sprint Plan](rag_sprints.md)** ✅ Current
   - This plan sequences the 135 RAG steps into pragmatic sprints with clear scope and commands to open/issues per sprint.
+- **[Prompt Engineering Knowledge Base](PROMPT_ENGINEERING_KNOWLEDGE_BASE.md)** ✅ Current
+  - **Purpose:** Senior-level prompt engineering patterns for PratikoAI **Audience:** Developers, architects, and agents working on prompts
 - **[RAG Architecture Documentation](INDEX.md)** 📚 Historical
   - **Auto-generated:** 2025-12-19 09:15:17
 - **[RAG Conformance Dashboard](rag_conformance.md)** ✅ Current
@@ -69,9 +75,9 @@ The steps directory contains detailed documentation for every step in the RAG pi
 
 ## 📊 Statistics
 
-- **Overview Docs:** 15
+- **Overview Docs:** 18
 - **Detailed Steps:** 134
-- **Total Architecture Docs:** 149
+- **Total Architecture Docs:** 152
 
 ---
 

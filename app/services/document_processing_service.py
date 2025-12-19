@@ -21,7 +21,9 @@ from pdf2image import convert_from_bytes
 from PIL import Image
 
 from app.core.config import get_settings
+from app.core.logging import logger
 from app.models.document_simple import ITALIAN_DOCUMENT_PATTERNS, Document, DocumentType, ItalianDocumentCategory
+from app.services.secure_document_storage import SecureDocumentStorage
 
 
 class DocumentProcessingError(Exception):
@@ -35,6 +37,8 @@ class DocumentProcessor:
 
     def __init__(self):
         self.settings = get_settings()
+        # DEV-007 Issue 5: Use SecureDocumentStorage for encrypted file retrieval
+        self.secure_storage = SecureDocumentStorage()
         # Set Italian locale for number parsing
         try:
             locale.setlocale(locale.LC_ALL, "it_IT.UTF-8")
@@ -73,46 +77,90 @@ class DocumentProcessor:
                 "ocr_used": False,
             }
 
+    async def _get_document_content(self, document: Document) -> bytes:
+        """Retrieve and decrypt document content from secure storage.
+
+        DEV-007 Issue 5: Documents are stored encrypted by SecureDocumentStorage.
+        This method retrieves and decrypts the content for processing.
+
+        Args:
+            document: Document model instance with id for lookup
+
+        Returns:
+            Decrypted document content as bytes
+
+        Raises:
+            DocumentProcessingError: If retrieval fails
+        """
+        result = await self.secure_storage.retrieve_document(document.id)
+
+        if not result.get("success"):
+            error_msg = result.get("error", "Unknown storage error")
+            logger.error(
+                "document_retrieval_failed",
+                document_id=str(document.id),
+                error=error_msg,
+            )
+            raise DocumentProcessingError(f"Failed to retrieve document {document.id}: {error_msg}")
+
+        logger.info(
+            "document_retrieved",
+            document_id=str(document.id),
+            decrypted=result.get("decrypted", False),
+            content_size=len(result.get("content", b"")),
+        )
+
+        return result["content"]
+
     async def _extract_pdf_text(self, document: Document) -> dict[str, Any]:
-        """Extract text from PDF using PyPDF2 and fallback to OCR"""
-        # Read PDF file from storage
-        file_path = self._get_document_storage_path(document)
+        """Extract text from PDF using PyPDF2 and fallback to OCR.
 
+        DEV-007 Issue 5: Now reads from SecureDocumentStorage using bytes.
+        """
         try:
-            with open(file_path, "rb") as file:
-                pdf_reader = PyPDF2.PdfReader(file)
-                pages_text = []
+            # Retrieve decrypted content from secure storage
+            content = await self._get_document_content(document)
 
-                for _page_num, page in enumerate(pdf_reader.pages):
-                    page_text = page.extract_text()
-                    pages_text.append(page_text)
+            # PyPDF2 can read from BytesIO
+            pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
+            pages_text = []
 
-                full_text = "\n".join(pages_text)
+            for _page_num, page in enumerate(pdf_reader.pages):
+                page_text = page.extract_text()
+                pages_text.append(page_text)
 
-                # If text extraction yields very little content, try OCR
-                ocr_used = False
-                if len(full_text.strip()) < 100:  # Likely scanned PDF
-                    ocr_text = await self._extract_pdf_with_ocr(file_path)
-                    if len(ocr_text) > len(full_text):
-                        full_text = ocr_text
-                        ocr_used = True
+            full_text = "\n".join(pages_text)
 
-                return {
-                    "success": True,
-                    "text": full_text,
-                    "text_length": len(full_text),
-                    "page_count": len(pdf_reader.pages),
-                    "ocr_used": ocr_used,
-                }
+            # If text extraction yields very little content, try OCR
+            ocr_used = False
+            if len(full_text.strip()) < 100:  # Likely scanned PDF
+                ocr_text = await self._extract_pdf_with_ocr(content)
+                if len(ocr_text) > len(full_text):
+                    full_text = ocr_text
+                    ocr_used = True
+
+            return {
+                "success": True,
+                "text": full_text,
+                "text_length": len(full_text),
+                "page_count": len(pdf_reader.pages),
+                "ocr_used": ocr_used,
+            }
 
         except Exception as e:
             raise DocumentProcessingError(f"PDF text extraction failed: {str(e)}")
 
-    async def _extract_pdf_with_ocr(self, file_path: str) -> str:
-        """Extract text from PDF using OCR (pytesseract)"""
+    async def _extract_pdf_with_ocr(self, content: bytes) -> str:
+        """Extract text from PDF using OCR (pytesseract).
+
+        DEV-007 Issue 5: Now accepts bytes directly instead of file path.
+
+        Args:
+            content: PDF file content as bytes
+        """
         try:
-            # Convert PDF pages to images
-            images = convert_from_bytes(open(file_path, "rb").read())
+            # Convert PDF pages to images from bytes
+            images = convert_from_bytes(content)
 
             ocr_text_parts = []
             for image in images:
@@ -126,11 +174,16 @@ class DocumentProcessor:
             raise DocumentProcessingError(f"OCR extraction failed: {str(e)}")
 
     async def _extract_excel_text(self, document: Document) -> dict[str, Any]:
-        """Extract text content from Excel files"""
-        file_path = self._get_document_storage_path(document)
+        """Extract text content from Excel files.
 
+        DEV-007 Issue 5: Now reads from SecureDocumentStorage using BytesIO.
+        """
         try:
-            workbook = openpyxl.load_workbook(file_path)
+            # Retrieve decrypted content from secure storage
+            content = await self._get_document_content(document)
+
+            # openpyxl can read from BytesIO
+            workbook = openpyxl.load_workbook(io.BytesIO(content))
             all_text = []
 
             for worksheet in workbook.worksheets:
@@ -160,33 +213,38 @@ class DocumentProcessor:
             raise DocumentProcessingError(f"Excel text extraction failed: {str(e)}")
 
     async def _extract_csv_text(self, document: Document) -> dict[str, Any]:
-        """Extract text content from CSV files"""
-        file_path = self._get_document_storage_path(document)
+        """Extract text content from CSV files.
 
+        DEV-007 Issue 5: Now reads from SecureDocumentStorage using StringIO.
+        """
         try:
+            # Retrieve decrypted content from secure storage
+            content = await self._get_document_content(document)
+
             # Try multiple encodings for Italian support
             encodings = ["utf-8-sig", "utf-8", "iso-8859-1", "windows-1252"]
 
             for encoding in encodings:
                 try:
-                    with open(file_path, encoding=encoding) as file:
-                        csv_reader = csv.reader(file)
-                        rows = list(csv_reader)
+                    # Decode bytes and use StringIO
+                    text_content = content.decode(encoding)
+                    csv_reader = csv.reader(io.StringIO(text_content))
+                    rows = list(csv_reader)
 
-                        text_lines = []
-                        for row in rows:
-                            text_lines.append(" | ".join(row))
+                    text_lines = []
+                    for row in rows:
+                        text_lines.append(" | ".join(row))
 
-                        full_text = "\n".join(text_lines)
+                    full_text = "\n".join(text_lines)
 
-                        return {
-                            "success": True,
-                            "text": full_text,
-                            "text_length": len(full_text),
-                            "row_count": len(rows),
-                            "encoding_used": encoding,
-                            "ocr_used": False,
-                        }
+                    return {
+                        "success": True,
+                        "text": full_text,
+                        "text_length": len(full_text),
+                        "row_count": len(rows),
+                        "encoding_used": encoding,
+                        "ocr_used": False,
+                    }
 
                 except UnicodeDecodeError:
                     continue
@@ -390,11 +448,16 @@ class DocumentProcessor:
         return {"category": best_category.value, "confidence": max_confidence}
 
     async def process_excel(self, document: Document) -> dict[str, Any]:
-        """Process Excel file and extract tabular data"""
-        file_path = self._get_document_storage_path(document)
+        """Process Excel file and extract tabular data.
 
+        DEV-007 Issue 5: Now reads from SecureDocumentStorage using BytesIO.
+        """
         try:
-            workbook = openpyxl.load_workbook(file_path)
+            # Retrieve decrypted content from secure storage
+            content = await self._get_document_content(document)
+
+            # openpyxl can read from BytesIO
+            workbook = openpyxl.load_workbook(io.BytesIO(content))
             tables = {}
             financial_data = {}
 
@@ -471,16 +534,22 @@ class DocumentProcessor:
         return indicators
 
     async def process_csv(self, document: Document) -> dict[str, Any]:
-        """Process CSV file with Italian number format support"""
-        file_path = self._get_document_storage_path(document)
+        """Process CSV file with Italian number format support.
 
+        DEV-007 Issue 5: Now reads from SecureDocumentStorage using StringIO.
+        """
         try:
+            # Retrieve decrypted content from secure storage
+            content = await self._get_document_content(document)
+
             # Try multiple encodings
             encodings = ["utf-8-sig", "utf-8", "iso-8859-1", "windows-1252"]
 
             for encoding in encodings:
                 try:
-                    df = pd.read_csv(file_path, encoding=encoding)
+                    # Decode bytes and use StringIO with pandas
+                    text_content = content.decode(encoding)
+                    df = pd.read_csv(io.StringIO(text_content))
                     break
                 except UnicodeDecodeError:
                     continue
@@ -590,24 +659,18 @@ class DocumentProcessor:
             return None
 
     async def _detect_encoding(self, document: Document) -> dict[str, Any]:
-        """Detect file encoding for text files"""
-        file_path = self._get_document_storage_path(document)
+        """Detect file encoding for text files.
 
-        with open(file_path, "rb") as file:
-            raw_data = file.read()
+        DEV-007 Issue 5: Now reads from SecureDocumentStorage.
+        """
+        # Retrieve decrypted content from secure storage
+        content = await self._get_document_content(document)
 
         # Check for BOM
-        has_bom = raw_data.startswith(b"\xef\xbb\xbf")
+        has_bom = content.startswith(b"\xef\xbb\xbf")
 
         return {
             "encoding": "utf-8-sig" if has_bom else "utf-8",
             "has_bom": has_bom,
             "confidence": 0.95 if has_bom else 0.8,
         }
-
-    def _get_document_storage_path(self, document: Document) -> str:
-        """Get file system path for stored document"""
-        # This would integrate with the secure storage system
-        # For now, return a placeholder path
-        storage_dir = Path("/tmp/document_storage")  # Would be configurable
-        return str(storage_dir / document.filename)

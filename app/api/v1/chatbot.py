@@ -13,6 +13,7 @@ from fastapi import (
     Request,
 )
 from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_session
 from app.core.config import settings
@@ -35,6 +36,7 @@ from app.core.sse_write import (
     write_sse,
 )
 from app.core.streaming_guard import SinglePassStream
+from app.models.database import get_db
 from app.models.session import Session
 from app.observability.rag_logging import rag_step_log
 from app.observability.rag_trace import rag_trace_context
@@ -43,6 +45,11 @@ from app.schemas.chat import (
     ChatResponse,
     Message,
     StreamResponse,
+)
+from app.services.attachment_resolver import (
+    AttachmentNotFoundError,
+    AttachmentOwnershipError,
+    attachment_resolver,
 )
 from app.services.chat_history_service import chat_history_service
 
@@ -56,6 +63,7 @@ async def chat(
     request: Request,
     chat_request: ChatRequest,
     session: Session = Depends(get_current_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Process a chat request using LangGraph.
 
@@ -63,6 +71,7 @@ async def chat(
         request: The FastAPI request object for rate limiting.
         chat_request: The chat request containing messages.
         session: The current session from the auth token.
+        db: Database session for attachment resolution.
 
     Returns:
         ChatResponse: The processed chat response.
@@ -199,7 +208,49 @@ async def chat(
                 anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
             )
 
-            result = await agent.get_response(processed_messages, session.id, user_id=session.user_id)
+            # Resolve file attachments if provided (DEV-007)
+            resolved_attachments = None
+            if chat_request.attachment_ids:
+                try:
+                    resolved_attachments = await attachment_resolver.resolve_attachments(
+                        db=db,
+                        attachment_ids=chat_request.attachment_ids,
+                        user_id=session.user_id,  # DEV-007 Issue 7: Pass int directly
+                    )
+                    logger.info(
+                        "attachments_resolved",
+                        session_id=session.id,
+                        attachment_count=len(resolved_attachments),
+                        attachment_ids=[str(aid) for aid in chat_request.attachment_ids],
+                    )
+                except AttachmentNotFoundError as e:
+                    logger.warning(
+                        "attachment_not_found",
+                        session_id=session.id,
+                        error=str(e),
+                    )
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Documento allegato non trovato: {e.attachment_id}",
+                    )
+                except AttachmentOwnershipError as e:
+                    logger.warning(
+                        "attachment_ownership_denied",
+                        session_id=session.id,
+                        error=str(e),
+                    )
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Non sei autorizzato ad accedere a questo documento allegato.",
+                    )
+
+            # Pass attachments to agent (will be injected into RAG state)
+            result = await agent.get_response(
+                processed_messages,
+                session.id,
+                user_id=session.user_id,
+                attachments=resolved_attachments,
+            )
 
             logger.info("chat_request_processed", session_id=session.id)
 
@@ -242,6 +293,7 @@ async def chat_stream(
     request: Request,
     chat_request: ChatRequest,
     session: Session = Depends(get_current_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Process a chat request using LangGraph with streaming response.
 
@@ -249,6 +301,7 @@ async def chat_stream(
         request: The FastAPI request object for rate limiting.
         chat_request: The chat request containing messages.
         session: The current session from the auth token.
+        db: Database session for attachment resolution.
 
     Returns:
         StreamingResponse: A streaming response of the chat completion.
@@ -266,6 +319,42 @@ async def chat_stream(
             legal_basis="Service provision under contract",
             anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
         )
+
+        # Resolve file attachments if provided (DEV-007)
+        resolved_attachments = None
+        if chat_request.attachment_ids:
+            try:
+                resolved_attachments = await attachment_resolver.resolve_attachments(
+                    db=db,
+                    attachment_ids=chat_request.attachment_ids,
+                    user_id=session.user_id,  # DEV-007 Issue 7: Pass int directly
+                )
+                logger.info(
+                    "stream_attachments_resolved",
+                    session_id=session.id,
+                    attachment_count=len(resolved_attachments),
+                    attachment_ids=[str(aid) for aid in chat_request.attachment_ids],
+                )
+            except AttachmentNotFoundError as e:
+                logger.warning(
+                    "stream_attachment_not_found",
+                    session_id=session.id,
+                    error=str(e),
+                )
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Documento allegato non trovato: {e.attachment_id}",
+                )
+            except AttachmentOwnershipError as e:
+                logger.warning(
+                    "stream_attachment_ownership_denied",
+                    session_id=session.id,
+                    error=str(e),
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail="Non sei autorizzato ad accedere a questo documento allegato.",
+                )
 
         # Anonymize request if privacy settings require it (outer function)
         processed_messages = chat_request.messages
@@ -418,10 +507,20 @@ async def chat_stream(
                     # Track if response came from golden set (for model_used in chat history)
                     golden_hit = False
 
+                    # Send progress event for attachment analysis (DEV-007)
+                    if resolved_attachments:
+                        # Send SSE keepalive/progress event for document analysis
+                        yield ": Analisi documento in corso...\n\n"
+
                     with llm_stream_duration_seconds.labels(model="llm").time():
                         # Wrap the original stream to prevent double iteration
                         original_stream = SinglePassStream(
-                            agent.get_stream_response(processed_messages, session.id, user_id=session.user_id)
+                            agent.get_stream_response(
+                                processed_messages,
+                                session.id,
+                                user_id=session.user_id,
+                                attachments=resolved_attachments,
+                            )
                         )
 
                         async for chunk in original_stream:
@@ -625,7 +724,9 @@ async def get_session_history(
             )
 
         # Retrieve history from PostgreSQL
+        # DEV-007 FIX: Add required user_id parameter
         messages = await chat_history_service.get_session_history(
+            user_id=session.user_id,
             session_id=session_id,
             limit=limit,
             offset=offset,

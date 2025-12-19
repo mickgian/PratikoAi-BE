@@ -2,7 +2,7 @@
 
 **Auto-generated:** 2025-12-19 09:18:45
 
-> 💡 This directory contains 22 technical documentation files plus 153 architecture documents.
+> 💡 This directory contains 22 technical documentation files plus 159 architecture documents.
 
 ---
 
@@ -13,7 +13,7 @@
 - **[Architecture Overview](architecture/INDEX.md)** - Main architecture index
   - RAG flow implementation documents
   - Policy gated autonomy
-  - 153 total architecture documents including 135 detailed steps
+  - 159 total architecture documents including 135 detailed steps
 
 ---
 
@@ -82,8 +82,8 @@
 - **Feature Docs:** 9
 - **Database/Search:** 5
 - **Operations:** 3
-- **Architecture:** 153
-- **Total:** 175
+- **Architecture:** 159
+- **Total:** 181
 
 ---
 

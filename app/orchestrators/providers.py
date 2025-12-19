@@ -5,11 +5,15 @@
 from contextlib import nullcontext
 from datetime import UTC
 from typing import (
+    TYPE_CHECKING,
     Any,
     Dict,
     List,
     Optional,
 )
+
+if TYPE_CHECKING:
+    from app.schemas.chat import Message
 
 try:
     from app.observability.rag_logging import (
@@ -23,6 +27,73 @@ except Exception:  # pragma: no cover
 
     def rag_step_timer(*args, **kwargs):
         return nullcontext()
+
+
+def _normalize_messages_to_pydantic(messages: list[Any]) -> list["Message"]:
+    """Convert messages from any format to pydantic Message objects.
+
+    DEV-007 FIX: Handle LangChain BaseMessage objects that result from
+    add_messages reducer in LangGraph checkpoint merging.
+
+    Supported formats:
+    - dict: {"role": "user", "content": "text"}
+    - pydantic Message: Already correct format
+    - LangChain BaseMessage: HumanMessage, AIMessage, SystemMessage
+      (these have .type attribute: "human", "ai", "system")
+
+    Args:
+        messages: List of messages in any supported format
+
+    Returns:
+        List of pydantic Message objects
+    """
+    from app.schemas.chat import Message
+
+    if not messages:
+        return []
+
+    result = []
+    for msg in messages:
+        # Already a pydantic Message
+        if isinstance(msg, Message):
+            result.append(msg)
+            continue
+
+        # Dict format (common case)
+        if isinstance(msg, dict):
+            result.append(Message.model_validate(msg))
+            continue
+
+        # LangChain BaseMessage (HumanMessage, AIMessage, SystemMessage)
+        # These have .type attribute instead of .role
+        if hasattr(msg, "type") and hasattr(msg, "content"):
+            # Map LangChain types to standard roles
+            type_to_role = {
+                "human": "user",
+                "ai": "assistant",
+                "system": "system",
+                "assistant": "assistant",  # Some versions use this
+                "user": "user",  # Some versions use this
+            }
+            msg_type = getattr(msg, "type", "human")
+            role = type_to_role.get(msg_type, "user")
+            content = str(getattr(msg, "content", ""))
+            result.append(Message(role=role, content=content))
+            continue
+
+        # Fallback: try to extract role and content attributes
+        if hasattr(msg, "role") and hasattr(msg, "content"):
+            role = getattr(msg, "role", "user")
+            if role not in ("user", "assistant", "system"):
+                role = "user"
+            content = str(getattr(msg, "content", ""))
+            result.append(Message(role=role, content=content))
+            continue
+
+        # Last resort: convert to string
+        result.append(Message(role="user", content=str(msg)))
+
+    return result
 
 
 def step_48__select_provider(
@@ -204,11 +275,8 @@ def step_51__cheap_provider(
         session_id = params.get("session_id")
 
         try:
-            # Convert dict messages to Message objects if needed
-            from app.schemas.chat import Message
-
-            if messages and isinstance(messages[0], dict):
-                messages = [Message.model_validate(msg) for msg in messages]
+            # DEV-007 FIX: Normalize messages from any format (dict, BaseMessage, Message)
+            messages = _normalize_messages_to_pydantic(messages or [])
 
             # Get the LLM factory and select cheapest provider using cost-optimized strategy
             factory = get_llm_factory()
@@ -416,11 +484,8 @@ def step_52__best_provider(
         session_id = params.get("session_id")
 
         try:
-            # Convert dict messages to Message objects if needed
-            from app.schemas.chat import Message
-
-            if messages and isinstance(messages[0], dict):
-                messages = [Message.model_validate(msg) for msg in messages]
+            # DEV-007 FIX: Normalize messages from any format (dict, BaseMessage, Message)
+            messages = _normalize_messages_to_pydantic(messages or [])
 
             # Get the LLM factory and select best provider using quality-first strategy
             factory = get_llm_factory()
@@ -582,11 +647,8 @@ def step_53__balance_provider(
         session_id = params.get("session_id")
 
         try:
-            # Convert dict messages to Message objects if needed
-            from app.schemas.chat import Message
-
-            if messages and isinstance(messages[0], dict):
-                messages = [Message.model_validate(msg) for msg in messages]
+            # DEV-007 FIX: Normalize messages from any format (dict, BaseMessage, Message)
+            messages = _normalize_messages_to_pydantic(messages or [])
 
             # Get the LLM factory and select balanced provider
             factory = get_llm_factory()
@@ -1289,11 +1351,8 @@ def step_58__cheaper_provider(
         session_id = params.get("session_id")
 
         try:
-            # Convert dict messages to Message objects if needed
-            from app.schemas.chat import Message
-
-            if messages and isinstance(messages[0], dict):
-                messages = [Message.model_validate(msg) for msg in messages]
+            # DEV-007 FIX: Normalize messages from any format (dict, BaseMessage, Message)
+            messages = _normalize_messages_to_pydantic(messages or [])
 
             # Try to find a cheaper provider by forcing cost-optimized strategy with stricter budget
             factory = get_llm_factory()
@@ -1470,11 +1529,8 @@ async def _execute_llm_api_call(ctx: dict[str, Any]) -> dict[str, Any]:
         # Extract messages and model from context
         messages = ctx.get("messages", [])
 
-        # Convert dict messages to Message objects if needed
-        from app.schemas.chat import Message
-
-        if messages and isinstance(messages[0], dict):
-            messages = [Message.model_validate(msg) for msg in messages]
+        # DEV-007 FIX: Normalize messages from any format (dict, BaseMessage, Message)
+        messages = _normalize_messages_to_pydantic(messages)
 
         model = ctx.get("model")
 

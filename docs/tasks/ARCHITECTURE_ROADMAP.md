@@ -665,63 +665,61 @@ Created unified security utilities module with comprehensive input sanitization:
 
 ---
 
-## Q1 2025 (January - March)
-
-### 📋 Planned Tasks
-
 <details>
 <summary>
-<h3>DEV-BE-74: GDPR Compliance Audit (QA Environment)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3-4 days (with Claude Code generating checklists/docs) | <strong>Dependencies:</strong> DEV-BE-75 ✅ (QA environment live) | <strong>Status:</strong> ❌ NOT STARTED<br>
-Comprehensive GDPR compliance audit on QA environment to validate all required features.
+<h3>DEV-BE-78: Retrieval Ranking Optimization (Phase 1)</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1.5-2 weeks (Actual: ~2 days) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
+Phase 1 Quick Wins achieved 66.7% official source precision (2x target). Phase 2 Cross-Encoder deferred post-MVP.
 </summary>
 
-### DEV-BE-74: GDPR Compliance Audit (QA Environment)
-**Priority:** HIGH | **Effort:** 3-4 days (with Claude Code generating checklists/docs) | **Dependencies:** DEV-BE-75 ✅ (QA environment live)
+### DEV-BE-78: Retrieval Ranking Optimization (Phase 1)
+**Priority:** MEDIUM | **Effort:** 1.5-2 weeks (Actual: ~2 days) | **Dependencies:** None | **Status:** ✅ COMPLETED (2024-12-19)
 
 **Problem:**
-Must ensure GDPR compliance before any production launch. QA environment is the first place to validate compliance features.
+Hybrid retrieval ranking was suboptimal with weight configuration inconsistency between services. The `text_quality` field existed but wasn't used in scoring.
 
 **Solution:**
-Comprehensive GDPR compliance audit on QA environment to validate all required features.
+Implemented Phase 1 Quick Wins:
+- Query classifier for dynamic weight adjustment (DEFINITIONAL/RECENT/CONCEPTUAL/DEFAULT)
+- Source authority weighting (+0.15 official, +0.10 semi-official)
+- Text quality integration into hybrid scoring (0.10 weight)
+- Fixed weight configuration bug between postgres_retriever.py and knowledge_search_service.py
+- Unified weights in config.py (FTS=0.45, Vec=0.30, Recency=0.10, Quality=0.10, Source=0.05)
 
-**Audit Checklist:**
+**Files Created:**
+- `app/services/query_classifier.py` (109 lines)
+- `app/services/ranking_utils.py` (75 lines)
+- `scripts/backfill_text_quality.py`
+- `scripts/benchmark_ranking_precision.py`
+- `tests/services/test_query_classifier.py` (37 tests)
+- `tests/retrieval/test_ranking_optimization.py` (24 tests)
 
-**1. Right to Access (Data Export)**
-- [ ] Test user data export functionality
-- [ ] Verify exported data includes all user information
-- [ ] Validate export format (JSON/PDF)
-- [ ] Verify export completes within 30 days (GDPR requirement)
+**Files Modified:**
+- `app/core/config.py` (new weight constants, SOURCE_AUTHORITY_WEIGHTS)
+- `app/services/knowledge_search_service.py` (quality/source integration)
+- `tests/test_knowledge_search_service.py` (updated for new weights)
 
-**2. Right to Erasure (Data Deletion)**
-- [ ] Test user account deletion
-- [ ] Verify complete data removal
-- [ ] Validate deletion completes within 30 days
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 61 tests created
+- ✅ Weight inconsistency bug fixed - unified in config.py
+- ✅ text_quality integrated into scoring - 0.10 weight
+- ✅ Source authority weighting implemented - official +0.15, semi-official +0.10
+- ✅ Query-type detection implemented - DEFINITIONAL/RECENT/CONCEPTUAL/DEFAULT
+- ✅ Precision@14 improvement: **66.7% official source precision** (target was ≥30%)
+- ✅ No latency regression (<5ms) - scoring <2ms
+- ✅ 90%+ test coverage for new code
+- ✅ All existing tests pass
 
-**3. Consent Management**
-- [ ] Verify cookie consent banner functionality
-- [ ] Test opt-in/opt-out mechanisms
-- [ ] Validate consent records are stored
+**Phase 2 (Cross-Encoder) - DEFERRED POST-MVP:**
+Phase 1 exceeded the target by 2x (66.7% vs 30%). The remaining precision gap is due to content coverage (missing topics in knowledge base), not ranking quality. Cross-encoder would add complexity and latency for diminishing returns.
 
-**4. Data Retention Policies**
-- [ ] Verify automatic data deletion after retention period
-- [ ] Test conversation data retention (default: 90 days)
-- [ ] Validate log data retention (default: 30 days)
-
-**5. Privacy by Design**
-- [ ] Verify minimal data collection
-- [ ] Test data encryption at rest (PostgreSQL, Redis)
-- [ ] Validate data encryption in transit (HTTPS/TLS)
-
-**Acceptance Criteria:**
-- ✅ All 8 audit categories pass on QA
-- ✅ Data export works correctly
-- ✅ Data deletion works completely
-- ✅ Documentation complete
+**When to Revisit Phase 2:** If official source precision drops below 50% or user feedback indicates ranking quality issues.
 
 </details>
 
 ---
+
+## Planned Tasks (Ordered by Implementation Priority)
 
 <details>
 <summary>
@@ -780,13 +778,67 @@ Deploy complete PratikoAI backend to Hetzner VPS using existing docker-compose.y
 
 <details>
 <summary>
+<h3>DEV-BE-74: GDPR Compliance Audit (QA Environment)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3-4 days (with Claude Code generating checklists/docs) | <strong>Dependencies:</strong> DEV-BE-75 ✅ (QA environment live) | <strong>Status:</strong> ❌ NOT STARTED<br>
+Comprehensive GDPR compliance audit on QA environment to validate all required features.
+</summary>
+
+### DEV-BE-74: GDPR Compliance Audit (QA Environment)
+**Priority:** HIGH | **Effort:** 3-4 days (with Claude Code generating checklists/docs) | **Dependencies:** DEV-BE-75 ✅ (QA environment live)
+
+**Problem:**
+Must ensure GDPR compliance before any production launch. QA environment is the first place to validate compliance features.
+
+**Solution:**
+Comprehensive GDPR compliance audit on QA environment to validate all required features.
+
+**Audit Checklist:**
+
+**1. Right to Access (Data Export)**
+- [ ] Test user data export functionality
+- [ ] Verify exported data includes all user information
+- [ ] Validate export format (JSON/PDF)
+- [ ] Verify export completes within 30 days (GDPR requirement)
+
+**2. Right to Erasure (Data Deletion)**
+- [ ] Test user account deletion
+- [ ] Verify complete data removal
+- [ ] Validate deletion completes within 30 days
+
+**3. Consent Management**
+- [ ] Verify cookie consent banner functionality
+- [ ] Test opt-in/opt-out mechanisms
+- [ ] Validate consent records are stored
+
+**4. Data Retention Policies**
+- [ ] Verify automatic data deletion after retention period
+- [ ] Test conversation data retention (default: 90 days)
+- [ ] Validate log data retention (default: 30 days)
+
+**5. Privacy by Design**
+- [ ] Verify minimal data collection
+- [ ] Test data encryption at rest (PostgreSQL, Redis)
+- [ ] Validate data encryption in transit (HTTPS/TLS)
+
+**Acceptance Criteria:**
+- ✅ All 8 audit categories pass on QA
+- ✅ Data export works correctly
+- ✅ Data deletion works completely
+- ✅ Documentation complete
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-BE-77: Implement Prometheus + Grafana Monitoring</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1-2 weeks (dashboards already in docker-compose.yml) | <strong>Dependencies:</strong> None | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1-2 weeks (dashboards already in docker-compose.yml) | <strong>Dependencies:</strong> DEV-BE-75 (QA environment required) | <strong>Status:</strong> ❌ NOT STARTED<br>
 Industry-standard observability stack: Prometheus (metrics collection) + Grafana (visualization/alerting).
 </summary>
 
 ### DEV-BE-77: Implement Prometheus + Grafana Monitoring
-**Priority:** HIGH | **Effort:** 1-2 weeks | **Dependencies:** None
+**Priority:** HIGH | **Effort:** 1-2 weeks | **Dependencies:** DEV-BE-75 (QA environment required for monitoring)
 
 **Problem:**
 Current monitoring relies on basic logs and periodic REST API metrics calls. No real-time visibility into RAG performance, cache hit rates, or automatic alerting on degradation.
@@ -830,248 +882,189 @@ Industry-standard observability stack: Prometheus (metrics collection) + Grafana
 
 <details>
 <summary>
-<h3>DEV-BE-78: Retrieval Ranking Optimization (Phased Approach)</h3>
-<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1.5-2 weeks | <strong>Dependencies:</strong> None | <strong>Status:</strong> ✅ PHASE 1 COMPLETE | Phase 2 DEFERRED<br>
-Phase 1 Quick Wins completed (+66.7% official source precision). Phase 2 Cross-Encoder deferred post-MVP.
+<h3>DEV-BE-86: Automated Index Health Monitoring + Rebuild</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 2-3 days | <strong>Dependencies:</strong> DEV-BE-77 | <strong>Status:</strong> ❌ NOT STARTED<br>
+Automated monitoring + alerts + rebuild scripts for FTS and pgvector indexes.
 </summary>
 
-### DEV-BE-78: Retrieval Ranking Optimization (Phased Approach)
+### DEV-BE-86: Automated Index Health Monitoring + Rebuild
 
-**Reference:** `docs/tasks/ARCHITECTURE_ROADMAP.md` (Retrieval Ranking Optimization section)
+**Reference:** `docs/DATABASE_ARCHITECTURE.md`, `docs/PostgreSQL_Full_Text_Search.md`
 
-**Priority:** MEDIUM | **Effort:** 1.5-2 weeks | **Status:** ✅ PHASE 1 COMPLETE (2024-12-19) | Phase 2 DEFERRED POST-MVP
+**Priority:** MEDIUM | **Effort:** 2-3 days | **Status:** NOT STARTED
 
 **Problem:**
-Hybrid retrieval returns top-14 candidates, but ranking may not be optimal. Several low-hanging fruit optimizations exist before implementing computationally expensive cross-encoder reranking. Additionally, there is a **critical bug**: weight configuration is inconsistent between `postgres_retriever.py` (uses config.py: FTS=0.50, Vector=0.35, Recency=0.15) and `knowledge_search_service.py` (hardcoded: BM25=0.40, Vector=0.40, Recency=0.20).
+If FTS (GIN) or pgvector (IVFFlat) indexes become corrupted or bloated, queries become extremely slow (10-100x slower). Currently requires manual detection + rebuild with no automated alerting.
 
 **Solution:**
-Two-phase approach:
-1. **Phase 1 (Quick Wins):** Leverage existing data (text_quality field), fix weight inconsistency, add source authority weighting, and implement query-type detection for +15-25% precision improvement
-2. **Phase 2 (Cross-Encoder):** Only proceed if Phase 1 achieves <15% precision improvement; add cross-encoder reranking for +10-15% additional precision
+Implement automated index health monitoring via Prometheus metrics, Grafana alerts when index scan ratio drops below thresholds, and automated rebuild scripts with weekly health checks.
 
-**Agent Assignment:** @Ezio (primary), @Clelia (tests/review)
+**Agent Assignment:** @Primo (primary - database expertise), @Ezio (review - backend integration)
 
 **Dependencies:**
-- **Blocking:** None
-- **Unlocks:** Future RAG quality improvements, cost optimization via better retrieval
+- **Blocking:** DEV-BE-77 (Prometheus/Grafana monitoring must be operational)
+- **Unlocks:** Production database reliability, automated ops workflows
 
-**Change Classification:** MODIFYING
+**Change Classification:** ADDITIVE
 
 **Impact Analysis:**
 - **Primary Files:**
-  - `app/retrieval/postgres_retriever.py` (scoring formula modification)
-  - `app/services/knowledge_search_service.py` (weight unification, query classification)
-  - `app/core/config.py` (new config values)
+  - `monitoring/exporters/postgres_queries.yml` (ADD index health queries)
+  - `monitoring/grafana/provisioning/alerting/alert_rules.yml` (ADD index alerts)
+  - `scripts/ops/rebuild_indexes.sh` (NEW)
+  - `app/services/index_health_service.py` (NEW)
 - **Affected Files:**
-  - `app/core/langgraph/tools/knowledge_search_tool.py` (uses knowledge_search_service)
-  - `app/orchestrators/kb.py` (uses knowledge_search_service)
-  - `app/orchestrators/preflight.py` (uses knowledge_search_service)
-  - `app/services/kb_delta_decision.py` (uses knowledge_search_service)
+  - `docker-compose.yml` (may need cron container or scheduled task)
+  - `monitoring/grafana/dashboards/performance.json` (ADD index health panel)
 - **Related Tests:**
-  - `tests/test_knowledge_search_service.py` (direct)
-  - `tests/integration/test_knowledge_search.py` (integration)
-  - `tests/integration/test_golden_set_retrieval_workflow.py` (consumer)
-- **Baseline Command:** `pytest tests/test_knowledge_search_service.py tests/integration/test_knowledge_search.py -v`
+  - `tests/services/test_index_health_service.py` (NEW - direct)
+  - `tests/integration/test_index_rebuild.py` (NEW - integration)
+- **Baseline Command:** `pytest tests/services/ -v -k "database or index"`
 
 **Pre-Implementation Verification:**
-- [ ] Baseline tests pass: `pytest tests/test_knowledge_search_service.py tests/integration/test_knowledge_search.py -v`
-- [ ] Existing weight behavior documented (current config vs hardcoded values)
-- [ ] No pre-existing test failures in retrieval-related tests
-- [ ] Review `text_quality` field usage in `knowledge_items` table
+- [ ] DEV-BE-77 completed and Prometheus/Grafana operational
+- [ ] Baseline tests pass for database-related services
+- [ ] Existing postgres_queries.yml reviewed and understood
+- [ ] Current alert_rules.yml patterns reviewed
 
 **Error Handling:**
-- Query classification failure: Fall back to default weights, log warning
-- Source authority lookup failure: Use baseline (no boost), log warning
-- text_quality NULL value: Use neutral score (0.5), no error
-- Cross-encoder model load failure (Phase 2): Fall back to hybrid-only, HTTP 200 with degraded quality flag
-- Cross-encoder timeout (>100ms): Fall back to hybrid-only, log warning
-- **Logging:** All errors MUST be logged with context (query, operation, weights_used) at ERROR level
+- Index rebuild fails: HTTP 500, `"Errore durante la ricostruzione dell'indice: {index_name}"`, retry with exponential backoff
+- Database connection lost during rebuild: HTTP 503, `"Database non disponibile durante la manutenzione"`
+- Insufficient disk space for rebuild: HTTP 507, `"Spazio su disco insufficiente per ricostruzione indice"`
+- Index not found: HTTP 404, `"Indice non trovato: {index_name}"`
+- Permission denied: HTTP 403, `"Permessi insufficienti per operazione di manutenzione"`
+- **Logging:** All errors MUST be logged with context (operation, index_name, table_name, error_type) at ERROR level
 
 **Performance Requirements:**
-- Phase 1: No latency regression (<5ms additional)
-- Phase 2: Cross-encoder reranking <100ms for 30 candidates (p95)
-- Combined scoring calculation: <2ms
-- Query classification: <1ms (regex-based, no LLM)
+- Index health check query: <100ms
+- Index rebuild (small table <100K rows): <30s
+- Index rebuild (large table >1M rows): <5min with progress tracking
+- Prometheus metric scraping: <50ms
+- No impact on query performance during health checks
 
 **Edge Cases:**
-- **Nulls/Empty:** `text_quality` NULL → neutral score (0.5); empty query → default weights
-- **Boundaries:** Weights sum >1.0 or <1.0 → normalize, log warning; text_quality outside 0-1 → clamp
-- **Validation:** Invalid source domain → no boost; regex failure → default weights
-- **Concurrency:** Multiple queries with different configs → thread-safe config access
-- **Error Recovery:** Cross-encoder unavailable (Phase 2) → graceful fallback to hybrid-only
+- **Nulls/Empty:** No indexes exist in database (startup state)
+- **Boundaries:** Very large indexes (>10GB) require CONCURRENTLY rebuild
+- **Concurrency:** Rebuild running while queries executing (use CONCURRENTLY)
+- **Validation:** Invalid index name in rebuild request
+- **Soft Delete:** Index on soft-deleted table columns
+- **Tenant Isolation:** N/A (infrastructure-level task)
+- **Error Recovery:** Partial rebuild failure (transaction rollback)
+- **IVFFlat specific:** Lists parameter recalculation on data growth
+- **GIN specific:** Pending list cleanup during fastupdate
 
----
+**Files:**
 
-#### Phase 1: Quick Wins (2-3 days)
+**New Files:**
+- `scripts/ops/rebuild_indexes.sh` - Automated index rebuild bash script
+- `scripts/ops/check_index_health.sql` - SQL queries for index health metrics
+- `app/services/index_health_service.py` - Python service for index management
+- `docs/runbooks/INDEX_MAINTENANCE.md` - Operations runbook
 
-**1.1 Integrate `text_quality` into Ranking Score**
+**Modified Files:**
+- `monitoring/exporters/postgres_queries.yml` - Add index health metrics
+- `monitoring/grafana/provisioning/alerting/alert_rules.yml` - Add index alerts
+- `monitoring/grafana/dashboards/performance.json` - Add index health panel
 
-**File:** `app/retrieval/postgres_retriever.py`, `app/services/knowledge_search_service.py`
+**Fields/Methods:**
 
-The `text_quality` field (0.0-1.0) exists in `knowledge_items` table but is NOT used in scoring.
+`app/services/index_health_service.py`:
+- `get_index_health_metrics() -> dict[str, IndexHealthMetric]` - Collect all index health data
+- `get_index_scan_ratio(index_name: str) -> float` - Calculate scan ratio for specific index
+- `get_index_bloat_ratio(index_name: str) -> float` - Calculate bloat percentage
+- `rebuild_index(index_name: str, concurrently: bool = True) -> RebuildResult` - Rebuild specific index
+- `rebuild_all_unhealthy_indexes(threshold: float = 0.5) -> list[RebuildResult]` - Batch rebuild
+- `schedule_weekly_check() -> None` - Register weekly health check job
 
-- [ ] Add `text_quality` weight to combined score formula
-- [ ] Default weight: 0.10 (reduce other weights proportionally)
-- [ ] Documents with NULL `text_quality` get neutral score (0.5)
+`monitoring/exporters/postgres_queries.yml` (new metrics):
+- `pg_index_scan_ratio` - Index scan vs sequential scan ratio per index
+- `pg_index_bloat_bytes` - Estimated bloat in bytes per index
+- `pg_index_size_bytes` - Total index size per index
+- `pg_index_last_vacuum` - Timestamp of last vacuum per table
 
-**1.2 Unify Weight Configuration (BUG FIX)**
-
-**File:** `app/core/config.py`, `app/services/knowledge_search_service.py`
-
-- [ ] Update `knowledge_search_service.py` to read weights from `app/core/config.py`
-- [ ] Add `HYBRID_WEIGHT_QUALITY` to config.py (default: 0.10)
-- [ ] Rebalanced weights: FTS=0.45, Vector=0.30, Recency=0.10, Quality=0.10, Source=0.05
-
-**1.3 Official Source Weighting**
-
-**File:** `app/retrieval/postgres_retriever.py`, `app/core/config.py`
-
-- [ ] Add `SOURCE_AUTHORITY_WEIGHTS` dict to config
-- [ ] Official sources (ADE, INPS, MEF, Gazzetta Ufficiale): +0.15 boost
-- [ ] Semi-official (Confindustria, Ordine Commercialisti): +0.10 boost
-- [ ] Aggregators/Blogs: no boost (baseline)
-
-**1.4 Query-Type Detection for Dynamic Weights**
-
-**File:** `app/services/query_classifier.py` (NEW)
-
-- [ ] `classify_query(query: str) -> QueryType` - DEFINITIONAL, RECENT, CONCEPTUAL, DEFAULT
-- [ ] DEFINITIONAL ("cos'è", "che cosa significa") → boost FTS +10%
-- [ ] RECENT ("ultime novità", "2024") → boost recency +10%
-- [ ] CONCEPTUAL ("come", "perché") → boost vector +10%
-
----
-
-#### Phase 2: Cross-Encoder Reranking (1 week) - CONDITIONAL
-
-**Trigger:** Only proceed if Phase 1 achieves <15% precision improvement.
-
-**File:** `app/retrieval/reranker.py` (NEW), `pyproject.toml`
-
-- [ ] Add `sentence-transformers >= 2.2.0` dependency
-- [ ] Create `CrossEncoderReranker` class with `rerank(query, candidates, top_k)` method
-- [ ] Feature flag: `ENABLE_CROSS_ENCODER_RERANKING` (default False)
-- [ ] Model: `cross-encoder/ms-marco-MiniLM-L-6-v2` (~50MB)
-- [ ] Fallback to hybrid-only on timeout/failure
-
----
+`monitoring/grafana/provisioning/alerting/alert_rules.yml` (new alerts):
+- `low_index_scan_ratio` - Alert when index_scan_ratio < 50%
+- `high_index_bloat` - Alert when bloat > 30%
+- `stale_vacuum` - Alert when last_vacuum > 7 days
 
 **Testing Requirements:**
-- **TDD:** Write tests FIRST for each phase
-- **Unit Tests (Phase 1):**
-  - `tests/retrieval/test_postgres_retriever.py` (NEW) - text_quality, source authority, weight normalization
-  - `tests/services/test_query_classifier.py` (NEW) - query type detection patterns
-  - `tests/services/test_knowledge_search_service.py` (MODIFY) - config integration
-- **Unit Tests (Phase 2):**
-  - `tests/retrieval/test_reranker.py` (NEW) - reranker, timeout, fallback
-- **Integration Tests:**
-  - `tests/integration/test_retrieval_ranking_integration.py` (NEW)
-- **Regression Tests:** `pytest tests/test_knowledge_search_service.py tests/integration/test_knowledge_search.py -v`
-- **Coverage Target:** 90%+ for new code
+- **TDD:** Write `tests/services/test_index_health_service.py` FIRST
+- **Unit Tests:**
+  - `test_get_index_health_metrics_returns_all_indexes` - Verify all indexes included
+  - `test_get_index_scan_ratio_calculates_correctly` - Verify ratio formula
+  - `test_get_index_bloat_ratio_handles_zero_size` - Edge case for empty index
+  - `test_rebuild_index_succeeds` - Happy path rebuild
+  - `test_rebuild_index_uses_concurrently_by_default` - Verify CONCURRENTLY flag
+  - `test_rebuild_index_handles_nonexistent_index` - Error handling
+  - `test_rebuild_all_filters_by_threshold` - Verify threshold filtering
+- **Edge Case Tests:**
+  - `test_index_health_no_indexes_in_database` - Empty database
+  - `test_rebuild_large_index_timeout_handling` - Long-running rebuild
+  - `test_concurrent_rebuild_and_query` - No query blocking
+  - `test_ivfflat_lists_recalculation` - pgvector specific
+  - `test_gin_pending_list_cleanup` - FTS specific
+- **Integration Tests:** `tests/integration/test_index_rebuild.py`
+  - `test_full_rebuild_cycle_on_test_table` - End-to-end rebuild
+  - `test_prometheus_metrics_exported` - Verify metrics endpoint
+  - `test_grafana_alert_fires_on_low_ratio` - Alert integration
+- **Regression Tests:** Run `pytest tests/services/test_database.py` to verify no conflicts
+- **Coverage Target:** 85%+ for new code
 
 **Risks & Mitigations:**
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Weight rebalancing degrades precision | HIGH | A/B test with query subset before full rollout |
-| Source authority list incomplete | MEDIUM | Start with core official sources, expand based on feedback |
-| Query classification false positives | MEDIUM | Conservative regex, default to standard weights |
-| Cross-encoder latency >100ms | HIGH | Benchmark before rollout, keep feature flag off if slow |
-| Breaking existing retrieval | CRITICAL | Comprehensive regression tests, gradual rollout via flags |
+| Index rebuild locks table | CRITICAL | Use REINDEX CONCURRENTLY (PostgreSQL 12+) |
+| Prometheus metrics add load | LOW | Limit query frequency to 60s intervals |
+| Large index rebuild timeout | MEDIUM | Implement progress tracking, extend timeout for >10GB indexes |
+| Alert storm during maintenance | MEDIUM | Add maintenance window silencing in Grafana |
+| Disk space exhaustion during rebuild | HIGH | Pre-check available space (2x index size required) |
+| pgvector HNSW not supported | LOW | Document IVFFlat-only support, plan HNSW in future task |
 
 **Code Structure:**
-- Max function: 50 lines
-- Max class: 200 lines
-- `query_classifier.py`: <100 lines (simple regex logic)
-- `reranker.py`: <150 lines (model loading + scoring)
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
+- Service follows existing patterns in `app/services/`
 
-**Acceptance Criteria (Phase 1):** ✅ ALL MET
-- [x] Tests written BEFORE implementation (TDD) - 61 tests created
-- [x] Weight inconsistency bug fixed - unified in config.py
-- [x] text_quality integrated into scoring - 0.10 weight
-- [x] Source authority weighting implemented - official +0.15, semi-official +0.10
-- [x] Query-type detection implemented - DEFINITIONAL/RECENT/CONCEPTUAL/DEFAULT
-- [x] Precision@14 improvement: **66.7% official source precision** (target was ≥30%)
-- [x] No latency regression (<5ms) - scoring <2ms
-- [x] 90%+ test coverage for new code
-- [x] All existing tests pass
+**Implementation Phases:**
 
-**Acceptance Criteria (Phase 2 - DEFERRED POST-MVP):**
+**Phase 1: Prometheus Metrics (Day 1)**
+- [ ] Add `pg_index_scan_ratio` query to `postgres_queries.yml`
+- [ ] Add `pg_index_bloat_bytes` query to `postgres_queries.yml`
+- [ ] Add `pg_index_size_bytes` query to `postgres_queries.yml`
+- [ ] Verify metrics visible in Prometheus UI
 
-**Reason for Deferral:** Phase 1 achieved 66.7% official source precision (more than 2x the 30% target). Cross-encoder would add complexity and latency for diminishing returns. The remaining precision gap is due to content coverage (missing topics in knowledge base), not ranking quality.
+**Phase 2: Grafana Alerts + Dashboard (Day 1-2)**
+- [ ] Create `low_index_scan_ratio` alert rule (threshold: 50%)
+- [ ] Create `high_index_bloat` alert rule (threshold: 30%)
+- [ ] Add index health panel to `performance.json` dashboard
+- [ ] Test alert firing with simulated low ratio
 
-- [ ] Cross-encoder benchmarked <100ms
-- [ ] Feature flag implemented (default OFF)
-- [ ] Graceful fallback on failure
-- [ ] Precision@14: +10-15% additional
-- [ ] Combined: +20-35% total
+**Phase 3: Rebuild Scripts + Service (Day 2-3)**
+- [ ] Create `scripts/ops/rebuild_indexes.sh` with CONCURRENTLY support
+- [ ] Create `app/services/index_health_service.py`
+- [ ] Add weekly cron job for health check
+- [ ] Write comprehensive tests
 
-**When to Revisit:** If official source precision drops below 50% or user feedback indicates ranking quality issues.
-
-**Architectural Approval:**
-- Reviewed by: @Egidio (Architect)
-- Decision: APPROVED (2024-12-19)
-- Rationale: Phased approach minimizes risk, leverages existing data, makes cross-encoder conditional
-
-</details>
-
----
-
-<details>
-<summary>
-<h3>DEV-BE-85: Configure PostgreSQL High Availability</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1 day (with Claude Code generating configs) | <strong>Dependencies:</strong> None | <strong>Status:</strong> ❌ NOT STARTED<br>
-PostgreSQL streaming replication with automatic failover for production readiness.
-</summary>
-
-### DEV-BE-85: Configure PostgreSQL High Availability
-**Priority:** HIGH (production readiness) | **Effort:** 1 day (with Claude Code generating configs) | **Dependencies:** None
-
-**Problem:**
-Current deployment has single PostgreSQL instance. If it fails, database goes down.
-
-**Solution:**
-Set up PostgreSQL streaming replication with automatic failover using Patroni or similar.
-
-**Tasks:**
-- [ ] Set up PostgreSQL streaming replication
-- [ ] Configure automatic failover (using Patroni/repmgr)
-- [ ] Test failover procedure
-- [ ] Document failover behavior
-
-**Cost:** Requires additional VPS (~$7-15/month for standby)
-
-**Trigger:** Before production launch with paying customers
-
-</details>
-
----
-
-<details>
-<summary>
-<h3>DEV-BE-86: Automated Index Health Monitoring + Rebuild</h3>
-<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 2-3 days (with Claude Code generating scripts/dashboards) | <strong>Dependencies:</strong> DEV-BE-77 ✅ | <strong>Status:</strong> ❌ NOT STARTED<br>
-Automated monitoring + alerts + rebuild scripts for FTS and pgvector indexes.
-</summary>
-
-### DEV-BE-86: Automated Index Health Monitoring + Rebuild
-**Priority:** MEDIUM | **Effort:** 2-3 days | **Dependencies:** DEV-BE-77 ✅ (Prometheus/Grafana monitoring)
-
-**Problem:** If FTS (GIN) or pgvector (IVFFlat) indexes become corrupted, queries become extremely slow (10-100x slower). Currently requires manual detection + rebuild.
-
-**Solution:** Automated monitoring + alerts + rebuild scripts.
-
-**Tasks:**
-- [ ] Add Prometheus metric: `pg_index_health`
-- [ ] Create Grafana alert: "Index scan ratio <50%"
-- [ ] Create automated rebuild script: `scripts/ops/rebuild_indexes.sh`
-- [ ] Schedule weekly index health check (cron job)
-- [ ] Document manual rebuild procedure in runbook
+**Phase 4: Documentation + Runbook (Day 3)**
+- [ ] Create `docs/runbooks/INDEX_MAINTENANCE.md`
+- [ ] Document manual rebuild procedure
+- [ ] Document alert response procedures
+- [ ] Add troubleshooting section
 
 **Acceptance Criteria:**
-- ✅ Grafana dashboard shows index health metrics
-- ✅ Alert fires when index scan ratio drops below 50%
-- ✅ Automated rebuild script tested on QA
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Prometheus exports `pg_index_scan_ratio` for all indexes
+- [ ] Grafana dashboard shows index health metrics panel
+- [ ] Alert fires when index scan ratio drops below 50%
+- [ ] Alert fires when index bloat exceeds 30%
+- [ ] `rebuild_indexes.sh` script tested successfully on QA
+- [ ] Weekly health check cron job configured
+- [ ] Runbook documents manual rebuild procedure
+- [ ] 85%+ test coverage achieved for new code
+- [ ] All existing tests still pass (regression)
+- [ ] No table locks during CONCURRENTLY rebuild verified
 
 </details>
 
@@ -1150,6 +1143,36 @@ Implement complete subscription management system with Stripe integration.
 - 50 Professional subscribers: €1,450/month
 - 10 Business subscribers: €990/month
 - **Total: €2,440/month** (~€29,280/year)
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-BE-85: Configure PostgreSQL High Availability</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1 day (with Claude Code generating configs) | <strong>Dependencies:</strong> DEV-BE-75 (requires QA environment for testing) | <strong>Status:</strong> ❌ NOT STARTED<br>
+PostgreSQL streaming replication with automatic failover for production readiness.
+</summary>
+
+### DEV-BE-85: Configure PostgreSQL High Availability
+**Priority:** HIGH (production readiness) | **Effort:** 1 day (with Claude Code generating configs) | **Dependencies:** DEV-BE-75 (requires QA environment for testing)
+
+**Problem:**
+Current deployment has single PostgreSQL instance. If it fails, database goes down.
+
+**Solution:**
+Set up PostgreSQL streaming replication with automatic failover using Patroni or similar.
+
+**Tasks:**
+- [ ] Set up PostgreSQL streaming replication
+- [ ] Configure automatic failover (using Patroni/repmgr)
+- [ ] Test failover procedure
+- [ ] Document failover behavior
+
+**Cost:** Requires additional VPS (~$7-15/month for standby)
+
+**Trigger:** Before production launch with paying customers
 
 </details>
 
@@ -1360,8 +1383,6 @@ Comprehensive production GDPR audit with security hardening, compliance document
 </details>
 
 ---
-
-## Q2 2025 (April - June)
 
 <details>
 <summary>
@@ -1650,8 +1671,6 @@ Add 2 new Grafana dashboards (Document Ingestion, User Behavior) with PostgreSQL
 </details>
 
 ---
-
-## Backlog (Q3+ or Deferred)
 
 <details>
 <summary>

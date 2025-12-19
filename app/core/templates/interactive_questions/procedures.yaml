@@ -1,0 +1,494 @@
+# Interactive Question Templates for Procedures
+# PratikoAI v1.5 - Proactive Assistant
+#
+# This file contains question templates for procedure-related queries:
+# - Apertura attività
+# - Regime fiscale selection
+# - Tipo società selection
+# - Scadenze e adempimenti
+#
+# Schema Reference: DEV-150 app/schemas/proactivity.py
+
+questions:
+  # ============================================================================
+  # APERTURA ATTIVITÀ FLOW
+  # ============================================================================
+
+  apertura_tipo_attivita:
+    id: apertura_tipo_attivita
+    text: "Che tipo di attività vuoi aprire?"
+    question_type: single_choice
+    options:
+      - id: artigiano
+        label: "Artigiano"
+        icon: hammer
+        leads_to: artigiano_settore
+      - id: commerciante
+        label: "Commerciante"
+        icon: shopping-cart
+        leads_to: commercio_tipo
+      - id: professionista_albo
+        label: "Professionista (iscritto ad Albo)"
+        icon: award
+        leads_to: professione_ordine
+      - id: professionista_no_albo
+        label: "Professionista (senza Albo)"
+        icon: briefcase
+        leads_to: regime_fiscale
+      - id: societa
+        label: "Società (SRL, SAS, SNC...)"
+        icon: building
+        leads_to: tipo_societa
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il tipo di attività che vuoi aprire..."
+
+  # ============================================================================
+  # ARTIGIANO FLOW
+  # ============================================================================
+
+  artigiano_settore:
+    id: artigiano_settore
+    text: "In quale settore artigianale opererai?"
+    question_type: single_choice
+    prefilled_params:
+      tipo_attivita: artigiano
+    options:
+      - id: edilizia
+        label: "Edilizia e costruzioni"
+        icon: home
+        leads_to: regime_fiscale
+      - id: riparazione
+        label: "Riparazione veicoli/macchinari"
+        icon: wrench
+        leads_to: regime_fiscale
+      - id: alimentare
+        label: "Produzione alimentare"
+        icon: utensils
+        leads_to: regime_fiscale
+      - id: abbigliamento
+        label: "Sartoria/abbigliamento"
+        icon: scissors
+        leads_to: regime_fiscale
+      - id: bellezza
+        label: "Estetica e benessere"
+        icon: smile
+        leads_to: regime_fiscale
+      - id: altro
+        label: "Altro settore (specifica)"
+        icon: edit
+        requires_input: true
+        leads_to: regime_fiscale
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il settore artigianale..."
+
+  # ============================================================================
+  # COMMERCIANTE FLOW
+  # ============================================================================
+
+  commercio_tipo:
+    id: commercio_tipo
+    text: "Che tipo di commercio vuoi avviare?"
+    question_type: single_choice
+    prefilled_params:
+      tipo_attivita: commerciante
+    options:
+      - id: negozio_fisico
+        label: "Negozio fisico"
+        icon: store
+        leads_to: commercio_settore
+      - id: ecommerce
+        label: "E-commerce"
+        icon: globe
+        leads_to: commercio_settore
+      - id: ambulante
+        label: "Commercio ambulante"
+        icon: truck
+        leads_to: regime_fiscale
+      - id: ingrosso
+        label: "Commercio all'ingrosso"
+        icon: package
+        leads_to: regime_fiscale
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+        leads_to: regime_fiscale
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il tipo di commercio..."
+
+  commercio_settore:
+    id: commercio_settore
+    text: "Quale settore merceologico?"
+    question_type: single_choice
+    options:
+      - id: alimentari
+        label: "Alimentari"
+        icon: utensils
+        leads_to: regime_fiscale
+      - id: abbigliamento
+        label: "Abbigliamento e accessori"
+        icon: shirt
+        leads_to: regime_fiscale
+      - id: elettronica
+        label: "Elettronica e informatica"
+        icon: smartphone
+        leads_to: regime_fiscale
+      - id: casalinghi
+        label: "Casalinghi e arredo"
+        icon: home
+        leads_to: regime_fiscale
+      - id: altro
+        label: "Altro settore (specifica)"
+        icon: edit
+        requires_input: true
+        leads_to: regime_fiscale
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il settore merceologico..."
+
+  # ============================================================================
+  # PROFESSIONISTA CON ALBO FLOW
+  # ============================================================================
+
+  professione_ordine:
+    id: professione_ordine
+    text: "A quale ordine professionale appartieni?"
+    question_type: single_choice
+    prefilled_params:
+      tipo_attivita: professionista_albo
+    options:
+      - id: commercialisti
+        label: "Dottori Commercialisti ed Esperti Contabili"
+        icon: calculator
+        leads_to: regime_fiscale
+      - id: avvocati
+        label: "Avvocati"
+        icon: scale
+        leads_to: regime_fiscale
+      - id: ingegneri
+        label: "Ingegneri"
+        icon: hard-hat
+        leads_to: regime_fiscale
+      - id: architetti
+        label: "Architetti"
+        icon: compass
+        leads_to: regime_fiscale
+      - id: medici
+        label: "Medici"
+        icon: heart
+        leads_to: regime_fiscale
+      - id: consulenti_lavoro
+        label: "Consulenti del Lavoro"
+        icon: users
+        leads_to: regime_fiscale
+      - id: altro
+        label: "Altro ordine (specifica)"
+        icon: edit
+        requires_input: true
+        leads_to: regime_fiscale
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica l'ordine professionale..."
+
+  # ============================================================================
+  # TIPO SOCIETÀ FLOW
+  # ============================================================================
+
+  tipo_societa:
+    id: tipo_societa
+    text: "Quale forma societaria vuoi costituire?"
+    question_type: single_choice
+    prefilled_params:
+      tipo_attivita: societa
+    options:
+      - id: srl
+        label: "SRL - Società a Responsabilità Limitata"
+        icon: building
+        leads_to: societa_capitale
+      - id: srls
+        label: "SRLS - SRL Semplificata"
+        icon: building
+        leads_to: societa_soci
+      - id: sas
+        label: "SAS - Società in Accomandita Semplice"
+        icon: users
+        leads_to: societa_soci
+      - id: snc
+        label: "SNC - Società in Nome Collettivo"
+        icon: users
+        leads_to: societa_soci
+      - id: spa
+        label: "SPA - Società per Azioni"
+        icon: trending-up
+        leads_to: societa_capitale
+      - id: altro
+        label: "Altro tipo (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi la forma societaria..."
+
+  societa_capitale:
+    id: societa_capitale
+    text: "Qual è il capitale sociale previsto?"
+    question_type: single_choice
+    options:
+      - id: capitale_minimo
+        label: "Capitale minimo (1 euro per SRLS, 10.000 per SRL)"
+        icon: coins
+      - id: capitale_10000
+        label: "Da 10.000 a 50.000 euro"
+        icon: coins
+      - id: capitale_50000
+        label: "Da 50.001 a 120.000 euro"
+        icon: coins
+      - id: capitale_oltre
+        label: "Oltre 120.000 euro"
+        icon: coins
+      - id: altro
+        label: "Inserisci importo specifico"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Inserisci il capitale sociale previsto..."
+
+  societa_soci:
+    id: societa_soci
+    text: "Quanti soci parteciperanno alla società?"
+    question_type: single_choice
+    options:
+      - id: unipersonale
+        label: "Socio unico"
+        icon: user
+      - id: due_soci
+        label: "2 soci"
+        icon: users
+      - id: tre_cinque
+        label: "Da 3 a 5 soci"
+        icon: users
+      - id: oltre_cinque
+        label: "Più di 5 soci"
+        icon: users
+      - id: altro
+        label: "Non sono sicuro"
+        icon: help-circle
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi la composizione societaria..."
+
+  # ============================================================================
+  # REGIME FISCALE SELECTION
+  # ============================================================================
+
+  regime_fiscale:
+    id: regime_fiscale
+    text: "Quale regime fiscale vuoi adottare?"
+    question_type: single_choice
+    options:
+      - id: forfettario
+        label: "Regime forfettario"
+        icon: percent
+        info: "Ricavi max 85.000 euro, tassazione 15% (5% primi 5 anni)"
+      - id: ordinario_semplificato
+        label: "Contabilità semplificata"
+        icon: file-text
+        info: "Per ricavi fino a 500.000 euro (servizi) o 800.000 euro (beni)"
+      - id: ordinario
+        label: "Contabilità ordinaria"
+        icon: file
+        info: "Nessun limite ricavi, IRPEF a scaglioni"
+      - id: non_so
+        label: "Non so / Aiutami a scegliere"
+        icon: help-circle
+        leads_to: regime_fiscale_aiuto
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi la tua situazione fiscale..."
+
+  regime_fiscale_aiuto:
+    id: regime_fiscale_aiuto
+    text: "Per aiutarti a scegliere, quanto prevedi di fatturare nel primo anno?"
+    question_type: single_choice
+    options:
+      - id: fatturato_30000
+        label: "Fino a 30.000 euro"
+        icon: coins
+        info: "Regime forfettario consigliato"
+      - id: fatturato_65000
+        label: "Da 30.001 a 65.000 euro"
+        icon: coins
+        info: "Forfettario o semplificato"
+      - id: fatturato_85000
+        label: "Da 65.001 a 85.000 euro"
+        icon: coins
+        info: "Limite forfettario, valuta semplificato"
+      - id: fatturato_oltre
+        label: "Oltre 85.000 euro"
+        icon: coins
+        info: "Contabilità semplificata o ordinaria"
+      - id: altro
+        label: "Non ho ancora un'idea"
+        icon: help-circle
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi le tue previsioni di fatturato..."
+
+  # ============================================================================
+  # SCADENZE E ADEMPIMENTI FLOW
+  # ============================================================================
+
+  scadenza_tipo_adempimento:
+    id: scadenza_tipo_adempimento
+    text: "Per quale tipo di adempimento vuoi verificare la scadenza?"
+    question_type: single_choice
+    options:
+      - id: dichiarazione_redditi
+        label: "Dichiarazione dei redditi"
+        icon: file-text
+        leads_to: scadenza_periodo
+      - id: dichiarazione_iva
+        label: "Dichiarazione IVA"
+        icon: file
+        leads_to: scadenza_periodo
+      - id: versamento_iva
+        label: "Versamento IVA periodica"
+        icon: credit-card
+        leads_to: scadenza_periodo
+      - id: versamento_ritenute
+        label: "Versamento ritenute"
+        icon: credit-card
+        leads_to: scadenza_periodo
+      - id: contributi_inps
+        label: "Contributi INPS"
+        icon: shield
+        leads_to: scadenza_periodo
+      - id: imu_tasi
+        label: "IMU/TASI"
+        icon: home
+        leads_to: scadenza_periodo
+      - id: altro
+        label: "Altro adempimento (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi l'adempimento..."
+
+  scadenza_periodo:
+    id: scadenza_periodo
+    text: "Per quale periodo di riferimento?"
+    question_type: single_choice
+    options:
+      - id: anno_corrente
+        label: "Anno corrente (2025)"
+        icon: calendar
+      - id: anno_precedente
+        label: "Anno precedente (2024)"
+        icon: calendar
+      - id: trimestre_corrente
+        label: "Trimestre corrente"
+        icon: calendar
+      - id: mese_corrente
+        label: "Mese corrente"
+        icon: calendar
+      - id: altro
+        label: "Altro periodo (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica il periodo (es: gennaio 2025)..."
+
+  # ============================================================================
+  # CHIUSURA ATTIVITÀ FLOW
+  # ============================================================================
+
+  chiusura_tipo:
+    id: chiusura_tipo
+    text: "Che tipo di chiusura stai considerando?"
+    question_type: single_choice
+    options:
+      - id: cessazione_piva
+        label: "Cessazione partita IVA individuale"
+        icon: x-circle
+      - id: liquidazione_societa
+        label: "Liquidazione società"
+        icon: building
+      - id: trasformazione
+        label: "Trasformazione societaria"
+        icon: refresh-cw
+      - id: cessione
+        label: "Cessione d'azienda"
+        icon: trending-up
+      - id: altro
+        label: "Altro (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi la situazione..."
+
+  # ============================================================================
+  # CONTRATTI E ASSUNZIONI FLOW
+  # ============================================================================
+
+  assunzione_tipo_contratto:
+    id: assunzione_tipo_contratto
+    text: "Che tipo di contratto di lavoro vuoi stipulare?"
+    question_type: single_choice
+    options:
+      - id: tempo_indeterminato
+        label: "Tempo indeterminato"
+        icon: infinity
+        leads_to: assunzione_ccnl
+      - id: tempo_determinato
+        label: "Tempo determinato"
+        icon: clock
+        leads_to: assunzione_ccnl
+      - id: apprendistato
+        label: "Apprendistato"
+        icon: book-open
+        leads_to: assunzione_ccnl
+      - id: stagionale
+        label: "Lavoro stagionale"
+        icon: sun
+        leads_to: assunzione_ccnl
+      - id: intermittente
+        label: "Lavoro intermittente (a chiamata)"
+        icon: phone
+        leads_to: assunzione_ccnl
+      - id: altro
+        label: "Altro tipo (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Descrivi il tipo di contratto..."
+
+  assunzione_ccnl:
+    id: assunzione_ccnl
+    text: "Quale CCNL si applica?"
+    question_type: single_choice
+    options:
+      - id: commercio
+        label: "CCNL Commercio"
+        icon: shopping-bag
+      - id: metalmeccanico
+        label: "CCNL Metalmeccanico"
+        icon: settings
+      - id: edilizia
+        label: "CCNL Edilizia"
+        icon: hard-hat
+      - id: turismo
+        label: "CCNL Turismo e Pubblici Esercizi"
+        icon: utensils
+      - id: artigianato
+        label: "CCNL Artigianato"
+        icon: hammer
+      - id: altro
+        label: "Altro CCNL (specifica)"
+        icon: edit
+        requires_input: true
+    allow_custom_input: true
+    custom_input_placeholder: "Specifica il CCNL applicato..."

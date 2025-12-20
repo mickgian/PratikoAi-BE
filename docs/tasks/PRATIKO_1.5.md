@@ -640,117 +640,7 @@ extracted_params: dict[str, Any] | None = None
 
 ## Phase 2: API Integration (Backend) - 6h
 
-**Note:** DEV-157 moved to Completed Tasks section above.
-
----
-
-### DEV-158: Modify /chat Endpoint to Include Suggested Actions
-
-**Reference:** [Section 4.2: API Endpoints](./PRATIKO_1.5_REFERENCE.md#42-api-endpoints)
-
-**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** NOT STARTED
-
-**Problem:**
-The /chat endpoint needs to integrate ProactivityEngine to return suggested actions with each response.
-
-**Solution:**
-Modify chat endpoint to call ProactivityEngine after generating response and include actions in ChatResponse.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-155, DEV-157
-- **Unlocks:** DEV-159, DEV-160, DEV-161
-
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary File:** `app/api/v1/chatbot.py`
-- **Affected Files:**
-  - `app/services/chat_service.py` (may need modification)
-  - Frontend chat component (consumes response)
-- **Related Tests:**
-  - `tests/api/test_chatbot.py` (direct)
-- **Baseline Command:** `pytest tests/api/test_chatbot.py -v`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass
-- [ ] Existing /chat flow reviewed
-- [ ] No pre-existing test failures
-
-**Error Handling:**
-- ProactivityEngine failure: WARNING log, return response without actions
-- Timeout: Return response without actions if proactivity exceeds 500ms
-- **Logging:** Log action selection with context (session_id, domain, action_count)
-
-**Performance Requirements:**
-- Total endpoint latency: <=500ms additional overhead (per spec)
-
-**File:** `app/api/v1/chatbot.py`
-
-**Fields/Methods/Components:**
-Modify `/chat` endpoint:
-```python
-@router.post("/chat")
-async def chat(
-    request: ChatRequest,
-    proactivity_engine: ProactivityEngine = Depends(get_proactivity_engine),
-    # ... existing deps
-) -> ChatResponse:
-    # ... existing chat logic
-
-    # Add proactivity processing
-    proactivity_result = await proactivity_engine.process(
-        query=request.message,
-        context=ProactivityContext(
-            session_id=request.session_id,
-            domain=classification.domain,
-            action_type=classification.action_type,
-            document_type=document_type,
-        )
-    )
-
-    return ChatResponse(
-        # ... existing fields
-        suggested_actions=proactivity_result.actions,
-        interactive_question=proactivity_result.question,
-        extracted_params=proactivity_result.extraction_result.extracted if proactivity_result.extraction_result else None,
-    )
-```
-
-**Testing Requirements:**
-- **TDD:** Write tests FIRST
-- **Unit Tests:**
-  - `test_chat_returns_actions` - Actions included in response
-  - `test_chat_without_actions_on_error` - Graceful degradation
-  - `test_chat_with_question` - Question returned when coverage low
-- **Integration Tests:** `tests/api/test_chatbot_proactivity.py`
-- **Regression Tests:** Run `pytest tests/api/test_chatbot.py`
-- **Coverage Target:** 85%+
-
-**Edge Cases:**
-- **ProactivityEngine timeout:** Return response without actions
-- **Empty actions list:** Valid state, render empty suggestion bar
-- **Document upload with query:** Prioritize document-specific actions
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Performance degradation | HIGH | Async proactivity, timeout fallback |
-| Breaking existing chat flow | HIGH | Feature flag, gradual rollout |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Actions returned with each response
-- [ ] Latency under 500ms overhead
-- [ ] Graceful degradation on error
-- [ ] All existing tests pass
-- [ ] 85%+ test coverage achieved
+**Note:** DEV-157 and DEV-158 moved to Completed Tasks section above.
 
 ---
 
@@ -1103,6 +993,94 @@ await analytics_service.track_question_answer(
 
 ---
 
+## UI Design Reference (Phase 3 Guidance)
+
+This section provides comprehensive styling guidance for Phase 3 frontend components to ensure consistency with the existing PratikoAI frontend design system.
+
+### Frontend Repository
+**Location:** `/Users/micky/WebstormProjects/PratikoAiWebApp`
+
+### Component Library
+- **Framework:** Radix UI + CVA (class-variance-authority) - Shadcn pattern
+- **Styling:** Tailwind CSS 4 with `cn()` utility (clsx + tailwind-merge)
+- **Icons:** Lucide React
+
+### PratikoAI Color Palette
+| Name | Hex Code | CSS Variable | Usage |
+|------|----------|--------------|-------|
+| Avorio | #F8F5F1 | --color-avorio | Cream background, button default |
+| Blu-petrolio | #2A5D67 | --color-blu-petrolio | Primary color, text, selected state |
+| Verde-salvia | #A9C1B7 | --color-verde-salvia | Accent color, hover states |
+| Oro-antico | #D4A574 | --color-oro-antico | Highlights, warnings |
+| Grigio-tortora | #C4BDB4 | --color-grigio-tortora | Neutral borders, disabled |
+
+### Button Styling Pattern (from FeedbackButtons.tsx)
+```typescript
+className={cn(
+  // Base styles
+  'inline-flex items-center gap-1.5 px-4 py-2 rounded-full',
+  'text-sm font-semibold transition-all duration-300',
+  // Default state
+  'bg-[#F8F5F1] text-[#2A5D67]',
+  // Hover state
+  'hover:bg-[#A9C1B7]/20 hover:scale-105 hover:shadow-md',
+  // Focus state (accessibility)
+  'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2A5D67]/50',
+  // Active/click state
+  'active:scale-95',
+  // Selected state (when isSelected)
+  isSelected && 'bg-[#2A5D67] text-white ring-2 ring-[#2A5D67] shadow-lg scale-105',
+  // Disabled state
+  'disabled:opacity-50 disabled:cursor-not-allowed'
+)}
+```
+
+### Animation Patterns
+| Pattern | Tailwind Class | Description |
+|---------|----------------|-------------|
+| Transitions | `transition-all duration-300` | Smooth state changes |
+| Fade-in | `animate-fade-slide-up` | Entry animation (globals.css) |
+| Focus ring | `focus-visible:ring-[3px] focus-visible:ring-[#2A5D67]/50` | Keyboard focus indicator |
+| Click feedback | `active:scale-95` | Button press effect |
+| Hover effect | `hover:scale-105 hover:shadow-md` | Interactive feedback |
+
+### Responsive Breakpoints
+| Breakpoint | Width | Layout Pattern |
+|------------|-------|----------------|
+| Default | <640px | Mobile: stacked, full-width |
+| sm | ≥640px | Small tablets: 2-column grid |
+| md | ≥768px | Tablets: 3-column grid |
+| lg | ≥1024px | Desktop: flex-row, auto-width |
+
+### Key Reference Files
+| File | Purpose | Import Path |
+|------|---------|-------------|
+| `FeedbackButtons.tsx` | Button styling pattern | `@/app/chat/components/` |
+| `visualConstants.ts` | Color and spacing constants | `@/app/chat/` |
+| `globals.css` | CSS variables, animations | `@/app/` |
+| `utils.ts` | cn() utility function | `@/lib/utils` |
+| `useChatHotkeys.ts` | Keyboard navigation hook pattern | `@/app/chat/hooks/` |
+
+### Common Tailwind Utility Patterns
+```typescript
+// Card container
+'p-4 rounded-lg border border-[#C4BDB4]/30 bg-[#F8F5F1]/50'
+
+// Grid layout (responsive)
+'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2'
+
+// Touch-friendly minimum
+'min-h-[44px]'
+
+// Stacked on mobile, row on desktop
+'flex flex-col sm:flex-row gap-2'
+
+// Full-width on mobile
+'w-full sm:w-auto'
+```
+
+---
+
 ## Phase 3: Frontend Components - 10h
 
 ### DEV-163: Create SuggestedActionsBar Component
@@ -1137,24 +1115,81 @@ Create SuggestedActionsBar React component with keyboard navigation support.
 
 **File:** `src/components/chat/SuggestedActionsBar.tsx`
 
+**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
+- **Button Pattern:** Use pill-style buttons from FeedbackButtons.tsx
+- **Colors:** #F8F5F1 (default bg), #2A5D67 (text/selected), #A9C1B7 (hover accent)
+- **Layout:** `flex flex-wrap gap-2` (wrap on narrow viewports)
+- **Entry Animation:** `animate-fade-slide-up`
+
 **Fields/Methods/Components:**
 ```typescript
+'use client';
+import { cn } from '@/lib/utils';
+import { LucideIcon } from 'lucide-react';
+
+interface Action {
+  id: string;
+  label: string;
+  icon?: LucideIcon;
+  requires_input?: boolean;
+}
+
 interface SuggestedActionsBarProps {
   actions: Action[];
   onActionClick: (action: Action, input?: string) => void;
+  isLoading?: boolean;
   disabled?: boolean;
 }
 
-export function SuggestedActionsBar({ actions, onActionClick, disabled }: SuggestedActionsBarProps) {
-  // Render 2-4 action buttons
-  // Handle keyboard navigation (Tab, Enter)
-  // Show input field when requires_input
+export function SuggestedActionsBar({
+  actions,
+  onActionClick,
+  isLoading,
+  disabled
+}: SuggestedActionsBarProps) {
+  if (actions.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 mt-3 animate-fade-slide-up">
+      {actions.map((action) => {
+        const Icon = action.icon;
+        return (
+          <button
+            key={action.id}
+            onClick={() => onActionClick(action)}
+            disabled={disabled || isLoading}
+            className={cn(
+              // Base styles
+              'inline-flex items-center gap-1.5 px-4 py-2 rounded-full',
+              'text-sm font-semibold transition-all duration-300',
+              // Default state
+              'bg-[#F8F5F1] text-[#2A5D67]',
+              // Hover state
+              'hover:bg-[#A9C1B7]/20 hover:scale-105 hover:shadow-md',
+              // Focus state (accessibility)
+              'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2A5D67]/50',
+              // Active/click state
+              'active:scale-95',
+              // Disabled state
+              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
+            )}
+          >
+            {Icon && <Icon className="w-4 h-4" />}
+            {action.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 ```
 
 Component structure:
-- Action buttons with icons
-- Inline input field for actions requiring input
+- Action buttons with icons (Lucide React)
+- Pill-style rounded-full buttons following FeedbackButtons.tsx pattern
+- Hover: scale-105, shadow-md, verde-salvia accent
+- Focus: 3px ring in blu-petrolio/50
+- Active: scale-95 for click feedback
 - Loading state while action executes
 - Keyboard navigation with Tab/Enter
 
@@ -1220,8 +1255,30 @@ Create InteractiveQuestionInline React component with keyboard navigation and op
 
 **File:** `src/components/chat/InteractiveQuestionInline.tsx`
 
+**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
+- **Container:** Card with `rounded-lg border border-[#C4BDB4]/30 bg-[#F8F5F1]/50`
+- **Colors:** #2A5D67 (selected), #F8F5F1 (default), #C4BDB4 (border)
+- **Layout:** `grid grid-cols-2 sm:grid-cols-4 gap-2` (responsive grid)
+- **Entry Animation:** `animate-fade-slide-up`
+
 **Fields/Methods/Components:**
 ```typescript
+'use client';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { cn } from '@/lib/utils';
+import { useKeyboardNavigation } from '@/lib/hooks/useKeyboardNavigation';
+
+interface Option {
+  id: string;
+  label: string;
+}
+
+interface InteractiveQuestion {
+  text: string;
+  options: Option[];
+  allow_custom_input?: boolean;
+}
+
 interface InteractiveQuestionInlineProps {
   question: InteractiveQuestion;
   onAnswer: (optionId: string, customInput?: string) => void;
@@ -1235,19 +1292,102 @@ export function InteractiveQuestionInline({
   onSkip,
   disabled
 }: InteractiveQuestionInlineProps) {
-  // Render question text
-  // Render options as selectable items (Claude Code style)
-  // Handle keyboard navigation (arrows, numbers, Enter)
-  // Show custom input field when "Altro" selected
+  const [customText, setCustomText] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { selectedIndex, handleKeyDown } = useKeyboardNavigation({
+    items: question.options.map(o => o.id),
+    onSelect: (id) => onAnswer(id),
+    onCancel: onSkip,
+    enabled: !disabled,
+  });
+
+  // Focus input when "Altro" (custom) option is selected
+  useEffect(() => {
+    if (question.options[selectedIndex]?.id === 'custom') {
+      inputRef.current?.focus();
+    }
+  }, [selectedIndex, question.options]);
+
+  return (
+    <div
+      className="mt-4 p-4 rounded-lg border border-[#C4BDB4]/30 bg-[#F8F5F1]/50 animate-fade-slide-up"
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="radiogroup"
+      aria-label={question.text}
+    >
+      {/* Question text */}
+      <p className="text-sm font-medium text-[#2A5D67] mb-3">
+        {question.text}
+      </p>
+
+      {/* Options grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {question.options.map((option, index) => (
+          <button
+            key={option.id}
+            onClick={() => onAnswer(option.id)}
+            disabled={disabled}
+            role="radio"
+            aria-checked={selectedIndex === index}
+            className={cn(
+              'px-3 py-2 rounded-full text-sm font-medium transition-all duration-300',
+              'min-h-[44px]', // Touch-friendly minimum
+              selectedIndex === index
+                ? 'bg-[#2A5D67] text-white ring-2 ring-[#2A5D67] shadow-lg'
+                : 'bg-white text-[#2A5D67] border border-[#C4BDB4] hover:border-[#2A5D67] hover:shadow-md',
+              'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2A5D67]/50'
+            )}
+          >
+            <span className="text-xs opacity-60 mr-1">{index + 1}.</span>
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Custom input field (shown when allow_custom_input) */}
+      {question.allow_custom_input && (
+        <div className="mt-3">
+          <input
+            ref={inputRef}
+            type="text"
+            value={customText}
+            onChange={(e) => setCustomText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && customText.trim()) {
+                onAnswer('custom', customText);
+              }
+            }}
+            placeholder="Altro: scrivi la tua risposta..."
+            className={cn(
+              'w-full px-4 py-2 rounded-lg border border-[#C4BDB4]',
+              'text-sm text-[#2A5D67] placeholder:text-[#C4BDB4]',
+              'focus:outline-none focus:ring-2 focus:ring-[#2A5D67]/50 focus:border-[#2A5D67]',
+              'transition-all duration-200'
+            )}
+          />
+        </div>
+      )}
+
+      {/* Skip hint */}
+      <p className="mt-3 text-xs text-[#C4BDB4]">
+        Premi Esc per saltare • Usa 1-4 per selezione rapida
+      </p>
+    </div>
+  );
 }
 ```
 
 Component structure:
-- Question text at top
-- Options as radio-button style items
-- Number shortcuts (1, 2, 3, 4) for selection
+- Question text at top with blu-petrolio color
+- Options in responsive grid (2 cols mobile, 4 cols desktop)
+- Selected option: blu-petrolio bg, white text, ring, shadow
+- Number shortcuts (1-4) shown as prefix
 - Custom input field when allow_custom_input
-- Skip button (Esc)
+- Skip hint at bottom in grigio-tortora
+- Touch targets minimum 44px height
+- Keyboard: Arrow keys, Enter, Esc, number keys
 
 **Testing Requirements:**
 - **Unit Tests:**
@@ -1305,8 +1445,14 @@ Create useKeyboardNavigation custom hook for managing keyboard navigation state.
 
 **File:** `src/lib/hooks/useKeyboardNavigation.ts`
 
+**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
+- **Pattern Reference:** Similar to `useChatHotkeys.ts` in `@/app/chat/hooks/`
+- **Key handling:** ArrowUp, ArrowDown, Enter, Escape, number keys 1-9
+
 **Fields/Methods/Components:**
 ```typescript
+import { useState, useCallback, useEffect, KeyboardEvent } from 'react';
+
 interface UseKeyboardNavigationOptions {
   items: string[];  // Item IDs
   onSelect: (itemId: string) => void;
@@ -1328,12 +1474,67 @@ export function useKeyboardNavigation({
   enabled = true,
   initialIndex = 0,
 }: UseKeyboardNavigationOptions): UseKeyboardNavigationReturn {
-  // Handle arrow keys for navigation
-  // Handle Enter for selection
-  // Handle Escape for cancel
-  // Handle number keys (1-9) for direct selection
+  const [selectedIndex, setSelectedIndex] = useState(initialIndex);
+
+  // Reset index when items change
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [items.length]);
+
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (!enabled || items.length === 0) return;
+
+    // Don't handle if user is typing in an input
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+      // Only handle Escape in inputs
+      if (event.key === 'Escape' && onCancel) {
+        event.preventDefault();
+        onCancel();
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % items.length);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setSelectedIndex((prev) => (prev - 1 + items.length) % items.length);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (items[selectedIndex]) {
+          onSelect(items[selectedIndex]);
+        }
+        break;
+      case 'Escape':
+        event.preventDefault();
+        onCancel?.();
+        break;
+      default:
+        // Number keys 1-9 for direct selection
+        const num = parseInt(event.key, 10);
+        if (num >= 1 && num <= 9 && num <= items.length) {
+          event.preventDefault();
+          onSelect(items[num - 1]);
+        }
+    }
+  }, [enabled, items, selectedIndex, onSelect, onCancel]);
+
+  return { selectedIndex, setSelectedIndex, handleKeyDown };
 }
 ```
+
+Hook structure:
+- Uses useState for selectedIndex tracking
+- Wraparound navigation (ArrowDown at end wraps to start)
+- Number keys 1-9 for direct selection
+- Input field detection to avoid conflicts
+- Escape always works (even in inputs) for cancel
+- Clean dependency array for useCallback
 
 **Testing Requirements:**
 - **Unit Tests:**
@@ -1409,27 +1610,125 @@ Modify ChatLayoutV2 and AIMessageV2 to include SuggestedActionsBar and Interacti
 
 **File:** `src/app/chat/AIMessageV2.tsx`
 
+**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
+- **Reference Pattern:** Review existing FeedbackButtons integration in AIMessageV2
+- **Import Pattern:** Use dynamic imports for proactivity components
+- **API Calls:** Follow existing fetch patterns in chat components
+
 **Fields/Methods/Components:**
-Add to AIMessageV2:
+
+**1. Update AIMessageV2.tsx:**
 ```typescript
+'use client';
+import dynamic from 'next/dynamic';
+import { SuggestedActionsBar } from '@/components/chat/SuggestedActionsBar';
+import { InteractiveQuestionInline } from '@/components/chat/InteractiveQuestionInline';
+import { useChatContext } from '@/contexts/ChatContext';
+
 interface AIMessageV2Props {
   // ... existing props
   suggestedActions?: Action[];
   interactiveQuestion?: InteractiveQuestion;
 }
 
-// Render SuggestedActionsBar after message content
-// Render InteractiveQuestionInline when question present
+export function AIMessageV2({
+  // ... existing props
+  suggestedActions,
+  interactiveQuestion
+}: AIMessageV2Props) {
+  const { dispatch, state } = useChatContext();
+  const { isActionExecuting } = state;
+
+  const handleActionClick = async (action: Action) => {
+    dispatch({ type: 'SET_ACTION_EXECUTING', payload: true });
+    try {
+      const response = await fetch('/api/v1/actions/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_id: action.id, message_id }),
+      });
+      // Handle response - may trigger new chat message
+    } finally {
+      dispatch({ type: 'SET_ACTION_EXECUTING', payload: false });
+    }
+  };
+
+  const handleQuestionAnswer = async (optionId: string, customText?: string) => {
+    dispatch({ type: 'SET_ACTION_EXECUTING', payload: true });
+    try {
+      const response = await fetch('/api/v1/questions/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question_id, option_id: optionId, custom_input: customText }),
+      });
+      // Response may include follow-up message or actions
+    } finally {
+      dispatch({ type: 'SET_ACTION_EXECUTING', payload: false });
+    }
+  };
+
+  return (
+    <div className="...existing classes...">
+      {/* Existing message content */}
+      <MarkdownContent content={message.content} />
+
+      {/* Proactivity components - render after message */}
+      {interactiveQuestion && (
+        <InteractiveQuestionInline
+          question={interactiveQuestion}
+          onAnswer={handleQuestionAnswer}
+          onSkip={() => dispatch({ type: 'CLEAR_QUESTION' })}
+          disabled={isActionExecuting}
+        />
+      )}
+
+      {suggestedActions && suggestedActions.length > 0 && !interactiveQuestion && (
+        <SuggestedActionsBar
+          actions={suggestedActions}
+          onActionClick={handleActionClick}
+          isLoading={isActionExecuting}
+        />
+      )}
+    </div>
+  );
+}
 ```
 
-Add to ChatContext:
+**2. Update ChatContext.tsx:**
 ```typescript
 interface ChatState {
   // ... existing state
   pendingQuestion: InteractiveQuestion | null;
   isActionExecuting: boolean;
 }
+
+type ChatAction =
+  // ... existing actions
+  | { type: 'SET_QUESTION'; payload: InteractiveQuestion | null }
+  | { type: 'CLEAR_QUESTION' }
+  | { type: 'SET_ACTION_EXECUTING'; payload: boolean };
+
+function chatReducer(state: ChatState, action: ChatAction): ChatState {
+  switch (action.type) {
+    // ... existing cases
+    case 'SET_QUESTION':
+      return { ...state, pendingQuestion: action.payload };
+    case 'CLEAR_QUESTION':
+      return { ...state, pendingQuestion: null };
+    case 'SET_ACTION_EXECUTING':
+      return { ...state, isActionExecuting: action.payload };
+    default:
+      return state;
+  }
+}
 ```
+
+Integration pattern:
+- Show InteractiveQuestion first if present (takes priority)
+- Show SuggestedActionsBar only when no question pending
+- Disable all proactivity UI during API calls
+- Clear question after answer received
+- API response may contain new actions/questions
 
 **Testing Requirements:**
 - **Integration Tests:**
@@ -1502,6 +1801,88 @@ Add responsive styles and ensure touch-friendly interactions.
 - [ ] Existing responsive breakpoints reviewed
 - [ ] No pre-existing visual regressions
 
+**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
+
+**Responsive Patterns to Apply:**
+
+**1. SuggestedActionsBar - Mobile Responsive:**
+```typescript
+// Container: Stack vertically on mobile, wrap on desktop
+<div className={cn(
+  'flex flex-col sm:flex-row flex-wrap gap-2 mt-3',
+  'animate-fade-slide-up'
+)}>
+
+// Buttons: Full width on mobile, auto on desktop
+<button
+  className={cn(
+    // Full width on mobile
+    'w-full sm:w-auto',
+    // Touch-friendly height
+    'min-h-[44px]',
+    // ... existing button styles
+  )}
+>
+```
+
+**2. InteractiveQuestionInline - Mobile Responsive:**
+```typescript
+// Container: Full width, proper padding
+<div className={cn(
+  'mt-4 p-3 sm:p-4',
+  'rounded-lg border border-[#C4BDB4]/30 bg-[#F8F5F1]/50'
+)}>
+
+// Options grid: 1 col on mobile, 2 on sm, 4 on lg
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+
+// Option buttons: Full width, touch-friendly
+<button
+  className={cn(
+    'w-full min-h-[44px]',
+    'px-3 py-2 rounded-full',
+    // Text size responsive
+    'text-sm sm:text-base',
+    // ... existing styles
+  )}
+>
+```
+
+**3. Text Truncation for Long Labels:**
+```typescript
+// Truncate with ellipsis on mobile
+<span className="truncate max-w-full sm:max-w-[200px]" title={fullLabel}>
+  {label}
+</span>
+```
+
+**4. Touch Target Spacing:**
+```typescript
+// Ensure gap between interactive elements
+'gap-2 sm:gap-3'
+
+// Minimum touch target
+'min-h-[44px] min-w-[44px]'
+```
+
+**5. Keyboard Visibility (scroll into view):**
+```typescript
+// In InteractiveQuestionInline, when custom input focused
+useEffect(() => {
+  if (isInputFocused && inputRef.current) {
+    inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}, [isInputFocused]);
+```
+
+**Breakpoint Testing Checklist:**
+| Viewport | Width | Layout Expected |
+|----------|-------|-----------------|
+| iPhone SE | 320px | Single column, stacked buttons |
+| iPhone 14 | 390px | Single column, stacked buttons |
+| iPad Mini | 768px | 2-column grid, row buttons |
+| Desktop | 1024px+ | 4-column grid, inline buttons |
+
 **Edge Cases:**
 - **Small screens (<375px):** Single column layout
 - **Touch targets:** Minimum 44px height
@@ -1512,10 +1893,12 @@ Add responsive styles and ensure touch-friendly interactions.
 **Testing Requirements:**
 - **Visual Tests:**
   - Test at 320px, 375px, 768px, 1024px viewports
-  - Touch target size verification
+  - Touch target size verification (≥44px)
+  - Text truncation with long labels
 - **Accessibility Tests:**
   - Focus visible on touch devices
   - Swipe gestures don't interfere
+  - Screen reader announces changes
 
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |

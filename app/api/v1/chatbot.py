@@ -2,6 +2,9 @@
 
 This module provides endpoints for chat interactions, including regular chat,
 streaming chat, message history management, and chat history clearing.
+
+DEV-158: Added ProactivityEngine integration for suggested actions and
+interactive questions support.
 """
 
 import json
@@ -46,15 +49,40 @@ from app.schemas.chat import (
     Message,
     StreamResponse,
 )
+from app.schemas.proactivity import ProactivityContext, ProactivityResult
+from app.services.action_template_service import ActionTemplateService
+from app.services.atomic_facts_extractor import AtomicFactsExtractor
 from app.services.attachment_resolver import (
     AttachmentNotFoundError,
     AttachmentOwnershipError,
     attachment_resolver,
 )
 from app.services.chat_history_service import chat_history_service
+from app.services.proactivity_engine import ProactivityEngine
 
 router = APIRouter()
 agent = LangGraphAgent()
+
+# DEV-158: Singleton ProactivityEngine instance
+_proactivity_engine: ProactivityEngine | None = None
+
+
+def get_proactivity_engine() -> ProactivityEngine:
+    """Get or create the ProactivityEngine singleton.
+
+    Returns:
+        ProactivityEngine: The singleton engine instance
+    """
+    global _proactivity_engine
+    if _proactivity_engine is None:
+        template_service = ActionTemplateService()
+        template_service.load_templates()
+        facts_extractor = AtomicFactsExtractor()
+        _proactivity_engine = ProactivityEngine(
+            template_service=template_service,
+            facts_extractor=facts_extractor,
+        )
+    return _proactivity_engine
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -281,7 +309,47 @@ async def chat(
                     exc_info=True,
                 )
 
-            return ChatResponse(messages=result)
+            # DEV-158: Process proactivity for suggested actions and questions
+            proactivity_result: ProactivityResult | None = None
+            try:
+                proactivity_engine = get_proactivity_engine()
+                proactivity_context = ProactivityContext(
+                    session_id=str(session.id),
+                    domain="default",  # TODO: Get from classification when available
+                    action_type=None,
+                    document_type=None,
+                )
+                proactivity_result = proactivity_engine.process(
+                    query=user_query if user_query else "",
+                    context=proactivity_context,
+                )
+                logger.debug(
+                    "proactivity_processed",
+                    session_id=session.id,
+                    action_count=len(proactivity_result.actions),
+                    has_question=proactivity_result.question is not None,
+                    processing_time_ms=proactivity_result.processing_time_ms,
+                )
+            except Exception as proactivity_error:
+                # Graceful degradation: log warning but continue without actions
+                logger.warning(
+                    "proactivity_processing_failed_non_critical",
+                    session_id=session.id,
+                    error=str(proactivity_error),
+                )
+                proactivity_result = None
+
+            # Build response with proactivity fields
+            extracted_params = None
+            if proactivity_result and proactivity_result.extraction_result:
+                extracted_params = {p.name: p.value for p in proactivity_result.extraction_result.extracted}
+
+            return ChatResponse(
+                messages=result,
+                suggested_actions=proactivity_result.actions if proactivity_result else None,
+                interactive_question=proactivity_result.question if proactivity_result else None,
+                extracted_params=extracted_params if extracted_params else None,
+            )
     except Exception as e:
         logger.error("chat_request_failed", session_id=session.id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

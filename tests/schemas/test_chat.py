@@ -161,6 +161,158 @@ class TestChatResponse:
         assert response.metadata is not None
         assert response.metadata.model_used == "gpt-4o-mini"
 
+    def test_chat_response_backward_compatible(self):
+        """Test ChatResponse backward compatibility - old clients work without new fields."""
+        # Create response without new proactivity fields (like old API usage)
+        messages = [Message(role="assistant", content="Hello")]
+        response = ChatResponse(messages=messages)
+
+        # New optional fields should default to None
+        assert response.suggested_actions is None
+        assert response.interactive_question is None
+        assert response.extracted_params is None
+
+        # Serialization should not include None fields (backward compatible)
+        response_dict = response.model_dump(exclude_none=True)
+        assert "suggested_actions" not in response_dict
+        assert "interactive_question" not in response_dict
+        assert "extracted_params" not in response_dict
+
+    def test_chat_response_with_suggested_actions(self):
+        """Test ChatResponse with suggested_actions."""
+        from app.schemas.proactivity import Action, ActionCategory
+
+        messages = [Message(role="assistant", content="Ecco le informazioni IRPEF")]
+        actions = [
+            Action(
+                id="tax_calculate_irpef",
+                label="Calcola IRPEF",
+                icon="calculator",
+                category=ActionCategory.CALCULATE,
+                prompt_template="Calcola l'IRPEF per {reddito}",
+            ),
+            Action(
+                id="tax_search_deductions",
+                label="Cerca detrazioni",
+                icon="search",
+                category=ActionCategory.SEARCH,
+                prompt_template="Cerca detrazioni fiscali per {categoria}",
+            ),
+        ]
+        response = ChatResponse(messages=messages, suggested_actions=actions)
+
+        assert response.suggested_actions is not None
+        assert len(response.suggested_actions) == 2
+        assert response.suggested_actions[0].id == "tax_calculate_irpef"
+        assert response.suggested_actions[1].category == ActionCategory.SEARCH
+
+    def test_chat_response_with_interactive_question(self):
+        """Test ChatResponse with interactive_question."""
+        from app.schemas.proactivity import InteractiveOption, InteractiveQuestion
+
+        messages = [Message(role="assistant", content="Per calcolare l'IRPEF...")]
+        question = InteractiveQuestion(
+            id="irpef_tipo_contribuente",
+            trigger_query="calcola irpef",
+            text="Che tipo di contribuente sei?",
+            question_type="single_choice",
+            options=[
+                InteractiveOption(id="dipendente", label="Dipendente"),
+                InteractiveOption(id="autonomo", label="Autonomo"),
+            ],
+        )
+        response = ChatResponse(messages=messages, interactive_question=question)
+
+        assert response.interactive_question is not None
+        assert response.interactive_question.id == "irpef_tipo_contribuente"
+        assert len(response.interactive_question.options) == 2
+
+    def test_chat_response_with_extracted_params(self):
+        """Test ChatResponse with extracted_params."""
+        messages = [Message(role="assistant", content="Hai specificato un reddito di 50000€")]
+        extracted = {"reddito": "50000", "anno": "2024"}
+        response = ChatResponse(messages=messages, extracted_params=extracted)
+
+        assert response.extracted_params is not None
+        assert response.extracted_params["reddito"] == "50000"
+        assert response.extracted_params["anno"] == "2024"
+
+    def test_chat_response_with_actions_and_question(self):
+        """Test ChatResponse with both actions and question (valid state)."""
+        from app.schemas.proactivity import (
+            Action,
+            ActionCategory,
+            InteractiveOption,
+            InteractiveQuestion,
+        )
+
+        messages = [Message(role="assistant", content="Risposta completa")]
+        actions = [
+            Action(
+                id="tax_calculate",
+                label="Calcola",
+                icon="calculator",
+                category=ActionCategory.CALCULATE,
+                prompt_template="Calcola {tipo}",
+            )
+        ]
+        question = InteractiveQuestion(
+            id="clarification",
+            trigger_query="calcola",
+            text="Quale calcolo?",
+            question_type="single_choice",
+            options=[
+                InteractiveOption(id="irpef", label="IRPEF"),
+                InteractiveOption(id="iva", label="IVA"),
+            ],
+        )
+        response = ChatResponse(
+            messages=messages,
+            suggested_actions=actions,
+            interactive_question=question,
+            extracted_params={"tipo": "fiscale"},
+        )
+
+        assert response.suggested_actions is not None
+        assert response.interactive_question is not None
+        assert response.extracted_params is not None
+
+    def test_chat_response_serialization_excludes_none(self):
+        """Test that None values are excluded from serialization."""
+        messages = [Message(role="assistant", content="Hello")]
+        response = ChatResponse(messages=messages)
+
+        # Using exclude_none should not include None fields
+        response_dict = response.model_dump(exclude_none=True)
+        assert "suggested_actions" not in response_dict
+        assert "interactive_question" not in response_dict
+        assert "extracted_params" not in response_dict
+        assert "metadata" not in response_dict
+
+        # But messages should be present
+        assert "messages" in response_dict
+
+    def test_chat_response_json_serialization(self):
+        """Test ChatResponse JSON serialization with proactivity fields."""
+        from app.schemas.proactivity import Action, ActionCategory
+
+        messages = [Message(role="assistant", content="Hello")]
+        actions = [
+            Action(
+                id="test_action",
+                label="Test",
+                icon="test",
+                category=ActionCategory.SEARCH,
+                prompt_template="Search for {query}",
+            )
+        ]
+        response = ChatResponse(messages=messages, suggested_actions=actions)
+
+        # Should serialize to JSON without errors
+        json_str = response.model_dump_json()
+        assert "test_action" in json_str
+        assert "suggested_actions" in json_str
+
 
 class TestQueryClassificationMetadata:
     """Test QueryClassificationMetadata schema."""

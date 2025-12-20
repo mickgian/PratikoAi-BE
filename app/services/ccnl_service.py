@@ -32,6 +32,7 @@ from app.models.ccnl_data import (
     LeaveEntitlement,
     LeaveType,
     NoticePerioD,
+    OvertimeRules,
     SalaryTable,
     SpecialAllowance,
     WorkerCategory,
@@ -297,7 +298,7 @@ class CCNLService:
         if filters.geographic_area:
             serialized["geographic_area"] = filters.geographic_area.value
         if filters.valid_on_date:
-            serialized["valid_on_date"] = filters.valid_on_date.isoformat()
+            serialized["valid_on_date"] = filters.valid_on_date.isoformat()  # type: ignore[assignment]
         return serialized
 
     async def save_ccnl_agreement(self, agreement: CCNLAgreement) -> bool:
@@ -929,7 +930,7 @@ class CCNLService:
     ) -> dict[str, Any]:
         """Generate comprehensive salary statistics."""
         try:
-            statistics = {
+            statistics: dict[str, Any] = {
                 "salary_ranges": {},
                 "sector_comparisons": {},
                 "geographic_differences": {},
@@ -1022,7 +1023,7 @@ class CCNLService:
         self,
         sector: CCNLSector,
         seniority_months: int,
-        used_days: dict[LeaveType, int] = None,
+        used_days: dict[LeaveType, int] | None = None,
         calculation_date: date | None = None,
     ) -> list[LeaveBalance] | None:
         """Calculate all leave balances using enhanced calculator."""
@@ -1039,7 +1040,7 @@ class CCNLService:
             calculator = EnhancedCCNLCalculator(domain_ccnl)
 
             # Calculate leave balances
-            return calculator.calculate_leave_balances(
+            return calculator.calculate_leave_balances(  # type: ignore[no-any-return]
                 seniority_months=seniority_months, used_days=used_days, calculation_date=calculation_date
             )
 
@@ -1099,7 +1100,7 @@ class CCNLService:
             calculator = EnhancedCCNLCalculator(domain_ccnl)
 
             # Get comprehensive answer
-            return calculator.answer_complex_query(
+            return calculator.answer_complex_query(  # type: ignore[no-any-return]
                 level_code=level_code,
                 worker_category=worker_category,
                 geographic_area=geographic_area,
@@ -1438,7 +1439,7 @@ class CCNLService:
     ) -> dict[str, Any]:
         """Advanced cross-CCNL comparison tool."""
         try:
-            comparison_result = {
+            comparison_result: dict[str, Any] = {
                 "sectors_compared": [sector.italian_name() for sector in sector_list],
                 "criteria": comparison_criteria,
                 "comparison_matrix": {},
@@ -1561,7 +1562,7 @@ class CCNLService:
 
     async def _analyze_comparison_results(self, comparison_result: dict[str, Any]) -> dict[str, Any]:
         """Analyze comparison results to identify patterns."""
-        analysis = {"best_practices": [], "common_patterns": [], "outliers": [], "trends": []}
+        analysis: dict[str, Any] = {"best_practices": [], "common_patterns": [], "outliers": [], "trends": []}
 
         # Analyze salary ranges
         if "salary_ranges" in comparison_result["comparison_matrix"]:
@@ -1618,7 +1619,7 @@ class CCNLService:
         self, worker_category: WorkerCategory, agreements: list[CCNLAgreement]
     ) -> dict[str, Any]:
         """Analyze career progression opportunities within category."""
-        progression = {
+        progression: dict[str, Any] = {
             "entry_level_positions": [],
             "senior_level_positions": [],
             "salary_growth_potential": {},
@@ -1659,7 +1660,7 @@ class CCNLService:
         self, geographic_area: GeographicArea, agreements: list[CCNLAgreement]
     ) -> dict[str, Any]:
         """Analyze regional variations in CCNL provisions."""
-        analysis = {"salary_variations": {}, "allowance_variations": {}, "cost_of_living_adjustments": []}
+        analysis: dict[str, Any] = {"salary_variations": {}, "allowance_variations": {}, "cost_of_living_adjustments": []}
 
         for agreement in agreements:
             sector_name = agreement.sector.italian_name()
@@ -1681,7 +1682,7 @@ class CCNLService:
     async def analyze_ccnl_trends(self, start_date: date, end_date: date) -> dict[str, Any]:
         """Analyze CCNL renewal and update trends."""
         try:
-            trends = {
+            trends: dict[str, Any] = {
                 "renewal_patterns": {},
                 "salary_growth_trends": {},
                 "benefit_evolution": {},
@@ -1718,7 +1719,7 @@ class CCNLService:
     async def get_all_priority1_ccnl(self) -> list[CCNLAgreement]:
         """Get all Priority 1 CCNL agreements data."""
         try:
-            return get_all_priority1_ccnl_data()
+            return get_all_priority1_ccnl_data()  # type: ignore[no-any-return]
         except Exception as e:
             self.logger.error(f"Error loading Priority 1 CCNL data: {e}")
             return []
@@ -1726,7 +1727,7 @@ class CCNLService:
     async def get_all_priority2_ccnl(self) -> list[CCNLAgreement]:
         """Get all Priority 2 CCNL agreements data."""
         try:
-            return get_all_priority2_ccnl_data()
+            return get_all_priority2_ccnl_data()  # type: ignore[no-any-return]
         except Exception as e:
             self.logger.error(f"Error loading Priority 2 CCNL data: {e}")
             return []
@@ -1734,7 +1735,7 @@ class CCNLService:
     async def get_all_priority3_ccnl(self) -> list[CCNLAgreement]:
         """Get all Priority 3 CCNL agreements data."""
         try:
-            return get_all_priority3_ccnl_data()
+            return get_all_priority3_ccnl_data()  # type: ignore[no-any-return]
         except Exception as e:
             self.logger.error(f"Error loading Priority 3 CCNL data: {e}")
             return []
@@ -1742,7 +1743,7 @@ class CCNLService:
     async def get_all_priority4_ccnl(self) -> list[CCNLAgreement]:
         """Get all Priority 4 CCNL agreements data."""
         try:
-            return get_all_priority4_ccnl_data()
+            return get_all_priority4_ccnl_data()  # type: ignore[no-any-return]
         except Exception as e:
             self.logger.error(f"Error loading Priority 4 CCNL data: {e}")
             return []
@@ -1750,7 +1751,7 @@ class CCNLService:
     async def get_all_priority5_ccnl(self) -> list[CCNLAgreement]:
         """Get all Priority 5 CCNL agreements data."""
         try:
-            return get_all_priority5_ccnl_data()
+            return get_all_priority5_ccnl_data()  # type: ignore[no-any-return]
         except Exception as e:
             self.logger.error(f"Error loading Priority 5 CCNL data: {e}")
             return []
@@ -1758,7 +1759,7 @@ class CCNLService:
     async def get_all_priority6_ccnl(self) -> list[CCNLAgreement]:
         """Get all Priority 6 CCNL agreements data."""
         try:
-            return get_all_priority6_ccnl_data()
+            return get_all_priority6_ccnl_data()  # type: ignore[no-any-return]
         except Exception as e:
             self.logger.error(f"Error loading Priority 6 CCNL data: {e}")
             return []
@@ -1773,7 +1774,7 @@ class CCNLService:
     ) -> list[CCNLAgreement]:
         """Get all CCNL agreements data (Priority 1 + optionally Priority 2 + 3 + 4 + 5 + 6)."""
         try:
-            all_ccnl = get_all_priority1_ccnl_data()
+            all_ccnl: list[CCNLAgreement] = get_all_priority1_ccnl_data()
 
             if include_priority2:
                 priority2_data = get_all_priority2_ccnl_data()
@@ -1817,7 +1818,7 @@ class CCNLService:
     async def get_ccnl_coverage_stats(self) -> dict[str, Any]:
         """Get coverage statistics for all CCNL priorities."""
         try:
-            stats = {
+            stats: dict[str, Any] = {
                 "priority1": {
                     "sectors_covered": 10,
                     "agreements_count": 0,
@@ -1885,7 +1886,7 @@ class CCNLService:
     async def initialize_all_ccnl_data(self, force_reload: bool = False) -> dict[str, Any]:
         """Initialize all CCNL data in the database (Priority 1 + 2 + 3 + 4 + 5)."""
         try:
-            initialization_stats = {
+            initialization_stats: dict[str, Any] = {
                 "priority1": {"loaded": 0, "errors": 0},
                 "priority2": {"loaded": 0, "errors": 0},
                 "priority3": {"loaded": 0, "errors": 0},

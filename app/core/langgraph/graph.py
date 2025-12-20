@@ -38,10 +38,10 @@ except ImportError:
     AsyncPostgresSaver = None
 
     # Create fallback classes
-    class END:
+    class END:  # type: ignore[no-redef]
         pass
 
-    class StateGraph:
+    class StateGraph:  # type: ignore[no-redef]
         def __init__(self, state_type):
             self.state_type = state_type
             self.nodes = {}
@@ -65,11 +65,11 @@ except ImportError:
         def compile(self, **kwargs):
             return CompiledStateGraph()
 
-    class CompiledStateGraph:
+    class CompiledStateGraph:  # type: ignore[no-redef]
         async def ainvoke(self, state, **kwargs):
             return state
 
-    class StateSnapshot:
+    class StateSnapshot:  # type: ignore[no-redef]
         pass
 
 
@@ -689,7 +689,7 @@ class LangGraphAgent:
         )
 
         # Extract the selected prompt from orchestrator result
-        return result.get("selected_prompt", SYSTEM_PROMPT)
+        return result.get("selected_prompt", SYSTEM_PROMPT)  # type: ignore[no-any-return]
 
     async def _prepare_messages_with_system_prompt(
         self,
@@ -698,8 +698,8 @@ class LangGraphAgent:
         classification: Optional["DomainActionClassification"] = None,
     ) -> list[Message]:
         """Ensure system message presence (RAG STEP 45 — CheckSysMsg) with backward-compatible signature."""
-        if messages is None:
-            messages = []
+        if messages is None:  # Defensive check for runtime safety
+            messages = []  # type: ignore[unreachable]
         msgs = messages  # operate IN-PLACE
 
         # Resolve classification (fallback to agent state)
@@ -1107,7 +1107,7 @@ class LangGraphAgent:
     def _route_strategy_type(state: dict[str, Any]) -> str:
         """Route from StrategyType node based on strategy decision."""
         strategy_type = state.get("decisions", {}).get("strategy_type", "PRIMARY")
-        return strategy_type
+        return strategy_type  # type: ignore[no-any-return]
 
     @staticmethod
     def _route_cost_check(state: dict[str, Any]) -> str:
@@ -2487,7 +2487,7 @@ class LangGraphAgent:
                 "session_id": session_id,
                 "attachments": attachments or [],
             }
-            response = await self._graph.ainvoke(input_state, config)
+            response = await self._graph.ainvoke(input_state, config)  # type: ignore[union-attr]
             return self.__process_messages(response["messages"])
         except Exception as e:
             logger.error(f"Error getting response: {str(e)}")
@@ -2742,8 +2742,8 @@ class LangGraphAgent:
             # (the follow-up question), not the FIRST (the original question)
             user_query_text = ""
             for msg in reversed(messages):
-                if msg.role == "user":
-                    user_query_text = msg.content
+                if msg.role == "user":  # type: ignore[attr-defined]
+                    user_query_text = msg.content  # type: ignore[attr-defined]
                     break
 
             # DEV-007 FIX: Calculate current message index for marking current vs prior attachments
@@ -2813,7 +2813,7 @@ class LangGraphAgent:
             #
             # DEV-007 P0.9 FIX: Also update messages to include the new user message
             # Without this, Turn 2 user message is lost because checkpoint replaces initial_state.messages
-            if config_to_use.get("configurable", {}).get("thread_id"):
+            if config_to_use.get("configurable", {}).get("thread_id"):  # type: ignore[attr-defined]
                 try:
                     update_values = {
                         "current_message_index": current_message_index,
@@ -3299,7 +3299,7 @@ class LangGraphAgent:
                     placeholder_count=len(deanonymization_map),
                 )
 
-            async for chunk in provider.stream_completion(  # type: ignore[misc]
+            async for chunk in provider.stream_completion(
                 messages=processed_messages,
                 tools=None,
                 temperature=settings.DEFAULT_LLM_TEMPERATURE,
@@ -3309,7 +3309,7 @@ class LangGraphAgent:
                 chunk_content: str | None = None
                 if isinstance(chunk, str):
                     chunk_content = chunk
-                elif hasattr(chunk, "content") and chunk.content:
+                elif hasattr(chunk, "content") and chunk.content:  # type: ignore[unreachable]
                     chunk_content = chunk.content
 
                 if chunk_content:
@@ -3384,7 +3384,7 @@ class LangGraphAgent:
             )
 
             # Stream directly from LLM provider (no tools)
-            async for chunk in provider.stream_completion(  # type: ignore[misc]
+            async for chunk in provider.stream_completion(
                 messages=processed_messages,
                 tools=None,  # No tools for simple streaming
                 temperature=settings.DEFAULT_LLM_TEMPERATURE,
@@ -3454,7 +3454,7 @@ class LangGraphAgent:
             }
 
             # Stream from LangGraph with filtering to avoid duplicates
-            async for token, metadata in self._graph.astream(input_state, config, stream_mode="messages"):
+            async for token, metadata in self._graph.astream(input_state, config, stream_mode="messages"):  # type: ignore[union-attr]
                 try:
                     # Filter only from the main chat node to avoid tool call duplicates
                     if metadata.get("langgraph_node") == "chat":
@@ -3500,16 +3500,16 @@ class LangGraphAgent:
         if self._graph is None:
             self._graph = await self.create_graph()
 
-        state: StateSnapshot = await sync_to_async(self._graph.get_state)(
+        state: StateSnapshot = await sync_to_async(self._graph.get_state)(  # type: ignore[union-attr]
             config={"configurable": {"thread_id": session_id}}
         )
         # StateSnapshot.values exists but IDE type stubs don't recognize it
-        messages = self.__process_messages(state.values["messages"]) if state.values else []  # type: ignore[attr-defined]
+        messages = self.__process_messages(state.values["messages"]) if state.values else []
 
         # DEV-007 FIX: Restore attachments to correct messages using message_index
         # Each attachment has a message_index indicating which user message it belongs to
-        if state.values:  # type: ignore[attr-defined]
-            checkpoint_attachments = state.values.get("attachments", [])  # type: ignore[attr-defined]
+        if state.values:
+            checkpoint_attachments = state.values.get("attachments", [])
             if checkpoint_attachments and messages:
                 # Group attachments by message_index
                 attachments_by_msg_idx: dict[int, list[dict]] = {}
@@ -3660,7 +3660,7 @@ class LangGraphAgent:
             conn_pool = await self._get_connection_pool()
 
             # Use a new connection for this specific operation
-            async with conn_pool.connection() as conn:
+            async with conn_pool.connection() as conn:  # type: ignore[union-attr]
                 for table in settings.CHECKPOINT_TABLES:
                     try:
                         await conn.execute(f"DELETE FROM {table} WHERE thread_id = %s", (session_id,))

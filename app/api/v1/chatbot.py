@@ -643,9 +643,67 @@ async def chat_stream(
                                     collected_response_chunks.append(chunk)
                                     # Wrap as proper SSE data event: data: {"content":"...","done":false}\n\n
                                     # Frontend expects this format (api.ts:756-784)
-                                    stream_response = StreamResponse(content=chunk, done=False)
+                                    stream_response = StreamResponse(content=chunk, done=False, event_type="content")
                                     sse_event = format_sse_event(stream_response)
                                     yield write_sse(None, sse_event, request_id=request_id)
+
+                    # DEV-159: Process proactivity after streaming, before done frame
+                    proactivity_result: ProactivityResult | None = None
+                    try:
+                        proactivity_engine = get_proactivity_engine()
+                        proactivity_context = ProactivityContext(
+                            session_id=str(session.id),
+                            domain="default",  # TODO: Get from classification when available
+                            action_type=None,
+                            document_type=None,
+                        )
+                        proactivity_result = proactivity_engine.process(
+                            query=user_query if user_query else "",
+                            context=proactivity_context,
+                        )
+                        logger.debug(
+                            "streaming_proactivity_processed",
+                            session_id=session.id,
+                            action_count=len(proactivity_result.actions),
+                            has_question=proactivity_result.question is not None,
+                            processing_time_ms=proactivity_result.processing_time_ms,
+                        )
+                    except Exception as proactivity_error:
+                        # Graceful degradation: log warning but continue
+                        logger.warning(
+                            "streaming_proactivity_processing_failed_non_critical",
+                            session_id=session.id,
+                            error=str(proactivity_error),
+                        )
+                        proactivity_result = None
+
+                    # DEV-159: Yield proactivity events if available
+                    if proactivity_result:
+                        # Yield suggested_actions event if actions present
+                        if proactivity_result.actions:
+                            actions_data = [a.model_dump() for a in proactivity_result.actions]
+                            extracted_params = None
+                            if proactivity_result.extraction_result:
+                                extracted_params = {
+                                    p.name: p.value for p in proactivity_result.extraction_result.extracted
+                                }
+                            actions_event = StreamResponse(
+                                content="",
+                                event_type="suggested_actions",
+                                suggested_actions=actions_data,
+                                extracted_params=extracted_params,
+                            )
+                            yield write_sse(None, format_sse_event(actions_event), request_id=request_id)
+
+                        # Yield interactive_question event if question present
+                        if proactivity_result.question:
+                            question_data = proactivity_result.question.model_dump()
+                            question_event = StreamResponse(
+                                content="",
+                                event_type="interactive_question",
+                                interactive_question=question_data,
+                            )
+                            yield write_sse(None, format_sse_event(question_event), request_id=request_id)
 
                     # Send final done frame using validated formatter
                     sse_done = format_sse_done()

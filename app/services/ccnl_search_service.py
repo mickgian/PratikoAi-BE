@@ -461,9 +461,9 @@ class CCNLSearchService:
                 CCNLSectorDB,
                 func.coalesce(func.avg(SalaryTableDB.base_monthly_salary), 0).label("avg_salary"),
             )
-            .join(CCNLSectorDB, CCNLAgreementDB.sector_code == CCNLSectorDB.sector_code)
-            .outerjoin(SalaryTableDB, CCNLAgreementDB.id == SalaryTableDB.agreement_id)
-            .group_by(CCNLAgreementDB.id, CCNLSectorDB.id)
+            .join(CCNLSectorDB, CCNLAgreementDB.sector_code == CCNLSectorDB.sector_code)  # type: ignore[arg-type]
+            .outerjoin(SalaryTableDB, CCNLAgreementDB.id == SalaryTableDB.agreement_id)  # type: ignore[arg-type]
+            .group_by(CCNLAgreementDB.id, CCNLSectorDB.id)  # type: ignore[arg-type]
         )
 
         # Apply filters
@@ -472,22 +472,22 @@ class CCNLSearchService:
         # Sector filters
         if filters.sectors:
             sector_codes = [s.value for s in filters.sectors]
-            conditions.append(CCNLAgreementDB.sector_code.in_(sector_codes))
+            conditions.append(CCNLAgreementDB.sector_code.in_(sector_codes))  # type: ignore[attr-defined]
 
         # Date filters
         if filters.active_only:
             today = date.today()
             conditions.append(
                 and_(
-                    CCNLAgreementDB.valid_from <= today,
-                    or_(CCNLAgreementDB.valid_to.is_(None), CCNLAgreementDB.valid_to >= today),
+                    CCNLAgreementDB.valid_from <= today,  # type: ignore[arg-type, operator]
+                    or_(CCNLAgreementDB.valid_to.is_(None), CCNLAgreementDB.valid_to >= today),  # type: ignore[union-attr, arg-type, operator]
                 )
             )
         elif filters.valid_on_date:
             conditions.append(
                 and_(
-                    CCNLAgreementDB.valid_from <= filters.valid_on_date,
-                    or_(CCNLAgreementDB.valid_to.is_(None), CCNLAgreementDB.valid_to >= filters.valid_on_date),
+                    CCNLAgreementDB.valid_from <= filters.valid_on_date,  # type: ignore[arg-type, operator]
+                    or_(CCNLAgreementDB.valid_to.is_(None), CCNLAgreementDB.valid_to >= filters.valid_on_date),  # type: ignore[union-attr, arg-type, operator]
                 )
             )
 
@@ -532,8 +532,8 @@ class CCNLSearchService:
         # Search in agreement name and sector name
         for term in expanded_terms:
             pattern = f"%{term}%"
-            conditions.append(CCNLAgreementDB.name.ilike(pattern))
-            conditions.append(CCNLSectorDB.italian_name.ilike(pattern))
+            conditions.append(CCNLAgreementDB.name.ilike(pattern))  # type: ignore[attr-defined]
+            conditions.append(CCNLSectorDB.italian_name.ilike(pattern))  # type: ignore[attr-defined]
 
         return conditions
 
@@ -547,7 +547,7 @@ class CCNLSearchService:
             return query.order_by(CCNLAgreementDB.name)
         else:  # relevance (default)
             # Simple relevance based on matches
-            return query.order_by(CCNLAgreementDB.valid_from.desc())
+            return query.order_by(CCNLAgreementDB.valid_from.desc())  # type: ignore[attr-defined]
 
     async def _process_search_result(self, row: Any, filters: SearchFilters) -> SearchResult:
         """Process raw search result into SearchResult object."""
@@ -556,13 +556,13 @@ class CCNLSearchService:
         # Get additional information
         with database_service.get_session_maker() as session:
             # Get salary range
-            salary_query = select(
+            salary_query: Any = select(
                 func.min(SalaryTableDB.base_monthly_salary), func.max(SalaryTableDB.base_monthly_salary)
             ).where(SalaryTableDB.agreement_id == agreement.id)
             salary_range = session.exec(salary_query).first()
 
             # Get vacation days
-            vacation_query = select(LeaveEntitlementDB.base_annual_days).where(
+            vacation_query: Any = select(LeaveEntitlementDB.base_annual_days).where(  # type: ignore[call-overload]
                 and_(
                     LeaveEntitlementDB.agreement_id == agreement.id,
                     LeaveEntitlementDB.leave_type == LeaveType.FERIE.value,
@@ -571,7 +571,7 @@ class CCNLSearchService:
             vacation_days = session.exec(vacation_query).first()
 
             # Get working hours
-            hours_query = select(WorkingHoursDB.ordinary_weekly_hours).where(
+            hours_query: Any = select(WorkingHoursDB.ordinary_weekly_hours).where(  # type: ignore[call-overload]
                 WorkingHoursDB.agreement_id == agreement.id
             )
             working_hours = session.exec(hours_query).first()

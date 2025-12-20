@@ -161,3 +161,45 @@ class ParameterExtractionResult(BaseModel):
     missing_required: list[str] = Field(default_factory=list, description="Missing required parameter names")
     coverage: float = Field(..., description="Coverage percentage (0.0 to 1.0)", ge=0.0, le=1.0)
     can_proceed: bool = Field(..., description="Whether query can proceed")
+
+
+class ProactivityContext(BaseModel):
+    """Context for proactivity processing.
+
+    Contains session information, domain classification, and user history
+    to inform action selection and question generation.
+
+    Attributes:
+        session_id: Unique session identifier for tracking
+        domain: Classified domain (tax, labor, legal, documents, default)
+        action_type: Type of action detected (e.g., fiscal_calculation)
+        document_type: Type of document if attached (e.g., fattura, f24)
+        user_history: List of previous queries in session
+    """
+
+    session_id: str = Field(..., description="Unique session identifier", min_length=1)
+    domain: str = Field(..., description="Classified domain", min_length=1)
+    action_type: str | None = Field(default=None, description="Type of action detected")
+    document_type: str | None = Field(default=None, description="Type of document if attached")
+    user_history: list[str] = Field(default_factory=list, description="Previous queries in session")
+
+
+class ProactivityResult(BaseModel):
+    """Result of proactivity processing.
+
+    Contains the selected actions, optional interactive question,
+    extraction result, and processing metrics.
+
+    Attributes:
+        actions: List of suggested actions to display
+        question: Interactive question if query needs clarification
+        extraction_result: Parameter extraction results
+        processing_time_ms: Time taken to process in milliseconds
+    """
+
+    actions: list[Action] = Field(default_factory=list, description="Suggested actions")
+    question: InteractiveQuestion | None = Field(default=None, description="Interactive question")
+    extraction_result: "ParameterExtractionResult | None" = Field(
+        default=None, description="Extraction results"
+    )
+    processing_time_ms: float = Field(..., description="Processing time in milliseconds", ge=0.0)

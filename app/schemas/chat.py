@@ -1,6 +1,7 @@
 """This file contains the chat schema for the application.
 
 Security: Includes prompt injection detection in monitoring mode (V-003).
+Proactivity: Extended with suggested_actions and interactive_question (DEV-157).
 """
 
 import re
@@ -18,6 +19,8 @@ from pydantic import (
     Field,
     field_validator,
 )
+
+from app.schemas.proactivity import Action, InteractiveQuestion
 
 
 class AttachmentInfo(BaseModel):
@@ -140,10 +143,24 @@ class ChatResponse(BaseModel):
     Attributes:
         messages: List of messages in the conversation.
         metadata: Optional response metadata for debugging and monitoring.
+        suggested_actions: Optional list of suggested actions for the user.
+        interactive_question: Optional interactive question for clarification.
+        extracted_params: Optional extracted parameters from the query.
     """
 
     messages: list[Message] = Field(..., description="List of messages in the conversation")
     metadata: ResponseMetadata | None = Field(None, description="Response metadata for debugging and monitoring")
+
+    # Proactivity fields (DEV-157) - Optional for backward compatibility
+    suggested_actions: list[Action] | None = Field(
+        None, description="Suggested actions for the user based on context"
+    )
+    interactive_question: InteractiveQuestion | None = Field(
+        None, description="Interactive question for parameter clarification"
+    )
+    extracted_params: dict[str, Any] | None = Field(
+        None, description="Parameters extracted from the user query for confirmation"
+    )
 
 
 class StreamResponse(BaseModel):

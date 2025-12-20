@@ -582,6 +582,56 @@ Created SQLModel tables and analytics service with non-blocking writes and GDPR 
 
 ---
 
+<details>
+<summary>
+<h3>DEV-157: Extend ChatResponse Schema with Actions/Questions</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-20)<br>
+Extended ChatResponse schema with proactivity fields in a backward-compatible way.
+</summary>
+
+### DEV-157: Extend ChatResponse Schema with Actions/Questions
+
+**Status:** ✅ COMPLETED (2024-12-20)
+**Priority:** HIGH | **Effort:** 0.5h (Actual: ~0.5h)
+
+**Problem:**
+The ChatResponse schema needed to be extended to include suggested_actions and interactive_question fields.
+
+**Solution:**
+Added optional fields to ChatResponse schema in a backward-compatible way.
+
+**Files Modified:**
+- `app/schemas/chat.py` - Added new optional fields to ChatResponse
+- `tests/schemas/test_chat.py` - Added 7 new TDD tests
+
+**Fields Added to ChatResponse:**
+```python
+suggested_actions: list[Action] | None = None
+interactive_question: InteractiveQuestion | None = None
+extracted_params: dict[str, Any] | None = None
+```
+
+**Tests Added:**
+- `test_chat_response_backward_compatible` - Old clients work without new fields
+- `test_chat_response_with_suggested_actions` - Actions serialize correctly
+- `test_chat_response_with_interactive_question` - Questions serialize correctly
+- `test_chat_response_with_extracted_params` - Params serialize correctly
+- `test_chat_response_with_actions_and_question` - Both fields together
+- `test_chat_response_serialization_excludes_none` - None excluded from output
+- `test_chat_response_json_serialization` - JSON serialization works
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 7 new tests
+- ✅ Backward compatible (optional fields default to None)
+- ✅ All 36 existing tests pass
+- ✅ None values excluded from serialization (exclude_none=True)
+
+**Git:** Branch `DEV-157-Extend-ChatResponse-Schema-with-Actions/Questions`
+
+</details>
+
+---
+
 ## Phase 1: Foundation (Backend) - 9h
 
 **Note:** DEV-150, DEV-151, DEV-152, DEV-153, DEV-154, DEV-155, and DEV-156 moved to Completed Tasks section above.
@@ -590,81 +640,7 @@ Created SQLModel tables and analytics service with non-blocking writes and GDPR 
 
 ## Phase 2: API Integration (Backend) - 6h
 
-### DEV-157: Extend ChatResponse Schema with Actions/Questions
-
-**Reference:** [Section 4.2: API Endpoints](./PRATIKO_1.5_REFERENCE.md#42-api-endpoints)
-
-**Priority:** HIGH | **Effort:** 0.5h | **Status:** NOT STARTED
-
-**Problem:**
-The ChatResponse schema needs to be extended to include suggested_actions and interactive_question fields.
-
-**Solution:**
-Add optional fields to ChatResponse schema in a backward-compatible way.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-150
-- **Unlocks:** DEV-158, DEV-159
-
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary File:** `app/schemas/chat.py`
-- **Affected Files:**
-  - `app/api/v1/chatbot.py` (returns ChatResponse)
-  - Frontend API client (consumes ChatResponse)
-- **Related Tests:**
-  - `tests/schemas/test_chat.py` (direct)
-  - `tests/api/test_chatbot.py` (consumer)
-- **Baseline Command:** `pytest tests/schemas/test_chat.py tests/api/test_chatbot.py -v`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass
-- [ ] Existing ChatResponse usage reviewed
-- [ ] No pre-existing test failures
-
-**File:** `app/schemas/chat.py`
-
-**Fields/Methods/Components:**
-Add to `ChatResponse`:
-```python
-suggested_actions: list[Action] | None = None
-interactive_question: InteractiveQuestion | None = None
-extracted_params: dict[str, Any] | None = None  # For parameter confirmation
-```
-
-**Edge Cases:**
-- **Both actions and question:** Valid state (show actions after question answered)
-- **Neither actions nor question:** Valid state (system error or disabled feature)
-- **Serialization of None:** Must serialize as absent, not null
-
-**Testing Requirements:**
-- **TDD:** Write tests FIRST
-- **Unit Tests:**
-  - `test_chat_response_backward_compatible` - Old clients work without new fields
-  - `test_chat_response_with_actions` - New fields serialize correctly
-  - `test_chat_response_both_fields` - Actions and question together
-- **Regression Tests:** Run full test suite for chatbot module
-- **Coverage Target:** 90%+
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking existing API contracts | HIGH | Use optional fields, version carefully |
-| Frontend incompatibility | MEDIUM | Coordinate with frontend team |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Backward compatible (optional fields)
-- [ ] All existing tests pass
-- [ ] 90%+ test coverage achieved
+**Note:** DEV-157 moved to Completed Tasks section above.
 
 ---
 

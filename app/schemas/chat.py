@@ -152,9 +152,7 @@ class ChatResponse(BaseModel):
     metadata: ResponseMetadata | None = Field(None, description="Response metadata for debugging and monitoring")
 
     # Proactivity fields (DEV-157) - Optional for backward compatibility
-    suggested_actions: list[Action] | None = Field(
-        None, description="Suggested actions for the user based on context"
-    )
+    suggested_actions: list[Action] | None = Field(None, description="Suggested actions for the user based on context")
     interactive_question: InteractiveQuestion | None = Field(
         None, description="Interactive question for parameter clarification"
     )
@@ -166,10 +164,29 @@ class ChatResponse(BaseModel):
 class StreamResponse(BaseModel):
     """Response model for streaming chat endpoint.
 
+    Supports different event types for proactivity (DEV-159):
+    - content: Text content chunks (default)
+    - suggested_actions: Suggested actions for the user
+    - interactive_question: Interactive question for clarification
+
     Attributes:
         content: The content of the current chunk.
         done: Whether the stream is complete.
+        event_type: Type of SSE event (content, suggested_actions, interactive_question).
+        suggested_actions: Actions suggested based on query context.
+        interactive_question: Question for parameter clarification.
+        extracted_params: Parameters extracted from user query.
     """
 
     content: str = Field(default="", description="The content of the current chunk")
     done: bool = Field(default=False, description="Whether the stream is complete")
+
+    # Proactivity fields (DEV-159) - Optional for backward compatibility
+    event_type: Literal["content", "suggested_actions", "interactive_question"] | None = Field(
+        default=None, description="Type of SSE event for proactivity"
+    )
+    suggested_actions: list[dict[str, Any]] | None = Field(default=None, description="Suggested actions for the user")
+    interactive_question: dict[str, Any] | None = Field(
+        default=None, description="Interactive question for parameter clarification"
+    )
+    extracted_params: dict[str, Any] | None = Field(default=None, description="Parameters extracted from user query")

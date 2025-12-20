@@ -199,9 +199,9 @@ class IrpefCalculator:
             bracket_max = bracket["max_income"] or Decimal("999999999")
 
             if bracket_min <= income <= bracket_max:
-                return bracket["rate"]
+                return bracket["rate"]  # type: ignore[no-any-return]
 
-        return self.brackets[-1]["rate"]  # Return highest rate if not found
+        return self.brackets[-1]["rate"]  # type: ignore[no-any-return]  # Return highest rate if not found
 
 
 class InpsCalculator:
@@ -685,7 +685,7 @@ class TaxDeductionEngine:
         self,
         dependent_children: int = 0,
         dependent_spouse: bool = False,
-        children_ages: list[int] = None,
+        children_ages: list[int] | None = None,
         spouse_income: Decimal = Decimal("0"),
     ) -> dict[str, Any]:
         """Calculate family-related deductions."""
@@ -985,7 +985,7 @@ class TaxOptimizationEngine:
         avg_regional = Decimal("1.73")
         avg_municipal = Decimal("0.60")
 
-        return marginal_irpef + avg_regional + avg_municipal
+        return marginal_irpef + avg_regional + avg_municipal  # type: ignore[no-any-return]
 
 
 class ItalianTaxCalculator:
@@ -1018,7 +1018,7 @@ class ItalianTaxCalculator:
         gross_salary: Decimal,
         location: str,
         employment_type: str = "employee",
-        family_status: dict[str, Any] = None,
+        family_status: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Calculate net salary with all applicable taxes and contributions.
 
@@ -1172,9 +1172,9 @@ class ItalianTaxCalculator:
             )
 
         # Find best scenario
-        best_scenario = max(results, key=lambda x: x["net_income"])
-        worst_scenario = min(results, key=lambda x: x["net_income"])
-        tax_savings = best_scenario["net_income"] - worst_scenario["net_income"]
+        best_scenario = max(results, key=lambda x: x["net_income"])  # type: ignore[arg-type, return-value]
+        worst_scenario = min(results, key=lambda x: x["net_income"])  # type: ignore[arg-type, return-value]
+        tax_savings = best_scenario["net_income"] - worst_scenario["net_income"]  # type: ignore[operator]
 
         return {
             "scenarios": results,

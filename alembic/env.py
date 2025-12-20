@@ -36,12 +36,10 @@ from app.models.data_export import (
     DataExportRequest,
     ElectronicInvoice,
     ExportAuditLog,
+    ExportDocumentAnalysis,
     FAQInteraction,
     KnowledgeBaseSearch,
     QueryHistory,
-)
-from app.models.data_export import (
-    ExportDocumentAnalysis,
 )
 from app.models.data_export import (
     TaxCalculation as ExportTaxCalculation,
@@ -92,6 +90,12 @@ from app.models.payment import (
     Payment,
     Subscription,
     WebhookEvent,
+)
+
+# Proactivity Analytics Models - DEV-156
+from app.models.proactivity_analytics import (
+    InteractiveQuestionAnswer,
+    SuggestedActionClick,
 )
 
 # Phase 3: Expert Feedback & Quality Analysis Models

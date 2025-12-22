@@ -49,7 +49,13 @@ from app.schemas.chat import (
     Message,
     StreamResponse,
 )
-from app.schemas.proactivity import ActionExecuteRequest, ProactivityContext, ProactivityResult
+from app.schemas.proactivity import (
+    ActionExecuteRequest,
+    ProactivityContext,
+    ProactivityResult,
+    QuestionAnswerRequest,
+    QuestionAnswerResponse,
+)
 from app.services.action_template_service import ActionTemplateService
 from app.services.atomic_facts_extractor import AtomicFactsExtractor
 from app.services.attachment_resolver import (
@@ -1125,6 +1131,171 @@ async def execute_action(
             "action_execution_failed",
             action_id=action_request.action_id,
             session_id=action_request.session_id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# DEV-161: Question Answer Endpoint
+# =============================================================================
+
+
+@router.post("/questions/answer")
+@limiter.limit(settings.RATE_LIMIT_ENDPOINTS["chat"][0])
+async def answer_question(
+    request: Request,
+    answer_request: QuestionAnswerRequest,
+    session: Session = Depends(get_current_session),
+) -> QuestionAnswerResponse:
+    """Process an answer to an interactive question - DEV-161.
+
+    Handles both single-step and multi-step question flows.
+    For multi-step flows, returns the next question.
+    For terminal questions, processes the answer and returns a response.
+
+    Args:
+        request: The FastAPI request object for rate limiting.
+        answer_request: The question answer request containing question_id,
+                       selected_option, optional custom_input, and session_id.
+        session: The current authenticated session.
+
+    Returns:
+        QuestionAnswerResponse: Either next question or answer with actions.
+
+    Raises:
+        HTTPException:
+            - 400: If question_id, option_id is invalid, or custom input required but missing
+            - 500: If there's an internal error during processing
+    """
+    try:
+        # Get template service and lookup question
+        template_service = get_template_service()
+        question = template_service.get_question(answer_request.question_id)
+
+        if question is None:
+            logger.warning(
+                "question_not_found",
+                question_id=answer_request.question_id,
+                session_id=answer_request.session_id,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Domanda non valida",
+            )
+
+        # Validate selected option
+        selected_option = None
+        for option in question.options:
+            if option.id == answer_request.selected_option:
+                selected_option = option
+                break
+
+        if selected_option is None:
+            logger.warning(
+                "option_not_found",
+                question_id=answer_request.question_id,
+                option_id=answer_request.selected_option,
+                session_id=answer_request.session_id,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Opzione non valida",
+            )
+
+        # Check if custom input is required but missing
+        if selected_option.requires_input and not answer_request.custom_input:
+            logger.warning(
+                "custom_input_required",
+                question_id=answer_request.question_id,
+                option_id=answer_request.selected_option,
+                session_id=answer_request.session_id,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Input personalizzato richiesto",
+            )
+
+        logger.info(
+            "question_answer_processing",
+            question_id=answer_request.question_id,
+            option_id=answer_request.selected_option,
+            has_custom_input=answer_request.custom_input is not None,
+            session_id=answer_request.session_id,
+            user_id=session.user_id,
+        )
+
+        # Check if this is a multi-step flow (option leads to next question)
+        if selected_option.leads_to:
+            next_question = template_service.get_question(selected_option.leads_to)
+            if next_question:
+                logger.info(
+                    "question_flow_continuing",
+                    from_question=answer_request.question_id,
+                    to_question=selected_option.leads_to,
+                    session_id=answer_request.session_id,
+                )
+                return QuestionAnswerResponse(next_question=next_question)
+
+        # Terminal question - generate prompt and get answer
+        # Build prompt from question context and selected option
+        prompt_parts = [question.text, f"Risposta selezionata: {selected_option.label}"]
+        if answer_request.custom_input:
+            prompt_parts.append(f"Input personalizzato: {answer_request.custom_input}")
+
+        prompt = " ".join(prompt_parts)
+
+        # Execute as chat query
+        response = await agent.get_response(
+            session_id=answer_request.session_id,
+            user_id=session.user_id,
+            query=prompt,
+        )
+
+        # Process proactivity for follow-up actions
+        suggested_actions = None
+        try:
+            proactivity_engine = get_proactivity_engine()
+            proactivity_context = ProactivityContext(
+                session_id=answer_request.session_id,
+                domain="default",
+                action_type=None,
+                document_type=None,
+            )
+            proactivity_result = proactivity_engine.process(
+                query=prompt,
+                context=proactivity_context,
+            )
+            if proactivity_result and proactivity_result.actions:
+                suggested_actions = proactivity_result.actions
+        except Exception as proactivity_error:
+            logger.warning(
+                "question_proactivity_processing_failed",
+                question_id=answer_request.question_id,
+                session_id=answer_request.session_id,
+                error=str(proactivity_error),
+            )
+
+        logger.info(
+            "question_answer_completed",
+            question_id=answer_request.question_id,
+            session_id=answer_request.session_id,
+            has_actions=suggested_actions is not None,
+        )
+
+        return QuestionAnswerResponse(
+            answer=str(response),
+            suggested_actions=suggested_actions,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "question_answer_failed",
+            question_id=answer_request.question_id,
+            session_id=answer_request.session_id,
             error=str(e),
             exc_info=True,
         )

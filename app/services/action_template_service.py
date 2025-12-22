@@ -359,6 +359,32 @@ class ActionTemplateService:
         """
         return self._question_cache.get(question_id)
 
+    def get_action_by_id(self, action_id: str) -> Action | None:
+        """Get an action by its ID - DEV-160.
+
+        Searches across all domains and action types to find the action.
+
+        Args:
+            action_id: Unique action identifier
+
+        Returns:
+            Action or None if not found
+        """
+        # Search in domain actions
+        for domain_actions in self._action_cache.values():
+            for actions in domain_actions.values():
+                for action in actions:
+                    if action.id == action_id:
+                        return action
+
+        # Search in document actions
+        for actions in self._document_action_cache.values():
+            for action in actions:
+                if action.id == action_id:
+                    return action
+
+        return None
+
     def reload_templates(self) -> None:
         """Force reload all templates from disk.
 

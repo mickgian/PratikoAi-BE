@@ -922,6 +922,73 @@ interface SuggestedActionsBarProps {
 
 </details>
 
+<details>
+<summary>
+<h3>DEV-164: Create InteractiveQuestionInline Component</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Created React component for inline interactive questions, Claude Code style.
+</summary>
+
+### DEV-164: Create InteractiveQuestionInline Component
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** HIGH | **Effort:** 3h (Actual: ~1h)
+
+**Problem:**
+The frontend needed a component to render interactive questions inline in the chat with keyboard navigation.
+
+**Solution:**
+Created InteractiveQuestionInline React component in `/Users/micky/WebstormProjects/PratikoAiWebApp` with full TDD approach.
+
+**Files Created:**
+- `src/app/chat/components/InteractiveQuestionInline.tsx` - Main component (215 lines)
+- `src/app/chat/components/__tests__/InteractiveQuestionInline.test.tsx` - 26 TDD tests (455 lines)
+
+**Key Features:**
+- Question text with options in responsive grid (2 cols mobile, 4 cols desktop)
+- Keyboard navigation (Arrow keys for selection, 1-9 number shortcuts, Enter to select, Esc to skip)
+- Custom input field when allow_custom_input is true
+- Selected option styling with blu-petrolio bg, white text, ring, shadow
+- Touch-friendly targets (min 44px height)
+- Accessible with role="radiogroup", aria-checked on options
+- Fade-slide-up animation on mount
+
+**Component Interface:**
+```typescript
+interface Option {
+  id: string;
+  label: string;
+  icon?: string;
+}
+
+interface InteractiveQuestion {
+  id: string;
+  text: string;
+  options: Option[];
+  allow_custom_input?: boolean;
+  custom_input_placeholder?: string;
+}
+
+interface InteractiveQuestionInlineProps {
+  question: InteractiveQuestion;
+  onAnswer: (optionId: string, customInput?: string) => void;
+  onSkip?: () => void;
+  disabled?: boolean;
+}
+```
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 26 tests
+- ✅ Question and options rendered Claude Code style
+- ✅ Keyboard navigation works (arrows, numbers, Enter, Esc)
+- ✅ Custom input field for "Altro" option
+- ✅ Skip functionality with Esc key
+- ✅ All 26 tests pass
+
+**Git:** Branch `DEV-164-Create-InteractiveQuestionInline-Component`
+
+</details>
+
 ---
 
 ## Phase 1: Foundation (Backend) - 9h
@@ -1026,7 +1093,7 @@ className={cn(
 
 ## Phase 3: Frontend Components - 10h
 
-**Note:** DEV-163 moved to Completed Tasks section above.
+**Note:** DEV-163, DEV-164 moved to Completed Tasks section above.
 
 ### DEV-163: Create SuggestedActionsBar Component
 

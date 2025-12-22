@@ -203,3 +203,19 @@ class ProactivityResult(BaseModel):
         default=None, description="Extraction results"
     )
     processing_time_ms: float = Field(..., description="Processing time in milliseconds", ge=0.0)
+
+
+class ActionExecuteRequest(BaseModel):
+    """Request model for /actions/execute endpoint - DEV-160.
+
+    Contains the action to execute, optional parameters, and session context.
+
+    Attributes:
+        action_id: ID of the action template to execute
+        parameters: Optional parameters to substitute in prompt_template
+        session_id: Session ID for context tracking
+    """
+
+    action_id: str = Field(..., description="ID of the action template to execute", min_length=1)
+    parameters: dict[str, Any] | None = Field(default=None, description="Parameters for prompt template")
+    session_id: str = Field(..., description="Session ID for context tracking", min_length=1)

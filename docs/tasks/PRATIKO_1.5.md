@@ -773,6 +773,93 @@ Created POST /api/v1/chatbot/actions/execute endpoint that looks up action templ
 
 ---
 
+<details>
+<summary>
+<h3>DEV-161: Create /questions/answer Endpoint</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Created endpoint to process answers to interactive questions with multi-step flow support.
+</summary>
+
+### DEV-161: Create /questions/answer Endpoint
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** HIGH | **Effort:** 1h (Actual: ~1h)
+
+**Problem:**
+When a user answers an interactive question, the system needed an endpoint to process the answer and continue the flow.
+
+**Solution:**
+Created POST /api/v1/chatbot/questions/answer endpoint that validates question/option, handles multi-step flows, and returns answers with follow-up actions.
+
+**Files Modified:**
+- `app/schemas/proactivity.py` - Added `QuestionAnswerRequest` and `QuestionAnswerResponse` schemas
+- `app/api/v1/chatbot.py` - Added `/questions/answer` endpoint
+
+**Files Created:**
+- `tests/api/test_chatbot_questions.py` - 21 TDD tests
+
+**Key Features:**
+- Single-step question flow returns answer
+- Multi-step question flow returns next question (via leads_to)
+- Validates question_id, option_id (400 errors)
+- Custom input validation (400 if required but missing)
+- ProactivityEngine integration for follow-up actions
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 21 tests
+- ✅ Single-step questions return direct answer
+- ✅ Multi-step questions return next question
+- ✅ Custom input captured and used
+- ✅ Proper error handling for invalid requests
+
+**Git:** Branch `DEV-161-Create-/questions/answer-Endpoint`
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-162: Add Analytics Tracking to Action/Question Endpoints</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Added fire-and-forget analytics tracking for action clicks and question answers.
+</summary>
+
+### DEV-162: Add Analytics Tracking to Action/Question Endpoints
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** MEDIUM | **Effort:** 0.5h (Actual: ~0.5h)
+
+**Problem:**
+Action clicks and question answers needed to be tracked for analytics to understand user behavior.
+
+**Solution:**
+Integrated ProactivityAnalyticsService into /actions/execute and /questions/answer endpoints with fire-and-forget async tracking in a thread pool.
+
+**Files Modified:**
+- `app/models/database.py` - Added sync engine and `get_sync_session()` for analytics operations
+- `app/api/v1/chatbot.py` - Added analytics tracking helpers and calls to endpoints
+
+**Files Created:**
+- `tests/api/test_chatbot_analytics.py` - 10 TDD tests
+
+**Key Features:**
+- Fire-and-forget async tracking (non-blocking)
+- Action clicks tracked with session_id, user_id, action, domain
+- Question answers tracked with session_id, user_id, question_id, option_id, custom_input
+- Thread pool executor for sync analytics writes
+- Graceful degradation on analytics failures
+
+**Acceptance Criteria (All Met):**
+- ✅ Action clicks tracked in DB
+- ✅ Question answers tracked in DB
+- ✅ Analytics failure does not block response
+- ✅ 10 TDD tests pass (61 total proactivity tests)
+
+**Git:** Branch `DEV-162-Add-Analytics-Tracking-to-Action/Question-Endpoints`
+
+</details>
+
+---
+
 ## Phase 1: Foundation (Backend) - 9h
 
 **Note:** DEV-150, DEV-151, DEV-152, DEV-153, DEV-154, DEV-155, and DEV-156 moved to Completed Tasks section above.
@@ -781,186 +868,7 @@ Created POST /api/v1/chatbot/actions/execute endpoint that looks up action templ
 
 ## Phase 2: API Integration (Backend) - 6h
 
-**Note:** DEV-157, DEV-158, DEV-159, and DEV-160 moved to Completed Tasks section above.
-
----
-
-### DEV-161: Create /questions/answer Endpoint
-
-**Reference:** [Section 4.2: API Endpoints](./PRATIKO_1.5_REFERENCE.md#42-api-endpoints)
-
-**Priority:** HIGH | **Effort:** 1h | **Status:** NOT STARTED
-
-**Problem:**
-When a user answers an interactive question, the system needs an endpoint to process the answer and continue the flow.
-
-**Solution:**
-Create POST /api/v1/chatbot/questions/answer endpoint that processes the selected option.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-158
-- **Unlocks:** DEV-162, DEV-164
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- Unknown question_id: HTTP 400, "Domanda non valida"
-- Unknown option_id: HTTP 400, "Opzione non valida"
-- Custom input required but empty: HTTP 400, "Input personalizzato richiesto"
-- **Logging:** Log question answer with context (session_id, question_id, option_id)
-
-**Performance Requirements:**
-- Answer processing: <500ms
-
-**File:** `app/api/v1/chatbot.py`
-
-**Fields/Methods/Components:**
-```python
-class QuestionAnswerRequest(BaseModel):
-    question_id: str
-    selected_option: str
-    custom_input: str | None = None
-    session_id: str
-
-class QuestionAnswerResponse(BaseModel):
-    next_question: InteractiveQuestion | None = None
-    answer: str | None = None
-    suggested_actions: list[Action] | None = None
-
-@router.post("/questions/answer")
-async def answer_question(
-    request: QuestionAnswerRequest,
-    # ... deps
-) -> QuestionAnswerResponse:
-    # 1. Validate question and option
-    # 2. If leads_to exists, return next question
-    # 3. If terminal, process with extracted params and return answer
-```
-
-**Testing Requirements:**
-- **TDD:** Write tests FIRST
-- **Unit Tests:**
-  - `test_answer_question_single_step` - Single question returns answer
-  - `test_answer_question_multi_step` - Multi-step returns next question
-  - `test_answer_question_custom_input` - Custom input processed
-  - `test_answer_question_invalid` - 400 error for invalid question/option
-- **Integration Tests:** `tests/api/test_chatbot_questions.py`
-- **Coverage Target:** 85%+
-
-**Edge Cases:**
-- **Question flow ends unexpectedly:** Return error with context
-- **Custom input validation:** Sanitize user input
-- **Multi-step flow timeout:** Handle abandoned flows gracefully
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Infinite question loops | HIGH | Validate flows at template load |
-| State management complexity | MEDIUM | Use LangGraph checkpointer |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Single-step questions return direct answer
-- [ ] Multi-step questions return next question
-- [ ] Custom input captured and used
-- [ ] Proper error handling for invalid requests
-- [ ] 85%+ test coverage achieved
-
----
-
-### DEV-162: Add Analytics Tracking to Action/Question Endpoints
-
-**Reference:** User Decision - Track all clicks in DB
-
-**Priority:** MEDIUM | **Effort:** 0.5h | **Status:** NOT STARTED
-
-**Problem:**
-Action clicks and question answers need to be tracked for analytics.
-
-**Solution:**
-Integrate ProactivityAnalyticsService into /actions/execute and /questions/answer endpoints.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-156, DEV-160, DEV-161
-- **Unlocks:** None
-
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary Files:** `app/api/v1/chatbot.py`
-- **Affected Files:** None
-- **Related Tests:**
-  - `tests/api/test_chatbot_actions.py`
-  - `tests/api/test_chatbot_questions.py`
-- **Baseline Command:** `pytest tests/api/test_chatbot_actions.py tests/api/test_chatbot_questions.py -v`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass
-- [ ] Analytics service tested independently
-- [ ] No pre-existing test failures
-
-**File:** `app/api/v1/chatbot.py`
-
-**Fields/Methods/Components:**
-Add to execute_action:
-```python
-await analytics_service.track_action_click(
-    session_id=request.session_id,
-    user_id=current_user.id if current_user else None,
-    action=action,
-    context_hash=context_hash,
-)
-```
-
-Add to answer_question:
-```python
-await analytics_service.track_question_answer(
-    session_id=request.session_id,
-    user_id=current_user.id if current_user else None,
-    question_id=request.question_id,
-    option_id=request.selected_option,
-    custom_input=request.custom_input,
-)
-```
-
-**Testing Requirements:**
-- **Unit Tests:**
-  - `test_action_click_tracked` - Analytics called on action execute
-  - `test_question_answer_tracked` - Analytics called on question answer
-  - `test_analytics_failure_non_blocking` - Endpoint works even if analytics fails
-- **Coverage Target:** 85%+
-
-**Edge Cases:**
-- **Analytics service unavailable:** Continue endpoint execution, log warning
-- **Duplicate tracking calls:** Idempotent writes, use session_id + timestamp
-- **High traffic burst:** Async non-blocking writes handle load
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Analytics slows endpoint response | HIGH | Fire-and-forget async writes |
-| Missing analytics data | LOW | Log failures for manual review |
-| GDPR compliance issues | MEDIUM | Ensure CASCADE delete on user_id |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Action clicks tracked in DB
-- [ ] Question answers tracked in DB
-- [ ] Analytics failure does not block response
-- [ ] 85%+ test coverage achieved
+**Note:** DEV-157, DEV-158, DEV-159, DEV-160, DEV-161, and DEV-162 moved to Completed Tasks section above.
 
 ---
 

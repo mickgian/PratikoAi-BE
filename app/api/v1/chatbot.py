@@ -5,9 +5,13 @@ streaming chat, message history management, and chat history clearing.
 
 DEV-158: Added ProactivityEngine integration for suggested actions and
 interactive questions support.
+
+DEV-162: Added analytics tracking for action clicks and question answers.
 """
 
+import asyncio
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import (
     APIRouter,
@@ -39,7 +43,7 @@ from app.core.sse_write import (
     write_sse,
 )
 from app.core.streaming_guard import SinglePassStream
-from app.models.database import get_db
+from app.models.database import get_db, get_sync_session
 from app.models.session import Session
 from app.observability.rag_logging import rag_step_log
 from app.observability.rag_trace import rag_trace_context
@@ -50,6 +54,7 @@ from app.schemas.chat import (
     StreamResponse,
 )
 from app.schemas.proactivity import (
+    Action,
     ActionExecuteRequest,
     ProactivityContext,
     ProactivityResult,
@@ -64,6 +69,7 @@ from app.services.attachment_resolver import (
     attachment_resolver,
 )
 from app.services.chat_history_service import chat_history_service
+from app.services.proactivity_analytics_service import ProactivityAnalyticsService
 from app.services.proactivity_engine import ProactivityEngine
 
 router = APIRouter()
@@ -106,6 +112,144 @@ def get_template_service() -> ActionTemplateService:
         _template_service = ActionTemplateService()
         _template_service.load_templates()
     return _template_service
+
+
+# =============================================================================
+# DEV-162: Analytics Tracking Helpers
+# =============================================================================
+
+# Thread pool executor for fire-and-forget sync analytics writes
+_analytics_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="analytics")
+
+
+def _track_action_click_sync(
+    session_id: str,
+    user_id: int | None,
+    action: Action,
+    domain: str,
+    context_hash: str | None = None,
+) -> None:
+    """Run action click tracking synchronously in thread pool.
+
+    Args:
+        session_id: Session identifier
+        user_id: User ID (None for anonymous users)
+        action: The clicked Action object
+        domain: Domain context (tax, labor, legal, etc.)
+        context_hash: Optional hash for grouping similar contexts
+    """
+    try:
+        with get_sync_session() as db_session:
+            analytics_service = ProactivityAnalyticsService(db_session)
+            analytics_service.track_action_click(
+                session_id=session_id,
+                user_id=user_id,
+                action=action,
+                domain=domain,
+                context_hash=context_hash,
+            )
+    except Exception as e:
+        logger.warning(
+            "analytics_action_click_background_failed",
+            session_id=session_id,
+            error=str(e),
+        )
+
+
+def _track_question_answer_sync(
+    session_id: str,
+    user_id: int | None,
+    question_id: str,
+    option_id: str,
+    custom_input: str | None = None,
+) -> None:
+    """Run question answer tracking synchronously in thread pool.
+
+    Args:
+        session_id: Session identifier
+        user_id: User ID (None for anonymous users)
+        question_id: ID of the answered question
+        option_id: ID of the selected option
+        custom_input: Custom text if "altro" was selected
+    """
+    try:
+        with get_sync_session() as db_session:
+            analytics_service = ProactivityAnalyticsService(db_session)
+            analytics_service.track_question_answer(
+                session_id=session_id,
+                user_id=user_id,
+                question_id=question_id,
+                option_id=option_id,
+                custom_input=custom_input,
+            )
+    except Exception as e:
+        logger.warning(
+            "analytics_question_answer_background_failed",
+            session_id=session_id,
+            error=str(e),
+        )
+
+
+async def track_action_click_async(
+    session_id: str,
+    user_id: int | None,
+    action: Action,
+    domain: str,
+    context_hash: str | None = None,
+) -> None:
+    """Fire-and-forget async wrapper for action click tracking.
+
+    Runs the sync analytics write in a thread pool to avoid blocking
+    the endpoint response.
+
+    Args:
+        session_id: Session identifier
+        user_id: User ID (None for anonymous users)
+        action: The clicked Action object
+        domain: Domain context (tax, labor, legal, etc.)
+        context_hash: Optional hash for grouping similar contexts
+    """
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(
+        _analytics_executor,
+        _track_action_click_sync,
+        session_id,
+        user_id,
+        action,
+        domain,
+        context_hash,
+    )
+
+
+async def track_question_answer_async(
+    session_id: str,
+    user_id: int | None,
+    question_id: str,
+    option_id: str,
+    custom_input: str | None = None,
+) -> None:
+    """Fire-and-forget async wrapper for question answer tracking.
+
+    Runs the sync analytics write in a thread pool to avoid blocking
+    the endpoint response.
+
+    Args:
+        session_id: Session identifier
+        user_id: User ID (None for anonymous users)
+        question_id: ID of the answered question
+        option_id: ID of the selected option
+        custom_input: Custom text if "altro" was selected
+    """
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(
+        _analytics_executor,
+        _track_question_answer_sync,
+        session_id,
+        user_id,
+        question_id,
+        option_id,
+        custom_input,
+    )
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -1106,15 +1250,22 @@ async def execute_action(
             if proactivity_result.question:
                 interactive_question = proactivity_result.question
             if proactivity_result.extraction_result:
-                extracted_params = {
-                    p.name: p.value for p in proactivity_result.extraction_result.extracted
-                }
+                extracted_params = {p.name: p.value for p in proactivity_result.extraction_result.extracted}
 
         logger.info(
             "action_execution_completed",
             action_id=action_request.action_id,
             session_id=action_request.session_id,
             new_actions_count=len(suggested_actions) if suggested_actions else 0,
+        )
+
+        # DEV-162: Fire-and-forget analytics tracking
+        await track_action_click_async(
+            session_id=action_request.session_id,
+            user_id=session.user_id,
+            action=action,
+            domain="default",  # TODO: Get from proactivity context when available
+            context_hash=None,
         )
 
         return ChatResponse(
@@ -1236,6 +1387,16 @@ async def answer_question(
                     to_question=selected_option.leads_to,
                     session_id=answer_request.session_id,
                 )
+
+                # DEV-162: Fire-and-forget analytics tracking for multi-step flow
+                await track_question_answer_async(
+                    session_id=answer_request.session_id,
+                    user_id=session.user_id,
+                    question_id=answer_request.question_id,
+                    option_id=answer_request.selected_option,
+                    custom_input=answer_request.custom_input,
+                )
+
                 return QuestionAnswerResponse(next_question=next_question)
 
         # Terminal question - generate prompt and get answer
@@ -1282,6 +1443,15 @@ async def answer_question(
             question_id=answer_request.question_id,
             session_id=answer_request.session_id,
             has_actions=suggested_actions is not None,
+        )
+
+        # DEV-162: Fire-and-forget analytics tracking for terminal question
+        await track_question_answer_async(
+            session_id=answer_request.session_id,
+            user_id=session.user_id,
+            question_id=answer_request.question_id,
+            option_id=answer_request.selected_option,
+            custom_input=answer_request.custom_input,
         )
 
         return QuestionAnswerResponse(

@@ -1422,6 +1422,68 @@ Created 13 Playwright E2E tests covering all proactivity user flows.
 
 ---
 
+<details>
+<summary>
+<h3>DEV-173: Documentation Package</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+ADRs for Suggested Actions and Interactive Questions architecture.
+</summary>
+
+### DEV-173: Documentation Package
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** LOW | **Effort:** 1h (Actual: ~1h)
+
+**Problem:**
+Documentation for proactivity features needed to be created (ADRs + API docs).
+
+**Solution:**
+Created comprehensive documentation package including architectural decision records.
+
+**Files Created:**
+- `docs/architecture/decisions/ADR-020-suggested-actions-architecture.md`
+- `docs/architecture/decisions/ADR-021-interactive-questions-architecture.md`
+
+**Documentation Coverage:**
+
+**ADR-020: Suggested Actions Architecture**
+- Context: Need for proactive suggestions
+- Decision: Template-based selection (not LLM) for performance
+- Architecture diagrams with mermaid
+- Action categories and YAML schema
+- Selection algorithm documentation
+- API integration patterns
+- Consequences and trade-offs
+
+**ADR-021: Interactive Questions Architecture**
+- Context: Parameter clarification needs
+- Decision: Inline questions (Claude Code style)
+- State flow diagrams
+- Keyboard navigation specification
+- Parameter coverage algorithm
+- Multi-step flow support
+- Mobile considerations
+
+**API Documentation:**
+- OpenAPI schema auto-generated from FastAPI (existing)
+- ChatResponse schema changes documented in ADRs
+- /actions/execute endpoint documented
+- /questions/answer endpoint documented
+- SSE event formats documented
+
+**Acceptance Criteria (All Met):**
+- ✅ ADR-020 follows standard template
+- ✅ ADR-021 follows standard template
+- ✅ Architecture diagrams included
+- ✅ API endpoint documentation
+- ✅ Request/response examples included
+
+**Git:** Branch `DEV-173-Documentation-Package`
+
+</details>
+
+---
+
 ## Phase 1: Foundation (Backend) - 9h
 
 **Note:** DEV-150, DEV-151, DEV-152, DEV-153, DEV-154, DEV-155, and DEV-156 moved to Completed Tasks section above.
@@ -1536,90 +1598,7 @@ className={cn(
 
 ## Phase 5: Documentation - 1h
 
-### DEV-173: Documentation Package
-
-**Reference:** Egidio architectural review, New endpoints
-
-**Priority:** LOW | **Effort:** 1h | **Status:** NOT STARTED
-
-**Problem:**
-Documentation for proactivity features needs to be created (ADRs + API docs).
-
-**Solution:**
-Create comprehensive documentation package including:
-1. ADR-018: Suggested Actions Architecture
-2. ADR-019: Interactive Questions Architecture
-3. API Documentation updates for new endpoints
-
-**Agent Assignment:** @egidio (ADRs), @ezio (API docs)
-
-**Dependencies:**
-- **Blocking:** DEV-162
-- **Unlocks:** None
-
-**Change Classification:** ADDITIVE
-
-**Files:**
-- `docs/architecture/decisions/ADR-018-suggested-actions.md`
-- `docs/architecture/decisions/ADR-019-interactive-questions.md`
-- OpenAPI schema (auto-generated from FastAPI)
-- `docs/api/` manual documentation
-
-**Deliverables:**
-
-#### 1. ADR-018: Suggested Actions Architecture
-- Context: Need for proactive suggestions
-- Decision: Template-based selection (not LLM)
-- Consequences: Performance gains, limited personalization
-- Alternatives considered: LLM generation, hybrid
-
-#### 2. ADR-019: Interactive Questions Architecture
-- Context: Need for parameter clarification
-- Decision: Inline questions (Claude Code style)
-- Consequences: UX benefits, state complexity
-- Alternatives considered: Modal, separate page
-
-#### 3. API Documentation
-- ChatResponse schema changes
-- /actions/execute endpoint
-- /questions/answer endpoint
-- SSE event format for streaming
-
-**Testing Requirements:**
-- **Review Checklist:**
-  - ADR-018 follows standard template
-  - ADR-019 follows standard template
-  - Technical accuracy reviewed by @egidio
-  - All endpoints accessible in Swagger UI
-  - Request/response examples work
-  - Error codes documented with descriptions
-
-**Edge Cases:**
-- **Future architecture changes:** Document extensibility considerations
-- **Multi-language support:** Consider i18n implications in design
-- **Schema evolution:** Document backward compatibility
-- **Optional fields:** Clearly mark nullable vs optional
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| ADR becomes outdated | LOW | Link to implementation, update on changes |
-| Documentation out of sync | MEDIUM | Auto-generate from code annotations |
-| Missing examples | LOW | Add at least one example per endpoint |
-
-**Code Structure:**
-- Follow existing ADR template format
-- Use mermaid diagrams for architecture and state flows
-- Follow OpenAPI 3.0 spec
-- Use FastAPI docstrings for descriptions
-
-**Acceptance Criteria:**
-- [ ] ADR-018 follows standard template
-- [ ] ADR-019 follows standard template
-- [ ] Decision rationale clear in both ADRs
-- [ ] All new endpoints documented in Swagger
-- [ ] Examples provided for each endpoint
-- [ ] Error responses documented
+**Note:** DEV-173 moved to Completed Tasks section above.
 
 ---
 

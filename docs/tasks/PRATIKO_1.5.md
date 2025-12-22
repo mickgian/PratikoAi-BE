@@ -1319,6 +1319,56 @@ Created 76 integration tests covering all chat endpoints with proactivity featur
 
 ---
 
+<details>
+<summary>
+<h3>DEV-171: Frontend Component Tests</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Comprehensive frontend component tests for proactivity features - 100 tests.
+</summary>
+
+### DEV-171: Frontend Component Tests
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** HIGH | **Effort:** 1h (Actual: ~1h)
+
+**Problem:**
+Frontend components needed unit and integration tests.
+
+**Solution:**
+Created 100 Jest tests covering all proactivity frontend components.
+
+**Files Created/Modified:**
+- `src/app/chat/components/__tests__/SuggestedActionsBar.test.tsx` - 20 tests
+- `src/app/chat/components/__tests__/InteractiveQuestionInline.test.tsx` - 26 tests
+- `src/lib/hooks/__tests__/useKeyboardNavigation.test.tsx` - 30 tests
+- `src/app/chat/components/__tests__/AIMessageV2.integration.test.tsx` - 13 tests
+- `src/app/chat/components/__tests__/MobileResponsive.test.tsx` - 11 tests
+
+**Test Coverage:**
+- Component rendering with various props
+- User interactions (click, keyboard)
+- Props variations (disabled, loading, empty)
+- Error states and edge cases
+- Loading states
+- Mobile viewport behavior
+- Keyboard navigation (Arrow keys, Enter, Escape, number keys)
+- Focus management
+- Touch targets (min 44px)
+- Responsive layouts
+
+**Acceptance Criteria (All Met):**
+- ✅ 85%+ coverage for new components
+- ✅ Keyboard interactions tested
+- ✅ Accessibility tested (ARIA roles, labels)
+- ✅ Mobile viewport tested
+- ✅ 100 tests pass in 0.976s
+
+**Git:** Branch `DEV-163-Create-SuggestedActionsBar-Component`
+
+</details>
+
+---
+
 ## Phase 1: Foundation (Backend) - 9h
 
 **Note:** DEV-150, DEV-151, DEV-152, DEV-153, DEV-154, DEV-155, and DEV-156 moved to Completed Tasks section above.
@@ -1427,66 +1477,7 @@ className={cn(
 
 ## Phase 4: Testing - 6.5h
 
-**Note:** DEV-168, DEV-169, DEV-170 moved to Completed Tasks section above.
-
-### DEV-171: Frontend Component Tests
-
-**Reference:** DEV-163, DEV-164, DEV-165, DEV-166
-
-**Priority:** HIGH | **Effort:** 1h | **Status:** NOT STARTED
-
-**Problem:**
-Frontend components need unit and integration tests.
-
-**Solution:**
-Write Jest tests for all new components.
-
-**Agent Assignment:** @clelia (primary)
-
-**Dependencies:**
-- **Blocking:** DEV-166
-- **Unlocks:** DEV-172
-
-**Change Classification:** ADDITIVE
-
-**Files:**
-- `src/__tests__/components/SuggestedActionsBar.test.tsx`
-- `src/__tests__/components/InteractiveQuestionInline.test.tsx`
-- `src/__tests__/hooks/useKeyboardNavigation.test.ts`
-
-**Testing Requirements:**
-- **Coverage Scenarios:**
-  - Component rendering
-  - User interactions (click, keyboard)
-  - Props variations
-  - Error states
-  - Loading states
-  - Mobile viewport
-
-**Edge Cases:**
-- **Component unmounting during async:** Cleanup handlers properly
-- **Viewport resize during test:** Handle responsive behavior
-- **Focus management edge cases:** Tab trap scenarios
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Snapshot test brittleness | MEDIUM | Use semantic selectors, not snapshots |
-| Mock implementation drift | LOW | Keep mocks close to real behavior |
-| Test isolation issues | MEDIUM | Reset all mocks between tests |
-
-**Code Structure:**
-- Max test function: 30 lines
-- Group tests by component
-- Use React Testing Library best practices
-
-**Acceptance Criteria:**
-- [ ] 85%+ coverage for new components
-- [ ] Keyboard interactions tested
-- [ ] Accessibility tested
-- [ ] Mobile viewport tested
-
----
+**Note:** DEV-168, DEV-169, DEV-170, DEV-171 moved to Completed Tasks section above.
 
 ### DEV-172: E2E Tests for Proactive Flows
 

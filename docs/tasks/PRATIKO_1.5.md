@@ -1057,6 +1057,56 @@ interface UseKeyboardNavigationReturn {
 
 ---
 
+<details>
+<summary>
+<h3>DEV-166: Integrate Components into ChatInterface</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Integrated SuggestedActionsBar and InteractiveQuestionInline into AIMessageV2 component with 13 TDD tests.
+</summary>
+
+### DEV-166: Integrate Components into ChatInterface
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** CRITICAL | **Effort:** 2h (Actual: ~1h)
+
+**Problem:**
+The new proactivity components (SuggestedActionsBar and InteractiveQuestionInline) needed to be integrated into the existing chat interface to display suggested actions and interactive questions after AI messages.
+
+**Solution:**
+Modified AIMessageV2.tsx to accept new props and render the proactivity components. Used TDD approach with 13 integration tests.
+
+**Files Modified:**
+- `src/app/chat/components/AIMessageV2.tsx` (added imports, props, and rendering logic)
+- `src/app/chat/components/__tests__/AIMessageV2.integration.test.tsx` (13 TDD tests)
+
+**Props Added to AIMessageV2:**
+- `suggestedActions?: Action[]` - Actions to display after message
+- `onActionClick?: (action: Action, input?: string) => void` - Callback for action clicks
+- `interactiveQuestion?: InteractiveQuestion` - Question to display after message
+- `onQuestionAnswer?: (optionId: string, customInput?: string) => void` - Callback for question answers
+- `onQuestionSkip?: () => void` - Callback when question is skipped via Escape
+
+**Test Coverage:**
+- 13 TDD tests covering all integration scenarios
+- Tests for SuggestedActionsBar rendering, callbacks, disabled state
+- Tests for InteractiveQuestionInline rendering, callbacks, disabled state
+- Tests for both components together with proper ordering
+- Tests for component positioning after message content
+
+**Acceptance Criteria (All Met):**
+- ✅ SuggestedActionsBar renders after AI messages with actions
+- ✅ InteractiveQuestionInline renders when question provided
+- ✅ Components disabled during streaming (isStreaming=true)
+- ✅ Callbacks (onActionClick, onQuestionAnswer, onQuestionSkip) work correctly
+- ✅ InteractiveQuestionInline rendered before SuggestedActionsBar
+- ✅ Existing chat functionality unchanged (796 tests still pass)
+
+**Git:** Branch `DEV-166-Integrate-Components-into-ChatInterface`
+
+</details>
+
+---
+
 ## Phase 1: Foundation (Backend) - 9h
 
 **Note:** DEV-150, DEV-151, DEV-152, DEV-153, DEV-154, DEV-155, and DEV-156 moved to Completed Tasks section above.
@@ -1159,7 +1209,7 @@ className={cn(
 
 ## Phase 3: Frontend Components - 10h
 
-**Note:** DEV-163, DEV-164, DEV-165 moved to Completed Tasks section above.
+**Note:** DEV-163, DEV-164, DEV-165, DEV-166 moved to Completed Tasks section above.
 
 ---
 

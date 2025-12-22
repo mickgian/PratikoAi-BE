@@ -989,6 +989,72 @@ interface InteractiveQuestionInlineProps {
 
 </details>
 
+<details>
+<summary>
+<h3>DEV-165: Create useKeyboardNavigation Hook</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1.5h (Actual: ~30min) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Created reusable keyboard navigation hook for lists and option selection.
+</summary>
+
+### DEV-165: Create useKeyboardNavigation Hook
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** MEDIUM | **Effort:** 1.5h (Actual: ~30min)
+
+**Problem:**
+Both action buttons and interactive questions need keyboard navigation, requiring a reusable hook.
+
+**Solution:**
+Created useKeyboardNavigation custom hook in `/Users/micky/WebstormProjects/PratikoAiWebApp` with full TDD approach.
+
+**Files Created:**
+- `src/lib/hooks/useKeyboardNavigation.ts` - Custom hook (115 lines)
+- `src/lib/hooks/__tests__/useKeyboardNavigation.test.tsx` - 30 TDD tests (470 lines)
+
+**Key Features:**
+- Arrow key navigation (Up/Down) with wraparound at boundaries
+- Enter key to select current item
+- Escape key to cancel (works even from input fields)
+- Number keys 1-9 for direct selection
+- Input field detection to avoid keyboard conflicts
+- Disabled state support
+- Auto-reset selectedIndex when items change
+
+**Hook Interface:**
+```typescript
+interface UseKeyboardNavigationOptions {
+  items: string[];  // Item IDs
+  onSelect: (itemId: string) => void;
+  onCancel?: () => void;
+  enabled?: boolean;
+  initialIndex?: number;
+}
+
+interface UseKeyboardNavigationReturn {
+  selectedIndex: number;
+  setSelectedIndex: (index: number) => void;
+  handleKeyDown: (event: KeyboardEvent) => void;
+}
+```
+
+**Test Coverage:**
+- Statements: 100%
+- Branches: 96.42%
+- Functions: 100%
+- Lines: 100%
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 30 tests
+- ✅ Arrow keys navigate up/down with wraparound
+- ✅ Enter selects current item
+- ✅ Escape cancels/closes
+- ✅ Number keys (1-9) select directly
+- ✅ 90%+ test coverage achieved (100%/96%/100%/100%)
+
+**Git:** Branch `DEV-165-Create-useKeyboardNavigation-Hook`
+
+</details>
+
 ---
 
 ## Phase 1: Foundation (Backend) - 9h
@@ -1093,495 +1159,7 @@ className={cn(
 
 ## Phase 3: Frontend Components - 10h
 
-**Note:** DEV-163, DEV-164 moved to Completed Tasks section above.
-
-### DEV-163: Create SuggestedActionsBar Component
-
-**Reference:** [Section 5.1: Action Buttons Design](./PRATIKO_1.5_REFERENCE.md#51-action-buttons-design)
-
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
-
-**Problem:**
-The frontend needs a component to render suggested action buttons after AI responses.
-
-**Solution:**
-Create SuggestedActionsBar React component with keyboard navigation support.
-
-**Agent Assignment:** @livia (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-158
-- **Unlocks:** DEV-166
-
-**Change Classification:** ADDITIVE
-
-**Performance Requirements:**
-- Render time: <50ms
-- Keyboard navigation response: <16ms (60fps)
-
-**Edge Cases:**
-- **Empty actions:** Don't render component
-- **Single action:** Still show as button bar
-- **Action with input:** Show inline input field on click
-- **Mobile:** Stack vertically, touch-friendly targets
-
-**File:** `src/components/chat/SuggestedActionsBar.tsx`
-
-**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
-- **Button Pattern:** Use pill-style buttons from FeedbackButtons.tsx
-- **Colors:** #F8F5F1 (default bg), #2A5D67 (text/selected), #A9C1B7 (hover accent)
-- **Layout:** `flex flex-wrap gap-2` (wrap on narrow viewports)
-- **Entry Animation:** `animate-fade-slide-up`
-
-**Fields/Methods/Components:**
-```typescript
-'use client';
-import { cn } from '@/lib/utils';
-import { LucideIcon } from 'lucide-react';
-
-interface Action {
-  id: string;
-  label: string;
-  icon?: LucideIcon;
-  requires_input?: boolean;
-}
-
-interface SuggestedActionsBarProps {
-  actions: Action[];
-  onActionClick: (action: Action, input?: string) => void;
-  isLoading?: boolean;
-  disabled?: boolean;
-}
-
-export function SuggestedActionsBar({
-  actions,
-  onActionClick,
-  isLoading,
-  disabled
-}: SuggestedActionsBarProps) {
-  if (actions.length === 0) return null;
-
-  return (
-    <div className="flex flex-wrap gap-2 mt-3 animate-fade-slide-up">
-      {actions.map((action) => {
-        const Icon = action.icon;
-        return (
-          <button
-            key={action.id}
-            onClick={() => onActionClick(action)}
-            disabled={disabled || isLoading}
-            className={cn(
-              // Base styles
-              'inline-flex items-center gap-1.5 px-4 py-2 rounded-full',
-              'text-sm font-semibold transition-all duration-300',
-              // Default state
-              'bg-[#F8F5F1] text-[#2A5D67]',
-              // Hover state
-              'hover:bg-[#A9C1B7]/20 hover:scale-105 hover:shadow-md',
-              // Focus state (accessibility)
-              'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2A5D67]/50',
-              // Active/click state
-              'active:scale-95',
-              // Disabled state
-              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
-            )}
-          >
-            {Icon && <Icon className="w-4 h-4" />}
-            {action.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-```
-
-Component structure:
-- Action buttons with icons (Lucide React)
-- Pill-style rounded-full buttons following FeedbackButtons.tsx pattern
-- Hover: scale-105, shadow-md, verde-salvia accent
-- Focus: 3px ring in blu-petrolio/50
-- Active: scale-95 for click feedback
-- Loading state while action executes
-- Keyboard navigation with Tab/Enter
-
-**Testing Requirements:**
-- **Unit Tests:**
-  - `test_renders_action_buttons` - Buttons rendered for each action
-  - `test_keyboard_navigation` - Tab navigates, Enter selects
-  - `test_input_field_shown` - Input shown for requires_input actions
-  - `test_empty_actions_no_render` - Nothing rendered for empty array
-- **Coverage Target:** 85%+
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Keyboard navigation conflicts | MEDIUM | Use proper event handling, stopPropagation |
-| Accessibility issues | HIGH | Follow WAI-ARIA patterns, test with screen readers |
-| Performance on many actions | LOW | Limit to 4 actions max, virtualize if needed |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max component: 150 lines, extract sub-components
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Action buttons rendered with icons and labels
-- [ ] Click triggers onActionClick callback
-- [ ] Keyboard navigation works (Tab, Enter)
-- [ ] Input field shown for actions requiring input
-- [ ] Mobile responsive (stacked layout)
-- [ ] 85%+ test coverage achieved
-
----
-
-### DEV-164: Create InteractiveQuestionInline Component
-
-**Reference:** [Section 5.2: Interactive Question Modal](./PRATIKO_1.5_REFERENCE.md#52-interactive-question-modal)
-
-**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
-
-**Problem:**
-The frontend needs a component to render interactive questions inline in the chat, Claude Code style.
-
-**Solution:**
-Create InteractiveQuestionInline React component with keyboard navigation and option selection.
-
-**Agent Assignment:** @livia (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-161
-- **Unlocks:** DEV-166
-
-**Change Classification:** ADDITIVE
-
-**Performance Requirements:**
-- Render time: <50ms
-- Keyboard navigation response: <16ms (60fps)
-
-**Edge Cases:**
-- **Single option:** Still show as selectable (user can type custom)
-- **Custom input selected:** Show text input field
-- **Long option labels:** Truncate with ellipsis, show full on hover
-- **Mobile:** Full-width options, touch-friendly
-
-**File:** `src/components/chat/InteractiveQuestionInline.tsx`
-
-**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
-- **Container:** Card with `rounded-lg border border-[#C4BDB4]/30 bg-[#F8F5F1]/50`
-- **Colors:** #2A5D67 (selected), #F8F5F1 (default), #C4BDB4 (border)
-- **Layout:** `grid grid-cols-2 sm:grid-cols-4 gap-2` (responsive grid)
-- **Entry Animation:** `animate-fade-slide-up`
-
-**Fields/Methods/Components:**
-```typescript
-'use client';
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { cn } from '@/lib/utils';
-import { useKeyboardNavigation } from '@/lib/hooks/useKeyboardNavigation';
-
-interface Option {
-  id: string;
-  label: string;
-}
-
-interface InteractiveQuestion {
-  text: string;
-  options: Option[];
-  allow_custom_input?: boolean;
-}
-
-interface InteractiveQuestionInlineProps {
-  question: InteractiveQuestion;
-  onAnswer: (optionId: string, customInput?: string) => void;
-  onSkip?: () => void;
-  disabled?: boolean;
-}
-
-export function InteractiveQuestionInline({
-  question,
-  onAnswer,
-  onSkip,
-  disabled
-}: InteractiveQuestionInlineProps) {
-  const [customText, setCustomText] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const { selectedIndex, handleKeyDown } = useKeyboardNavigation({
-    items: question.options.map(o => o.id),
-    onSelect: (id) => onAnswer(id),
-    onCancel: onSkip,
-    enabled: !disabled,
-  });
-
-  // Focus input when "Altro" (custom) option is selected
-  useEffect(() => {
-    if (question.options[selectedIndex]?.id === 'custom') {
-      inputRef.current?.focus();
-    }
-  }, [selectedIndex, question.options]);
-
-  return (
-    <div
-      className="mt-4 p-4 rounded-lg border border-[#C4BDB4]/30 bg-[#F8F5F1]/50 animate-fade-slide-up"
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
-      role="radiogroup"
-      aria-label={question.text}
-    >
-      {/* Question text */}
-      <p className="text-sm font-medium text-[#2A5D67] mb-3">
-        {question.text}
-      </p>
-
-      {/* Options grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {question.options.map((option, index) => (
-          <button
-            key={option.id}
-            onClick={() => onAnswer(option.id)}
-            disabled={disabled}
-            role="radio"
-            aria-checked={selectedIndex === index}
-            className={cn(
-              'px-3 py-2 rounded-full text-sm font-medium transition-all duration-300',
-              'min-h-[44px]', // Touch-friendly minimum
-              selectedIndex === index
-                ? 'bg-[#2A5D67] text-white ring-2 ring-[#2A5D67] shadow-lg'
-                : 'bg-white text-[#2A5D67] border border-[#C4BDB4] hover:border-[#2A5D67] hover:shadow-md',
-              'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2A5D67]/50'
-            )}
-          >
-            <span className="text-xs opacity-60 mr-1">{index + 1}.</span>
-            {option.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Custom input field (shown when allow_custom_input) */}
-      {question.allow_custom_input && (
-        <div className="mt-3">
-          <input
-            ref={inputRef}
-            type="text"
-            value={customText}
-            onChange={(e) => setCustomText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && customText.trim()) {
-                onAnswer('custom', customText);
-              }
-            }}
-            placeholder="Altro: scrivi la tua risposta..."
-            className={cn(
-              'w-full px-4 py-2 rounded-lg border border-[#C4BDB4]',
-              'text-sm text-[#2A5D67] placeholder:text-[#C4BDB4]',
-              'focus:outline-none focus:ring-2 focus:ring-[#2A5D67]/50 focus:border-[#2A5D67]',
-              'transition-all duration-200'
-            )}
-          />
-        </div>
-      )}
-
-      {/* Skip hint */}
-      <p className="mt-3 text-xs text-[#C4BDB4]">
-        Premi Esc per saltare • Usa 1-4 per selezione rapida
-      </p>
-    </div>
-  );
-}
-```
-
-Component structure:
-- Question text at top with blu-petrolio color
-- Options in responsive grid (2 cols mobile, 4 cols desktop)
-- Selected option: blu-petrolio bg, white text, ring, shadow
-- Number shortcuts (1-4) shown as prefix
-- Custom input field when allow_custom_input
-- Skip hint at bottom in grigio-tortora
-- Touch targets minimum 44px height
-- Keyboard: Arrow keys, Enter, Esc, number keys
-
-**Testing Requirements:**
-- **Unit Tests:**
-  - `test_renders_question_and_options` - Question and all options rendered
-  - `test_keyboard_selection` - Arrow keys and numbers work
-  - `test_custom_input_shown` - Input shown when "Altro" selected
-  - `test_skip_button` - Skip triggers onSkip callback
-- **Accessibility Tests:**
-  - `test_aria_labels` - Proper ARIA labels for screen readers
-  - `test_focus_management` - Focus trapped within component
-- **Coverage Target:** 85%+
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Complex state management | MEDIUM | Use useReducer for state transitions |
-| Focus management issues | HIGH | Implement focus trap, test thoroughly |
-| Long text overflow | LOW | Truncate with ellipsis, full text on hover |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max component: 150 lines, extract sub-components
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Question and options rendered Claude Code style
-- [ ] Keyboard navigation works (arrows, numbers, Enter, Esc)
-- [ ] Custom input field for "Altro" option
-- [ ] Skip functionality with Esc key
-- [ ] Accessible with screen readers
-- [ ] Mobile responsive
-- [ ] 85%+ test coverage achieved
-
----
-
-### DEV-165: Create useKeyboardNavigation Hook
-
-**Reference:** [Section 5.2: Interactive Question Modal](./PRATIKO_1.5_REFERENCE.md#52-interactive-question-modal)
-
-**Priority:** MEDIUM | **Effort:** 1.5h | **Status:** NOT STARTED
-
-**Problem:**
-Both action buttons and interactive questions need keyboard navigation, requiring a reusable hook.
-
-**Solution:**
-Create useKeyboardNavigation custom hook for managing keyboard navigation state.
-
-**Agent Assignment:** @livia (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-164
-- **Unlocks:** DEV-166
-
-**Change Classification:** ADDITIVE
-
-**File:** `src/lib/hooks/useKeyboardNavigation.ts`
-
-**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
-- **Pattern Reference:** Similar to `useChatHotkeys.ts` in `@/app/chat/hooks/`
-- **Key handling:** ArrowUp, ArrowDown, Enter, Escape, number keys 1-9
-
-**Fields/Methods/Components:**
-```typescript
-import { useState, useCallback, useEffect, KeyboardEvent } from 'react';
-
-interface UseKeyboardNavigationOptions {
-  items: string[];  // Item IDs
-  onSelect: (itemId: string) => void;
-  onCancel?: () => void;
-  enabled?: boolean;
-  initialIndex?: number;
-}
-
-interface UseKeyboardNavigationReturn {
-  selectedIndex: number;
-  setSelectedIndex: (index: number) => void;
-  handleKeyDown: (event: KeyboardEvent) => void;
-}
-
-export function useKeyboardNavigation({
-  items,
-  onSelect,
-  onCancel,
-  enabled = true,
-  initialIndex = 0,
-}: UseKeyboardNavigationOptions): UseKeyboardNavigationReturn {
-  const [selectedIndex, setSelectedIndex] = useState(initialIndex);
-
-  // Reset index when items change
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [items.length]);
-
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (!enabled || items.length === 0) return;
-
-    // Don't handle if user is typing in an input
-    const target = event.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-      // Only handle Escape in inputs
-      if (event.key === 'Escape' && onCancel) {
-        event.preventDefault();
-        onCancel();
-      }
-      return;
-    }
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % items.length);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + items.length) % items.length);
-        break;
-      case 'Enter':
-        event.preventDefault();
-        if (items[selectedIndex]) {
-          onSelect(items[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        event.preventDefault();
-        onCancel?.();
-        break;
-      default:
-        // Number keys 1-9 for direct selection
-        const num = parseInt(event.key, 10);
-        if (num >= 1 && num <= 9 && num <= items.length) {
-          event.preventDefault();
-          onSelect(items[num - 1]);
-        }
-    }
-  }, [enabled, items, selectedIndex, onSelect, onCancel]);
-
-  return { selectedIndex, setSelectedIndex, handleKeyDown };
-}
-```
-
-Hook structure:
-- Uses useState for selectedIndex tracking
-- Wraparound navigation (ArrowDown at end wraps to start)
-- Number keys 1-9 for direct selection
-- Input field detection to avoid conflicts
-- Escape always works (even in inputs) for cancel
-- Clean dependency array for useCallback
-
-**Testing Requirements:**
-- **Unit Tests:**
-  - `test_arrow_key_navigation` - Up/Down changes selected index
-  - `test_enter_selects` - Enter triggers onSelect
-  - `test_escape_cancels` - Escape triggers onCancel
-  - `test_number_keys` - 1-4 directly select options
-  - `test_wraparound` - Navigation wraps at boundaries
-- **Coverage Target:** 90%+
-
-**Edge Cases:**
-- **Empty items array:** No-op, return immediately
-- **Disabled state:** Ignore all keyboard events
-- **Rapid key presses:** Debounce to prevent double selection
-- **Focus lost:** Clean up event listeners properly
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Event listener memory leaks | MEDIUM | Proper cleanup in useEffect return |
-| Keyboard conflicts with inputs | MEDIUM | Check activeElement before handling |
-| Browser-specific key codes | LOW | Use standardized key values |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max hook: 50 lines, single concern
-- Max file: 100 lines, keep focused
-
-**Acceptance Criteria:**
-- [ ] Arrow keys navigate up/down
-- [ ] Enter selects current item
-- [ ] Escape cancels/closes
-- [ ] Number keys (1-4) select directly
-- [ ] Navigation wraps around
-- [ ] 90%+ test coverage achieved
+**Note:** DEV-163, DEV-164, DEV-165 moved to Completed Tasks section above.
 
 ---
 
@@ -1604,6 +1182,163 @@ Modify ChatLayoutV2 and AIMessageV2 to include SuggestedActionsBar and Interacti
 - **Unlocks:** DEV-167
 
 **Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary Files:**
+  - `src/app/chat/ChatLayoutV2.tsx`
+  - `src/app/chat/AIMessageV2.tsx`
+- **Affected Files:**
+  - `src/contexts/ChatContext.tsx` (state management)
+- **Related Tests:**
+  - `src/__tests__/chat/` (existing chat tests)
+- **Baseline Command:** `npm test -- --testPathPattern=chat`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing chat flow reviewed
+- [ ] No pre-existing test failures
+
+**File:** `src/app/chat/AIMessageV2.tsx`
+
+**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
+- **Reference Pattern:** Review existing FeedbackButtons integration in AIMessageV2
+- **Import Pattern:** Use dynamic imports for proactivity components
+- **API Calls:** Follow existing fetch patterns in chat components
+
+**Fields/Methods/Components:**
+
+**1. Update AIMessageV2.tsx:**
+```typescript
+'use client';
+import dynamic from 'next/dynamic';
+import { SuggestedActionsBar } from '@/components/chat/SuggestedActionsBar';
+import { InteractiveQuestionInline } from '@/components/chat/InteractiveQuestionInline';
+import { useChatContext } from '@/contexts/ChatContext';
+
+interface AIMessageV2Props {
+  // ... existing props
+  suggestedActions?: Action[];
+  interactiveQuestion?: InteractiveQuestion;
+}
+
+export function AIMessageV2({
+  // ... existing props
+  suggestedActions,
+  interactiveQuestion
+}: AIMessageV2Props) {
+  const { dispatch, state } = useChatContext();
+  const { isActionExecuting } = state;
+
+  const handleActionClick = async (action: Action) => {
+    dispatch({ type: 'SET_ACTION_EXECUTING', payload: true });
+    try {
+      const response = await fetch('/api/v1/actions/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_id: action.id, message_id }),
+      });
+      // Handle response - may trigger new chat message
+    } finally {
+      dispatch({ type: 'SET_ACTION_EXECUTING', payload: false });
+    }
+  };
+
+  const handleQuestionAnswer = async (optionId: string, customText?: string) => {
+    dispatch({ type: 'SET_ACTION_EXECUTING', payload: true });
+    try {
+      const response = await fetch('/api/v1/questions/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question_id, option_id: optionId, custom_input: customText }),
+      });
+      // Response may include follow-up message or actions
+    } finally {
+      dispatch({ type: 'SET_ACTION_EXECUTING', payload: false });
+    }
+  };
+
+  return (
+    <div className="ai-message">
+      {/* ... existing message content ... */}
+
+      {/* Suggested Actions */}
+      {suggestedActions && suggestedActions.length > 0 && (
+        <SuggestedActionsBar
+          actions={suggestedActions}
+          onActionClick={handleActionClick}
+          isLoading={isActionExecuting}
+          disabled={isActionExecuting}
+        />
+      )}
+
+      {/* Interactive Question */}
+      {interactiveQuestion && (
+        <InteractiveQuestionInline
+          question={interactiveQuestion}
+          onAnswer={handleQuestionAnswer}
+          onSkip={() => dispatch({ type: 'SKIP_QUESTION' })}
+          disabled={isActionExecuting}
+        />
+      )}
+    </div>
+  );
+}
+```
+
+**Testing Requirements:**
+- **Unit Tests:**
+  - `test_renders_actions_when_provided` - SuggestedActionsBar shown when actions exist
+  - `test_renders_question_when_provided` - InteractiveQuestionInline shown when question exists
+  - `test_action_click_calls_api` - API called on action click
+  - `test_loading_state_during_api_call` - Components disabled during API calls
+- **Integration Tests:**
+  - `test_full_action_flow` - Complete flow from action click to response
+  - `test_full_question_flow` - Complete flow from question answer to response
+- **Coverage Target:** 85%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Breaking existing chat flow | HIGH | Baseline tests, incremental integration |
+| State management conflicts | MEDIUM | Dedicated context actions, isolated state |
+| Performance regression | LOW | React.memo, conditional rendering |
+
+**Code Structure:**
+- Max function: 50 lines, extract helpers if larger
+- Max component: 150 lines, extract sub-components
+- Max file: 400 lines, create submodules
+
+**Acceptance Criteria:**
+- [ ] SuggestedActionsBar renders after AI messages with actions
+- [ ] InteractiveQuestionInline renders when question provided
+- [ ] Actions trigger API calls and handle responses
+- [ ] Loading state during API calls
+- [ ] Existing chat functionality unchanged
+- [ ] 85%+ test coverage achieved
+
+---
+
+### DEV-167: Create Question Templates YAML System
+
+**Reference:** [Section 5.3: Question Templates](./PRATIKO_1.5_REFERENCE.md#53-question-templates)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+Interactive questions need predefined templates for common scenarios to improve user experience.
+
+**Solution:**
+Create YAML-based question template system with Italian tax domain templates.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-166
+- **Unlocks:** Phase 4
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/templates/questions/` directory
 
 **Impact Analysis:**
 - **Primary Files:**

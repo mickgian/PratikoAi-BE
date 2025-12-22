@@ -159,7 +159,7 @@ tests/
 | DEV-157 to DEV-162 | Phase 2: API Integration (Backend) |
 | DEV-163 to DEV-167 | Phase 3: Frontend Components |
 | DEV-168 to DEV-172 | Phase 4: Testing |
-| DEV-173 to DEV-175 | Phase 5: Documentation |
+| DEV-173 | Phase 5: Documentation |
 
 ---
 
@@ -1205,6 +1205,69 @@ Created 27 unit tests covering all scenarios and edge cases for ProactivityEngin
 
 ---
 
+<details>
+<summary>
+<h3>DEV-169: Unit Tests for Template Services</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Comprehensive unit tests for ActionTemplateService with 30 tests covering all scenarios.
+</summary>
+
+### DEV-169: Unit Tests for Template Services
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** HIGH | **Effort:** 1h (Actual: ~1h)
+
+**Problem:**
+Template loading services needed comprehensive tests.
+
+**Solution:**
+Created 30 unit tests covering all scenarios and edge cases for ActionTemplateService.
+
+**Files Created/Modified:**
+- `tests/services/test_action_template_service.py` - 30 unit tests
+
+**Test Coverage:**
+- Valid YAML loading
+- Multiple file loading
+- Action with all fields
+- Domain fallback
+- Action type fallback
+- Cache hit verification
+- Reload templates
+- Document type lookup
+- Document type not found
+- Missing file graceful handling
+- Invalid YAML error handling
+- Schema validation failure
+- Duplicate ID warning
+- Empty directory handling
+- Empty actions list
+- Template validation errors
+- Question template loading
+- Question not found
+- Question with leads_to
+- Empty YAML file
+- Default path initialization
+- Missing directories handling
+- Invalid question YAML
+- Question parsing exception
+- Invalid category enum
+- Question with optional fields
+- Full workflow integration
+- JSON serialization
+
+**Acceptance Criteria (All Met):**
+- ✅ 90%+ code coverage for template services
+- ✅ All edge cases tested
+- ✅ Fixture YAML files created for tests
+- ✅ 30 tests pass
+
+**Git:** Branch `DEV-151-Create-YAML-Template-Loader-Service`
+
+</details>
+
+---
+
 ## Phase 1: Foundation (Backend) - 9h
 
 **Note:** DEV-150, DEV-151, DEV-152, DEV-153, DEV-154, DEV-155, and DEV-156 moved to Completed Tasks section above.
@@ -1313,63 +1376,7 @@ className={cn(
 
 ## Phase 4: Testing - 6.5h
 
-**Note:** DEV-168 moved to Completed Tasks section above.
-
-### DEV-169: Unit Tests for Template Services
-
-**Reference:** DEV-151
-
-**Priority:** HIGH | **Effort:** 1h | **Status:** NOT STARTED
-
-**Problem:**
-Template loading services need comprehensive tests.
-
-**Solution:**
-Write unit tests for ActionTemplateService and question template loading.
-
-**Agent Assignment:** @clelia (primary)
-
-**Dependencies:**
-- **Blocking:** DEV-151
-- **Unlocks:** DEV-172
-
-**Change Classification:** ADDITIVE
-
-**File:** `tests/services/test_action_template_service.py`
-
-**Testing Requirements:**
-- **Coverage Scenarios:**
-  - Valid YAML loading
-  - Invalid YAML handling
-  - Missing file handling
-  - Domain fallback
-  - Cache hit verification
-  - Hot reload (dev mode)
-  - Schema validation
-
-**Edge Cases:**
-- **Empty YAML files:** Should handle gracefully
-- **Malformed YAML:** Clear error messages
-- **File permission errors:** Handle OS-level issues
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Fixture files out of sync | MEDIUM | Version fixtures with tests |
-| File system dependencies | LOW | Use temp directories in tests |
-| Cache state pollution | MEDIUM | Reset cache between tests |
-
-**Code Structure:**
-- Max test function: 30 lines
-- Group tests by feature/scenario
-- Use fixtures for common setup
-
-**Acceptance Criteria:**
-- [ ] 90%+ code coverage for template services
-- [ ] All edge cases tested
-- [ ] Fixture YAML files created for tests
-
----
+**Note:** DEV-168, DEV-169 moved to Completed Tasks section above.
 
 ### DEV-170: Integration Tests for Chat Endpoints
 
@@ -1544,192 +1551,89 @@ Write Playwright E2E tests for proactive features.
 
 ## Phase 5: Documentation - 1h
 
-### DEV-173: Create ADR-018: Suggested Actions Architecture
+### DEV-173: Documentation Package
 
-**Reference:** Egidio architectural review
+**Reference:** Egidio architectural review, New endpoints
 
-**Priority:** LOW | **Effort:** 0.25h | **Status:** NOT STARTED
-
-**Problem:**
-Architectural decision for suggested actions needs documentation.
-
-**Solution:**
-Create ADR documenting the template-based action selection approach.
-
-**Agent Assignment:** @egidio (primary)
-
-**Dependencies:**
-- **Blocking:** DEV-155
-- **Unlocks:** None
-
-**Change Classification:** ADDITIVE
-
-**File:** `docs/architecture/decisions/ADR-018-suggested-actions.md`
-
-**Fields/Methods/Components:**
-ADR sections:
-- Context: Need for proactive suggestions
-- Decision: Template-based selection (not LLM)
-- Consequences: Performance gains, limited personalization
-- Alternatives considered: LLM generation, hybrid
-
-**Testing Requirements:**
-- **Review Checklist:**
-  - ADR template compliance verified
-  - Technical accuracy reviewed by @egidio
-  - Linked to relevant code files
-
-**Edge Cases:**
-- **Future architecture changes:** Document extensibility considerations
-- **Multi-language support:** Consider i18n implications in design
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| ADR becomes outdated | LOW | Link to implementation, update on changes |
-| Missing alternatives | LOW | Review with team before finalizing |
-
-**Code Structure:**
-- Follow existing ADR template format
-- Use mermaid diagrams for architecture
-- Keep concise, link to detailed docs
-
-**Acceptance Criteria:**
-- [ ] ADR follows standard template
-- [ ] Decision rationale clear
-- [ ] Consequences documented
-- [ ] Alternatives listed
-
----
-
-### DEV-174: Create ADR-019: Interactive Questions Architecture
-
-**Reference:** Egidio architectural review
-
-**Priority:** LOW | **Effort:** 0.25h | **Status:** NOT STARTED
+**Priority:** LOW | **Effort:** 1h | **Status:** NOT STARTED
 
 **Problem:**
-Architectural decision for interactive questions needs documentation.
+Documentation for proactivity features needs to be created (ADRs + API docs).
 
 **Solution:**
-Create ADR documenting the inline question flow approach.
+Create comprehensive documentation package including:
+1. ADR-018: Suggested Actions Architecture
+2. ADR-019: Interactive Questions Architecture
+3. API Documentation updates for new endpoints
 
-**Agent Assignment:** @egidio (primary)
-
-**Dependencies:**
-- **Blocking:** DEV-155
-- **Unlocks:** None
-
-**Change Classification:** ADDITIVE
-
-**File:** `docs/architecture/decisions/ADR-019-interactive-questions.md`
-
-**Fields/Methods/Components:**
-ADR sections:
-- Context: Need for parameter clarification
-- Decision: Inline questions (Claude Code style)
-- Consequences: UX benefits, state complexity
-- Alternatives considered: Modal, separate page
-
-**Testing Requirements:**
-- **Review Checklist:**
-  - ADR template compliance verified
-  - Technical accuracy reviewed by @egidio
-  - State management approach validated
-
-**Edge Cases:**
-- **Multi-step flow complexity:** Document state machine approach
-- **Accessibility requirements:** Document ARIA considerations
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| ADR becomes outdated | LOW | Link to implementation, update on changes |
-| State complexity underestimated | MEDIUM | Include detailed state diagrams |
-
-**Code Structure:**
-- Follow existing ADR template format
-- Use mermaid diagrams for state flows
-- Keep concise, link to detailed docs
-
-**Acceptance Criteria:**
-- [ ] ADR follows standard template
-- [ ] Decision rationale clear
-- [ ] State management approach documented
-- [ ] Alternatives listed
-
----
-
-### DEV-175: Update API Documentation
-
-**Reference:** New endpoints
-
-**Priority:** LOW | **Effort:** 0.5h | **Status:** NOT STARTED
-
-**Problem:**
-API documentation needs to include new endpoints and schema changes.
-
-**Solution:**
-Update OpenAPI/Swagger documentation for all new endpoints.
-
-**Agent Assignment:** @ezio (primary)
+**Agent Assignment:** @egidio (ADRs), @ezio (API docs)
 
 **Dependencies:**
 - **Blocking:** DEV-162
 - **Unlocks:** None
 
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary Files:**
-  - `docs/api/` manual documentation files
-- **Affected Files:**
-  - OpenAPI schema (auto-generated from FastAPI decorators)
-- **Related Tests:**
-  - API endpoint tests verify documentation accuracy
-- **Baseline Command:** `uvicorn app.main:app --reload` (verify Swagger UI)
-
-**Pre-Implementation Verification:**
-- [ ] Existing API documentation reviewed
-- [ ] OpenAPI schema generation working
-- [ ] No pre-existing documentation errors
+**Change Classification:** ADDITIVE
 
 **Files:**
-- OpenAPI schema auto-generated from FastAPI
+- `docs/architecture/decisions/ADR-018-suggested-actions.md`
+- `docs/architecture/decisions/ADR-019-interactive-questions.md`
+- OpenAPI schema (auto-generated from FastAPI)
 - `docs/api/` manual documentation
 
-**Fields/Methods/Components:**
-Document:
+**Deliverables:**
+
+#### 1. ADR-018: Suggested Actions Architecture
+- Context: Need for proactive suggestions
+- Decision: Template-based selection (not LLM)
+- Consequences: Performance gains, limited personalization
+- Alternatives considered: LLM generation, hybrid
+
+#### 2. ADR-019: Interactive Questions Architecture
+- Context: Need for parameter clarification
+- Decision: Inline questions (Claude Code style)
+- Consequences: UX benefits, state complexity
+- Alternatives considered: Modal, separate page
+
+#### 3. API Documentation
 - ChatResponse schema changes
 - /actions/execute endpoint
 - /questions/answer endpoint
 - SSE event format for streaming
 
 **Testing Requirements:**
-- **Validation Checklist:**
+- **Review Checklist:**
+  - ADR-018 follows standard template
+  - ADR-019 follows standard template
+  - Technical accuracy reviewed by @egidio
   - All endpoints accessible in Swagger UI
   - Request/response examples work
   - Error codes documented with descriptions
 
 **Edge Cases:**
+- **Future architecture changes:** Document extensibility considerations
+- **Multi-language support:** Consider i18n implications in design
 - **Schema evolution:** Document backward compatibility
 - **Optional fields:** Clearly mark nullable vs optional
 
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
 |------|--------|------------|
+| ADR becomes outdated | LOW | Link to implementation, update on changes |
 | Documentation out of sync | MEDIUM | Auto-generate from code annotations |
 | Missing examples | LOW | Add at least one example per endpoint |
 
 **Code Structure:**
+- Follow existing ADR template format
+- Use mermaid diagrams for architecture and state flows
 - Follow OpenAPI 3.0 spec
 - Use FastAPI docstrings for descriptions
-- Keep examples close to actual usage
 
 **Acceptance Criteria:**
-- [ ] All new endpoints documented
-- [ ] Schema changes documented
-- [ ] Examples provided
+- [ ] ADR-018 follows standard template
+- [ ] ADR-019 follows standard template
+- [ ] Decision rationale clear in both ADRs
+- [ ] All new endpoints documented in Swagger
+- [ ] Examples provided for each endpoint
 - [ ] Error responses documented
 
 ---
@@ -1742,7 +1646,7 @@ Document:
 | Phase 2: API Integration | DEV-157 to DEV-162 | 6h | @ezio, @clelia |
 | Phase 3: Frontend | DEV-163 to DEV-167 | 10h | @livia, @clelia |
 | Phase 4: Testing | DEV-168 to DEV-172 | 6.5h | @clelia |
-| Phase 5: Documentation | DEV-173 to DEV-175 | 1h | @egidio, @ezio |
-| **Total** | **26 tasks** | **~33h** | |
+| Phase 5: Documentation | DEV-173 | 1h | @egidio, @ezio |
+| **Total** | **24 tasks** | **~33h** | |
 
 **Estimated Timeline:** 2-3 weeks at 2-3h/day *(with Claude Code)*

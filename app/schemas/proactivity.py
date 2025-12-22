@@ -219,3 +219,37 @@ class ActionExecuteRequest(BaseModel):
     action_id: str = Field(..., description="ID of the action template to execute", min_length=1)
     parameters: dict[str, Any] | None = Field(default=None, description="Parameters for prompt template")
     session_id: str = Field(..., description="Session ID for context tracking", min_length=1)
+
+
+class QuestionAnswerRequest(BaseModel):
+    """Request model for /questions/answer endpoint - DEV-161.
+
+    Contains the question answer, selected option, and optional custom input.
+
+    Attributes:
+        question_id: ID of the question being answered
+        selected_option: ID of the selected option
+        custom_input: Optional custom input if option requires it
+        session_id: Session ID for context tracking
+    """
+
+    question_id: str = Field(..., description="ID of the question being answered", min_length=1)
+    selected_option: str = Field(..., description="ID of the selected option", min_length=1)
+    custom_input: str | None = Field(default=None, description="Custom input if option requires it")
+    session_id: str = Field(..., description="Session ID for context tracking", min_length=1)
+
+
+class QuestionAnswerResponse(BaseModel):
+    """Response model for /questions/answer endpoint - DEV-161.
+
+    Contains either a follow-up question (multi-step) or an answer (terminal).
+
+    Attributes:
+        next_question: Follow-up question if multi-step flow
+        answer: Answer text if terminal question
+        suggested_actions: Follow-up actions after answer
+    """
+
+    next_question: InteractiveQuestion | None = Field(default=None, description="Follow-up question")
+    answer: str | None = Field(default=None, description="Answer text if terminal")
+    suggested_actions: list[Action] | None = Field(default=None, description="Follow-up actions")

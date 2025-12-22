@@ -159,7 +159,7 @@ tests/
 | DEV-157 to DEV-162 | Phase 2: API Integration (Backend) |
 | DEV-163 to DEV-167 | Phase 3: Frontend Components |
 | DEV-168 to DEV-172 | Phase 4: Testing |
-| DEV-173 to DEV-175 | Phase 5: Documentation |
+| DEV-173 | Phase 5: Documentation |
 
 ---
 
@@ -1161,6 +1161,113 @@ Enhanced SuggestedActionsBar and InteractiveQuestionInline with mobile-first res
 
 ---
 
+<details>
+<summary>
+<h3>DEV-168: Unit Tests for ProactivityEngine</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Comprehensive unit tests for ProactivityEngine with 27 tests covering all scenarios.
+</summary>
+
+### DEV-168: Unit Tests for ProactivityEngine
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** HIGH | **Effort:** 1.5h (Actual: ~1h)
+
+**Problem:**
+ProactivityEngine needed comprehensive unit tests to ensure reliability.
+
+**Solution:**
+Created 27 unit tests covering all scenarios and edge cases for ProactivityEngine.
+
+**Files Created/Modified:**
+- `tests/services/test_proactivity_engine.py` - 27 unit tests
+
+**Test Coverage:**
+- Complete query (all params) -> actions only
+- Incomplete query (0% coverage) -> question
+- Partial query (50% coverage) -> question
+- Near-complete query (80% coverage) -> smart fallback
+- Template service failure -> graceful degradation
+- Multiple domains -> correct template selection
+- Document attached -> document-specific actions
+- Performance under 500ms
+
+**Acceptance Criteria (All Met):**
+- ✅ 90%+ code coverage for ProactivityEngine
+- ✅ All edge cases tested
+- ✅ Performance assertions included
+- ✅ Mock dependencies properly
+- ✅ 27 tests pass
+
+**Git:** Branch `DEV-155-Create-ProactivityEngine-Service`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-169: Unit Tests for Template Services</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Comprehensive unit tests for ActionTemplateService with 30 tests covering all scenarios.
+</summary>
+
+### DEV-169: Unit Tests for Template Services
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** HIGH | **Effort:** 1h (Actual: ~1h)
+
+**Problem:**
+Template loading services needed comprehensive tests.
+
+**Solution:**
+Created 30 unit tests covering all scenarios and edge cases for ActionTemplateService.
+
+**Files Created/Modified:**
+- `tests/services/test_action_template_service.py` - 30 unit tests
+
+**Test Coverage:**
+- Valid YAML loading
+- Multiple file loading
+- Action with all fields
+- Domain fallback
+- Action type fallback
+- Cache hit verification
+- Reload templates
+- Document type lookup
+- Document type not found
+- Missing file graceful handling
+- Invalid YAML error handling
+- Schema validation failure
+- Duplicate ID warning
+- Empty directory handling
+- Empty actions list
+- Template validation errors
+- Question template loading
+- Question not found
+- Question with leads_to
+- Empty YAML file
+- Default path initialization
+- Missing directories handling
+- Invalid question YAML
+- Question parsing exception
+- Invalid category enum
+- Question with optional fields
+- Full workflow integration
+- JSON serialization
+
+**Acceptance Criteria (All Met):**
+- ✅ 90%+ code coverage for template services
+- ✅ All edge cases tested
+- ✅ Fixture YAML files created for tests
+- ✅ 30 tests pass
+
+**Git:** Branch `DEV-151-Create-YAML-Template-Loader-Service`
+
+</details>
+
+---
+
 ## Phase 1: Foundation (Backend) - 9h
 
 **Note:** DEV-150, DEV-151, DEV-152, DEV-153, DEV-154, DEV-155, and DEV-156 moved to Completed Tasks section above.
@@ -1267,626 +1374,9 @@ className={cn(
 
 ---
 
-### DEV-166: Integrate Components into ChatInterface
-
-**Reference:** [FR-001: Azioni Suggerite Post-Risposta](./PRATIKO_1.5_REFERENCE.md#31-fr-001-azioni-suggerite-post-risposta) | [FR-002: Domande Interattive Strutturate](./PRATIKO_1.5_REFERENCE.md#32-fr-002-domande-interattive-strutturate)
-
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED
-
-**Problem:**
-The new proactivity components need to be integrated into the existing chat interface.
-
-**Solution:**
-Modify ChatLayoutV2 and AIMessageV2 to include SuggestedActionsBar and InteractiveQuestionInline.
-
-**Agent Assignment:** @livia (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-163, DEV-164, DEV-165
-- **Unlocks:** DEV-167
-
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary Files:**
-  - `src/app/chat/ChatLayoutV2.tsx`
-  - `src/app/chat/AIMessageV2.tsx`
-- **Affected Files:**
-  - `src/contexts/ChatContext.tsx` (state management)
-- **Related Tests:**
-  - `src/__tests__/chat/` (existing chat tests)
-- **Baseline Command:** `npm test -- --testPathPattern=chat`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass
-- [ ] Existing chat flow reviewed
-- [ ] No pre-existing test failures
-
-**File:** `src/app/chat/AIMessageV2.tsx`
-
-**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
-- **Reference Pattern:** Review existing FeedbackButtons integration in AIMessageV2
-- **Import Pattern:** Use dynamic imports for proactivity components
-- **API Calls:** Follow existing fetch patterns in chat components
-
-**Fields/Methods/Components:**
-
-**1. Update AIMessageV2.tsx:**
-```typescript
-'use client';
-import dynamic from 'next/dynamic';
-import { SuggestedActionsBar } from '@/components/chat/SuggestedActionsBar';
-import { InteractiveQuestionInline } from '@/components/chat/InteractiveQuestionInline';
-import { useChatContext } from '@/contexts/ChatContext';
-
-interface AIMessageV2Props {
-  // ... existing props
-  suggestedActions?: Action[];
-  interactiveQuestion?: InteractiveQuestion;
-}
-
-export function AIMessageV2({
-  // ... existing props
-  suggestedActions,
-  interactiveQuestion
-}: AIMessageV2Props) {
-  const { dispatch, state } = useChatContext();
-  const { isActionExecuting } = state;
-
-  const handleActionClick = async (action: Action) => {
-    dispatch({ type: 'SET_ACTION_EXECUTING', payload: true });
-    try {
-      const response = await fetch('/api/v1/actions/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_id: action.id, message_id }),
-      });
-      // Handle response - may trigger new chat message
-    } finally {
-      dispatch({ type: 'SET_ACTION_EXECUTING', payload: false });
-    }
-  };
-
-  const handleQuestionAnswer = async (optionId: string, customText?: string) => {
-    dispatch({ type: 'SET_ACTION_EXECUTING', payload: true });
-    try {
-      const response = await fetch('/api/v1/questions/answer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question_id, option_id: optionId, custom_input: customText }),
-      });
-      // Response may include follow-up message or actions
-    } finally {
-      dispatch({ type: 'SET_ACTION_EXECUTING', payload: false });
-    }
-  };
-
-  return (
-    <div className="ai-message">
-      {/* ... existing message content ... */}
-
-      {/* Suggested Actions */}
-      {suggestedActions && suggestedActions.length > 0 && (
-        <SuggestedActionsBar
-          actions={suggestedActions}
-          onActionClick={handleActionClick}
-          isLoading={isActionExecuting}
-          disabled={isActionExecuting}
-        />
-      )}
-
-      {/* Interactive Question */}
-      {interactiveQuestion && (
-        <InteractiveQuestionInline
-          question={interactiveQuestion}
-          onAnswer={handleQuestionAnswer}
-          onSkip={() => dispatch({ type: 'SKIP_QUESTION' })}
-          disabled={isActionExecuting}
-        />
-      )}
-    </div>
-  );
-}
-```
-
-**Testing Requirements:**
-- **Unit Tests:**
-  - `test_renders_actions_when_provided` - SuggestedActionsBar shown when actions exist
-  - `test_renders_question_when_provided` - InteractiveQuestionInline shown when question exists
-  - `test_action_click_calls_api` - API called on action click
-  - `test_loading_state_during_api_call` - Components disabled during API calls
-- **Integration Tests:**
-  - `test_full_action_flow` - Complete flow from action click to response
-  - `test_full_question_flow` - Complete flow from question answer to response
-- **Coverage Target:** 85%+
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking existing chat flow | HIGH | Baseline tests, incremental integration |
-| State management conflicts | MEDIUM | Dedicated context actions, isolated state |
-| Performance regression | LOW | React.memo, conditional rendering |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max component: 150 lines, extract sub-components
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] SuggestedActionsBar renders after AI messages with actions
-- [ ] InteractiveQuestionInline renders when question provided
-- [ ] Actions trigger API calls and handle responses
-- [ ] Loading state during API calls
-- [ ] Existing chat functionality unchanged
-- [ ] 85%+ test coverage achieved
-
----
-
-### DEV-167: Create Question Templates YAML System
-
-**Reference:** [Section 5.3: Question Templates](./PRATIKO_1.5_REFERENCE.md#53-question-templates)
-
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
-
-**Problem:**
-Interactive questions need predefined templates for common scenarios to improve user experience.
-
-**Solution:**
-Create YAML-based question template system with Italian tax domain templates.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-166
-- **Unlocks:** Phase 4
-
-**Change Classification:** ADDITIVE
-
-**File:** `app/templates/questions/` directory
-
-**Impact Analysis:**
-- **Primary Files:**
-  - `src/app/chat/ChatLayoutV2.tsx`
-  - `src/app/chat/AIMessageV2.tsx`
-- **Affected Files:**
-  - `src/contexts/ChatContext.tsx` (state management)
-- **Related Tests:**
-  - `src/__tests__/chat/` (existing chat tests)
-- **Baseline Command:** `npm test -- --testPathPattern=chat`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass
-- [ ] Existing chat flow reviewed
-- [ ] No pre-existing test failures
-
-**File:** `src/app/chat/AIMessageV2.tsx`
-
-**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
-- **Reference Pattern:** Review existing FeedbackButtons integration in AIMessageV2
-- **Import Pattern:** Use dynamic imports for proactivity components
-- **API Calls:** Follow existing fetch patterns in chat components
-
-**Fields/Methods/Components:**
-
-**1. Update AIMessageV2.tsx:**
-```typescript
-'use client';
-import dynamic from 'next/dynamic';
-import { SuggestedActionsBar } from '@/components/chat/SuggestedActionsBar';
-import { InteractiveQuestionInline } from '@/components/chat/InteractiveQuestionInline';
-import { useChatContext } from '@/contexts/ChatContext';
-
-interface AIMessageV2Props {
-  // ... existing props
-  suggestedActions?: Action[];
-  interactiveQuestion?: InteractiveQuestion;
-}
-
-export function AIMessageV2({
-  // ... existing props
-  suggestedActions,
-  interactiveQuestion
-}: AIMessageV2Props) {
-  const { dispatch, state } = useChatContext();
-  const { isActionExecuting } = state;
-
-  const handleActionClick = async (action: Action) => {
-    dispatch({ type: 'SET_ACTION_EXECUTING', payload: true });
-    try {
-      const response = await fetch('/api/v1/actions/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_id: action.id, message_id }),
-      });
-      // Handle response - may trigger new chat message
-    } finally {
-      dispatch({ type: 'SET_ACTION_EXECUTING', payload: false });
-    }
-  };
-
-  const handleQuestionAnswer = async (optionId: string, customText?: string) => {
-    dispatch({ type: 'SET_ACTION_EXECUTING', payload: true });
-    try {
-      const response = await fetch('/api/v1/questions/answer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question_id, option_id: optionId, custom_input: customText }),
-      });
-      // Response may include follow-up message or actions
-    } finally {
-      dispatch({ type: 'SET_ACTION_EXECUTING', payload: false });
-    }
-  };
-
-  return (
-    <div className="...existing classes...">
-      {/* Existing message content */}
-      <MarkdownContent content={message.content} />
-
-      {/* Proactivity components - render after message */}
-      {interactiveQuestion && (
-        <InteractiveQuestionInline
-          question={interactiveQuestion}
-          onAnswer={handleQuestionAnswer}
-          onSkip={() => dispatch({ type: 'CLEAR_QUESTION' })}
-          disabled={isActionExecuting}
-        />
-      )}
-
-      {suggestedActions && suggestedActions.length > 0 && !interactiveQuestion && (
-        <SuggestedActionsBar
-          actions={suggestedActions}
-          onActionClick={handleActionClick}
-          isLoading={isActionExecuting}
-        />
-      )}
-    </div>
-  );
-}
-```
-
-**2. Update ChatContext.tsx:**
-```typescript
-interface ChatState {
-  // ... existing state
-  pendingQuestion: InteractiveQuestion | null;
-  isActionExecuting: boolean;
-}
-
-type ChatAction =
-  // ... existing actions
-  | { type: 'SET_QUESTION'; payload: InteractiveQuestion | null }
-  | { type: 'CLEAR_QUESTION' }
-  | { type: 'SET_ACTION_EXECUTING'; payload: boolean };
-
-function chatReducer(state: ChatState, action: ChatAction): ChatState {
-  switch (action.type) {
-    // ... existing cases
-    case 'SET_QUESTION':
-      return { ...state, pendingQuestion: action.payload };
-    case 'CLEAR_QUESTION':
-      return { ...state, pendingQuestion: null };
-    case 'SET_ACTION_EXECUTING':
-      return { ...state, isActionExecuting: action.payload };
-    default:
-      return state;
-  }
-}
-```
-
-Integration pattern:
-- Show InteractiveQuestion first if present (takes priority)
-- Show SuggestedActionsBar only when no question pending
-- Disable all proactivity UI during API calls
-- Clear question after answer received
-- API response may contain new actions/questions
-
-**Testing Requirements:**
-- **Integration Tests:**
-  - `test_actions_shown_after_message` - Actions render after AI message
-  - `test_question_shown_when_present` - Question renders inline
-  - `test_action_click_triggers_api` - Click calls /actions/execute
-  - `test_question_answer_triggers_api` - Answer calls /questions/answer
-- **E2E Tests:** (DEV-172)
-- **Coverage Target:** 85%+
-
-**Edge Cases:**
-- **Actions and question both present:** Show question first, actions after answer
-- **API call fails:** Show error toast, keep UI responsive
-- **Rapid clicks:** Disable buttons during API call
-- **Stale state:** Invalidate actions when new message received
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking existing chat functionality | HIGH | Comprehensive regression tests |
-| State synchronization issues | MEDIUM | Use ChatContext reducer pattern |
-| Performance degradation | MEDIUM | Lazy load proactivity components |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max component: 150 lines, extract sub-components
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] SuggestedActionsBar appears after AI messages
-- [ ] InteractiveQuestionInline appears when question present
-- [ ] Action clicks call backend API
-- [ ] Question answers call backend API
-- [ ] Loading states shown during API calls
-- [ ] Error states handled gracefully
-- [ ] 85%+ test coverage achieved
-
----
-
-### DEV-167: Mobile Responsive Styling
-
-**Reference:** [Section 5.3: Mobile Responsive](./PRATIKO_1.5_REFERENCE.md#53-mobile-responsive)
-
-**Priority:** MEDIUM | **Effort:** 1.5h | **Status:** NOT STARTED
-
-**Problem:**
-The proactivity components need to work well on mobile devices.
-
-**Solution:**
-Add responsive styles and ensure touch-friendly interactions.
-
-**Agent Assignment:** @livia (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-166
-- **Unlocks:** None
-
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary Files:**
-  - `src/components/chat/SuggestedActionsBar.tsx`
-  - `src/components/chat/InteractiveQuestionInline.tsx`
-- **Related Tests:**
-  - Component tests with mobile viewport
-- **Baseline Command:** `npm test -- --testPathPattern=SuggestedActionsBar --testPathPattern=InteractiveQuestionInline`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass
-- [ ] Existing responsive breakpoints reviewed
-- [ ] No pre-existing visual regressions
-
-**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
-
-**Responsive Patterns to Apply:**
-
-**1. SuggestedActionsBar - Mobile Responsive:**
-```typescript
-// Container: Stack vertically on mobile, wrap on desktop
-<div className={cn(
-  'flex flex-col sm:flex-row flex-wrap gap-2 mt-3',
-  'animate-fade-slide-up'
-)}>
-
-// Buttons: Full width on mobile, auto on desktop
-<button
-  className={cn(
-    // Full width on mobile
-    'w-full sm:w-auto',
-    // Touch-friendly height
-    'min-h-[44px]',
-    // ... existing button styles
-  )}
->
-```
-
-**2. InteractiveQuestionInline - Mobile Responsive:**
-```typescript
-// Container: Full width, proper padding
-<div className={cn(
-  'mt-4 p-3 sm:p-4',
-  'rounded-lg border border-[#C4BDB4]/30 bg-[#F8F5F1]/50'
-)}>
-
-// Options grid: 1 col on mobile, 2 on sm, 4 on lg
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-
-// Option buttons: Full width, touch-friendly
-<button
-  className={cn(
-    'w-full min-h-[44px]',
-    'px-3 py-2 rounded-full',
-    // Text size responsive
-    'text-sm sm:text-base',
-    // ... existing styles
-  )}
->
-```
-
-**3. Text Truncation for Long Labels:**
-```typescript
-// Truncate with ellipsis on mobile
-<span className="truncate max-w-full sm:max-w-[200px]" title={fullLabel}>
-  {label}
-</span>
-```
-
-**4. Touch Target Spacing:**
-```typescript
-// Ensure gap between interactive elements
-'gap-2 sm:gap-3'
-
-// Minimum touch target
-'min-h-[44px] min-w-[44px]'
-```
-
-**5. Keyboard Visibility (scroll into view):**
-```typescript
-// In InteractiveQuestionInline, when custom input focused
-useEffect(() => {
-  if (isInputFocused && inputRef.current) {
-    inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-}, [isInputFocused]);
-```
-
-**Breakpoint Testing Checklist:**
-| Viewport | Width | Layout Expected |
-|----------|-------|-----------------|
-| iPhone SE | 320px | Single column, stacked buttons |
-| iPhone 14 | 390px | Single column, stacked buttons |
-| iPad Mini | 768px | 2-column grid, row buttons |
-| Desktop | 1024px+ | 4-column grid, inline buttons |
-
-**Edge Cases:**
-- **Small screens (<375px):** Single column layout
-- **Touch targets:** Minimum 44px height
-- **Keyboard on mobile:** Component should scroll into view
-- **Landscape mode:** Optimize for horizontal space
-- **Very long labels:** Text truncation with ellipsis
-
-**Testing Requirements:**
-- **Visual Tests:**
-  - Test at 320px, 375px, 768px, 1024px viewports
-  - Touch target size verification (≥44px)
-  - Text truncation with long labels
-- **Accessibility Tests:**
-  - Focus visible on touch devices
-  - Swipe gestures don't interfere
-  - Screen reader announces changes
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking desktop layout | MEDIUM | Test all breakpoints before merge |
-| Touch target overlap | LOW | Use spacing utilities, test touch accuracy |
-| CSS specificity conflicts | LOW | Use Tailwind utility classes consistently |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max component: 150 lines, extract sub-components
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Actions stack vertically on mobile
-- [ ] Question options full-width on mobile
-- [ ] Touch targets minimum 44px
-- [ ] No horizontal scroll on mobile
-- [ ] Keyboard doesn't obscure input fields
-
----
-
 ## Phase 4: Testing - 6.5h
 
-### DEV-168: Unit Tests for ProactivityEngine
-
-**Reference:** DEV-155
-
-**Priority:** HIGH | **Effort:** 1.5h | **Status:** NOT STARTED
-
-**Problem:**
-ProactivityEngine needs comprehensive unit tests to ensure reliability.
-
-**Solution:**
-Write extensive unit tests covering all scenarios and edge cases.
-
-**Agent Assignment:** @clelia (primary)
-
-**Dependencies:**
-- **Blocking:** DEV-155
-- **Unlocks:** DEV-172
-
-**Change Classification:** ADDITIVE
-
-**File:** `tests/services/test_proactivity_engine.py`
-
-**Testing Requirements:**
-- **Coverage Scenarios:**
-  - Complete query (all params) -> actions only
-  - Incomplete query (0% coverage) -> question
-  - Partial query (50% coverage) -> question
-  - Near-complete query (80% coverage) -> smart fallback
-  - Template service failure -> graceful degradation
-  - Multiple domains -> correct template selection
-  - Document attached -> document-specific actions
-  - Performance under 500ms
-
-**Edge Cases:**
-- **Mocking LLM responses:** Use deterministic mock responses
-- **Async timing issues:** Use proper async test patterns
-- **Flaky tests:** Avoid time-dependent assertions
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Tests too tightly coupled | MEDIUM | Test behaviors, not implementation |
-| Insufficient coverage | HIGH | Use coverage tools, enforce threshold |
-| Slow test suite | LOW | Mock external dependencies |
-
-**Code Structure:**
-- Max test function: 30 lines
-- Group tests by feature/scenario
-- Use fixtures for common setup
-
-**Acceptance Criteria:**
-- [ ] 90%+ code coverage for ProactivityEngine
-- [ ] All edge cases tested
-- [ ] Performance assertions included
-- [ ] Mock dependencies properly
-
----
-
-### DEV-169: Unit Tests for Template Services
-
-**Reference:** DEV-151
-
-**Priority:** HIGH | **Effort:** 1h | **Status:** NOT STARTED
-
-**Problem:**
-Template loading services need comprehensive tests.
-
-**Solution:**
-Write unit tests for ActionTemplateService and question template loading.
-
-**Agent Assignment:** @clelia (primary)
-
-**Dependencies:**
-- **Blocking:** DEV-151
-- **Unlocks:** DEV-172
-
-**Change Classification:** ADDITIVE
-
-**File:** `tests/services/test_action_template_service.py`
-
-**Testing Requirements:**
-- **Coverage Scenarios:**
-  - Valid YAML loading
-  - Invalid YAML handling
-  - Missing file handling
-  - Domain fallback
-  - Cache hit verification
-  - Hot reload (dev mode)
-  - Schema validation
-
-**Edge Cases:**
-- **Empty YAML files:** Should handle gracefully
-- **Malformed YAML:** Clear error messages
-- **File permission errors:** Handle OS-level issues
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Fixture files out of sync | MEDIUM | Version fixtures with tests |
-| File system dependencies | LOW | Use temp directories in tests |
-| Cache state pollution | MEDIUM | Reset cache between tests |
-
-**Code Structure:**
-- Max test function: 30 lines
-- Group tests by feature/scenario
-- Use fixtures for common setup
-
-**Acceptance Criteria:**
-- [ ] 90%+ code coverage for template services
-- [ ] All edge cases tested
-- [ ] Fixture YAML files created for tests
-
----
+**Note:** DEV-168, DEV-169 moved to Completed Tasks section above.
 
 ### DEV-170: Integration Tests for Chat Endpoints
 
@@ -2061,192 +1551,89 @@ Write Playwright E2E tests for proactive features.
 
 ## Phase 5: Documentation - 1h
 
-### DEV-173: Create ADR-018: Suggested Actions Architecture
+### DEV-173: Documentation Package
 
-**Reference:** Egidio architectural review
+**Reference:** Egidio architectural review, New endpoints
 
-**Priority:** LOW | **Effort:** 0.25h | **Status:** NOT STARTED
-
-**Problem:**
-Architectural decision for suggested actions needs documentation.
-
-**Solution:**
-Create ADR documenting the template-based action selection approach.
-
-**Agent Assignment:** @egidio (primary)
-
-**Dependencies:**
-- **Blocking:** DEV-155
-- **Unlocks:** None
-
-**Change Classification:** ADDITIVE
-
-**File:** `docs/architecture/decisions/ADR-018-suggested-actions.md`
-
-**Fields/Methods/Components:**
-ADR sections:
-- Context: Need for proactive suggestions
-- Decision: Template-based selection (not LLM)
-- Consequences: Performance gains, limited personalization
-- Alternatives considered: LLM generation, hybrid
-
-**Testing Requirements:**
-- **Review Checklist:**
-  - ADR template compliance verified
-  - Technical accuracy reviewed by @egidio
-  - Linked to relevant code files
-
-**Edge Cases:**
-- **Future architecture changes:** Document extensibility considerations
-- **Multi-language support:** Consider i18n implications in design
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| ADR becomes outdated | LOW | Link to implementation, update on changes |
-| Missing alternatives | LOW | Review with team before finalizing |
-
-**Code Structure:**
-- Follow existing ADR template format
-- Use mermaid diagrams for architecture
-- Keep concise, link to detailed docs
-
-**Acceptance Criteria:**
-- [ ] ADR follows standard template
-- [ ] Decision rationale clear
-- [ ] Consequences documented
-- [ ] Alternatives listed
-
----
-
-### DEV-174: Create ADR-019: Interactive Questions Architecture
-
-**Reference:** Egidio architectural review
-
-**Priority:** LOW | **Effort:** 0.25h | **Status:** NOT STARTED
+**Priority:** LOW | **Effort:** 1h | **Status:** NOT STARTED
 
 **Problem:**
-Architectural decision for interactive questions needs documentation.
+Documentation for proactivity features needs to be created (ADRs + API docs).
 
 **Solution:**
-Create ADR documenting the inline question flow approach.
+Create comprehensive documentation package including:
+1. ADR-018: Suggested Actions Architecture
+2. ADR-019: Interactive Questions Architecture
+3. API Documentation updates for new endpoints
 
-**Agent Assignment:** @egidio (primary)
-
-**Dependencies:**
-- **Blocking:** DEV-155
-- **Unlocks:** None
-
-**Change Classification:** ADDITIVE
-
-**File:** `docs/architecture/decisions/ADR-019-interactive-questions.md`
-
-**Fields/Methods/Components:**
-ADR sections:
-- Context: Need for parameter clarification
-- Decision: Inline questions (Claude Code style)
-- Consequences: UX benefits, state complexity
-- Alternatives considered: Modal, separate page
-
-**Testing Requirements:**
-- **Review Checklist:**
-  - ADR template compliance verified
-  - Technical accuracy reviewed by @egidio
-  - State management approach validated
-
-**Edge Cases:**
-- **Multi-step flow complexity:** Document state machine approach
-- **Accessibility requirements:** Document ARIA considerations
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| ADR becomes outdated | LOW | Link to implementation, update on changes |
-| State complexity underestimated | MEDIUM | Include detailed state diagrams |
-
-**Code Structure:**
-- Follow existing ADR template format
-- Use mermaid diagrams for state flows
-- Keep concise, link to detailed docs
-
-**Acceptance Criteria:**
-- [ ] ADR follows standard template
-- [ ] Decision rationale clear
-- [ ] State management approach documented
-- [ ] Alternatives listed
-
----
-
-### DEV-175: Update API Documentation
-
-**Reference:** New endpoints
-
-**Priority:** LOW | **Effort:** 0.5h | **Status:** NOT STARTED
-
-**Problem:**
-API documentation needs to include new endpoints and schema changes.
-
-**Solution:**
-Update OpenAPI/Swagger documentation for all new endpoints.
-
-**Agent Assignment:** @ezio (primary)
+**Agent Assignment:** @egidio (ADRs), @ezio (API docs)
 
 **Dependencies:**
 - **Blocking:** DEV-162
 - **Unlocks:** None
 
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary Files:**
-  - `docs/api/` manual documentation files
-- **Affected Files:**
-  - OpenAPI schema (auto-generated from FastAPI decorators)
-- **Related Tests:**
-  - API endpoint tests verify documentation accuracy
-- **Baseline Command:** `uvicorn app.main:app --reload` (verify Swagger UI)
-
-**Pre-Implementation Verification:**
-- [ ] Existing API documentation reviewed
-- [ ] OpenAPI schema generation working
-- [ ] No pre-existing documentation errors
+**Change Classification:** ADDITIVE
 
 **Files:**
-- OpenAPI schema auto-generated from FastAPI
+- `docs/architecture/decisions/ADR-018-suggested-actions.md`
+- `docs/architecture/decisions/ADR-019-interactive-questions.md`
+- OpenAPI schema (auto-generated from FastAPI)
 - `docs/api/` manual documentation
 
-**Fields/Methods/Components:**
-Document:
+**Deliverables:**
+
+#### 1. ADR-018: Suggested Actions Architecture
+- Context: Need for proactive suggestions
+- Decision: Template-based selection (not LLM)
+- Consequences: Performance gains, limited personalization
+- Alternatives considered: LLM generation, hybrid
+
+#### 2. ADR-019: Interactive Questions Architecture
+- Context: Need for parameter clarification
+- Decision: Inline questions (Claude Code style)
+- Consequences: UX benefits, state complexity
+- Alternatives considered: Modal, separate page
+
+#### 3. API Documentation
 - ChatResponse schema changes
 - /actions/execute endpoint
 - /questions/answer endpoint
 - SSE event format for streaming
 
 **Testing Requirements:**
-- **Validation Checklist:**
+- **Review Checklist:**
+  - ADR-018 follows standard template
+  - ADR-019 follows standard template
+  - Technical accuracy reviewed by @egidio
   - All endpoints accessible in Swagger UI
   - Request/response examples work
   - Error codes documented with descriptions
 
 **Edge Cases:**
+- **Future architecture changes:** Document extensibility considerations
+- **Multi-language support:** Consider i18n implications in design
 - **Schema evolution:** Document backward compatibility
 - **Optional fields:** Clearly mark nullable vs optional
 
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
 |------|--------|------------|
+| ADR becomes outdated | LOW | Link to implementation, update on changes |
 | Documentation out of sync | MEDIUM | Auto-generate from code annotations |
 | Missing examples | LOW | Add at least one example per endpoint |
 
 **Code Structure:**
+- Follow existing ADR template format
+- Use mermaid diagrams for architecture and state flows
 - Follow OpenAPI 3.0 spec
 - Use FastAPI docstrings for descriptions
-- Keep examples close to actual usage
 
 **Acceptance Criteria:**
-- [ ] All new endpoints documented
-- [ ] Schema changes documented
-- [ ] Examples provided
+- [ ] ADR-018 follows standard template
+- [ ] ADR-019 follows standard template
+- [ ] Decision rationale clear in both ADRs
+- [ ] All new endpoints documented in Swagger
+- [ ] Examples provided for each endpoint
 - [ ] Error responses documented
 
 ---
@@ -2259,7 +1646,7 @@ Document:
 | Phase 2: API Integration | DEV-157 to DEV-162 | 6h | @ezio, @clelia |
 | Phase 3: Frontend | DEV-163 to DEV-167 | 10h | @livia, @clelia |
 | Phase 4: Testing | DEV-168 to DEV-172 | 6.5h | @clelia |
-| Phase 5: Documentation | DEV-173 to DEV-175 | 1h | @egidio, @ezio |
-| **Total** | **26 tasks** | **~33h** | |
+| Phase 5: Documentation | DEV-173 | 1h | @egidio, @ezio |
+| **Total** | **24 tasks** | **~33h** | |
 
 **Estimated Timeline:** 2-3 weeks at 2-3h/day *(with Claude Code)*

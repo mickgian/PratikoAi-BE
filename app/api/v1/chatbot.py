@@ -49,7 +49,7 @@ from app.schemas.chat import (
     Message,
     StreamResponse,
 )
-from app.schemas.proactivity import ProactivityContext, ProactivityResult
+from app.schemas.proactivity import ActionExecuteRequest, ProactivityContext, ProactivityResult
 from app.services.action_template_service import ActionTemplateService
 from app.services.atomic_facts_extractor import AtomicFactsExtractor
 from app.services.attachment_resolver import (
@@ -83,6 +83,23 @@ def get_proactivity_engine() -> ProactivityEngine:
             facts_extractor=facts_extractor,
         )
     return _proactivity_engine
+
+
+# DEV-160: Singleton ActionTemplateService instance
+_template_service: ActionTemplateService | None = None
+
+
+def get_template_service() -> ActionTemplateService:
+    """Get or create the ActionTemplateService singleton.
+
+    Returns:
+        ActionTemplateService: The singleton service instance
+    """
+    global _template_service
+    if _template_service is None:
+        _template_service = ActionTemplateService()
+        _template_service.load_templates()
+    return _template_service
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -961,6 +978,153 @@ async def import_chat_history(
         logger.error(
             "import_chat_history_failed",
             user_id=session.user_id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# DEV-160: Action Execution Endpoint
+# =============================================================================
+
+
+@router.post("/actions/execute")
+@limiter.limit(settings.RATE_LIMIT_ENDPOINTS["chat"][0])
+async def execute_action(
+    request: Request,
+    action_request: ActionExecuteRequest,
+    session: Session = Depends(get_current_session),
+) -> ChatResponse:
+    """Execute a suggested action - DEV-160.
+
+    Takes an action_id from a suggested action, substitutes parameters
+    in the prompt_template, and executes it as a chat query.
+
+    Args:
+        request: The FastAPI request object for rate limiting.
+        action_request: The action execution request containing action_id,
+                       optional parameters, and session_id.
+        session: The current authenticated session.
+
+    Returns:
+        ChatResponse: The response from executing the action, with new
+                     suggested actions for follow-up.
+
+    Raises:
+        HTTPException:
+            - 400: If action_id is unknown or parameters are invalid
+            - 500: If there's an internal error during execution
+    """
+    try:
+        # Get template service and lookup action
+        template_service = get_template_service()
+        action = template_service.get_action_by_id(action_request.action_id)
+
+        if action is None:
+            logger.warning(
+                "action_not_found",
+                action_id=action_request.action_id,
+                session_id=action_request.session_id,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Azione non valida",
+            )
+
+        # Generate prompt from template
+        parameters = action_request.parameters or {}
+        try:
+            prompt = action.prompt_template.format(**parameters)
+        except KeyError as e:
+            missing_param = str(e).strip("'")
+            logger.warning(
+                "action_missing_parameter",
+                action_id=action_request.action_id,
+                missing_param=missing_param,
+                session_id=action_request.session_id,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Parametro richiesto mancante: {missing_param}",
+            )
+
+        logger.info(
+            "action_execution_started",
+            action_id=action_request.action_id,
+            action_label=action.label,
+            session_id=action_request.session_id,
+            user_id=session.user_id,
+        )
+
+        # Execute action as regular chat query
+        response = await agent.get_response(
+            session_id=action_request.session_id,
+            user_id=session.user_id,
+            query=prompt,
+        )
+
+        # Convert response to messages
+        messages = [Message(role="assistant", content=str(response))]
+
+        # Process proactivity for follow-up actions
+        proactivity_result: ProactivityResult | None = None
+        try:
+            proactivity_engine = get_proactivity_engine()
+            proactivity_context = ProactivityContext(
+                session_id=action_request.session_id,
+                domain="default",
+                action_type=None,
+                document_type=None,
+            )
+            proactivity_result = proactivity_engine.process(
+                query=prompt,
+                context=proactivity_context,
+            )
+        except Exception as proactivity_error:
+            logger.warning(
+                "action_proactivity_processing_failed",
+                action_id=action_request.action_id,
+                session_id=action_request.session_id,
+                error=str(proactivity_error),
+            )
+
+        # Build response
+        suggested_actions = None
+        interactive_question = None
+        extracted_params = None
+
+        if proactivity_result:
+            if proactivity_result.actions:
+                suggested_actions = proactivity_result.actions
+            if proactivity_result.question:
+                interactive_question = proactivity_result.question
+            if proactivity_result.extraction_result:
+                extracted_params = {
+                    p.name: p.value for p in proactivity_result.extraction_result.extracted
+                }
+
+        logger.info(
+            "action_execution_completed",
+            action_id=action_request.action_id,
+            session_id=action_request.session_id,
+            new_actions_count=len(suggested_actions) if suggested_actions else 0,
+        )
+
+        return ChatResponse(
+            messages=messages,
+            suggested_actions=suggested_actions,
+            interactive_question=interactive_question,
+            extracted_params=extracted_params,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "action_execution_failed",
+            action_id=action_request.action_id,
+            session_id=action_request.session_id,
             error=str(e),
             exc_info=True,
         )

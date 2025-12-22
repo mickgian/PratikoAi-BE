@@ -632,6 +632,101 @@ extracted_params: dict[str, Any] | None = None
 
 ---
 
+<details>
+<summary>
+<h3>DEV-158: Modify /chat Endpoint to Include Suggested Actions</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-20)<br>
+Integrated ProactivityEngine with /chat endpoint for suggested actions and interactive questions.
+</summary>
+
+### DEV-158: Modify /chat Endpoint to Include Suggested Actions
+
+**Status:** ✅ COMPLETED (2024-12-20)
+**Priority:** HIGH | **Effort:** 1h (Actual: ~1h)
+
+**Problem:**
+The /chat endpoint needed to return suggested actions and interactive questions based on query analysis.
+
+**Solution:**
+Integrated ProactivityEngine into /chat endpoint with graceful degradation.
+
+**Files Modified:**
+- `app/api/v1/chatbot.py` - Added ProactivityEngine integration
+
+**Files Created:**
+- `tests/api/test_chatbot_proactivity.py` - 11 TDD tests
+
+**Key Features:**
+- ProactivityEngine singleton pattern for performance
+- Graceful degradation on engine failure
+- ChatResponse includes suggested_actions, interactive_question, extracted_params
+- Non-blocking processing
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 11 tests
+- ✅ ProactivityEngine integrated with graceful fallback
+- ✅ Actions returned for complete queries
+- ✅ Questions returned for incomplete queries
+- ✅ All existing tests pass
+
+**Git:** Branch `DEV-158-Modify-/chat-Endpoint-to-Include-Suggested-Actions`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-159: Modify /chat/stream Endpoint for Actions</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h (Actual: ~1.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-20)<br>
+Modified streaming endpoint to include proactivity events as SSE events before [DONE] token.
+</summary>
+
+### DEV-159: Modify /chat/stream Endpoint for Actions
+
+**Status:** ✅ COMPLETED (2024-12-20)
+**Priority:** HIGH | **Effort:** 1.5h (Actual: ~1.5h)
+
+**Problem:**
+The streaming endpoint needed to include suggested actions and interactive questions as SSE events after content but before [DONE].
+
+**Solution:**
+Extended StreamResponse schema with event_type, suggested_actions, interactive_question, and extracted_params fields. Modified /chat/stream to yield proactivity events.
+
+**Files Modified:**
+- `app/schemas/chat.py` - Extended StreamResponse with proactivity fields
+- `app/api/v1/chatbot.py` - Integrated ProactivityEngine into streaming flow
+
+**Files Created:**
+- `tests/api/test_chatbot_streaming_proactivity.py` - 16 TDD tests
+
+**SSE Event Format:**
+```
+data: {"content": "...", "event_type": "content", "done": false}
+data: {"content": "", "event_type": "suggested_actions", "suggested_actions": [...]}
+data: {"content": "", "event_type": "interactive_question", "interactive_question": {...}}
+data: {"content": "", "done": true}
+```
+
+**Key Features:**
+- Event types: content, suggested_actions, interactive_question
+- Event order: content → actions → question → done
+- Graceful degradation on ProactivityEngine failure
+- Backward compatible (legacy clients can ignore new fields)
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 16 tests
+- ✅ Actions sent as structured SSE event
+- ✅ Event order: content -> actions -> question -> [DONE]
+- ✅ All existing streaming tests pass
+- ✅ Backward compatible
+
+**Git:** Branch `DEV-159-Modify-/chat/stream-Endpoint-for-Actions`
+
+</details>
+
+---
+
 ## Phase 1: Foundation (Backend) - 9h
 
 **Note:** DEV-150, DEV-151, DEV-152, DEV-153, DEV-154, DEV-155, and DEV-156 moved to Completed Tasks section above.
@@ -640,93 +735,7 @@ extracted_params: dict[str, Any] | None = None
 
 ## Phase 2: API Integration (Backend) - 6h
 
-**Note:** DEV-157 and DEV-158 moved to Completed Tasks section above.
-
----
-
-### DEV-159: Modify /chat/stream Endpoint for Actions
-
-**Reference:** [Section 4.2: API Endpoints](./PRATIKO_1.5_REFERENCE.md#42-api-endpoints)
-
-**Priority:** HIGH | **Effort:** 1.5h | **Status:** NOT STARTED
-
-**Problem:**
-The streaming endpoint needs to include suggested actions as a final SSE event after the response is complete.
-
-**Solution:**
-Modify /chat/stream to send actions as a structured SSE event after the [DONE] token.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-158
-- **Unlocks:** DEV-163
-
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary File:** `app/api/v1/chatbot.py`
-- **Affected Files:**
-  - Frontend SSE handler
-- **Related Tests:**
-  - `tests/api/test_chatbot_stream.py` (direct)
-- **Baseline Command:** `pytest tests/api/test_chatbot_stream.py -v`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass
-- [ ] Existing streaming flow reviewed
-- [ ] No pre-existing test failures
-
-**Error Handling:**
-- Stream interrupted before actions: Log warning, no recovery needed
-- **Logging:** Log streaming completion with action count
-
-**Performance Requirements:**
-- Actions event latency: <100ms after response complete
-
-**File:** `app/api/v1/chatbot.py`
-
-**Fields/Methods/Components:**
-SSE event format for actions:
-```
-data: {"type": "content", "content": "Response text..."}
-data: {"type": "content", "content": " more text"}
-data: {"type": "suggested_actions", "actions": [...]}
-data: {"type": "interactive_question", "question": {...}}  // if applicable
-data: [DONE]
-```
-
-**Testing Requirements:**
-- **TDD:** Write tests FIRST
-- **Unit Tests:**
-  - `test_stream_includes_actions_event` - Actions sent as SSE event
-  - `test_stream_actions_after_content` - Actions come after content
-  - `test_stream_with_question` - Question event when needed
-- **Regression Tests:** Run `pytest tests/api/test_chatbot_stream.py`
-- **Coverage Target:** 85%+
-
-**Edge Cases:**
-- **Client disconnects early:** Clean up gracefully, no action event sent
-- **Empty actions:** Send empty actions array, not null
-- **Streaming error mid-response:** Log error, attempt to send actions anyway
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| SSE format incompatibility | HIGH | Test with frontend before deployment |
-| Event ordering issues | MEDIUM | Strict sequence validation in tests |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Actions sent as structured SSE event
-- [ ] Event order: content -> actions -> question -> [DONE]
-- [ ] All existing streaming tests pass
-- [ ] 85%+ test coverage achieved
+**Note:** DEV-157, DEV-158, and DEV-159 moved to Completed Tasks section above.
 
 ---
 

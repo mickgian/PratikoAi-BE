@@ -989,6 +989,72 @@ interface InteractiveQuestionInlineProps {
 
 </details>
 
+<details>
+<summary>
+<h3>DEV-165: Create useKeyboardNavigation Hook</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1.5h (Actual: ~30min) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Created reusable keyboard navigation hook for lists and option selection.
+</summary>
+
+### DEV-165: Create useKeyboardNavigation Hook
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** MEDIUM | **Effort:** 1.5h (Actual: ~30min)
+
+**Problem:**
+Both action buttons and interactive questions need keyboard navigation, requiring a reusable hook.
+
+**Solution:**
+Created useKeyboardNavigation custom hook in `/Users/micky/WebstormProjects/PratikoAiWebApp` with full TDD approach.
+
+**Files Created:**
+- `src/lib/hooks/useKeyboardNavigation.ts` - Custom hook (115 lines)
+- `src/lib/hooks/__tests__/useKeyboardNavigation.test.tsx` - 30 TDD tests (470 lines)
+
+**Key Features:**
+- Arrow key navigation (Up/Down) with wraparound at boundaries
+- Enter key to select current item
+- Escape key to cancel (works even from input fields)
+- Number keys 1-9 for direct selection
+- Input field detection to avoid keyboard conflicts
+- Disabled state support
+- Auto-reset selectedIndex when items change
+
+**Hook Interface:**
+```typescript
+interface UseKeyboardNavigationOptions {
+  items: string[];  // Item IDs
+  onSelect: (itemId: string) => void;
+  onCancel?: () => void;
+  enabled?: boolean;
+  initialIndex?: number;
+}
+
+interface UseKeyboardNavigationReturn {
+  selectedIndex: number;
+  setSelectedIndex: (index: number) => void;
+  handleKeyDown: (event: KeyboardEvent) => void;
+}
+```
+
+**Test Coverage:**
+- Statements: 100%
+- Branches: 96.42%
+- Functions: 100%
+- Lines: 100%
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 30 tests
+- ✅ Arrow keys navigate up/down with wraparound
+- ✅ Enter selects current item
+- ✅ Escape cancels/closes
+- ✅ Number keys (1-9) select directly
+- ✅ 90%+ test coverage achieved (100%/96%/100%/100%)
+
+**Git:** Branch `DEV-165-Create-useKeyboardNavigation-Hook`
+
+</details>
+
 ---
 
 ## Phase 1: Foundation (Backend) - 9h
@@ -1093,158 +1159,7 @@ className={cn(
 
 ## Phase 3: Frontend Components - 10h
 
-**Note:** DEV-163, DEV-164 moved to Completed Tasks section above.
-
----
-
-### DEV-165: Create useKeyboardNavigation Hook
-
-**Reference:** [Section 5.2: Interactive Question Modal](./PRATIKO_1.5_REFERENCE.md#52-interactive-question-modal)
-
-**Priority:** MEDIUM | **Effort:** 1.5h | **Status:** NOT STARTED
-
-**Problem:**
-Both action buttons and interactive questions need keyboard navigation, requiring a reusable hook.
-
-**Solution:**
-Create useKeyboardNavigation custom hook for managing keyboard navigation state.
-
-**Agent Assignment:** @livia (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-164
-- **Unlocks:** DEV-166
-
-**Change Classification:** ADDITIVE
-
-**File:** `src/lib/hooks/useKeyboardNavigation.ts`
-
-**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
-- **Pattern Reference:** Similar to `useChatHotkeys.ts` in `@/app/chat/hooks/`
-- **Key handling:** ArrowUp, ArrowDown, Enter, Escape, number keys 1-9
-
-**Fields/Methods/Components:**
-```typescript
-import { useState, useCallback, useEffect, KeyboardEvent } from 'react';
-
-interface UseKeyboardNavigationOptions {
-  items: string[];  // Item IDs
-  onSelect: (itemId: string) => void;
-  onCancel?: () => void;
-  enabled?: boolean;
-  initialIndex?: number;
-}
-
-interface UseKeyboardNavigationReturn {
-  selectedIndex: number;
-  setSelectedIndex: (index: number) => void;
-  handleKeyDown: (event: KeyboardEvent) => void;
-}
-
-export function useKeyboardNavigation({
-  items,
-  onSelect,
-  onCancel,
-  enabled = true,
-  initialIndex = 0,
-}: UseKeyboardNavigationOptions): UseKeyboardNavigationReturn {
-  const [selectedIndex, setSelectedIndex] = useState(initialIndex);
-
-  // Reset index when items change
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [items.length]);
-
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (!enabled || items.length === 0) return;
-
-    // Don't handle if user is typing in an input
-    const target = event.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-      // Only handle Escape in inputs
-      if (event.key === 'Escape' && onCancel) {
-        event.preventDefault();
-        onCancel();
-      }
-      return;
-    }
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % items.length);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + items.length) % items.length);
-        break;
-      case 'Enter':
-        event.preventDefault();
-        if (items[selectedIndex]) {
-          onSelect(items[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        event.preventDefault();
-        onCancel?.();
-        break;
-      default:
-        // Number keys 1-9
-        const num = parseInt(event.key, 10);
-        if (num >= 1 && num <= 9 && num <= items.length) {
-          event.preventDefault();
-          setSelectedIndex(num - 1);
-          onSelect(items[num - 1]);
-        }
-    }
-  }, [enabled, items, selectedIndex, onSelect, onCancel]);
-
-  return { selectedIndex, setSelectedIndex, handleKeyDown };
-}
-```
-
-Hook structure:
-- Uses useState for selectedIndex tracking
-- Wraparound navigation (ArrowDown at end wraps to start)
-- Number keys 1-9 for direct selection
-- Input field detection to avoid conflicts
-- Escape always works (even in inputs) for cancel
-- Clean dependency array for useCallback
-
-**Testing Requirements:**
-- **Unit Tests:**
-  - `test_arrow_key_navigation` - Up/Down changes selected index
-  - `test_enter_selects` - Enter triggers onSelect
-  - `test_escape_cancels` - Escape triggers onCancel
-  - `test_number_keys` - 1-4 directly select options
-  - `test_wraparound` - Navigation wraps at boundaries
-- **Coverage Target:** 90%+
-
-**Edge Cases:**
-- **Empty items array:** No-op, return immediately
-- **Disabled state:** Ignore all keyboard events
-- **Rapid key presses:** Debounce to prevent double selection
-- **Focus lost:** Clean up event listeners properly
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Event listener memory leaks | MEDIUM | Proper cleanup in useEffect return |
-| Keyboard conflicts with inputs | MEDIUM | Check activeElement before handling |
-| Browser-specific key codes | LOW | Use standardized key values |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max hook: 50 lines, single concern
-- Max file: 100 lines, keep focused
-
-**Acceptance Criteria:**
-- [ ] Arrow keys navigate up/down
-- [ ] Enter selects current item
-- [ ] Escape cancels/closes
-- [ ] Number keys (1-4) select directly
-- [ ] Navigation wraps around
-- [ ] 90%+ test coverage achieved
+**Note:** DEV-163, DEV-164, DEV-165 moved to Completed Tasks section above.
 
 ---
 
@@ -1267,6 +1182,163 @@ Modify ChatLayoutV2 and AIMessageV2 to include SuggestedActionsBar and Interacti
 - **Unlocks:** DEV-167
 
 **Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary Files:**
+  - `src/app/chat/ChatLayoutV2.tsx`
+  - `src/app/chat/AIMessageV2.tsx`
+- **Affected Files:**
+  - `src/contexts/ChatContext.tsx` (state management)
+- **Related Tests:**
+  - `src/__tests__/chat/` (existing chat tests)
+- **Baseline Command:** `npm test -- --testPathPattern=chat`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing chat flow reviewed
+- [ ] No pre-existing test failures
+
+**File:** `src/app/chat/AIMessageV2.tsx`
+
+**UI Styling Reference:** See [UI Design Reference](#ui-design-reference-phase-3-guidance) section above.
+- **Reference Pattern:** Review existing FeedbackButtons integration in AIMessageV2
+- **Import Pattern:** Use dynamic imports for proactivity components
+- **API Calls:** Follow existing fetch patterns in chat components
+
+**Fields/Methods/Components:**
+
+**1. Update AIMessageV2.tsx:**
+```typescript
+'use client';
+import dynamic from 'next/dynamic';
+import { SuggestedActionsBar } from '@/components/chat/SuggestedActionsBar';
+import { InteractiveQuestionInline } from '@/components/chat/InteractiveQuestionInline';
+import { useChatContext } from '@/contexts/ChatContext';
+
+interface AIMessageV2Props {
+  // ... existing props
+  suggestedActions?: Action[];
+  interactiveQuestion?: InteractiveQuestion;
+}
+
+export function AIMessageV2({
+  // ... existing props
+  suggestedActions,
+  interactiveQuestion
+}: AIMessageV2Props) {
+  const { dispatch, state } = useChatContext();
+  const { isActionExecuting } = state;
+
+  const handleActionClick = async (action: Action) => {
+    dispatch({ type: 'SET_ACTION_EXECUTING', payload: true });
+    try {
+      const response = await fetch('/api/v1/actions/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_id: action.id, message_id }),
+      });
+      // Handle response - may trigger new chat message
+    } finally {
+      dispatch({ type: 'SET_ACTION_EXECUTING', payload: false });
+    }
+  };
+
+  const handleQuestionAnswer = async (optionId: string, customText?: string) => {
+    dispatch({ type: 'SET_ACTION_EXECUTING', payload: true });
+    try {
+      const response = await fetch('/api/v1/questions/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question_id, option_id: optionId, custom_input: customText }),
+      });
+      // Response may include follow-up message or actions
+    } finally {
+      dispatch({ type: 'SET_ACTION_EXECUTING', payload: false });
+    }
+  };
+
+  return (
+    <div className="ai-message">
+      {/* ... existing message content ... */}
+
+      {/* Suggested Actions */}
+      {suggestedActions && suggestedActions.length > 0 && (
+        <SuggestedActionsBar
+          actions={suggestedActions}
+          onActionClick={handleActionClick}
+          isLoading={isActionExecuting}
+          disabled={isActionExecuting}
+        />
+      )}
+
+      {/* Interactive Question */}
+      {interactiveQuestion && (
+        <InteractiveQuestionInline
+          question={interactiveQuestion}
+          onAnswer={handleQuestionAnswer}
+          onSkip={() => dispatch({ type: 'SKIP_QUESTION' })}
+          disabled={isActionExecuting}
+        />
+      )}
+    </div>
+  );
+}
+```
+
+**Testing Requirements:**
+- **Unit Tests:**
+  - `test_renders_actions_when_provided` - SuggestedActionsBar shown when actions exist
+  - `test_renders_question_when_provided` - InteractiveQuestionInline shown when question exists
+  - `test_action_click_calls_api` - API called on action click
+  - `test_loading_state_during_api_call` - Components disabled during API calls
+- **Integration Tests:**
+  - `test_full_action_flow` - Complete flow from action click to response
+  - `test_full_question_flow` - Complete flow from question answer to response
+- **Coverage Target:** 85%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Breaking existing chat flow | HIGH | Baseline tests, incremental integration |
+| State management conflicts | MEDIUM | Dedicated context actions, isolated state |
+| Performance regression | LOW | React.memo, conditional rendering |
+
+**Code Structure:**
+- Max function: 50 lines, extract helpers if larger
+- Max component: 150 lines, extract sub-components
+- Max file: 400 lines, create submodules
+
+**Acceptance Criteria:**
+- [ ] SuggestedActionsBar renders after AI messages with actions
+- [ ] InteractiveQuestionInline renders when question provided
+- [ ] Actions trigger API calls and handle responses
+- [ ] Loading state during API calls
+- [ ] Existing chat functionality unchanged
+- [ ] 85%+ test coverage achieved
+
+---
+
+### DEV-167: Create Question Templates YAML System
+
+**Reference:** [Section 5.3: Question Templates](./PRATIKO_1.5_REFERENCE.md#53-question-templates)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+Interactive questions need predefined templates for common scenarios to improve user experience.
+
+**Solution:**
+Create YAML-based question template system with Italian tax domain templates.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-166
+- **Unlocks:** Phase 4
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/templates/questions/` directory
 
 **Impact Analysis:**
 - **Primary Files:**

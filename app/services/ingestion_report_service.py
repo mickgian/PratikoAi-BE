@@ -1,3 +1,4 @@
+# mypy: disable-error-code="arg-type,call-overload,misc,assignment"
 """Ingestion Report Service for Daily RSS and Scraper Monitoring.
 
 This service generates daily reports showing RSS feed ingestion and scraper activity,

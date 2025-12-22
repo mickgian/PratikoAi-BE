@@ -727,6 +727,52 @@ data: {"content": "", "done": true}
 
 ---
 
+<details>
+<summary>
+<h3>DEV-160: Create /actions/execute Endpoint</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
+Created endpoint to execute suggested actions with parameter substitution.
+</summary>
+
+### DEV-160: Create /actions/execute Endpoint
+
+**Status:** ✅ COMPLETED (2024-12-22)
+**Priority:** HIGH | **Effort:** 1h (Actual: ~1h)
+
+**Problem:**
+When a user clicks a suggested action, the system needed an endpoint to execute that action and return a response.
+
+**Solution:**
+Created POST /api/v1/chatbot/actions/execute endpoint that looks up action template, substitutes parameters, and executes as chat query.
+
+**Files Modified:**
+- `app/schemas/proactivity.py` - Added `ActionExecuteRequest` schema
+- `app/services/action_template_service.py` - Added `get_action_by_id()` method
+- `app/api/v1/chatbot.py` - Added `/actions/execute` endpoint
+
+**Files Created:**
+- `tests/api/test_chatbot_actions.py` - 18 TDD tests
+
+**Key Features:**
+- Action template lookup by ID
+- Parameter substitution in prompt_template
+- Execute action as regular chat query
+- Returns ChatResponse with follow-up suggested actions
+- Error handling (400 for invalid action_id, 400 for missing params)
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 18 tests
+- ✅ Action template looked up and executed
+- ✅ Parameters substituted in prompt_template
+- ✅ Returns full ChatResponse with new actions
+- ✅ Proper error handling for invalid requests
+
+**Git:** Branch `DEV-160-Create-/actions/execute-Endpoint`
+
+</details>
+
+---
+
 ## Phase 1: Foundation (Backend) - 9h
 
 **Note:** DEV-150, DEV-151, DEV-152, DEV-153, DEV-154, DEV-155, and DEV-156 moved to Completed Tasks section above.
@@ -735,91 +781,7 @@ data: {"content": "", "done": true}
 
 ## Phase 2: API Integration (Backend) - 6h
 
-**Note:** DEV-157, DEV-158, and DEV-159 moved to Completed Tasks section above.
-
----
-
-### DEV-160: Create /actions/execute Endpoint
-
-**Reference:** [Section 4.2: API Endpoints](./PRATIKO_1.5_REFERENCE.md#42-api-endpoints)
-
-**Priority:** HIGH | **Effort:** 1h | **Status:** NOT STARTED
-
-**Problem:**
-When a user clicks a suggested action, the system needs an endpoint to execute that action and return a response.
-
-**Solution:**
-Create POST /api/v1/chatbot/actions/execute endpoint that takes action_id and optional parameters.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-158
-- **Unlocks:** DEV-162, DEV-163
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- Unknown action_id: HTTP 400, "Azione non valida"
-- Missing required input: HTTP 400, "Parametro richiesto mancante: {param}"
-- **Logging:** Log action execution with context (session_id, action_id, input_provided)
-
-**Performance Requirements:**
-- Action execution: Same as /chat endpoint (response within 3s)
-
-**File:** `app/api/v1/chatbot.py`
-
-**Fields/Methods/Components:**
-```python
-class ActionExecuteRequest(BaseModel):
-    action_id: str
-    parameters: dict[str, Any] | None = None
-    session_id: str
-
-@router.post("/actions/execute")
-async def execute_action(
-    request: ActionExecuteRequest,
-    # ... deps
-) -> ChatResponse:
-    # 1. Lookup action template
-    # 2. Fill prompt_template with parameters
-    # 3. Execute as regular chat query
-    # 4. Return ChatResponse with new actions
-```
-
-**Testing Requirements:**
-- **TDD:** Write tests FIRST
-- **Unit Tests:**
-  - `test_execute_action_valid` - Action executes successfully
-  - `test_execute_action_with_params` - Parameters substituted correctly
-  - `test_execute_action_invalid_id` - 400 error for unknown action
-  - `test_execute_action_missing_input` - 400 error when input required but missing
-- **Integration Tests:** `tests/api/test_chatbot_actions.py`
-- **Coverage Target:** 85%+
-
-**Edge Cases:**
-- **Action template not found:** Return 404 with helpful message
-- **Parameter type mismatch:** Validate before substitution
-- **Concurrent action execution:** Handle session state correctly
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Invalid prompt generation | MEDIUM | Template validation at load time |
-| Session state corruption | LOW | Stateless action execution |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Action template looked up and executed
-- [ ] Parameters substituted in prompt_template
-- [ ] Returns full ChatResponse with new actions
-- [ ] Proper error handling for invalid requests
-- [ ] 85%+ test coverage achieved
+**Note:** DEV-157, DEV-158, DEV-159, and DEV-160 moved to Completed Tasks section above.
 
 ---
 

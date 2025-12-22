@@ -1,10 +1,12 @@
 """Database models and dependencies for the application."""
 
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+from sqlmodel import Session
 
 from app.core.config import settings
 from app.models.thread import Thread
@@ -35,6 +37,20 @@ async_engine = create_async_engine(async_database_url, echo=False, pool_pre_ping
 AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
 
+# DEV-162: Sync engine for analytics (fire-and-forget background writes)
+# Uses the original sync URL (without asyncpg)
+sync_engine = create_engine(settings.POSTGRES_URL, echo=False, pool_pre_ping=True, pool_size=5, max_overflow=5)
+
+
+def get_sync_session() -> Session:
+    """Get sync database session for analytics operations.
+
+    Returns:
+        Session: Sync database session for background analytics writes
+    """
+    return Session(sync_engine)
+
+
 async def get_db():
     """Get async database session.
 
@@ -48,4 +64,4 @@ async def get_db():
             await session.close()
 
 
-__all__ = ["Thread", "get_db", "AsyncSessionLocal"]
+__all__ = ["Thread", "get_db", "AsyncSessionLocal", "get_sync_session", "sync_engine"]

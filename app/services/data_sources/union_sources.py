@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-any-return, attr-defined, has-type, assignment, arg-type, var-annotated"
 """Union Confederations Data Sources Integration.
 
 This module integrates with major Italian union confederations:

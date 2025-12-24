@@ -1656,7 +1656,7 @@ DEV-174 (CALCULABLE_INTENTS Constants)
 <details>
 <summary>
 <h3>DEV-174: Define CALCULABLE_INTENTS and DOCUMENT_ACTION_TEMPLATES Constants</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 Define the core constants for LLM-First architecture: calculable intents and document action templates.
 </summary>
 
@@ -1664,7 +1664,7 @@ Define the core constants for LLM-First architecture: calculable intents and doc
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.4 and 12.6](/docs/tasks/PRATIKO_1.5_REFERENCE.md#124-interactivequestion-solo-per-calcoli-noti)
 
-**Priority:** CRITICAL | **Effort:** 1h | **Status:** NOT STARTED
+**Priority:** CRITICAL | **Effort:** 1h | **Status:** NOT STARTED | **Type:** Backend
 
 **Problem:**
 The current architecture uses complex template matching for all queries. The LLM-First approach requires a clear, minimal set of constants defining which intents trigger InteractiveQuestion and which document types have predefined action templates.
@@ -1763,7 +1763,7 @@ Create a new constants module with CALCULABLE_INTENTS (5 intents) and DOCUMENT_A
 <details>
 <summary>
 <h3>DEV-175: Update System Prompt with Suggested Actions Output Format</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 Add proactive actions instruction block to system prompt with &lt;answer&gt; and &lt;suggested_actions&gt; format.
 </summary>
 
@@ -1771,7 +1771,7 @@ Add proactive actions instruction block to system prompt with &lt;answer&gt; and
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.5.1](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1251-system-prompt-aggiornato)
 
-**Priority:** CRITICAL | **Effort:** 1h | **Status:** NOT STARTED
+**Priority:** CRITICAL | **Effort:** 1h | **Status:** NOT STARTED | **Type:** Backend
 
 **Problem:**
 The current system prompt does not instruct the LLM to generate suggested actions. The LLM-First architecture requires the LLM to output structured actions in every response using XML-like tags.
@@ -1867,7 +1867,7 @@ Create a new prompt file `suggested_actions.md` with the proactive actions instr
 <details>
 <summary>
 <h3>DEV-176: Implement parse_llm_response Function</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 Create parsing function to extract &lt;answer&gt; and &lt;suggested_actions&gt; from LLM output.
 </summary>
 
@@ -1875,7 +1875,7 @@ Create parsing function to extract &lt;answer&gt; and &lt;suggested_actions&gt; 
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.5.2](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1252-parsing-della-risposta)
 
-**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** NOT STARTED
+**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** NOT STARTED | **Type:** Backend
 
 **Problem:**
 The LLM will output responses with `<answer>` and `<suggested_actions>` XML-like tags. We need a robust parser that extracts these components and handles edge cases gracefully without ever raising exceptions.
@@ -1991,7 +1991,7 @@ Implement `parse_llm_response()` function as specified in Section 12.5.2. The fu
 <details>
 <summary>
 <h3>DEV-177: Simplify ProactivityEngine Decision Logic</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 Refactor ProactivityEngine to use LLM-First logic with simplified decision flow.
 </summary>
 
@@ -1999,7 +1999,7 @@ Refactor ProactivityEngine to use LLM-First logic with simplified decision flow.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
 
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
 
 **Problem:**
 The current ProactivityEngine uses complex template matching (~492 lines). Per Section 12.7, the logic should be simplified to three steps:
@@ -2143,7 +2143,7 @@ Refactor ProactivityEngine to implement the simplified decision logic from Secti
 <details>
 <summary>
 <h3>DEV-178: Remove Unused Templates and Simplify Template Service</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 Clean up template files and archive ActionTemplateService after LLM-First migration.
 </summary>
 
@@ -2151,7 +2151,7 @@ Clean up template files and archive ActionTemplateService after LLM-First migrat
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.11](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1211-piano-di-migrazione)
 
-**Priority:** HIGH | **Effort:** 1.5h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 1.5h | **Status:** NOT STARTED | **Type:** Backend
 
 **Problem:**
 The current template system has ~50+ scenarios across domain-specific YAML files (2,572 lines). With LLM-First architecture, templates are replaced by DOCUMENT_ACTION_TEMPLATES constants.
@@ -2272,7 +2272,7 @@ The current template system has ~50+ scenarios across domain-specific YAML files
 <details>
 <summary>
 <h3>DEV-179: Integrate LLM-First Proactivity in /chat Endpoint</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 Update /chat endpoint to use new ProactivityEngine with LLM response parsing.
 </summary>
 
@@ -2280,7 +2280,7 @@ Update /chat endpoint to use new ProactivityEngine with LLM response parsing.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
 
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
 
 **Problem:**
 The current /chat endpoint calls ProactivityEngine separately from LLM. The LLM-First approach requires:
@@ -2417,7 +2417,7 @@ This task MUST preserve the existing document flow:
 <details>
 <summary>
 <h3>DEV-180: Integrate LLM-First Proactivity in /chat/stream Endpoint</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 Update /chat/stream endpoint to handle streamed LLM output with suggested actions parsing.
 </summary>
 
@@ -2425,7 +2425,7 @@ Update /chat/stream endpoint to handle streamed LLM output with suggested action
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
 
-**Priority:** HIGH | **Effort:** 1.5h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 1.5h | **Status:** NOT STARTED | **Type:** Backend
 
 **Problem:**
 The /chat/stream endpoint streams LLM tokens in real-time. We need to:
@@ -2563,7 +2563,7 @@ data: {}
 <details>
 <summary>
 <h3>DEV-181: Unit Tests for LLM-First Components</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 Comprehensive unit tests for new LLM-First components.
 </summary>
 
@@ -2571,7 +2571,7 @@ Comprehensive unit tests for new LLM-First components.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
 
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
 
 **Problem:**
 Need comprehensive unit test coverage for all new/modified components to ensure LLM-First architecture works correctly.
@@ -2655,7 +2655,7 @@ Create/update unit test files for all LLM-First components with TDD pattern.
 <details>
 <summary>
 <h3>DEV-182: Integration Tests for LLM-First Flow</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 Integration tests verifying full LLM-First proactivity flow.
 </summary>
 
@@ -2663,7 +2663,7 @@ Integration tests verifying full LLM-First proactivity flow.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
 
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
 
 **Problem:**
 Need integration tests that verify the complete flow from API request through proactivity engine to response with actions.
@@ -2767,7 +2767,7 @@ Create integration tests that mock LLM but test full component integration.
 <details>
 <summary>
 <h3>DEV-183: E2E Validation and Quality Verification</h3>
-<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 End-to-end validation with real LLM calls and quality assessment.
 </summary>
 
@@ -2775,7 +2775,7 @@ End-to-end validation with real LLM calls and quality assessment.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
 
-**Priority:** MEDIUM | **Effort:** 1.5h | **Status:** NOT STARTED
+**Priority:** MEDIUM | **Effort:** 1.5h | **Status:** NOT STARTED | **Type:** Backend
 
 **Problem:**
 Need to verify that real LLM calls produce quality suggested actions meeting Section 12.10 acceptance criteria.

@@ -1656,7 +1656,7 @@ DEV-174 (CALCULABLE_INTENTS Constants)
 <details>
 <summary>
 <h3>DEV-174: Define CALCULABLE_INTENTS and DOCUMENT_ACTION_TEMPLATES Constants</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Define the core constants for LLM-First architecture: calculable intents and document action templates.
 </summary>
 
@@ -1664,7 +1664,7 @@ Define the core constants for LLM-First architecture: calculable intents and doc
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.4 and 12.6](/docs/tasks/PRATIKO_1.5_REFERENCE.md#124-interactivequestion-solo-per-calcoli-noti)
 
-**Priority:** CRITICAL | **Effort:** 1h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** CRITICAL | **Effort:** 1h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 The current architecture uses complex template matching for all queries. The LLM-First approach requires a clear, minimal set of constants defining which intents trigger InteractiveQuestion and which document types have predefined action templates.

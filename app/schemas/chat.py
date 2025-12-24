@@ -123,6 +123,8 @@ class ChatRequest(BaseModel):
     Attributes:
         messages: List of messages in the conversation.
         attachment_ids: Optional list of uploaded document IDs to include in context.
+        skip_proactivity: If True, skip pre-response proactivity checks (used for
+                         follow-up queries from answered clarifying questions).
     """
 
     messages: list[Message] = Field(
@@ -134,6 +136,10 @@ class ChatRequest(BaseModel):
         default=None,
         description="IDs of uploaded documents to include in context",
         max_length=5,
+    )
+    skip_proactivity: bool = Field(
+        default=False,
+        description="Skip pre-response proactivity for follow-up queries",
     )
 
 

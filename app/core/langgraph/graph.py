@@ -3672,3 +3672,59 @@ class LangGraphAgent:
         except Exception as e:
             logger.error("Failed to clear chat history", error=str(e))
             raise
+
+    async def add_messages_to_history(
+        self,
+        session_id: str,
+        user_message: str,
+        assistant_message: str,
+    ) -> None:
+        """Add user and assistant messages directly to chat history checkpoint.
+
+        Used for pre-response proactivity interactions that bypass the LangGraph pipeline.
+        This ensures these interactions appear in chat history on page refresh.
+
+        Args:
+            session_id: The session ID for the conversation.
+            user_message: The user's message content.
+            assistant_message: The assistant's response content.
+        """
+        try:
+            if self._graph is None:
+                self._graph = await self.create_graph()
+
+            config = {"configurable": {"thread_id": session_id}}
+
+            # Get current state to merge with existing messages
+            state: StateSnapshot = await sync_to_async(self._graph.get_state)(config)
+            existing_messages = state.values.get("messages", []) if state.values else []
+
+            # Create new messages
+            new_messages = [
+                HumanMessage(content=user_message),
+                AIMessage(content=assistant_message),
+            ]
+
+            # Merge with existing messages
+            merged_messages = list(existing_messages) + new_messages
+
+            # Update state with merged messages
+            await self._graph.aupdate_state(
+                config=config,
+                values={"messages": merged_messages},
+            )
+
+            logger.info(
+                "pre_response_messages_added_to_checkpoint",
+                session_id=session_id,
+                user_message_preview=user_message[:50],
+                assistant_message_preview=assistant_message[:50],
+                total_messages=len(merged_messages),
+            )
+        except Exception as e:
+            logger.error(
+                "failed_to_add_messages_to_checkpoint",
+                session_id=session_id,
+                error=str(e),
+            )
+            raise

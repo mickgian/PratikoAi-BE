@@ -87,6 +87,30 @@ class InteractiveOption(BaseModel):
     requires_input: bool = Field(default=False, description="Whether option requires custom input")
 
 
+class InputField(BaseModel):
+    """Single input field in a multi-field question.
+
+    Used for Claude Code style multi-field questions where multiple
+    parameters are collected at once (e.g., IRPEF calculation with
+    reddito, deduzioni, detrazioni).
+
+    Attributes:
+        id: Field identifier (used as parameter name)
+        label: Display label for the field
+        placeholder: Placeholder text for the input
+        input_type: Type of input (text, number, currency, date)
+        required: Whether this field is required
+        validation: Optional regex validation pattern
+    """
+
+    id: str = Field(..., description="Field identifier", min_length=1)
+    label: str = Field(..., description="Display label for the field", min_length=1)
+    placeholder: str | None = Field(default=None, description="Placeholder text")
+    input_type: str = Field(default="text", description="Input type (text, number, currency, date)")
+    required: bool = Field(default=True, description="Whether this field is required")
+    validation: str | None = Field(default=None, description="Regex validation pattern")
+
+
 class InteractiveQuestion(BaseModel):
     """Interactive question for parameter clarification.
 
@@ -94,12 +118,18 @@ class InteractiveQuestion(BaseModel):
     the query is ambiguous or missing required parameters.
     Rendered inline in chat (Claude Code style).
 
+    Question Types:
+    - single_choice: User selects one option from a list
+    - multi_choice: User can select multiple options
+    - multi_field: Claude Code style with multiple input fields (Tab navigation)
+
     Attributes:
         id: Unique identifier for the question
         trigger_query: Query pattern that triggers this question
         text: Question text to display
-        question_type: Type of question (single_choice, multi_choice)
-        options: List of selectable options (minimum 2)
+        question_type: Type of question (single_choice, multi_choice, multi_field)
+        options: List of selectable options (for single_choice/multi_choice)
+        fields: List of input fields (for multi_field type)
         allow_custom_input: Whether to allow free-text input
         custom_input_placeholder: Placeholder for custom input field
         prefilled_params: Parameters already extracted from query
@@ -108,18 +138,25 @@ class InteractiveQuestion(BaseModel):
     id: str = Field(..., description="Unique identifier for the question", min_length=1)
     trigger_query: str | None = Field(default=None, description="Query pattern that triggers this question")
     text: str = Field(..., description="Question text to display", min_length=1)
-    question_type: str = Field(..., description="Type of question (single_choice, multi_choice)")
-    options: list[InteractiveOption] = Field(..., description="List of options (minimum 2)", min_length=2)
+    question_type: str = Field(..., description="Type of question (single_choice, multi_choice, multi_field)")
+    options: list[InteractiveOption] = Field(default_factory=list, description="List of options (for choice types)")
+    fields: list[InputField] = Field(default_factory=list, description="List of input fields (for multi_field type)")
     allow_custom_input: bool = Field(default=False, description="Allow free-text input")
     custom_input_placeholder: str | None = Field(default=None, description="Placeholder for custom input")
     prefilled_params: dict[str, Any] | None = Field(default=None, description="Pre-filled parameters")
 
     @field_validator("options")
     @classmethod
-    def validate_options(cls, v: list[InteractiveOption]) -> list[InteractiveOption]:
-        """Validate that at least 2 options are provided."""
-        if len(v) < 2:
-            raise ValueError("At least 2 options are required")
+    def validate_options(cls, v: list[InteractiveOption], info) -> list[InteractiveOption]:
+        """Validate options based on question_type."""
+        # For multi_field questions, options are not required
+        # Validation happens in model_validator for cross-field checks
+        return v
+
+    @field_validator("fields")
+    @classmethod
+    def validate_fields(cls, v: list[InputField]) -> list[InputField]:
+        """Validate fields for multi_field questions."""
         return v
 
 
@@ -172,8 +209,10 @@ class ProactivityContext(BaseModel):
     Attributes:
         session_id: Unique session identifier for tracking
         domain: Classified domain (tax, labor, legal, documents, default)
-        action_type: Type of action detected (e.g., fiscal_calculation)
+        action_type: Type of action detected (e.g., calculation_request)
         document_type: Type of document if attached (e.g., fattura, f24)
+        sub_domain: Sub-domain from classification (e.g., irpef, iva, inps)
+        classification_confidence: Confidence score from DomainActionClassifier
         user_history: List of previous queries in session
     """
 
@@ -181,6 +220,10 @@ class ProactivityContext(BaseModel):
     domain: str = Field(..., description="Classified domain", min_length=1)
     action_type: str | None = Field(default=None, description="Type of action detected")
     document_type: str | None = Field(default=None, description="Type of document if attached")
+    sub_domain: str | None = Field(default=None, description="Sub-domain from classification (irpef, iva, etc.)")
+    classification_confidence: float = Field(
+        default=0.0, description="Confidence score from classifier", ge=0.0, le=1.0
+    )
     user_history: list[str] = Field(default_factory=list, description="Previous queries in session")
 
 
@@ -199,9 +242,7 @@ class ProactivityResult(BaseModel):
 
     actions: list[Action] = Field(default_factory=list, description="Suggested actions")
     question: InteractiveQuestion | None = Field(default=None, description="Interactive question")
-    extraction_result: "ParameterExtractionResult | None" = Field(
-        default=None, description="Extraction results"
-    )
+    extraction_result: "ParameterExtractionResult | None" = Field(default=None, description="Extraction results")
     processing_time_ms: float = Field(..., description="Processing time in milliseconds", ge=0.0)
 
 
@@ -225,17 +266,20 @@ class QuestionAnswerRequest(BaseModel):
     """Request model for /questions/answer endpoint - DEV-161.
 
     Contains the question answer, selected option, and optional custom input.
+    Supports both single-choice and multi-field question types.
 
     Attributes:
         question_id: ID of the question being answered
-        selected_option: ID of the selected option
+        selected_option: ID of the selected option (for single/multi_choice)
         custom_input: Optional custom input if option requires it
+        field_values: Dict of field_id -> value (for multi_field questions)
         session_id: Session ID for context tracking
     """
 
     question_id: str = Field(..., description="ID of the question being answered", min_length=1)
-    selected_option: str = Field(..., description="ID of the selected option", min_length=1)
+    selected_option: str | None = Field(default=None, description="ID of the selected option (for choice types)")
     custom_input: str | None = Field(default=None, description="Custom input if option requires it")
+    field_values: dict[str, str] | None = Field(default=None, description="Field values for multi_field questions")
     session_id: str = Field(..., description="Session ID for context tracking", min_length=1)
 
 

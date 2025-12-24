@@ -201,12 +201,21 @@ Every task MUST include these sections in this exact order:
 - Max class: 200 lines, split into focused services
 - Max file: 400 lines, create submodules
 
+**Code Completeness:** (MANDATORY - NO EXCEPTIONS)
+- [ ] No TODO comments for required functionality (remove or implement before merge)
+- [ ] No hardcoded placeholder values that bypass intended behavior (e.g., `domain="default"`, `action_type=None`)
+- [ ] All integrations complete and functional (no stub implementations)
+- [ ] All conditional logic paths tested and working
+- [ ] No "will implement later" patterns - feature must work end-to-end
+
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
 - [ ] [Criterion 1]
 - [ ] [Criterion 2]
 - [ ] [X]%+ test coverage achieved
 - [ ] All existing tests still pass (regression)
+- [ ] No TODO/FIXME comments for required features in committed code
+- [ ] All integrations verified working (not just compiling)
 ```
 
 #### Section Requirements by Task Type
@@ -229,6 +238,7 @@ Every task MUST include these sections in this exact order:
 | Testing Requirements | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Risks & Mitigations | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Code Structure | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Code Completeness | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Acceptance Criteria | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 *⚠️ Required for MODIFYING/RESTRUCTURING tasks only. ADDITIVE tasks can skip.
@@ -1172,10 +1182,11 @@ CREATE INDEX idx_qh_user_timestamp ON query_history(user_id, timestamp DESC);
 | 2025-12-16 | Added Task Planning Standards section | Complete mandatory task template with all required sections, edge case categories, and quality flags |
 | 2025-12-16 | Added Error Handling & Logging Standards | Mandatory structured logging for Docker log visibility |
 | 2025-12-18 | Added Regression Prevention Protocol (Section 7) | Prevent breaking existing code with Change Classification, Impact Analysis, and Pre-Implementation Verification |
+| 2025-12-22 | Added Code Completeness Standards | Prevent incomplete features: no TODO comments for required features, no hardcoded placeholders, all integrations must be complete (ProactivityContext bug lesson) |
 
 ---
 
 **Configuration Status:** 🟢 ACTIVE
-**Last Updated:** 2025-12-18
+**Last Updated:** 2025-12-22
 **Next Monthly Report Due:** 2025-12-15
 **Maintained By:** PratikoAI System Administrator

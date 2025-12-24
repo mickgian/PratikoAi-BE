@@ -62,16 +62,22 @@ class TestQuestionAnswerRequestSchema:
                 session_id="session-123",
             )
 
-    def test_request_requires_selected_option(self):
-        """Test that selected_option is required."""
-        from app.schemas.proactivity import QuestionAnswerRequest
-        from pydantic import ValidationError
+    def test_request_selected_option_optional_for_multifield(self):
+        """Test that selected_option is optional (for multi_field questions).
 
-        with pytest.raises(ValidationError):
-            QuestionAnswerRequest(
-                question_id="irpef_tipo_contribuente",
-                session_id="session-123",
-            )
+        Multi-field questions use field_values instead of selected_option.
+        Both can be None, which is valid for multi_field questions.
+        """
+        from app.schemas.proactivity import QuestionAnswerRequest
+
+        # Valid: no selected_option (for multi_field type)
+        request = QuestionAnswerRequest(
+            question_id="irpef_calculation",
+            session_id="session-123",
+            field_values={"reddito": "50000", "detrazioni": "1000"},
+        )
+        assert request.selected_option is None
+        assert request.field_values == {"reddito": "50000", "detrazioni": "1000"}
 
     def test_request_requires_session_id(self):
         """Test that session_id is required."""

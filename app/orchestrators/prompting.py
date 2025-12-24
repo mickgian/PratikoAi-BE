@@ -251,12 +251,16 @@ async def _get_default_system_prompt(query_analysis: dict[str, Any], context: di
     # Extract merged context from state (built in step 40)
     merged_context = context.get("context", "")
 
-    # If we have context from knowledge base, inject it into the system prompt
-    if merged_context and merged_context.strip():
+    # If we have ACTUAL context from knowledge base, inject it into the system prompt
+    # Skip injection if context is just the empty placeholder - let LLM answer from training data
+    has_actual_context = (
+        merged_context and merged_context.strip() and "No specific context available" not in merged_context
+    )
+    if has_actual_context:
         context_section = f"\n\n# Relevant Knowledge Base Context\n\n{merged_context}\n"
         return prompt + context_section
 
-    # Otherwise, return prompt (with or without document analysis guidelines)
+    # Otherwise, return prompt without RAG context - LLM can answer from training data
     return prompt
 
 
@@ -454,8 +458,14 @@ async def step_41__select_prompt(
                             # DEV-007 FIX: Inject KB/document context into domain prompt
                             # (Same pattern as step_44 lines 668-691)
                             # Without this, document content from Step 40 never reaches LLM
+                            # Skip injection if context is just the empty placeholder
                             merged_context = (ctx or {}).get("context", "")
-                            if merged_context and merged_context.strip():
+                            has_actual_context = (
+                                merged_context
+                                and merged_context.strip()
+                                and "No specific context available" not in merged_context
+                            )
+                            if has_actual_context:
                                 context_section = f"\n\n# Relevant Knowledge Base Context\n\n{merged_context}\n"
                                 domain_prompt = domain_prompt + context_section
                                 logger.info(
@@ -705,7 +715,11 @@ def step_44__default_sys_prompt(
                             context_parts.append(f"{title}: {content}")
                 merged_context = "\n\n".join(context_parts)
 
-        if merged_context and merged_context.strip():
+        # Skip injection if context is just the empty placeholder - let LLM answer from training data
+        has_actual_context = (
+            merged_context and merged_context.strip() and "No specific context available" not in merged_context
+        )
+        if has_actual_context:
             context_section = f"\n\n# Relevant Knowledge Base Context\n\n{merged_context}\n"
             prompt = prompt + context_section
             # DEV-007 DIAGNOSTIC: Log context injection

@@ -69,6 +69,7 @@ from app.services.attachment_resolver import (
     attachment_resolver,
 )
 from app.services.chat_history_service import chat_history_service
+from app.services.domain_action_classifier import DomainActionClassifier
 from app.services.proactivity_analytics_service import ProactivityAnalyticsService
 from app.services.proactivity_engine import ProactivityEngine
 
@@ -477,17 +478,36 @@ async def chat(
                 )
 
             # DEV-158: Process proactivity for suggested actions and questions
+            # BUGFIX: Integrate DomainActionClassifier to provide domain/action/sub_domain
             proactivity_result: ProactivityResult | None = None
             try:
                 proactivity_engine = get_proactivity_engine()
+
+                # Classify query to get domain, action, and sub_domain
+                query_text = user_query if user_query else ""
+                classifier = DomainActionClassifier()
+                classification = await classifier.classify(query_text)
+
+                logger.debug(
+                    "proactivity_classification",
+                    session_id=session.id,
+                    domain=classification.domain.value,
+                    action=classification.action.value,
+                    sub_domain=classification.sub_domain,
+                    confidence=classification.confidence,
+                )
+
+                # Build ProactivityContext with classification results
                 proactivity_context = ProactivityContext(
                     session_id=str(session.id),
-                    domain="default",  # TODO: Get from classification when available
-                    action_type=None,
+                    domain=classification.domain.value.lower(),
+                    action_type=classification.action.value.lower(),
+                    sub_domain=classification.sub_domain,
+                    classification_confidence=classification.confidence,
                     document_type=None,
                 )
                 proactivity_result = proactivity_engine.process(
-                    query=user_query if user_query else "",
+                    query=query_text,
                     context=proactivity_context,
                 )
                 logger.debug(
@@ -622,6 +642,221 @@ async def chat_stream(
 
         # Extract user query for trace metadata (before anonymization for readability)
         user_query = chat_request.messages[-1].content if chat_request.messages else "N/A"
+
+        # BUGFIX: Classify query for proactivity (in outer function, used in generator)
+        query_classification = None
+        try:
+            classifier = DomainActionClassifier()
+            query_classification = await classifier.classify(user_query if user_query != "N/A" else "")
+            logger.debug(
+                "stream_proactivity_classification",
+                session_id=session.id,
+                domain=query_classification.domain.value,
+                action=query_classification.action.value,
+                sub_domain=query_classification.sub_domain,
+                confidence=query_classification.confidence,
+            )
+        except Exception as classification_error:
+            logger.warning(
+                "stream_classification_failed_non_critical",
+                session_id=session.id,
+                error=str(classification_error),
+            )
+
+        # =====================================================================
+        # PRE-RESPONSE PROACTIVITY DETECTION
+        # =====================================================================
+        # For ALL vague/generic queries with missing parameters, show interactive
+        # question FIRST (before LLM call) to avoid generic Wikipedia-style
+        # responses. This improves UX by collecting all needed data upfront.
+        #
+        # Applies to: Any query where proactivity determines we need more info.
+        # Exception: Queries that match KB/Golden Set should proceed to RAG.
+        # Skip: When skip_proactivity flag is set (follow-up queries from answered questions).
+        # =====================================================================
+        pre_response_question = None
+        pre_response_explanation = None
+        if chat_request.skip_proactivity:
+            logger.info(
+                "pre_response_proactivity_skipped",
+                session_id=session.id,
+                reason="skip_proactivity flag set (follow-up query)",
+            )
+        elif query_classification:
+            try:
+                proactivity_engine = get_proactivity_engine()
+
+                # Handle potentially null domain/action from failed classification
+                domain_value = "default"
+                action_value = "information_request"
+                if query_classification.domain:
+                    domain_value = (
+                        query_classification.domain.value.lower()
+                        if hasattr(query_classification.domain, "value")
+                        else str(query_classification.domain).lower()
+                    )
+                if query_classification.action:
+                    action_value = (
+                        query_classification.action.value.lower()
+                        if hasattr(query_classification.action, "value")
+                        else str(query_classification.action).lower()
+                    )
+
+                logger.debug(
+                    "pre_response_proactivity_starting",
+                    session_id=session.id,
+                    domain=domain_value,
+                    action=action_value,
+                    confidence=query_classification.confidence,
+                    user_query=user_query[:100] if user_query else "N/A",
+                )
+
+                # Build context with classification
+                pre_context = ProactivityContext(
+                    session_id=str(session.id),
+                    domain=domain_value,
+                    action_type=action_value,
+                    sub_domain=query_classification.sub_domain,
+                    classification_confidence=query_classification.confidence,
+                    document_type=None,
+                )
+
+                # Extract parameters and check coverage
+                pre_result = proactivity_engine.process(
+                    query=user_query if user_query != "N/A" else "",
+                    context=pre_context,
+                )
+
+                # If proactivity engine says we should ask a question,
+                # return it BEFORE calling LLM
+                if pre_result.question and proactivity_engine.should_ask_question(
+                    pre_result.extraction_result, user_query
+                ):
+                    pre_response_question = pre_result.question
+                    # Generate explanation based on the ACTUAL question being shown
+                    # (not the possibly-wrong classification)
+                    detected_intent = (
+                        pre_result.extraction_result.intent if pre_result.extraction_result else "unknown"
+                    )
+                    question_id = pre_result.question.id
+
+                    # Match explanation to the specific question being shown
+                    if question_id == "irpef_input_fields":
+                        pre_response_explanation = "L'IRPEF dipende dal tuo reddito e dalla tua situazione personale. Inserisci i dati per un calcolo preciso."
+                    elif question_id == "iva_input_fields":
+                        pre_response_explanation = (
+                            "Per calcolare l'IVA correttamente, ho bisogno di conoscere l'importo e l'aliquota."
+                        )
+                    elif question_id == "inps_input_fields":
+                        pre_response_explanation = "I contributi INPS variano in base al reddito e alla categoria. Inserisci i dati per il calcolo."
+                    elif question_id == "tfr_input_fields":
+                        pre_response_explanation = (
+                            "Il TFR dipende dalla retribuzione e dagli anni di servizio. Inserisci i dati."
+                        )
+                    elif question_id == "tax_type_selection":
+                        pre_response_explanation = "Le tasse variano molto in base al tipo e alla tua situazione. Aiutami a capire di cosa hai bisogno."
+                    elif question_id == "deadline_type_selection":
+                        pre_response_explanation = (
+                            "Le scadenze fiscali variano in base all'adempimento. Quale ti interessa verificare?"
+                        )
+                    elif question_id == "topic_clarification":
+                        # Fallback question - use a generic but helpful explanation
+                        pre_response_explanation = (
+                            "Per darti una risposta utile e precisa, aiutami a capire meglio la tua richiesta."
+                        )
+                    else:
+                        pre_response_explanation = "Per aiutarti al meglio, ho bisogno di qualche dettaglio in più."
+
+                    logger.info(
+                        "pre_response_proactivity_triggered",
+                        session_id=session.id,
+                        question_id=pre_result.question.id,
+                        question_type=pre_result.question.question_type,
+                        action_type=action_value,
+                        coverage=pre_result.extraction_result.coverage if pre_result.extraction_result else 0,
+                        intent=pre_result.extraction_result.intent if pre_result.extraction_result else None,
+                    )
+                else:
+                    # Log why no question was triggered
+                    logger.debug(
+                        "pre_response_proactivity_no_question",
+                        session_id=session.id,
+                        has_question=pre_result.question is not None,
+                        should_ask=proactivity_engine.should_ask_question(pre_result.extraction_result, user_query)
+                        if pre_result.extraction_result
+                        else False,
+                        coverage=pre_result.extraction_result.coverage if pre_result.extraction_result else 0,
+                        intent=pre_result.extraction_result.intent if pre_result.extraction_result else None,
+                        can_proceed=pre_result.extraction_result.can_proceed if pre_result.extraction_result else True,
+                        missing_required=pre_result.extraction_result.missing_required
+                        if pre_result.extraction_result
+                        else [],
+                    )
+            except Exception as pre_proactivity_error:
+                logger.warning(
+                    "pre_response_proactivity_failed_non_critical",
+                    session_id=session.id,
+                    error=str(pre_proactivity_error),
+                )
+
+        # If we have a pre-response question, return explanation + question WITHOUT calling LLM
+        if pre_response_question:
+
+            async def question_only_generator():
+                """Generate SSE stream with explanation + interactive question (no LLM call)."""
+                # Send short explanation first (so user knows why we're asking)
+                if pre_response_explanation:
+                    explanation_event = StreamResponse(
+                        content=pre_response_explanation + "\n\n",
+                        done=False,
+                        event_type="content",
+                    )
+                    yield write_sse(None, format_sse_event(explanation_event), request_id=request_id)
+
+                # Send the interactive question event
+                question_data = pre_response_question.model_dump()
+                logger.info(
+                    "yielding_pre_response_question_sse",
+                    session_id=session.id,
+                    question_id=pre_response_question.id,
+                    question_type=pre_response_question.question_type,
+                )
+                question_event = StreamResponse(
+                    content="",
+                    event_type="interactive_question",
+                    interactive_question=question_data,
+                )
+                yield write_sse(None, format_sse_event(question_event), request_id=request_id)
+
+                # Send done frame
+                sse_done = format_sse_done()
+                yield write_sse(None, sse_done, request_id=request_id)
+
+                # Log summary
+                log_sse_summary(request_id=request_id)
+
+            # Save pre-response interaction to LangGraph checkpoint BEFORE returning response
+            # This ensures the interaction appears in /messages endpoint on page refresh
+            if pre_response_explanation and user_query and user_query.strip():
+                try:
+                    await agent.add_messages_to_history(
+                        session_id=session.id,
+                        user_message=user_query.strip(),
+                        assistant_message=pre_response_explanation.strip(),
+                    )
+                    logger.info(
+                        "pre_response_chat_history_saved",
+                        session_id=session.id,
+                        user_query_preview=user_query[:50],
+                    )
+                except Exception as save_error:
+                    logger.warning(
+                        "pre_response_chat_history_save_failed",
+                        session_id=session.id,
+                        error=str(save_error),
+                    )
+
+            return StreamingResponse(question_only_generator(), media_type="text/event-stream")
 
         async def event_generator():
             """Generate streaming events with pure markdown output and deduplication.
@@ -815,39 +1050,67 @@ async def chat_stream(
                                     yield write_sse(None, sse_event, request_id=request_id)
 
                     # DEV-159: Process proactivity after streaming, before done frame
+                    # Skip if skip_proactivity flag is set (follow-up queries from answered questions)
                     proactivity_result: ProactivityResult | None = None
-                    try:
-                        proactivity_engine = get_proactivity_engine()
-                        proactivity_context = ProactivityContext(
-                            session_id=str(session.id),
-                            domain="default",  # TODO: Get from classification when available
-                            action_type=None,
-                            document_type=None,
-                        )
-                        proactivity_result = proactivity_engine.process(
-                            query=user_query if user_query else "",
-                            context=proactivity_context,
-                        )
+                    if chat_request.skip_proactivity:
                         logger.debug(
-                            "streaming_proactivity_processed",
+                            "post_response_proactivity_skipped",
                             session_id=session.id,
-                            action_count=len(proactivity_result.actions),
-                            has_question=proactivity_result.question is not None,
-                            processing_time_ms=proactivity_result.processing_time_ms,
+                            reason="skip_proactivity flag set (follow-up query)",
                         )
-                    except Exception as proactivity_error:
-                        # Graceful degradation: log warning but continue
-                        logger.warning(
-                            "streaming_proactivity_processing_failed_non_critical",
-                            session_id=session.id,
-                            error=str(proactivity_error),
-                        )
-                        proactivity_result = None
+                    else:
+                        try:
+                            proactivity_engine = get_proactivity_engine()
+
+                            # Build context with classification if available
+                            if query_classification:
+                                proactivity_context = ProactivityContext(
+                                    session_id=str(session.id),
+                                    domain=query_classification.domain.value.lower(),
+                                    action_type=query_classification.action.value.lower(),
+                                    sub_domain=query_classification.sub_domain,
+                                    classification_confidence=query_classification.confidence,
+                                    document_type=None,
+                                )
+                            else:
+                                # Fallback if classification failed
+                                proactivity_context = ProactivityContext(
+                                    session_id=str(session.id),
+                                    domain="default",
+                                    action_type=None,
+                                    document_type=None,
+                                )
+
+                            proactivity_result = proactivity_engine.process(
+                                query=user_query if user_query else "",
+                                context=proactivity_context,
+                            )
+                            logger.debug(
+                                "streaming_proactivity_processed",
+                                session_id=session.id,
+                                action_count=len(proactivity_result.actions),
+                                has_question=proactivity_result.question is not None,
+                                processing_time_ms=proactivity_result.processing_time_ms,
+                            )
+                        except Exception as proactivity_error:
+                            # Graceful degradation: log warning but continue
+                            logger.warning(
+                                "streaming_proactivity_processing_failed_non_critical",
+                                session_id=session.id,
+                                error=str(proactivity_error),
+                            )
+                            proactivity_result = None
 
                     # DEV-159: Yield proactivity events if available
                     if proactivity_result:
                         # Yield suggested_actions event if actions present
                         if proactivity_result.actions:
+                            logger.info(
+                                "yielding_suggested_actions_sse",
+                                session_id=session.id,
+                                action_count=len(proactivity_result.actions),
+                                action_ids=[a.id for a in proactivity_result.actions],
+                            )
                             actions_data = [a.model_dump() for a in proactivity_result.actions]
                             extracted_params = None
                             if proactivity_result.extraction_result:
@@ -862,15 +1125,9 @@ async def chat_stream(
                             )
                             yield write_sse(None, format_sse_event(actions_event), request_id=request_id)
 
-                        # Yield interactive_question event if question present
-                        if proactivity_result.question:
-                            question_data = proactivity_result.question.model_dump()
-                            question_event = StreamResponse(
-                                content="",
-                                event_type="interactive_question",
-                                interactive_question=question_data,
-                            )
-                            yield write_sse(None, format_sse_event(question_event), request_id=request_id)
+                        # NOTE: Post-response proactivity should NOT yield interactive questions.
+                        # Questions are for PRE-response proactivity (gathering info before LLM call).
+                        # After the LLM has already answered, only suggested_actions make sense.
 
                     # Send final done frame using validated formatter
                     sse_done = format_sse_done()
@@ -1207,24 +1464,33 @@ async def execute_action(
             user_id=session.user_id,
         )
 
-        # Execute action as regular chat query
+        # Execute action as regular chat query using Message format
+        input_messages = [Message(role="user", content=prompt)]
         response = await agent.get_response(
-            session_id=action_request.session_id,
+            input_messages,
+            action_request.session_id,
             user_id=session.user_id,
-            query=prompt,
         )
 
-        # Convert response to messages
+        # Convert response to messages for return
         messages = [Message(role="assistant", content=str(response))]
 
         # Process proactivity for follow-up actions
+        # BUGFIX: Use DomainActionClassifier for better intent detection
         proactivity_result: ProactivityResult | None = None
         try:
             proactivity_engine = get_proactivity_engine()
+
+            # Classify the executed prompt
+            classifier = DomainActionClassifier()
+            classification = await classifier.classify(prompt)
+
             proactivity_context = ProactivityContext(
                 session_id=action_request.session_id,
-                domain="default",
-                action_type=None,
+                domain=classification.domain.value.lower(),
+                action_type=classification.action.value.lower(),
+                sub_domain=classification.sub_domain,
+                classification_confidence=classification.confidence,
                 document_type=None,
             )
             proactivity_result = proactivity_engine.process(
@@ -1321,107 +1587,225 @@ async def answer_question(
             - 500: If there's an internal error during processing
     """
     try:
-        # Get template service and lookup question
-        template_service = get_template_service()
-        question = template_service.get_question(answer_request.question_id)
+        # =====================================================================
+        # MULTI-FIELD QUESTION HANDLING
+        # =====================================================================
+        # Multi-field questions (question_type == "multi_field") bypass template
+        # lookup and option validation since they're dynamically generated.
+        # =====================================================================
+        is_multifield = answer_request.field_values is not None
 
-        if question is None:
-            logger.warning(
-                "question_not_found",
+        # List of dynamically generated question IDs that bypass template lookup
+        DYNAMIC_QUESTION_IDS = {
+            "tax_type_selection",
+            "deadline_type_selection",
+            "topic_clarification",
+            "irpef_input_fields",
+            "iva_input_fields",
+            "inps_input_fields",
+            "tfr_input_fields",
+        }
+        is_dynamic_question = answer_request.question_id in DYNAMIC_QUESTION_IDS
+
+        if is_multifield:
+            # Handle multi-field question answer
+            logger.info(
+                "multifield_question_answer_processing",
                 question_id=answer_request.question_id,
+                field_count=len(answer_request.field_values),
                 session_id=answer_request.session_id,
-            )
-            raise HTTPException(
-                status_code=400,
-                detail="Domanda non valida",
+                user_id=session.user_id,
             )
 
-        # Validate selected option
-        selected_option = None
-        for option in question.options:
-            if option.id == answer_request.selected_option:
-                selected_option = option
-                break
+            # Build prompt from field values
+            # Format: "Calcola IRPEF con: reddito=45000, deduzioni=5000, detrazioni=1200"
+            field_parts = [f"{k}={v}" for k, v in answer_request.field_values.items() if v]
+            prompt = f"Calcola con i seguenti dati: {', '.join(field_parts)}"
 
-        if selected_option is None:
-            logger.warning(
-                "option_not_found",
+            # DEV-162: Fire-and-forget analytics tracking for multi-field
+            await track_question_answer_async(
+                session_id=answer_request.session_id,
+                user_id=session.user_id,
                 question_id=answer_request.question_id,
-                option_id=answer_request.selected_option,
-                session_id=answer_request.session_id,
+                option_id="multi_field",
+                custom_input=json.dumps(answer_request.field_values),
             )
-            raise HTTPException(
-                status_code=400,
-                detail="Opzione non valida",
-            )
-
-        # Check if custom input is required but missing
-        if selected_option.requires_input and not answer_request.custom_input:
-            logger.warning(
-                "custom_input_required",
+        elif is_dynamic_question:
+            # =====================================================================
+            # DYNAMIC SINGLE-CHOICE QUESTION HANDLING
+            # =====================================================================
+            # These questions are generated dynamically by the proactivity engine.
+            # Instead of running through full RAG pipeline (which requires context),
+            # return the prompt as "answer" for frontend to send as new chat message.
+            # =====================================================================
+            logger.info(
+                "dynamic_question_answer_processing",
                 question_id=answer_request.question_id,
-                option_id=answer_request.selected_option,
+                selected_option=answer_request.selected_option,
+                custom_input=answer_request.custom_input,
                 session_id=answer_request.session_id,
-            )
-            raise HTTPException(
-                status_code=400,
-                detail="Input personalizzato richiesto",
+                user_id=session.user_id,
             )
 
-        logger.info(
-            "question_answer_processing",
-            question_id=answer_request.question_id,
-            option_id=answer_request.selected_option,
-            has_custom_input=answer_request.custom_input is not None,
-            session_id=answer_request.session_id,
-            user_id=session.user_id,
-        )
-
-        # Check if this is a multi-step flow (option leads to next question)
-        if selected_option.leads_to:
-            next_question = template_service.get_question(selected_option.leads_to)
-            if next_question:
-                logger.info(
-                    "question_flow_continuing",
-                    from_question=answer_request.question_id,
-                    to_question=selected_option.leads_to,
-                    session_id=answer_request.session_id,
+            # Build a prompt based on the selected option
+            if answer_request.custom_input:
+                prompt = answer_request.custom_input
+            else:
+                # Map option IDs to meaningful prompts
+                option_prompts = {
+                    # tax_type_selection options
+                    "irpef": "Voglio informazioni sull'IRPEF (imposta sul reddito)",
+                    "iva": "Voglio informazioni sull'IVA",
+                    "contributi": "Voglio informazioni sui contributi INPS",
+                    "imu_tari": "Voglio informazioni su IMU e TARI",
+                    # deadline_type_selection options
+                    "f24": "Quali sono le scadenze per il pagamento F24?",
+                    "dichiarazione_redditi": "Quali sono le scadenze per la dichiarazione dei redditi?",
+                    "dichiarazione_iva": "Quali sono le scadenze per la dichiarazione IVA?",
+                    "inps": "Quali sono le scadenze per i contributi INPS?",
+                    # topic_clarification options
+                    "calcolo_tasse": "Voglio calcolare imposte o contributi",
+                    "scadenze": "Voglio informazioni su scadenze fiscali",
+                    "normativa": "Voglio informazioni sulla normativa fiscale",
+                    "situazione_specifica": "Ho una situazione fiscale specifica",
+                    # Generic fallback
+                    "altro": answer_request.custom_input or "Ho una domanda specifica",
+                }
+                prompt = option_prompts.get(
+                    answer_request.selected_option, f"Ho selezionato: {answer_request.selected_option}"
                 )
 
-                # DEV-162: Fire-and-forget analytics tracking for multi-step flow
-                await track_question_answer_async(
+            # Track the answer
+            await track_question_answer_async(
+                session_id=answer_request.session_id,
+                user_id=session.user_id,
+                question_id=answer_request.question_id,
+                option_id=answer_request.selected_option,
+                custom_input=answer_request.custom_input,
+            )
+
+            # Return prompt as answer - frontend will send this as a new chat message
+            # This avoids running through full RAG pipeline without proper context
+            logger.info(
+                "dynamic_question_returning_prompt",
+                question_id=answer_request.question_id,
+                prompt=prompt,
+                session_id=answer_request.session_id,
+            )
+            return QuestionAnswerResponse(answer=prompt)
+        else:
+            # =====================================================================
+            # SINGLE-CHOICE QUESTION HANDLING (template-based)
+            # =====================================================================
+            # Get template service and lookup question
+            template_service = get_template_service()
+            question = template_service.get_question(answer_request.question_id)
+
+            if question is None:
+                logger.warning(
+                    "question_not_found",
+                    question_id=answer_request.question_id,
                     session_id=answer_request.session_id,
-                    user_id=session.user_id,
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail="Domanda non valida",
+                )
+
+            # Validate selected option
+            selected_option = None
+            for option in question.options:
+                if option.id == answer_request.selected_option:
+                    selected_option = option
+                    break
+
+            if selected_option is None:
+                logger.warning(
+                    "option_not_found",
                     question_id=answer_request.question_id,
                     option_id=answer_request.selected_option,
-                    custom_input=answer_request.custom_input,
+                    session_id=answer_request.session_id,
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail="Opzione non valida",
                 )
 
-                return QuestionAnswerResponse(next_question=next_question)
+            # Check if custom input is required but missing
+            if selected_option.requires_input and not answer_request.custom_input:
+                logger.warning(
+                    "custom_input_required",
+                    question_id=answer_request.question_id,
+                    option_id=answer_request.selected_option,
+                    session_id=answer_request.session_id,
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail="Input personalizzato richiesto",
+                )
 
-        # Terminal question - generate prompt and get answer
-        # Build prompt from question context and selected option
-        prompt_parts = [question.text, f"Risposta selezionata: {selected_option.label}"]
-        if answer_request.custom_input:
-            prompt_parts.append(f"Input personalizzato: {answer_request.custom_input}")
+            logger.info(
+                "question_answer_processing",
+                question_id=answer_request.question_id,
+                option_id=answer_request.selected_option,
+                has_custom_input=answer_request.custom_input is not None,
+                session_id=answer_request.session_id,
+                user_id=session.user_id,
+            )
 
-        prompt = " ".join(prompt_parts)
+            # Check if this is a multi-step flow (option leads to next question)
+            if selected_option.leads_to:
+                next_question = template_service.get_question(selected_option.leads_to)
+                if next_question:
+                    logger.info(
+                        "question_flow_continuing",
+                        from_question=answer_request.question_id,
+                        to_question=selected_option.leads_to,
+                        session_id=answer_request.session_id,
+                    )
 
-        # Execute as chat query
+                    # DEV-162: Fire-and-forget analytics tracking for multi-step flow
+                    await track_question_answer_async(
+                        session_id=answer_request.session_id,
+                        user_id=session.user_id,
+                        question_id=answer_request.question_id,
+                        option_id=answer_request.selected_option,
+                        custom_input=answer_request.custom_input,
+                    )
+
+                    return QuestionAnswerResponse(next_question=next_question)
+
+            # Terminal question - generate prompt and get answer
+            # Build prompt from question context and selected option
+            prompt_parts = [question.text, f"Risposta selezionata: {selected_option.label}"]
+            if answer_request.custom_input:
+                prompt_parts.append(f"Input personalizzato: {answer_request.custom_input}")
+            prompt = " ".join(prompt_parts)
+
+        # Execute as chat query using Message format
+        messages = [Message(role="user", content=prompt)]
         response = await agent.get_response(
-            session_id=answer_request.session_id,
+            messages,
+            answer_request.session_id,
             user_id=session.user_id,
-            query=prompt,
         )
 
         # Process proactivity for follow-up actions
+        # BUGFIX: Use DomainActionClassifier for better intent detection
         suggested_actions = None
         try:
             proactivity_engine = get_proactivity_engine()
+
+            # Classify the question answer prompt
+            classifier = DomainActionClassifier()
+            classification = await classifier.classify(prompt)
+
             proactivity_context = ProactivityContext(
                 session_id=answer_request.session_id,
-                domain="default",
-                action_type=None,
+                domain=classification.domain.value.lower(),
+                action_type=classification.action.value.lower(),
+                sub_domain=classification.sub_domain,
+                classification_confidence=classification.confidence,
                 document_type=None,
             )
             proactivity_result = proactivity_engine.process(
@@ -1443,16 +1827,19 @@ async def answer_question(
             question_id=answer_request.question_id,
             session_id=answer_request.session_id,
             has_actions=suggested_actions is not None,
+            is_multifield=is_multifield,
         )
 
         # DEV-162: Fire-and-forget analytics tracking for terminal question
-        await track_question_answer_async(
-            session_id=answer_request.session_id,
-            user_id=session.user_id,
-            question_id=answer_request.question_id,
-            option_id=answer_request.selected_option,
-            custom_input=answer_request.custom_input,
-        )
+        # Skip for multi-field since we already tracked at the start
+        if not is_multifield:
+            await track_question_answer_async(
+                session_id=answer_request.session_id,
+                user_id=session.user_id,
+                question_id=answer_request.question_id,
+                option_id=answer_request.selected_option or "unknown",
+                custom_input=answer_request.custom_input,
+            )
 
         return QuestionAnswerResponse(
             answer=str(response),

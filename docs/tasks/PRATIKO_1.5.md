@@ -1602,6 +1602,1211 @@ className={cn(
 
 ---
 
+## Phase 6: LLM-First Proactivity Architecture Revision - 17h
+
+**Context:** The template-heavy proactivity architecture from Phase 1-5 proved impractical in production. Section 12 of PRATIKO_1.5_REFERENCE.md describes the revised LLM-First architecture where:
+- InteractiveQuestion is ONLY for 5 calculable intents with missing parameters
+- SuggestedActions are LLM-generated for EVERY response (with document template fallback)
+
+**Migration Plan (from Section 12.11):**
+- Phase 6A: Backend Core (DEV-174 to DEV-177) - 1.5 days
+- Phase 6B: Cleanup & Integration (DEV-178 to DEV-180) - 1 day
+- Phase 6C: Testing & Validation (DEV-181 to DEV-183) - 1 day
+
+**Obsolete Code from Phase 1-5 to Remove (~4,100 lines):**
+
+| File | Lines to Remove | % of File | What Becomes Obsolete |
+|------|-----------------|-----------|----------------------|
+| `proactivity_engine.py` | ~492 | 54% | Template matching, `CLASSIFICATION_TO_INTENT`, `INTENT_QUESTION_MAP`, `INTENT_MULTIFIELD_QUESTIONS`, `generate_question()`, `select_actions()`, `_infer_intent()` |
+| `action_template_service.py` | 432 | 100% | Entire service (YAML loading, template caching, domain/document lookups) |
+| `atomic_facts_extractor.py` | ~400 | 80% | `INTENT_SCHEMAS`, `extract_with_coverage()`, coverage calculation logic |
+| `proactivity.py` (schemas) | ~215 | 72% | `ActionCategory` enum, `InputField`, `ExtractedParameter`, `ParameterExtractionResult` |
+| YAML template files | 2,572 | 100% | All suggested_actions/ and most interactive_questions/ files |
+
+---
+
+### Phase 6 Dependency Map
+
+```
+DEV-174 (CALCULABLE_INTENTS Constants)
+    └── DEV-175 (System Prompt Update)
+            └── DEV-176 (parse_llm_response)
+                    └── DEV-177 (Simplified ProactivityEngine)
+                            ├── DEV-178 (Template Cleanup)
+                            └── DEV-179 (/chat Integration)
+                                    └── DEV-180 (/chat/stream Integration)
+                                            └── DEV-181 (Unit Tests)
+                                                    └── DEV-182 (Integration Tests)
+                                                            └── DEV-183 (E2E Validation)
+```
+
+---
+
+<details>
+<summary>
+<h3>DEV-174: Define CALCULABLE_INTENTS and DOCUMENT_ACTION_TEMPLATES Constants</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> NOT STARTED<br>
+Define the core constants for LLM-First architecture: calculable intents and document action templates.
+</summary>
+
+### DEV-174: Define CALCULABLE_INTENTS and DOCUMENT_ACTION_TEMPLATES Constants
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.4 and 12.6](/docs/tasks/PRATIKO_1.5_REFERENCE.md#124-interactivequestion-solo-per-calcoli-noti)
+
+**Priority:** CRITICAL | **Effort:** 1h | **Status:** NOT STARTED
+
+**Problem:**
+The current architecture uses complex template matching for all queries. The LLM-First approach requires a clear, minimal set of constants defining which intents trigger InteractiveQuestion and which document types have predefined action templates.
+
+**Solution:**
+Create a new constants module with CALCULABLE_INTENTS (5 intents) and DOCUMENT_ACTION_TEMPLATES (4 document types) as defined in Section 12.4 and 12.6.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** None (first task in Phase 6)
+- **Unlocks:** DEV-175, DEV-177
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Not applicable (constants module, no runtime logic)
+
+**Performance Requirements:**
+- Module import: <10ms (constants only, no computation)
+
+**Edge Cases:**
+- **Empty values:** All intents must have non-empty `required` list
+- **Validation:** All document templates must have exactly 4 fields (id, label, icon, prompt)
+- **Type safety:** Use Literal types for icon strings to catch typos
+- **Duplicate IDs:** Ensure no duplicate action IDs within a document type
+
+**File:** `app/core/proactivity_constants.py`
+
+**Fields/Methods/Components:**
+- `CALCULABLE_INTENTS: dict[str, CalculableIntent]` - 5 intent definitions with required params
+  - `calcolo_irpef`: required=["tipo_contribuente", "reddito"]
+  - `calcolo_iva`: required=["importo"]
+  - `calcolo_contributi_inps`: required=["tipo_gestione", "reddito"]
+  - `ravvedimento_operoso`: required=["importo_originale", "data_scadenza"]
+  - `calcolo_f24`: required=["codice_tributo", "importo"]
+- `DOCUMENT_ACTION_TEMPLATES: dict[str, list[ActionTemplate]]` - 4 document types
+  - `fattura_elettronica`: 4 actions (verify, vat, entry, recipient)
+  - `f24`: 3 actions (codes, deadline, ravvedimento)
+  - `bilancio`: 3 actions (ratios, compare, summary)
+  - `cu`: 3 actions (verify, irpef, summary)
+- `CalculableIntent: TypedDict` - Type definition for intent structure
+- `ActionTemplate: TypedDict` - Type definition for action template
+
+**Testing Requirements:**
+- **TDD:** Write `tests/core/test_proactivity_constants.py` FIRST
+- **Unit Tests:**
+  - `test_calculable_intents_has_exactly_five_entries`
+  - `test_calculable_intents_all_have_required_params`
+  - `test_document_templates_has_exactly_four_types`
+  - `test_document_templates_all_actions_have_required_fields`
+  - `test_action_ids_unique_within_document_type`
+  - `test_icons_are_valid_emoji`
+  - `test_prompts_are_non_empty_strings`
+- **Edge Case Tests:**
+  - `test_no_empty_required_lists`
+  - `test_no_duplicate_intent_keys`
+  - `test_constants_are_immutable_at_runtime`
+- **Integration Tests:** Not applicable (pure constants)
+- **Regression Tests:** Not applicable (new file)
+- **Coverage Target:** 100% for new file
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Typo in intent name | HIGH | Use constants for all intent names, match Section 12.4 exactly |
+| Missing required field | MEDIUM | TypedDict with Required[] for all fields |
+| Inconsistent with reference | HIGH | Copy-paste from Section 12.4/12.6, code review |
+
+**Code Structure:**
+- Max file: 100 lines
+- Use TypedDict for type safety
+- Group constants logically (intents, then documents)
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All 5 intents from Section 12.4 implemented
+- [ ] All 4 document types from Section 12.6 implemented
+- [ ] All action templates have complete fields
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] CALCULABLE_INTENTS has exactly 5 entries as specified in Section 12.4
+- [ ] DOCUMENT_ACTION_TEMPLATES has exactly 4 document types as specified in Section 12.6
+- [ ] All action templates have required fields (id, label, icon, prompt)
+- [ ] Constants are importable from `app.core.proactivity_constants`
+- [ ] 100% test coverage for new file
+- [ ] All tests pass: `pytest tests/core/test_proactivity_constants.py -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-175: Update System Prompt with Suggested Actions Output Format</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> NOT STARTED<br>
+Add proactive actions instruction block to system prompt with &lt;answer&gt; and &lt;suggested_actions&gt; format.
+</summary>
+
+### DEV-175: Update System Prompt with Suggested Actions Output Format
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.5.1](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1251-system-prompt-aggiornato)
+
+**Priority:** CRITICAL | **Effort:** 1h | **Status:** NOT STARTED
+
+**Problem:**
+The current system prompt does not instruct the LLM to generate suggested actions. The LLM-First architecture requires the LLM to output structured actions in every response using XML-like tags.
+
+**Solution:**
+Create a new prompt file `suggested_actions.md` with the proactive actions instruction block from Section 12.5.1.
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-174 (constants define action structure)
+- **Unlocks:** DEV-176 (parser expects this format)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Not applicable (prompt file, no runtime logic)
+
+**Performance Requirements:**
+- Prompt loading: <5ms (file read)
+- Token count: ~400 tokens (one-time cost per conversation)
+
+**Edge Cases:**
+- **Icon availability:** Use only standard emoji (no platform-specific)
+- **JSON in prompt:** Escape examples properly in markdown
+- **Encoding:** Ensure UTF-8 encoding for emoji
+- **Loader failure:** `load_suggested_actions_prompt()` raises clear error if file missing
+
+**File:** `app/core/prompts/suggested_actions.md`
+
+**Fields/Methods/Components:**
+- `suggested_actions.md` (~80 lines) - Prompt content
+  - Introduction section (professional context)
+  - Output format specification (`<answer>` and `<suggested_actions>` tags)
+  - Action requirements (pertinent, professional, actionable, diverse)
+  - JSON format example
+  - Category-specific action examples (fiscal, normative, procedural, document)
+  - Icon reference table
+- `load_suggested_actions_prompt() -> str` - Loader function in `__init__.py`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/core/prompts/test_suggested_actions_prompt.py` FIRST
+- **Unit Tests:**
+  - `test_prompt_file_exists`
+  - `test_prompt_contains_answer_tag_instruction`
+  - `test_prompt_contains_suggested_actions_tag_instruction`
+  - `test_prompt_contains_json_format_example`
+  - `test_prompt_contains_all_icon_suggestions`
+  - `test_load_function_returns_string`
+  - `test_load_function_raises_on_missing_file`
+- **Edge Case Tests:**
+  - `test_prompt_valid_utf8_encoding`
+  - `test_prompt_json_examples_are_valid_json`
+- **Integration Tests:** Not applicable (static file)
+- **Regression Tests:** Not applicable (new file)
+- **Coverage Target:** 100% for loader function
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| LLM ignores format | HIGH | Clear, emphatic instructions; test with real LLM |
+| Token bloat | LOW | Keep prompt concise (~400 tokens max) |
+| Encoding issues | MEDIUM | Explicit UTF-8 in file read |
+
+**Code Structure:**
+- Prompt file: ~80 lines
+- Loader function: <20 lines
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] All icon suggestions from Section 12.5.1 included
+- [ ] All example categories covered
+- [ ] JSON format exactly matches Section 12.5.1
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] `suggested_actions.md` file created with full instruction set
+- [ ] `load_suggested_actions_prompt()` function added to `__init__.py`
+- [ ] Prompt includes all icon suggestions from Section 12.5.1
+- [ ] Prompt includes output format with `<answer>` and `<suggested_actions>` tags
+- [ ] No breaking changes to existing `SYSTEM_PROMPT`
+- [ ] All tests pass: `pytest tests/core/prompts/ -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-176: Implement parse_llm_response Function</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED<br>
+Create parsing function to extract &lt;answer&gt; and &lt;suggested_actions&gt; from LLM output.
+</summary>
+
+### DEV-176: Implement parse_llm_response Function
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.5.2](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1252-parsing-della-risposta)
+
+**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** NOT STARTED
+
+**Problem:**
+The LLM will output responses with `<answer>` and `<suggested_actions>` XML-like tags. We need a robust parser that extracts these components and handles edge cases gracefully without ever raising exceptions.
+
+**Solution:**
+Implement `parse_llm_response()` function as specified in Section 12.5.2. The function must handle malformed output gracefully, never crash.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-175 (defines output format to parse)
+- **Unlocks:** DEV-177, DEV-179, DEV-180
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- **Malformed JSON:** Log warning, return empty actions list
+- **Missing tags:** Log info, use full response as answer
+- **Invalid action fields:** Skip invalid action, include valid ones
+- **Empty response:** Return empty answer and empty actions
+- **Logging:** All parsing failures logged with context at WARNING level
+
+**Performance Requirements:**
+- Parse time: <5ms for typical response (500-2000 chars)
+- Memory: No excessive string copies
+
+**Edge Cases:**
+- **Nulls/Empty:** Empty response returns empty answer + empty actions
+- **Missing tags:** Full response used as answer, no actions
+- **Malformed JSON:** Actions array has syntax error - return empty actions
+- **Partial JSON:** Some actions valid, some invalid - include valid only
+- **Nested tags:** Handle `<answer>` inside code blocks gracefully
+- **Whitespace:** Trim whitespace from extracted content
+- **Action limit:** Always truncate to max 4 actions
+- **Extra fields:** Ignore unknown fields in action objects
+- **Missing fields:** Skip actions missing required fields (id, label, icon, prompt)
+
+**File:** `app/services/llm_response_parser.py`
+
+**Fields/Methods/Components:**
+- `ParsedLLMResponse(BaseModel)` - Response container
+  - `answer: str` - Extracted answer text
+  - `suggested_actions: list[SuggestedAction]` - Parsed actions (max 4)
+- `SuggestedAction(BaseModel)` - Single action
+  - `id: str`
+  - `label: str`
+  - `icon: str`
+  - `prompt: str`
+- `parse_llm_response(raw_response: str) -> ParsedLLMResponse` - Main parser function
+- `_extract_answer(raw: str) -> str` - Helper to extract answer
+- `_extract_actions(raw: str) -> list[SuggestedAction]` - Helper to extract actions
+- `_validate_action(action_dict: dict) -> Optional[SuggestedAction]` - Validate single action
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_llm_response_parser.py` FIRST
+- **Unit Tests:**
+  - `test_parse_valid_response_with_both_tags`
+  - `test_parse_response_without_answer_tag`
+  - `test_parse_response_without_actions_tag`
+  - `test_parse_response_with_empty_actions`
+  - `test_parse_response_with_malformed_json`
+  - `test_parse_response_with_more_than_4_actions_truncates`
+  - `test_parse_response_with_missing_action_fields_skips`
+  - `test_parse_empty_response`
+  - `test_parse_response_with_nested_tags_in_code_block`
+  - `test_parse_response_with_extra_whitespace`
+- **Edge Case Tests:**
+  - `test_parse_partial_valid_actions`
+  - `test_parse_unicode_in_response`
+  - `test_parse_very_long_response`
+  - `test_parse_response_with_only_closing_tag`
+  - `test_parse_response_never_raises`
+- **Integration Tests:** `tests/services/test_llm_response_parser_integration.py`
+- **Regression Tests:** Run `pytest tests/services/` to verify no conflicts
+- **Coverage Target:** 95%+ for parser module
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Regex too strict | HIGH | Test with varied real LLM outputs |
+| Regex too loose | MEDIUM | Validate extracted content structure |
+| Performance on large responses | LOW | Compile regex, single-pass extraction |
+| JSON injection | MEDIUM | Validate action fields before use |
+
+**Code Structure:**
+- Max file: 80 lines
+- Use compiled regex patterns
+- Extract helpers for testability
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] All edge cases handled (never raises)
+- [ ] Logging for all failure paths
+- [ ] All action fields validated
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] `parse_llm_response()` handles all edge cases without crashing
+- [ ] Graceful fallback: always returns ParsedLLMResponse (never raises)
+- [ ] Actions truncated to max 4
+- [ ] Invalid actions skipped, valid ones included
+- [ ] 95%+ test coverage for parser module
+- [ ] All tests pass: `pytest tests/services/test_llm_response_parser.py -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-177: Simplify ProactivityEngine Decision Logic</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+Refactor ProactivityEngine to use LLM-First logic with simplified decision flow.
+</summary>
+
+### DEV-177: Simplify ProactivityEngine Decision Logic
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
+
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+The current ProactivityEngine uses complex template matching (~492 lines). Per Section 12.7, the logic should be simplified to three steps:
+1. Check if calculable intent with missing params -> InteractiveQuestion
+2. Check if document present -> use DOCUMENT_ACTION_TEMPLATES
+3. Otherwise -> LLM generates actions
+
+**Solution:**
+Refactor ProactivityEngine to implement the simplified decision logic from Section 12.7, removing all template matching code.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-174 (constants), DEV-176 (parser)
+- **Unlocks:** DEV-178, DEV-179, DEV-180
+
+**Change Classification:** RESTRUCTURING
+
+**Impact Analysis:**
+- **Primary File:** `app/services/proactivity_engine.py`
+- **Affected Files:**
+  - `app/api/v1/chatbot.py` (imports ProactivityEngine)
+  - `app/schemas/proactivity.py` (uses Action, InteractiveQuestion)
+- **Related Tests:**
+  - `tests/services/test_proactivity_engine.py` (direct - MAJOR UPDATE)
+  - `tests/api/test_chatbot_proactivity.py` (consumer)
+  - `tests/api/test_chatbot_streaming_proactivity.py` (consumer)
+- **Baseline Command:** `pytest tests/services/test_proactivity_engine.py tests/api/test_chatbot_proactivity.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass (document current state)
+- [ ] Existing code reviewed (identify all removal targets)
+- [ ] No pre-existing test failures in proactivity tests
+
+**Error Handling:**
+- **Intent classification failure:** Log error, default to LLM-generated actions
+- **Document type unknown:** Use LLM-generated actions (no template override)
+- **Missing parameters extraction failure:** Log warning, skip InteractiveQuestion
+- **Logging:** All decision paths logged at DEBUG level with context
+
+**Performance Requirements:**
+- Decision logic: <10ms (no LLM calls in decision)
+- Full proactivity flow: <50ms (excluding LLM call)
+
+**Edge Cases:**
+- **Nulls/Empty:** Empty query returns empty actions
+- **Unknown intent:** Treated as non-calculable, use LLM actions
+- **Unknown document type:** No template override, use LLM actions
+- **Partial parameters:** Extract what's available, ask for missing only
+- **All parameters present:** No InteractiveQuestion, proceed to LLM
+- **Concurrent requests:** Engine is stateless, thread-safe
+
+**File:** `app/services/proactivity_engine.py`
+
+**Code to REMOVE (~492 lines):**
+- `CLASSIFICATION_TO_INTENT` constant (30 lines)
+- `CLASSIFIER_ACTION_TO_TEMPLATE_ACTION` constant (12 lines)
+- `INTENT_QUESTION_MAP` constant (14 lines)
+- `INTENT_MULTIFIELD_QUESTIONS` constant (130 lines)
+- `FALLBACK_CHOICE_QUESTION` constant (14 lines)
+- `_infer_intent()` method (48 lines)
+- `_legacy_infer_intent()` method (26 lines)
+- `_get_question_id_for_param()` method (18 lines)
+- `generate_question()` method (72 lines)
+- `_generate_multifield_question()` method (71 lines)
+- `should_ask_question()` method (94 lines)
+- `_extract_parameters()` method (18 lines)
+- `_select_actions_for_context()` method (35 lines)
+- `select_actions()` method (49 lines)
+
+**Fields/Methods/Components (NEW):**
+- `ProactivityEngine` class (refactored)
+  - `__init__(self)` - Initialize with constants only
+  - `process_query(query: str, document: Optional[Document], session_context: Optional[dict]) -> ProactivityResult`
+  - `_check_calculable_intent(query: str) -> Optional[InteractiveQuestion]`
+  - `_get_document_actions(document: Optional[Document]) -> Optional[list[Action]]`
+  - `_classify_intent(query: str) -> Optional[str]` - Simple intent classifier
+  - `_extract_parameters(query: str, intent: str) -> dict[str, Any]`
+  - `_build_question_for_missing(intent: str, missing: list[str], extracted: dict) -> InteractiveQuestion`
+- `ProactivityResult(BaseModel)` - New result type
+  - `interactive_question: Optional[InteractiveQuestion]`
+  - `template_actions: Optional[list[Action]]`
+  - `use_llm_actions: bool`
+
+**Testing Requirements:**
+- **TDD:** Update `tests/services/test_proactivity_engine.py` FIRST
+- **Unit Tests:**
+  - `test_process_query_calcolo_irpef_missing_params_returns_question`
+  - `test_process_query_calcolo_irpef_complete_params_no_question`
+  - `test_process_query_fattura_returns_template_actions`
+  - `test_process_query_generic_returns_llm_flag`
+  - `test_process_query_unknown_intent_uses_llm`
+  - `test_process_query_unknown_document_uses_llm`
+  - `test_all_five_calculable_intents_trigger_questions`
+  - `test_all_four_document_types_return_templates`
+- **Edge Case Tests:**
+  - `test_empty_query_returns_llm_flag`
+  - `test_partial_parameters_asks_for_missing_only`
+  - `test_concurrent_calls_are_thread_safe`
+- **Integration Tests:** `tests/integration/test_proactivity_flow.py`
+- **Regression Tests:** `pytest tests/services/test_proactivity_engine.py tests/api/test_chatbot*.py -v`
+- **Coverage Target:** 90%+ for engine module
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Breaking existing API | CRITICAL | Maintain same public interface signatures |
+| Missing test coverage | HIGH | Update all tests before removing code |
+| Intent classification accuracy | MEDIUM | Test with real query examples |
+| Parameter extraction regression | MEDIUM | Preserve working extraction logic |
+
+**Code Structure:**
+- Max class: 200 lines (down from ~900)
+- Max method: 50 lines
+- Extract helpers for testability
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] All 5 calculable intents implemented
+- [ ] All 4 document types implemented
+- [ ] All obsolete code removed (verify with grep)
+- [ ] No stub implementations
+
+**Acceptance Criteria:**
+- [ ] Tests updated BEFORE implementation changes (TDD)
+- [ ] Decision logic follows Section 12.7 exactly
+- [ ] InteractiveQuestion ONLY for 5 calculable intents
+- [ ] Template actions ONLY for 4 document types
+- [ ] LLM actions flag set for everything else
+- [ ] All obsolete methods/constants removed (~492 lines)
+- [ ] Public API unchanged (backward compatible)
+- [ ] 90%+ test coverage for engine module
+- [ ] All regression tests pass
+- [ ] All tests pass: `pytest tests/services/test_proactivity_engine.py -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-178: Remove Unused Templates and Simplify Template Service</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED<br>
+Clean up template files and archive ActionTemplateService after LLM-First migration.
+</summary>
+
+### DEV-178: Remove Unused Templates and Simplify Template Service
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.11](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1211-piano-di-migrazione)
+
+**Priority:** HIGH | **Effort:** 1.5h | **Status:** NOT STARTED
+
+**Problem:**
+The current template system has ~50+ scenarios across domain-specific YAML files (2,572 lines). With LLM-First architecture, templates are replaced by DOCUMENT_ACTION_TEMPLATES constants.
+
+**Solution:**
+1. Archive entire `ActionTemplateService` (432 lines - no longer needed)
+2. Archive unused YAML template files
+3. Remove unused schemas from `proactivity.py`
+4. Simplify `atomic_facts_extractor.py` (remove coverage logic)
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-177 (engine no longer uses templates)
+- **Unlocks:** DEV-179 (clean codebase for integration)
+
+**Change Classification:** RESTRUCTURING
+
+**Impact Analysis:**
+- **Primary File:** `app/services/action_template_service.py` (archive entire file)
+- **Affected Files:**
+  - `app/schemas/proactivity.py` (remove unused models)
+  - `app/services/atomic_facts_extractor.py` (simplify/archive)
+  - `app/services/proactivity_engine.py` (remove import)
+  - All YAML files in `app/core/templates/`
+- **Related Tests:**
+  - `tests/services/test_action_template_service.py` (archive)
+  - `tests/templates/test_action_templates.py` (archive)
+  - `tests/schemas/test_proactivity.py` (update for removed models)
+  - `tests/services/test_atomic_facts_parameter_coverage.py` (archive)
+- **Baseline Command:** `pytest tests/services/test_action_template_service.py tests/schemas/test_proactivity.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests documented (will be archived, not deleted)
+- [ ] All imports to ActionTemplateService identified
+- [ ] All imports to removed schemas identified
+- [ ] Archive folder structure planned
+
+**Error Handling:**
+- Not applicable (code removal, no new runtime logic)
+
+**Performance Requirements:**
+- Import time improvement: ~50ms faster (fewer YAML loads at startup)
+
+**Edge Cases:**
+- **Dangling imports:** Grep for all removed modules
+- **Test imports:** Update or archive tests that use removed code
+- **Circular dependencies:** Verify no circular imports after removal
+
+**Files to ARCHIVE (move to `archived/phase5_templates/`):**
+- `app/services/action_template_service.py` (432 lines)
+- `app/core/templates/suggested_actions/tax.yaml` (~214 lines)
+- `app/core/templates/suggested_actions/labor.yaml` (~220 lines)
+- `app/core/templates/suggested_actions/legal.yaml` (~150 lines)
+- `app/core/templates/suggested_actions/default.yaml` (~100 lines)
+- `app/core/templates/suggested_actions/documents.yaml` (~150 lines)
+- `app/core/templates/interactive_questions/procedures.yaml` (~400 lines)
+- Most of `app/core/templates/interactive_questions/calculations.yaml` (keep only if needed for 5 flows)
+
+**Code to REMOVE from proactivity.py (~215 lines):**
+- `ActionCategory` enum (15 lines)
+- `InputField` model (22 lines)
+- `ExtractedParameter` model (18 lines)
+- `ParameterExtractionResult` model (19 lines)
+- Complex fields from `InteractiveQuestion` (`trigger_query`, `fields`, `prefilled_params`)
+- Complex fields from `Action` (`prompt_template`, `requires_input`, `input_placeholder`, `input_type`)
+
+**Code to ARCHIVE from atomic_facts_extractor.py (~400 lines):**
+- Archive entire file to `archived/phase5_templates/`
+- Or simplify to minimal parameter extraction only
+
+**Testing Requirements:**
+- **TDD:** Update tests BEFORE removing code
+- **Unit Tests:**
+  - `test_proactivity_schema_action_minimal_fields`
+  - `test_proactivity_schema_interactive_question_minimal_fields`
+  - `test_no_import_errors_after_cleanup`
+- **Edge Case Tests:**
+  - `test_no_dangling_imports_to_archived_code`
+- **Integration Tests:** Run full test suite to verify no breaks
+- **Regression Tests:** `pytest tests/ -v --ignore=archived/` (exclude archived tests)
+- **Coverage Target:** Maintain 69.5%+ overall coverage
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Breaking imports | CRITICAL | Grep all imports before removal |
+| Test failures | HIGH | Archive tests, don't delete |
+| Accidental data loss | MEDIUM | Archive, don't delete files |
+| Coverage drop | MEDIUM | Archive tests count toward coverage |
+
+**Code Structure:**
+- Archive folder: `archived/phase5_templates/`
+- Maintain git history (archive, don't delete)
+
+**Code Completeness:**
+- [ ] All listed files archived
+- [ ] All listed code removed from schemas
+- [ ] All imports updated
+- [ ] No orphan files
+
+**Acceptance Criteria:**
+- [ ] Tests updated BEFORE removing code
+- [ ] All obsolete files archived to `archived/phase5_templates/`
+- [ ] ActionTemplateService completely archived
+- [ ] Schemas simplified (remove ~215 lines)
+- [ ] AtomicFactsExtractor archived or simplified
+- [ ] No orphan imports in codebase (verified with grep)
+- [ ] All existing tests updated or archived
+- [ ] All tests pass: `pytest tests/ -v --ignore=archived/`
+- [ ] Coverage remains >=69.5%
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-179: Integrate LLM-First Proactivity in /chat Endpoint</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+Update /chat endpoint to use new ProactivityEngine with LLM response parsing.
+</summary>
+
+### DEV-179: Integrate LLM-First Proactivity in /chat Endpoint
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
+
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+The current /chat endpoint calls ProactivityEngine separately from LLM. The LLM-First approach requires:
+1. Injecting suggested_actions prompt into system prompt
+2. Parsing LLM response to extract actions
+3. Overriding with document templates when applicable
+
+**Solution:**
+Modify /chat endpoint to inject suggested_actions prompt, use parse_llm_response(), and integrate with new ProactivityEngine.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-176 (parser), DEV-177 (engine)
+- **Unlocks:** DEV-180 (streaming endpoint)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/api/v1/chatbot.py`
+- **Affected Files:**
+  - `app/core/langgraph/graph.py` (prompt injection)
+  - `app/orchestrators/prompting.py` (prompt composition)
+- **Related Tests:**
+  - `tests/api/test_chatbot.py` (direct)
+  - `tests/api/test_chatbot_proactivity.py` (direct - MAJOR UPDATE)
+  - `tests/api/test_chatbot_actions.py` (consumer)
+- **Baseline Command:** `pytest tests/api/test_chatbot.py tests/api/test_chatbot_proactivity.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Current /chat flow documented
+- [ ] No pre-existing test failures
+
+**Error Handling:**
+- **Parser failure:** Log warning, return response without actions (graceful degradation)
+- **ProactivityEngine failure:** Log error, continue with response
+- **Template lookup failure:** Log warning, use LLM actions
+- **Logging:** All errors logged with user_id, session_id, query context
+
+**Performance Requirements:**
+- Endpoint latency: <200ms overhead (excluding LLM call)
+- Parsing: <5ms
+- Template lookup: <1ms
+
+**Edge Cases:**
+- **LLM response without tags:** Parser returns full response as answer
+- **Empty actions from LLM:** Return response without actions
+- **Document present + LLM actions:** Template takes priority
+- **Calculable intent detected:** Return InteractiveQuestion before LLM call
+- **Concurrent requests:** Thread-safe, no shared state
+
+**File:** `app/api/v1/chatbot.py`
+
+**Fields/Methods/Components:**
+- `chat()` function (modify)
+  - Add suggested_actions prompt injection
+  - Call `parse_llm_response()` after LLM
+  - Integrate with `ProactivityEngine.process_query()`
+  - Handle InteractiveQuestion early return
+  - Apply document template override
+- `_inject_proactivity_prompt(base_prompt: str) -> str` - Helper (new)
+- `_apply_action_override(llm_actions: list, template_actions: Optional[list]) -> list` - Helper (new)
+
+**Testing Requirements:**
+- **TDD:** Write `tests/api/test_chatbot_llm_first.py` FIRST
+- **Unit Tests:**
+  - `test_chat_includes_suggested_actions_in_response`
+  - `test_chat_uses_document_template_when_present`
+  - `test_chat_uses_llm_actions_when_no_template`
+  - `test_chat_returns_interactive_question_for_calculation`
+  - `test_chat_graceful_degradation_on_parser_failure`
+  - `test_chat_response_format_unchanged`
+- **Edge Case Tests:**
+  - `test_chat_empty_actions_from_llm`
+  - `test_chat_concurrent_requests`
+  - `test_chat_very_long_response`
+- **Integration Tests:** `tests/api/test_chatbot_llm_first_integration.py`
+- **Regression Tests:** `pytest tests/api/test_chatbot*.py -v`
+- **Coverage Target:** 90%+ for modified code paths
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Breaking API contract | CRITICAL | Same response schema, new field values only |
+| Performance regression | HIGH | Measure baseline, compare after |
+| LLM prompt too long | MEDIUM | Token budget validation |
+| Parser bugs | MEDIUM | Graceful degradation, extensive tests |
+
+**Code Structure:**
+- Max route handler: 30 lines (delegate to helpers)
+- Extract proactivity logic to helpers
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] Prompt injection complete
+- [ ] Parser integration complete
+- [ ] Template override logic complete
+- [ ] All error paths handled
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation changes
+- [ ] System prompt includes suggested_actions instructions
+- [ ] LLM response is parsed to extract clean answer
+- [ ] Actions come from LLM unless document/calculable override
+- [ ] Backward compatible: API response schema unchanged
+- [ ] Graceful degradation on errors
+- [ ] All regression tests pass
+- [ ] All tests pass: `pytest tests/api/test_chatbot*.py -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-180: Integrate LLM-First Proactivity in /chat/stream Endpoint</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED<br>
+Update /chat/stream endpoint to handle streamed LLM output with suggested actions parsing.
+</summary>
+
+### DEV-180: Integrate LLM-First Proactivity in /chat/stream Endpoint
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
+
+**Priority:** HIGH | **Effort:** 1.5h | **Status:** NOT STARTED
+
+**Problem:**
+The /chat/stream endpoint streams LLM tokens in real-time. We need to:
+1. Buffer the complete response for parsing
+2. Strip XML tags from streamed content
+3. Send actions as final SSE event
+
+**Solution:**
+Buffer full response during streaming, strip tags from content tokens, parse actions after stream completes, send as final SSE event before `done`.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-179 (/chat integration pattern)
+- **Unlocks:** DEV-181 (unit tests)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/api/v1/chatbot.py`
+- **Affected Files:**
+  - None (changes within same file)
+- **Related Tests:**
+  - `tests/api/test_chatbot_streaming.py` (direct)
+  - `tests/api/test_chatbot_streaming_proactivity.py` (direct - MAJOR UPDATE)
+- **Baseline Command:** `pytest tests/api/test_chatbot_streaming*.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline streaming tests pass
+- [ ] Current streaming flow documented
+- [ ] SSE event format documented
+
+**Error Handling:**
+- **Buffer overflow:** Log error, continue streaming without actions
+- **Parser failure on buffered content:** Log warning, send done without actions
+- **Connection closed during stream:** Clean up gracefully
+- **Logging:** All errors logged with session context
+
+**Performance Requirements:**
+- Streaming latency: <10ms per chunk (unchanged)
+- Final events (actions + done): <50ms total
+- Buffer memory: <1MB per request
+
+**Edge Cases:**
+- **Very long response:** Buffer management, no memory leak
+- **Client disconnect:** Clean up buffer, cancel stream
+- **Partial tags in stream:** Buffer until tag complete before stripping
+- **No actions in response:** Send done without actions event
+- **InteractiveQuestion detected:** Send question event, skip LLM stream
+
+**File:** `app/api/v1/chatbot.py`
+
+**Fields/Methods/Components:**
+- `chat_stream()` function (modify)
+  - Add response buffer
+  - Strip `<answer>` and `<suggested_actions>` tags from stream
+  - Parse buffered response after stream
+  - Send `suggested_actions` SSE event
+  - Send `interactive_question` SSE event (when applicable)
+- `_buffer_and_strip_response(chunk: str, buffer: StringIO) -> str` - Helper (new)
+- `_send_proactivity_events(buffer: str, template_actions: Optional[list]) -> Generator` - Helper (new)
+
+**SSE Event Format:**
+```
+event: content
+data: {"text": "streamed content without tags"}
+
+event: suggested_actions
+data: {"actions": [{"id": "1", "label": "...", "icon": "...", "prompt": "..."}]}
+
+event: done
+data: {}
+```
+
+**Testing Requirements:**
+- **TDD:** Write `tests/api/test_chatbot_stream_llm_first.py` FIRST
+- **Unit Tests:**
+  - `test_stream_strips_answer_tags`
+  - `test_stream_strips_actions_tags`
+  - `test_stream_sends_actions_event_after_content`
+  - `test_stream_sends_done_last`
+  - `test_stream_uses_document_template_when_present`
+  - `test_stream_sends_interactive_question_when_applicable`
+- **Edge Case Tests:**
+  - `test_stream_handles_partial_tags`
+  - `test_stream_handles_very_long_response`
+  - `test_stream_handles_client_disconnect`
+  - `test_stream_handles_no_actions`
+- **Integration Tests:** `tests/api/test_chatbot_stream_integration.py`
+- **Regression Tests:** `pytest tests/api/test_chatbot_streaming*.py -v`
+- **Coverage Target:** 90%+ for streaming code paths
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Breaking streaming format | CRITICAL | Maintain SSE event compatibility |
+| Memory leak in buffer | HIGH | StringIO cleanup, max buffer size |
+| Tag stripping breaks content | HIGH | Careful regex, test edge cases |
+| Performance regression | MEDIUM | Measure streaming latency |
+
+**Code Structure:**
+- Max route handler: 50 lines (streaming is complex)
+- Extract helpers for testability
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] Buffer management complete
+- [ ] Tag stripping complete
+- [ ] All SSE events implemented
+- [ ] Cleanup on disconnect
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation changes
+- [ ] Stream tokens unchanged (backward compatible content)
+- [ ] `<answer>` and `<suggested_actions>` tags stripped from stream
+- [ ] `suggested_actions` event sent after content stream
+- [ ] `interactive_question` event sent when applicable
+- [ ] `done` event always sent last
+- [ ] All regression tests pass
+- [ ] All tests pass: `pytest tests/api/test_chatbot_streaming*.py -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-181: Unit Tests for LLM-First Components</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+Comprehensive unit tests for new LLM-First components.
+</summary>
+
+### DEV-181: Unit Tests for LLM-First Components
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+Need comprehensive unit test coverage for all new/modified components to ensure LLM-First architecture works correctly.
+
+**Solution:**
+Create/update unit test files for all LLM-First components with TDD pattern.
+
+**Agent Assignment:** @clelia (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-174 to DEV-180 (all implementation complete)
+- **Unlocks:** DEV-182 (integration tests)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Not applicable (test code)
+
+**Performance Requirements:**
+- Full unit test suite: <30s
+- Individual test: <500ms
+
+**Edge Cases:**
+- See individual task edge cases (DEV-174 to DEV-180)
+
+**Files to Create/Update:**
+- `tests/core/test_proactivity_constants.py` (~100 lines, 15 tests)
+- `tests/core/prompts/test_suggested_actions_prompt.py` (~60 lines, 7 tests)
+- `tests/services/test_llm_response_parser.py` (~250 lines, 20 tests)
+- `tests/services/test_proactivity_engine.py` (~300 lines, 25 tests - major update)
+
+**Fields/Methods/Components:**
+- `TestProactivityConstants` class (15 tests)
+- `TestSuggestedActionsPrompt` class (7 tests)
+- `TestLLMResponseParser` class (20 tests)
+- `TestProactivityEngine` class (25 tests)
+
+**Testing Requirements:**
+- **TDD:** Already applied in DEV-174 to DEV-180
+- **Unit Tests:** 67+ total tests across 4 files
+  - Constants: 15 tests
+  - Prompt: 7 tests
+  - Parser: 20 tests
+  - Engine: 25 tests
+- **Edge Case Tests:** Included in unit test counts
+- **Integration Tests:** Covered in DEV-182
+- **Regression Tests:** Run all tests together
+- **Coverage Target:** 95%+ for new modules, 90%+ for modified
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Missing edge cases | MEDIUM | Review Section 12 requirements |
+| Flaky tests | MEDIUM | Avoid timing-dependent tests |
+| Test maintenance | LOW | Follow AAA pattern, clear naming |
+
+**Code Structure:**
+- Follow AAA pattern (Arrange, Act, Assert)
+- One assertion per test (where practical)
+- Descriptive test names
+
+**Code Completeness:**
+- [ ] All 67+ tests implemented
+- [ ] All edge cases covered
+- [ ] No TODO in test code
+- [ ] No skipped tests without reason
+
+**Acceptance Criteria:**
+- [ ] 67+ new/updated tests across all files
+- [ ] 95%+ coverage for new modules (`proactivity_constants.py`, `llm_response_parser.py`)
+- [ ] 90%+ coverage for modified modules (`proactivity_engine.py`)
+- [ ] All tests follow AAA pattern
+- [ ] All tests pass: `pytest tests/ -v`
+- [ ] Test execution time <30s
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-182: Integration Tests for LLM-First Flow</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+Integration tests verifying full LLM-First proactivity flow.
+</summary>
+
+### DEV-182: Integration Tests for LLM-First Flow
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+Need integration tests that verify the complete flow from API request through proactivity engine to response with actions.
+
+**Solution:**
+Create integration tests that mock LLM but test full component integration.
+
+**Agent Assignment:** @clelia (primary), @ezio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-181 (unit tests complete)
+- **Unlocks:** DEV-183 (E2E validation)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Not applicable (test code)
+
+**Performance Requirements:**
+- Integration test suite: <60s (mocked LLM)
+- Individual test: <2s
+
+**Edge Cases:**
+- **Full flow with document:** Request -> ProactivityEngine -> Template actions -> Response
+- **Full flow without document:** Request -> ProactivityEngine -> LLM parse -> Response
+- **Full flow with calculation:** Request -> ProactivityEngine -> InteractiveQuestion -> Response
+- **Streaming flow:** Request -> Stream -> Buffer -> Parse -> Actions event -> Done
+
+**File:** `tests/integration/test_proactivity_llm_first.py`
+
+**Fields/Methods/Components:**
+- `TestLLMFirstProactivityIntegration` class
+  - `test_chat_endpoint_returns_actions_from_llm`
+  - `test_chat_endpoint_returns_template_actions_for_document`
+  - `test_chat_endpoint_returns_interactive_question_for_calculation`
+  - `test_chat_endpoint_overrides_llm_actions_with_template`
+  - `test_chat_endpoint_graceful_degradation_on_malformed_llm`
+  - `test_stream_endpoint_sends_actions_event`
+  - `test_stream_endpoint_strips_tags_from_content`
+  - `test_stream_endpoint_sends_interactive_question`
+  - `test_full_flow_with_session_context`
+  - `test_full_flow_with_document_context`
+- Fixtures:
+  - `mock_llm_response` - Configurable mock LLM
+  - `test_document` - Sample document fixtures
+  - `test_session` - Session with context
+
+**Testing Requirements:**
+- **TDD:** Write tests FIRST (before any manual testing)
+- **Unit Tests:** Not applicable (integration tests)
+- **Integration Tests:** 10+ tests covering all major flows
+  - Non-streaming: 5 tests
+  - Streaming: 4 tests
+  - Context: 2 tests
+- **Regression Tests:** Run with full test suite
+- **Coverage Target:** 85%+ for integration paths
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Mocking complexity | MEDIUM | Use pytest-mock, clear mock setup |
+| Test flakiness | MEDIUM | Avoid async timing issues |
+| Maintenance burden | LOW | Clear test structure, shared fixtures |
+
+**Code Structure:**
+- One test class per endpoint
+- Shared fixtures at module level
+- Clear mock configuration
+
+**Code Completeness:**
+- [ ] All 10+ integration tests implemented
+- [ ] All major flows covered
+- [ ] Mocking complete and accurate
+- [ ] No manual testing steps required
+
+**Acceptance Criteria:**
+- [ ] 10+ integration tests covering all major flows
+- [ ] Mocked LLM (no real API calls)
+- [ ] Full request/response cycle tested
+- [ ] Streaming endpoint tested with SSE client
+- [ ] All tests pass: `pytest tests/integration/test_proactivity_llm_first.py -v`
+- [ ] Test execution time <60s
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-183: E2E Validation and Quality Verification</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED<br>
+End-to-end validation with real LLM calls and quality assessment.
+</summary>
+
+### DEV-183: E2E Validation and Quality Verification
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
+
+**Priority:** MEDIUM | **Effort:** 1.5h | **Status:** NOT STARTED
+
+**Problem:**
+Need to verify that real LLM calls produce quality suggested actions meeting Section 12.10 acceptance criteria.
+
+**Solution:**
+Create E2E test suite with real LLM calls (rate-limited) to verify acceptance criteria from Section 12.10.
+
+**Agent Assignment:** @clelia (tests), @egidio (quality review)
+
+**Dependencies:**
+- **Blocking:** DEV-182 (integration tests complete)
+- **Unlocks:** None (final task)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- **LLM rate limit:** Retry with exponential backoff
+- **LLM timeout:** Skip test with warning, not failure
+- **Cost monitoring:** Track tokens used per test run
+
+**Performance Requirements:**
+- E2E test suite: <5 minutes (rate-limited LLM calls)
+- Individual test: <30s (including LLM call)
+- Cost per run: <EUR 0.10
+
+**Edge Cases:**
+- **LLM downtime:** Tests skip gracefully
+- **Rate limiting:** Respect API limits
+- **Response variability:** Accept range of valid responses
+
+**Files to Create:**
+- `tests/e2e/test_proactivity_quality.py` (~100 lines)
+- `scripts/validate_proactivity_quality.py` (~150 lines)
+
+**Fields/Methods/Components:**
+- `TestProactivityQuality` class
+  - `test_interactive_question_only_for_calculable_intents`
+  - `test_suggested_actions_on_every_response`
+  - `test_llm_generates_2_to_4_actions`
+  - `test_actions_are_pertinent_to_query`
+  - `test_parsing_fails_gracefully`
+  - `test_document_templates_have_priority`
+- `validate_proactivity_quality.py` script
+  - `run_quality_checks()` - Main validation
+  - `calculate_action_relevance_score()` - LLM-as-judge
+  - `measure_cost_per_query()` - Cost tracking
+  - `generate_quality_report()` - Summary report
+
+**Testing Requirements:**
+- **TDD:** Write test structure FIRST
+- **Unit Tests:** Not applicable (E2E tests)
+- **E2E Tests:** 6+ tests with real LLM
+- **Quality Script:** Validation script for manual runs
+- **Coverage Target:** Not applicable (E2E tests)
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| LLM cost | MEDIUM | Rate limit tests, mock for CI |
+| Flaky tests | HIGH | Allow variance, test for patterns |
+| LLM behavior changes | MEDIUM | Test core behaviors, not exact outputs |
+
+**Code Structure:**
+- E2E tests separate from unit/integration
+- Validation script standalone
+
+**Code Completeness:**
+- [ ] All 6 acceptance criteria tested
+- [ ] Quality script complete
+- [ ] Cost tracking implemented
+- [ ] Report generation works
+
+**Acceptance Criteria (from Section 12.10):**
+- [ ] AC-REV.1: InteractiveQuestion ONLY for CALCULABLE_INTENTS with missing params (verified)
+- [ ] AC-REV.2: SuggestedActions appears on EVERY response (verified)
+- [ ] AC-REV.3: LLM generates 2-4 pertinent actions in 90%+ of responses (verified)
+- [ ] AC-REV.4: Parsing fails gracefully (no crashes) (verified)
+- [ ] AC-REV.5: Document templates have priority over LLM actions (verified)
+- [ ] AC-REV.6: Cost increment <= EUR 0.02/user/day (measured)
+- [ ] All tests pass: `pytest tests/e2e/test_proactivity_quality.py -v`
+- [ ] Quality report generated successfully
+
+</details>
+
+---
+
 ## Summary
 
 | Phase | Tasks | Effort | Agent |
@@ -1611,6 +2816,7 @@ className={cn(
 | Phase 3: Frontend | DEV-163 to DEV-167 | 10h | @livia, @clelia |
 | Phase 4: Testing | DEV-168 to DEV-172 | 6.5h | @clelia |
 | Phase 5: Documentation | DEV-173 | 1h | @egidio, @ezio |
-| **Total** | **24 tasks** | **~33h** | |
+| Phase 6: LLM-First Revision | DEV-174 to DEV-183 | 17h | @ezio, @clelia |
+| **Total** | **34 tasks** | **~50h** | |
 
-**Estimated Timeline:** 2-3 weeks at 2-3h/day *(with Claude Code)*
+**Estimated Timeline:** 3-4 weeks at 2-3h/day *(with Claude Code)*

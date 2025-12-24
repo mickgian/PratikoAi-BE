@@ -183,9 +183,7 @@ class TestSelectActions:
 
         assert len(actions) == 1
         assert actions[0].id == "action1"
-        engine.template_service.get_actions_for_domain.assert_called_once_with(
-            "tax", "fiscal_calculation"
-        )
+        engine.template_service.get_actions_for_domain.assert_called_once_with("tax", "fiscal_calculation")
 
     def test_select_actions_for_document(self, engine: ProactivityEngine):
         """Test selecting actions for a document type."""
@@ -200,9 +198,7 @@ class TestSelectActions:
         ]
         engine.template_service.get_actions_for_document.return_value = mock_actions
 
-        actions = engine.select_actions(
-            domain="documents", action_type="verify", document_type="fattura"
-        )
+        actions = engine.select_actions(domain="documents", action_type="verify", document_type="fattura")
 
         assert len(actions) == 1
         assert actions[0].id == "doc-action1"
@@ -249,9 +245,7 @@ class TestShouldAskQuestion:
             intent="calcolo_irpef",
             extracted=[
                 ExtractedParameter(name="reddito", value="50000", confidence=0.9, source="query"),
-                ExtractedParameter(
-                    name="tipo_contribuente", value="dipendente", confidence=0.9, source="query"
-                ),
+                ExtractedParameter(name="tipo_contribuente", value="dipendente", confidence=0.9, source="query"),
             ],
             missing_required=[],
             coverage=1.0,
@@ -304,29 +298,27 @@ class TestGenerateQuestion:
         )
 
     def test_generate_question_for_missing_params(self, engine: ProactivityEngine):
-        """Test generates question for missing required params."""
-        mock_question = InteractiveQuestion(
-            id="irpef_tipo_contribuente",
-            text="Che tipo di contribuente sei?",
-            question_type="single_choice",
-            options=[
-                InteractiveOption(id="dipendente", label="Lavoratore dipendente"),
-                InteractiveOption(id="autonomo", label="Lavoratore autonomo"),
-            ],
-        )
-        engine.template_service.get_question.return_value = mock_question
+        """Test generates multi-field question for missing required params.
 
+        Now prefers multi-field questions (Claude Code style) when available.
+        For calcolo_irpef, generates irpef_input_fields with multiple inputs.
+        """
         question = engine.generate_question(
             intent="calcolo_irpef",
             missing_params=["tipo_contribuente"],
             prefilled={"reddito": "50000"},
         )
 
+        # Multi-field question is now preferred for calcolo_irpef
         assert question is not None
-        assert question.id == "irpef_tipo_contribuente"
+        assert question.id == "irpef_input_fields"
+        assert question.question_type == "multi_field"
+        assert len(question.fields) == 3  # reddito, deduzioni, detrazioni
+        assert question.fields[0].id == "reddito"
+        assert question.fields[0].required is True
 
-    def test_generate_question_returns_none_when_no_template(self, engine: ProactivityEngine):
-        """Test returns None when no question template found."""
+    def test_generate_question_returns_fallback_for_unknown_intent(self, engine: ProactivityEngine):
+        """Test returns fallback question for unknown intents (not None)."""
         engine.template_service.get_question.return_value = None
 
         question = engine.generate_question(
@@ -335,7 +327,12 @@ class TestGenerateQuestion:
             prefilled={},
         )
 
-        assert question is None
+        # Should return fallback question with options, not None
+        assert question is not None
+        assert question.id == "topic_clarification"
+        assert question.question_type == "single_choice"
+        assert len(question.options) == 4  # 4 topic categories
+        assert question.allow_custom_input is True
 
     def test_generate_question_with_prefilled_params(self, engine: ProactivityEngine):
         """Test question includes prefilled params."""
@@ -468,9 +465,7 @@ class TestProcess:
             intent="calcolo_irpef",
             extracted=[
                 ExtractedParameter(name="reddito", value="50000", confidence=0.9, source="query"),
-                ExtractedParameter(
-                    name="tipo_contribuente", value="dipendente", confidence=0.85, source="query"
-                ),
+                ExtractedParameter(name="tipo_contribuente", value="dipendente", confidence=0.85, source="query"),
             ],
             missing_required=[],
             coverage=1.0,
@@ -616,6 +611,181 @@ class TestPerformance:
         # Should be well under 500ms with mocked deps
         assert elapsed_ms < 500
         assert result.processing_time_ms < 500
+
+
+class TestClassificationBasedIntentInference:
+    """Test classification-based intent inference (BUGFIX: DEV-153).
+
+    These tests verify that the ProactivityEngine correctly infers intent
+    from DomainActionClassifier output (domain, action_type, sub_domain).
+    """
+
+    @pytest.fixture
+    def engine(self) -> ProactivityEngine:
+        """Create engine with mocked dependencies."""
+        mock_template_service = MagicMock()
+        mock_facts_extractor = MagicMock()
+        return ProactivityEngine(
+            template_service=mock_template_service,
+            facts_extractor=mock_facts_extractor,
+        )
+
+    def test_infer_intent_tax_calculation_irpef(self, engine: ProactivityEngine):
+        """Test intent detection from TAX + CALCULATION_REQUEST + irpef."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="tax",
+            action_type="calculation_request",
+            sub_domain="irpef",
+            classification_confidence=0.92,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "calcolo_irpef"
+
+    def test_infer_intent_tax_calculation_iva(self, engine: ProactivityEngine):
+        """Test intent detection from TAX + CALCULATION_REQUEST + iva."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="tax",
+            action_type="calculation_request",
+            sub_domain="iva",
+            classification_confidence=0.95,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "calcolo_iva"
+
+    def test_infer_intent_tax_calculation_inps(self, engine: ProactivityEngine):
+        """Test intent detection from TAX + CALCULATION_REQUEST + inps."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="tax",
+            action_type="calculation_request",
+            sub_domain="inps",
+            classification_confidence=0.88,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "calcolo_contributi_inps"
+
+    def test_infer_intent_tax_calculation_tfr(self, engine: ProactivityEngine):
+        """Test intent detection from TAX + CALCULATION_REQUEST + tfr."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="tax",
+            action_type="calculation_request",
+            sub_domain="tfr",
+            classification_confidence=0.90,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "calcolo_tfr"
+
+    def test_infer_intent_tax_calculation_default(self, engine: ProactivityEngine):
+        """Test default intent for TAX + CALCULATION_REQUEST without sub_domain."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="tax",
+            action_type="calculation_request",
+            sub_domain=None,
+            classification_confidence=0.85,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "calcolo_irpef"  # Default for tax calculation
+
+    def test_infer_intent_labor_calculation_inps(self, engine: ProactivityEngine):
+        """Test intent detection from LABOR + CALCULATION_REQUEST + inps."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="labor",
+            action_type="calculation_request",
+            sub_domain="inps",
+            classification_confidence=0.91,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "calcolo_contributi_inps"
+
+    def test_infer_intent_labor_calculation_tfr(self, engine: ProactivityEngine):
+        """Test intent detection from LABOR + CALCULATION_REQUEST + tfr."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="labor",
+            action_type="calculation_request",
+            sub_domain="tfr",
+            classification_confidence=0.89,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "calcolo_tfr"
+
+    def test_infer_intent_labor_calculation_netto(self, engine: ProactivityEngine):
+        """Test intent detection from LABOR + CALCULATION_REQUEST + netto."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="labor",
+            action_type="calculation_request",
+            sub_domain="netto",
+            classification_confidence=0.93,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "calcolo_netto"
+
+    def test_infer_intent_tax_information_request(self, engine: ProactivityEngine):
+        """Test intent detection from TAX + INFORMATION_REQUEST."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="tax",
+            action_type="information_request",
+            sub_domain=None,
+            classification_confidence=0.87,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "cerca_normativa"
+
+    def test_infer_intent_tax_compliance_check(self, engine: ProactivityEngine):
+        """Test intent detection from TAX + COMPLIANCE_CHECK."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="tax",
+            action_type="compliance_check",
+            sub_domain=None,
+            classification_confidence=0.86,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "verifica_scadenza"
+
+    def test_infer_intent_fallback_for_default_domain(self, engine: ProactivityEngine):
+        """Test fallback to legacy logic when domain is 'default'."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="default",
+            action_type=None,
+            sub_domain=None,
+            classification_confidence=0.0,
+        )
+
+        intent = engine._infer_intent(context)
+        # Should return None as no legacy mapping matches
+        assert intent is None
+
+    def test_infer_intent_case_insensitive(self, engine: ProactivityEngine):
+        """Test that intent inference is case insensitive."""
+        context = ProactivityContext(
+            session_id="test-session",
+            domain="TAX",
+            action_type="CALCULATION_REQUEST",
+            sub_domain="IRPEF",
+            classification_confidence=0.90,
+        )
+
+        intent = engine._infer_intent(context)
+        assert intent == "calcolo_irpef"
 
 
 class TestEdgeCases:

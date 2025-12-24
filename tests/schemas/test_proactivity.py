@@ -292,46 +292,66 @@ class TestInteractiveQuestion:
         assert question.custom_input_placeholder == "Descrivi la situazione..."
         assert question.prefilled_params == {"anno_fiscale": 2025}
 
-    def test_interactive_question_options_required(self):
-        """Test at least 2 options are required."""
+    def test_multifield_question_allows_empty_options(self):
+        """Test multi_field questions can have empty options.
+
+        Multi-field questions use 'fields' instead of 'options'.
+        Empty options list is valid for multi_field type.
+        """
+        from app.schemas.proactivity import InputField, InteractiveQuestion
+
+        # multi_field question with no options but with fields
+        fields = [
+            InputField(id="reddito", label="Reddito lordo"),
+            InputField(id="detrazioni", label="Detrazioni"),
+        ]
+
+        question = InteractiveQuestion(
+            id="irpef_calc",
+            text="Inserisci i dati per il calcolo IRPEF",
+            question_type="multi_field",
+            options=[],  # Empty is valid for multi_field
+            fields=fields,
+        )
+
+        assert question.question_type == "multi_field"
+        assert len(question.options) == 0
+        assert len(question.fields) == 2
+
+    def test_choice_question_with_single_option_allowed(self):
+        """Test single option is now allowed (schema relaxed for flexibility).
+
+        While 2+ options are recommended for choice types, the schema
+        allows single options for edge cases (e.g., confirmation questions).
+        """
         from app.schemas.proactivity import InteractiveOption, InteractiveQuestion
 
-        # Only 1 option - should fail
-        single_option = [InteractiveOption(id="opt1", label="Option 1")]
+        # Single option now allowed (schema relaxed)
+        question = InteractiveQuestion(
+            id="confirm",
+            text="Confermi l'operazione?",
+            question_type="single_choice",
+            options=[InteractiveOption(id="confirm", label="Conferma")],
+        )
 
-        with pytest.raises(ValidationError) as exc_info:
-            InteractiveQuestion(
-                id="test",
-                text="Test question",
-                question_type="single_choice",
-                options=single_option,
-            )
+        assert len(question.options) == 1
 
-        assert "options" in str(exc_info.value).lower()
+    def test_choice_question_empty_options_uses_default(self):
+        """Test empty options list uses default (empty list).
 
-    def test_question_single_option_rejected(self):
-        """Test single option is rejected (edge case)."""
-        from app.schemas.proactivity import InteractiveOption, InteractiveQuestion
-
-        with pytest.raises(ValidationError):
-            InteractiveQuestion(
-                id="test",
-                text="Test question",
-                question_type="single_choice",
-                options=[InteractiveOption(id="only_one", label="Only One")],
-            )
-
-    def test_interactive_question_empty_options_rejected(self):
-        """Test empty options list is rejected."""
+        Schema defaults to empty list if options not provided.
+        For choice types, this means no options available.
+        """
         from app.schemas.proactivity import InteractiveQuestion
 
-        with pytest.raises(ValidationError):
-            InteractiveQuestion(
-                id="test",
-                text="Test question",
-                question_type="single_choice",
-                options=[],  # Empty not allowed
-            )
+        question = InteractiveQuestion(
+            id="test",
+            text="Test question",
+            question_type="single_choice",
+            # options not provided, defaults to []
+        )
+
+        assert question.options == []
 
     def test_interactive_question_empty_id_rejected(self):
         """Test empty id is rejected."""

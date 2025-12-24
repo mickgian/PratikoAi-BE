@@ -1301,6 +1301,401 @@ regime_fiscale:
 
 ---
 
+## 12. Revisione SuggestedActions e InteractiveQuestion
+
+### 12.1 Problema Identificato Post-Implementazione
+
+L'architettura originale basata su template si è rivelata impraticabile in produzione:
+
+| Problema | Impatto |
+|----------|---------|
+| Template matching fragile | Query non riconosciute → nessuna azione suggerita |
+| Manutenzione infinita | Impossibile pre-definire tutte le domande possibili |
+| Confusione quando usare cosa | SuggestedActions vs InteractiveQuestion non chiaro |
+| Conflitto con FAQ/Knowledge Base | Sistema cerca di matchare template invece di usare conoscenza |
+
+**Root Cause:** L'architettura assume Query → Match Template → Actions, ma questo richiede anticipare tutte le possibili domande.
+
+### 12.2 Nuova Architettura: LLM-First
+
+La soluzione è far generare le azioni suggerite direttamente dall'LLM come parte della risposta:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      NUOVO FLUSSO                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  User Query                                                     │
+│       ↓                                                         │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ STEP 1: È UN CALCOLO NOTO?                              │   │
+│  │                                                         │   │
+│  │ Intent in [IRPEF, IVA, Contributi, Ravvedimento, F24]? │   │
+│  │                                                         │   │
+│  │ → SÌ + Parametri mancanti: InteractiveQuestion         │   │
+│  │ → SÌ + Parametri completi: Vai a Step 3                │   │
+│  │ → NO: Vai a Step 2                                      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│       ↓                                                         │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ STEP 2: C'È UN DOCUMENTO?                               │   │
+│  │                                                         │   │
+│  │ Documento riconosciuto (Fattura, F24, Bilancio, CU)?   │   │
+│  │                                                         │   │
+│  │ → SÌ: Usa template azioni per quel documento           │   │
+│  │ → NO: LLM genererà azioni                               │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│       ↓                                                         │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ STEP 3: LLM GENERA RISPOSTA + AZIONI                    │   │
+│  │                                                         │   │
+│  │ Prompt speciale che chiede:                             │   │
+│  │ - Risposta alla domanda                                 │   │
+│  │ - 2-4 azioni suggerite contestuali                      │   │
+│  │                                                         │   │
+│  │ Output strutturato: { answer, citations, actions }      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│       ↓                                                         │
+│  Response con SuggestedActions (da template O da LLM)           │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 12.3 Regola Chiave: Quando Usare Cosa
+
+| Situazione | Componente | Fonte Dati |
+|------------|------------|------------|
+| Calcolo senza parametri essenziali | InteractiveQuestion | Template (lista finita) |
+| Documento caricato e riconosciuto | SuggestedActions | Template per tipo doc |
+| Qualsiasi altra risposta | SuggestedActions | LLM genera dinamicamente |
+
+### 12.4 InteractiveQuestion: Solo Per Calcoli Noti
+
+Le InteractiveQuestion sono riservate esclusivamente a casi dove:
+
+1. L'utente chiede un calcolo specifico
+2. Mancano parametri numerici essenziali senza i quali il calcolo è impossibile
+
+Lista esaustiva degli intent che usano InteractiveQuestion:
+
+```python
+CALCULABLE_INTENTS = {
+    "calcolo_irpef": {
+        "required": ["tipo_contribuente", "reddito"],
+        "question_flow": "irpef_flow"
+    },
+    "calcolo_iva": {
+        "required": ["importo"],
+        "question_flow": "iva_flow"
+    },
+    "calcolo_contributi_inps": {
+        "required": ["tipo_gestione", "reddito"],
+        "question_flow": "contributi_flow"
+    },
+    "ravvedimento_operoso": {
+        "required": ["importo_originale", "data_scadenza"],
+        "question_flow": "ravvedimento_flow"
+    },
+    "calcolo_f24": {
+        "required": ["codice_tributo", "importo"],
+        "question_flow": "f24_flow"
+    }
+}
+
+# REGOLA:
+# SE intent IN CALCULABLE_INTENTS AND parametri_mancanti:
+#     return InteractiveQuestion
+# ALTRIMENTI:
+#     return Risposta + SuggestedActions (da LLM)
+```
+
+Tutto il resto (domande normative, informazioni, procedure, consulenze) NON usa InteractiveQuestion.
+
+### 12.5 SuggestedActions: LLM-Generated
+
+Per tutte le risposte che non sono calcoli con parametri mancanti, l'LLM genera le azioni suggerite.
+
+#### 12.5.1 System Prompt Aggiornato
+
+```python
+SYSTEM_PROMPT_WITH_PROACTIVE_ACTIONS = """
+Sei PratikoAI, assistente AI per professionisti italiani: commercialisti,
+consulenti del lavoro e avvocati tributaristi.
+
+Rispondi alla domanda dell'utente in modo preciso, professionale e con
+riferimenti normativi quando appropriato.
+
+## IMPORTANTE: Azioni Suggerite
+
+Dopo OGNI risposta, devi suggerire 2-4 azioni che il professionista potrebbe
+voler fare come passo successivo. Le azioni devono essere:
+
+1. **Pertinenti** - Direttamente collegate alla domanda appena risposta
+2. **Professionali** - Utili nel contesto dello studio professionale
+3. **Azionabili** - Eseguibili con un click (non vaghe)
+4. **Diverse** - Non ripetere concetti simili
+
+## Formato Output
+
+Rispondi SEMPRE con questo formato:
+
+<answer>
+[La tua risposta completa qui, con citazioni se necessarie]
+</answer>
+
+<suggested_actions>
+[
+  {"id": "1", "label": "Etichetta breve (max 3 parole)", "icon": "💰", "prompt": "Il prompt completo che verrà eseguito se l'utente clicca"},
+  {"id": "2", "label": "Altra azione", "icon": "📋", "prompt": "Altro prompt completo"},
+  {"id": "3", "label": "Terza azione", "icon": "🔍", "prompt": "Terzo prompt"}
+]
+</suggested_actions>
+
+## Esempi di Azioni per Tipo di Risposta
+
+**Dopo risposta su calcolo fiscale:**
+- "Ricalcola importo" → Ricalcola con parametri diversi
+- "Aggiungi INPS" → Calcola anche i contributi previdenziali
+- "Confronta regimi" → Confronta con regime forfettario/ordinario
+- "Calcola acconti" → Calcola gli acconti per l'anno successivo
+
+**Dopo risposta su normativa/circolare:**
+- "Approfondisci" → Spiega in maggior dettaglio questa normativa
+- "Esempi pratici" → Mostra esempi pratici di applicazione
+- "Circolari correlate" → Trova altre circolari sullo stesso tema
+- "Impatto clienti" → Come impatta questa novità sui clienti tipo
+
+**Dopo risposta su procedura:**
+- "Checklist completa" → Genera una checklist dettagliata
+- "Modelli necessari" → Elenca i modelli da compilare
+- "Timeline" → Mostra la sequenza temporale degli adempimenti
+- "Costi e tributi" → Elenca i costi e i tributi previsti
+
+**Dopo analisi documento:**
+- "Verifica altro" → Verifica un altro aspetto del documento
+- "Genera registrazione" → Genera la scrittura contabile
+- "Calcola imposte" → Calcola le imposte relative
+- "Trova errori" → Cerca possibili errori o anomalie
+
+## Icone Consigliate
+- 💰 Calcoli, importi, costi
+- 📋 Documenti, liste, procedure
+- 🔍 Ricerca, verifica, approfondimento
+- 📊 Analisi, confronti, statistiche
+- 📅 Scadenze, timeline, date
+- ⚠️ Avvertenze, sanzioni, rischi
+- ✅ Verifiche, controlli
+- 📝 Generazione testi, modelli
+- 🔄 Ricalcoli, aggiornamenti
+- 📖 Normativa, leggi, circolari
+"""
+```
+
+#### 12.5.2 Parsing della Risposta
+
+```python
+import re
+import json
+from typing import List, Optional
+from pydantic import BaseModel
+
+class SuggestedAction(BaseModel):
+    id: str
+    label: str
+    icon: str
+    prompt: str
+
+class ParsedResponse(BaseModel):
+    answer: str
+    suggested_actions: List[SuggestedAction]
+
+def parse_llm_response(raw_response: str) -> ParsedResponse:
+    """Parse LLM response with answer and suggested actions."""
+
+    # Extract answer
+    answer_match = re.search(r'<answer>(.*?)</answer>', raw_response, re.DOTALL)
+    answer = answer_match.group(1).strip() if answer_match else raw_response
+
+    # Extract actions
+    actions_match = re.search(r'<suggested_actions>\s*(\[.*?\])\s*</suggested_actions>',
+                              raw_response, re.DOTALL)
+
+    suggested_actions = []
+    if actions_match:
+        try:
+            actions_json = json.loads(actions_match.group(1))
+            suggested_actions = [SuggestedAction(**a) for a in actions_json[:4]]
+        except (json.JSONDecodeError, ValueError):
+            # Fallback: no actions if parsing fails
+            pass
+
+    return ParsedResponse(answer=answer, suggested_actions=suggested_actions)
+```
+
+### 12.6 Template Actions: Solo Per Documenti
+
+I template di azioni rimangono solo per i documenti riconosciuti, perché sono scenari prevedibili:
+
+```python
+DOCUMENT_ACTION_TEMPLATES = {
+    "fattura_elettronica": [
+        {"id": "verify", "label": "Verifica formale", "icon": "✅",
+         "prompt": "Verifica la correttezza formale di questa fattura elettronica"},
+        {"id": "vat", "label": "Calcola IVA", "icon": "💰",
+         "prompt": "Calcola l'IVA di questa fattura"},
+        {"id": "entry", "label": "Registrazione", "icon": "📒",
+         "prompt": "Genera la scrittura contabile per questa fattura"},
+        {"id": "recipient", "label": "Verifica P.IVA", "icon": "🔍",
+         "prompt": "Verifica la Partita IVA del destinatario"}
+    ],
+    "f24": [
+        {"id": "codes", "label": "Verifica codici", "icon": "🔍",
+         "prompt": "Verifica la correttezza dei codici tributo"},
+        {"id": "deadline", "label": "Scadenza", "icon": "📅",
+         "prompt": "Verifica la scadenza di pagamento"},
+        {"id": "ravvedimento", "label": "Ravvedimento", "icon": "⚠️",
+         "prompt": "Calcola ravvedimento operoso se in ritardo"}
+    ],
+    "bilancio": [
+        {"id": "ratios", "label": "Indici", "icon": "📊",
+         "prompt": "Calcola i principali indici di bilancio"},
+        {"id": "compare", "label": "Confronta", "icon": "📈",
+         "prompt": "Confronta con l'esercizio precedente"},
+        {"id": "summary", "label": "Riepilogo", "icon": "📋",
+         "prompt": "Estrai i dati principali in formato tabellare"}
+    ],
+    "cu": [
+        {"id": "verify", "label": "Verifica", "icon": "✅",
+         "prompt": "Verifica la coerenza dei dati della CU"},
+        {"id": "irpef", "label": "Simula IRPEF", "icon": "💰",
+         "prompt": "Simula la dichiarazione redditi da questa CU"},
+        {"id": "summary", "label": "Riepilogo", "icon": "📋",
+         "prompt": "Estrai riepilogo compensi e ritenute"}
+    ]
+}
+```
+
+### 12.7 Logica Decisionale Completa
+
+```python
+async def process_query_with_proactivity(
+    query: str,
+    document: Optional[Document] = None,
+    session_context: Optional[dict] = None
+) -> ChatResponse:
+    """
+    Main entry point for query processing with proactive suggestions.
+    """
+
+    # ─────────────────────────────────────────────────────────────
+    # STEP 1: Check if it's a known calculation with missing params
+    # ─────────────────────────────────────────────────────────────
+    intent = classify_intent(query)
+
+    if intent in CALCULABLE_INTENTS:
+        extracted_params = extract_parameters(query, intent)
+        required = CALCULABLE_INTENTS[intent]["required"]
+        missing = [p for p in required if p not in extracted_params]
+
+        if missing:
+            # Return InteractiveQuestion for missing parameters
+            return ChatResponse(
+                type="interactive_question",
+                interactive_question=build_question_for_missing(
+                    intent=intent,
+                    missing_params=missing,
+                    extracted_params=extracted_params
+                )
+            )
+
+    # ─────────────────────────────────────────────────────────────
+    # STEP 2: Check if there's a recognized document
+    # ─────────────────────────────────────────────────────────────
+    template_actions = None
+    doc_context = None
+
+    if document:
+        doc_type = classify_document(document)
+        doc_context = extract_document_context(document)
+
+        if doc_type in DOCUMENT_ACTION_TEMPLATES:
+            template_actions = DOCUMENT_ACTION_TEMPLATES[doc_type]
+
+    # ─────────────────────────────────────────────────────────────
+    # STEP 3: Call LLM with proactive actions prompt
+    # ─────────────────────────────────────────────────────────────
+    llm_response = await call_llm(
+        query=query,
+        system_prompt=SYSTEM_PROMPT_WITH_PROACTIVE_ACTIONS,
+        doc_context=doc_context,
+        session_context=session_context
+    )
+
+    # Parse response
+    parsed = parse_llm_response(llm_response)
+
+    # ─────────────────────────────────────────────────────────────
+    # STEP 4: Determine final actions (template priority if available)
+    # ─────────────────────────────────────────────────────────────
+    final_actions = template_actions if template_actions else parsed.suggested_actions
+
+    return ChatResponse(
+        type="response",
+        answer=parsed.answer,
+        citations=extract_citations(parsed.answer),
+        suggested_actions=final_actions[:4]  # Max 4 actions
+    )
+```
+
+### 12.8 Costo Incrementale
+
+| Componente | Token Aggiuntivi | Costo Extra |
+|------------|------------------|-------------|
+| System prompt esteso | ~400 tokens (one-time) | ~€0.0004 |
+| Actions in output | ~80-120 tokens | ~€0.0001 |
+| **Totale per query** | ~100 tokens netti | ~€0.0001 |
+
+**Impatto su costo giornaliero:** Da €1.45 a ~€1.47 per utente → trascurabile
+
+### 12.9 Vantaggi della Nuova Architettura
+
+| Aspetto | Prima (Template-Heavy) | Dopo (LLM-First) |
+|---------|------------------------|------------------|
+| Copertura | Solo query pre-mappate | Tutte le query |
+| Manutenzione | Aggiungere template continuamente | Zero manutenzione |
+| Qualità azioni | Fisse, spesso non pertinenti | Contestuali, intelligenti |
+| Complessità codice | Alta (matching, routing) | Bassa (parsing output) |
+| Template da mantenere | ~50+ scenari | ~6 (solo documenti + calcoli) |
+
+### 12.10 Criteri di Accettazione Rivisti
+
+- [ ] AC-REV.1: InteractiveQuestion appare SOLO per calcoli in CALCULABLE_INTENTS con parametri mancanti
+- [ ] AC-REV.2: SuggestedActions appare su OGNI risposta (da template documento O da LLM)
+- [ ] AC-REV.3: LLM genera 2-4 azioni pertinenti nel 90%+ delle risposte
+- [ ] AC-REV.4: Parsing actions fallisce gracefully (nessuna azione se errore)
+- [ ] AC-REV.5: Template documenti hanno priorità su azioni LLM quando documento presente
+- [ ] AC-REV.6: Costo incrementale ≤€0.02/utente/giorno
+
+### 12.11 Piano di Migrazione
+
+**Fase 1: Backend (1-2 giorni)**
+1. Aggiornare system prompt con formato azioni
+2. Implementare parse_llm_response()
+3. Semplificare logica decisionale
+4. Rimuovere template matching complesso
+
+**Fase 2: Cleanup (1 giorno)**
+1. Rimuovere template non necessari
+2. Mantenere solo CALCULABLE_INTENTS e DOCUMENT_ACTION_TEMPLATES
+3. Aggiornare tests
+
+**Fase 3: Validazione (1 giorno)**
+1. Test end-to-end con query reali
+2. Verificare qualità azioni generate
+3. Monitorare costi
+
+---
+
 **Fine Documento**
 
 *Versione: 1.5-MVP*

@@ -1613,6 +1613,14 @@ className={cn(
 - Phase 6B: Cleanup & Integration (DEV-178 to DEV-180) - 1 day
 - Phase 6C: Testing & Validation (DEV-181 to DEV-183) - 1 day
 
+**Golden Set & KB Compatibility (CRITICAL):**
+Phase 6 changes MUST NOT disrupt the existing document retrieval and injection flow:
+- Golden Set fast-path (confidence >= 0.85) remains unchanged
+- KB hybrid search (BM25 + Vector + Recency) remains unchanged
+- Document context injection happens BEFORE LLM call (unchanged)
+- Response parsing happens AFTER LLM call (new, but non-disruptive)
+- All Phase 6 tasks must include regression tests for document flow
+
 **Obsolete Code from Phase 1-5 to Remove (~4,100 lines):**
 
 | File | Lines to Remove | % of File | What Becomes Obsolete |
@@ -1632,13 +1640,16 @@ DEV-174 (CALCULABLE_INTENTS Constants)
     └── DEV-175 (System Prompt Update)
             └── DEV-176 (parse_llm_response)
                     └── DEV-177 (Simplified ProactivityEngine)
-                            ├── DEV-178 (Template Cleanup)
-                            └── DEV-179 (/chat Integration)
-                                    └── DEV-180 (/chat/stream Integration)
-                                            └── DEV-181 (Unit Tests)
-                                                    └── DEV-182 (Integration Tests)
-                                                            └── DEV-183 (E2E Validation)
+                            └── DEV-178 (Template Cleanup) ← MUST complete before DEV-179
+                                    └── DEV-179 (/chat Integration)
+                                            └── DEV-180 (/chat/stream Integration)
+                                                    └── DEV-181 (Unit Tests)
+                                                            └── DEV-182 (Integration Tests)
+                                                                    └── DEV-183 (E2E Validation)
 ```
+
+**CRITICAL: DEV-178 → DEV-179 Dependency**
+`chatbot.py` imports `ActionTemplateService` at line 64. DEV-178 must archive this service BEFORE DEV-179 can integrate the new proactivity flow.
 
 ---
 
@@ -1788,6 +1799,8 @@ Create a new prompt file `suggested_actions.md` with the proactive actions instr
 - **JSON in prompt:** Escape examples properly in markdown
 - **Encoding:** Ensure UTF-8 encoding for emoji
 - **Loader failure:** `load_suggested_actions_prompt()` raises clear error if file missing
+- **Token budget:** Prompt must not exceed ~400 tokens to preserve KB context allocation
+- **Prompt order:** Suggested actions instructions APPENDED to system prompt (after document context)
 
 **File:** `app/core/prompts/suggested_actions.md`
 
@@ -1843,6 +1856,8 @@ Create a new prompt file `suggested_actions.md` with the proactive actions instr
 - [ ] Prompt includes all icon suggestions from Section 12.5.1
 - [ ] Prompt includes output format with `<answer>` and `<suggested_actions>` tags
 - [ ] No breaking changes to existing `SYSTEM_PROMPT`
+- [ ] Prompt token count <= 400 tokens (verified with tiktoken)
+- [ ] Prompt is APPENDED to system prompt, not prepended (document context takes priority)
 - [ ] All tests pass: `pytest tests/core/prompts/ -v`
 
 </details>
@@ -1897,6 +1912,8 @@ Implement `parse_llm_response()` function as specified in Section 12.5.2. The fu
 - **Action limit:** Always truncate to max 4 actions
 - **Extra fields:** Ignore unknown fields in action objects
 - **Missing fields:** Skip actions missing required fields (id, label, icon, prompt)
+- **Citation markers:** Preserve `[1]`, `[source:xyz]` format in answer text
+- **Tag parsing order:** Parse suggested_actions BEFORE citation processing in downstream code
 
 **File:** `app/services/llm_response_parser.py`
 
@@ -1963,6 +1980,7 @@ Implement `parse_llm_response()` function as specified in Section 12.5.2. The fu
 - [ ] Graceful fallback: always returns ParsedLLMResponse (never raises)
 - [ ] Actions truncated to max 4
 - [ ] Invalid actions skipped, valid ones included
+- [ ] Citations in answer text preserved after tag extraction (`[1]`, `[2]` markers)
 - [ ] 95%+ test coverage for parser module
 - [ ] All tests pass: `pytest tests/services/test_llm_response_parser.py -v`
 
@@ -2276,8 +2294,22 @@ Modify /chat endpoint to inject suggested_actions prompt, use parse_llm_response
 **Agent Assignment:** @ezio (primary), @clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-176 (parser), DEV-177 (engine)
+- **Blocking:** DEV-176 (parser), DEV-177 (engine), DEV-178 (template cleanup)
 - **Unlocks:** DEV-180 (streaming endpoint)
+
+**Golden Set & KB Integration (CRITICAL):**
+This task MUST preserve the existing document flow:
+1. Query → Golden/KB lookup → Context injection → LLM call → Parse response
+2. Suggested actions prompt added to system prompt BEFORE LLM call
+3. Response parsing happens AFTER document context already processed
+4. InteractiveQuestion early-return does NOT skip document context
+5. Token budget allocation respects KB documents priority
+
+**Pre-Implementation Verification (Golden Set/KB):**
+- [ ] Verify golden fast-path flow (Step 24) is unchanged
+- [ ] Verify KB freshness validation (Step 26) is unchanged
+- [ ] Document context injection timing documented
+- [ ] Review `app/services/context_builder_merge.py` for token budget
 
 **Change Classification:** MODIFYING
 
@@ -2371,6 +2403,10 @@ Modify /chat endpoint to inject suggested_actions prompt, use parse_llm_response
 - [ ] Actions come from LLM unless document/calculable override
 - [ ] Backward compatible: API response schema unchanged
 - [ ] Graceful degradation on errors
+- [ ] Golden fast-path flow unchanged (Step 24)
+- [ ] KB freshness validation unchanged (Step 26)
+- [ ] Document context injection timing preserved
+- [ ] Token budget respects KB document priority
 - [ ] All regression tests pass
 - [ ] All tests pass: `pytest tests/api/test_chatbot*.py -v`
 
@@ -2439,6 +2475,10 @@ Buffer full response during streaming, strip tags from content tokens, parse act
 - **Partial tags in stream:** Buffer until tag complete before stripping
 - **No actions in response:** Send done without actions event
 - **InteractiveQuestion detected:** Send question event, skip LLM stream
+- **Partial `<answer>` tag:** Buffer until `>` received before stripping
+- **Partial `</answer>` tag:** Buffer until complete to avoid content corruption
+- **Tag spans multiple chunks:** Maintain state across chunk boundaries
+- **Document citations in stream:** Preserve `[1]`, `[2]` markers
 
 **File:** `app/api/v1/chatbot.py`
 
@@ -2509,6 +2549,10 @@ data: {}
 - [ ] `suggested_actions` event sent after content stream
 - [ ] `interactive_question` event sent when applicable
 - [ ] `done` event always sent last
+- [ ] Content between tags streamed without delay
+- [ ] Tag characters never appear in streamed content
+- [ ] Buffering does not cause visible latency
+- [ ] Citations preserved in streamed content (`[1]`, `[2]` markers)
 - [ ] All regression tests pass
 - [ ] All tests pass: `pytest tests/api/test_chatbot_streaming*.py -v`
 
@@ -2662,10 +2706,18 @@ Create integration tests that mock LLM but test full component integration.
   - `test_stream_endpoint_sends_interactive_question`
   - `test_full_flow_with_session_context`
   - `test_full_flow_with_document_context`
+- `TestGoldenSetKBRegression` class (CRITICAL - Regression tests)
+  - `test_golden_set_fast_path_still_works_with_proactivity`
+  - `test_kb_documents_injected_before_llm_call`
+  - `test_document_citations_preserved_in_response`
+  - `test_user_attachment_context_not_affected`
+  - `test_token_budget_respects_kb_priority`
 - Fixtures:
   - `mock_llm_response` - Configurable mock LLM
   - `test_document` - Sample document fixtures
   - `test_session` - Session with context
+  - `golden_set_entry` - Sample golden set FAQ entry
+  - `kb_document` - Sample KB document for injection
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST (before any manual testing)
@@ -2697,10 +2749,14 @@ Create integration tests that mock LLM but test full component integration.
 - [ ] No manual testing steps required
 
 **Acceptance Criteria:**
-- [ ] 10+ integration tests covering all major flows
+- [ ] 15+ integration tests covering all major flows
 - [ ] Mocked LLM (no real API calls)
 - [ ] Full request/response cycle tested
 - [ ] Streaming endpoint tested with SSE client
+- [ ] All 5 golden set/KB regression tests pass
+- [ ] Document context flow verified unchanged
+- [ ] Golden fast-path still triggers on eligible queries
+- [ ] KB documents still injected before LLM call
 - [ ] All tests pass: `pytest tests/integration/test_proactivity_llm_first.py -v`
 - [ ] Test execution time <60s
 

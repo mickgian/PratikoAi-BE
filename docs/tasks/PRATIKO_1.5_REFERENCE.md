@@ -1696,6 +1696,808 @@ async def process_query_with_proactivity(
 
 ---
 
+## 13. Evoluzione verso Agentic RAG
+
+### 13.1 Obiettivo Strategico
+
+Trasformare PratikoAI da sistema RAG tradizionale a **assistente fiscale "prudente"** capace di:
+
+- **Navigare fonti contrastanti** - Gestire conflitti tra Leggi, Circolari e Risoluzioni
+- **Fornire indicazioni operative sicure** - Approccio conservativo che minimizza rischi fiscali
+- **Superare i limiti del routing regex** - Analisi semantica intelligente delle query
+
+### 13.2 Problemi dell'Architettura Attuale
+
+#### 13.2.1 Routing Basato su Regex (`retrieval_gate.py`)
+
+| Problema | Esempio | Impatto |
+|----------|---------|---------|
+| Pattern matching statico | "Qual è l'iter per aprire P.IVA forfettaria?" non matcha | Falso negativo |
+| Nessun reasoning semantico | "Come funziona la detrazione figli a carico?" ignorata | KB non consultata |
+| Default conservativo sbagliato | `needs_retrieval=False` se nessun pattern | Risposte incomplete |
+| 17 hint time-sensitive fissi | Non copre varianti linguistiche | Copertura limitata |
+
+#### 13.2.2 Mancanza di Sintesi Critica
+
+| Problema | Impatto |
+|----------|---------|
+| Nessuna gerarchia fonti | Circolare trattata come Legge |
+| Conflitti temporali ignorati | Norma 2023 citata invece di aggiornamento 2025 |
+| Nessun verdetto operativo | Professionista non sa cosa fare concretamente |
+
+### 13.3 Nuova Architettura: Agentic RAG Pipeline
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         AGENTIC RAG PIPELINE                              │
+│                          (Budget latenza: 3-5 sec)                        │
+└──────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  STEP 34a: LLM-BASED ROUTER (Chain-of-Thought)                           │
+│                                                                          │
+│  Input: user_query, conversation_history                                 │
+│  Model: GPT-4o-mini (~200ms, $0.00015/query)                            │
+│                                                                          │
+│  Categorie di Routing:                                                   │
+│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐               │
+│  │   CHITCHAT     │ │  THEORETICAL   │ │   TECHNICAL    │               │
+│  │                │ │  DEFINITION    │ │   RESEARCH     │               │
+│  │ Saluti, small  │ │ Definizioni    │ │ Casi pratici,  │               │
+│  │ talk → Direct  │ │ generali →     │ │ scadenze →     │               │
+│  │ response       │ │ LLM knowledge  │ │ Full RAG       │               │
+│  └────────────────┘ └────────────────┘ └────────────────┘               │
+│                                                                          │
+│  Output: RouterDecision {route, confidence, entities, reasoning}         │
+└──────────────────────────────────────────────────────────────────────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    ▼               ▼               ▼
+            ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐
+            │  CHITCHAT   │ │ THEORETICAL │ │ TECHNICAL       │
+            │  Direct     │ │ LLM Only    │ │ RESEARCH        │
+            │  Response   │ │ Response    │ │ (RAG Pipeline)  │
+            └─────────────┘ └─────────────┘ └────────┬────────┘
+                                                     │
+                                                     ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  STEP 39a: MULTI-QUERY GENERATION                                        │
+│                                                                          │
+│  Model: GPT-4o-mini (~150ms)                                            │
+│                                                                          │
+│  Genera 3 varianti ottimizzate:                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │ Q1 (BM25-optimized): Keywords + document types                  │    │
+│  │    "risoluzione circolare forfettario 2025 aliquota"            │    │
+│  ├─────────────────────────────────────────────────────────────────┤    │
+│  │ Q2 (Vector-optimized): Natural language semantic                │    │
+│  │    "requisiti e limiti del regime forfettario anno 2025"        │    │
+│  ├─────────────────────────────────────────────────────────────────┤    │
+│  │ Q3 (Entity-focused): Specific references                        │    │
+│  │    "regime forfettario art. 1 comma 54-89 legge 190/2014"       │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  STEP 39b: HyDE (Hypothetical Document Embeddings)                       │
+│                                                                          │
+│  Model: GPT-4o-mini (~200ms)                                            │
+│                                                                          │
+│  Genera paragrafo ipotetico in stile burocratico:                       │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │ "Il regime forfettario, disciplinato dalla Legge 190/2014,      │    │
+│  │  prevede per il 2025 un'aliquota sostitutiva del 15% (ridotta   │    │
+│  │  al 5% per i primi 5 anni). Il limite di ricavi è fissato a     │    │
+│  │  €85.000 annui. Le modifiche introdotte dalla Legge di          │    │
+│  │  Bilancio 2025 includono..."                                    │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                                                                          │
+│  → Embedding del documento ipotetico per vector search                   │
+└──────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  STEP 39c: PARALLEL HYBRID RETRIEVAL                                     │
+│                                                                          │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐          │
+│  │   BM25 Search   │  │  Vector Search  │  │  Vector Search  │          │
+│  │   (3 queries)   │  │   (3 queries)   │  │   (HyDE embed)  │          │
+│  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘          │
+│           │                    │                    │                    │
+│           └────────────────────┼────────────────────┘                    │
+│                                ▼                                         │
+│                    ┌───────────────────────┐                            │
+│                    │   RRF Fusion          │                            │
+│                    │   + Recency Boost     │                            │
+│                    │   + Source Authority  │                            │
+│                    └───────────────────────┘                            │
+│                                │                                         │
+│                                ▼                                         │
+│                    Documenti ranked con metadati                        │
+│                    (data, ente, tipo, gerarchia)                        │
+└──────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  STEP 64: SINTESI CRITICA + VERDETTO OPERATIVO                          │
+│                                                                          │
+│  Model: GPT-4o / Claude 3.5 Sonnet (Premium)                            │
+│                                                                          │
+│  Analisi:                                                                │
+│  1. Ordina documenti per data                                           │
+│  2. Identifica conflitti (Circolare vs Legge precedente)                │
+│  3. Applica gerarchia: Legge > Decreto > Circolare > Risoluzione        │
+│  4. Genera Verdetto Operativo strutturato                               │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.4 FR-004: LLM-Based Router con Chain-of-Thought
+
+#### 13.4.1 Descrizione
+
+Sostituisce `retrieval_gate.py` (routing regex) con un router LLM che esegue analisi semantica Chain-of-Thought per decidere il percorso ottimale.
+
+#### 13.4.2 Categorie di Routing
+
+| Categoria | Descrizione | Esempio Query | Azione |
+|-----------|-------------|---------------|--------|
+| CHITCHAT | Saluti, small talk | "Ciao, come stai?" | Risposta diretta |
+| THEORETICAL_DEFINITION | Definizioni concettuali | "Cos'è l'IVA?" | LLM knowledge only |
+| TECHNICAL_RESEARCH | Casi pratici, scadenze, normativa | "Aliquota forfettario 2025?" | Full RAG pipeline |
+| CALCULATOR | Richieste di calcolo | "Calcola IRPEF su €50.000" | Calculator tools |
+| GOLDEN_SET | FAQ validate | Query frequenti | Golden set lookup |
+
+#### 13.4.3 Trigger Signals per TECHNICAL_RESEARCH
+
+Il router deve attivare la pipeline RAG quando rileva:
+
+- **Termini tecnici**: IVA, ISA, F24, IRPEF, contributi, forfettario, CCNL
+- **Riferimenti temporali**: "nel 2025", "attuale", "ultimo aggiornamento"
+- **Verbi d'azione**: "come calcolo", "posso detrarre", "devo versare"
+- **Riferimenti normativi**: articoli, commi, leggi, circolari, risoluzioni
+- **Entità istituzionali**: Agenzia Entrate, INPS, INAIL, MEF
+
+#### 13.4.4 Router Decision Model
+
+```python
+class RouteType(str, Enum):
+    CHITCHAT = "chitchat"
+    THEORETICAL_DEFINITION = "theoretical_definition"
+    TECHNICAL_RESEARCH = "technical_research"
+    CALCULATOR = "calculator"
+    GOLDEN_SET = "golden_set"
+
+@dataclass
+class RouterDecision:
+    route: RouteType
+    confidence: float                    # 0.0 - 1.0
+    reasoning: str                       # Chain-of-thought explanation
+    extracted_entities: list[str]        # Entities for retrieval boost
+    requires_freshness: bool             # Needs recent data?
+    suggested_sources: list[str]         # e.g., ["INPS", "Agenzia Entrate"]
+```
+
+#### 13.4.5 System Prompt del Router
+
+```python
+LLM_ROUTER_SYSTEM_PROMPT = """
+Sei un router intelligente per un sistema RAG fiscale/legale italiano.
+
+## Chain-of-Thought Analysis:
+1. INTENTO: Qual è l'obiettivo dell'utente? (informativo/procedurale/calcolo/normativo)
+2. ENTITÀ: Quali entità normative/fiscali sono menzionate? (leggi, aliquote, enti, scadenze)
+3. TEMPORALITÀ: Richiede dati aggiornati/recenti? (anni specifici, "ultimo", "attuale")
+4. COMPLESSITÀ: La risposta richiede fonti autorevoli o è knowledge comune?
+
+## Routing Options:
+- chitchat: Saluti, conversazione non tecnica
+- theoretical_definition: Definizione generale senza riferimenti specifici
+- technical_research: Query normativa/fiscale che richiede documenti ufficiali
+- calculator: Richiesta di calcolo specifico
+- golden_set: FAQ frequente con risposta validata
+
+## Output JSON:
+{
+  "route": "technical_research",
+  "confidence": 0.95,
+  "reasoning": "La query chiede informazioni sul regime forfettario 2025...",
+  "extracted_entities": ["regime forfettario", "2025", "aliquota"],
+  "requires_freshness": true,
+  "suggested_sources": ["Agenzia Entrate", "normativa"]
+}
+"""
+```
+
+#### 13.4.6 Criteri di Accettazione FR-004
+
+- [ ] AC-004.1: Router classifica correttamente >90% delle query nel test set
+- [ ] AC-004.2: Latenza router ≤200ms (P95)
+- [ ] AC-004.3: Fallback a TECHNICAL_RESEARCH in caso di errore (safe default)
+- [ ] AC-004.4: Entities estratte passate ai step successivi
+- [ ] AC-004.5: Logging completo di ogni decisione per debugging
+
+---
+
+### 13.5 FR-005: Multi-Query Generation
+
+#### 13.5.1 Descrizione
+
+Genera 3 varianti della query originale, ognuna ottimizzata per un diverso tipo di search.
+
+#### 13.5.2 Query Variants
+
+| Tipo | Ottimizzato Per | Caratteristiche |
+|------|-----------------|-----------------|
+| BM25 Query | Full-text search PostgreSQL | Keywords, document types, stems italiani, acronimi |
+| Vector Query | Semantic search pgVector | Frase naturale espansa, sinonimi, contesto professionale |
+| Entity Query | Reference matching | Numeri articoli, commi, riferimenti legislativi specifici |
+
+#### 13.5.3 Esempio Trasformazione
+
+**Query originale:** "Qual è l'aliquota del regime forfettario nel 2025?"
+
+| Variante | Query Generata |
+|----------|----------------|
+| BM25 | `regime forfettario aliquota 2025 imposta sostitutiva limiti ricavi circolare` |
+| Vector | `requisiti e condizioni per accedere al regime fiscale forfettario agevolato per partite IVA nel 2025 con aliquota sostitutiva ridotta` |
+| Entity | `regime forfettario art. 1 commi 54-89 legge 190/2014 limite 85000 euro legge bilancio 2025` |
+
+#### 13.5.4 Criteri di Accettazione FR-005
+
+- [ ] AC-005.1: Genera 3 query distinte per ogni input
+- [ ] AC-005.2: Latenza generazione ≤150ms
+- [ ] AC-005.3: BM25 query contiene keywords e document types
+- [ ] AC-005.4: Vector query è semanticamente espansa
+- [ ] AC-005.5: Entity query include riferimenti normativi quando presenti
+
+---
+
+### 13.6 FR-006: HyDE (Hypothetical Document Embeddings)
+
+#### 13.6.1 Descrizione
+
+Genera un documento ipotetico "ideale" che rappresenta la risposta attesa, poi usa l'embedding di questo documento per la ricerca vettoriale. Questo migliora il retrieval perché l'embedding del documento ipotetico è più vicino ai documenti reali rispetto all'embedding della query.
+
+#### 13.6.2 Caratteristiche Documento Ipotetico
+
+- **Stile formale/burocratico italiano** - Linguaggio tipico di circolari e risoluzioni
+- **Riferimenti normativi plausibili** - "ai sensi dell'art. X", "come disposto dal D.Lgs. Y"
+- **Cita enti competenti** - Agenzia Entrate, INPS, MEF
+- **Include date e importi** - Se pertinenti alla query
+- **Terminologia tecnica** - Lessico fiscale/legale appropriato
+
+#### 13.6.3 Esempio HyDE
+
+**Query:** "Qual è l'aliquota del regime forfettario nel 2025?"
+
+**Documento Ipotetico Generato:**
+```
+Il regime forfettario, disciplinato dall'articolo 1, commi da 54 a 89,
+della Legge 23 dicembre 2014, n. 190, come successivamente modificato
+dalla Legge di Bilancio 2025, prevede l'applicazione di un'imposta
+sostitutiva dell'imposta sui redditi, delle addizionali regionali e
+comunali e dell'IRAP. L'aliquota dell'imposta sostitutiva è fissata
+nella misura del 15%, ridotta al 5% per i primi cinque periodi d'imposta
+per i contribuenti che iniziano una nuova attività. Il limite di ricavi
+e compensi per l'accesso e la permanenza nel regime è stabilito in
+€85.000 annui ai sensi delle disposizioni vigenti...
+```
+
+#### 13.6.4 Criteri di Accettazione FR-006
+
+- [ ] AC-006.1: Documento ipotetico generato in stile burocratico italiano
+- [ ] AC-006.2: Latenza generazione ≤200ms
+- [ ] AC-006.3: Lunghezza documento 150-250 parole
+- [ ] AC-006.4: Include riferimenti normativi plausibili
+- [ ] AC-006.5: Fallback graceful se generazione fallisce
+
+---
+
+### 13.7 FR-007: RRF Fusion con Source Authority
+
+#### 13.7.1 Descrizione
+
+Combina i risultati delle ricerche parallele usando Reciprocal Rank Fusion, con boost aggiuntivi per recency e autorevolezza della fonte.
+
+#### 13.7.2 Formula RRF
+
+```python
+RRF_score(doc) = Σ (1 / (k + rank_i(doc))) * weight_i
+
+dove:
+- k = 60 (costante standard)
+- rank_i = posizione del documento nella lista i
+- weight_i = peso della lista (BM25: 0.3, Vector: 0.4, HyDE: 0.3)
+```
+
+#### 13.7.3 Boost Factors
+
+| Factor | Moltiplicatore | Condizione |
+|--------|----------------|------------|
+| Recency | 1.0 - 1.5 | Documenti ultimi 12 mesi: +50% |
+| Source Authority | 1.0 - 1.3 | Legge: 1.3, Circolare: 1.2, Risoluzione: 1.1 |
+| Entity Match | 1.0 - 1.2 | Contiene entità estratte dal router |
+
+#### 13.7.4 Gerarchia delle Fonti
+
+```python
+GERARCHIA_FONTI = {
+    "legge": 1,           # Massima autorità
+    "decreto_legislativo": 2,
+    "decreto_ministeriale": 3,
+    "circolare": 4,        # Interpretativa
+    "risoluzione": 5,      # Caso specifico
+    "messaggio_inps": 6,
+    "faq": 7               # Minima autorità
+}
+```
+
+#### 13.7.5 Criteri di Accettazione FR-007
+
+- [ ] AC-007.1: RRF combina risultati da tutte le ricerche parallele
+- [ ] AC-007.2: Documenti recenti hanno boost appropriato
+- [ ] AC-007.3: Gerarchia fonti rispettata nel ranking
+- [ ] AC-007.4: Top 10 documenti passati al step di sintesi
+- [ ] AC-007.5: Metadati (data, ente, tipo) preservati per ogni documento
+
+---
+
+### 13.8 FR-008: Sintesi Critica e Verdetto Operativo
+
+#### 13.8.1 Descrizione
+
+La generazione finale (Step 64) deve produrre una risposta strutturata che:
+
+1. Analizza cronologicamente i documenti recuperati
+2. Identifica e risolve conflitti tra fonti
+3. Emette un **Verdetto Operativo** prudente
+
+#### 13.8.2 Logica di Sintesi Critica
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SINTESI CRITICA                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. ANALISI CRONOLOGICA                                        │
+│     - Ordina documenti per data (più recente prima)            │
+│     - Identifica evoluzione normativa                          │
+│                                                                 │
+│  2. RILEVAMENTO CONFLITTI                                       │
+│     - Circolare 2025 contraddice Legge 2023?                   │
+│     - Risoluzione recente modifica prassi?                      │
+│                                                                 │
+│  3. APPLICAZIONE GERARCHIA                                      │
+│     - In caso di conflitto: Legge > Circolare esplicativa      │
+│     - Documento più recente prevale (a parità di gerarchia)    │
+│                                                                 │
+│  4. GENERAZIONE VERDETTO                                        │
+│     - Approccio PRUDENTE (minimizzare rischi)                  │
+│     - Struttura standardizzata                                  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 13.8.3 Gestione dei Conflitti
+
+Quando il sistema rileva fonti contrastanti, NON deve nascondere le discrepanze ma esporle chiaramente:
+
+**Esempio output:**
+```
+⚠️ NOTA: Evoluzione normativa rilevata
+
+La Legge 190/2014 originariamente prevedeva un limite di €65.000 per il
+regime forfettario. Tuttavia, la Circolare 9/E del 2025 dell'Agenzia delle
+Entrate ha chiarito che, a seguito delle modifiche introdotte dalla Legge
+di Bilancio 2023, il limite è stato innalzato a €85.000.
+
+Fonte più autorevole e recente: Circolare 9/E del 10/03/2025
+```
+
+#### 13.8.4 Struttura Verdetto Operativo
+
+Ogni risposta tecnica DEVE concludersi con questa sezione strutturata:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        VERDETTO OPERATIVO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ AZIONE CONSIGLIATA
+   La strada più sicura per minimizzare i rischi fiscali.
+   [Indicazione operativa chiara e pratica]
+
+⚠️ ANALISI DEL RISCHIO
+   Potenziali sanzioni o aree di contestazione da parte dell'AdE.
+   [Descrizione rischi e relative sanzioni]
+
+📅 SCADENZA IMMINENTE
+   [Se rilevata dai documenti, altrimenti "Nessuna scadenza critica rilevata"]
+
+📁 DOCUMENTAZIONE NECESSARIA
+   Documenti da conservare per eventuale difesa legale:
+   - [Documento 1]
+   - [Documento 2]
+   - ...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        INDICE DELLE FONTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| # | Data       | Ente            | Tipo        | Riferimento        |
+|---|------------|-----------------|-------------|--------------------|
+| 1 | 10/03/2025 | Agenzia Entrate | Circolare   | Circ. 9/E/2025    |
+| 2 | 30/12/2024 | Parlamento      | Legge       | L. 234/2024 art.5  |
+| 3 | ...        | ...             | ...         | ...                |
+```
+
+#### 13.8.5 System Prompt per Sintesi Critica
+
+```python
+SYNTHESIS_SYSTEM_PROMPT = """
+Sei un esperto fiscalista/legale italiano che fornisce consulenza PRUDENTE.
+
+## Contesto
+Hai ricevuto documenti recuperati dalla Knowledge Base con i seguenti metadati:
+- data_documento
+- ente_emittente
+- tipo_documento (legge, circolare, risoluzione, etc.)
+- testo_rilevante
+
+## Compiti
+
+1. **ANALISI CRONOLOGICA**
+   - Ordina i documenti per data
+   - Identifica l'evoluzione normativa nel tempo
+   - Segnala se ci sono stati cambiamenti significativi
+
+2. **RILEVAMENTO CONFLITTI**
+   - Verifica se documenti più recenti contraddicono quelli precedenti
+   - Se sì, spiega esplicitamente: "La [Fonte A] prevedeva X, ma la [Fonte B] del [data] ha chiarito/modificato che Y"
+
+3. **APPLICAZIONE GERARCHIA**
+   - Legge > Decreto > Circolare > Risoluzione > FAQ
+   - A parità di gerarchia, prevale il documento più recente
+
+4. **VERDETTO OPERATIVO**
+   Concludi SEMPRE con la sezione "VERDETTO OPERATIVO" che include:
+   - ✅ AZIONE CONSIGLIATA: La strada più sicura
+   - ⚠️ ANALISI DEL RISCHIO: Potenziali sanzioni
+   - 📅 SCADENZA IMMINENTE: Date critiche (se presenti)
+   - 📁 DOCUMENTAZIONE NECESSARIA: Cosa conservare
+   - 📊 INDICE DELLE FONTI: Tabella riassuntiva
+
+## Principio Guida
+Adotta SEMPRE un approccio PRUDENTE. In caso di dubbio, consiglia l'opzione
+che minimizza il rischio di sanzioni, anche se potenzialmente meno vantaggiosa
+economicamente per il cliente.
+"""
+```
+
+#### 13.8.6 Criteri di Accettazione FR-008
+
+- [ ] AC-008.1: Ogni risposta tecnica include sezione "Verdetto Operativo"
+- [ ] AC-008.2: Conflitti tra fonti esplicitamente segnalati
+- [ ] AC-008.3: Gerarchia fonti rispettata nella sintesi
+- [ ] AC-008.4: Indice fonti con data, ente e riferimento
+- [ ] AC-008.5: Scadenze imminenti evidenziate quando presenti
+- [ ] AC-008.6: Approccio prudente verificabile nelle raccomandazioni
+
+---
+
+### 13.9 FR-009: Preservazione Metadati nel Pipeline
+
+#### 13.9.1 Descrizione
+
+I metadati dei documenti recuperati devono essere preservati e passati chiaramente all'LLM di sintesi per consentire l'analisi cronologica e gerarchica.
+
+#### 13.9.2 Struttura Metadati
+
+```python
+@dataclass
+class DocumentMetadata:
+    """Metadati da preservare per ogni documento recuperato."""
+    document_id: str
+    title: str
+    date_published: datetime
+    source_entity: str          # "Agenzia Entrate", "INPS", etc.
+    document_type: str          # "legge", "circolare", "risoluzione"
+    hierarchy_level: int        # 1=legge, 2=decreto, 3=circolare...
+    reference_code: str         # "Circ. 9/E/2025", "Art. 1 L. 190/2014"
+    url: Optional[str]          # Link alla fonte originale
+    relevance_score: float      # Score dal retrieval
+    text_excerpt: str           # Estratto rilevante
+
+@dataclass
+class RetrievalResult:
+    """Risultato del retrieval con metadati preservati."""
+    documents: List[DocumentMetadata]
+    query_variants_used: Dict[str, str]
+    hyde_document: Optional[str]
+    total_candidates: int
+    retrieval_time_ms: int
+```
+
+#### 13.9.3 Formato Context per LLM di Sintesi
+
+```python
+def format_context_for_synthesis(retrieval_result: RetrievalResult) -> str:
+    """Formatta il context preservando metadati per la sintesi."""
+
+    context_parts = []
+
+    # Header con statistiche
+    context_parts.append(f"""
+## Documenti Recuperati: {len(retrieval_result.documents)}
+## Query Variants: {len(retrieval_result.query_variants_used)}
+## Tempo Retrieval: {retrieval_result.retrieval_time_ms}ms
+""")
+
+    # Documenti ordinati per data (più recente prima)
+    sorted_docs = sorted(
+        retrieval_result.documents,
+        key=lambda d: d.date_published,
+        reverse=True
+    )
+
+    for i, doc in enumerate(sorted_docs, 1):
+        context_parts.append(f"""
+━━━ DOCUMENTO {i} ━━━
+📅 Data: {doc.date_published.strftime('%d/%m/%Y')}
+🏛️ Ente: {doc.source_entity}
+📄 Tipo: {doc.document_type} (Livello gerarchico: {doc.hierarchy_level})
+📌 Riferimento: {doc.reference_code}
+🔗 URL: {doc.url or 'N/A'}
+📊 Relevance: {doc.relevance_score:.2f}
+
+CONTENUTO:
+{doc.text_excerpt}
+""")
+
+    return "\n".join(context_parts)
+```
+
+#### 13.9.4 Criteri di Accettazione FR-009
+
+- [ ] AC-009.1: Tutti i metadati preservati dal retrieval alla sintesi
+- [ ] AC-009.2: Documenti passati al LLM ordinati per data
+- [ ] AC-009.3: Gerarchia documento esplicita nel context
+- [ ] AC-009.4: Reference code disponibile per indice fonti
+- [ ] AC-009.5: URL originale preservato quando disponibile
+
+---
+
+### 13.10 Strategia di Selezione Modelli LLM
+
+#### 13.10.1 Principio Guida
+
+La pipeline utilizza modelli diversi in base alla complessità del task:
+
+| Task | Modello | Rationale |
+|------|---------|-----------|
+| Routing, Query Expansion, HyDE | GPT-4o-mini | Veloce, economico, sufficiente per classificazione |
+| Sintesi Critica + Verdetto | GPT-4o / Claude 3.5 Sonnet | Ragionamento legale sofisticato richiede modello premium |
+
+#### 13.10.2 GPT-4o-mini: Task Leggeri
+
+Utilizzato per step che richiedono velocità e basso costo:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    GPT-4o-mini ($0.15/1M input)                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ✅ Step 34a: LLM Router (Chain-of-Thought)                    │
+│     - Classificazione intent (CHITCHAT/THEORETICAL/TECHNICAL)  │
+│     - Estrazione entità                                         │
+│     - Decisione routing                                         │
+│     - Latenza target: ~200ms                                   │
+│                                                                 │
+│  ✅ Step 39a: Multi-Query Generation                           │
+│     - Generazione 3 varianti query                              │
+│     - Espansione keywords                                       │
+│     - Latenza target: ~150ms                                   │
+│                                                                 │
+│  ✅ Step 39b: HyDE Generation                                  │
+│     - Generazione documento ipotetico                           │
+│     - Stile burocratico/fiscale                                │
+│     - Latenza target: ~200ms                                   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Caratteristiche task GPT-4o-mini:
+
+- Output strutturato e prevedibile (JSON)
+- Classificazione binaria/categorica
+- Generazione testo breve (<300 tokens output)
+- Nessun ragionamento legale complesso
+- Tolleranza errori alta (fallback disponibile)
+
+#### 13.10.3 GPT-4o / Claude 3.5 Sonnet: Sintesi Critica
+
+La generazione finale (Step 64) richiede un modello premium perché:
+
+- **Ragionamento legale sofisticato** - Interpretare conflitti normativi
+- **Approccio prudente** - Valutare rischi e consigliare azioni sicure
+- **Sintesi multi-documento** - Integrare 5-10 fonti con metadati
+- **Output strutturato complesso** - Verdetto Operativo con 5 sezioni
+- **Responsabilità professionale** - Consiglio a commercialisti/avvocati
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│            GPT-4o ($2.50/1M) / Claude 3.5 Sonnet                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ✅ Step 64: Sintesi Critica + Verdetto Operativo              │
+│                                                                 │
+│  Capacità richieste:                                            │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ 🧠 Ragionamento legale multi-step                       │   │
+│  │    "La Circolare 9/E del 2025 chiarisce che..."         │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ ⚖️ Gestione conflitti normativi                         │   │
+│  │    "Nonostante l'art. X preveda Y, la prassi AdE..."    │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ 🛡️ Approccio prudente                                   │   │
+│  │    "Per minimizzare il rischio di contestazioni..."     │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ 📊 Sintesi strutturata                                  │   │
+│  │    Verdetto con azione, rischi, scadenze, documenti    │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  Latenza target: ~2000ms                                       │
+│  Output: 500-1000 tokens                                        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 13.10.4 Selezione Dinamica del Modello Premium
+
+Il sistema può scegliere dinamicamente tra GPT-4o e Claude 3.5 Sonnet:
+
+```python
+class PremiumModelSelector:
+    """Seleziona il modello premium ottimale per la sintesi."""
+
+    MODELS = {
+        "gpt-4o": {
+            "provider": "openai",
+            "cost_per_1k_input": 0.0025,
+            "cost_per_1k_output": 0.01,
+            "strengths": ["structured_output", "italian_legal"]
+        },
+        "claude-3-5-sonnet": {
+            "provider": "anthropic",
+            "cost_per_1k_input": 0.003,
+            "cost_per_1k_output": 0.015,
+            "strengths": ["nuanced_reasoning", "long_context"]
+        }
+    }
+
+    def select(self, context: SynthesisContext) -> str:
+        """Seleziona modello basato su contesto."""
+
+        # Default: GPT-4o per costi inferiori
+        selected = "gpt-4o"
+
+        # Claude preferito per:
+        # - Contesti molto lunghi (>8k tokens)
+        # - Query che richiedono ragionamento sfumato
+        if context.total_tokens > 8000:
+            selected = "claude-3-5-sonnet"
+
+        # Fallback se provider non disponibile
+        if not self.is_available(selected):
+            selected = self.get_fallback(selected)
+
+        return selected
+```
+
+#### 13.10.5 Configurazione Consigliata
+
+```yaml
+# config/llm_models.yaml
+
+routing_and_expansion:
+  model: "gpt-4o-mini"
+  temperature: 0
+  max_tokens: 300
+  timeout_ms: 2000
+
+synthesis_critical:
+  primary_model: "gpt-4o"
+  fallback_model: "claude-3-5-sonnet"
+  temperature: 0.3  # Leggera creatività per linguaggio naturale
+  max_tokens: 1500
+  timeout_ms: 30000
+
+  # Opzioni avanzate
+  prefer_claude_for:
+    - context_tokens_above: 8000
+    - query_complexity: "high"
+```
+
+#### 13.10.6 Impatto sui Costi
+
+| Step | Modello | Input Tokens | Output Tokens | Costo/Query |
+|------|---------|--------------|---------------|-------------|
+| 34a Router | GPT-4o-mini | ~500 | ~100 | $0.00009 |
+| 39a Multi-Query | GPT-4o-mini | ~300 | ~200 | $0.00008 |
+| 39b HyDE | GPT-4o-mini | ~200 | ~250 | $0.00007 |
+| 64 Sintesi | GPT-4o | ~3000 | ~800 | $0.0155 |
+| | **TOTALE** | | | **~$0.016** |
+
+**Nota:** Il costo della sintesi premium (~$0.015) rappresenta il 95% del costo totale, ma è giustificato dalla qualità richiesta per consulenza professionale.
+
+---
+
+### 13.11 Budget Latenza e Costi
+
+#### 13.11.1 Breakdown Pipeline Completa
+
+| Step | Componente | Modello | Latenza | Costo/Query |
+|------|------------|---------|---------|-------------|
+| 34a | LLM Router (CoT) | GPT-4o-mini | ~200ms | $0.00009 |
+| 39a | Multi-Query Generation | GPT-4o-mini | ~150ms | $0.00008 |
+| 39b | HyDE Generation | GPT-4o-mini | ~200ms | $0.00007 |
+| 39c | BM25 Search (3 queries) | - | ~100ms | $0.00 |
+| 39c | Vector Search (4 queries) | - | ~150ms | $0.00 |
+| 39c | RRF Fusion | - | ~20ms | $0.00 |
+| 40 | Context Building | - | ~50ms | $0.00 |
+| 64 | Sintesi Critica + Verdetto | GPT-4o | ~2000ms | $0.015 |
+| | **TOTALE** | | **~2.9s** | **~$0.016** |
+
+#### 13.11.2 Margine di Sicurezza
+
+- **Budget totale:** 3-5 secondi
+- **Tempo stimato:** ~2.9 secondi
+- **Margine residuo:** 0.1-2.1 secondi per variabilità network/DB
+
+#### 13.11.3 Costo Incrementale vs Architettura Attuale
+
+| Componente | Costo Attuale | Costo Nuovo | Delta |
+|------------|---------------|-------------|-------|
+| Routing | $0.00 (regex) | $0.00009 | +$0.00009 |
+| Query Expansion | $0.00 | $0.00015 | +$0.00015 |
+| Retrieval | ~$0.00 | ~$0.00 | $0.00 |
+| Synthesis | ~$0.005 (GPT-3.5) | ~$0.015 (GPT-4o) | +$0.010 |
+| **Totale/query** | **~$0.005** | **~$0.016** | **+$0.011** |
+
+**Impatto mensile (1000 query/utente):** ~€10 extra → Giustificato dalla qualità consulenza professionale
+
+---
+
+### 13.12 Criteri di Accettazione Complessivi
+
+#### 13.12.1 Qualità Routing
+
+- [ ] AC-ARAG.1: Routing accuracy ≥90% su test set
+- [ ] AC-ARAG.2: Falsi negativi (query tecniche non riconosciute) <5%
+- [ ] AC-ARAG.3: Latenza routing ≤200ms P95
+
+#### 13.12.2 Qualità Retrieval
+
+- [ ] AC-ARAG.4: Precision@5 migliorata ≥20% vs baseline
+- [ ] AC-ARAG.5: Recall migliorato ≥15% vs baseline
+- [ ] AC-ARAG.6: HyDE genera documenti plausibili nel 95% dei casi
+
+#### 13.12.3 Qualità Sintesi
+
+- [ ] AC-ARAG.7: Verdetto Operativo presente in 100% risposte tecniche
+- [ ] AC-ARAG.8: Conflitti rilevati e segnalati correttamente
+- [ ] AC-ARAG.9: Indice Fonti completo con tutti i metadati
+
+#### 13.12.4 Performance
+
+- [ ] AC-ARAG.10: Latenza end-to-end ≤5s P95
+- [ ] AC-ARAG.11: Costo per query ≤$0.02 (include modello premium)
+- [ ] AC-ARAG.12: Nessuna regressione su query esistenti
+
+---
+
 **Fine Documento**
 
 *Versione: 1.5-MVP*

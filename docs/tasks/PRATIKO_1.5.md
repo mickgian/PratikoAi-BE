@@ -160,6 +160,8 @@ tests/
 | DEV-163 to DEV-167 | Phase 3: Frontend Components |
 | DEV-168 to DEV-172 | Phase 4: Testing |
 | DEV-173 | Phase 5: Documentation |
+| DEV-174 to DEV-183 | Phase 6: LLM-First Revision (Backend) |
+| DEV-184 to DEV-199 | Phase 7: Agentic RAG Pipeline (Backend) |
 
 ---
 
@@ -2863,6 +2865,1153 @@ Create E2E test suite with real LLM calls (rate-limited) to verify acceptance cr
 
 ---
 
+## Phase 7: Agentic RAG Pipeline - 39h
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13](/docs/tasks/PRATIKO_1.5_REFERENCE.md#13-evoluzione-verso-agentic-rag)
+
+**Objective:** Transform PratikoAI from traditional RAG to an "Agentic RAG" system with:
+- LLM-based semantic routing (replacing regex)
+- Multi-Query Generation + HyDE for improved retrieval
+- RRF Fusion with source authority hierarchy
+- Critical synthesis with Verdetto Operativo output
+
+**Timeline:**
+- Phase 7A: Model Selection Infrastructure (DEV-184 to DEV-185) - 0.5 days
+- Phase 7B: Router and Query Expansion (DEV-186 to DEV-189) - 1.5 days
+- Phase 7C: Retrieval Enhancement (DEV-190 to DEV-191) - 0.5 days
+- Phase 7D: Synthesis and Verdetto (DEV-192 to DEV-193) - 0.5 days
+- Phase 7E: LangGraph Integration (DEV-194 to DEV-196) - 1 day
+- Phase 7F: Testing and Validation (DEV-197 to DEV-199) - 1 day
+
+**User Decisions:**
+- **Provider Strategy:** GPT-4o primary, Claude 3.5 Sonnet fallback
+- **Dual-Provider Failure:** Return degraded response without Verdetto, with disclaimer
+- **Startup:** Pre-warm both providers to validate API keys early
+
+Phase 7 changes MUST NOT disrupt the existing document retrieval and injection flow:
+- Golden Set fast-path MUST continue to work (confidence >= 0.85)
+- KB hybrid search (BM25 + Vector + Recency) MUST remain unchanged
+- Document context MUST be injected before LLM call
+- Token budget allocation MUST respect KB documents priority
+- All Phase 7 tasks must include regression tests for document flow
+
+### Phase 7 Dependency Map
+
+```
+DEV-184 (LLM Config)
+    └── DEV-185 (PremiumModelSelector)
+            └── DEV-196 (Step 64)
+    └── DEV-186 (RouterDecision)
+            └── DEV-187 (Router Service)
+                    ├── DEV-188 (Multi-Query)
+                    │       └── DEV-190 (Parallel Retrieval)
+                    └── DEV-189 (HyDE)
+                            └── DEV-190 (Parallel Retrieval)
+                                    └── DEV-191 (Metadata)
+                                            └── DEV-192 (Synthesis Prompt)
+                                                    └── DEV-193 (Verdetto Parser)
+                                                            └── DEV-194/195/196 (Nodes)
+                                                                    └── DEV-197/198/199 (Tests)
+```
+
+---
+
+<details>
+<summary>
+<h3>DEV-184: Create LLM Model Configuration System (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Create YAML-based configuration for tiered LLM model selection per Section 13.10.
+</summary>
+
+### DEV-184: Create LLM Model Configuration System
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1310-strategia-di-selezione-modelli-llm)
+
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Current system uses single `LLM_MODEL` environment variable. Section 13.10 requires different models per pipeline stage:
+- GPT-4o-mini for routing, query expansion, HyDE
+- GPT-4o / Claude 3.5 Sonnet for critical synthesis
+
+**Solution:**
+Create YAML-based configuration (`config/llm_models.yaml`) with environment overrides for tiered model selection.
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** None (first Phase 7 task)
+- **Unlocks:** DEV-185, DEV-187, DEV-188, DEV-189
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- **Missing YAML file:** Fall back to environment variables
+- **Invalid YAML syntax:** Log error, use defaults
+- **Missing model key:** Use tier defaults (gpt-4o-mini for BASIC, gpt-4o for PREMIUM)
+- **Environment override:** ENV vars take precedence over YAML
+
+**Performance Requirements:**
+- Config load time: <50ms at startup
+- Config cached in memory (no repeated file reads)
+
+**Edge Cases:**
+- **Missing config file:** Use environment variables only
+- **Partial config:** Merge with defaults
+- **Invalid model name:** Validate against known models, fall back to default
+
+**Files to Create:**
+- `config/llm_models.yaml` (~50 lines)
+- `app/core/llm/model_config.py` (~150 lines)
+
+**Fields/Methods/Components:**
+- `LLMModelConfig` class
+  - `load_config() -> ModelConfig` - Load and validate YAML
+  - `get_model(tier: ModelTier) -> str` - Get model for tier
+  - `get_timeout(tier: ModelTier) -> int` - Get timeout in ms
+  - `get_temperature(tier: ModelTier) -> float` - Get temperature
+- `ModelTier` enum: `BASIC`, `PREMIUM`
+- YAML structure per Section 13.10.5
+
+**Testing Requirements:**
+- **TDD:** Write `tests/core/llm/test_model_config.py` FIRST
+- **Unit Tests:**
+  - `test_load_valid_yaml_config`
+  - `test_fallback_to_env_vars_when_yaml_missing`
+  - `test_env_override_takes_precedence`
+  - `test_get_model_for_basic_tier`
+  - `test_get_model_for_premium_tier`
+  - `test_invalid_yaml_uses_defaults`
+  - `test_partial_config_merges_with_defaults`
+- **Coverage Target:** 95%+
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Config file not found in production | HIGH | Fallback to env vars |
+| YAML parsing error | MEDIUM | Graceful fallback, logging |
+| Model name typo | MEDIUM | Validation against known models |
+
+**Code Structure:**
+- Config loader: <100 lines
+- YAML file: <50 lines
+- No circular imports
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] All tiers covered (BASIC, PREMIUM)
+- [ ] Environment override logic complete
+- [ ] Validation against known models
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] YAML config loads correctly from `config/llm_models.yaml`
+- [ ] Environment variables override YAML values
+- [ ] Fallback to defaults on missing/invalid config
+- [ ] 95%+ test coverage
+- [ ] All tests pass: `pytest tests/core/llm/test_model_config.py -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-185: Implement PremiumModelSelector Service (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Create dynamic model selector for synthesis step per Section 13.10.4.
+</summary>
+
+### DEV-185: Implement PremiumModelSelector Service
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.10.4](/docs/tasks/PRATIKO_1.5_REFERENCE.md#13104-selezione-dinamica-del-modello-premium)
+
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Step 64 (synthesis) needs dynamic model selection between GPT-4o and Claude 3.5 Sonnet based on context length and provider availability.
+
+**Solution:**
+Implement `PremiumModelSelector` class that:
+- Uses GPT-4o by default (lower cost)
+- Switches to Claude 3.5 Sonnet for context >8k tokens
+- Falls back to alternate provider on failure
+- Pre-warms both providers at startup
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-184 (model config)
+- **Unlocks:** DEV-196 (Step 64 integration)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- **Primary provider unavailable:** Switch to fallback provider
+- **Both providers unavailable:** Return degraded response flag
+- **Timeout:** Use fallback provider
+- **Rate limit:** Exponential backoff, then fallback
+
+**Performance Requirements:**
+- Model selection decision: <10ms
+- Provider pre-warm: <3s at startup
+- Fallback switch: <100ms overhead
+
+**Edge Cases:**
+- **Context exactly 8000 tokens:** Use GPT-4o (threshold is >8000)
+- **Both providers rate-limited:** Return degraded flag
+- **Invalid API key:** Log error, mark provider unhealthy
+- **Network timeout:** Retry once, then fallback
+
+**Files to Create:**
+- `app/services/premium_model_selector.py` (~200 lines)
+
+**Files to Modify:**
+- `app/core/llm/anthropic_provider.py` - Add Claude 3.5 Sonnet to supported_models
+
+**Fields/Methods/Components:**
+- `PremiumModelSelector` class
+  - `__init__(config: LLMModelConfig)` - Initialize with config
+  - `select(context: SynthesisContext) -> ModelSelection` - Select model
+  - `is_available(provider: str) -> bool` - Check provider health
+  - `get_fallback(model: str) -> str` - Get fallback model
+  - `pre_warm() -> dict[str, bool]` - Pre-warm providers
+- `SynthesisContext` dataclass: `total_tokens: int`, `query_complexity: str`
+- `ModelSelection` dataclass: `model: str`, `provider: str`, `is_fallback: bool`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_premium_model_selector.py` FIRST
+- **Unit Tests:**
+  - `test_selects_gpt4o_by_default`
+  - `test_selects_claude_for_long_context`
+  - `test_fallback_when_primary_unavailable`
+  - `test_pre_warm_validates_both_providers`
+  - `test_degraded_flag_when_both_unavailable`
+  - `test_selection_under_10ms`
+- **Integration Tests:** Mock both providers
+- **Coverage Target:** 95%+
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Anthropic API key missing | HIGH | Pre-warm catches at startup |
+| Claude model not in provider | HIGH | Add to anthropic_provider.py |
+| Fallback adds latency | MEDIUM | Pre-warm, parallel preparation |
+
+**Code Structure:**
+- Service class: <200 lines
+- Clear separation of selection logic and health checks
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] GPT-4o primary selection implemented
+- [ ] Claude fallback for >8k tokens
+- [ ] Both providers pre-warmed at startup
+- [ ] Degraded response flag available
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Selects GPT-4o by default
+- [ ] Selects Claude 3.5 Sonnet for context >8k tokens
+- [ ] Fallback works when primary provider unavailable
+- [ ] Pre-warm validates API keys at startup
+- [ ] Claude 3.5 Sonnet added to AnthropicProvider.supported_models
+- [ ] 95%+ test coverage
+- [ ] All tests pass: `pytest tests/services/test_premium_model_selector.py -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-186: Define RouterDecision Schema and Constants (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Create Pydantic models and enums for LLM router per Section 13.4.4.
+</summary>
+
+### DEV-186: Define RouterDecision Schema and Constants
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.4.4](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1344-router-decision-model)
+
+**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Need structured types for LLM router decisions to replace the current regex-based `GateDecision`.
+
+**Solution:**
+Create Pydantic models for `RoutingCategory`, `RouterDecision`, and `ExtractedEntity` as specified in Section 13.4.4.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** None
+- **Unlocks:** DEV-187 (Router Service)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- **Invalid category:** Validation error with clear message
+- **Missing confidence:** Default to 0.5
+- **Empty entities:** Valid (empty list)
+
+**Edge Cases:**
+- **Confidence = 0.0:** Valid, indicates low confidence
+- **Confidence = 1.0:** Valid, indicates high confidence
+- **No entities extracted:** Empty list, not None
+
+**Files to Create:**
+- `app/schemas/router.py` (~100 lines)
+
+**Fields/Methods/Components:**
+- `RoutingCategory` enum:
+  - `CHITCHAT = "chitchat"`
+  - `THEORETICAL_DEFINITION = "theoretical_definition"`
+  - `TECHNICAL_RESEARCH = "technical_research"`
+  - `CALCULATOR = "calculator"`
+  - `GOLDEN_SET = "golden_set"`
+- `ExtractedEntity` model:
+  - `text: str` - Entity text
+  - `type: str` - Entity type (legge, articolo, ente, data)
+  - `confidence: float` - Extraction confidence
+- `RouterDecision` model:
+  - `route: RoutingCategory`
+  - `confidence: float = Field(ge=0.0, le=1.0)`
+  - `reasoning: str` - Chain-of-Thought explanation
+  - `entities: list[ExtractedEntity]`
+  - `requires_freshness: bool`
+  - `suggested_sources: list[str]`
+  - `needs_retrieval: bool` - Computed property
+
+**Testing Requirements:**
+- **TDD:** Write `tests/schemas/test_router.py` FIRST
+- **Unit Tests:**
+  - `test_routing_category_values`
+  - `test_router_decision_valid_creation`
+  - `test_router_decision_confidence_bounds`
+  - `test_extracted_entity_creation`
+  - `test_needs_retrieval_computed`
+  - `test_json_serialization`
+- **Coverage Target:** 100%
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Breaking existing GateDecision | MEDIUM | Keep both, deprecate old |
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] All 5 routing categories defined
+- [ ] RouterDecision validates confidence bounds
+- [ ] JSON serialization works correctly
+- [ ] 100% test coverage
+- [ ] All tests pass: `pytest tests/schemas/test_router.py -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-187: Implement LLM Router Service (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Replace regex-based routing with GPT-4o-mini Chain-of-Thought router per Section 13.4.
+</summary>
+
+### DEV-187: Implement LLM Router Service
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.4](/docs/tasks/PRATIKO_1.5_REFERENCE.md#134-fr-004-llm-based-router-con-chain-of-thought)
+
+**Priority:** CRITICAL | **Effort:** 3h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Current `retrieval_gate.py` uses 17 regex patterns, causing false negatives on complex technical queries like "Qual è l'iter per aprire P.IVA forfettaria?".
+
+**Solution:**
+Implement `LLMRouterService` using GPT-4o-mini with Chain-of-Thought prompting to semantically classify queries into 5 routing categories.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-184 (config), DEV-186 (schema)
+- **Unlocks:** DEV-188 (Multi-Query), DEV-189 (HyDE), DEV-194 (Node)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- **LLM timeout:** Fallback to TECHNICAL_RESEARCH (safe default)
+- **LLM error:** Log error, use TECHNICAL_RESEARCH
+- **Invalid JSON response:** Parse error, use TECHNICAL_RESEARCH
+- **Rate limit:** Retry with backoff, then fallback
+
+**Performance Requirements:**
+- **Latency:** ≤200ms P95 (AC-ARAG.3)
+- **Accuracy:** ≥90% on test set (AC-ARAG.1)
+- **False negatives:** <5% (AC-ARAG.2)
+
+**Edge Cases:**
+- **Empty query:** Return CHITCHAT with low confidence
+- **Very long query:** Truncate to 500 tokens
+- **Mixed intent:** Use highest confidence category
+- **Ambiguous query:** Default to TECHNICAL_RESEARCH
+
+**Files to Create:**
+- `app/services/llm_router_service.py` (~250 lines)
+- `app/core/prompts/router.md` (~80 lines)
+
+**Fields/Methods/Components:**
+- `LLMRouterService` class
+  - `__init__(config: LLMModelConfig)` - Initialize with GPT-4o-mini
+  - `route(query: str, history: list[Message]) -> RouterDecision`
+  - `_build_prompt(query: str, history: list) -> str`
+  - `_parse_response(response: str) -> RouterDecision`
+  - `_fallback_decision() -> RouterDecision` - Safe default
+- System prompt per Section 13.4.5
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_llm_router_service.py` FIRST
+- **Unit Tests:**
+  - `test_route_chitchat_query`
+  - `test_route_theoretical_definition`
+  - `test_route_technical_research`
+  - `test_route_calculator_query`
+  - `test_route_golden_set_query`
+  - `test_fallback_on_llm_error`
+  - `test_fallback_on_timeout`
+  - `test_entities_extracted`
+  - `test_latency_under_200ms` (mocked)
+- **Integration Tests:** With mocked LLM
+- **Regression Tests:** Existing RAG tests still pass
+- **Coverage Target:** 95%+
+
+**Risks & Mitigations:**
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| LLM latency exceeds 200ms | HIGH | Aggressive timeout, fallback |
+| Accuracy below 90% | HIGH | Extensive prompt engineering |
+| Breaking existing routing | CRITICAL | Keep regex as validation |
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Routing accuracy ≥90% (AC-ARAG.1)
+- [ ] Latency ≤200ms P95 (AC-ARAG.3)
+- [ ] False negatives <5% (AC-ARAG.2)
+- [ ] Fallback to TECHNICAL_RESEARCH on error
+- [ ] Entities extracted and available
+- [ ] 95%+ test coverage
+- [ ] All tests pass: `pytest tests/services/test_llm_router_service.py -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-188: Implement Multi-Query Generator Service (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Generate 3 query variants (BM25, Vector, Entity) per Section 13.5.
+</summary>
+
+### DEV-188: Implement Multi-Query Generator Service
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.5](/docs/tasks/PRATIKO_1.5_REFERENCE.md#135-fr-005-multi-query-generation)
+
+**Priority:** HIGH | **Effort:** 2.5h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Single query approach misses relevant documents. Need 3 optimized variants for different search types.
+
+**Solution:**
+Implement `MultiQueryGeneratorService` using GPT-4o-mini to generate:
+- BM25-optimized query (keywords, document types)
+- Vector-optimized query (semantic expansion)
+- Entity-focused query (legal references)
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-184 (config), DEV-187 (router entities)
+- **Unlocks:** DEV-190 (Parallel Retrieval), DEV-195 (Node)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- **LLM error:** Return original query as all 3 variants
+- **Timeout:** Return original query
+- **Partial response:** Use available variants, fill missing with original
+
+**Performance Requirements:**
+- **Latency:** ≤150ms (AC-005.2)
+
+**Edge Cases:**
+- **Short query (<5 words):** Generate variants anyway
+- **Already entity-rich query:** Preserve entities in all variants
+- **No entities from router:** Generate without entity hints
+
+**Files to Create:**
+- `app/services/multi_query_generator.py` (~180 lines)
+
+**Fields/Methods/Components:**
+- `MultiQueryGeneratorService` class
+  - `generate(query: str, entities: list[ExtractedEntity]) -> QueryVariants`
+  - `_build_prompt(query: str, entities: list) -> str`
+- `QueryVariants` dataclass:
+  - `bm25_query: str`
+  - `vector_query: str`
+  - `entity_query: str`
+  - `original_query: str`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_multi_query_generator.py` FIRST
+- **Unit Tests:**
+  - `test_generates_3_distinct_queries`
+  - `test_bm25_contains_keywords`
+  - `test_vector_semantically_expanded`
+  - `test_entity_includes_references`
+  - `test_fallback_to_original_on_error`
+  - `test_latency_under_150ms`
+- **Coverage Target:** 95%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Generates 3 distinct query variants (AC-005.1)
+- [ ] Latency ≤150ms (AC-005.2)
+- [ ] BM25 query contains keywords (AC-005.3)
+- [ ] Vector query semantically expanded (AC-005.4)
+- [ ] Entity query includes references (AC-005.5)
+- [ ] 95%+ test coverage
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-189: Implement HyDE Generator Service (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Generate hypothetical documents in Italian bureaucratic style per Section 13.6.
+</summary>
+
+### DEV-189: Implement HyDE Generator Service
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.6](/docs/tasks/PRATIKO_1.5_REFERENCE.md#136-fr-006-hyde-hypothetical-document-embeddings)
+
+**Priority:** HIGH | **Effort:** 2.5h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Query embeddings differ from document embeddings. HyDE generates a hypothetical answer document whose embedding is closer to real documents.
+
+**Solution:**
+Implement `HyDEGeneratorService` using GPT-4o-mini to generate 150-250 word hypothetical documents in Italian bureaucratic style.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-184 (config)
+- **Unlocks:** DEV-190 (Parallel Retrieval), DEV-195 (Node)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- **LLM error:** Skip HyDE, use original query only
+- **Timeout:** Skip HyDE
+- **Too short response:** Use as-is if >50 words
+
+**Performance Requirements:**
+- **Latency:** ≤200ms (AC-006.2)
+- **Document length:** 150-250 words (AC-006.3)
+
+**Edge Cases:**
+- **Chitchat query:** Skip HyDE entirely
+- **Calculator query:** Skip HyDE
+- **Very short query:** Generate anyway
+
+**Files to Create:**
+- `app/services/hyde_generator.py` (~180 lines)
+
+**Fields/Methods/Components:**
+- `HyDEGeneratorService` class
+  - `generate(query: str) -> HyDEResult`
+  - `should_generate(routing: RoutingCategory) -> bool`
+- `HyDEResult` dataclass:
+  - `hypothetical_document: str`
+  - `word_count: int`
+  - `embedding: list[float]` (optional, computed later)
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_hyde_generator.py` FIRST
+- **Unit Tests:**
+  - `test_generates_bureaucratic_style`
+  - `test_document_length_150_250_words`
+  - `test_includes_normative_references`
+  - `test_skip_for_chitchat`
+  - `test_skip_for_calculator`
+  - `test_fallback_on_error`
+  - `test_latency_under_200ms`
+- **Coverage Target:** 95%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Italian bureaucratic style (AC-006.1)
+- [ ] Latency ≤200ms (AC-006.2)
+- [ ] Length 150-250 words (AC-006.3)
+- [ ] Includes normative references (AC-006.4)
+- [ ] Graceful fallback on error (AC-006.5)
+- [ ] 95%+ test coverage
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-190: Implement Parallel Hybrid Retrieval with RRF Fusion (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Parallel search with RRF fusion and source authority per Section 13.7.
+</summary>
+
+### DEV-190: Implement Parallel Hybrid Retrieval with RRF Fusion
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#137-fr-007-rrf-fusion-con-source-authority)
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Need to combine results from multiple search queries (3 BM25 + 3 Vector + 1 HyDE) using RRF with source authority and recency boosts.
+
+**Solution:**
+Implement parallel retrieval with RRF fusion per Section 13.7.2:
+- RRF formula with k=60
+- Weights: BM25 0.3, Vector 0.4, HyDE 0.3
+- Recency boost: +50% for docs <12 months
+- Source authority: Legge 1.3x, Circolare 1.15x, FAQ 1.0x
+
+**Agent Assignment:** @ezio (primary), @primo (index optimization)
+
+**Dependencies:**
+- **Blocking:** DEV-188 (Multi-Query), DEV-189 (HyDE)
+- **Unlocks:** DEV-191 (Metadata), DEV-195 (Node)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- **Search timeout:** Return partial results
+- **No results:** Return empty with warning
+- **Duplicate documents:** Deduplicate by document_id
+
+**Performance Requirements:**
+- **Total retrieval time:** ≤450ms (100ms BM25 + 150ms Vector + fusion)
+
+**Files to Create:**
+- `app/services/parallel_retrieval.py` (~300 lines)
+
+**Fields/Methods/Components:**
+- `ParallelRetrievalService` class
+  - `retrieve(queries: QueryVariants, hyde: HyDEResult) -> RetrievalResult`
+  - `_execute_parallel_searches(queries: list) -> list[SearchResults]`
+  - `_rrf_fusion(results: list[SearchResults]) -> list[RankedDocument]`
+  - `_apply_boosts(docs: list, entities: list) -> list[RankedDocument]`
+- `GERARCHIA_FONTI` constant per Section 13.7.4
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_parallel_retrieval.py` FIRST
+- **Unit Tests:**
+  - `test_rrf_combines_all_searches`
+  - `test_recency_boost_applied`
+  - `test_authority_boost_legge_highest`
+  - `test_top_10_returned`
+  - `test_metadata_preserved`
+  - `test_deduplication_works`
+- **Coverage Target:** 95%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] RRF combines all search results (AC-007.1)
+- [ ] Recency boost applied (AC-007.2)
+- [ ] Authority hierarchy respected (AC-007.3)
+- [ ] Top 10 documents returned (AC-007.4)
+- [ ] Metadata preserved (AC-007.5)
+- [ ] 95%+ test coverage
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-191: Create Document Metadata Preservation Layer (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Preserve and format metadata for synthesis per Section 13.9.
+</summary>
+
+### DEV-191: Create Document Metadata Preservation Layer
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.9](/docs/tasks/PRATIKO_1.5_REFERENCE.md#139-fr-009-preservazione-metadati-nel-pipeline)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Document metadata (date, source, type, hierarchy) must flow from retrieval to synthesis for proper chronological analysis and source indexing.
+
+**Solution:**
+Create `DocumentMetadata` dataclass and context formatting per Section 13.9.2-13.9.3.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-190 (Retrieval)
+- **Unlocks:** DEV-192 (Synthesis Prompt)
+
+**Change Classification:** ADDITIVE
+
+**Files to Create:**
+- `app/services/metadata_extractor.py` (~100 lines)
+
+**Fields/Methods/Components:**
+- `DocumentMetadata` dataclass per Section 13.9.2
+- `format_context_for_synthesis(result: RetrievalResult) -> str` per Section 13.9.3
+- Documents sorted by date (most recent first)
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_metadata_extractor.py` FIRST
+- **Unit Tests:**
+  - `test_metadata_preserved_from_retrieval`
+  - `test_documents_sorted_by_date`
+  - `test_hierarchy_level_included`
+  - `test_reference_code_formatted`
+  - `test_url_preserved_when_available`
+- **Coverage Target:** 95%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] All metadata preserved (AC-009.1)
+- [ ] Documents sorted by date (AC-009.2)
+- [ ] Hierarchy explicit (AC-009.3)
+- [ ] Reference code available (AC-009.4)
+- [ ] URL preserved (AC-009.5)
+- [ ] 95%+ test coverage
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-192: Create Critical Synthesis Prompt Template (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Create synthesis prompt with Verdetto Operativo structure per Section 13.8.5.
+</summary>
+
+### DEV-192: Create Critical Synthesis Prompt Template
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.8.5](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1385-system-prompt-per-sintesi-critica)
+
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Step 64 needs a new system prompt that instructs the LLM to produce structured Verdetto Operativo output with conflict detection and source hierarchy.
+
+**Solution:**
+Create `SYNTHESIS_SYSTEM_PROMPT` per Section 13.8.5 with:
+- Chronological analysis
+- Conflict detection
+- Hierarchy application
+- Verdetto Operativo structure
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-191 (Metadata)
+- **Unlocks:** DEV-193 (Verdetto Parser), DEV-196 (Step 64)
+
+**Change Classification:** ADDITIVE
+
+**Files to Create:**
+- `app/core/prompts/synthesis_critical.md` (~150 lines)
+- `app/services/synthesis_prompt_builder.py` (~100 lines)
+
+**Fields/Methods/Components:**
+- `SynthesisPromptBuilder` class
+  - `build(context: str, query: str) -> str`
+  - `_inject_metadata_instructions() -> str`
+- Prompt includes Verdetto Operativo template per Section 13.8.4
+
+**Testing Requirements:**
+- **TDD:** Write `tests/core/prompts/test_synthesis_prompt.py` FIRST
+- **Unit Tests:**
+  - `test_prompt_includes_verdetto_structure`
+  - `test_prompt_includes_hierarchy_rules`
+  - `test_prompt_includes_conflict_detection`
+  - `test_prompt_valid_utf8`
+- **Coverage Target:** 100% for builder
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Prompt includes all 4 compiti from Section 13.8.5
+- [ ] Verdetto Operativo structure defined
+- [ ] Hierarchy rules explicit
+- [ ] Prudent approach emphasized
+- [ ] 100% test coverage for builder
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-193: Implement Verdetto Operativo Output Parser (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Parse LLM output to extract structured Verdetto Operativo per Section 13.8.4.
+</summary>
+
+### DEV-193: Implement Verdetto Operativo Output Parser
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.8.4](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1384-struttura-verdetto-operativo)
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+LLM synthesis output must be parsed to extract structured Verdetto Operativo sections for API response.
+
+**Solution:**
+Implement `VerdettoOperativoParser` that extracts:
+- AZIONE CONSIGLIATA
+- ANALISI DEL RISCHIO
+- SCADENZA IMMINENTE
+- DOCUMENTAZIONE NECESSARIA
+- INDICE DELLE FONTI
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-192 (Synthesis Prompt)
+- **Unlocks:** DEV-196 (Step 64)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- **Missing section:** Return None for that section
+- **Malformed output:** Return raw text as answer, empty verdetto
+- **No verdetto found:** Log warning, return answer only
+
+**Files to Create:**
+- `app/services/verdetto_parser.py` (~200 lines)
+- `app/schemas/verdetto.py` (~50 lines)
+
+**Fields/Methods/Components:**
+- `VerdettoOperativo` schema:
+  - `azione_consigliata: str | None`
+  - `analisi_rischio: str | None`
+  - `scadenza: str | None`
+  - `documentazione: list[str]`
+  - `indice_fonti: list[FonteReference]`
+- `VerdettoOperativoParser` class
+  - `parse(response: str) -> ParsedSynthesis`
+  - `_extract_section(text: str, header: str) -> str | None`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_verdetto_parser.py` FIRST
+- **Unit Tests:**
+  - `test_parse_complete_verdetto`
+  - `test_parse_partial_verdetto`
+  - `test_parse_no_verdetto_returns_answer`
+  - `test_extract_fonti_table`
+  - `test_graceful_on_malformed`
+- **Coverage Target:** 95%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Extracts all 5 Verdetto sections
+- [ ] Handles missing sections gracefully
+- [ ] Parses fonti table correctly
+- [ ] Never raises on malformed input
+- [ ] 95%+ test coverage
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-194: Create Step 34a LLM Router Node (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+LangGraph node for semantic routing per Section 13.3.
+</summary>
+
+### DEV-194: Create Step 34a LLM Router Node
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.3](/docs/tasks/PRATIKO_1.5_REFERENCE.md#133-nuova-architettura-agentic-rag-pipeline)
+
+**Priority:** CRITICAL | **Effort:** 2.5h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+LangGraph needs a new node for LLM-based routing at Step 34a.
+
+**Solution:**
+Create `step_034a__llm_router.py` node that:
+- Uses `LLMRouterService` for classification
+- Sets `routing_decision` in state
+- Fallback to TECHNICAL_RESEARCH on error
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-187 (Router Service)
+- **Unlocks:** DEV-195 (Step 39 nodes)
+
+**Change Classification:** ADDITIVE
+
+**Files to Create:**
+- `app/core/langgraph/nodes/step_034a__llm_router.py` (~100 lines)
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Integrates with LLMRouterService
+- [ ] Sets routing_decision in GraphState
+- [ ] Fallback to TECHNICAL_RESEARCH on error
+- [ ] <100 lines per CLAUDE.md guidelines
+- [ ] 95%+ test coverage
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-195: Create Step 39 Query Expansion Nodes (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+LangGraph nodes for Multi-Query, HyDE, and Parallel Retrieval.
+</summary>
+
+### DEV-195: Create Step 39 Query Expansion Nodes
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.3](/docs/tasks/PRATIKO_1.5_REFERENCE.md#133-nuova-architettura-agentic-rag-pipeline)
+
+**Priority:** HIGH | **Effort:** 2.5h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+LangGraph needs nodes for Step 39a (Multi-Query), 39b (HyDE), and 39c (Parallel Retrieval).
+
+**Solution:**
+Create three nodes that integrate with corresponding services:
+- Skip expansion for CHITCHAT/THEORETICAL
+- Skip HyDE for CALCULATOR
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-188 (Multi-Query), DEV-189 (HyDE), DEV-190 (Retrieval)
+- **Unlocks:** DEV-196 (Step 64)
+
+**Change Classification:** ADDITIVE
+
+**Files to Create:**
+- `app/core/langgraph/nodes/step_039a__multi_query.py` (~80 lines)
+- `app/core/langgraph/nodes/step_039b__hyde.py` (~80 lines)
+- `app/core/langgraph/nodes/step_039c__parallel_retrieval.py` (~100 lines)
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Each node <100 lines
+- [ ] Skip logic for non-technical routes
+- [ ] Proper state updates
+- [ ] 95%+ test coverage
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-196: Update Step 64 for Premium Model and Verdetto (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Integrate PremiumModelSelector and Verdetto parser into Step 64.
+</summary>
+
+### DEV-196: Update Step 64 for Premium Model and Verdetto
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.8](/docs/tasks/PRATIKO_1.5_REFERENCE.md#138-fr-008-sintesi-critica-e-verdetto-operativo)
+
+**Priority:** CRITICAL | **Effort:** 3h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Step 64 needs to use premium model selection and produce Verdetto Operativo output.
+
+**Solution:**
+Modify `step_064__llm_call.py` to:
+- Use `PremiumModelSelector` for model choice
+- Use `SynthesisPromptBuilder` for system prompt
+- Use `VerdettoOperativoParser` for output
+- Return degraded response if both providers fail
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-185 (Selector), DEV-192 (Prompt), DEV-193 (Parser), DEV-195 (Step 39)
+- **Unlocks:** DEV-197 (Tests)
+
+**Change Classification:** RESTRUCTURING
+
+**Pre-Implementation Verification:**
+- [ ] All existing Step 64 tests documented
+- [ ] Baseline test pass rate captured
+- [ ] Rollback plan ready
+
+**Files to Modify:**
+- `app/core/langgraph/nodes/step_064__llm_call.py`
+
+**Acceptance Criteria:**
+- [ ] Tests updated BEFORE implementation (TDD)
+- [ ] Uses PremiumModelSelector
+- [ ] Uses SynthesisPromptBuilder for TECHNICAL_RESEARCH
+- [ ] Parses Verdetto Operativo from response
+- [ ] Degraded response on dual-provider failure
+- [ ] All existing Step 64 tests pass
+- [ ] 95%+ test coverage
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-197: Unit Tests for Phase 7 Components (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Comprehensive unit tests for all Phase 7 services.
+</summary>
+
+### DEV-197: Unit Tests for Phase 7 Components
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.12](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1312-criteri-di-accettazione-complessivi)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+All Phase 7 components need comprehensive unit test coverage.
+
+**Solution:**
+Consolidate and verify all unit tests created during TDD in DEV-184 to DEV-196.
+
+**Agent Assignment:** @clelia (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-184 to DEV-196 (all implementation)
+- **Unlocks:** DEV-198 (Integration)
+
+**Files to Verify:**
+- All `tests/` files created in DEV-184 to DEV-196 (145+ tests)
+
+**Acceptance Criteria:**
+- [ ] 145+ unit tests across all Phase 7 components
+- [ ] 95%+ coverage for each new service
+- [ ] All mocks properly isolated
+- [ ] No flaky tests
+- [ ] All tests pass: `pytest tests/ -k "phase7" -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-198: Integration Tests for Agentic RAG Flow (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+End-to-end integration tests with mocked LLM.
+</summary>
+
+### DEV-198: Integration Tests for Agentic RAG Flow
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.12](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1312-criteri-di-accettazione-complessivi)
+
+**Priority:** HIGH | **Effort:** 2.5h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Need to verify the complete Agentic RAG pipeline works end-to-end.
+
+**Solution:**
+Create integration tests with mocked LLM that verify:
+- Full pipeline from query to Verdetto
+- Golden Set fast-path still works
+- KB hybrid search unchanged
+- Document context injection
+
+**Agent Assignment:** @clelia (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-197 (Unit tests)
+- **Unlocks:** DEV-199 (E2E)
+
+**Files to Create:**
+- `tests/integration/test_agentic_rag_pipeline.py` (~400 lines)
+
+**Key Test Classes:**
+- `TestAgenticRAGPipeline` - Full flow tests
+- `TestGoldenSetKBRegression` - Regression tests (CRITICAL)
+
+**Acceptance Criteria:**
+- [ ] Full pipeline integration tested
+- [ ] Golden Set fast-path verified
+- [ ] KB hybrid search unchanged
+- [ ] Document injection verified
+- [ ] All tests pass: `pytest tests/integration/test_agentic_rag_pipeline.py -v`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-199: E2E Validation with Real LLM Calls (Backend)</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+Validate acceptance criteria with real LLM calls.
+</summary>
+
+### DEV-199: E2E Validation with Real LLM Calls
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.12](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1312-criteri-di-accettazione-complessivi)
+
+**Priority:** MEDIUM | **Effort:** 2.5h | **Status:** NOT STARTED | **Type:** Backend
+
+**Problem:**
+Need to validate all AC-ARAG criteria with actual LLM responses.
+
+**Solution:**
+Create E2E test suite with real LLM calls (rate-limited) to verify:
+- AC-ARAG.1 to AC-ARAG.12
+
+**Agent Assignment:** @clelia (primary), @egidio (quality review)
+
+**Dependencies:**
+- **Blocking:** DEV-198 (Integration tests)
+- **Unlocks:** None (final task)
+
+**Files to Create:**
+- `tests/e2e/test_agentic_rag_quality.py` (~200 lines)
+- `scripts/validate_agentic_rag_quality.py` (~150 lines)
+
+**Acceptance Criteria:**
+- [ ] AC-ARAG.1: Routing accuracy ≥90%
+- [ ] AC-ARAG.2: False negatives <5%
+- [ ] AC-ARAG.3: Routing latency ≤200ms P95
+- [ ] AC-ARAG.4: Precision@5 improved ≥20%
+- [ ] AC-ARAG.5: Recall improved ≥15%
+- [ ] AC-ARAG.6: HyDE plausible 95%+
+- [ ] AC-ARAG.7: Verdetto in 100% technical responses
+- [ ] AC-ARAG.8: Conflicts detected
+- [ ] AC-ARAG.9: Fonti index complete
+- [ ] AC-ARAG.10: E2E latency ≤5s P95
+- [ ] AC-ARAG.11: Cost ≤$0.02/query
+- [ ] AC-ARAG.12: No regressions
+- [ ] Quality report generated
+
+</details>
+
+---
+
 ## Summary
 
 | Phase | Tasks | Effort | Agent |
@@ -2873,6 +4022,7 @@ Create E2E test suite with real LLM calls (rate-limited) to verify acceptance cr
 | Phase 4: Testing | DEV-168 to DEV-172 | 6.5h | @clelia |
 | Phase 5: Documentation | DEV-173 | 1h | @egidio, @ezio |
 | Phase 6: LLM-First Revision | DEV-174 to DEV-183 | 17h | @ezio, @clelia |
-| **Total** | **34 tasks** | **~50h** | |
+| Phase 7: Agentic RAG Pipeline | DEV-184 to DEV-199 | 39h | @ezio, @clelia, @primo |
+| **Total** | **50 tasks** | **~89h** | |
 
-**Estimated Timeline:** 3-4 weeks at 2-3h/day *(with Claude Code)*
+**Estimated Timeline:** 5-6 weeks at 3h/day *(with Claude Code)*

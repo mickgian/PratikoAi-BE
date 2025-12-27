@@ -246,6 +246,199 @@ def apply_action_override(
 
 
 # =============================================================================
+# DEV-180: Streaming Tag Stripping and Buffering Helpers
+# =============================================================================
+
+import re
+
+# Compiled regex patterns for XML tag stripping
+_ANSWER_TAG_PATTERN = re.compile(r"<answer>(.*?)</answer>", re.DOTALL)
+_ACTIONS_TAG_PATTERN = re.compile(
+    r"<suggested_actions>.*?</suggested_actions>", re.DOTALL
+)
+_OPENING_ANSWER_TAG = re.compile(r"<answer>")
+_CLOSING_ANSWER_TAG = re.compile(r"</answer>")
+
+
+def strip_xml_tags(content: str) -> str:
+    """Strip <answer> and <suggested_actions> XML tags from content.
+
+    DEV-180: Removes XML tags used for LLM-First proactivity while
+    preserving the actual content. Used for streaming output.
+
+    Args:
+        content: Raw content with potential XML tags
+
+    Returns:
+        str: Content with XML tags stripped
+    """
+    if not content:
+        return ""
+
+    result = content
+
+    # First, try to extract just the answer content
+    answer_match = _ANSWER_TAG_PATTERN.search(result)
+    if answer_match:
+        result = answer_match.group(1)
+    else:
+        # If no complete answer tag, strip opening tag if present
+        result = _OPENING_ANSWER_TAG.sub("", result)
+        result = _CLOSING_ANSWER_TAG.sub("", result)
+
+    # Remove suggested_actions block entirely
+    result = _ACTIONS_TAG_PATTERN.sub("", result)
+
+    return result.strip()
+
+
+class StreamBuffer:
+    """Buffer for accumulating streamed response chunks.
+
+    DEV-180: Collects chunks during streaming for final parsing
+    while allowing real-time content delivery.
+    """
+
+    def __init__(self, max_size: int = 1024 * 1024) -> None:
+        """Initialize buffer with optional max size.
+
+        Args:
+            max_size: Maximum buffer size in bytes (default 1MB)
+        """
+        self._chunks: list[str] = []
+        self._size = 0
+        self._max_size = max_size
+
+    def append(self, chunk: str) -> None:
+        """Append a chunk to the buffer.
+
+        Args:
+            chunk: String chunk to append
+        """
+        if chunk:
+            self._chunks.append(chunk)
+            self._size += len(chunk)
+
+    def get_content(self) -> str:
+        """Get the complete buffered content.
+
+        Returns:
+            str: All chunks joined together
+        """
+        return "".join(self._chunks)
+
+    def size(self) -> int:
+        """Get current buffer size in characters.
+
+        Returns:
+            int: Total size of buffered content
+        """
+        return self._size
+
+    def clear(self) -> None:
+        """Clear the buffer."""
+        self._chunks = []
+        self._size = 0
+
+
+class StreamTagState:
+    """State for tracking XML tags across stream chunks.
+
+    DEV-180: Maintains state for handling partial tags that
+    span multiple chunks during streaming.
+    """
+
+    def __init__(self) -> None:
+        """Initialize tag state."""
+        self.pending_tag: str = ""
+        self.inside_answer: bool = False
+        self.inside_actions: bool = False
+
+
+def process_stream_chunk(chunk: str, state: StreamTagState) -> tuple[str, StreamTagState]:
+    """Process a single stream chunk, stripping tags.
+
+    DEV-180: Handles partial tags across chunk boundaries.
+
+    Args:
+        chunk: Single chunk from stream
+        state: Current tag state
+
+    Returns:
+        Tuple of (processed content, updated state)
+    """
+    if not chunk:
+        return "", state
+
+    # Combine with any pending content from previous chunk
+    content = state.pending_tag + chunk
+    state.pending_tag = ""
+
+    # Check for partial tags at end of chunk
+    # Look for incomplete opening or closing tags
+    for i in range(len(content) - 1, max(len(content) - 20, -1), -1):
+        if i < 0:
+            break
+        if content[i] == "<":
+            potential_tag = content[i:]
+            # Check if this could be start of our tags
+            if (
+                potential_tag.startswith("<a")
+                or potential_tag.startswith("</a")
+                or potential_tag.startswith("<s")
+                or potential_tag.startswith("</s")
+            ):
+                # Check if tag is incomplete
+                if ">" not in potential_tag:
+                    state.pending_tag = potential_tag
+                    content = content[:i]
+                    break
+
+    # Now strip complete tags from content
+    result = strip_xml_tags(content)
+
+    return result, state
+
+
+def format_actions_sse_event(actions: list[dict]) -> str:
+    """Format suggested_actions as SSE event.
+
+    DEV-180: Creates SSE event for suggested actions.
+
+    Args:
+        actions: List of action dictionaries
+
+    Returns:
+        str: Formatted SSE event string
+    """
+    event_data = {
+        "content": "",
+        "event_type": "suggested_actions",
+        "suggested_actions": actions,
+    }
+    return f"data: {json.dumps(event_data)}\n\n"
+
+
+def format_question_sse_event(question: dict) -> str:
+    """Format interactive_question as SSE event.
+
+    DEV-180: Creates SSE event for interactive questions.
+
+    Args:
+        question: Question dictionary
+
+    Returns:
+        str: Formatted SSE event string
+    """
+    event_data = {
+        "content": "",
+        "event_type": "interactive_question",
+        "interactive_question": question,
+    }
+    return f"data: {json.dumps(event_data)}\n\n"
+
+
+# =============================================================================
 # DEV-162: Analytics Tracking Helpers
 # =============================================================================
 

@@ -111,7 +111,7 @@ jobs:
                 'models': any(f.startswith('app/models/') for f in changed_files),
                 'core': any(f.startswith('app/core/') for f in changed_files),
                 'schemas': any(f.startswith('app/schemas/') for f in changed_files),
-                'infrastructure': any(f in ['Dockerfile', 'docker-compose.yml'] or f.startswith('terraform/') for f in changed_files),
+                'infrastructure': any(f in ['Dockerfile', 'docker-compose.yml'] for f in changed_files),
                 'dependencies': any(f in ['pyproject.toml', 'requirements.txt'] for f in changed_files)
             }
             

@@ -42,7 +42,6 @@ check_prerequisites() {
     # Check for required tools
     command -v docker >/dev/null 2>&1 || missing_tools+=("docker")
     command -v kubectl >/dev/null 2>&1 || missing_tools+=("kubectl")
-    command -v terraform >/dev/null 2>&1 || missing_tools+=("terraform")
     command -v helm >/dev/null 2>&1 || missing_tools+=("helm")
     command -v aws >/dev/null 2>&1 || missing_tools+=("aws-cli")
     
@@ -95,34 +94,35 @@ load_config() {
     log_success "Configuration loaded and validated"
 }
 
-# Create staging infrastructure with Terraform
+# Create staging infrastructure
+# NOTE: PratikoAI uses Hetzner Cloud + Docker Compose instead of Terraform/AWS.
+# Architecture Decision (ADR-017):
+# - Target scale: 100-1000 users over 7-8 years (simple, static infrastructure)
+# - Cost optimization: Hetzner is 5-10x cheaper than AWS for our scale
+# - Simplicity: Docker Compose is sufficient, no Kubernetes/Terraform complexity needed
+# - Infrastructure is provisioned manually via Hetzner Cloud Console or hcloud CLI
 create_infrastructure() {
-    log_info "Creating staging infrastructure with Terraform..."
-    
-    cd "$PROJECT_ROOT/terraform/environments/staging"
-    
-    # Initialize Terraform
-    terraform init -upgrade
-    
-    # Plan infrastructure changes
-    terraform plan \
-        -var="cluster_name=$CLUSTER_NAME" \
-        -var="aws_region=$AWS_REGION" \
-        -var="environment=staging" \
-        -var="instance_type=t3.large" \
-        -var="min_nodes=2" \
-        -var="max_nodes=6" \
-        -var="desired_nodes=2" \
-        -out=staging.tfplan
-    
-    # Apply infrastructure changes
-    terraform apply -auto-approve staging.tfplan
-    
-    # Update kubeconfig
-    aws eks update-kubeconfig --region "$AWS_REGION" --name "$CLUSTER_NAME"
-    
-    log_success "Staging infrastructure created"
-    cd "$PROJECT_ROOT"
+    log_info "Verifying staging infrastructure..."
+
+    # Verify Docker is running
+    if ! docker info >/dev/null 2>&1; then
+        log_error "Docker is not running. Please start Docker daemon."
+    fi
+
+    # Verify docker-compose configuration exists
+    local compose_file="$PROJECT_ROOT/docker-compose.staging.yml"
+    if [ ! -f "$compose_file" ]; then
+        compose_file="$PROJECT_ROOT/docker-compose.yml"
+        log_info "Using default docker-compose.yml for staging"
+    fi
+
+    # Validate docker-compose configuration
+    docker compose -f "$compose_file" config >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        log_error "Invalid docker-compose configuration"
+    fi
+
+    log_success "Staging infrastructure verified (Hetzner + Docker Compose)"
 }
 
 # Setup Kubernetes namespace and RBAC

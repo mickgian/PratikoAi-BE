@@ -261,7 +261,7 @@ class DeploymentCoordinator:
         # Categorize changes
         categories = {
             "infrastructure": any(
-                f in ["Dockerfile", "docker-compose.yml"] or f.startswith(("terraform/", "k8s/", ".github/workflows/"))
+                f in ["Dockerfile", "docker-compose.yml"] or f.startswith(("k8s/", ".github/workflows/"))
                 for f in changed_files
             ),
             "api_breaking": any(f.startswith("app/api/") and self._is_breaking_api_change(f) for f in changed_files),

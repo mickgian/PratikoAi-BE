@@ -351,10 +351,30 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 ```
 
-**Terraform (If Needed):**
-- Currently NOT using Terraform (manual Hetzner provisioning)
-- **Evaluate** if Terraform would benefit infrastructure consistency
-- **Propose** IaC adoption if managing >5 VPS instances
+**Infrastructure as Code Decision (ADR-017 - 2025-12-27):**
+
+PratikoAI has decided NOT to use Terraform. This is a deliberate architectural choice.
+
+**Rationale:**
+- **Target Scale:** 100-1000 users over 7-8 years (unlikely to exceed 1000)
+- **Infrastructure Simplicity:** 1-2 Hetzner VPS servers are sufficient
+- **Cost Optimization:** Hetzner is 5-10x cheaper than AWS for our scale
+- **Traffic Patterns:** Italian tax professionals work predictable hours (9-18, Mon-Fri)
+- **No Auto-Scaling Needed:** Static infrastructure, no dynamic provisioning required
+
+**Chosen Approach:**
+- **Hosting:** Hetzner Cloud (Germany, GDPR compliant)
+- **Orchestration:** Docker Compose (not Kubernetes)
+- **Provisioning:** Manual via Hetzner Cloud Console or `hcloud` CLI
+- **Deployment:** GitHub Actions → SSH → `docker compose up -d`
+- **Scaling:** Upgrade VPS tier or add second server when needed (manual)
+
+**When to Reconsider:**
+- If managing >5 VPS instances
+- If multi-region deployment is required
+- If auto-scaling becomes necessary (unlikely given target scale)
+
+**This decision aligns with ADR-006 (Hetzner over AWS) and simplifies operations.**
 
 ---
 

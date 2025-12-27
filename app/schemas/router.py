@@ -96,7 +96,7 @@ class RouterDecision(BaseModel):
         description="Suggested data sources for retrieval",
     )
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def needs_retrieval(self) -> bool:
         """Determine if this route requires RAG retrieval.

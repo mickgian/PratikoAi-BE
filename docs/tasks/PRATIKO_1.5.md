@@ -1788,6 +1788,47 @@ Implemented streaming tag stripping and buffering helpers:
 
 </details>
 
+<details>
+<summary>
+<h3>✅ DEV-181: Unit Tests for LLM-First Components</h3>
+<strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-181-Unit-Tests-for-LLM-First-Components
+</summary>
+
+### DEV-181: Unit Tests for LLM-First Components
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
+
+**Problem:**
+Need comprehensive unit test coverage for all new/modified components to ensure LLM-First architecture works correctly.
+
+**Solution:**
+TDD approach in DEV-174 to DEV-180 already created all required tests. DEV-181 verifies test coverage meets requirements.
+
+**Test Coverage (Requirement: 67+ tests):**
+
+| Test File | Tests | Requirement |
+|-----------|-------|-------------|
+| `test_proactivity_constants.py` | 29 | 15 |
+| `test_suggested_actions_prompt.py` | 15 | 7 |
+| `test_llm_response_parser.py` | 21 | 20 |
+| `test_proactivity_engine_simplified.py` | 38 | 25 |
+| **Total** | **104** | **67+** |
+
+**Performance:**
+- Execution time: 0.17s (requirement: <30s)
+- All 104 tests pass
+
+**Acceptance Criteria (All Met):**
+- ✅ 104 tests (153% of 67+ requirement)
+- ✅ 95%+ coverage for new modules
+- ✅ All tests follow AAA pattern
+- ✅ All tests pass
+- ✅ Test execution time: 0.17s (<30s requirement)
+
+**Git:** Branch `DEV-181-Unit-Tests-for-LLM-First-Components`
+
+</details>
+
 ---
 
 ## Phase 1: Foundation (Backend) - 9h
@@ -1957,106 +1998,14 @@ DEV-174 (CALCULABLE_INTENTS Constants)
 **CRITICAL: DEV-178 → DEV-179 Dependency**
 `chatbot.py` imports `ActionTemplateService` at line 64. DEV-178 must archive this service BEFORE DEV-179 can integrate the new proactivity flow.
 
-**Note:** DEV-174, DEV-175, DEV-176, DEV-177, DEV-178, DEV-179, and DEV-180 moved to Completed Tasks section above.
-
----
-
-<details>
-<summary>
-<h3>DEV-181: Unit Tests for LLM-First Components</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
-Comprehensive unit tests for new LLM-First components.
-</summary>
-
-### DEV-181: Unit Tests for LLM-First Components
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
-
-**Priority:** HIGH | **Effort:** 2h | **Status:** DONE | **Type:** Backend
-
-**Problem:**
-Need comprehensive unit test coverage for all new/modified components to ensure LLM-First architecture works correctly.
-
-**Solution:**
-Create/update unit test files for all LLM-First components with TDD pattern.
-
-**Agent Assignment:** @clelia (primary)
-
-**Dependencies:**
-- **Blocking:** DEV-174 to DEV-180 (all implementation complete)
-- **Unlocks:** DEV-182 (integration tests)
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- Not applicable (test code)
-
-**Performance Requirements:**
-- Full unit test suite: <30s
-- Individual test: <500ms
-
-**Edge Cases:**
-- See individual task edge cases (DEV-174 to DEV-180)
-
-**Files to Create/Update:**
-- `tests/core/test_proactivity_constants.py` (~100 lines, 15 tests)
-- `tests/core/prompts/test_suggested_actions_prompt.py` (~60 lines, 7 tests)
-- `tests/services/test_llm_response_parser.py` (~250 lines, 20 tests)
-- `tests/services/test_proactivity_engine.py` (~300 lines, 25 tests - major update)
-
-**Fields/Methods/Components:**
-- `TestProactivityConstants` class (15 tests)
-- `TestSuggestedActionsPrompt` class (7 tests)
-- `TestLLMResponseParser` class (20 tests)
-- `TestProactivityEngine` class (25 tests)
-
-**Testing Requirements:**
-- **TDD:** Already applied in DEV-174 to DEV-180
-- **Unit Tests:** 67+ total tests across 4 files
-  - Constants: 15 tests
-  - Prompt: 7 tests
-  - Parser: 20 tests
-  - Engine: 25 tests
-- **Edge Case Tests:** Included in unit test counts
-- **Integration Tests:** Covered in DEV-182
-- **Regression Tests:** Run all tests together
-- **Coverage Target:** 95%+ for new modules, 90%+ for modified
-
-**Risks & Mitigations:**
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Missing edge cases | MEDIUM | Review Section 12 requirements |
-| Flaky tests | MEDIUM | Avoid timing-dependent tests |
-| Test maintenance | LOW | Follow AAA pattern, clear naming |
-
-**Code Structure:**
-- Follow AAA pattern (Arrange, Act, Assert)
-- One assertion per test (where practical)
-- Descriptive test names
-
-**Code Completeness:**
-- [ ] All 67+ tests implemented
-- [ ] All edge cases covered
-- [ ] No TODO in test code
-- [ ] No skipped tests without reason
-
-**Acceptance Criteria:**
-- [ ] 67+ new/updated tests across all files
-- [ ] 95%+ coverage for new modules (`proactivity_constants.py`, `llm_response_parser.py`)
-- [ ] 90%+ coverage for modified modules (`proactivity_engine.py`)
-- [ ] All tests follow AAA pattern
-- [ ] All tests pass: `pytest tests/ -v`
-- [ ] Test execution time <30s
-
-</details>
+**Note:** DEV-174, DEV-175, DEV-176, DEV-177, DEV-178, DEV-179, DEV-180, and DEV-181 moved to Completed Tasks section above.
 
 ---
 
 <details>
 <summary>
 <h3>DEV-182: Integration Tests for LLM-First Flow</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Integration tests verifying full LLM-First proactivity flow.
 </summary>
 
@@ -2064,7 +2013,7 @@ Integration tests verifying full LLM-First proactivity flow.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
 
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** HIGH | **Effort:** 2h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 Need integration tests that verify the complete flow from API request through proactivity engine to response with actions.

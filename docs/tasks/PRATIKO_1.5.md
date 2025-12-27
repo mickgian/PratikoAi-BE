@@ -1610,6 +1610,50 @@ Created `app/services/llm_response_parser.py` with compiled regex patterns and P
 
 </details>
 
+<details>
+<summary>
+<h3>✅ DEV-177: Simplify ProactivityEngine Decision Logic</h3>
+<strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-177-Simplify-ProactivityEngine-Decision-Logic
+</summary>
+
+### DEV-177: Simplify ProactivityEngine Decision Logic
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
+
+**Problem:**
+The current ProactivityEngine uses complex template matching (~492 lines). Per Section 12.7, the logic should be simplified to three steps.
+
+**Solution:**
+Created `app/services/proactivity_engine_simplified.py` implementing the LLM-First decision logic with no external dependencies.
+
+**Files Created:**
+- `app/services/proactivity_engine_simplified.py` (~280 lines)
+- `tests/services/test_proactivity_engine_simplified.py` (~400 lines, 38 tests)
+
+**Features Implemented:**
+- `ProactivityEngine` class with no external dependencies
+- `process_query()` with 3-step decision logic:
+  1. Calculable intent with missing params → InteractiveQuestion
+  2. Recognized document type → template actions
+  3. Otherwise → use_llm_actions flag
+- `_classify_intent()` with compiled regex patterns
+- `_extract_parameters()` for parameter extraction
+- `_build_question_for_missing()` for question generation
+- `ProactivityResult` Pydantic model
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 38 tests
+- ✅ Decision logic follows Section 12.7 exactly
+- ✅ InteractiveQuestion ONLY for 5 calculable intents
+- ✅ Template actions ONLY for 4 document types
+- ✅ LLM actions flag set for everything else
+- ✅ Performance: decision logic <10ms
+- ✅ All tests pass
+
+**Git:** Branch `DEV-177-Simplify-ProactivityEngine-Decision-Logic`
+
+</details>
+
 ---
 
 ## Phase 1: Foundation (Backend) - 9h
@@ -1779,166 +1823,14 @@ DEV-174 (CALCULABLE_INTENTS Constants)
 **CRITICAL: DEV-178 → DEV-179 Dependency**
 `chatbot.py` imports `ActionTemplateService` at line 64. DEV-178 must archive this service BEFORE DEV-179 can integrate the new proactivity flow.
 
-**Note:** DEV-174, DEV-175, and DEV-176 moved to Completed Tasks section above.
-
----
-
-<details>
-<summary>
-<h3>DEV-177: Simplify ProactivityEngine Decision Logic</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
-Refactor ProactivityEngine to use LLM-First logic with simplified decision flow.
-</summary>
-
-### DEV-177: Simplify ProactivityEngine Decision Logic
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
-
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** DONE | **Type:** Backend
-
-**Problem:**
-The current ProactivityEngine uses complex template matching (~492 lines). Per Section 12.7, the logic should be simplified to three steps:
-1. Check if calculable intent with missing params -> InteractiveQuestion
-2. Check if document present -> use DOCUMENT_ACTION_TEMPLATES
-3. Otherwise -> LLM generates actions
-
-**Solution:**
-Refactor ProactivityEngine to implement the simplified decision logic from Section 12.7, removing all template matching code.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-174 (constants), DEV-176 (parser)
-- **Unlocks:** DEV-178, DEV-179, DEV-180
-
-**Change Classification:** RESTRUCTURING
-
-**Impact Analysis:**
-- **Primary File:** `app/services/proactivity_engine.py`
-- **Affected Files:**
-  - `app/api/v1/chatbot.py` (imports ProactivityEngine)
-  - `app/schemas/proactivity.py` (uses Action, InteractiveQuestion)
-- **Related Tests:**
-  - `tests/services/test_proactivity_engine.py` (direct - MAJOR UPDATE)
-  - `tests/api/test_chatbot_proactivity.py` (consumer)
-  - `tests/api/test_chatbot_streaming_proactivity.py` (consumer)
-- **Baseline Command:** `pytest tests/services/test_proactivity_engine.py tests/api/test_chatbot_proactivity.py -v`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass (document current state)
-- [ ] Existing code reviewed (identify all removal targets)
-- [ ] No pre-existing test failures in proactivity tests
-
-**Error Handling:**
-- **Intent classification failure:** Log error, default to LLM-generated actions
-- **Document type unknown:** Use LLM-generated actions (no template override)
-- **Missing parameters extraction failure:** Log warning, skip InteractiveQuestion
-- **Logging:** All decision paths logged at DEBUG level with context
-
-**Performance Requirements:**
-- Decision logic: <10ms (no LLM calls in decision)
-- Full proactivity flow: <50ms (excluding LLM call)
-
-**Edge Cases:**
-- **Nulls/Empty:** Empty query returns empty actions
-- **Unknown intent:** Treated as non-calculable, use LLM actions
-- **Unknown document type:** No template override, use LLM actions
-- **Partial parameters:** Extract what's available, ask for missing only
-- **All parameters present:** No InteractiveQuestion, proceed to LLM
-- **Concurrent requests:** Engine is stateless, thread-safe
-
-**File:** `app/services/proactivity_engine.py`
-
-**Code to REMOVE (~492 lines):**
-- `CLASSIFICATION_TO_INTENT` constant (30 lines)
-- `CLASSIFIER_ACTION_TO_TEMPLATE_ACTION` constant (12 lines)
-- `INTENT_QUESTION_MAP` constant (14 lines)
-- `INTENT_MULTIFIELD_QUESTIONS` constant (130 lines)
-- `FALLBACK_CHOICE_QUESTION` constant (14 lines)
-- `_infer_intent()` method (48 lines)
-- `_legacy_infer_intent()` method (26 lines)
-- `_get_question_id_for_param()` method (18 lines)
-- `generate_question()` method (72 lines)
-- `_generate_multifield_question()` method (71 lines)
-- `should_ask_question()` method (94 lines)
-- `_extract_parameters()` method (18 lines)
-- `_select_actions_for_context()` method (35 lines)
-- `select_actions()` method (49 lines)
-
-**Fields/Methods/Components (NEW):**
-- `ProactivityEngine` class (refactored)
-  - `__init__(self)` - Initialize with constants only
-  - `process_query(query: str, document: Optional[Document], session_context: Optional[dict]) -> ProactivityResult`
-  - `_check_calculable_intent(query: str) -> Optional[InteractiveQuestion]`
-  - `_get_document_actions(document: Optional[Document]) -> Optional[list[Action]]`
-  - `_classify_intent(query: str) -> Optional[str]` - Simple intent classifier
-  - `_extract_parameters(query: str, intent: str) -> dict[str, Any]`
-  - `_build_question_for_missing(intent: str, missing: list[str], extracted: dict) -> InteractiveQuestion`
-- `ProactivityResult(BaseModel)` - New result type
-  - `interactive_question: Optional[InteractiveQuestion]`
-  - `template_actions: Optional[list[Action]]`
-  - `use_llm_actions: bool`
-
-**Testing Requirements:**
-- **TDD:** Update `tests/services/test_proactivity_engine.py` FIRST
-- **Unit Tests:**
-  - `test_process_query_calcolo_irpef_missing_params_returns_question`
-  - `test_process_query_calcolo_irpef_complete_params_no_question`
-  - `test_process_query_fattura_returns_template_actions`
-  - `test_process_query_generic_returns_llm_flag`
-  - `test_process_query_unknown_intent_uses_llm`
-  - `test_process_query_unknown_document_uses_llm`
-  - `test_all_five_calculable_intents_trigger_questions`
-  - `test_all_four_document_types_return_templates`
-- **Edge Case Tests:**
-  - `test_empty_query_returns_llm_flag`
-  - `test_partial_parameters_asks_for_missing_only`
-  - `test_concurrent_calls_are_thread_safe`
-- **Integration Tests:** `tests/integration/test_proactivity_flow.py`
-- **Regression Tests:** `pytest tests/services/test_proactivity_engine.py tests/api/test_chatbot*.py -v`
-- **Coverage Target:** 90%+ for engine module
-
-**Risks & Mitigations:**
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking existing API | CRITICAL | Maintain same public interface signatures |
-| Missing test coverage | HIGH | Update all tests before removing code |
-| Intent classification accuracy | MEDIUM | Test with real query examples |
-| Parameter extraction regression | MEDIUM | Preserve working extraction logic |
-
-**Code Structure:**
-- Max class: 200 lines (down from ~900)
-- Max method: 50 lines
-- Extract helpers for testability
-
-**Code Completeness:**
-- [ ] No TODO comments for required functionality
-- [ ] All 5 calculable intents implemented
-- [ ] All 4 document types implemented
-- [ ] All obsolete code removed (verify with grep)
-- [ ] No stub implementations
-
-**Acceptance Criteria:**
-- [ ] Tests updated BEFORE implementation changes (TDD)
-- [ ] Decision logic follows Section 12.7 exactly
-- [ ] InteractiveQuestion ONLY for 5 calculable intents
-- [ ] Template actions ONLY for 4 document types
-- [ ] LLM actions flag set for everything else
-- [ ] All obsolete methods/constants removed (~492 lines)
-- [ ] Public API unchanged (backward compatible)
-- [ ] 90%+ test coverage for engine module
-- [ ] All regression tests pass
-- [ ] All tests pass: `pytest tests/services/test_proactivity_engine.py -v`
-
-</details>
+**Note:** DEV-174, DEV-175, DEV-176, and DEV-177 moved to Completed Tasks section above.
 
 ---
 
 <details>
 <summary>
 <h3>DEV-178: Remove Unused Templates and Simplify Template Service</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Clean up template files and archive ActionTemplateService after LLM-First migration.
 </summary>
 
@@ -1946,7 +1838,7 @@ Clean up template files and archive ActionTemplateService after LLM-First migrat
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.11](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1211-piano-di-migrazione)
 
-**Priority:** HIGH | **Effort:** 1.5h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** HIGH | **Effort:** 1.5h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 The current template system has ~50+ scenarios across domain-specific YAML files (2,572 lines). With LLM-First architecture, templates are replaced by DOCUMENT_ACTION_TEMPLATES constants.

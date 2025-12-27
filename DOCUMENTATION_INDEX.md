@@ -1,6 +1,6 @@
 # Master Documentation Index
 
-**Auto-generated:** 2025-12-27 17:56:40
+**Auto-generated:** 2025-12-27 18:58:18
 **Total Documents:** 312 markdown files
 
 > 💡 This index is automatically generated. To update, run: `python scripts/generate_docs_index.py`

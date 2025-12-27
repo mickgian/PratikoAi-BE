@@ -1047,6 +1047,53 @@ CREATE INDEX idx_qh_user_timestamp ON query_history(user_id, timestamp DESC);
 4. **NO AWS** - Use Hetzner (ADR-006)
 5. **Pydantic V2 only** - No V1 syntax (ADR-005)
 6. **Chat History: PostgreSQL (NEW 2025-11-29)** - Server-side storage, NO IndexedDB-only (ADR-015)
+7. **NO Terraform/Kubernetes (NEW 2025-12-27)** - Docker Compose only (ADR-017)
+
+### ADR-017: No Terraform/Kubernetes - Docker Compose Only (2025-12-27)
+
+**Status:** APPROVED
+**Decision:** Do NOT use Terraform or Kubernetes for PratikoAI infrastructure.
+
+**Context:**
+PratikoAI targets Italian tax/fiscal professionals with expected scale:
+- Year 1: 100 users
+- Year 2: 300 users
+- Year 3: 500 users
+- 7-8 years: unlikely to exceed 1000 users
+
+**Decision Rationale:**
+1. **Scale doesn't justify complexity:** 100-1000 users can be served by 1-2 VPS servers
+2. **Cost optimization:** Terraform/K8s add overhead without proportional benefits at this scale
+3. **Predictable traffic:** Italian professionals work 9-18 Mon-Fri, no auto-scaling needed
+4. **Operational simplicity:** Docker Compose is sufficient, fewer moving parts
+5. **Hetzner alignment:** Hetzner + Docker is 5-10x cheaper than AWS + Terraform
+
+**Chosen Approach:**
+- **Hosting:** Hetzner Cloud VPS (Germany, GDPR compliant)
+- **Orchestration:** Docker Compose
+- **Provisioning:** Manual (Hetzner Console or `hcloud` CLI)
+- **CI/CD:** GitHub Actions → SSH → `docker compose up -d`
+
+**Scaling Plan:**
+| Users | Infrastructure |
+|-------|----------------|
+| 1-100 | 1× CPX31 (4 vCPU, 8GB, ~€15/month) |
+| 100-500 | Upgrade to CPX41 or add second server |
+| 500-1000 | 2 servers + load balancer (if needed) |
+
+**Consequences:**
+- ✅ Simpler operations, fewer tools to learn
+- ✅ Lower infrastructure costs
+- ✅ Faster deployments
+- ⚠️ Manual scaling (acceptable given target scale)
+- ⚠️ No auto-healing (mitigated by health checks + monitoring)
+
+**When to Reconsider:**
+- If managing >5 VPS instances
+- If multi-region deployment becomes required
+- If auto-scaling becomes necessary
+
+**Related ADRs:** ADR-006 (Hetzner over AWS)
 
 ---
 

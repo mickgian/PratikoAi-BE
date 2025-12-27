@@ -661,6 +661,54 @@ Created `SYNTHESIS_SYSTEM_PROMPT` per Section 13.8.5 with all 4 compiti (chronol
 
 <details>
 <summary>
+<h3>DEV-193: Implement Verdetto Operativo Output Parser (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h (Actual: ~1.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Implemented parser to extract structured Verdetto Operativo sections from LLM synthesis output with 27 tests.
+</summary>
+
+### DEV-193: Implement Verdetto Operativo Output Parser
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** HIGH | **Effort:** 3h (Actual: ~1.5h)
+
+**Problem:**
+LLM synthesis output must be parsed to extract structured Verdetto Operativo sections for API response.
+
+**Solution:**
+Implemented `VerdettoOperativoParser` that extracts all 5 sections per Section 13.8.4.
+
+**Files Created:**
+- `app/schemas/verdetto.py` (~95 lines)
+- `app/services/verdetto_parser.py` (~320 lines)
+- `tests/services/test_verdetto_parser.py` (27 tests)
+
+**Components Implemented:**
+- `FonteReference` schema for source references from INDICE DELLE FONTI table
+- `VerdettoOperativo` schema with all 5 sections
+- `ParsedSynthesis` schema for complete parsing result
+- `VerdettoOperativoParser` class with:
+  - `parse(response)` - Main parsing method
+  - `_extract_answer_text()` - Text before VERDETTO OPERATIVO
+  - `_extract_section()` - Extract individual sections by markers
+  - `_extract_documentazione_list()` - Parse bulleted list
+  - `_parse_fonti_table()` - Parse markdown table
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 27 tests
+- ✅ Extracts all 5 Verdetto sections
+- ✅ Handles missing sections gracefully (returns None)
+- ✅ Parses fonti table correctly
+- ✅ Never raises on malformed input
+- ✅ All tests passing
+
+**Git:** Branch `DEV-193-Implement-Verdetto-Operativo-Output-Parser`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2580,212 +2628,6 @@ DEV-184 (LLM Config)
 
 <details>
 <summary>
-<h3>DEV-190: Implement Parallel Hybrid Retrieval with RRF Fusion (Backend)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> COMPLETED | <strong>Type:</strong> Backend<br>
-Parallel search with RRF fusion and source authority per Section 13.7.
-</summary>
-
-### DEV-190: Implement Parallel Hybrid Retrieval with RRF Fusion
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#137-fr-007-rrf-fusion-con-source-authority)
-
-**Priority:** HIGH | **Effort:** 3h | **Status:** COMPLETED | **Type:** Backend
-
-**Problem:**
-Need to combine results from multiple search queries (3 BM25 + 3 Vector + 1 HyDE) using RRF with source authority and recency boosts.
-
-**Solution:**
-Implement parallel retrieval with RRF fusion per Section 13.7.2:
-- RRF formula with k=60
-- Weights: BM25 0.3, Vector 0.4, HyDE 0.3
-- Recency boost: +50% for docs <12 months
-- Source authority: Legge 1.3x, Circolare 1.15x, FAQ 1.0x
-
-**Agent Assignment:** @ezio (primary), @primo (index optimization)
-
-**Dependencies:**
-- **Blocking:** DEV-188 (Multi-Query), DEV-189 (HyDE)
-- **Unlocks:** DEV-191 (Metadata), DEV-195 (Node)
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- **Search timeout:** Return partial results
-- **No results:** Return empty with warning
-- **Duplicate documents:** Deduplicate by document_id
-
-**Performance Requirements:**
-- **Total retrieval time:** ≤450ms (100ms BM25 + 150ms Vector + fusion)
-
-**Files to Create:**
-- `app/services/parallel_retrieval.py` (~300 lines)
-
-**Fields/Methods/Components:**
-- `ParallelRetrievalService` class
-  - `retrieve(queries: QueryVariants, hyde: HyDEResult) -> RetrievalResult`
-  - `_execute_parallel_searches(queries: list) -> list[SearchResults]`
-  - `_rrf_fusion(results: list[SearchResults]) -> list[RankedDocument]`
-  - `_apply_boosts(docs: list, entities: list) -> list[RankedDocument]`
-- `GERARCHIA_FONTI` constant per Section 13.7.4
-
-**Testing Requirements:**
-- **TDD:** Write `tests/services/test_parallel_retrieval.py` FIRST
-- **Unit Tests:**
-  - `test_rrf_combines_all_searches`
-  - `test_recency_boost_applied`
-  - `test_authority_boost_legge_highest`
-  - `test_top_10_returned`
-  - `test_metadata_preserved`
-  - `test_deduplication_works`
-- **Coverage Target:** 95%+
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] RRF combines all search results (AC-007.1)
-- [ ] Recency boost applied (AC-007.2)
-- [ ] Authority hierarchy respected (AC-007.3)
-- [ ] Top 10 documents returned (AC-007.4)
-- [ ] Metadata preserved (AC-007.5)
-- [ ] 95%+ test coverage
-
-</details>
-
----
-
-<details>
-<summary>
-<h3>DEV-191: Create Document Metadata Preservation Layer (Backend)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> COMPLETED | <strong>Type:</strong> Backend<br>
-Preserve and format metadata for synthesis per Section 13.9.
-</summary>
-
-### DEV-191: Create Document Metadata Preservation Layer
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.9](/docs/tasks/PRATIKO_1.5_REFERENCE.md#139-fr-009-preservazione-metadati-nel-pipeline)
-
-**Priority:** HIGH | **Effort:** 2h | **Status:** COMPLETED | **Type:** Backend
-
-**Problem:**
-Document metadata (date, source, type, hierarchy) must flow from retrieval to synthesis for proper chronological analysis and source indexing.
-
-**Solution:**
-Create `DocumentMetadata` dataclass and context formatting per Section 13.9.2-13.9.3.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-190 (Retrieval)
-- **Unlocks:** DEV-192 (Synthesis Prompt)
-
-**Change Classification:** ADDITIVE
-
-**Files to Create:**
-- `app/services/metadata_extractor.py` (~100 lines)
-
-**Fields/Methods/Components:**
-- `DocumentMetadata` dataclass per Section 13.9.2
-- `format_context_for_synthesis(result: RetrievalResult) -> str` per Section 13.9.3
-- Documents sorted by date (most recent first)
-
-**Testing Requirements:**
-- **TDD:** Write `tests/services/test_metadata_extractor.py` FIRST
-- **Unit Tests:**
-  - `test_metadata_preserved_from_retrieval`
-  - `test_documents_sorted_by_date`
-  - `test_hierarchy_level_included`
-  - `test_reference_code_formatted`
-  - `test_url_preserved_when_available`
-- **Coverage Target:** 95%+
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] All metadata preserved (AC-009.1)
-- [ ] Documents sorted by date (AC-009.2)
-- [ ] Hierarchy explicit (AC-009.3)
-- [ ] Reference code available (AC-009.4)
-- [ ] URL preserved (AC-009.5)
-- [ ] 95%+ test coverage
-
-</details>
-
----
-
-<details>
-<summary>
-<h3>DEV-193: Implement Verdetto Operativo Output Parser (Backend)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> IN PROGRESS | <strong>Type:</strong> Backend<br>
-Parse LLM output to extract structured Verdetto Operativo per Section 13.8.4.
-</summary>
-
-### DEV-193: Implement Verdetto Operativo Output Parser
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.8.4](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1384-struttura-verdetto-operativo)
-
-**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED | **Type:** Backend
-
-**Problem:**
-LLM synthesis output must be parsed to extract structured Verdetto Operativo sections for API response.
-
-**Solution:**
-Implement `VerdettoOperativoParser` that extracts:
-- AZIONE CONSIGLIATA
-- ANALISI DEL RISCHIO
-- SCADENZA IMMINENTE
-- DOCUMENTAZIONE NECESSARIA
-- INDICE DELLE FONTI
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-192 (Synthesis Prompt)
-- **Unlocks:** DEV-196 (Step 64)
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- **Missing section:** Return None for that section
-- **Malformed output:** Return raw text as answer, empty verdetto
-- **No verdetto found:** Log warning, return answer only
-
-**Files to Create:**
-- `app/services/verdetto_parser.py` (~200 lines)
-- `app/schemas/verdetto.py` (~50 lines)
-
-**Fields/Methods/Components:**
-- `VerdettoOperativo` schema:
-  - `azione_consigliata: str | None`
-  - `analisi_rischio: str | None`
-  - `scadenza: str | None`
-  - `documentazione: list[str]`
-  - `indice_fonti: list[FonteReference]`
-- `VerdettoOperativoParser` class
-  - `parse(response: str) -> ParsedSynthesis`
-  - `_extract_section(text: str, header: str) -> str | None`
-
-**Testing Requirements:**
-- **TDD:** Write `tests/services/test_verdetto_parser.py` FIRST
-- **Unit Tests:**
-  - `test_parse_complete_verdetto`
-  - `test_parse_partial_verdetto`
-  - `test_parse_no_verdetto_returns_answer`
-  - `test_extract_fonti_table`
-  - `test_graceful_on_malformed`
-- **Coverage Target:** 95%+
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Extracts all 5 Verdetto sections
-- [ ] Handles missing sections gracefully
-- [ ] Parses fonti table correctly
-- [ ] Never raises on malformed input
-- [ ] 95%+ test coverage
-
-</details>
-
----
-
-<details>
-<summary>
 <h3>DEV-194: Create Step 34a LLM Router Node (Backend)</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
 LangGraph node for semantic routing per Section 13.3.
@@ -2816,6 +2658,13 @@ Create `step_034a__llm_router.py` node that:
 
 **Files to Create:**
 - `app/core/langgraph/nodes/step_034a__llm_router.py` (~100 lines)
+- `tests/core/langgraph/nodes/test_step_034a__llm_router.py` (~150 lines)
+
+**Files to Update:**
+- `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd` - Update S034a to reflect LLM Router with Chain-of-Thought
+
+**Documentation to Create:**
+- `docs/architecture/steps/STEP-34a-RAG.routing.llm.router.semantic.classification.md`
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
@@ -2824,6 +2673,8 @@ Create `step_034a__llm_router.py` node that:
 - [ ] Fallback to TECHNICAL_RESEARCH on error
 - [ ] <100 lines per CLAUDE.md guidelines
 - [ ] 95%+ test coverage
+- [ ] Architecture diagram updated with new routing node
+- [ ] Step documentation created
 
 </details>
 
@@ -2862,6 +2713,15 @@ Create three nodes that integrate with corresponding services:
 - `app/core/langgraph/nodes/step_039a__multi_query.py` (~80 lines)
 - `app/core/langgraph/nodes/step_039b__hyde.py` (~80 lines)
 - `app/core/langgraph/nodes/step_039c__parallel_retrieval.py` (~100 lines)
+- `tests/core/langgraph/nodes/test_step_039_query_expansion.py` (~200 lines)
+
+**Files to Update:**
+- `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd` - Add Step 39a/39b/39c nodes for query expansion pipeline
+
+**Documentation to Create:**
+- `docs/architecture/steps/STEP-39a-RAG.query.multi.query.expansion.md`
+- `docs/architecture/steps/STEP-39b-RAG.query.hyde.hypothetical.document.md`
+- `docs/architecture/steps/STEP-39c-RAG.retrieval.parallel.hybrid.rrf.fusion.md`
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
@@ -2869,6 +2729,8 @@ Create three nodes that integrate with corresponding services:
 - [ ] Skip logic for non-technical routes
 - [ ] Proper state updates
 - [ ] 95%+ test coverage
+- [ ] Architecture diagram updated with new query expansion nodes
+- [ ] Step documentation created for each sub-step
 
 </details>
 

@@ -25,6 +25,9 @@ from .step_031__classify_domain import node_step_31
 from .step_032__calc_scores import node_step_32
 from .step_033__confidence_check import node_step_33
 from .step_034__track_metrics import node_step_34
+
+# Phase 7 Agentic RAG imports
+from .step_034a__llm_router import node_step_34a
 from .step_035__llm_fallback import node_step_35
 from .step_036__llm_better import node_step_36
 from .step_037__use_llm import node_step_37
@@ -103,6 +106,7 @@ __all__ = [
     "node_step_32",
     "node_step_33",
     "node_step_34",
+    "node_step_34a",
     "node_step_35",
     "node_step_36",
     "node_step_37",

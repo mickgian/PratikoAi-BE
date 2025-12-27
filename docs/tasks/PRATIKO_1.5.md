@@ -2149,7 +2149,7 @@ DEV-184 (LLM Config)
 <details>
 <summary>
 <h3>DEV-184: Create LLM Model Configuration System (Backend)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Create YAML-based configuration for tiered LLM model selection per Section 13.10.
 </summary>
 
@@ -2157,7 +2157,7 @@ Create YAML-based configuration for tiered LLM model selection per Section 13.10
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1310-strategia-di-selezione-modelli-llm)
 
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 Current system uses single `LLM_MODEL` environment variable. Section 13.10 requires different models per pipeline stage:
@@ -2229,18 +2229,18 @@ Create YAML-based configuration (`config/llm_models.yaml`) with environment over
 - No circular imports
 
 **Code Completeness:**
-- [ ] No TODO comments for required functionality
-- [ ] All tiers covered (BASIC, PREMIUM)
-- [ ] Environment override logic complete
-- [ ] Validation against known models
+- [x] No TODO comments for required functionality
+- [x] All tiers covered (BASIC, PREMIUM)
+- [x] Environment override logic complete
+- [x] Validation against known models
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] YAML config loads correctly from `config/llm_models.yaml`
-- [ ] Environment variables override YAML values
-- [ ] Fallback to defaults on missing/invalid config
-- [ ] 95%+ test coverage
-- [ ] All tests pass: `pytest tests/core/llm/test_model_config.py -v`
+- [x] Tests written BEFORE implementation (TDD)
+- [x] YAML config loads correctly from `config/llm_models.yaml`
+- [x] Environment variables override YAML values
+- [x] Fallback to defaults on missing/invalid config
+- [x] 95%+ test coverage
+- [x] All tests pass: `pytest tests/core/llm/test_model_config.py -v`
 
 </details>
 

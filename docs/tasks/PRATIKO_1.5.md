@@ -280,6 +280,61 @@ Created YAML-based configuration (`config/llm_models.yaml`) with environment ove
 
 <details>
 <summary>
+<h3>DEV-185: Implement PremiumModelSelector Service (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h (Actual: ~2h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Created dynamic model selector for synthesis step with execute() method bridging to LLMFactory, 25 tests, 95%+ coverage.
+</summary>
+
+### DEV-185: Implement PremiumModelSelector Service
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** CRITICAL | **Effort:** 2h (Actual: ~2h)
+
+**Problem:**
+Step 64 (synthesis) needs dynamic model selection between GPT-4o and Claude 3.5 Sonnet based on context length and provider availability.
+
+**Solution:**
+Implemented `PremiumModelSelector` class that:
+- Uses GPT-4o by default (lower cost)
+- Switches to Claude 3.5 Sonnet for context >8k tokens
+- Falls back to alternate provider on failure
+- Pre-warms both providers at startup
+- `execute()` method bridges selection to LLMFactory for actual execution
+- Legacy providers unified with `LLMProviderType` enum
+
+**Files Created:**
+- `app/services/premium_model_selector.py` (~300 lines)
+- `tests/services/test_premium_model_selector.py` (25 tests)
+
+**Files Modified:**
+- `app/core/llm/providers/anthropic_provider.py` - Added Claude 3.5 Sonnet to supported_models
+- `app/services/anthropic_provider.py` - Added `LLMProviderType.ANTHROPIC`
+- `app/services/openai_provider.py` - Added `LLMProviderType.OPENAI`
+
+**Components Implemented:**
+- `PremiumModelSelector` class with select(), execute(), pre_warm()
+- `SynthesisContext` dataclass: total_tokens, query_complexity
+- `ModelSelection` dataclass: model, provider, is_fallback, is_degraded
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 25 tests
+- ✅ Selects GPT-4o by default
+- ✅ Selects Claude 3.5 Sonnet for context >8k tokens
+- ✅ Fallback works when primary provider unavailable
+- ✅ Pre-warm validates API keys at startup
+- ✅ Claude 3.5 Sonnet added to AnthropicProvider.supported_models
+- ✅ execute() method bridges selection to LLMFactory execution
+- ✅ Legacy providers unified with LLMProviderType enum
+- ✅ 95%+ test coverage (25 tests)
+
+**Git:** Branch `DEV-185-Implement-PremiumModelSelector-Service`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2194,121 +2249,6 @@ DEV-184 (LLM Config)
                                                             └── DEV-194/195/196 (Nodes)
                                                                     └── DEV-197/198/199 (Tests)
 ```
-
----
-
-<details>
-<summary>
-<h3>DEV-185: Implement PremiumModelSelector Service (Backend)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
-Create dynamic model selector for synthesis step per Section 13.10.4.
-</summary>
-
-### DEV-185: Implement PremiumModelSelector Service
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.10.4](/docs/tasks/PRATIKO_1.5_REFERENCE.md#13104-selezione-dinamica-del-modello-premium)
-
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** DONE | **Type:** Backend
-
-**Problem:**
-Step 64 (synthesis) needs dynamic model selection between GPT-4o and Claude 3.5 Sonnet based on context length and provider availability.
-
-**Solution:**
-Implement `PremiumModelSelector` class that:
-- Uses GPT-4o by default (lower cost)
-- Switches to Claude 3.5 Sonnet for context >8k tokens
-- Falls back to alternate provider on failure
-- Pre-warms both providers at startup
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-184 (model config)
-- **Unlocks:** DEV-196 (Step 64 integration)
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- **Primary provider unavailable:** Switch to fallback provider
-- **Both providers unavailable:** Return degraded response flag
-- **Timeout:** Use fallback provider
-- **Rate limit:** Exponential backoff, then fallback
-
-**Performance Requirements:**
-- Model selection decision: <10ms
-- Provider pre-warm: <3s at startup
-- Fallback switch: <100ms overhead
-
-**Edge Cases:**
-- **Context exactly 8000 tokens:** Use GPT-4o (threshold is >8000)
-- **Both providers rate-limited:** Return degraded flag
-- **Invalid API key:** Log error, mark provider unhealthy
-- **Network timeout:** Retry once, then fallback
-
-**Files to Create:**
-- `app/services/premium_model_selector.py` (~300 lines)
-
-**Files to Modify:**
-- `app/core/llm/providers/anthropic_provider.py` - Add Claude 3.5 Sonnet to supported_models
-- `app/services/anthropic_provider.py` - Add `LLMProviderType.ANTHROPIC` for provider unification
-- `app/services/openai_provider.py` - Add `LLMProviderType.OPENAI` for provider unification
-
-**Fields/Methods/Components:**
-- `PremiumModelSelector` class
-  - `__init__(config: LLMModelConfig)` - Initialize with config
-  - `select(context: SynthesisContext) -> ModelSelection` - Select model
-  - `execute(context, messages, **kwargs) -> LLMResponse` - Select and execute via LLMFactory
-  - `is_available(provider: str) -> bool` - Check provider health
-  - `get_fallback(model: str) -> str` - Get fallback model
-  - `pre_warm() -> dict[str, bool]` - Pre-warm providers
-  - `mark_provider_unhealthy(provider: str)` - Mark provider as unhealthy
-  - `mark_provider_healthy(provider: str)` - Mark provider as healthy
-- `SynthesisContext` dataclass: `total_tokens: int`, `query_complexity: str`
-- `ModelSelection` dataclass: `model: str`, `provider: str`, `is_fallback: bool`, `is_degraded: bool`
-
-**Testing Requirements:**
-- **TDD:** Write `tests/services/test_premium_model_selector.py` FIRST
-- **Unit Tests (25 total):**
-  - Selection tests: `test_selects_gpt4o_by_default`, `test_selects_claude_for_long_context`, etc.
-  - Fallback tests: `test_fallback_when_primary_unavailable`, `test_fallback_when_claude_unavailable_for_long_context`
-  - Async tests: `test_pre_warm_validates_both_providers`, `test_pre_warm_handles_timeout`
-  - Execute tests: `test_execute_success_with_primary_provider`, `test_execute_uses_claude_for_long_context`, `test_execute_fallback_on_primary_failure`, `test_execute_raises_when_both_providers_fail`, `test_execute_passes_temperature_and_max_tokens`
-  - Performance: `test_selection_under_10ms`, `test_pre_warm_completes_under_3_seconds`
-- **Integration Tests:** Mock both providers via LLMFactory
-- **Coverage Target:** 95%+
-
-**Risks & Mitigations:**
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Anthropic API key missing | HIGH | Pre-warm catches at startup |
-| Claude model not in provider | HIGH | Add to anthropic_provider.py |
-| Fallback adds latency | MEDIUM | Pre-warm, parallel preparation |
-
-**Code Structure:**
-- Service class: <200 lines
-- Clear separation of selection logic and health checks
-
-**Code Completeness:**
-- [x] No TODO comments for required functionality
-- [x] GPT-4o primary selection implemented
-- [x] Claude fallback for >8k tokens
-- [x] Both providers pre-warmed at startup
-- [x] Degraded response flag available
-
-**Acceptance Criteria:**
-- [x] Tests written BEFORE implementation (TDD)
-- [x] Selects GPT-4o by default
-- [x] Selects Claude 3.5 Sonnet for context >8k tokens
-- [x] Fallback works when primary provider unavailable
-- [x] Pre-warm validates API keys at startup
-- [x] Claude 3.5 Sonnet added to AnthropicProvider.supported_models
-- [x] `execute()` method bridges selection to LLMFactory execution
-- [x] Legacy providers unified with `LLMProviderType` enum
-- [x] 95%+ test coverage (25 tests)
-- [x] All tests pass: `pytest tests/services/test_premium_model_selector.py -v`
-
-</details>
 
 ---
 

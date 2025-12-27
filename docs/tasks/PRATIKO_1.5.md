@@ -613,6 +613,54 @@ Implemented `MetadataExtractor` service that extracts DocumentMetadata from Rank
 
 <details>
 <summary>
+<h3>DEV-192: Create Critical Synthesis Prompt Template (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h (Actual: ~1.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Created synthesis system prompt with Verdetto Operativo structure and SynthesisPromptBuilder per Section 13.8.5.
+</summary>
+
+### DEV-192: Create Critical Synthesis Prompt Template
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** CRITICAL | **Effort:** 2h (Actual: ~1.5h)
+
+**Problem:**
+Step 64 needs a new system prompt that instructs the LLM to produce structured Verdetto Operativo output with conflict detection and source hierarchy.
+
+**Solution:**
+Created `SYNTHESIS_SYSTEM_PROMPT` per Section 13.8.5 with all 4 compiti (chronological analysis, conflict detection, hierarchy application, Verdetto Operativo structure).
+
+**Files Created:**
+- `app/core/prompts/synthesis_critical.py` (~145 lines)
+- `app/services/synthesis_prompt_builder.py` (~170 lines)
+- `tests/core/prompts/test_synthesis_prompt.py` (29 tests)
+
+**Components Implemented:**
+- `SYNTHESIS_SYSTEM_PROMPT` constant - Full system prompt with 4 compiti
+- `VERDETTO_OPERATIVO_TEMPLATE` - Structured output template with emojis
+- `HIERARCHY_RULES` - Source authority rules (Legge > Decreto > Circolare)
+- `SynthesisPromptBuilder` class:
+  - `get_system_prompt()` - Return system prompt
+  - `build(context, query)` - Build user prompt with context
+  - `get_hierarchy_rules()` - Get hierarchy rules
+  - `get_verdetto_template()` - Get verdetto template
+  - `build_with_custom_instructions()` - Build with extra instructions
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 29 tests
+- ✅ Prompt includes all 4 compiti from Section 13.8.5
+- ✅ Verdetto Operativo structure defined
+- ✅ Hierarchy rules explicit
+- ✅ Prudent approach emphasized
+- ✅ 100% test coverage for builder
+
+**Git:** Branch `DEV-192-Create-Critical-Synthesis-Prompt-Template-(Backend)-`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2664,70 +2712,8 @@ Create `DocumentMetadata` dataclass and context formatting per Section 13.9.2-13
 
 <details>
 <summary>
-<h3>DEV-192: Create Critical Synthesis Prompt Template (Backend)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> COMPLETED | <strong>Type:</strong> Backend<br>
-Create synthesis prompt with Verdetto Operativo structure per Section 13.8.5.
-</summary>
-
-### DEV-192: Create Critical Synthesis Prompt Template
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.8.5](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1385-system-prompt-per-sintesi-critica)
-
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** COMPLETED | **Type:** Backend
-
-**Problem:**
-Step 64 needs a new system prompt that instructs the LLM to produce structured Verdetto Operativo output with conflict detection and source hierarchy.
-
-**Solution:**
-Create `SYNTHESIS_SYSTEM_PROMPT` per Section 13.8.5 with:
-- Chronological analysis
-- Conflict detection
-- Hierarchy application
-- Verdetto Operativo structure
-
-**Agent Assignment:** @ezio (primary), @egidio (review)
-
-**Dependencies:**
-- **Blocking:** DEV-191 (Metadata)
-- **Unlocks:** DEV-193 (Verdetto Parser), DEV-196 (Step 64)
-
-**Change Classification:** ADDITIVE
-
-**Files to Create:**
-- `app/core/prompts/synthesis_critical.md` (~150 lines)
-- `app/services/synthesis_prompt_builder.py` (~100 lines)
-
-**Fields/Methods/Components:**
-- `SynthesisPromptBuilder` class
-  - `build(context: str, query: str) -> str`
-  - `_inject_metadata_instructions() -> str`
-- Prompt includes Verdetto Operativo template per Section 13.8.4
-
-**Testing Requirements:**
-- **TDD:** Write `tests/core/prompts/test_synthesis_prompt.py` FIRST
-- **Unit Tests:**
-  - `test_prompt_includes_verdetto_structure`
-  - `test_prompt_includes_hierarchy_rules`
-  - `test_prompt_includes_conflict_detection`
-  - `test_prompt_valid_utf8`
-- **Coverage Target:** 100% for builder
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Prompt includes all 4 compiti from Section 13.8.5
-- [ ] Verdetto Operativo structure defined
-- [ ] Hierarchy rules explicit
-- [ ] Prudent approach emphasized
-- [ ] 100% test coverage for builder
-
-</details>
-
----
-
-<details>
-<summary>
 <h3>DEV-193: Implement Verdetto Operativo Output Parser (Backend)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> IN PROGRESS | <strong>Type:</strong> Backend<br>
 Parse LLM output to extract structured Verdetto Operativo per Section 13.8.4.
 </summary>
 

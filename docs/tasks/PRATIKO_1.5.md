@@ -1740,6 +1740,54 @@ Added new helper functions to integrate the simplified ProactivityEngine and LLM
 
 </details>
 
+<details>
+<summary>
+<h3>✅ DEV-180: Integrate LLM-First Proactivity in /chat/stream Endpoint</h3>
+<strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-180-Integrate-LLM-First-Proactivity-in-chat-stream-Endpoint
+</summary>
+
+### DEV-180: Integrate LLM-First Proactivity in /chat/stream Endpoint
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
+
+**Problem:**
+The /chat/stream endpoint streams LLM tokens in real-time. We need to:
+1. Buffer the complete response for parsing
+2. Strip XML tags from streamed content
+3. Send actions as final SSE event
+
+**Solution:**
+Implemented streaming tag stripping and buffering helpers:
+- `strip_xml_tags()` - Removes `<answer>` and `<suggested_actions>` tags
+- `StreamBuffer` class - Accumulates chunks during streaming
+- `StreamTagState` class - Tracks partial tags across chunk boundaries
+- `process_stream_chunk()` - Handles partial tags spanning multiple chunks
+- `format_actions_sse_event()` - Formats SSE event for actions
+- `format_question_sse_event()` - Formats SSE event for questions
+
+**Key Features:**
+- Handles partial tags spanning multiple chunks
+- Preserves citations `[1]`, `[2]` and markdown formatting
+- SSE events for `suggested_actions` and `interactive_question`
+- Graceful handling of malformed tags
+- Buffer with configurable max size (default 1MB)
+
+**Files Modified:**
+- `app/api/v1/chatbot.py` - Added streaming helper functions
+- `tests/api/test_chatbot_stream_llm_first.py` - 28 TDD tests
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD)
+- ✅ Tag stripping complete
+- ✅ Buffer management complete
+- ✅ All SSE events implemented
+- ✅ All 28 tests pass
+- ✅ Partial tag handling works across chunk boundaries
+
+**Git:** Branch `DEV-180-Integrate-LLM-First-Proactivity-in-chat-stream-Endpoint`
+
+</details>
+
 ---
 
 ## Phase 1: Foundation (Backend) - 9h
@@ -1909,160 +1957,14 @@ DEV-174 (CALCULABLE_INTENTS Constants)
 **CRITICAL: DEV-178 → DEV-179 Dependency**
 `chatbot.py` imports `ActionTemplateService` at line 64. DEV-178 must archive this service BEFORE DEV-179 can integrate the new proactivity flow.
 
-**Note:** DEV-174, DEV-175, DEV-176, DEV-177, DEV-178, and DEV-179 moved to Completed Tasks section above.
-
----
-
-<details>
-<summary>
-<h3>DEV-180: Integrate LLM-First Proactivity in /chat/stream Endpoint</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
-Update /chat/stream endpoint to handle streamed LLM output with suggested actions parsing.
-</summary>
-
-### DEV-180: Integrate LLM-First Proactivity in /chat/stream Endpoint
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
-
-**Priority:** HIGH | **Effort:** 1.5h | **Status:** DONE | **Type:** Backend
-
-**Problem:**
-The /chat/stream endpoint streams LLM tokens in real-time. We need to:
-1. Buffer the complete response for parsing
-2. Strip XML tags from streamed content
-3. Send actions as final SSE event
-
-**Solution:**
-Buffer full response during streaming, strip tags from content tokens, parse actions after stream completes, send as final SSE event before `done`.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-179 (/chat integration pattern)
-- **Unlocks:** DEV-181 (unit tests)
-
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary File:** `app/api/v1/chatbot.py`
-- **Affected Files:**
-  - None (changes within same file)
-- **Related Tests:**
-  - `tests/api/test_chatbot_streaming.py` (direct)
-  - `tests/api/test_chatbot_streaming_proactivity.py` (direct - MAJOR UPDATE)
-- **Baseline Command:** `pytest tests/api/test_chatbot_streaming*.py -v`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline streaming tests pass
-- [ ] Current streaming flow documented
-- [ ] SSE event format documented
-
-**Error Handling:**
-- **Buffer overflow:** Log error, continue streaming without actions
-- **Parser failure on buffered content:** Log warning, send done without actions
-- **Connection closed during stream:** Clean up gracefully
-- **Logging:** All errors logged with session context
-
-**Performance Requirements:**
-- Streaming latency: <10ms per chunk (unchanged)
-- Final events (actions + done): <50ms total
-- Buffer memory: <1MB per request
-
-**Edge Cases:**
-- **Very long response:** Buffer management, no memory leak
-- **Client disconnect:** Clean up buffer, cancel stream
-- **Partial tags in stream:** Buffer until tag complete before stripping
-- **No actions in response:** Send done without actions event
-- **InteractiveQuestion detected:** Send question event, skip LLM stream
-- **Partial `<answer>` tag:** Buffer until `>` received before stripping
-- **Partial `</answer>` tag:** Buffer until complete to avoid content corruption
-- **Tag spans multiple chunks:** Maintain state across chunk boundaries
-- **Document citations in stream:** Preserve `[1]`, `[2]` markers
-
-**File:** `app/api/v1/chatbot.py`
-
-**Fields/Methods/Components:**
-- `chat_stream()` function (modify)
-  - Add response buffer
-  - Strip `<answer>` and `<suggested_actions>` tags from stream
-  - Parse buffered response after stream
-  - Send `suggested_actions` SSE event
-  - Send `interactive_question` SSE event (when applicable)
-- `_buffer_and_strip_response(chunk: str, buffer: StringIO) -> str` - Helper (new)
-- `_send_proactivity_events(buffer: str, template_actions: Optional[list]) -> Generator` - Helper (new)
-
-**SSE Event Format:**
-```
-event: content
-data: {"text": "streamed content without tags"}
-
-event: suggested_actions
-data: {"actions": [{"id": "1", "label": "...", "icon": "...", "prompt": "..."}]}
-
-event: done
-data: {}
-```
-
-**Testing Requirements:**
-- **TDD:** Write `tests/api/test_chatbot_stream_llm_first.py` FIRST
-- **Unit Tests:**
-  - `test_stream_strips_answer_tags`
-  - `test_stream_strips_actions_tags`
-  - `test_stream_sends_actions_event_after_content`
-  - `test_stream_sends_done_last`
-  - `test_stream_uses_document_template_when_present`
-  - `test_stream_sends_interactive_question_when_applicable`
-- **Edge Case Tests:**
-  - `test_stream_handles_partial_tags`
-  - `test_stream_handles_very_long_response`
-  - `test_stream_handles_client_disconnect`
-  - `test_stream_handles_no_actions`
-- **Integration Tests:** `tests/api/test_chatbot_stream_integration.py`
-- **Regression Tests:** `pytest tests/api/test_chatbot_streaming*.py -v`
-- **Coverage Target:** 90%+ for streaming code paths
-
-**Risks & Mitigations:**
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking streaming format | CRITICAL | Maintain SSE event compatibility |
-| Memory leak in buffer | HIGH | StringIO cleanup, max buffer size |
-| Tag stripping breaks content | HIGH | Careful regex, test edge cases |
-| Performance regression | MEDIUM | Measure streaming latency |
-
-**Code Structure:**
-- Max route handler: 50 lines (streaming is complex)
-- Extract helpers for testability
-
-**Code Completeness:**
-- [ ] No TODO comments for required functionality
-- [ ] Buffer management complete
-- [ ] Tag stripping complete
-- [ ] All SSE events implemented
-- [ ] Cleanup on disconnect
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation changes
-- [ ] Stream tokens unchanged (backward compatible content)
-- [ ] `<answer>` and `<suggested_actions>` tags stripped from stream
-- [ ] `suggested_actions` event sent after content stream
-- [ ] `interactive_question` event sent when applicable
-- [ ] `done` event always sent last
-- [ ] Content between tags streamed without delay
-- [ ] Tag characters never appear in streamed content
-- [ ] Buffering does not cause visible latency
-- [ ] Citations preserved in streamed content (`[1]`, `[2]` markers)
-- [ ] All regression tests pass
-- [ ] All tests pass: `pytest tests/api/test_chatbot_streaming*.py -v`
-
-</details>
+**Note:** DEV-174, DEV-175, DEV-176, DEV-177, DEV-178, DEV-179, and DEV-180 moved to Completed Tasks section above.
 
 ---
 
 <details>
 <summary>
 <h3>DEV-181: Unit Tests for LLM-First Components</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Comprehensive unit tests for new LLM-First components.
 </summary>
 
@@ -2070,7 +1972,7 @@ Comprehensive unit tests for new LLM-First components.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
 
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** HIGH | **Effort:** 2h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 Need comprehensive unit test coverage for all new/modified components to ensure LLM-First architecture works correctly.

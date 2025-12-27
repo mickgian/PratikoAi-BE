@@ -2255,7 +2255,7 @@ DEV-184 (LLM Config)
 <details>
 <summary>
 <h3>DEV-186: Define RouterDecision Schema and Constants (Backend)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Create Pydantic models and enums for LLM router per Section 13.4.4.
 </summary>
 
@@ -2263,7 +2263,7 @@ Create Pydantic models and enums for LLM router per Section 13.4.4.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.4.4](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1344-router-decision-model)
 
-**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 Need structured types for LLM router decisions to replace the current regex-based `GateDecision`.
@@ -2330,12 +2330,12 @@ Create Pydantic models for `RoutingCategory`, `RouterDecision`, and `ExtractedEn
 | Breaking existing GateDecision | MEDIUM | Keep both, deprecate old |
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] All 5 routing categories defined
-- [ ] RouterDecision validates confidence bounds
-- [ ] JSON serialization works correctly
-- [ ] 100% test coverage
-- [ ] All tests pass: `pytest tests/schemas/test_router.py -v`
+- [x] Tests written BEFORE implementation (TDD) - 21 tests
+- [x] All 5 routing categories defined
+- [x] RouterDecision validates confidence bounds
+- [x] JSON serialization works correctly
+- [x] 100% test coverage
+- [x] All tests pass: `pytest tests/schemas/test_router.py -v`
 
 </details>
 

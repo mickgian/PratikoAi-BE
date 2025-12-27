@@ -1,6 +1,6 @@
 global:
   smtp_smarthost: 'localhost:587'
-  smtp_from: 'alertmanager@pratikoai.com'
+  smtp_from: 'alertmanager@pratiko.app'
   smtp_auth_username: ''
   smtp_auth_password: ''
 

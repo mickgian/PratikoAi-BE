@@ -375,8 +375,8 @@ Total:          ~16 GB (100% utilization)
 - Set up backups
 
 **Deliverables:**
-- QA live at https://api-qa.pratikoai.com
-- Grafana at https://grafana-qa.pratikoai.com
+- QA live at https://api-qa.pratiko.app
+- Grafana at https://grafana-qa.pratiko.app
 - Daily automated backups
 
 **Effort:** 9 hours (spread over 1 week due to Hetzner approval wait)
@@ -394,7 +394,8 @@ Total:          ~16 GB (100% utilization)
 - Stakeholder approval
 
 **Deliverables:**
-- Production live at https://api.pratikoai.com
+- Production live at https://api.pratiko.app
+- Frontend live at https://app.pratiko.app
 - CI/CD pipeline operational
 - GDPR compliance verified
 - Monitoring and alerting active
@@ -407,7 +408,83 @@ Total:          ~16 GB (100% utilization)
 
 ---
 
-## 6. GDPR Compliance
+## 6. Domain & DNS Configuration
+
+### Domain Information
+- **Domain:** `pratiko.app`
+- **Registrar:** Hostinger
+- **TLD Note:** `.app` domains require HTTPS (HSTS preloaded)
+
+### DNS Records (Configure at Hostinger)
+
+Once Hetzner VPS is provisioned, add these DNS records:
+
+| Type | Name | Value | TTL |
+|------|------|-------|-----|
+| **A** | `@` | `<Hetzner VPS IP>` | 3600 |
+| **A** | `api` | `<Hetzner VPS IP>` | 3600 |
+| **A** | `api-qa` | `<Hetzner VPS IP>` | 3600 |
+| **A** | `app` | `<Hetzner VPS IP>` | 3600 |
+| **A** | `grafana` | `<Hetzner VPS IP>` | 3600 |
+| **A** | `grafana-qa` | `<Hetzner VPS IP>` | 3600 |
+| **CNAME** | `www` | `pratiko.app` | 3600 |
+
+### Subdomain Structure
+
+| Subdomain | Purpose | Environment |
+|-----------|---------|-------------|
+| `pratiko.app` | Landing page | Production |
+| `app.pratiko.app` | Frontend application | Production |
+| `api.pratiko.app` | Backend API | Production |
+| `api-qa.pratiko.app` | Backend API | QA |
+| `grafana.pratiko.app` | Monitoring dashboard | Production |
+| `grafana-qa.pratiko.app` | Monitoring dashboard | QA |
+
+### Caddy Configuration (Reverse Proxy)
+
+Caddy handles SSL certificates automatically via Let's Encrypt:
+
+```caddyfile
+# Production
+api.pratiko.app {
+    reverse_proxy backend:8000
+}
+
+app.pratiko.app {
+    reverse_proxy frontend:3000
+}
+
+grafana.pratiko.app {
+    reverse_proxy grafana:3000
+}
+
+# QA Environment
+api-qa.pratiko.app {
+    reverse_proxy backend-qa:8000
+}
+
+grafana-qa.pratiko.app {
+    reverse_proxy grafana-qa:3000
+}
+```
+
+### Optional: Cloudflare DNS (Recommended)
+
+For better performance and DDoS protection, consider using Cloudflare DNS:
+
+1. Keep domain registered at Hostinger
+2. Change nameservers to Cloudflare (free tier)
+3. Manage DNS records in Cloudflare dashboard
+
+**Benefits:**
+- Free CDN for static assets
+- Free DDoS protection
+- Faster DNS propagation
+- Analytics and insights
+
+---
+
+## 7. GDPR Compliance
 
 ### Data Residency
 - **All data in EU:** Hetzner datacenters in Falkenstein/Nuremberg, Germany
@@ -433,7 +510,7 @@ Total:          ~16 GB (100% utilization)
 
 ---
 
-## 7. Scaling Path (Realistic for Bootstrap Startup)
+## 8. Scaling Path (Realistic for Bootstrap Startup)
 
 ### Phase 1: Bootstrap Launch (Months 0-6)
 **Users:** 0-500 (realistic initial target)
@@ -472,7 +549,7 @@ Total:          ~16 GB (100% utilization)
 
 ---
 
-## 8. Risk Assessment
+## 9. Risk Assessment
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
@@ -484,7 +561,7 @@ Total:          ~16 GB (100% utilization)
 
 ---
 
-## 9. Recommendations
+## 10. Recommendations
 
 ### Immediate (Week 1) - Bootstrap Approach
 1. ✅ **Choose Hetzner** for all environments
@@ -507,7 +584,7 @@ Total:          ~16 GB (100% utilization)
 
 ---
 
-## 10. Decision Matrix
+## 11. Decision Matrix
 
 ### Choose Hetzner If:
 - ✅ Cost is important (startup/bootstrap/indie hacker)
@@ -533,7 +610,7 @@ Total:          ~16 GB (100% utilization)
 
 ---
 
-## 11. Final Recommendation
+## 12. Final Recommendation
 
 **Deploy PratikoAI to Hetzner VPS with Docker Compose**
 

@@ -214,7 +214,31 @@ docker build --build-arg APP_ENV=production -t pratikoai-prod .
 # (specific commands depend on deployment platform: AWS, GCP, etc.)
 
 # 3. Verify production deployment
-curl https://api.pratikoai.com/health
+curl https://api.pratiko.app/health
 ```
+
+---
+
+## Domain Configuration
+
+### Domain Information
+- **Domain:** `pratiko.app` (registered at Hostinger)
+- **TLD:** `.app` requires HTTPS (HSTS preloaded)
+
+### DNS Setup Checklist
+- [ ] Configure A record for `@` → Hetzner VPS IP
+- [ ] Configure A record for `api` → Hetzner VPS IP
+- [ ] Configure A record for `api-qa` → Hetzner VPS IP
+- [ ] Configure A record for `app` → Hetzner VPS IP
+- [ ] Configure CNAME record for `www` → `pratiko.app`
+- [ ] Verify DNS propagation (use `dig` or online tools)
+- [ ] Verify SSL certificates are auto-provisioned by Caddy
+
+### Expected URLs
+| Environment | URL | Purpose |
+|-------------|-----|---------|
+| Production | https://api.pratiko.app | Backend API |
+| Production | https://app.pratiko.app | Frontend |
+| QA | https://api-qa.pratiko.app | Backend API |
 
 This completes the configuration requirements for staging and production environments. Each environment should be configured and tested independently before deployment.

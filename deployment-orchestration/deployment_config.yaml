@@ -208,6 +208,6 @@ environment_detection:
     
   # Custom network detection rules
   network_patterns:
-    production: ["api.pratiko.ai", "pratiko.com"]
-    staging: ["staging.pratiko.ai", "stage-api.internal"]
-    development: ["localhost", "127.0.0.1", "local.pratiko.ai"]
+    production: ["api.pratiko.app", "app.pratiko.app", "pratiko.app"]
+    staging: ["api-qa.pratiko.app", "qa.pratiko.app"]
+    development: ["localhost", "127.0.0.1", "local.pratiko.app"]

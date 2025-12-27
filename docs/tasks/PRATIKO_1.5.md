@@ -566,6 +566,53 @@ Implemented `ParallelRetrievalService` with RRF fusion per Section 13.7.
 
 <details>
 <summary>
+<h3>DEV-191: Create Document Metadata Preservation Layer (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Implemented metadata extraction and context formatting for LLM synthesis with 19 tests.
+</summary>
+
+### DEV-191: Create Document Metadata Preservation Layer
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** HIGH | **Effort:** 2h (Actual: ~1h)
+
+**Problem:**
+Document metadata (date, source, type, hierarchy) must flow from retrieval to synthesis for proper chronological analysis and source indexing.
+
+**Solution:**
+Implemented `MetadataExtractor` service that extracts DocumentMetadata from RankedDocuments and formats context per Section 13.9.3.
+
+**Files Created:**
+- `app/services/metadata_extractor.py` (~240 lines)
+- `tests/services/test_metadata_extractor.py` (19 tests)
+
+**Components Implemented:**
+- `DocumentMetadata` dataclass: document_id, title, date_published, source_entity, document_type, hierarchy_level, reference_code, url, relevance_score, text_excerpt
+- `HIERARCHY_LEVELS` constant: legge=1, decreto=2, circolare=3, risoluzione=4, interpello=5, faq=6, guida=7
+- `MetadataExtractor` class with:
+  - `extract()` - Convert RankedDocument to DocumentMetadata
+  - `extract_all()` - Batch extraction from RetrievalResult
+  - `sort_by_date()` - Sort documents (most recent first)
+  - `format_reference_code()` - Format legal references (L., Circ., D.Lgs.)
+  - `format_context_for_synthesis()` - Create formatted context with emojis and structure
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 19 tests
+- ✅ All metadata preserved from retrieval
+- ✅ Documents sorted by date (most recent first)
+- ✅ Hierarchy level explicit in context
+- ✅ Reference code formatted correctly
+- ✅ URL preserved when available
+- ✅ 100% test coverage
+
+**Git:** Branch `DEV-191-Create-Document-Metadata-Preservation-Layer`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2618,7 +2665,7 @@ Create `DocumentMetadata` dataclass and context formatting per Section 13.9.2-13
 <details>
 <summary>
 <h3>DEV-192: Create Critical Synthesis Prompt Template (Backend)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> COMPLETED | <strong>Type:</strong> Backend<br>
 Create synthesis prompt with Verdetto Operativo structure per Section 13.8.5.
 </summary>
 
@@ -2626,7 +2673,7 @@ Create synthesis prompt with Verdetto Operativo structure per Section 13.8.5.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.8.5](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1385-system-prompt-per-sintesi-critica)
 
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** COMPLETED | **Type:** Backend
 
 **Problem:**
 Step 64 needs a new system prompt that instructs the LLM to produce structured Verdetto Operativo output with conflict detection and source hierarchy.

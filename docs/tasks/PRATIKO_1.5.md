@@ -335,6 +335,46 @@ Implemented `PremiumModelSelector` class that:
 
 <details>
 <summary>
+<h3>DEV-186: Define RouterDecision Schema and Constants (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Created Pydantic models and enums for LLM router with 21 tests and 100% coverage.
+</summary>
+
+### DEV-186: Define RouterDecision Schema and Constants
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** CRITICAL | **Effort:** 1.5h (Actual: ~1h)
+
+**Problem:**
+Need structured types for LLM router decisions to replace the current regex-based `GateDecision`.
+
+**Solution:**
+Created Pydantic models for `RoutingCategory`, `RouterDecision`, and `ExtractedEntity` as specified in Section 13.4.4.
+
+**Files Created:**
+- `app/schemas/router.py` (~100 lines)
+- `tests/schemas/test_router.py` (21 tests)
+
+**Components Implemented:**
+- `RoutingCategory` enum: CHITCHAT, THEORETICAL_DEFINITION, TECHNICAL_RESEARCH, CALCULATOR, GOLDEN_SET
+- `ExtractedEntity` model: text, type, confidence
+- `RouterDecision` model: route, confidence, reasoning, entities, requires_freshness, suggested_sources, needs_retrieval (computed)
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 21 tests
+- ✅ All 5 routing categories defined
+- ✅ RouterDecision validates confidence bounds
+- ✅ JSON serialization works correctly
+- ✅ 100% test coverage
+
+**Git:** Branch `DEV-186-Define-RouterDecision-Schema-and-Constants`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2254,97 +2294,8 @@ DEV-184 (LLM Config)
 
 <details>
 <summary>
-<h3>DEV-186: Define RouterDecision Schema and Constants (Backend)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
-Create Pydantic models and enums for LLM router per Section 13.4.4.
-</summary>
-
-### DEV-186: Define RouterDecision Schema and Constants
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.4.4](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1344-router-decision-model)
-
-**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** DONE | **Type:** Backend
-
-**Problem:**
-Need structured types for LLM router decisions to replace the current regex-based `GateDecision`.
-
-**Solution:**
-Create Pydantic models for `RoutingCategory`, `RouterDecision`, and `ExtractedEntity` as specified in Section 13.4.4.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** None
-- **Unlocks:** DEV-187 (Router Service)
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- **Invalid category:** Validation error with clear message
-- **Missing confidence:** Default to 0.5
-- **Empty entities:** Valid (empty list)
-
-**Edge Cases:**
-- **Confidence = 0.0:** Valid, indicates low confidence
-- **Confidence = 1.0:** Valid, indicates high confidence
-- **No entities extracted:** Empty list, not None
-
-**Files to Create:**
-- `app/schemas/router.py` (~100 lines)
-
-**Fields/Methods/Components:**
-- `RoutingCategory` enum:
-  - `CHITCHAT = "chitchat"`
-  - `THEORETICAL_DEFINITION = "theoretical_definition"`
-  - `TECHNICAL_RESEARCH = "technical_research"`
-  - `CALCULATOR = "calculator"`
-  - `GOLDEN_SET = "golden_set"`
-- `ExtractedEntity` model:
-  - `text: str` - Entity text
-  - `type: str` - Entity type (legge, articolo, ente, data)
-  - `confidence: float` - Extraction confidence
-- `RouterDecision` model:
-  - `route: RoutingCategory`
-  - `confidence: float = Field(ge=0.0, le=1.0)`
-  - `reasoning: str` - Chain-of-Thought explanation
-  - `entities: list[ExtractedEntity]`
-  - `requires_freshness: bool`
-  - `suggested_sources: list[str]`
-  - `needs_retrieval: bool` - Computed property
-
-**Testing Requirements:**
-- **TDD:** Write `tests/schemas/test_router.py` FIRST
-- **Unit Tests:**
-  - `test_routing_category_values`
-  - `test_router_decision_valid_creation`
-  - `test_router_decision_confidence_bounds`
-  - `test_extracted_entity_creation`
-  - `test_needs_retrieval_computed`
-  - `test_json_serialization`
-- **Coverage Target:** 100%
-
-**Risks & Mitigations:**
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking existing GateDecision | MEDIUM | Keep both, deprecate old |
-
-**Acceptance Criteria:**
-- [x] Tests written BEFORE implementation (TDD) - 21 tests
-- [x] All 5 routing categories defined
-- [x] RouterDecision validates confidence bounds
-- [x] JSON serialization works correctly
-- [x] 100% test coverage
-- [x] All tests pass: `pytest tests/schemas/test_router.py -v`
-
-</details>
-
----
-
-<details>
-<summary>
 <h3>DEV-187: Implement LLM Router Service (Backend)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h | <strong>Status:</strong> COMPLETED | <strong>Type:</strong> Backend<br>
 Replace regex-based routing with GPT-4o-mini Chain-of-Thought router per Section 13.4.
 </summary>
 
@@ -2352,7 +2303,7 @@ Replace regex-based routing with GPT-4o-mini Chain-of-Thought router per Section
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.4](/docs/tasks/PRATIKO_1.5_REFERENCE.md#134-fr-004-llm-based-router-con-chain-of-thought)
 
-**Priority:** CRITICAL | **Effort:** 3h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** CRITICAL | **Effort:** 3h | **Status:** COMPLETED | **Type:** Backend
 
 **Problem:**
 Current `retrieval_gate.py` uses 17 regex patterns, causing false negatives on complex technical queries like "Qual è l'iter per aprire P.IVA forfettaria?".

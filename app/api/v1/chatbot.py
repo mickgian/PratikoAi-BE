@@ -82,6 +82,14 @@ from app.services.domain_action_classifier import DomainActionClassifier
 from app.services.proactivity_analytics_service import ProactivityAnalyticsService
 from app.services.proactivity_engine import ProactivityEngine
 
+# DEV-179: Import simplified proactivity engine and parser
+from app.services.proactivity_engine_simplified import (
+    ProactivityEngine as SimplifiedProactivityEngine,
+    ProactivityResult as SimplifiedProactivityResult,
+)
+from app.services.llm_response_parser import parse_llm_response
+from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
+
 router = APIRouter()
 agent = LangGraphAgent()
 
@@ -156,6 +164,85 @@ def get_template_service():
         _template_service = ActionTemplateService()
         _template_service.load_templates()
     return _template_service
+
+
+# =============================================================================
+# DEV-179: LLM-First Proactivity Helpers
+# =============================================================================
+
+# Singleton simplified proactivity engine
+_simplified_proactivity_engine: SimplifiedProactivityEngine | None = None
+
+
+def get_simplified_proactivity_engine() -> SimplifiedProactivityEngine:
+    """Get or create the simplified ProactivityEngine singleton.
+
+    DEV-179: Returns the new LLM-First ProactivityEngine from DEV-177.
+    Uses three-step decision logic:
+    1. Calculable intent with missing params -> InteractiveQuestion
+    2. Recognized document type -> template actions
+    3. Otherwise -> LLM generates actions
+
+    Returns:
+        SimplifiedProactivityEngine: The singleton engine instance
+    """
+    global _simplified_proactivity_engine
+    if _simplified_proactivity_engine is None:
+        _simplified_proactivity_engine = SimplifiedProactivityEngine()
+        logger.info(
+            "simplified_proactivity_engine_initialized",
+            extra={"message": "LLM-First ProactivityEngine ready"},
+        )
+    return _simplified_proactivity_engine
+
+
+def inject_proactivity_prompt(base_prompt: str) -> str:
+    """Inject suggested_actions prompt into base system prompt.
+
+    DEV-179: Appends the suggested_actions output format prompt to the
+    system prompt. This instructs the LLM to output responses with
+    <answer> and <suggested_actions> XML-like tags.
+
+    Args:
+        base_prompt: The base system prompt
+
+    Returns:
+        str: Combined prompt with suggested_actions instructions appended
+    """
+    return f"{base_prompt}\n\n{SUGGESTED_ACTIONS_PROMPT}"
+
+
+def apply_action_override(
+    llm_actions: list[dict] | None,
+    template_actions: list[dict] | None,
+) -> list[dict]:
+    """Apply action override logic for LLM-First proactivity.
+
+    DEV-179: Template actions take priority over LLM-generated actions.
+    This ensures consistent, high-quality actions for known document types.
+
+    Priority:
+    1. Template actions (if present) - from DOCUMENT_ACTION_TEMPLATES
+    2. LLM actions (if template not applicable)
+    3. Empty list (if neither available)
+
+    Args:
+        llm_actions: Actions parsed from LLM response
+        template_actions: Actions from DOCUMENT_ACTION_TEMPLATES
+
+    Returns:
+        list[dict]: Final list of actions to return
+    """
+    # Template actions take priority
+    if template_actions:
+        return template_actions
+
+    # Use LLM actions if no template
+    if llm_actions:
+        return llm_actions
+
+    # Return empty list if neither
+    return []
 
 
 # =============================================================================

@@ -52,7 +52,9 @@ class TestRAGStep29PreContextFromGolden:
     async def test_step_29_includes_atomic_facts(self, mock_rag_log):
         """Test Step 29: Includes atomic facts in context merge."""
         from app.orchestrators.facts import step_29__pre_context_from_golden
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         # Extract real atomic facts
         extractor = AtomicFactsExtractor()

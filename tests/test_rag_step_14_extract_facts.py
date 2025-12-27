@@ -194,7 +194,9 @@ class TestRAGStep14Parity:
     async def test_step_14_parity_with_direct_call(self, mock_rag_log):
         """Test Step 14: Parity with direct AtomicFactsExtractor.extract() call."""
         from app.orchestrators.facts import step_14__extract_facts
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         query = "CCNL commercio, stipendio €1.500, scadenza 31/12/2024"
 

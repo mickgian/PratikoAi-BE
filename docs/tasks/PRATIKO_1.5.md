@@ -1765,7 +1765,7 @@ Create a new constants module with CALCULABLE_INTENTS (5 intents) and DOCUMENT_A
 <details>
 <summary>
 <h3>DEV-175: Update System Prompt with Suggested Actions Output Format</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Add proactive actions instruction block to system prompt with &lt;answer&gt; and &lt;suggested_actions&gt; format.
 </summary>
 
@@ -1773,7 +1773,7 @@ Add proactive actions instruction block to system prompt with &lt;answer&gt; and
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.5.1](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1251-system-prompt-aggiornato)
 
-**Priority:** CRITICAL | **Effort:** 1h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** CRITICAL | **Effort:** 1h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 The current system prompt does not instruct the LLM to generate suggested actions. The LLM-First architecture requires the LLM to output structured actions in every response using XML-like tags.

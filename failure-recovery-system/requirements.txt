@@ -141,9 +141,6 @@ kubernetes==28.1.0
 # Optional: Docker integration
 docker==6.1.3
 
-# Optional: Terraform integration (for infrastructure recovery)
-python-terraform==0.10.1
-
 # Optional: Advanced security features
 jwt==1.3.1
 passlib[bcrypt]==1.7.4

@@ -66,7 +66,6 @@ check_prerequisites() {
     # Check for required tools with version requirements
     command -v docker >/dev/null 2>&1 || missing_tools+=("docker")
     command -v kubectl >/dev/null 2>&1 || missing_tools+=("kubectl")
-    command -v terraform >/dev/null 2>&1 || missing_tools+=("terraform")
     command -v helm >/dev/null 2>&1 || missing_tools+=("helm")
     command -v aws >/dev/null 2>&1 || missing_tools+=("aws-cli")
     command -v trivy >/dev/null 2>&1 || missing_tools+=("trivy")
@@ -75,14 +74,7 @@ check_prerequisites() {
     if [ ${#missing_tools[@]} -ne 0 ]; then
         log_error "Missing required tools: ${missing_tools[*]}."
     fi
-    
-    # Verify minimum versions
-    local terraform_version
-    terraform_version=$(terraform version -json | jq -r '.terraform_version')
-    if ! printf '%s\n%s\n' "1.5.0" "$terraform_version" | sort -V -C; then
-        log_error "Terraform version must be >= 1.5.0, found: $terraform_version"
-    fi
-    
+
     # Verify kubectl can access production cluster
     if ! kubectl cluster-info >/dev/null 2>&1; then
         log_error "Cannot access Kubernetes cluster. Configure kubectl for production."
@@ -146,51 +138,39 @@ load_config() {
     log_success "Production configuration loaded and validated"
 }
 
-# Create enterprise-grade infrastructure
+# Create production infrastructure
+# NOTE: PratikoAI uses Hetzner Cloud + Docker Compose instead of Terraform/AWS.
+# Architecture Decision (ADR-017):
+# - Target scale: 100-1000 users over 7-8 years (simple, static infrastructure)
+# - Cost optimization: Hetzner is 5-10x cheaper than AWS for our scale
+# - Simplicity: Docker Compose is sufficient, no Kubernetes/Terraform complexity needed
+# - Infrastructure is provisioned manually via Hetzner Cloud Console or hcloud CLI
 create_infrastructure() {
-    log_info "Creating production infrastructure with enterprise features..."
-    
-    cd "$PROJECT_ROOT/terraform/environments/production"
-    
-    # Initialize Terraform with backend verification
-    terraform init -upgrade -verify-plugins=true
-    
-    # Validate configuration
-    terraform validate
-    
-    # Plan with detailed output
-    terraform plan \
-        -var="cluster_name=$CLUSTER_NAME" \
-        -var="aws_region=$AWS_REGION" \
-        -var="environment=production" \
-        -var="instance_type=c5.2xlarge" \
-        -var="min_nodes=3" \
-        -var="max_nodes=20" \
-        -var="desired_nodes=6" \
-        -var="enable_encryption=true" \
-        -var="enable_logging=true" \
-        -var="enable_monitoring=true" \
-        -var="multi_az=true" \
-        -var="backup_retention_days=30" \
-        -detailed-exitcode \
-        -out=production.tfplan
-    
-    local plan_exit_code=$?
-    if [ $plan_exit_code -eq 1 ]; then
-        log_error "Terraform plan failed"
-    elif [ $plan_exit_code -eq 2 ]; then
-        log_info "Infrastructure changes detected, applying..."
-        terraform apply -auto-approve production.tfplan
-    else
-        log_info "No infrastructure changes needed"
+    log_info "Verifying production infrastructure..."
+
+    # Verify Docker is running
+    if ! docker info >/dev/null 2>&1; then
+        log_error "Docker is not running. Please start Docker daemon."
     fi
-    
-    # Update kubeconfig with production context
-    aws eks update-kubeconfig --region "$AWS_REGION" --name "$CLUSTER_NAME" --alias production
-    kubectl config use-context production
-    
-    log_success "Production infrastructure ready"
-    cd "$PROJECT_ROOT"
+
+    # Verify docker-compose configuration exists
+    if [ ! -f "$PROJECT_ROOT/docker-compose.prod.yml" ]; then
+        log_warning "Production docker-compose file not found: docker-compose.prod.yml"
+        log_info "Using default docker-compose.yml for production"
+    fi
+
+    # Validate docker-compose configuration
+    local compose_file="$PROJECT_ROOT/docker-compose.prod.yml"
+    if [ ! -f "$compose_file" ]; then
+        compose_file="$PROJECT_ROOT/docker-compose.yml"
+    fi
+
+    docker compose -f "$compose_file" config >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        log_error "Invalid docker-compose configuration"
+    fi
+
+    log_success "Production infrastructure verified (Hetzner + Docker Compose)"
 }
 
 # Setup production-grade security

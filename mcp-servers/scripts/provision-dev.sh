@@ -43,7 +43,6 @@ check_prerequisites() {
     command -v docker >/dev/null 2>&1 || missing_tools+=("docker")
     command -v docker-compose >/dev/null 2>&1 || missing_tools+=("docker-compose")
     command -v kubectl >/dev/null 2>&1 || missing_tools+=("kubectl")
-    command -v terraform >/dev/null 2>&1 || missing_tools+=("terraform")
     
     if [ ${#missing_tools[@]} -ne 0 ]; then
         log_error "Missing required tools: ${missing_tools[*]}. Please run ./scripts/install-prerequisites.sh first."

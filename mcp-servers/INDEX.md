@@ -63,10 +63,6 @@ mcp-servers/
 │   ├── install-prerequisites.sh  # Prerequisites installer
 │   ├── backup-restore.sh         # Backup and restore utilities
 │   └── health-check.sh           # Health monitoring
-├── terraform/                     # Infrastructure as Code
-│   ├── modules/                  # Reusable Terraform modules
-│   ├── environments/             # Environment-specific configs
-│   └── shared/                   # Shared resources
 ├── kubernetes/                    # Kubernetes manifests
 │   ├── base/                     # Base configurations
 │   ├── overlays/                 # Environment overlays

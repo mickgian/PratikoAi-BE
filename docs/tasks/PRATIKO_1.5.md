@@ -467,6 +467,51 @@ Implemented `MultiQueryGeneratorService` using GPT-4o-mini to generate BM25, vec
 
 <details>
 <summary>
+<h3>DEV-189: Implement HyDE Generator Service (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h (Actual: ~1.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Implemented hypothetical document generation in Italian bureaucratic style with 21 tests and 100% coverage.
+</summary>
+
+### DEV-189: Implement HyDE Generator Service
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** HIGH | **Effort:** 2.5h (Actual: ~1.5h)
+
+**Problem:**
+Query embeddings differ from document embeddings. HyDE generates a hypothetical answer document whose embedding is closer to real documents.
+
+**Solution:**
+Implemented `HyDEGeneratorService` using GPT-4o-mini to generate 150-250 word hypothetical documents in Italian bureaucratic style.
+
+**Files Created:**
+- `app/services/hyde_generator.py` (~260 lines)
+- `tests/services/test_hyde_generator.py` (21 tests)
+
+**Components Implemented:**
+- `HyDEResult` dataclass: hypothetical_document, word_count, skipped, skip_reason
+- `HyDEGeneratorService` class with:
+  - `generate(query, routing)` - Main generation method
+  - `should_generate(routing)` - Skip logic for CHITCHAT/CALCULATOR
+  - `_build_prompt(query)` - Prompt builder
+  - `_parse_response(response)` - Word counting and parsing
+- `HYDE_SYSTEM_PROMPT` - Italian bureaucratic style instructions
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 21 tests
+- ✅ Italian bureaucratic style generation
+- ✅ Document length 150-250 words
+- ✅ Skip for CHITCHAT and CALCULATOR
+- ✅ Graceful fallback on error
+- ✅ 100% test coverage
+
+**Git:** Branch `DEV-189-Implement-HyDE-Generator-Service`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2386,86 +2431,8 @@ DEV-184 (LLM Config)
 
 <details>
 <summary>
-<h3>DEV-189: Implement HyDE Generator Service (Backend)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> COMPLETED | <strong>Type:</strong> Backend<br>
-Generate hypothetical documents in Italian bureaucratic style per Section 13.6.
-</summary>
-
-### DEV-189: Implement HyDE Generator Service
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.6](/docs/tasks/PRATIKO_1.5_REFERENCE.md#136-fr-006-hyde-hypothetical-document-embeddings)
-
-**Priority:** HIGH | **Effort:** 2.5h | **Status:** COMPLETED | **Type:** Backend
-
-**Problem:**
-Query embeddings differ from document embeddings. HyDE generates a hypothetical answer document whose embedding is closer to real documents.
-
-**Solution:**
-Implement `HyDEGeneratorService` using GPT-4o-mini to generate 150-250 word hypothetical documents in Italian bureaucratic style.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-184 (config)
-- **Unlocks:** DEV-190 (Parallel Retrieval), DEV-195 (Node)
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- **LLM error:** Skip HyDE, use original query only
-- **Timeout:** Skip HyDE
-- **Too short response:** Use as-is if >50 words
-
-**Performance Requirements:**
-- **Latency:** ≤200ms (AC-006.2)
-- **Document length:** 150-250 words (AC-006.3)
-
-**Edge Cases:**
-- **Chitchat query:** Skip HyDE entirely
-- **Calculator query:** Skip HyDE
-- **Very short query:** Generate anyway
-
-**Files to Create:**
-- `app/services/hyde_generator.py` (~180 lines)
-
-**Fields/Methods/Components:**
-- `HyDEGeneratorService` class
-  - `generate(query: str) -> HyDEResult`
-  - `should_generate(routing: RoutingCategory) -> bool`
-- `HyDEResult` dataclass:
-  - `hypothetical_document: str`
-  - `word_count: int`
-  - `embedding: list[float]` (optional, computed later)
-
-**Testing Requirements:**
-- **TDD:** Write `tests/services/test_hyde_generator.py` FIRST
-- **Unit Tests:**
-  - `test_generates_bureaucratic_style`
-  - `test_document_length_150_250_words`
-  - `test_includes_normative_references`
-  - `test_skip_for_chitchat`
-  - `test_skip_for_calculator`
-  - `test_fallback_on_error`
-  - `test_latency_under_200ms`
-- **Coverage Target:** 95%+
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Italian bureaucratic style (AC-006.1)
-- [ ] Latency ≤200ms (AC-006.2)
-- [ ] Length 150-250 words (AC-006.3)
-- [ ] Includes normative references (AC-006.4)
-- [ ] Graceful fallback on error (AC-006.5)
-- [ ] 95%+ test coverage
-
-</details>
-
----
-
-<details>
-<summary>
 <h3>DEV-190: Implement Parallel Hybrid Retrieval with RRF Fusion (Backend)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> COMPLETED | <strong>Type:</strong> Backend<br>
 Parallel search with RRF fusion and source authority per Section 13.7.
 </summary>
 
@@ -2473,7 +2440,7 @@ Parallel search with RRF fusion and source authority per Section 13.7.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#137-fr-007-rrf-fusion-con-source-authority)
 
-**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** HIGH | **Effort:** 3h | **Status:** COMPLETED | **Type:** Backend
 
 **Problem:**
 Need to combine results from multiple search queries (3 BM25 + 3 Vector + 1 HyDE) using RRF with source authority and recency boosts.

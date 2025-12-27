@@ -229,6 +229,57 @@ DEV-166 ─── DEV-167 (Mobile Styling)
 
 <details>
 <summary>
+<h3>DEV-184: Create LLM Model Configuration System (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h (Actual: ~1.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Created YAML-based configuration for tiered LLM model selection with 20 tests and 100% coverage.
+</summary>
+
+### DEV-184: Create LLM Model Configuration System
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** CRITICAL | **Effort:** 2h (Actual: ~1.5h)
+
+**Problem:**
+Current system uses single `LLM_MODEL` environment variable. Section 13.10 requires different models per pipeline stage:
+- GPT-4o-mini for routing, query expansion, HyDE
+- GPT-4o / Claude 3.5 Sonnet for critical synthesis
+
+**Solution:**
+Created YAML-based configuration (`config/llm_models.yaml`) with environment overrides for tiered model selection.
+
+**Files Created:**
+- `config/llm_models.yaml` (~60 lines)
+- `app/core/llm/model_config.py` (~340 lines)
+- `tests/core/llm/test_model_config.py` (~305 lines, 20 tests)
+
+**Components Implemented:**
+- `ModelTier(str, Enum)` - BASIC, PREMIUM
+- `LLMModelConfig` class with:
+  - `load()` / `reload()` - Load/reload YAML configuration
+  - `get_model(tier)` - Get model for tier
+  - `get_provider(tier)` - Get provider for tier
+  - `get_timeout(tier)` - Get timeout in ms
+  - `get_temperature(tier)` - Get temperature
+  - `get_fallback(tier)` - Get fallback config
+- `get_model_config()` - Singleton accessor
+- Environment variable overrides: `LLM_MODEL_BASIC`, `LLM_MODEL_PREMIUM`
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 20 tests
+- ✅ YAML config loads correctly from `config/llm_models.yaml`
+- ✅ Environment variables override YAML values
+- ✅ Fallback to defaults on missing/invalid config
+- ✅ Model validation against known models
+- ✅ 100% test coverage achieved (target was 95%+)
+
+**Git:** Branch `DEV-184-Create-LLM-Model-Configuration-System`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2148,108 +2199,8 @@ DEV-184 (LLM Config)
 
 <details>
 <summary>
-<h3>DEV-184: Create LLM Model Configuration System (Backend)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
-Create YAML-based configuration for tiered LLM model selection per Section 13.10.
-</summary>
-
-### DEV-184: Create LLM Model Configuration System
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1310-strategia-di-selezione-modelli-llm)
-
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** DONE | **Type:** Backend
-
-**Problem:**
-Current system uses single `LLM_MODEL` environment variable. Section 13.10 requires different models per pipeline stage:
-- GPT-4o-mini for routing, query expansion, HyDE
-- GPT-4o / Claude 3.5 Sonnet for critical synthesis
-
-**Solution:**
-Create YAML-based configuration (`config/llm_models.yaml`) with environment overrides for tiered model selection.
-
-**Agent Assignment:** @ezio (primary), @egidio (review)
-
-**Dependencies:**
-- **Blocking:** None (first Phase 7 task)
-- **Unlocks:** DEV-185, DEV-187, DEV-188, DEV-189
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- **Missing YAML file:** Fall back to environment variables
-- **Invalid YAML syntax:** Log error, use defaults
-- **Missing model key:** Use tier defaults (gpt-4o-mini for BASIC, gpt-4o for PREMIUM)
-- **Environment override:** ENV vars take precedence over YAML
-
-**Performance Requirements:**
-- Config load time: <50ms at startup
-- Config cached in memory (no repeated file reads)
-
-**Edge Cases:**
-- **Missing config file:** Use environment variables only
-- **Partial config:** Merge with defaults
-- **Invalid model name:** Validate against known models, fall back to default
-
-**Files to Create:**
-- `config/llm_models.yaml` (~50 lines)
-- `app/core/llm/model_config.py` (~150 lines)
-
-**Fields/Methods/Components:**
-- `LLMModelConfig` class
-  - `load_config() -> ModelConfig` - Load and validate YAML
-  - `get_model(tier: ModelTier) -> str` - Get model for tier
-  - `get_timeout(tier: ModelTier) -> int` - Get timeout in ms
-  - `get_temperature(tier: ModelTier) -> float` - Get temperature
-- `ModelTier` enum: `BASIC`, `PREMIUM`
-- YAML structure per Section 13.10.5
-
-**Testing Requirements:**
-- **TDD:** Write `tests/core/llm/test_model_config.py` FIRST
-- **Unit Tests:**
-  - `test_load_valid_yaml_config`
-  - `test_fallback_to_env_vars_when_yaml_missing`
-  - `test_env_override_takes_precedence`
-  - `test_get_model_for_basic_tier`
-  - `test_get_model_for_premium_tier`
-  - `test_invalid_yaml_uses_defaults`
-  - `test_partial_config_merges_with_defaults`
-- **Coverage Target:** 95%+
-
-**Risks & Mitigations:**
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Config file not found in production | HIGH | Fallback to env vars |
-| YAML parsing error | MEDIUM | Graceful fallback, logging |
-| Model name typo | MEDIUM | Validation against known models |
-
-**Code Structure:**
-- Config loader: <100 lines
-- YAML file: <50 lines
-- No circular imports
-
-**Code Completeness:**
-- [x] No TODO comments for required functionality
-- [x] All tiers covered (BASIC, PREMIUM)
-- [x] Environment override logic complete
-- [x] Validation against known models
-
-**Acceptance Criteria:**
-- [x] Tests written BEFORE implementation (TDD)
-- [x] YAML config loads correctly from `config/llm_models.yaml`
-- [x] Environment variables override YAML values
-- [x] Fallback to defaults on missing/invalid config
-- [x] 95%+ test coverage
-- [x] All tests pass: `pytest tests/core/llm/test_model_config.py -v`
-
-</details>
-
----
-
-<details>
-<summary>
 <h3>DEV-185: Implement PremiumModelSelector Service (Backend)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Create dynamic model selector for synthesis step per Section 13.10.4.
 </summary>
 
@@ -2257,7 +2208,7 @@ Create dynamic model selector for synthesis step per Section 13.10.4.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.10.4](/docs/tasks/PRATIKO_1.5_REFERENCE.md#13104-selezione-dinamica-del-modello-premium)
 
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 Step 64 (synthesis) needs dynamic model selection between GPT-4o and Claude 3.5 Sonnet based on context length and provider availability.
@@ -2335,21 +2286,21 @@ Implement `PremiumModelSelector` class that:
 - Clear separation of selection logic and health checks
 
 **Code Completeness:**
-- [ ] No TODO comments for required functionality
-- [ ] GPT-4o primary selection implemented
-- [ ] Claude fallback for >8k tokens
-- [ ] Both providers pre-warmed at startup
-- [ ] Degraded response flag available
+- [x] No TODO comments for required functionality
+- [x] GPT-4o primary selection implemented
+- [x] Claude fallback for >8k tokens
+- [x] Both providers pre-warmed at startup
+- [x] Degraded response flag available
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Selects GPT-4o by default
-- [ ] Selects Claude 3.5 Sonnet for context >8k tokens
-- [ ] Fallback works when primary provider unavailable
-- [ ] Pre-warm validates API keys at startup
-- [ ] Claude 3.5 Sonnet added to AnthropicProvider.supported_models
-- [ ] 95%+ test coverage
-- [ ] All tests pass: `pytest tests/services/test_premium_model_selector.py -v`
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Selects GPT-4o by default
+- [x] Selects Claude 3.5 Sonnet for context >8k tokens
+- [x] Fallback works when primary provider unavailable
+- [x] Pre-warm validates API keys at startup
+- [x] Claude 3.5 Sonnet added to AnthropicProvider.supported_models
+- [x] 95%+ test coverage
+- [x] All tests pass: `pytest tests/services/test_premium_model_selector.py -v`
 
 </details>
 

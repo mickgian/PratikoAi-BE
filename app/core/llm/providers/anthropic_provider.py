@@ -86,6 +86,12 @@ class AnthropicProvider(LLMProvider):
                 model_name="claude-3-sonnet-20241022",
                 tier=LLMModelTier.STANDARD,
             ),
+            "claude-3-5-sonnet-20241022": LLMCostInfo(
+                input_cost_per_1k_tokens=0.00276,  # $3.00/1M tokens * 0.92
+                output_cost_per_1k_tokens=0.0138,  # $15.00/1M tokens * 0.92
+                model_name="claude-3-5-sonnet-20241022",
+                tier=LLMModelTier.ADVANCED,
+            ),
             "claude-3-opus-20240229": LLMCostInfo(
                 input_cost_per_1k_tokens=0.0138,  # $15.00/1M tokens * 0.92
                 output_cost_per_1k_tokens=0.069,  # $75.00/1M tokens * 0.92
@@ -249,7 +255,7 @@ class AnthropicProvider(LLMProvider):
         temperature: float = 0.2,
         max_tokens: int | None = None,
         **kwargs,
-    ) -> AsyncGenerator[LLMStreamResponse, None]:
+    ) -> AsyncGenerator[LLMStreamResponse]:
         """Generate a streaming chat completion using Anthropic Claude.
 
         Args:

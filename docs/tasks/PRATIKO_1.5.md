@@ -512,6 +512,60 @@ Implemented `HyDEGeneratorService` using GPT-4o-mini to generate 150-250 word hy
 
 <details>
 <summary>
+<h3>DEV-190: Implement Parallel Hybrid Retrieval with RRF Fusion (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h (Actual: ~2h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Implemented parallel search with RRF fusion, source authority hierarchy, and recency boost with 20 tests.
+</summary>
+
+### DEV-190: Implement Parallel Hybrid Retrieval with RRF Fusion
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** HIGH | **Effort:** 3h (Actual: ~2h)
+
+**Problem:**
+Need to combine results from multiple search queries (BM25 + Vector + HyDE) using RRF with source authority and recency boosts.
+
+**Solution:**
+Implemented `ParallelRetrievalService` with RRF fusion per Section 13.7.
+
+**Files Created:**
+- `app/services/parallel_retrieval.py` (~490 lines)
+- `tests/services/test_parallel_retrieval.py` (20 tests)
+
+**Components Implemented:**
+- `RRF_K = 60` constant for RRF formula
+- `SEARCH_WEIGHTS` dict: BM25=0.3, Vector=0.4, HyDE=0.3
+- `GERARCHIA_FONTI` dict: legge=1.3, decreto=1.25, circolare=1.15, risoluzione=1.1, interpello=1.05, faq=1.0, guida=0.95
+- `RankedDocument` dataclass: document_id, content, score, rrf_score, source_type, source_name, published_date, metadata
+- `RetrievalResult` dataclass: documents, total_found, search_time_ms
+- `ParallelRetrievalService` class with:
+  - `retrieve(queries, hyde, top_k)` - Main retrieval method
+  - `_execute_parallel_searches(queries, hyde)` - Parallel asyncio.gather
+  - `_rrf_fusion(search_results)` - RRF combination
+  - `_apply_boosts(docs)` - Authority and recency boosts
+  - `_calculate_recency_boost(published_date)` - +50% for <12 months
+  - `_get_authority_boost(source_type)` - GERARCHIA_FONTI lookup
+  - `_deduplicate(docs)` - Keep highest score
+  - `_get_top_k(docs, k)` - Return top K results
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 20 tests
+- ✅ RRF combines all search results
+- ✅ Recency boost applied (+50% for docs <12 months)
+- ✅ Authority hierarchy respected (legge > circolare > faq)
+- ✅ Top 10 documents returned by default
+- ✅ Metadata preserved in results
+- ✅ Deduplication by document_id
+- ✅ 100% test coverage
+
+**Git:** Branch `DEV-190-Implement-Parallel-Hybrid-Retrieval-with-RRF-Fusion`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2506,7 +2560,7 @@ Implement parallel retrieval with RRF fusion per Section 13.7.2:
 <details>
 <summary>
 <h3>DEV-191: Create Document Metadata Preservation Layer (Backend)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> COMPLETED | <strong>Type:</strong> Backend<br>
 Preserve and format metadata for synthesis per Section 13.9.
 </summary>
 
@@ -2514,7 +2568,7 @@ Preserve and format metadata for synthesis per Section 13.9.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.9](/docs/tasks/PRATIKO_1.5_REFERENCE.md#139-fr-009-preservazione-metadati-nel-pipeline)
 
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** HIGH | **Effort:** 2h | **Status:** COMPLETED | **Type:** Backend
 
 **Problem:**
 Document metadata (date, source, type, hierarchy) must flow from retrieval to synthesis for proper chronological analysis and source indexing.

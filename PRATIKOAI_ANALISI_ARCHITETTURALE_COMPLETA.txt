@@ -1,0 +1,1048 @@
+================================================================================
+                    PRATIKOAI - ANALISI ARCHITETTURALE COMPLETA
+                    Piattaforma Intelligente per Professionisti Fiscali Italiani
+================================================================================
+
+Documento tecnico-divulgativo
+Versione: 1.0
+Data: Dicembre 2025
+Stato: Descrizione dello stato finale desiderato
+
+================================================================================
+                             INDICE DEI CONTENUTI
+================================================================================
+
+1. EXECUTIVE SUMMARY
+2. SINTESI DELL'ARCHITETTURA
+3. CATALOGO FUNZIONALITÀ (STATO FINALE)
+4. DATA FLOW - FLUSSO DEI DATI
+5. USER EXPERIENCE TOTALE
+6. GLOSSARIO PER NON TECNICI
+7. PUNTI DI FORZA PER INVESTITORI
+
+================================================================================
+                           1. EXECUTIVE SUMMARY
+================================================================================
+
+PratikoAI è una piattaforma di intelligenza artificiale specializzata nel
+dominio fiscale, legale e del lavoro italiano. Il sistema nasce come assistente
+Q&A per commercialisti, consulenti del lavoro e avvocati tributaristi, e si
+evolve in una piattaforma professionale completa per la gestione dello studio.
+
+La piattaforma combina le più avanzate tecnologie di AI generativa con una
+profonda conoscenza del contesto normativo italiano, offrendo risposte accurate,
+calcoli fiscali automatizzati, matching normativo proattivo e generazione
+automatica di comunicazioni per i clienti dello studio.
+
+L'architettura è progettata per scalare fino a 500+ utenti concorrenti con
+tempi di risposta inferiori a 100 millisecondi, mantenendo i più alti standard
+di sicurezza e conformità GDPR.
+
+
+================================================================================
+                       2. SINTESI DELL'ARCHITETTURA
+================================================================================
+
+2.1 PARADIGMA ARCHITETTURALE
+--------------------------------------------------------------------------------
+
+PratikoAI adotta un'architettura a servizi modulare, costruita attorno a un
+nucleo di orchestrazione AI chiamato LangGraph. Questo approccio combina i
+vantaggi di un sistema monolitico (semplicità di deployment, transazioni ACID)
+con la flessibilità di un'architettura a microservizi (separazione delle
+responsabilità, scalabilità orizzontale dei componenti critici).
+
+Il sistema è organizzato in layer distinti:
+
+- LAYER PRESENTAZIONE: API RESTful asincrone costruite con FastAPI, che
+  gestiscono autenticazione, validazione delle richieste e serializzazione
+  delle risposte. Le API supportano sia chiamate tradizionali request/response
+  sia streaming in tempo reale tramite Server-Sent Events (SSE).
+
+- LAYER ORCHESTRAZIONE: Un grafo computazionale a 134 step implementato con
+  LangGraph gestisce l'intera pipeline RAG (Retrieval-Augmented Generation).
+  Ogni step è un nodo indipendente che esegue operazioni specifiche:
+  anonimizzazione, classificazione, recupero documenti, generazione risposta.
+
+- LAYER SERVIZI: Oltre 100 servizi specializzati gestiscono logiche di business
+  specifiche: calcolo IRPEF, validazione Codice Fiscale, gestione CCNL,
+  parsing documenti, integrazione pagamenti Stripe, conformità GDPR.
+
+- LAYER PERSISTENZA: PostgreSQL con estensione pgvector per ricerca vettoriale,
+  supportato da Redis per caching ad alte prestazioni. Il database utilizza
+  Full-Text Search con dizionario italiano per stemming morfologico.
+
+
+2.2 STACK TECNOLOGICO
+--------------------------------------------------------------------------------
+
+FRAMEWORK APPLICATIVO:
+- FastAPI 0.115+ come framework web asincrono
+- LangGraph 0.4+ per orchestrazione pipeline AI
+- Pydantic V2 per validazione dati e contratti API
+- SQLModel/SQLAlchemy per ORM asincrono
+
+INTELLIGENZA ARTIFICIALE:
+- OpenAI GPT-4o-mini come modello primario per generazione
+- OpenAI text-embedding-3-small per embedding semantici (1536 dimensioni)
+- Anthropic Claude come modello di fallback
+- Langfuse per tracing e monitoraggio costi LLM
+
+DATABASE E CACHE:
+- PostgreSQL 15+ con estensioni pgvector, Full-Text Search, Unaccent
+- Redis 7+ per caching risposte LLM e sessioni utente
+- Indici IVFFlat per ricerca vettoriale approssimata (85-90% recall)
+- Indici GIN per ricerca testuale italiana
+
+SICUREZZA E COMPLIANCE:
+- JWT con OAuth2 per autenticazione (Google, LinkedIn)
+- AES-256 per crittografia dati sensibili a riposo
+- Bcrypt per hashing password
+- Sistema completo GDPR con cancellazione automatica entro 30 giorni
+
+INFRASTRUTTURA:
+- Docker e Docker Compose per containerizzazione
+- Prometheus e Grafana per metriche e dashboard
+- GitHub Actions per CI/CD con 10 workflow automatizzati
+- Terraform per Infrastructure as Code
+
+
+2.3 PATTERN ARCHITETTURALI CHIAVE
+--------------------------------------------------------------------------------
+
+HYBRID RAG (Retrieval-Augmented Generation):
+Il sistema combina tre metodi di scoring in una singola query SQL:
+- Full-Text Search (50%): matching esatto di termini, acronimi, gergo legale
+- Vector Similarity (35%): comprensione semantica per sinonimi e parafrasi
+- Recency Score (15%): documenti normativi più recenti hanno priorità
+
+Questa combinazione garantisce che query come "come calcolare le tasse"
+matchino sia risultati semantici che documenti contenenti "IRPEF 2025".
+
+CIRCUIT BREAKER PATTERN:
+I servizi LLM implementano circuit breaker con fallback automatico:
+- Se OpenAI non risponde, il sistema passa ad Anthropic Claude
+- Se tutti i provider falliscono, viene attivata la modalità FTS-only
+- I costi vengono monitorati in tempo reale per evitare sforamenti budget
+
+MULTI-TENANCY CON ROW-LEVEL SECURITY:
+L'architettura 2.0 implementa isolamento dati a livello di riga:
+- Ogni studio professionale (tenant) ha uno studio_id univoco
+- Tutte le query includono automaticamente il filtro studio_id
+- PostgreSQL RLS garantisce isolamento anche in caso di bug applicativi
+
+SEMANTIC CACHING:
+Le risposte LLM vengono memorizzate con chiavi semantiche:
+- Query simili ("calcolo IRPEF", "come calcolare l'IRPEF") condividono cache
+- TTL di 24 ore per embedding, configurabile per risposte
+- Target hit rate: 60-70% per ridurre costi LLM del 50%
+
+
+================================================================================
+                  3. CATALOGO FUNZIONALITÀ (STATO FINALE)
+================================================================================
+
+3.1 ASSISTENTE AI CONVERSAZIONALE
+--------------------------------------------------------------------------------
+
+CHAT INTELLIGENTE:
+Il cuore di PratikoAI è un assistente conversazionale specializzato nel dominio
+fiscale e del lavoro italiano. L'assistente comprende il contesto della
+conversazione, mantiene la memoria delle interazioni precedenti e fornisce
+risposte accurate citando le fonti normative.
+
+L'assistente gestisce query di diversa complessità:
+- Domande informative: "Quali sono le scadenze IVA 2025?"
+- Calcoli fiscali: "Calcola l'IRPEF per un reddito di 50.000 euro"
+- Analisi documenti: "Analizza questa busta paga e verifica i contributi"
+- Ricerca normativa: "Cerca sentenze Cassazione su rimborso IVA"
+
+STREAMING IN TEMPO REALE:
+Le risposte vengono trasmesse in streaming tramite Server-Sent Events,
+permettendo all'utente di vedere il testo mentre viene generato. Questo
+riduce la latenza percepita e migliora l'esperienza utente.
+
+ANONIMIZZAZIONE AUTOMATICA:
+Prima di processare ogni richiesta, il sistema anonimizza automaticamente
+dati personali identificabili (PII) come nomi, codici fiscali e partite IVA,
+garantendo privacy e conformità GDPR.
+
+
+3.2 SISTEMA PROATTIVO (PRATIKO 1.5)
+--------------------------------------------------------------------------------
+
+AZIONI SUGGERITE POST-RISPOSTA:
+Dopo ogni risposta dell'assistente, il sistema analizza il contesto e propone
+azioni contestuali rilevanti. Per esempio, dopo una risposta su aliquote IRPEF,
+l'assistente suggerisce:
+- "Calcola IRPEF per il mio caso specifico"
+- "Mostra scadenze dichiarazione redditi"
+- "Cerca detrazioni applicabili"
+
+Le azioni sono organizzate per categoria (CALCOLA, CERCA, VERIFICA, ESPORTA,
+SPIEGA) e vengono selezionate da un motore basato su template YAML configurabili.
+
+DOMANDE INTERATTIVE STRUTTURATE:
+Quando una query è ambigua o manca di parametri essenziali, l'assistente
+pone domande strutturate con opzioni predefinite. Per esempio:
+
+"Per calcolare l'IRPEF, ho bisogno di alcune informazioni:
+- Tipo contribuente: [Dipendente] [Autonomo] [Pensionato] [Imprenditore]
+- Fascia di reddito: [fino a 28.000€] [28.000-50.000€] [oltre 50.000€]"
+
+L'utente seleziona le opzioni con tastiera (frecce, numeri, Enter) o click,
+e il sistema completa automaticamente la richiesta.
+
+ESTRAZIONE INTELLIGENTE PARAMETRI:
+Il modulo Atomic Facts Extractor analizza le query utente ed estrae
+automaticamente parametri fiscali: importi, date, aliquote, tipologie.
+Se la copertura parametrica supera l'80%, il sistema procede senza chiedere;
+altrimenti formula domande mirate sui parametri mancanti.
+
+
+3.3 DATABASE CLIENTI DELLO STUDIO (PRATIKO 2.0)
+--------------------------------------------------------------------------------
+
+GESTIONE MULTI-TENANT:
+Ogni studio professionale opera in un ambiente isolato con i propri clienti,
+documenti e comunicazioni. Il sistema supporta fino a 100 clienti per studio,
+con possibilità di estensione per piani enterprise.
+
+ANAGRAFICA CLIENTI:
+Per ogni cliente, lo studio memorizza:
+- Dati anagrafici: Codice Fiscale, Partita IVA (crittografati), nome, indirizzo
+- Classificazione: PERSONA_FISICA, DITTA_INDIVIDUALE, SOCIETÀ
+- Dati fiscali: regime fiscale, codice ATECO, CCNL applicato
+- Stato: ATTIVO, PROSPECT, CESSATO, SOSPESO
+
+IMPORT MASSIVO:
+I clienti vengono importati da file Excel o PDF esportati da altri software.
+Per i PDF non strutturati, un modello LLM estrae automaticamente i dati dalle
+tabelle, validando Codici Fiscali e Partite IVA con algoritmi di checksum.
+
+
+3.4 MATCHING NORMATIVO AUTOMATICO
+--------------------------------------------------------------------------------
+
+REGOLE DI MATCHING:
+Il sistema mantiene un database di regole normative pre-configurate che
+identificano quali norme si applicano a quali profili clienti. Per esempio:
+- Clienti con regime forfettario → notifica nuovi limiti fatturato
+- Aziende con CCNL Metalmeccanici → aggiornamenti contrattuali
+- Contribuenti con immobili → scadenze IMU/TASI
+
+VETTORI SEMANTICI PER PROFILI:
+Ogni profilo cliente viene convertito in un vettore a 1536 dimensioni che
+cattura le caratteristiche fiscali/lavorative. Quando una nuova norma viene
+ingerita, il sistema calcola la similarità con tutti i profili e identifica
+automaticamente i clienti impattati.
+
+SUGGERIMENTI PROATTIVI:
+Il sistema genera suggerimenti proattivi per il professionista:
+"3 tuoi clienti potrebbero beneficiare della Rottamazione Quater.
+Vuoi generare una comunicazione per informarli?"
+
+
+3.5 GENERAZIONE COMUNICAZIONI
+--------------------------------------------------------------------------------
+
+BOZZE AUTOMATICHE:
+L'assistente genera bozze di comunicazioni da inviare ai clienti,
+personalizzate con i dati del singolo destinatario:
+
+"Gentile Mario Rossi,
+La informiamo che in base alla sua posizione fiscale (regime semplificato,
+ATECO 47.19), potrebbe essere interessato dalla nuova agevolazione
+Bonus Sud 2025. La scadenza per la presentazione è il 30/04/2025.
+Restiamo a disposizione per assistenza.
+Cordiali saluti, Studio Bianchi"
+
+WORKFLOW DI APPROVAZIONE:
+Ogni comunicazione attraversa un workflow di approvazione:
+BOZZA → IN_REVISIONE → APPROVATA → INVIATA
+
+Il sistema prevede che chi crea la comunicazione non possa approvarla
+(principio dei quattro occhi) e mantiene un audit trail completo.
+
+CANALI DI INVIO:
+Le comunicazioni vengono inviate via email o WhatsApp, con tracking dello
+stato di consegna e lettura.
+
+
+3.6 GUIDE PROCEDURALI INTERATTIVE
+--------------------------------------------------------------------------------
+
+CHECKLIST PASSO-PASSO:
+Per procedure complesse (apertura P.IVA, assunzione dipendente, chiusura
+esercizio), il sistema offre guide interattive con checklist:
+
+"APERTURA PARTITA IVA - LIBERO PROFESSIONISTA
+Step 1/5: Verifica requisiti ☑
+Step 2/5: Scelta regime fiscale ☐ (attuale)
+Step 3/5: Richiesta codice ATECO ☐
+Step 4/5: Apertura posizione INPS ☐
+Step 5/5: Comunicazione inizio attività ☐
+
+Tempo stimato: 45 minuti | Progresso: 20%"
+
+Le guide possono essere associate a un cliente specifico, permettendo di
+tracciare lo stato di avanzamento delle pratiche per ogni assistito.
+
+
+3.7 CALCOLI FISCALI AVANZATI
+--------------------------------------------------------------------------------
+
+IRPEF E ALIQUOTE PROGRESSIVE:
+Il sistema calcola l'IRPEF applicando le aliquote progressive 2025:
+- Fino a €28.000: 23%
+- €28.001 - €50.000: 35%
+- Oltre €50.000: 43%
+
+Include automaticamente detrazioni per tipologia contribuente, carichi
+familiari e altre agevolazioni.
+
+IVA E REGIMI SPECIALI:
+Calcoli IVA con supporto per regime forfettario, regime dei minimi,
+split payment per PA, reverse charge per operazioni intracomunitarie.
+
+CONTRIBUTI INPS:
+Calcolo contributi per gestione separata, artigiani e commercianti,
+dipendenti, con aliquote aggiornate.
+
+TFR E LIQUIDAZIONI:
+Calcolo TFR maturato, anticipi, tassazione separata al momento della
+liquidazione.
+
+RAVVEDIMENTO OPEROSO:
+Calcolo sanzioni ridotte e interessi per regolarizzazione spontanea di
+omessi/tardivi versamenti.
+
+
+3.8 GESTIONE DOCUMENTALE INTELLIGENTE
+--------------------------------------------------------------------------------
+
+UPLOAD E PARSING:
+Il sistema accetta documenti in formato PDF, Excel, immagini. I PDF vengono
+processati con estrazione testo multi-engine (PyPDF2, pdfplumber) con fallback
+OCR per documenti scansionati.
+
+CLASSIFICAZIONE AUTOMATICA:
+I documenti caricati vengono classificati automaticamente:
+- FATTURA → estrazione importi, date, dati fornitore/cliente
+- F24 → estrazione tributi, importi, date scadenza
+- BUSTA_PAGA → estrazione retribuzione, contributi, ritenute
+- CU → estrazione redditi, ritenute, dati anagrafici
+- BILANCIO → estrazione voci principali, indicatori
+
+ANALISI CONTESTUALE:
+Una volta caricato, il documento diventa parte del contesto conversazionale.
+L'utente può chiedere:
+"Questa fattura è corretta per regime forfettario?"
+"Quali voci di questa busta paga sono anomale?"
+
+
+3.9 KNOWLEDGE BASE NORMATIVA
+--------------------------------------------------------------------------------
+
+FONTI UFFICIALI:
+Il sistema ingesta automaticamente documenti da fonti autorevoli:
+- Agenzia delle Entrate
+- INPS
+- Gazzetta Ufficiale
+- Corte di Cassazione (sentenze tributarie)
+- Confindustria, Ordini Professionali
+
+MONITORAGGIO RSS:
+Feed RSS delle principali fonti normative vengono monitorati con job
+schedulati. I nuovi documenti vengono automaticamente:
+1. Scaricati e parsati
+2. Suddivisi in chunk di ~500 parole
+3. Convertiti in embedding vettoriali
+4. Indicizzati per ricerca ibrida
+
+FAQ INTELLIGENTI:
+Le domande frequenti vengono identificate automaticamente dall'analisi
+delle query utente. Risposte di alta qualità (validate da esperti)
+vengono promosse a "Golden Set" per risposte immediate senza LLM.
+
+
+3.10 SISTEMA DI SCADENZE PROATTIVO
+--------------------------------------------------------------------------------
+
+CALENDARIO NORMATIVO:
+Il sistema mantiene un calendario delle scadenze fiscali e contributive:
+- Scadenze fisse (16 di ogni mese per IVA, F24...)
+- Scadenze annuali (dichiarazioni, bilanci...)
+- Scadenze variabili estratte da nuove normative
+
+NOTIFICHE PERSONALIZZATE:
+In base al profilo di ogni cliente, vengono generate notifiche mirate:
+"Il cliente Rossi Mario ha scadenza F24 il 16/01/2025.
+Importo stimato: €1.245,00 (IVA trimestrale)"
+
+DASHBOARD SCADENZE:
+Una vista calendario mostra tutte le scadenze dello studio, filtrabili
+per cliente, tipologia, urgenza. Le scadenze vengono marcate come
+completate quando il relativo adempimento viene registrato.
+
+
+3.11 ANALYTICS E ROI DASHBOARD
+--------------------------------------------------------------------------------
+
+METRICHE DI UTILIZZO:
+- Query processate per utente/studio
+- Documenti analizzati
+- Calcoli eseguiti
+- Comunicazioni inviate
+
+CALCOLO ROI:
+Il sistema stima il valore generato per il professionista:
+"Questo mese PratikoAI ha identificato 5 opportunità di risparmio
+fiscale per i tuoi clienti, per un valore potenziale di €12.500.
+Ha gestito 45 richieste clienti, risparmiando circa 8 ore di lavoro."
+
+REPORT ESPORTABILI:
+Report periodici esportabili in PDF per rendicontazione e analisi.
+
+
+3.12 ABBONAMENTI E FATTURAZIONE
+--------------------------------------------------------------------------------
+
+PIANI ITALIANI:
+- Piano Mensile: €69/mese + IVA 22%
+- Piano Annuale: €599/anno + IVA 22% (risparmio 27.7%)
+- Trial gratuito: 7 giorni
+
+FATTURAZIONE ELETTRONICA:
+Per clienti B2B con Partita IVA, il sistema genera automaticamente
+fatture elettroniche conformi al formato FatturaPA XML per SDI:
+- Validazione Partita IVA con algoritmo di Luhn
+- Codice Destinatario SDI o PEC
+- Firma digitale e trasmissione
+
+GESTIONE STRIPE:
+Pagamenti gestiti tramite Stripe con supporto per:
+- Carte di credito/debito
+- Addebito SEPA
+- Proration automatica per upgrade/downgrade piani
+
+
+3.13 COMPLIANCE GDPR
+--------------------------------------------------------------------------------
+
+DIRITTO ALLA CANCELLAZIONE:
+Il sistema implementa completamente l'Articolo 17 GDPR:
+- L'utente richiede cancellazione da interfaccia
+- Deadline automatico di 30 giorni
+- Cancellazione multi-sistema (PostgreSQL, Redis, log, backup, Stripe)
+- Verifica completezza cancellazione
+- Generazione certificato di cancellazione
+
+ESPORTAZIONE DATI:
+L'utente può esportare tutti i propri dati in formato JSON/CSV,
+includendo: profilo, sessioni, query, documenti, fatture.
+
+CONSENSO GRANULARE:
+Gestione consensi per diverse finalità con audit trail delle modifiche.
+
+
+3.14 MONITORAGGIO E OBSERVABILITY
+--------------------------------------------------------------------------------
+
+METRICHE PROMETHEUS:
+- Latenza endpoint (p50, p95, p99)
+- Throughput richieste
+- Errori per tipologia
+- Costi LLM in tempo reale
+
+DASHBOARD GRAFANA:
+Visualizzazioni real-time per:
+- Performance API
+- Query database
+- Cache hit rate
+- Stato servizi
+
+TRACING LANGFUSE:
+Ogni chiamata LLM viene tracciata con:
+- Token consumati (input/output)
+- Latenza
+- Costo in euro
+- Prompt completo per debug
+
+
+================================================================================
+                       4. DATA FLOW - FLUSSO DEI DATI
+================================================================================
+
+4.1 FLUSSO PRINCIPALE: QUERY UTENTE → RISPOSTA
+--------------------------------------------------------------------------------
+
+1. RICEZIONE RICHIESTA
+   L'utente invia una query tramite l'interfaccia chat. La richiesta arriva
+   all'endpoint /api/v1/chat o /api/v1/chat/stream. Il layer API valida il
+   token JWT, identifica l'utente e lo studio di appartenenza.
+
+2. VALIDAZIONE E PREPROCESSING
+   - I messaggi vengono convertiti in formato standard
+   - Il testo viene anonimizzato (PII → token placeholder)
+   - Eventuali allegati vengono risolti e processati
+   - Viene generato un session_id per tracciamento
+
+3. GOLDEN FAST-PATH
+   Il sistema verifica se la query ha un match nel Golden Set (FAQ validate):
+   - Calcola la signature semantica della query
+   - Cerca match con similarità > 90%
+   - Se trovato → risposta immediata senza LLM (< 50ms)
+   - Se non trovato → procede al pipeline completo
+
+4. CLASSIFICAZIONE
+   La query viene classificata per:
+   - Dominio: FISCALE, LAVORO, LEGALE, GENERICO
+   - Tipologia: CALCOLO, RICERCA, VERIFICA, SPIEGAZIONE
+   - Composizione: PURE_KB (solo knowledge), PURE_DOC (solo documento
+     allegato), HYBRID, CHAT
+
+5. ESTRAZIONE ATOMIC FACTS
+   Il modulo Atomic Facts estrae parametri strutturati:
+   - Importi: "50.000 euro" → {"reddito": 50000, "valuta": "EUR"}
+   - Date: "anno 2025" → {"anno_fiscale": 2025}
+   - Tipologie: "dipendente" → {"tipo_contribuente": "DIPENDENTE"}
+
+6. RECUPERO CONTESTO (RAG)
+   Il sistema esegue ricerca ibrida sul knowledge base:
+
+   a) Full-Text Search: la query viene stemmatizzata con dizionario italiano
+      e matchata contro l'indice GIN
+
+   b) Vector Search: la query viene convertita in embedding 1536-dim e
+      confrontata con gli embedding dei chunk usando distanza coseno
+
+   c) Recency Scoring: i documenti più recenti ricevono boost esponenziale
+
+   I risultati vengono combinati con pesi configurabili (FTS 50%, Vector 35%,
+   Recency 15%) e i top-14 chunk vengono selezionati.
+
+7. COSTRUZIONE CONTESTO
+   I chunk recuperati vengono assemblati in un contesto unificato:
+   - Budget dinamico: 3.500-8.000 token in base al numero di risultati
+   - Priorità basata su query_composition
+   - Deduplicazione e troncamento
+   - Inclusione metadati sorgente per citazioni
+
+8. SELEZIONE PROVIDER LLM
+   Il sistema seleziona il provider ottimale:
+   - Routing basato su costo, qualità, latenza
+   - Verifica budget residuo utente/studio
+   - Fallback automatico se provider primario non risponde
+
+9. VERIFICA CACHE
+   Prima della chiamata LLM:
+   - Genera hash della richiesta (query + modello + temperature + kb_epoch)
+   - Cerca in Redis
+   - Se cache hit → restituisce risposta cached (< 5ms)
+
+10. CHIAMATA LLM
+    Se cache miss, viene invocato il modello:
+    - Prompt di sistema con istruzioni dominio-specifiche
+    - Contesto RAG
+    - Cronologia conversazione
+    - Query utente
+
+11. POST-PROCESSING RISPOSTA
+    La risposta viene processata:
+    - Formattazione markdown
+    - Estrazione citazioni
+    - De-anonimizzazione (placeholder → dati originali)
+    - Calcolo metriche (token, costo, latenza)
+
+12. PROATTIVITÀ
+    Il ProactivityEngine analizza la risposta e il contesto:
+    - Seleziona azioni suggerite dal template appropriato
+    - Valuta se servono domande di chiarimento
+    - Genera domanda interattiva se parametri mancanti
+
+13. STREAMING/RESPONSE
+    Per chiamate streaming:
+    - I chunk vengono inviati come SSE events
+    - Evento "content" per testo risposta
+    - Evento "suggested_actions" per azioni
+    - Evento "interactive_question" per domande
+    - Evento "done" per terminazione
+
+14. PERSISTENZA
+    Al termine:
+    - Risposta salvata in query_history
+    - Sessione aggiornata
+    - Metriche inviate a Prometheus
+    - Trace completato in Langfuse
+
+
+4.2 FLUSSO INGESTION: DOCUMENTO → KNOWLEDGE BASE
+--------------------------------------------------------------------------------
+
+1. SORGENTE
+   - Upload manuale utente
+   - RSS feed automatico (ogni 4 ore)
+   - Scraping fonti autorizzate
+
+2. DOWNLOAD E VALIDAZIONE
+   - Verifica formato supportato (PDF, DOCX, HTML)
+   - Scansione antivirus (ClamAV + VirusTotal)
+   - Validazione struttura (no macro dannose, no JS in PDF)
+
+3. ESTRAZIONE TESTO
+   - Tentativo 1: PyPDF2 per PDF semplici
+   - Tentativo 2: pdfplumber per tabelle
+   - Fallback: OCR con Tesseract per immagini/scan
+   - Tracking metodo usato per quality analysis
+
+4. QUALITY ASSESSMENT
+   - Calcolo rapporto caratteri/token
+   - Densità caratteri speciali
+   - Pattern whitespace (tabelle malformate)
+   - Score 0.0-1.0, flag junk se < 0.5
+
+5. CHUNKING SEMANTICO
+   - Divisione in chunk da ~900 token
+   - Overlap 12% per mantenere contesto
+   - Preservazione confini paragrafo
+   - Metadati: posizione, titolo documento, sorgente
+
+6. EMBEDDING
+   - Chiamata API OpenAI text-embedding-3-small
+   - Conversione in vettore 1536 dimensioni
+   - Cache embedding per 24 ore
+
+7. INDICIZZAZIONE
+   - Inserimento in tabella knowledge_chunks
+   - Generazione tsvector per FTS italiano
+   - Aggiornamento indice IVFFlat per vector search
+
+
+4.3 FLUSSO MATCHING: CLIENTE → NORMATIVA
+--------------------------------------------------------------------------------
+
+1. TRIGGER
+   - Nuovo documento normativo ingerito
+   - Aggiornamento profilo cliente
+   - Job schedulato (batch notturno)
+
+2. GENERAZIONE VETTORE PROFILO
+   Per ogni cliente, il sistema genera un vettore semantico da:
+   - Codice ATECO principale e secondari
+   - Regime fiscale
+   - CCNL applicato
+   - Numero dipendenti
+   - Caratteristiche immobiliari
+
+3. CALCOLO SIMILARITÀ
+   Il vettore profilo viene confrontato con i vettori delle regole normative:
+   - Distanza coseno < 0.3 → match potenziale
+   - Verifica condizioni JSONB (AND/OR su campi specifici)
+   - Score combinato similarity + rule_priority
+
+4. GENERAZIONE SUGGERIMENTO
+   Per ogni match con score > threshold:
+   - Creazione record ProactiveSuggestion
+   - Stato: PENDING
+   - Link a cliente, regola, documento sorgente
+
+5. NOTIFICA PROFESSIONISTA
+   - Aggregazione suggerimenti per studio
+   - Email digest giornaliero
+   - Badge su dashboard
+
+
+================================================================================
+                       5. USER EXPERIENCE TOTALE
+================================================================================
+
+5.1 ONBOARDING NUOVO UTENTE
+--------------------------------------------------------------------------------
+
+Il professionista scopre PratikoAI e decide di provarlo. Accede al sito e
+seleziona "Prova Gratuita 7 Giorni". Può registrarsi con email/password
+oppure utilizzare login con Google o LinkedIn per velocizzare il processo.
+
+Durante la registrazione, indica la propria professione (Commercialista,
+Consulente del Lavoro, Avvocato Tributarista) e la dimensione dello studio.
+Queste informazioni personalizzano l'esperienza: i template suggeriti, le
+azioni proposte e i report generati.
+
+Al primo accesso, un breve tutorial interattivo guida l'utente attraverso
+le funzionalità principali: la chat AI, il caricamento documenti, la sezione
+clienti. Il tutorial si completa in meno di 5 minuti.
+
+
+5.2 UTILIZZO QUOTIDIANO - ASSISTENTE AI
+--------------------------------------------------------------------------------
+
+SCENARIO: Domanda normativa
+Il commercialista apre PratikoAI sul browser. La chat mostra gli ultimi
+messaggi della sessione precedente. Digita: "Quali sono le nuove regole
+per fatturazione forfettari 2025?"
+
+In meno di 2 secondi, il testo della risposta inizia ad apparire in streaming.
+L'assistente spiega le novità normative, citando la circolare dell'Agenzia
+delle Entrate con data e numero. Alla fine della risposta appaiono tre
+pulsanti:
+- [Calcola convenienza regime]
+- [Cerca casi simili]
+- [Mostra scadenze]
+
+Il commercialista clicca "Calcola convenienza regime". Il sistema riconosce
+che mancano informazioni e mostra una domanda inline:
+"Per calcolare la convenienza, seleziona il tipo di attività:
+[Professionista] [Commerciante] [Artigiano] [Altro...]"
+
+Dopo la selezione, il calcolo viene eseguito e presentato in formato chiaro
+con tabella comparativa.
+
+
+SCENARIO: Analisi documento
+Il professionista carica una busta paga PDF di un cliente. Durante l'upload
+appare una barra di progresso. In 3 secondi il documento viene processato.
+
+L'assistente dice: "Ho analizzato la busta paga di Gennaio 2025 per il
+dipendente [NOME]. Vuoi che verifichi la correttezza dei contributi o
+preferisci un'altra analisi?"
+
+L'utente chiede: "I contributi INPS sono corretti?"
+L'assistente analizza, confronta con le aliquote correnti, e risponde
+dettagliatamente, evidenziando eventuali discrepanze.
+
+
+5.3 GESTIONE CLIENTI (STUDIO 2.0)
+--------------------------------------------------------------------------------
+
+SCENARIO: Setup iniziale
+Lo studio professionale passa al piano 2.0. Nella nuova sezione "Clienti",
+il professionista clicca "Importa da Excel". Carica il file esportato dal
+vecchio gestionale.
+
+Il sistema riconosce automaticamente le colonne, mappa i campi (Ragione
+Sociale → nome, P.IVA → partita_iva, C.F. → codice_fiscale). Una preview
+mostra 85 clienti identificati, 3 con CF non valido (evidenziati in rosso).
+
+L'utente corregge i 3 errori e conferma l'import. In 5 secondi, tutti i
+clienti sono importati. Ora può cliccare su ciascuno per vedere il profilo
+dettagliato.
+
+
+SCENARIO: Matching proattivo
+Il mattino successivo, il professionista riceve una notifica: "Nuova norma
+rilevante per 12 tuoi clienti". Accede alla dashboard e vede:
+
+"Rottamazione Quater 2025 - Potenzialmente applicabile a:
+- Rossi SRL (debito stimato €15.000)
+- Bianchi SpA (debito stimato €8.500)
+- [+ 10 altri]
+
+[Genera comunicazione per tutti] [Vedi dettagli] [Ignora]"
+
+Clicca "Genera comunicazione per tutti". Il sistema produce 12 bozze
+personalizzate. Le revisiona rapidamente, modifica un paio di dettagli,
+e le approva. Il collega (che ha ruolo diverso) completa l'approvazione
+e le comunicazioni partono via email.
+
+
+5.4 CALCOLI FISCALI ASSISTITI
+--------------------------------------------------------------------------------
+
+SCENARIO: Calcolo IRPEF cliente
+Il professionista digita: "Calcola l'IRPEF per Rossi Mario, reddito 75.000".
+Poiché Rossi Mario è un cliente in anagrafica, il sistema recupera
+automaticamente il tipo di contribuente (lavoratore dipendente) e le
+detrazioni spettanti.
+
+La risposta mostra:
+- Reddito imponibile: €75.000
+- Imposta lorda: €23.920
+- Detrazioni lavoro dipendente: €1.380
+- IRPEF netta: €22.540
+- Addizionali regionali/comunali: €1.875 (calcolate su residenza cliente)
+
+Alla fine: "Vuoi salvare questo calcolo nella scheda cliente?"
+
+
+5.5 GUIDE PROCEDURALI
+--------------------------------------------------------------------------------
+
+SCENARIO: Apertura P.IVA
+Un nuovo cliente chiede assistenza per aprire la partita IVA. Il
+professionista cerca "Guida apertura P.IVA" e avvia la procedura associandola
+al prospect "Marco Verdi".
+
+La guida mostra 5 step con checklist. Ogni step ha:
+- Spiegazione dettagliata
+- Documenti necessari
+- Azioni da completare
+- Timer stimato
+
+Man mano che il professionista completa gli step, la barra di progresso
+avanza. Se passa troppo tempo tra uno step e l'altro, il sistema invia
+un promemoria. Al completamento, viene generato un riepilogo della pratica.
+
+
+5.6 REPORTISTICA E ANALYTICS
+--------------------------------------------------------------------------------
+
+A fine mese, il titolare dello studio accede alla dashboard ROI. Visualizza:
+
+"DICEMBRE 2025 - RIEPILOGO
+- 234 query processate
+- 45 documenti analizzati
+- 12 clienti notificati per Rottamazione Quater
+- 3 opportunità fiscali identificate (valore stimato €28.500)
+- Tempo risparmiato: ~18 ore
+
+Rispetto a Novembre: +23% utilizzo, +€12.000 valore identificato"
+
+Può esportare il report in PDF per la riunione con i soci.
+
+
+5.7 MOBILE E ACCESSIBILITÀ
+--------------------------------------------------------------------------------
+
+L'interfaccia è completamente responsive. Sul tablet o smartphone, il
+professionista accede alle stesse funzionalità con layout ottimizzato:
+- Chat a schermo intero con pulsanti suggeriti scrollabili
+- Upload documento da fotocamera con OCR automatico
+- Dashboard scadenze con vista calendario settimanale
+- Notifiche push per urgenze
+
+
+================================================================================
+                      6. GLOSSARIO PER NON TECNICI
+================================================================================
+
+AI (Intelligenza Artificiale): Tecnologia che permette ai computer di
+simulare capacità umane come comprendere il linguaggio e prendere decisioni.
+PratikoAI usa l'AI per capire le domande dei professionisti e fornire
+risposte accurate in ambito fiscale.
+
+API (Application Programming Interface): Un "contratto" che permette a
+diversi software di comunicare tra loro. Le API di PratikoAI permettono
+alla app web di parlare con il server che contiene l'intelligenza.
+
+Cache: Una memoria veloce che conserva le risposte più frequenti. Come un
+post-it con le risposte alle domande più comuni: invece di ricalcolare
+tutto, il sistema restituisce la risposta salvata istantaneamente.
+
+Cloud: Computer remoti accessibili via internet che ospitano il software.
+PratikoAI gira "nel cloud", quindi i professionisti accedono da qualsiasi
+dispositivo senza installare nulla.
+
+Crittografia: Tecnica che rende i dati illeggibili a chi non ha la chiave.
+Tutti i dati sensibili (Codici Fiscali, Partite IVA) sono crittografati,
+così anche in caso di violazione non sarebbero utilizzabili.
+
+Database: Un archivio digitale organizzato. Come uno schedario elettronico
+dove PratikoAI conserva normative, clienti, calcoli e conversazioni.
+
+Embedding (Rappresentazione Vettoriale): Una traduzione matematica del testo
+in numeri. Permette al computer di capire che "IRPEF" e "imposta sui redditi"
+significano cose simili, anche se sono parole diverse.
+
+GDPR: Regolamento europeo sulla privacy. Stabilisce che gli utenti hanno
+il controllo sui propri dati e possono chiederne la cancellazione completa.
+PratikoAI è pienamente conforme.
+
+LLM (Large Language Model): Il "cervello" dell'intelligenza artificiale,
+addestrato su miliardi di testi per capire e generare linguaggio naturale.
+PratikoAI usa modelli come GPT-4 di OpenAI.
+
+Modello: In AI, è il software addestrato che prende decisioni. Come un
+consulente esperto che ha studiato milioni di documenti fiscali.
+
+Multi-Tenant: Architettura in cui più clienti (studi professionali) usano
+lo stesso sistema ma con dati completamente separati. Come un condominio:
+stesso edificio, appartamenti indipendenti.
+
+OCR (Optical Character Recognition): Tecnologia che legge il testo dalle
+immagini. Permette a PratikoAI di analizzare documenti scansionati o foto.
+
+RAG (Retrieval-Augmented Generation): La tecnica che combina ricerca di
+documenti reali con generazione AI. L'assistente non inventa: cerca prima
+nei documenti normativi, poi formula la risposta basandosi su fonti vere.
+
+Real-time: Operazioni che avvengono istantaneamente. Le risposte appaiono
+mentre vengono generate, non alla fine.
+
+Streaming: Trasmissione continua di dati. Le risposte arrivano "a pezzi"
+come l'acqua da un rubinetto, non tutte insieme come da un secchio.
+
+Token: L'unità di misura del testo per l'AI. Approssimativamente, 1 token
+equivale a 3/4 di parola in italiano. I costi AI si misurano in token.
+
+Vector Search (Ricerca Vettoriale): Ricerca basata sul significato, non
+solo sulle parole esatte. Se cerchi "agevolazioni fiscali", trova anche
+documenti che parlano di "incentivi tributari" perché il significato è
+simile.
+
+
+================================================================================
+                    7. PUNTI DI FORZA PER INVESTITORI
+================================================================================
+
+7.1 MERCATO E OPPORTUNITÀ
+--------------------------------------------------------------------------------
+
+TARGET MARKET:
+- 120.000+ commercialisti in Italia
+- 30.000+ consulenti del lavoro
+- 50.000+ avvocati tributaristi
+- 400.000+ aziende che potrebbero beneficiare direttamente
+
+PROBLEMA RISOLTO:
+I professionisti fiscali dedicano il 60% del tempo a ricerche normative,
+calcoli manuali e comunicazioni ripetitive. PratikoAI automatizza queste
+attività, permettendo di servire più clienti con maggiore qualità.
+
+PAIN POINT SPECIFICO:
+L'aggiornamento normativo continuo (centinaia di nuove norme ogni anno)
+richiede formazione costante. PratikoAI monitora automaticamente le fonti
+ufficiali e notifica i professionisti delle novità rilevanti per i loro
+clienti.
+
+
+7.2 DIFFERENZIATORI COMPETITIVI
+--------------------------------------------------------------------------------
+
+SPECIALIZZAZIONE VERTICALE:
+A differenza di assistenti AI generici (ChatGPT, Copilot), PratikoAI è
+costruito esclusivamente per il dominio fiscale italiano. Il knowledge base
+contiene normative, sentenze, circolari e prassi specifiche. I prompt sono
+ottimizzati per terminologia e contesti professionali.
+
+PROATTIVITÀ:
+Non solo risponde a domande, ma anticipa i bisogni. Il matching normativo
+automatico identifica opportunità che il professionista potrebbe non
+considerare, trasformando l'assistente da passivo a consulente attivo.
+
+INTEGRAZIONE WORKFLOW:
+La gestione clienti, le comunicazioni e i calcoli sono integrati. Il
+professionista non copia-incolla tra sistemi diversi: tutto avviene in
+un unico ambiente.
+
+COMPLIANCE BY DESIGN:
+GDPR, fatturazione elettronica, sicurezza dati sono nativi nel prodotto,
+non aggiunti dopo. Questo elimina rischi legali per gli studi clienti.
+
+
+7.3 MODELLO DI BUSINESS
+--------------------------------------------------------------------------------
+
+SUBSCRIPTION SaaS:
+- Piano Mensile: €69/mese (€84,18 con IVA)
+- Piano Annuale: €599/anno (€730,78 con IVA) - risparmio 27,7%
+
+METRICHE CHIAVE:
+- ARPU (Average Revenue Per User): €55-60/mese
+- Target LTV: €1.800+ (30 mesi retention)
+- CAC stimato: €300-400 (content marketing + referral)
+- LTV/CAC: >4.5x (benchmark SaaS B2B: 3x)
+
+ESPANSIONE REVENUE:
+- Piani Team (multipli utenti per studio): +40% ARPU
+- Piani Enterprise (personalizzazioni): +100% ARPU
+- API per integrazione gestionali terzi: revenue aggiuntiva
+
+
+7.4 VANTAGGI TECNICI
+--------------------------------------------------------------------------------
+
+ARCHITETTURA SCALABILE:
+L'infrastruttura attuale supporta 500+ utenti con <100ms latenza. La
+scalabilità orizzontale permette di 10x il carico senza redesign.
+
+COSTI AI OTTIMIZZATI:
+Il sistema di caching semantico riduce le chiamate LLM del 50-70%,
+contenendo il costo marginale per query. Golden Set bypassa completamente
+l'LLM per domande frequenti.
+
+INDIPENDENZA PROVIDER:
+L'architettura multi-provider (OpenAI + Anthropic + fallback) elimina
+il lock-in e garantisce continuità di servizio anche in caso di problemi
+con singoli fornitori.
+
+KNOWLEDGE BASE PROPRIETARIO:
+Anni di ingestion, curation e ottimizzazione del corpus normativo italiano
+creano un asset difficilmente replicabile da nuovi entranti.
+
+
+7.5 TEAM E EXECUTION
+--------------------------------------------------------------------------------
+
+METODOLOGIA:
+- Test-Driven Development per qualità codice
+- CI/CD automatizzato per deployment rapidi
+- Code coverage >69% su tutto il codebase
+- Architettura documentata con 150+ ADR e guide
+
+TECNOLOGIA CUTTING-EDGE:
+- LangGraph per orchestrazione AI (standard emergente)
+- pgvector per vector search (alternativa cost-effective a Pinecone)
+- FastAPI per performance e developer experience
+
+
+7.6 ROADMAP E CRESCITA
+--------------------------------------------------------------------------------
+
+FASE ATTUALE (2025 Q1-Q2):
+- Lancio versione 1.5 con sistema proattivo
+- Onboarding primi 100 studi pilota
+- Feedback loop per ottimizzazione
+
+FASE SUCCESSIVA (2025 Q3-Q4):
+- Release versione 2.0 con gestione clienti multi-tenant
+- Matching normativo automatico
+- Target: 500+ studi attivi
+
+FASE ESPANSIONE (2026):
+- Integrazione con principali software gestionali
+- Espansione a mercati EU simili (Spagna, Francia)
+- Versioni verticali (focus Lavoro, focus Legale)
+
+
+7.7 EXIT POTENZIALI
+--------------------------------------------------------------------------------
+
+ACQUIRENTI STRATEGICI:
+- Software gestionali (TeamSystem, Wolters Kluwer, Zucchetti): PratikoAI
+  aggiunge layer AI ai loro prodotti
+- Big Tech (Microsoft, Google): acquisizione verticale AI
+- Private Equity SaaS-focused: consolidamento settore
+
+COMPARABILI:
+- Harvey AI (legal AI) - valutazione $1.5B
+- Casetext (legal research) - acquisita da Thomson Reuters $650M
+- Pilot (automated bookkeeping) - valutazione $1.2B
+
+
+================================================================================
+                              CONCLUSIONI
+================================================================================
+
+PratikoAI rappresenta l'evoluzione dell'assistenza professionale fiscale
+attraverso l'intelligenza artificiale. La combinazione di profonda
+conoscenza del dominio italiano, architettura tecnica all'avanguardia e
+approccio proattivo crea un prodotto unico nel panorama nazionale.
+
+L'architettura a 134 step garantisce risposte accurate basate su fonti
+reali, mentre i sistemi di caching e ottimizzazione rendono il servizio
+economicamente sostenibile. La conformità GDPR e la sicurezza dei dati
+sono native nel design, non aggiunte come afterthought.
+
+Per i professionisti, PratikoAI significa meno tempo su ricerche ripetitive
+e più tempo per consulenza ad alto valore. Per gli investitori, significa
+un mercato ampio con pain point chiaro, modello SaaS scalabile e tecnologia
+difendibile.
+
+================================================================================
+
+Documento generato: Dicembre 2025
+Repository: PratikoAi-BE
+Contatti: team@pratikoai.it
+
+================================================================================

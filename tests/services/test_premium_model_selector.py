@@ -352,6 +352,194 @@ class TestPremiumModelSelectorAsync:
             assert result["anthropic"] is False
 
 
+class TestPremiumModelSelectorExecute:
+    """Tests for PremiumModelSelector.execute() method."""
+
+    @pytest.fixture
+    def mock_config(self):
+        """Create a mock LLMModelConfig."""
+        config = MagicMock(spec=LLMModelConfig)
+        config.get_model.return_value = "gpt-4o"
+        config.get_provider.return_value = "openai"
+        config.get_fallback.return_value = {
+            "model": "claude-3-5-sonnet-20241022",
+            "provider": "anthropic",
+        }
+        return config
+
+    @pytest.fixture
+    def mock_messages(self):
+        """Create mock messages."""
+        return [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Hello, how are you?"},
+        ]
+
+    @pytest.fixture
+    def mock_llm_response(self):
+        """Create a mock LLMResponse."""
+        from app.core.llm.base import LLMResponse
+
+        return LLMResponse(
+            content="I'm doing well, thank you!",
+            model="gpt-4o",
+            provider="openai",
+            tokens_used=50,
+            cost_estimate=0.001,
+            finish_reason="stop",
+        )
+
+    @pytest.mark.asyncio
+    async def test_execute_success_with_primary_provider(self, mock_config, mock_messages, mock_llm_response):
+        """Test successful execution with primary provider."""
+        from app.services.premium_model_selector import (
+            PremiumModelSelector,
+            SynthesisContext,
+        )
+
+        selector = PremiumModelSelector(config=mock_config)
+        context = SynthesisContext(total_tokens=5000)
+
+        # Mock the factory and provider
+        mock_provider = AsyncMock()
+        mock_provider.chat_completion.return_value = mock_llm_response
+
+        mock_factory = MagicMock()
+        mock_factory.create_provider.return_value = mock_provider
+
+        with patch("app.core.llm.factory.get_llm_factory", return_value=mock_factory):
+            response = await selector.execute(context, mock_messages)
+
+        assert response.content == "I'm doing well, thank you!"
+        assert response.model == "gpt-4o"
+        assert response.provider == "openai"
+        mock_factory.create_provider.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_execute_uses_claude_for_long_context(self, mock_config, mock_messages):
+        """Test execute uses Claude for context >8k tokens."""
+        from app.core.llm.base import LLMResponse
+        from app.services.premium_model_selector import (
+            PremiumModelSelector,
+            SynthesisContext,
+        )
+
+        selector = PremiumModelSelector(config=mock_config)
+        context = SynthesisContext(total_tokens=10000)  # >8000 tokens
+
+        # Mock response from Claude
+        claude_response = LLMResponse(
+            content="Response from Claude",
+            model="claude-3-5-sonnet-20241022",
+            provider="anthropic",
+            tokens_used=100,
+        )
+
+        mock_provider = AsyncMock()
+        mock_provider.chat_completion.return_value = claude_response
+
+        mock_factory = MagicMock()
+        mock_factory.create_provider.return_value = mock_provider
+
+        with patch("app.core.llm.factory.get_llm_factory", return_value=mock_factory):
+            response = await selector.execute(context, mock_messages)
+
+        assert response.model == "claude-3-5-sonnet-20241022"
+        # Verify Claude was selected
+        call_args = mock_factory.create_provider.call_args
+        assert call_args.kwargs["model"] == "claude-3-5-sonnet-20241022"
+
+    @pytest.mark.asyncio
+    async def test_execute_fallback_on_primary_failure(self, mock_config, mock_messages, mock_llm_response):
+        """Test execute falls back when primary provider fails."""
+        from app.core.llm.base import LLMResponse
+        from app.services.premium_model_selector import (
+            PremiumModelSelector,
+            SynthesisContext,
+        )
+
+        selector = PremiumModelSelector(config=mock_config)
+        context = SynthesisContext(total_tokens=5000)
+
+        # Create providers that fail on first call, succeed on second
+        call_count = 0
+
+        async def mock_chat_completion(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise Exception("OpenAI API error")
+            return LLMResponse(
+                content="Fallback response",
+                model="claude-3-5-sonnet-20241022",
+                provider="anthropic",
+                tokens_used=60,
+            )
+
+        mock_provider = AsyncMock()
+        mock_provider.chat_completion.side_effect = mock_chat_completion
+
+        mock_factory = MagicMock()
+        mock_factory.create_provider.return_value = mock_provider
+
+        with patch("app.core.llm.factory.get_llm_factory", return_value=mock_factory):
+            response = await selector.execute(context, mock_messages)
+
+        assert response.content == "Fallback response"
+        assert selector.is_available("openai") is False  # Marked unhealthy
+
+    @pytest.mark.asyncio
+    async def test_execute_raises_when_both_providers_fail(self, mock_config, mock_messages):
+        """Test execute raises exception when both providers fail."""
+        from app.services.premium_model_selector import (
+            PremiumModelSelector,
+            SynthesisContext,
+        )
+
+        selector = PremiumModelSelector(config=mock_config)
+        context = SynthesisContext(total_tokens=5000)
+
+        # Mock provider that always fails
+        mock_provider = AsyncMock()
+        mock_provider.chat_completion.side_effect = Exception("Provider error")
+
+        mock_factory = MagicMock()
+        mock_factory.create_provider.return_value = mock_provider
+
+        with patch("app.core.llm.factory.get_llm_factory", return_value=mock_factory):
+            with pytest.raises(Exception, match="Provider error"):
+                await selector.execute(context, mock_messages)
+
+        # Both should be marked unhealthy
+        assert selector.is_available("openai") is False
+        assert selector.is_available("anthropic") is False
+
+    @pytest.mark.asyncio
+    async def test_execute_passes_temperature_and_max_tokens(self, mock_config, mock_messages, mock_llm_response):
+        """Test execute passes temperature and max_tokens to provider."""
+        from app.services.premium_model_selector import (
+            PremiumModelSelector,
+            SynthesisContext,
+        )
+
+        selector = PremiumModelSelector(config=mock_config)
+        context = SynthesisContext(total_tokens=5000)
+
+        mock_provider = AsyncMock()
+        mock_provider.chat_completion.return_value = mock_llm_response
+
+        mock_factory = MagicMock()
+        mock_factory.create_provider.return_value = mock_provider
+
+        with patch("app.core.llm.factory.get_llm_factory", return_value=mock_factory):
+            await selector.execute(context, mock_messages, temperature=0.7, max_tokens=500)
+
+        # Verify parameters were passed
+        call_args = mock_provider.chat_completion.call_args
+        assert call_args.kwargs["temperature"] == 0.7
+        assert call_args.kwargs["max_tokens"] == 500
+
+
 class TestPremiumModelSelectorWithRealConfig:
     """Integration tests with real LLMModelConfig."""
 

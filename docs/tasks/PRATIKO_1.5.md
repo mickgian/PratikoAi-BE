@@ -2246,31 +2246,35 @@ Implement `PremiumModelSelector` class that:
 - **Network timeout:** Retry once, then fallback
 
 **Files to Create:**
-- `app/services/premium_model_selector.py` (~200 lines)
+- `app/services/premium_model_selector.py` (~300 lines)
 
 **Files to Modify:**
-- `app/core/llm/anthropic_provider.py` - Add Claude 3.5 Sonnet to supported_models
+- `app/core/llm/providers/anthropic_provider.py` - Add Claude 3.5 Sonnet to supported_models
+- `app/services/anthropic_provider.py` - Add `LLMProviderType.ANTHROPIC` for provider unification
+- `app/services/openai_provider.py` - Add `LLMProviderType.OPENAI` for provider unification
 
 **Fields/Methods/Components:**
 - `PremiumModelSelector` class
   - `__init__(config: LLMModelConfig)` - Initialize with config
   - `select(context: SynthesisContext) -> ModelSelection` - Select model
+  - `execute(context, messages, **kwargs) -> LLMResponse` - Select and execute via LLMFactory
   - `is_available(provider: str) -> bool` - Check provider health
   - `get_fallback(model: str) -> str` - Get fallback model
   - `pre_warm() -> dict[str, bool]` - Pre-warm providers
+  - `mark_provider_unhealthy(provider: str)` - Mark provider as unhealthy
+  - `mark_provider_healthy(provider: str)` - Mark provider as healthy
 - `SynthesisContext` dataclass: `total_tokens: int`, `query_complexity: str`
-- `ModelSelection` dataclass: `model: str`, `provider: str`, `is_fallback: bool`
+- `ModelSelection` dataclass: `model: str`, `provider: str`, `is_fallback: bool`, `is_degraded: bool`
 
 **Testing Requirements:**
 - **TDD:** Write `tests/services/test_premium_model_selector.py` FIRST
-- **Unit Tests:**
-  - `test_selects_gpt4o_by_default`
-  - `test_selects_claude_for_long_context`
-  - `test_fallback_when_primary_unavailable`
-  - `test_pre_warm_validates_both_providers`
-  - `test_degraded_flag_when_both_unavailable`
-  - `test_selection_under_10ms`
-- **Integration Tests:** Mock both providers
+- **Unit Tests (25 total):**
+  - Selection tests: `test_selects_gpt4o_by_default`, `test_selects_claude_for_long_context`, etc.
+  - Fallback tests: `test_fallback_when_primary_unavailable`, `test_fallback_when_claude_unavailable_for_long_context`
+  - Async tests: `test_pre_warm_validates_both_providers`, `test_pre_warm_handles_timeout`
+  - Execute tests: `test_execute_success_with_primary_provider`, `test_execute_uses_claude_for_long_context`, `test_execute_fallback_on_primary_failure`, `test_execute_raises_when_both_providers_fail`, `test_execute_passes_temperature_and_max_tokens`
+  - Performance: `test_selection_under_10ms`, `test_pre_warm_completes_under_3_seconds`
+- **Integration Tests:** Mock both providers via LLMFactory
 - **Coverage Target:** 95%+
 
 **Risks & Mitigations:**
@@ -2299,7 +2303,9 @@ Implement `PremiumModelSelector` class that:
 - [x] Fallback works when primary provider unavailable
 - [x] Pre-warm validates API keys at startup
 - [x] Claude 3.5 Sonnet added to AnthropicProvider.supported_models
-- [x] 95%+ test coverage
+- [x] `execute()` method bridges selection to LLMFactory execution
+- [x] Legacy providers unified with `LLMProviderType` enum
+- [x] 95%+ test coverage (25 tests)
 - [x] All tests pass: `pytest tests/services/test_premium_model_selector.py -v`
 
 </details>

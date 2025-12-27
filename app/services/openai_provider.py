@@ -12,6 +12,7 @@ from typing import Any, Dict, Optional
 import httpx
 
 from app.core.config import settings
+from app.core.llm.base import LLMProviderType
 from app.core.logging import logger
 from app.models.query import LLMResponse
 
@@ -29,6 +30,9 @@ class OpenAIResponse:
 
 class OpenAIProvider:
     """OpenAI LLM provider implementation."""
+
+    # Provider type for unified provider architecture
+    provider_type = LLMProviderType.OPENAI
 
     def __init__(self, model: str = "gpt-4o-mini"):
         """Initialize OpenAI provider.

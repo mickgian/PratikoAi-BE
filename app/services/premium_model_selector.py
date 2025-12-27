@@ -14,9 +14,14 @@ Usage:
 
 import asyncio
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
+from app.core.llm.base import LLMProviderType, LLMResponse
 from app.core.llm.model_config import LLMModelConfig, ModelTier
 from app.core.logging import logger
+
+if TYPE_CHECKING:
+    from app.schemas.chat import Message
 
 # Token threshold for switching to Claude (>8000 tokens)
 LONG_CONTEXT_THRESHOLD = 8000
@@ -285,3 +290,121 @@ class PremiumModelSelector:
             "premium_model_provider_marked_healthy",
             provider=provider,
         )
+
+    async def execute(
+        self,
+        context: SynthesisContext,
+        messages: list["Message"],
+        temperature: float = 0.2,
+        max_tokens: int | None = None,
+        **kwargs,
+    ) -> LLMResponse:
+        """Select and execute LLM completion using the optimal model.
+
+        This method bridges model selection with actual LLM execution by:
+        1. Selecting the optimal model based on context
+        2. Creating the appropriate provider via LLMFactory
+        3. Executing the chat completion
+        4. Handling fallback on provider failure
+
+        Args:
+            context: Synthesis context with token count and complexity
+            messages: List of conversation messages
+            temperature: Sampling temperature (default 0.2)
+            max_tokens: Maximum tokens to generate
+            **kwargs: Additional parameters passed to chat_completion
+
+        Returns:
+            LLMResponse with the generated content
+
+        Raises:
+            ValueError: If no providers are available
+            Exception: If both primary and fallback providers fail
+        """
+        from app.core.llm.factory import get_llm_factory
+
+        selection = self.select(context)
+        factory = get_llm_factory()
+
+        logger.info(
+            "premium_model_execute_start",
+            model=selection.model,
+            provider=selection.provider,
+            is_fallback=selection.is_fallback,
+            is_degraded=selection.is_degraded,
+            total_tokens=context.total_tokens,
+        )
+
+        try:
+            # Create provider and execute
+            provider = factory.create_provider(
+                provider_type=LLMProviderType(selection.provider),
+                model=selection.model,
+            )
+
+            response = await provider.chat_completion(
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                **kwargs,
+            )
+
+            logger.info(
+                "premium_model_execute_success",
+                model=selection.model,
+                provider=selection.provider,
+                tokens_used=response.tokens_used,
+                cost_estimate=response.cost_estimate,
+            )
+
+            return response
+
+        except Exception as e:
+            # Mark provider as unhealthy and try fallback
+            self.mark_provider_unhealthy(selection.provider)
+
+            logger.warning(
+                "premium_model_execute_failed_trying_fallback",
+                failed_provider=selection.provider,
+                failed_model=selection.model,
+                error=str(e),
+            )
+
+            # Try fallback if not already using one and not degraded
+            if not selection.is_fallback and not selection.is_degraded:
+                fallback_selection = self.select(context)
+
+                if fallback_selection.provider != selection.provider:
+                    try:
+                        fallback_provider = factory.create_provider(
+                            provider_type=LLMProviderType(fallback_selection.provider),
+                            model=fallback_selection.model,
+                        )
+
+                        response = await fallback_provider.chat_completion(
+                            messages=messages,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            **kwargs,
+                        )
+
+                        logger.info(
+                            "premium_model_execute_fallback_success",
+                            model=fallback_selection.model,
+                            provider=fallback_selection.provider,
+                            tokens_used=response.tokens_used,
+                        )
+
+                        return response
+
+                    except Exception as fallback_error:
+                        self.mark_provider_unhealthy(fallback_selection.provider)
+                        logger.error(
+                            "premium_model_execute_fallback_failed",
+                            fallback_provider=fallback_selection.provider,
+                            error=str(fallback_error),
+                        )
+                        raise
+
+            # Re-raise original error if no fallback available
+            raise

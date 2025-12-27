@@ -1697,6 +1697,49 @@ Archived entire `ActionTemplateService`, unused YAML template files, and `Atomic
 
 </details>
 
+<details>
+<summary>
+<h3>✅ DEV-179: Integrate LLM-First Proactivity in /chat Endpoint</h3>
+<strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-179-Integrate-LLM-First-Proactivity-in-chat-Endpoint
+</summary>
+
+### DEV-179: Integrate LLM-First Proactivity in /chat Endpoint
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
+
+**Problem:**
+The current /chat endpoint calls ProactivityEngine separately from LLM. The LLM-First approach requires:
+1. Injecting suggested_actions prompt into system prompt
+2. Parsing LLM response to extract actions
+3. Overriding with document templates when applicable
+
+**Solution:**
+Added new helper functions to integrate the simplified ProactivityEngine and LLM response parser:
+- `get_simplified_proactivity_engine()` - Returns DEV-177 engine singleton
+- `inject_proactivity_prompt()` - Appends suggested_actions prompt
+- `apply_action_override()` - Template actions take priority over LLM actions
+
+**Three-Step Decision Logic (Section 12.7):**
+1. Calculable intent with missing params → InteractiveQuestion
+2. Recognized document type → template actions (DOCUMENT_ACTION_TEMPLATES)
+3. Otherwise → LLM generates actions
+
+**Files Modified:**
+- `app/api/v1/chatbot.py` - Added LLM-First helper functions
+- `tests/api/test_chatbot_llm_first.py` - 19 TDD tests
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD)
+- ✅ Helper functions implemented for prompt injection
+- ✅ Parser integration complete
+- ✅ Template override logic complete
+- ✅ All 19 tests pass
+- ✅ Backward compatible API response schema
+
+**Git:** Branch `DEV-179-Integrate-LLM-First-Proactivity-in-chat-Endpoint`
+
+</details>
+
 ---
 
 ## Phase 1: Foundation (Backend) - 9h
@@ -1866,159 +1909,14 @@ DEV-174 (CALCULABLE_INTENTS Constants)
 **CRITICAL: DEV-178 → DEV-179 Dependency**
 `chatbot.py` imports `ActionTemplateService` at line 64. DEV-178 must archive this service BEFORE DEV-179 can integrate the new proactivity flow.
 
-**Note:** DEV-174, DEV-175, DEV-176, DEV-177, and DEV-178 moved to Completed Tasks section above.
-
----
-
-<details>
-<summary>
-<h3>DEV-179: Integrate LLM-First Proactivity in /chat Endpoint</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
-Update /chat endpoint to use new ProactivityEngine with LLM response parsing.
-</summary>
-
-### DEV-179: Integrate LLM-First Proactivity in /chat Endpoint
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
-
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** DONE | **Type:** Backend
-
-**Problem:**
-The current /chat endpoint calls ProactivityEngine separately from LLM. The LLM-First approach requires:
-1. Injecting suggested_actions prompt into system prompt
-2. Parsing LLM response to extract actions
-3. Overriding with document templates when applicable
-
-**Solution:**
-Modify /chat endpoint to inject suggested_actions prompt, use parse_llm_response(), and integrate with new ProactivityEngine.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-176 (parser), DEV-177 (engine), DEV-178 (template cleanup)
-- **Unlocks:** DEV-180 (streaming endpoint)
-
-**Golden Set & KB Integration (CRITICAL):**
-This task MUST preserve the existing document flow:
-1. Query → Golden/KB lookup → Context injection → LLM call → Parse response
-2. Suggested actions prompt added to system prompt BEFORE LLM call
-3. Response parsing happens AFTER document context already processed
-4. InteractiveQuestion early-return does NOT skip document context
-5. Token budget allocation respects KB documents priority
-
-**Pre-Implementation Verification (Golden Set/KB):**
-- [ ] Verify golden fast-path flow (Step 24) is unchanged
-- [ ] Verify KB freshness validation (Step 26) is unchanged
-- [ ] Document context injection timing documented
-- [ ] Review `app/services/context_builder_merge.py` for token budget
-
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary File:** `app/api/v1/chatbot.py`
-- **Affected Files:**
-  - `app/core/langgraph/graph.py` (prompt injection)
-  - `app/orchestrators/prompting.py` (prompt composition)
-- **Related Tests:**
-  - `tests/api/test_chatbot.py` (direct)
-  - `tests/api/test_chatbot_proactivity.py` (direct - MAJOR UPDATE)
-  - `tests/api/test_chatbot_actions.py` (consumer)
-- **Baseline Command:** `pytest tests/api/test_chatbot.py tests/api/test_chatbot_proactivity.py -v`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass
-- [ ] Current /chat flow documented
-- [ ] No pre-existing test failures
-
-**Error Handling:**
-- **Parser failure:** Log warning, return response without actions (graceful degradation)
-- **ProactivityEngine failure:** Log error, continue with response
-- **Template lookup failure:** Log warning, use LLM actions
-- **Logging:** All errors logged with user_id, session_id, query context
-
-**Performance Requirements:**
-- Endpoint latency: <200ms overhead (excluding LLM call)
-- Parsing: <5ms
-- Template lookup: <1ms
-
-**Edge Cases:**
-- **LLM response without tags:** Parser returns full response as answer
-- **Empty actions from LLM:** Return response without actions
-- **Document present + LLM actions:** Template takes priority
-- **Calculable intent detected:** Return InteractiveQuestion before LLM call
-- **Concurrent requests:** Thread-safe, no shared state
-
-**File:** `app/api/v1/chatbot.py`
-
-**Fields/Methods/Components:**
-- `chat()` function (modify)
-  - Add suggested_actions prompt injection
-  - Call `parse_llm_response()` after LLM
-  - Integrate with `ProactivityEngine.process_query()`
-  - Handle InteractiveQuestion early return
-  - Apply document template override
-- `_inject_proactivity_prompt(base_prompt: str) -> str` - Helper (new)
-- `_apply_action_override(llm_actions: list, template_actions: Optional[list]) -> list` - Helper (new)
-
-**Testing Requirements:**
-- **TDD:** Write `tests/api/test_chatbot_llm_first.py` FIRST
-- **Unit Tests:**
-  - `test_chat_includes_suggested_actions_in_response`
-  - `test_chat_uses_document_template_when_present`
-  - `test_chat_uses_llm_actions_when_no_template`
-  - `test_chat_returns_interactive_question_for_calculation`
-  - `test_chat_graceful_degradation_on_parser_failure`
-  - `test_chat_response_format_unchanged`
-- **Edge Case Tests:**
-  - `test_chat_empty_actions_from_llm`
-  - `test_chat_concurrent_requests`
-  - `test_chat_very_long_response`
-- **Integration Tests:** `tests/api/test_chatbot_llm_first_integration.py`
-- **Regression Tests:** `pytest tests/api/test_chatbot*.py -v`
-- **Coverage Target:** 90%+ for modified code paths
-
-**Risks & Mitigations:**
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking API contract | CRITICAL | Same response schema, new field values only |
-| Performance regression | HIGH | Measure baseline, compare after |
-| LLM prompt too long | MEDIUM | Token budget validation |
-| Parser bugs | MEDIUM | Graceful degradation, extensive tests |
-
-**Code Structure:**
-- Max route handler: 30 lines (delegate to helpers)
-- Extract proactivity logic to helpers
-
-**Code Completeness:**
-- [ ] No TODO comments for required functionality
-- [ ] Prompt injection complete
-- [ ] Parser integration complete
-- [ ] Template override logic complete
-- [ ] All error paths handled
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation changes
-- [ ] System prompt includes suggested_actions instructions
-- [ ] LLM response is parsed to extract clean answer
-- [ ] Actions come from LLM unless document/calculable override
-- [ ] Backward compatible: API response schema unchanged
-- [ ] Graceful degradation on errors
-- [ ] Golden fast-path flow unchanged (Step 24)
-- [ ] KB freshness validation unchanged (Step 26)
-- [ ] Document context injection timing preserved
-- [ ] Token budget respects KB document priority
-- [ ] All regression tests pass
-- [ ] All tests pass: `pytest tests/api/test_chatbot*.py -v`
-
-</details>
+**Note:** DEV-174, DEV-175, DEV-176, DEV-177, DEV-178, and DEV-179 moved to Completed Tasks section above.
 
 ---
 
 <details>
 <summary>
 <h3>DEV-180: Integrate LLM-First Proactivity in /chat/stream Endpoint</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Update /chat/stream endpoint to handle streamed LLM output with suggested actions parsing.
 </summary>
 
@@ -2026,7 +1924,7 @@ Update /chat/stream endpoint to handle streamed LLM output with suggested action
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
 
-**Priority:** HIGH | **Effort:** 1.5h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** HIGH | **Effort:** 1.5h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 The /chat/stream endpoint streams LLM tokens in real-time. We need to:

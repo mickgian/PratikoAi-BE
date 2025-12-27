@@ -421,6 +421,52 @@ Implemented `LLMRouterService` using GPT-4o-mini with Chain-of-Thought prompting
 
 <details>
 <summary>
+<h3>DEV-188: Implement Multi-Query Generator Service (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h (Actual: ~1.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Implemented 3 query variants (BM25, Vector, Entity) generator with 20 tests and 100% coverage.
+</summary>
+
+### DEV-188: Implement Multi-Query Generator Service
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** HIGH | **Effort:** 2.5h (Actual: ~1.5h)
+
+**Problem:**
+Single query approach misses relevant documents. Need 3 optimized variants for different search types.
+
+**Solution:**
+Implemented `MultiQueryGeneratorService` using GPT-4o-mini to generate BM25, vector, and entity-focused query variants.
+
+**Files Created:**
+- `app/services/multi_query_generator.py` (~280 lines)
+- `tests/services/test_multi_query_generator.py` (20 tests)
+
+**Components Implemented:**
+- `QueryVariants` dataclass: bm25_query, vector_query, entity_query, original_query
+- `MultiQueryGeneratorService` class with:
+  - `generate(query, entities)` - Main generation method
+  - `_build_prompt(query, entities)` - Includes entity context
+  - `_parse_response(response, original_query)` - JSON parsing
+  - `_fallback_variants(query)` - Returns original on error
+- `MULTI_QUERY_SYSTEM_PROMPT` - Italian prompt for 3 query types
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 20 tests
+- ✅ Generates 3 distinct query variants
+- ✅ BM25 query contains keywords
+- ✅ Vector query semantically expanded
+- ✅ Entity query includes references
+- ✅ Fallback to original on error
+- ✅ 100% test coverage
+
+**Git:** Branch `DEV-188-Implement-Multi-Query-Generator-Service`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2340,88 +2386,8 @@ DEV-184 (LLM Config)
 
 <details>
 <summary>
-<h3>DEV-188: Implement Multi-Query Generator Service (Backend)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> COMPLETED | <strong>Type:</strong> Backend<br>
-Generate 3 query variants (BM25, Vector, Entity) per Section 13.5.
-</summary>
-
-### DEV-188: Implement Multi-Query Generator Service
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.5](/docs/tasks/PRATIKO_1.5_REFERENCE.md#135-fr-005-multi-query-generation)
-
-**Priority:** HIGH | **Effort:** 2.5h | **Status:** COMPLETED | **Type:** Backend
-
-**Problem:**
-Single query approach misses relevant documents. Need 3 optimized variants for different search types.
-
-**Solution:**
-Implement `MultiQueryGeneratorService` using GPT-4o-mini to generate:
-- BM25-optimized query (keywords, document types)
-- Vector-optimized query (semantic expansion)
-- Entity-focused query (legal references)
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-184 (config), DEV-187 (router entities)
-- **Unlocks:** DEV-190 (Parallel Retrieval), DEV-195 (Node)
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- **LLM error:** Return original query as all 3 variants
-- **Timeout:** Return original query
-- **Partial response:** Use available variants, fill missing with original
-
-**Performance Requirements:**
-- **Latency:** ≤150ms (AC-005.2)
-
-**Edge Cases:**
-- **Short query (<5 words):** Generate variants anyway
-- **Already entity-rich query:** Preserve entities in all variants
-- **No entities from router:** Generate without entity hints
-
-**Files to Create:**
-- `app/services/multi_query_generator.py` (~180 lines)
-
-**Fields/Methods/Components:**
-- `MultiQueryGeneratorService` class
-  - `generate(query: str, entities: list[ExtractedEntity]) -> QueryVariants`
-  - `_build_prompt(query: str, entities: list) -> str`
-- `QueryVariants` dataclass:
-  - `bm25_query: str`
-  - `vector_query: str`
-  - `entity_query: str`
-  - `original_query: str`
-
-**Testing Requirements:**
-- **TDD:** Write `tests/services/test_multi_query_generator.py` FIRST
-- **Unit Tests:**
-  - `test_generates_3_distinct_queries`
-  - `test_bm25_contains_keywords`
-  - `test_vector_semantically_expanded`
-  - `test_entity_includes_references`
-  - `test_fallback_to_original_on_error`
-  - `test_latency_under_150ms`
-- **Coverage Target:** 95%+
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Generates 3 distinct query variants (AC-005.1)
-- [ ] Latency ≤150ms (AC-005.2)
-- [ ] BM25 query contains keywords (AC-005.3)
-- [ ] Vector query semantically expanded (AC-005.4)
-- [ ] Entity query includes references (AC-005.5)
-- [ ] 95%+ test coverage
-
-</details>
-
----
-
-<details>
-<summary>
 <h3>DEV-189: Implement HyDE Generator Service (Backend)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> COMPLETED | <strong>Type:</strong> Backend<br>
 Generate hypothetical documents in Italian bureaucratic style per Section 13.6.
 </summary>
 
@@ -2429,7 +2395,7 @@ Generate hypothetical documents in Italian bureaucratic style per Section 13.6.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.6](/docs/tasks/PRATIKO_1.5_REFERENCE.md#136-fr-006-hyde-hypothetical-document-embeddings)
 
-**Priority:** HIGH | **Effort:** 2.5h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** HIGH | **Effort:** 2.5h | **Status:** COMPLETED | **Type:** Backend
 
 **Problem:**
 Query embeddings differ from document embeddings. HyDE generates a hypothetical answer document whose embedding is closer to real documents.

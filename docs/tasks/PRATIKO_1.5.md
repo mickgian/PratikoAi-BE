@@ -1486,6 +1486,90 @@ Created comprehensive documentation package including architectural decision rec
 
 ---
 
+<details>
+<summary>
+<h3>DEV-174: Define CALCULABLE_INTENTS and DOCUMENT_ACTION_TEMPLATES Constants</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Created core constants for LLM-First proactivity: 5 calculable intents and 4 document action templates with 29 tests.
+</summary>
+
+### DEV-174: Define CALCULABLE_INTENTS and DOCUMENT_ACTION_TEMPLATES Constants
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** CRITICAL | **Effort:** 1h
+
+**Problem:**
+The current architecture uses complex template matching for all queries. The LLM-First approach requires a clear, minimal set of constants.
+
+**Solution:**
+Created `app/core/proactivity_constants.py` with CALCULABLE_INTENTS (5 intents) and DOCUMENT_ACTION_TEMPLATES (4 document types).
+
+**Files Created:**
+- `app/core/proactivity_constants.py` (~130 lines)
+- `tests/core/test_proactivity_constants.py` (~280 lines, 29 tests)
+
+**Constants Implemented:**
+- `CALCULABLE_INTENTS`: calcolo_irpef, calcolo_iva, calcolo_contributi_inps, ravvedimento_operoso, calcolo_f24
+- `DOCUMENT_ACTION_TEMPLATES`: fattura_elettronica (4 actions), f24 (3), bilancio (3), cu (3)
+- `CalculableIntent` and `ActionTemplate` TypedDict definitions
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 29 tests
+- ✅ CALCULABLE_INTENTS has exactly 5 entries as per Section 12.4
+- ✅ DOCUMENT_ACTION_TEMPLATES has exactly 4 document types as per Section 12.6
+- ✅ 100% test coverage for new file
+- ✅ All tests pass
+
+**Git:** Branch `DEV-174-Define-CALCULABLE_INTENTS-and-DOCUMENT_ACTION_TEMPLATES-Constants`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-175: Update System Prompt with Suggested Actions Output Format</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
+Created suggested_actions.md prompt with &lt;answer&gt; and &lt;suggested_actions&gt; format instructions and 16 tests.
+</summary>
+
+### DEV-175: Update System Prompt with Suggested Actions Output Format
+
+**Status:** ✅ COMPLETED (2024-12-27)
+**Priority:** CRITICAL | **Effort:** 1h
+
+**Problem:**
+The current system prompt does not instruct the LLM to generate suggested actions with structured XML-like tags.
+
+**Solution:**
+Created `app/core/prompts/suggested_actions.md` with output format specification and added `load_suggested_actions_prompt()` function.
+
+**Files Created:**
+- `app/core/prompts/suggested_actions.md` (~50 lines, ~429 tokens)
+- `tests/core/prompts/test_suggested_actions_prompt.py` (~190 lines, 16 tests)
+
+**Modified:**
+- `app/core/prompts/__init__.py` - Added loader function and `SUGGESTED_ACTIONS_PROMPT` constant
+
+**Features Implemented:**
+- Output format with `<answer>` and `<suggested_actions>` tags
+- Action requirements (pertinent, professional, actionable, diverse)
+- Category-specific examples (fiscal, normative, procedural, document)
+- Icon reference table (10 emoji icons)
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 16 tests
+- ✅ `suggested_actions.md` file created with full instruction set
+- ✅ `load_suggested_actions_prompt()` function added
+- ✅ Prompt token count ~429 (within 400-500 limit)
+- ✅ All tests pass
+
+**Git:** Branch `DEV-175-Update-System-Prompt-with-Suggested-Actions-Output-Format`
+
+</details>
+
+---
+
 ## Phase 1: Foundation (Backend) - 9h
 
 **Note:** DEV-150, DEV-151, DEV-152, DEV-153, DEV-154, DEV-155, and DEV-156 moved to Completed Tasks section above.
@@ -1653,223 +1737,14 @@ DEV-174 (CALCULABLE_INTENTS Constants)
 **CRITICAL: DEV-178 → DEV-179 Dependency**
 `chatbot.py` imports `ActionTemplateService` at line 64. DEV-178 must archive this service BEFORE DEV-179 can integrate the new proactivity flow.
 
----
-
-<details>
-<summary>
-<h3>DEV-174: Define CALCULABLE_INTENTS and DOCUMENT_ACTION_TEMPLATES Constants</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
-Define the core constants for LLM-First architecture: calculable intents and document action templates.
-</summary>
-
-### DEV-174: Define CALCULABLE_INTENTS and DOCUMENT_ACTION_TEMPLATES Constants
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.4 and 12.6](/docs/tasks/PRATIKO_1.5_REFERENCE.md#124-interactivequestion-solo-per-calcoli-noti)
-
-**Priority:** CRITICAL | **Effort:** 1h | **Status:** DONE | **Type:** Backend
-
-**Problem:**
-The current architecture uses complex template matching for all queries. The LLM-First approach requires a clear, minimal set of constants defining which intents trigger InteractiveQuestion and which document types have predefined action templates.
-
-**Solution:**
-Create a new constants module with CALCULABLE_INTENTS (5 intents) and DOCUMENT_ACTION_TEMPLATES (4 document types) as defined in Section 12.4 and 12.6.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** None (first task in Phase 6)
-- **Unlocks:** DEV-175, DEV-177
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- Not applicable (constants module, no runtime logic)
-
-**Performance Requirements:**
-- Module import: <10ms (constants only, no computation)
-
-**Edge Cases:**
-- **Empty values:** All intents must have non-empty `required` list
-- **Validation:** All document templates must have exactly 4 fields (id, label, icon, prompt)
-- **Type safety:** Use Literal types for icon strings to catch typos
-- **Duplicate IDs:** Ensure no duplicate action IDs within a document type
-
-**File:** `app/core/proactivity_constants.py`
-
-**Fields/Methods/Components:**
-- `CALCULABLE_INTENTS: dict[str, CalculableIntent]` - 5 intent definitions with required params
-  - `calcolo_irpef`: required=["tipo_contribuente", "reddito"]
-  - `calcolo_iva`: required=["importo"]
-  - `calcolo_contributi_inps`: required=["tipo_gestione", "reddito"]
-  - `ravvedimento_operoso`: required=["importo_originale", "data_scadenza"]
-  - `calcolo_f24`: required=["codice_tributo", "importo"]
-- `DOCUMENT_ACTION_TEMPLATES: dict[str, list[ActionTemplate]]` - 4 document types
-  - `fattura_elettronica`: 4 actions (verify, vat, entry, recipient)
-  - `f24`: 3 actions (codes, deadline, ravvedimento)
-  - `bilancio`: 3 actions (ratios, compare, summary)
-  - `cu`: 3 actions (verify, irpef, summary)
-- `CalculableIntent: TypedDict` - Type definition for intent structure
-- `ActionTemplate: TypedDict` - Type definition for action template
-
-**Testing Requirements:**
-- **TDD:** Write `tests/core/test_proactivity_constants.py` FIRST
-- **Unit Tests:**
-  - `test_calculable_intents_has_exactly_five_entries`
-  - `test_calculable_intents_all_have_required_params`
-  - `test_document_templates_has_exactly_four_types`
-  - `test_document_templates_all_actions_have_required_fields`
-  - `test_action_ids_unique_within_document_type`
-  - `test_icons_are_valid_emoji`
-  - `test_prompts_are_non_empty_strings`
-- **Edge Case Tests:**
-  - `test_no_empty_required_lists`
-  - `test_no_duplicate_intent_keys`
-  - `test_constants_are_immutable_at_runtime`
-- **Integration Tests:** Not applicable (pure constants)
-- **Regression Tests:** Not applicable (new file)
-- **Coverage Target:** 100% for new file
-
-**Risks & Mitigations:**
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Typo in intent name | HIGH | Use constants for all intent names, match Section 12.4 exactly |
-| Missing required field | MEDIUM | TypedDict with Required[] for all fields |
-| Inconsistent with reference | HIGH | Copy-paste from Section 12.4/12.6, code review |
-
-**Code Structure:**
-- Max file: 100 lines
-- Use TypedDict for type safety
-- Group constants logically (intents, then documents)
-
-**Code Completeness:**
-- [ ] No TODO comments for required functionality
-- [ ] No hardcoded placeholder values
-- [ ] All 5 intents from Section 12.4 implemented
-- [ ] All 4 document types from Section 12.6 implemented
-- [ ] All action templates have complete fields
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] CALCULABLE_INTENTS has exactly 5 entries as specified in Section 12.4
-- [ ] DOCUMENT_ACTION_TEMPLATES has exactly 4 document types as specified in Section 12.6
-- [ ] All action templates have required fields (id, label, icon, prompt)
-- [ ] Constants are importable from `app.core.proactivity_constants`
-- [ ] 100% test coverage for new file
-- [ ] All tests pass: `pytest tests/core/test_proactivity_constants.py -v`
-
-</details>
-
----
-
-<details>
-<summary>
-<h3>DEV-175: Update System Prompt with Suggested Actions Output Format</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
-Add proactive actions instruction block to system prompt with &lt;answer&gt; and &lt;suggested_actions&gt; format.
-</summary>
-
-### DEV-175: Update System Prompt with Suggested Actions Output Format
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.5.1](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1251-system-prompt-aggiornato)
-
-**Priority:** CRITICAL | **Effort:** 1h | **Status:** DONE | **Type:** Backend
-
-**Problem:**
-The current system prompt does not instruct the LLM to generate suggested actions. The LLM-First architecture requires the LLM to output structured actions in every response using XML-like tags.
-
-**Solution:**
-Create a new prompt file `suggested_actions.md` with the proactive actions instruction block from Section 12.5.1.
-
-**Agent Assignment:** @ezio (primary), @egidio (review)
-
-**Dependencies:**
-- **Blocking:** DEV-174 (constants define action structure)
-- **Unlocks:** DEV-176 (parser expects this format)
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- Not applicable (prompt file, no runtime logic)
-
-**Performance Requirements:**
-- Prompt loading: <5ms (file read)
-- Token count: ~400 tokens (one-time cost per conversation)
-
-**Edge Cases:**
-- **Icon availability:** Use only standard emoji (no platform-specific)
-- **JSON in prompt:** Escape examples properly in markdown
-- **Encoding:** Ensure UTF-8 encoding for emoji
-- **Loader failure:** `load_suggested_actions_prompt()` raises clear error if file missing
-- **Token budget:** Prompt must not exceed ~400 tokens to preserve KB context allocation
-- **Prompt order:** Suggested actions instructions APPENDED to system prompt (after document context)
-
-**File:** `app/core/prompts/suggested_actions.md`
-
-**Fields/Methods/Components:**
-- `suggested_actions.md` (~80 lines) - Prompt content
-  - Introduction section (professional context)
-  - Output format specification (`<answer>` and `<suggested_actions>` tags)
-  - Action requirements (pertinent, professional, actionable, diverse)
-  - JSON format example
-  - Category-specific action examples (fiscal, normative, procedural, document)
-  - Icon reference table
-- `load_suggested_actions_prompt() -> str` - Loader function in `__init__.py`
-
-**Testing Requirements:**
-- **TDD:** Write `tests/core/prompts/test_suggested_actions_prompt.py` FIRST
-- **Unit Tests:**
-  - `test_prompt_file_exists`
-  - `test_prompt_contains_answer_tag_instruction`
-  - `test_prompt_contains_suggested_actions_tag_instruction`
-  - `test_prompt_contains_json_format_example`
-  - `test_prompt_contains_all_icon_suggestions`
-  - `test_load_function_returns_string`
-  - `test_load_function_raises_on_missing_file`
-- **Edge Case Tests:**
-  - `test_prompt_valid_utf8_encoding`
-  - `test_prompt_json_examples_are_valid_json`
-- **Integration Tests:** Not applicable (static file)
-- **Regression Tests:** Not applicable (new file)
-- **Coverage Target:** 100% for loader function
-
-**Risks & Mitigations:**
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| LLM ignores format | HIGH | Clear, emphatic instructions; test with real LLM |
-| Token bloat | LOW | Keep prompt concise (~400 tokens max) |
-| Encoding issues | MEDIUM | Explicit UTF-8 in file read |
-
-**Code Structure:**
-- Prompt file: ~80 lines
-- Loader function: <20 lines
-
-**Code Completeness:**
-- [ ] No TODO comments for required functionality
-- [ ] All icon suggestions from Section 12.5.1 included
-- [ ] All example categories covered
-- [ ] JSON format exactly matches Section 12.5.1
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] `suggested_actions.md` file created with full instruction set
-- [ ] `load_suggested_actions_prompt()` function added to `__init__.py`
-- [ ] Prompt includes all icon suggestions from Section 12.5.1
-- [ ] Prompt includes output format with `<answer>` and `<suggested_actions>` tags
-- [ ] No breaking changes to existing `SYSTEM_PROMPT`
-- [ ] Prompt token count <= 400 tokens (verified with tiktoken)
-- [ ] Prompt is APPENDED to system prompt, not prepended (document context takes priority)
-- [ ] All tests pass: `pytest tests/core/prompts/ -v`
-
-</details>
+**Note:** DEV-174 and DEV-175 moved to Completed Tasks section above.
 
 ---
 
 <details>
 <summary>
 <h3>DEV-176: Implement parse_llm_response Function</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Create parsing function to extract &lt;answer&gt; and &lt;suggested_actions&gt; from LLM output.
 </summary>
 
@@ -1877,7 +1752,7 @@ Create parsing function to extract &lt;answer&gt; and &lt;suggested_actions&gt; 
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.5.2](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1252-parsing-della-risposta)
 
-**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 The LLM will output responses with `<answer>` and `<suggested_actions>` XML-like tags. We need a robust parser that extracts these components and handles edge cases gracefully without ever raising exceptions.

@@ -61,8 +61,17 @@ from app.schemas.proactivity import (
     QuestionAnswerRequest,
     QuestionAnswerResponse,
 )
-from app.services.action_template_service import ActionTemplateService
-from app.services.atomic_facts_extractor import AtomicFactsExtractor
+# DEV-178: Archived services - use simplified engine instead
+# These imports are kept for backwards compatibility but will be removed in DEV-179
+try:
+    from archived.phase5_templates.services.action_template_service import ActionTemplateService
+    from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
+    _LEGACY_SERVICES_AVAILABLE = True
+except ImportError:
+    ActionTemplateService = None  # type: ignore
+    AtomicFactsExtractor = None  # type: ignore
+    _LEGACY_SERVICES_AVAILABLE = False
+
 from app.services.attachment_resolver import (
     AttachmentNotFoundError,
     AttachmentOwnershipError,
@@ -77,17 +86,35 @@ router = APIRouter()
 agent = LangGraphAgent()
 
 # DEV-158: Singleton ProactivityEngine instance
+# DEV-178: DEPRECATED - Will be replaced by simplified engine in DEV-179
 _proactivity_engine: ProactivityEngine | None = None
 
 
 def get_proactivity_engine() -> ProactivityEngine:
     """Get or create the ProactivityEngine singleton.
 
+    DEPRECATED: This function uses the legacy ProactivityEngine.
+    DEV-179 will update this to use the simplified engine.
+
     Returns:
         ProactivityEngine: The singleton engine instance
+
+    Raises:
+        RuntimeError: If legacy services are not available
     """
     global _proactivity_engine
     if _proactivity_engine is None:
+        if not _LEGACY_SERVICES_AVAILABLE:
+            # DEV-178: Legacy services archived, return None for now
+            # DEV-179 will implement the new engine integration
+            logger.warning(
+                "proactivity_legacy_unavailable",
+                extra={"message": "Legacy proactivity services archived. Use simplified engine."},
+            )
+            raise RuntimeError(
+                "Legacy ProactivityEngine services have been archived. "
+                "Please update to use the simplified engine from DEV-177."
+            )
         template_service = ActionTemplateService()
         template_service.load_templates()
         facts_extractor = AtomicFactsExtractor()
@@ -99,17 +126,33 @@ def get_proactivity_engine() -> ProactivityEngine:
 
 
 # DEV-160: Singleton ActionTemplateService instance
-_template_service: ActionTemplateService | None = None
+# DEV-178: DEPRECATED - Service archived to archived/phase5_templates/
+_template_service = None
 
 
-def get_template_service() -> ActionTemplateService:
+def get_template_service():
     """Get or create the ActionTemplateService singleton.
+
+    DEPRECATED: This service has been archived as of DEV-178.
+    Use DOCUMENT_ACTION_TEMPLATES from app.core.proactivity_constants instead.
 
     Returns:
         ActionTemplateService: The singleton service instance
+
+    Raises:
+        RuntimeError: If legacy service is not available
     """
     global _template_service
     if _template_service is None:
+        if not _LEGACY_SERVICES_AVAILABLE:
+            logger.warning(
+                "template_service_archived",
+                extra={"message": "ActionTemplateService archived. Use proactivity_constants."},
+            )
+            raise RuntimeError(
+                "ActionTemplateService has been archived. "
+                "Use DOCUMENT_ACTION_TEMPLATES from app.core.proactivity_constants."
+            )
         _template_service = ActionTemplateService()
         _template_service.load_templates()
     return _template_service

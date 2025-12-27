@@ -104,7 +104,8 @@ INFRASTRUTTURA:
 - Docker e Docker Compose per containerizzazione
 - Prometheus e Grafana per metriche e dashboard
 - GitHub Actions per CI/CD con 10 workflow automatizzati
-- Terraform per Infrastructure as Code
+- Hetzner Cloud per hosting backend con Docker
+- Frontend: deployment su piattaforma dedicata (es. Vercel)
 
 
 2.3 PATTERN ARCHITETTURALI CHIAVE

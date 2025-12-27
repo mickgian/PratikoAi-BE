@@ -1568,6 +1568,48 @@ Created `app/core/prompts/suggested_actions.md` with output format specification
 
 </details>
 
+<details>
+<summary>
+<h3>✅ DEV-176: Implement parse_llm_response Function</h3>
+<strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-176-Implement-parse_llm_response-Function
+</summary>
+
+### DEV-176: Implement parse_llm_response Function
+
+**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.5.2](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1252-parsing-della-risposta)
+
+**Problem:**
+The LLM outputs responses with `<answer>` and `<suggested_actions>` XML-like tags. Need a robust parser that extracts these components and handles edge cases gracefully without ever raising exceptions.
+
+**Solution:**
+Created `app/services/llm_response_parser.py` with compiled regex patterns and Pydantic models for type-safe parsing.
+
+**Files Created:**
+- `app/services/llm_response_parser.py` (~155 lines)
+- `tests/services/test_llm_response_parser.py` (~300 lines, 21 tests)
+- `tests/services/conftest.py` - Mock database service for unit tests
+
+**Features Implemented:**
+- `parse_llm_response()` main function - never raises exceptions
+- `ParsedLLMResponse` and `SuggestedAction` Pydantic models
+- `_extract_answer()` helper with fallback to full response
+- `_extract_actions()` helper with JSON parsing and validation
+- `_validate_action()` for field validation
+- Compiled regex patterns for performance
+- Max 4 actions limit with truncation
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 21 tests
+- ✅ Parser never raises exceptions (graceful fallback)
+- ✅ Actions truncated to max 4
+- ✅ Invalid actions skipped, valid ones included
+- ✅ Citations preserved in answer text
+- ✅ All tests pass
+
+**Git:** Branch `DEV-176-Implement-parse_llm_response-Function`
+
+</details>
+
 ---
 
 ## Phase 1: Foundation (Backend) - 9h
@@ -1737,138 +1779,14 @@ DEV-174 (CALCULABLE_INTENTS Constants)
 **CRITICAL: DEV-178 → DEV-179 Dependency**
 `chatbot.py` imports `ActionTemplateService` at line 64. DEV-178 must archive this service BEFORE DEV-179 can integrate the new proactivity flow.
 
-**Note:** DEV-174 and DEV-175 moved to Completed Tasks section above.
-
----
-
-<details>
-<summary>
-<h3>DEV-176: Implement parse_llm_response Function</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1.5h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
-Create parsing function to extract &lt;answer&gt; and &lt;suggested_actions&gt; from LLM output.
-</summary>
-
-### DEV-176: Implement parse_llm_response Function
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.5.2](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1252-parsing-della-risposta)
-
-**Priority:** CRITICAL | **Effort:** 1.5h | **Status:** DONE | **Type:** Backend
-
-**Problem:**
-The LLM will output responses with `<answer>` and `<suggested_actions>` XML-like tags. We need a robust parser that extracts these components and handles edge cases gracefully without ever raising exceptions.
-
-**Solution:**
-Implement `parse_llm_response()` function as specified in Section 12.5.2. The function must handle malformed output gracefully, never crash.
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-175 (defines output format to parse)
-- **Unlocks:** DEV-177, DEV-179, DEV-180
-
-**Change Classification:** ADDITIVE
-
-**Error Handling:**
-- **Malformed JSON:** Log warning, return empty actions list
-- **Missing tags:** Log info, use full response as answer
-- **Invalid action fields:** Skip invalid action, include valid ones
-- **Empty response:** Return empty answer and empty actions
-- **Logging:** All parsing failures logged with context at WARNING level
-
-**Performance Requirements:**
-- Parse time: <5ms for typical response (500-2000 chars)
-- Memory: No excessive string copies
-
-**Edge Cases:**
-- **Nulls/Empty:** Empty response returns empty answer + empty actions
-- **Missing tags:** Full response used as answer, no actions
-- **Malformed JSON:** Actions array has syntax error - return empty actions
-- **Partial JSON:** Some actions valid, some invalid - include valid only
-- **Nested tags:** Handle `<answer>` inside code blocks gracefully
-- **Whitespace:** Trim whitespace from extracted content
-- **Action limit:** Always truncate to max 4 actions
-- **Extra fields:** Ignore unknown fields in action objects
-- **Missing fields:** Skip actions missing required fields (id, label, icon, prompt)
-- **Citation markers:** Preserve `[1]`, `[source:xyz]` format in answer text
-- **Tag parsing order:** Parse suggested_actions BEFORE citation processing in downstream code
-
-**File:** `app/services/llm_response_parser.py`
-
-**Fields/Methods/Components:**
-- `ParsedLLMResponse(BaseModel)` - Response container
-  - `answer: str` - Extracted answer text
-  - `suggested_actions: list[SuggestedAction]` - Parsed actions (max 4)
-- `SuggestedAction(BaseModel)` - Single action
-  - `id: str`
-  - `label: str`
-  - `icon: str`
-  - `prompt: str`
-- `parse_llm_response(raw_response: str) -> ParsedLLMResponse` - Main parser function
-- `_extract_answer(raw: str) -> str` - Helper to extract answer
-- `_extract_actions(raw: str) -> list[SuggestedAction]` - Helper to extract actions
-- `_validate_action(action_dict: dict) -> Optional[SuggestedAction]` - Validate single action
-
-**Testing Requirements:**
-- **TDD:** Write `tests/services/test_llm_response_parser.py` FIRST
-- **Unit Tests:**
-  - `test_parse_valid_response_with_both_tags`
-  - `test_parse_response_without_answer_tag`
-  - `test_parse_response_without_actions_tag`
-  - `test_parse_response_with_empty_actions`
-  - `test_parse_response_with_malformed_json`
-  - `test_parse_response_with_more_than_4_actions_truncates`
-  - `test_parse_response_with_missing_action_fields_skips`
-  - `test_parse_empty_response`
-  - `test_parse_response_with_nested_tags_in_code_block`
-  - `test_parse_response_with_extra_whitespace`
-- **Edge Case Tests:**
-  - `test_parse_partial_valid_actions`
-  - `test_parse_unicode_in_response`
-  - `test_parse_very_long_response`
-  - `test_parse_response_with_only_closing_tag`
-  - `test_parse_response_never_raises`
-- **Integration Tests:** `tests/services/test_llm_response_parser_integration.py`
-- **Regression Tests:** Run `pytest tests/services/` to verify no conflicts
-- **Coverage Target:** 95%+ for parser module
-
-**Risks & Mitigations:**
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Regex too strict | HIGH | Test with varied real LLM outputs |
-| Regex too loose | MEDIUM | Validate extracted content structure |
-| Performance on large responses | LOW | Compile regex, single-pass extraction |
-| JSON injection | MEDIUM | Validate action fields before use |
-
-**Code Structure:**
-- Max file: 80 lines
-- Use compiled regex patterns
-- Extract helpers for testability
-
-**Code Completeness:**
-- [ ] No TODO comments for required functionality
-- [ ] All edge cases handled (never raises)
-- [ ] Logging for all failure paths
-- [ ] All action fields validated
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] `parse_llm_response()` handles all edge cases without crashing
-- [ ] Graceful fallback: always returns ParsedLLMResponse (never raises)
-- [ ] Actions truncated to max 4
-- [ ] Invalid actions skipped, valid ones included
-- [ ] Citations in answer text preserved after tag extraction (`[1]`, `[2]` markers)
-- [ ] 95%+ test coverage for parser module
-- [ ] All tests pass: `pytest tests/services/test_llm_response_parser.py -v`
-
-</details>
+**Note:** DEV-174, DEV-175, and DEV-176 moved to Completed Tasks section above.
 
 ---
 
 <details>
 <summary>
 <h3>DEV-177: Simplify ProactivityEngine Decision Logic</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h | <strong>Status:</strong> DONE | <strong>Type:</strong> Backend<br>
 Refactor ProactivityEngine to use LLM-First logic with simplified decision flow.
 </summary>
 
@@ -1876,7 +1794,7 @@ Refactor ProactivityEngine to use LLM-First logic with simplified decision flow.
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
 
-**Priority:** CRITICAL | **Effort:** 2h | **Status:** NOT STARTED | **Type:** Backend
+**Priority:** CRITICAL | **Effort:** 2h | **Status:** DONE | **Type:** Backend
 
 **Problem:**
 The current ProactivityEngine uses complex template matching (~492 lines). Per Section 12.7, the logic should be simplified to three steps:

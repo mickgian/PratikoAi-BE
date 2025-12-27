@@ -18,7 +18,9 @@ class TestRAGStep18QuerySig:
     async def test_step_18_computes_query_signature(self, mock_rag_log):
         """Test Step 18: Computes deterministic hash from atomic facts."""
         from app.orchestrators.facts import step_18__query_sig
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         # Prepare Step 16 output with canonicalized facts
         extractor = AtomicFactsExtractor()
@@ -55,7 +57,9 @@ class TestRAGStep18QuerySig:
     async def test_step_18_identical_facts_same_signature(self, mock_rag_log):
         """Test Step 18: Identical facts produce identical signatures."""
         from app.orchestrators.facts import step_18__query_sig
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         query = "Dipendente con RAL €35.000"
         extractor = AtomicFactsExtractor()
@@ -78,7 +82,9 @@ class TestRAGStep18QuerySig:
     async def test_step_18_different_facts_different_signature(self, mock_rag_log):
         """Test Step 18: Different facts produce different signatures."""
         from app.orchestrators.facts import step_18__query_sig
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         extractor = AtomicFactsExtractor()
 
@@ -100,7 +106,9 @@ class TestRAGStep18QuerySig:
     async def test_step_18_handles_empty_facts(self, mock_rag_log):
         """Test Step 18: Handles empty atomic facts gracefully."""
         from app.orchestrators.facts import step_18__query_sig
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         # Extract from empty query
         extractor = AtomicFactsExtractor()
@@ -120,7 +128,9 @@ class TestRAGStep18QuerySig:
     async def test_step_18_signature_deterministic(self, mock_rag_log):
         """Test Step 18: Signature is deterministic across multiple runs."""
         from app.orchestrators.facts import step_18__query_sig
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         query = "CCNL commercio, €1.500, Milano"
         extractor = AtomicFactsExtractor()
@@ -141,7 +151,9 @@ class TestRAGStep18QuerySig:
     async def test_step_18_signature_includes_all_fact_types(self, mock_rag_log):
         """Test Step 18: Signature changes when different fact types change."""
         from app.orchestrators.facts import step_18__query_sig
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         extractor = AtomicFactsExtractor()
 
@@ -169,7 +181,9 @@ class TestRAGStep18QuerySig:
     async def test_step_18_routes_to_attach_check(self, mock_rag_log):
         """Test Step 18: Routes to AttachCheck (Step 19)."""
         from app.orchestrators.facts import step_18__query_sig
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         # Prepare context
         extractor = AtomicFactsExtractor()
@@ -193,7 +207,9 @@ class TestRAGStep18Integration:
         """Test Step 16 (CanonicalizeFacts) → Step 17 (AttachmentFingerprint) → Step 18 (QuerySig) integration."""
         from app.orchestrators.facts import step_16__canonicalize_facts, step_18__query_sig
         from app.orchestrators.preflight import step_17__attachment_fingerprint
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         # Extract facts
         query = "Quanto costa un dipendente con RAL €40.000?"
@@ -236,7 +252,9 @@ class TestRAGStep18Integration:
     async def test_step_18_context_preservation(self, mock_rag_log):
         """Test Step 18: Preserves context for next steps."""
         from app.orchestrators.facts import step_18__query_sig
-        from app.services.atomic_facts_extractor import AtomicFactsExtractor
+
+        # DEV-178: AtomicFactsExtractor archived
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
 
         # Prepare context with extra fields
         extractor = AtomicFactsExtractor()

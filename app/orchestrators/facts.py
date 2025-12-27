@@ -108,7 +108,13 @@ async def step_14__extract_facts(
     Extracts atomic facts from Italian professional queries including monetary amounts,
     dates, legal entities, professional categories, and geographic information.
     """
-    from app.services.atomic_facts_extractor import AtomicFactsExtractor
+    # DEV-178: AtomicFactsExtractor archived to archived/phase5_templates/
+    try:
+        from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
+    except ImportError:
+        # Fallback: return empty facts if service not available
+        logger.warning("atomic_facts_extractor_archived", extra={"message": "Using empty facts fallback"})
+        return {}
 
     ctx = ctx or {}
     user_message = ctx.get("user_message", "")

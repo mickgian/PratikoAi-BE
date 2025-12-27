@@ -1,5 +1,17 @@
 """ProactivityEngine Service for PratikoAI v1.5 - DEV-155.
 
+DEPRECATED: This module is deprecated as of DEV-178.
+Use app.services.proactivity_engine_simplified instead.
+
+The simplified engine implements the LLM-First architecture from Section 12.7:
+- No dependencies on ActionTemplateService or AtomicFactsExtractor
+- Uses CALCULABLE_INTENTS and DOCUMENT_ACTION_TEMPLATES constants
+- Three-step decision logic: calculable intent -> document -> LLM
+
+This legacy engine remains for backwards compatibility but should not be used
+for new integrations.
+
+Original description:
 This service orchestrates all proactive features:
 - Parameter extraction and coverage calculation
 - Action selection based on domain and context
@@ -15,7 +27,7 @@ Performance Requirements:
 
 import logging
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from app.schemas.proactivity import (
     Action,
@@ -28,8 +40,10 @@ from app.schemas.proactivity import (
 )
 
 if TYPE_CHECKING:
-    from app.services.action_template_service import ActionTemplateService
-    from app.services.atomic_facts_extractor import AtomicFactsExtractor
+    # DEPRECATED: These services have been archived to archived/phase5_templates/
+    # Kept for type hints only, actual imports will fail
+    ActionTemplateService = Any
+    AtomicFactsExtractor = Any
 
 logger = logging.getLogger(__name__)
 

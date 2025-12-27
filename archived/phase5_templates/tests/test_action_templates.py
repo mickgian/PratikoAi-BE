@@ -24,7 +24,6 @@ import yaml  # type: ignore[import-untyped]
 
 from app.schemas.proactivity import Action, ActionCategory
 
-
 # Path to suggested_actions templates
 TEMPLATES_PATH = Path(__file__).parent.parent.parent / "app" / "core" / "templates" / "suggested_actions"
 
@@ -141,8 +140,7 @@ class TestActionTemplatesSchema:
         for filename, action_path, action_dict in all_actions:
             if action_dict.get("requires_input", False):
                 assert action_dict.get("input_placeholder"), (
-                    f"Action with requires_input=True is missing input_placeholder "
-                    f"in {filename} ({action_path})"
+                    f"Action with requires_input=True is missing input_placeholder " f"in {filename} ({action_path})"
                 )
 
 
@@ -255,8 +253,8 @@ class TestActionTemplatesPromptTemplates:
         placeholder_pattern = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
         for filename, action_id, prompt in all_prompt_templates:
-            # Find all placeholders
-            placeholders = placeholder_pattern.findall(prompt)
+            # Find all placeholders (validation only, not used)
+            _ = placeholder_pattern.findall(prompt)
 
             # Check for unclosed braces
             open_count = prompt.count("{")
@@ -335,8 +333,7 @@ class TestActionTemplatesDomainCoverage:
             if "actions" in data:
                 action_types = list(data["actions"].keys())
                 assert len(action_types) >= 2, (
-                    f"{yaml_file.name} should have at least 2 action types, "
-                    f"found: {action_types}"
+                    f"{yaml_file.name} should have at least 2 action types, " f"found: {action_types}"
                 )
 
     def test_default_domain_has_fallback_actions(self):

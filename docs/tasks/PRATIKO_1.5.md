@@ -709,6 +709,58 @@ Implemented `VerdettoOperativoParser` that extracts all 5 sections per Section 1
 
 <details>
 <summary>
+<h3>DEV-194: Create Step 34a LLM Router Node (Backend)</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2.5h (Actual: ~2h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-28)<br>
+LangGraph node wrapper for semantic query classification with 14 tests and 95% coverage.
+</summary>
+
+### DEV-194: Create Step 34a LLM Router Node
+
+**Status:** ✅ COMPLETED (2024-12-28)
+**Priority:** CRITICAL | **Effort:** 2.5h (Actual: ~2h)
+
+**Problem:**
+LangGraph needed a new node for LLM-based semantic routing at Step 34a to replace regex-based routing.
+
+**Solution:**
+Created `step_034a__llm_router.py` node that integrates `LLMRouterService` for semantic query classification into routing categories: CHITCHAT, CALCULATOR, THEORETICAL_DEFINITION, TECHNICAL_RESEARCH, GOLDEN_SET.
+
+**Files Created:**
+- `app/core/langgraph/nodes/step_034a__llm_router.py` (~100 lines)
+- `tests/langgraph/agentic_rag/test_step_034a__llm_router.py` (14 tests)
+- `tests/langgraph/agentic_rag/__init__.py`
+- `tests/langgraph/agentic_rag/conftest.py`
+- `docs/architecture/steps/STEP-34a-RAG.routing.llm.router.semantic.classification.md`
+
+**Files Modified:**
+- `app/core/langgraph/nodes/__init__.py` - Added node_step_34a export
+- `app/core/langgraph/types.py` - Added routing_decision field to RAGState
+- `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd` - Updated S034a with LLM Router
+
+**Components Implemented:**
+- `node_step_34a()` async function - Main LangGraph node
+- `_decision_to_dict()` - Convert RouterDecision to serializable dict
+- `_create_fallback_decision()` - Fallback to TECHNICAL_RESEARCH on error
+- Lazy import pattern to avoid database connection during module load
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 14 tests
+- ✅ Integrates with LLMRouterService
+- ✅ Sets routing_decision in GraphState
+- ✅ Fallback to TECHNICAL_RESEARCH on error
+- ✅ <100 lines per CLAUDE.md guidelines
+- ✅ 95% test coverage
+- ✅ Architecture diagram updated with new routing node
+- ✅ Step documentation created
+
+**Git:** Branch `DEV-194-Create-Step-34a-LLM-Router-Node`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2623,60 +2675,6 @@ DEV-184 (LLM Config)
                                                             └── DEV-194/195/196 (Nodes)
                                                                     └── DEV-197/198/199 (Tests)
 ```
-
----
-
-<details>
-<summary>
-<h3>DEV-194: Create Step 34a LLM Router Node (Backend)</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
-LangGraph node for semantic routing per Section 13.3.
-</summary>
-
-### DEV-194: Create Step 34a LLM Router Node
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.3](/docs/tasks/PRATIKO_1.5_REFERENCE.md#133-nuova-architettura-agentic-rag-pipeline)
-
-**Priority:** CRITICAL | **Effort:** 2.5h | **Status:** NOT STARTED | **Type:** Backend
-
-**Problem:**
-LangGraph needs a new node for LLM-based routing at Step 34a.
-
-**Solution:**
-Create `step_034a__llm_router.py` node that:
-- Uses `LLMRouterService` for classification
-- Sets `routing_decision` in state
-- Fallback to TECHNICAL_RESEARCH on error
-
-**Agent Assignment:** @ezio (primary), @egidio (review)
-
-**Dependencies:**
-- **Blocking:** DEV-187 (Router Service)
-- **Unlocks:** DEV-195 (Step 39 nodes)
-
-**Change Classification:** ADDITIVE
-
-**Files to Create:**
-- `app/core/langgraph/nodes/step_034a__llm_router.py` (~100 lines)
-- `tests/core/langgraph/nodes/test_step_034a__llm_router.py` (~150 lines)
-
-**Files to Update:**
-- `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd` - Update S034a to reflect LLM Router with Chain-of-Thought
-
-**Documentation to Create:**
-- `docs/architecture/steps/STEP-34a-RAG.routing.llm.router.semantic.classification.md`
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Integrates with LLMRouterService
-- [ ] Sets routing_decision in GraphState
-- [ ] Fallback to TECHNICAL_RESEARCH on error
-- [ ] <100 lines per CLAUDE.md guidelines
-- [ ] 95%+ test coverage
-- [ ] Architecture diagram updated with new routing node
-- [ ] Step documentation created
-
-</details>
 
 ---
 

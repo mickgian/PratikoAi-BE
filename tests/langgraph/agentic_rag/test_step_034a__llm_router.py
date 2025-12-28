@@ -11,14 +11,32 @@ Test Strategy:
 - Verify fallback behavior on service errors
 """
 
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+# =============================================================================
+# Mock database service BEFORE importing any app modules
+# This prevents the database connection attempt during module import
+# =============================================================================
+_mock_db_service = MagicMock()
+_mock_db_service.engine = MagicMock()
+_mock_db_service.get_session = MagicMock()
+
+# Create a mock module for app.services.database
+_mock_db_module = MagicMock()
+_mock_db_module.database_service = _mock_db_service
+_mock_db_module.DatabaseService = MagicMock(return_value=_mock_db_service)
+
+# Inject the mock into sys.modules BEFORE any imports
+sys.modules.setdefault("app.services.database", _mock_db_module)
+
+
 # Import the node module once at module level to avoid re-import issues
 # The actual LLMRouterService will be mocked in each test
-from app.core.langgraph.nodes.step_034a__llm_router import node_step_34a
-from app.schemas.router import ExtractedEntity, RouterDecision, RoutingCategory
+from app.core.langgraph.nodes.step_034a__llm_router import node_step_34a  # noqa: E402
+from app.schemas.router import ExtractedEntity, RouterDecision, RoutingCategory  # noqa: E402
 
 
 # =============================================================================

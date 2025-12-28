@@ -1,6 +1,6 @@
 # RAG Architecture Documentation
 
-**Auto-generated:** 2025-12-27 19:43:23
+**Auto-generated:** 2025-12-28 13:43:07
 
 > 💡 Complete documentation of the RAG (Retrieval-Augmented Generation) system architecture.
 
@@ -11,7 +11,7 @@
 This directory contains comprehensive documentation of the RAG system, including:
 - High-level architecture documents
 - Detailed implementation guides
-- 135 step-by-step pipeline documents
+- 138 step-by-step pipeline documents
 - Policy and conformance guidelines
 
 ---
@@ -47,7 +47,7 @@ This directory contains comprehensive documentation of the RAG system, including
 - **[Prompt Engineering Knowledge Base](PROMPT_ENGINEERING_KNOWLEDGE_BASE.md)** ✅ Current
   - **Purpose:** Senior-level prompt engineering patterns for PratikoAI **Audience:** Developers, architects, and agents working on prompts
 - **[RAG Architecture Documentation](INDEX.md)** 📚 Historical
-  - **Auto-generated:** 2025-12-27 19:39:41
+  - **Auto-generated:** 2025-12-27 19:43:23
 - **[RAG Conformance Dashboard](rag_conformance.md)** ✅ Current
   - This dashboard tracks the implementation status of each step in the PratikoAI RAG blueprint. It is automatically generated from the Mermaid diagram...
 - **[RAG Implementation Sprint Plan](rag_sprint_plan.md)** ✅ Current
@@ -67,7 +67,7 @@ This directory contains comprehensive documentation of the RAG system, including
 
 **Complete step-by-step documentation of the RAG pipeline:**
 
-→ **[View all 135 steps](steps/INDEX.md)**
+→ **[View all 138 steps](steps/INDEX.md)**
 
 The steps directory contains detailed documentation for every step in the RAG pipeline, from request validation to feedback collection.
 
@@ -76,9 +76,9 @@ The steps directory contains detailed documentation for every step in the RAG pi
 ## 📊 Statistics
 
 - **Overview Docs:** 18
-- **Detailed Steps:** 135
-- **Total Architecture Docs:** 153
+- **Detailed Steps:** 138
+- **Total Architecture Docs:** 156
 
 ---
 
-**Last Updated:** 2025-12-27 19:43:23
+**Last Updated:** 2025-12-28 13:43:07

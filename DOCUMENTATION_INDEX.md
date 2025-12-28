@@ -1,7 +1,7 @@
 # Master Documentation Index
 
-**Auto-generated:** 2025-12-27 19:43:23
-**Total Documents:** 313 markdown files
+**Auto-generated:** 2025-12-28 13:43:07
+**Total Documents:** 316 markdown files
 
 > 💡 This index is automatically generated. To update, run: `python scripts/generate_docs_index.py`
 
@@ -36,7 +36,7 @@
 
 ### 🏛️ Architects
 - **System Design:** [docs/architecture/](docs/architecture/INDEX.md)
-- **RAG Pipeline:** [docs/architecture/steps/](docs/architecture/steps/INDEX.md) (135 steps)
+- **RAG Pipeline:** [docs/architecture/steps/](docs/architecture/steps/INDEX.md) (138 steps)
 - **Policy Gated Autonomy:** [docs/architecture/POLICY_GATED_AUTONOMY_INTEGRATION.md](docs/architecture/POLICY_GATED_AUTONOMY_INTEGRATION.md)
 
 ### 🧪 QA / Testing
@@ -49,7 +49,7 @@
 
 | Subsystem | Documents | Primary Index |
 |-----------|-----------|---------------|
-| **RAG Architecture** | 135 steps | [docs/architecture/](docs/architecture/INDEX.md) |
+| **RAG Architecture** | 138 steps | [docs/architecture/](docs/architecture/INDEX.md) |
 | **Core Docs** | 22 docs | [docs/](docs/INDEX.md) |
 | **Monitoring** | 11 docs | [monitoring/](monitoring/INDEX.md) |
 | **Deployment** | 3 docs | [deployment-orchestration/](deployment-orchestration/INDEX.md) |

@@ -74,9 +74,15 @@ flowchart TD
     %% NEW: LLM Router (Agentic RAG - DEV-194)
     S034 --> S034a[S034a · LLMRouterService.route<br/>Semantic query classification<br/>CHITCHAT/CALCULATOR/TECHNICAL_RESEARCH/GOLDEN_SET]
     S034a --> S034b{S034b · needs_retrieval?<br/>Based on routing category}
-    S034b -->|Yes| S039[S039 · KnowledgeSearch.retrieve_topk<br/>BM25 and vectors and recency boost]
     S034b -->|No| S041[S041 · LangGraphAgent._get_system_prompt<br/>Select appropriate prompt<br/>with tool_choice=none]
-    S029 --> S039
+
+    %% NEW: Query Expansion and Retrieval (Agentic RAG - DEV-195)
+    S034b -->|Yes| S039a[S039a · MultiQueryGeneratorService.generate<br/>Create BM25/vector/entity query variants]
+    S039a --> S039b[S039b · HyDEGeneratorService.generate<br/>Create hypothetical document<br/>in Italian bureaucratic style]
+    S039b --> S039c[S039c · ParallelRetrievalService.retrieve<br/>BM25 + vector + HyDE parallel search<br/>with RRF fusion and source authority]
+    S039c --> S039[S039 · KnowledgeSearch.retrieve_topk<br/>BM25 and vectors and recency boost]
+
+    S029 --> S039a
     S039 --> S040[S040 · ContextBuilder.merge<br/>facts and KB docs and optional doc facts]
 
     %% Prompt and provider
@@ -256,10 +262,11 @@ S132[S132 · RSS Monitor] --> S133[S133 · Fetch and parse sources]
     %% Canonical Nodes (27 total) - Runtime boundaries with metrics/retries
     class S002,S003,S006,S009,S013,S020,S024,S026,S031,S041,S042,S048,S050,S055,S056,S059,S062,S064,S067,S075,S079,S080,S081,S082,S083,S104,S105,S109,S112 canonicalNode
 
-    %% Internal Steps (107 total) - Pure transforms, no isolation
+    %% Internal Steps (110 total) - Pure transforms, no isolation
     %% These steps are styled with light green dashed borders to distinguish from Canonical Nodes
     %% S131 removed (Pinecone deprecation - DEV-BE-68)
-    class Start,S001,S004,S005,S007,S008,S010,S011,S012,S014,S015,S016,S017,S018,S019,S021,S022,S023,S025,S027,S028,S029,S030,S032,S033,S034,S034a,S035,S036,S037,S038,S039,S040,S043,S044,S045,S046,S047,S049,S051,S052,S053,S054,S057,S058,S060,S061,S063,S065,S066,S068,S069,S070,S071,S072,S073,S074,S076,S077,S078,S084,S085,S086,S087,S088,S089,S090,S091,S092,S093,S094,S095,S096,S097,S098,S099,S100,S101,S102,S103,S106,S107,S108,S110,S111,S113,S114,S115,S116,S117,S118,S119,S120,S121,S122,S123,S124,S125,S126,S127,S128,S129,S130,S132,S133,S134,S135 internalNode
+    %% S039a, S039b, S039c added (DEV-195 - Query Expansion Nodes)
+    class Start,S001,S004,S005,S007,S008,S010,S011,S012,S014,S015,S016,S017,S018,S019,S021,S022,S023,S025,S027,S028,S029,S030,S032,S033,S034,S034a,S035,S036,S037,S038,S039,S039a,S039b,S039c,S040,S043,S044,S045,S046,S047,S049,S051,S052,S053,S054,S057,S058,S060,S061,S063,S065,S066,S068,S069,S070,S071,S072,S073,S074,S076,S077,S078,S084,S085,S086,S087,S088,S089,S090,S091,S092,S093,S094,S095,S096,S097,S098,S099,S100,S101,S102,S103,S106,S107,S108,S110,S111,S113,S114,S115,S116,S117,S118,S119,S120,S121,S122,S123,S124,S125,S126,S127,S128,S129,S130,S132,S133,S134,S135 internalNode
 
     %% Databases
     class RedisCache,PostgresDB,GoldenSetDB,KnowledgeStore databaseNode
@@ -270,6 +277,8 @@ S132[S132 · RSS Monitor] --> S133[S133 · Fetch and parse sources]
         PN2[When 'No': Retrieval and tool calls disabled]
         PN3[When 'Yes': Allow max 1 tool call per turn]
         PN4[S027: Serve Golden only if kb_epoch <= golden_epoch]
+        PN5[S039a-c: Query Expansion and Hybrid Retrieval]
+        PN6[Multi-Query + HyDE + RRF Fusion]
     end
 
     %% Legend

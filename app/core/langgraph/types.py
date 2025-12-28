@@ -212,6 +212,14 @@ class RAGState(TypedDict, total=False):
     # Contains: route, confidence, reasoning, entities, requires_freshness, suggested_sources, needs_retrieval
     routing_decision: dict | None
 
+    # DEV-195: Query Expansion and Retrieval (Step 39a, 39b, 39c)
+    # Step 39a: Multi-Query variants (bm25_query, vector_query, entity_query, original_query)
+    query_variants: dict | None
+    # Step 39b: HyDE result (hypothetical_document, word_count, skipped, skip_reason)
+    hyde_result: dict | None
+    # Step 39c: Parallel retrieval result (documents, total_found, search_time_ms)
+    retrieval_result: dict | None
+
     # DEV-007 FIX: Index of current user message for marking current vs prior attachments
     current_message_index: int | None
 

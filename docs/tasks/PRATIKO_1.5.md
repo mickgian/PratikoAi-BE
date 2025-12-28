@@ -761,6 +761,60 @@ Created `step_034a__llm_router.py` node that integrates `LLMRouterService` for s
 
 <details>
 <summary>
+<h3>DEV-195: Create Step 39 Query Expansion Nodes (Backend)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h (Actual: ~2h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-28)<br>
+LangGraph nodes for Multi-Query, HyDE, and Parallel Retrieval with 15 tests.
+</summary>
+
+### DEV-195: Create Step 39 Query Expansion Nodes
+
+**Status:** ✅ COMPLETED (2024-12-28)
+**Priority:** HIGH | **Effort:** 2.5h (Actual: ~2h)
+
+**Problem:**
+LangGraph needed nodes for Step 39a (Multi-Query), 39b (HyDE), and 39c (Parallel Retrieval) to implement query expansion pipeline.
+
+**Solution:**
+Created three nodes that integrate with corresponding services for enhanced document retrieval with skip logic for non-retrieval routes.
+
+**Files Created:**
+- `app/core/langgraph/nodes/step_039a__multi_query.py` (~150 lines)
+- `app/core/langgraph/nodes/step_039b__hyde.py` (~135 lines)
+- `app/core/langgraph/nodes/step_039c__parallel_retrieval.py` (~180 lines)
+- `tests/langgraph/agentic_rag/test_step_039_query_expansion.py` (15 tests)
+- `docs/architecture/steps/STEP-39a-RAG.query.multi.query.generator.service.generate.md`
+- `docs/architecture/steps/STEP-39b-RAG.query.hyde.generator.service.generate.md`
+- `docs/architecture/steps/STEP-39c-RAG.retrieval.parallel.retrieval.service.retrieve.md`
+
+**Files Modified:**
+- `app/core/langgraph/nodes/__init__.py` - Added node exports
+- `app/core/langgraph/types.py` - Added query_variants, hyde_result, retrieval_result to RAGState
+- `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd` - Updated with Step 39 nodes
+
+**Components Implemented:**
+- `node_step_39a()` - Multi-Query expansion (BM25, vector, entity variants)
+- `node_step_39b()` - HyDE generation (hypothetical documents)
+- `node_step_39c()` - Parallel retrieval with RRF fusion
+- Skip logic for CHITCHAT/THEORETICAL_DEFINITION/CALCULATOR routes
+- Lazy import pattern to avoid database connection during module load
+
+**Acceptance Criteria (All Met):**
+- ✅ Tests written BEFORE implementation (TDD) - 15 tests
+- ✅ Each node <200 lines
+- ✅ Skip logic for non-technical routes
+- ✅ Proper state updates (serializable dicts)
+- ✅ All tests passing
+- ✅ Architecture diagram updated
+- ✅ Step documentation created
+
+**Git:** Branch `DEV-195-Create-Step-39-Query-Expansion-Nodes`
+
+</details>
+
+---
+
+<details>
+<summary>
 <h3>DEV-150: Create Pydantic Models for Actions and Interactive Questions</h3>
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
@@ -2675,62 +2729,6 @@ DEV-184 (LLM Config)
                                                             └── DEV-194/195/196 (Nodes)
                                                                     └── DEV-197/198/199 (Tests)
 ```
-
----
-
-<details>
-<summary>
-<h3>DEV-195: Create Step 39 Query Expansion Nodes (Backend)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h | <strong>Status:</strong> NOT STARTED | <strong>Type:</strong> Backend<br>
-LangGraph nodes for Multi-Query, HyDE, and Parallel Retrieval.
-</summary>
-
-### DEV-195: Create Step 39 Query Expansion Nodes
-
-**Reference:** [PRATIKO_1.5_REFERENCE.md Section 13.3](/docs/tasks/PRATIKO_1.5_REFERENCE.md#133-nuova-architettura-agentic-rag-pipeline)
-
-**Priority:** HIGH | **Effort:** 2.5h | **Status:** NOT STARTED | **Type:** Backend
-
-**Problem:**
-LangGraph needs nodes for Step 39a (Multi-Query), 39b (HyDE), and 39c (Parallel Retrieval).
-
-**Solution:**
-Create three nodes that integrate with corresponding services:
-- Skip expansion for CHITCHAT/THEORETICAL
-- Skip HyDE for CALCULATOR
-
-**Agent Assignment:** @ezio (primary), @clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-188 (Multi-Query), DEV-189 (HyDE), DEV-190 (Retrieval)
-- **Unlocks:** DEV-196 (Step 64)
-
-**Change Classification:** ADDITIVE
-
-**Files to Create:**
-- `app/core/langgraph/nodes/step_039a__multi_query.py` (~80 lines)
-- `app/core/langgraph/nodes/step_039b__hyde.py` (~80 lines)
-- `app/core/langgraph/nodes/step_039c__parallel_retrieval.py` (~100 lines)
-- `tests/core/langgraph/nodes/test_step_039_query_expansion.py` (~200 lines)
-
-**Files to Update:**
-- `docs/architecture/diagrams/pratikoai_rag_hybrid.mmd` - Add Step 39a/39b/39c nodes for query expansion pipeline
-
-**Documentation to Create:**
-- `docs/architecture/steps/STEP-39a-RAG.query.multi.query.expansion.md`
-- `docs/architecture/steps/STEP-39b-RAG.query.hyde.hypothetical.document.md`
-- `docs/architecture/steps/STEP-39c-RAG.retrieval.parallel.hybrid.rrf.fusion.md`
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Each node <100 lines
-- [ ] Skip logic for non-technical routes
-- [ ] Proper state updates
-- [ ] 95%+ test coverage
-- [ ] Architecture diagram updated with new query expansion nodes
-- [ ] Step documentation created for each sub-step
-
-</details>
 
 ---
 

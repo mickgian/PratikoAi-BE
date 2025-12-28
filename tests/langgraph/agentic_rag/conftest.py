@@ -1,19 +1,26 @@
 """Pytest configuration for Agentic RAG tests.
 
-Provides fixtures to avoid database connections during unit tests.
-These mocks must be applied before the test module imports any app code.
+Provides fixtures for testing LangGraph nodes in isolation.
+Tests mock external dependencies (LLMRouterService, etc.) via patch decorators.
 """
 
-import sys
-from unittest.mock import MagicMock
+import pytest
+from unittest.mock import AsyncMock, MagicMock
 
-# Mock database-related modules BEFORE any imports
-# This prevents database connection attempts during test collection
-_mock_database = MagicMock()
-_mock_database.DatabaseService.return_value = MagicMock()
-_mock_database.get_db_session.return_value = MagicMock()
 
-# Pre-populate sys.modules with mocked database modules
-sys.modules["app.services.database"] = _mock_database
-sys.modules["app.models.database"] = MagicMock()
-sys.modules["app.core.database"] = MagicMock()
+@pytest.fixture
+def mock_llm_router_service():
+    """Fixture to create a mock LLMRouterService for tests."""
+    mock_service = AsyncMock()
+    return mock_service
+
+
+@pytest.fixture
+def mock_rag_state():
+    """Fixture to create a base RAG state for testing."""
+    return {
+        "request_id": "test-request-id",
+        "session_id": "test-session-id",
+        "user_query": "Test query",
+        "messages": [{"role": "user", "content": "Test query"}],
+    }

@@ -208,6 +208,10 @@ class RAGState(TypedDict, total=False):
     # Values: "pure_kb", "pure_doc", "hybrid", "chat" (from QueryComposition enum)
     query_composition: str | None
 
+    # DEV-194: LLM Router semantic classification result
+    # Contains: route, confidence, reasoning, entities, requires_freshness, suggested_sources, needs_retrieval
+    routing_decision: dict | None
+
     # DEV-007 FIX: Index of current user message for marking current vs prior attachments
     current_message_index: int | None
 

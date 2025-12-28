@@ -1,9 +1,9 @@
 # RAG Pipeline Steps (1-135)
 
-**Auto-generated:** 2025-12-27 18:58:18
-**Total Steps:** 134
+**Auto-generated:** 2025-12-27 19:43:23
+**Total Steps:** 135
 
-> 💡 This directory contains 134 detailed step documents describing the complete RAG pipeline from request to response.
+> 💡 This directory contains 135 detailed step documents describing the complete RAG pipeline from request to response.
 
 ---
 
@@ -59,7 +59,7 @@ Each step document describes a specific operation in the RAG pipeline:
 ### Knowledge Retrieval (21-40)
 
 <details>
-<summary>View 18 steps</summary>
+<summary>View 19 steps</summary>
 
 - **[Step 21](STEP-21-RAG.preflight.docpreingest.quick.extract.type.sniff.and.key.fields.md)** - preflight → docpreingest → quick → extract → type → sniff → and → key → fields
 - **[Step 22](STEP-22-RAG.docs.doc.dependent.or.refers.to.doc.md)** - docs → doc → dependent → or → refers → to → doc
@@ -242,15 +242,15 @@ Each step document describes a specific operation in the RAG pipeline:
 
 - **Initialization & Validation (1-10):** 10 steps
 - **Classification & Facts (11-20):** 10 steps
-- **Knowledge Retrieval (21-40):** 18 steps
+- **Knowledge Retrieval (21-40):** 19 steps
 - **Prompting & Provider Selection (41-60):** 20 steps
 - **LLM Execution & Caching (61-80):** 20 steps
 - **Tool Execution & Document Processing (81-100):** 20 steps
 - **Response & Streaming (101-120):** 20 steps
 - **Feedback & Golden Set (121-135):** 15 steps
 
-- **Total:** 134 steps
+- **Total:** 135 steps
 
 ---
 
-**Last Updated:** 2025-12-27 18:58:18
+**Last Updated:** 2025-12-27 19:43:23

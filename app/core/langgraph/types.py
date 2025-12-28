@@ -220,6 +220,10 @@ class RAGState(TypedDict, total=False):
     # Step 39c: Parallel retrieval result (documents, total_found, search_time_ms)
     retrieval_result: dict | None
 
+    # DEV-196: Parsed synthesis result with Verdetto Operativo
+    # Contains: answer_text, verdetto (azione_consigliata, analisi_rischio, scadenza, documentazione, indice_fonti)
+    parsed_synthesis: dict | None
+
     # DEV-007 FIX: Index of current user message for marking current vs prior attachments
     current_message_index: int | None
 

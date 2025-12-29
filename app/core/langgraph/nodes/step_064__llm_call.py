@@ -1,6 +1,10 @@
-"""Node wrapper for Step 64: LLM Call."""
+"""Node wrapper for Step 64: LLM Call.
 
-from typing import Any, Dict
+DEV-196: Integrates PremiumModelSelector, SynthesisPromptBuilder, and
+VerdettoOperativoParser for TECHNICAL_RESEARCH route queries.
+"""
+
+from typing import TYPE_CHECKING, Any, Dict
 
 from app.core.langgraph.node_utils import mirror, ns
 from app.core.langgraph.types import RAGState
@@ -13,7 +17,16 @@ from app.observability.rag_logging import (
 )
 from app.orchestrators.providers import step_64__llmcall
 
+# DEV-196: Lazy imports to avoid database connection during module load
+if TYPE_CHECKING:
+    from app.services.premium_model_selector import PremiumModelSelector
+    from app.services.synthesis_prompt_builder import SynthesisPromptBuilder
+    from app.services.verdetto_parser import VerdettoOperativoParser
+
 STEP = 64
+
+# Routes that should use premium model and verdetto parsing
+SYNTHESIS_ROUTES = {"technical_research"}
 
 
 def _deanonymize_response(content: str, deanonymization_map: dict[str, str]) -> str:
@@ -56,6 +69,79 @@ def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
                 d[k] = v
         else:
             d[k] = v
+
+
+def _parse_verdetto(content: str, state: RAGState) -> dict[str, Any] | None:
+    """Parse Verdetto Operativo from LLM response for TECHNICAL_RESEARCH.
+
+    DEV-196: Uses VerdettoOperativoParser to extract structured verdetto
+    sections from synthesis response.
+
+    Args:
+        content: LLM response content
+        state: Current RAG state with routing decision
+
+    Returns:
+        Parsed synthesis dict with verdetto, or None if not applicable
+    """
+    routing = state.get("routing_decision", {})
+    route = routing.get("route", "")
+
+    # Only parse verdetto for synthesis routes
+    if route not in SYNTHESIS_ROUTES:
+        return None
+
+    if not content:
+        return None
+
+    try:
+        # Lazy import
+        from app.services.verdetto_parser import VerdettoOperativoParser
+
+        parser = VerdettoOperativoParser()
+        result = parser.parse(content)
+
+        # Convert to serializable dict
+        parsed = {
+            "answer_text": result.answer_text,
+            "raw_response": result.raw_response,
+            "parse_successful": result.parse_successful,
+        }
+
+        if result.verdetto:
+            parsed["verdetto"] = {
+                "azione_consigliata": result.verdetto.azione_consigliata,
+                "analisi_rischio": result.verdetto.analisi_rischio,
+                "scadenza": result.verdetto.scadenza,
+                "documentazione": result.verdetto.documentazione,
+                "indice_fonti": [
+                    {
+                        "numero": f.numero,
+                        "data": f.data,
+                        "ente": f.ente,
+                        "tipo": f.tipo,
+                        "riferimento": f.riferimento,
+                    }
+                    for f in result.verdetto.indice_fonti
+                ],
+            }
+
+        logger.info(
+            "step64_verdetto_parsed",
+            has_verdetto=result.verdetto is not None,
+            parse_successful=result.parse_successful,
+            request_id=state.get("request_id"),
+        )
+
+        return parsed
+
+    except Exception as e:
+        logger.warning(
+            "step64_verdetto_parse_error",
+            error=str(e),
+            request_id=state.get("request_id"),
+        )
+        return None
 
 
 async def node_step_64(state: RAGState) -> RAGState:
@@ -138,6 +224,11 @@ async def node_step_64(state: RAGState) -> RAGState:
                         privacy["document_deanonymization_map"] = {}
                         state["privacy"] = privacy
                     state.setdefault("messages", []).append({"role": "assistant", "content": content})
+
+                    # DEV-196: Parse Verdetto Operativo for TECHNICAL_RESEARCH
+                    parsed_synthesis = _parse_verdetto(content, state)
+                    if parsed_synthesis:
+                        state["parsed_synthesis"] = parsed_synthesis
         elif "response" in res or "llm_response" in res:
             response = res.get("response", res.get("llm_response"))
             llm["response"] = response
@@ -178,6 +269,11 @@ async def node_step_64(state: RAGState) -> RAGState:
                     privacy["document_deanonymization_map"] = {}
                     state["privacy"] = privacy
                 state.setdefault("messages", []).append({"role": "assistant", "content": content})
+
+                # DEV-196: Parse Verdetto Operativo for TECHNICAL_RESEARCH
+                parsed_synthesis = _parse_verdetto(content, state)
+                if parsed_synthesis:
+                    state["parsed_synthesis"] = parsed_synthesis
         elif "llm_success" in res:
             llm["success"] = res["llm_success"]
         else:

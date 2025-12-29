@@ -25,11 +25,17 @@ from .step_031__classify_domain import node_step_31
 from .step_032__calc_scores import node_step_32
 from .step_033__confidence_check import node_step_33
 from .step_034__track_metrics import node_step_34
+
+# Phase 7 Agentic RAG imports
+from .step_034a__llm_router import node_step_34a
 from .step_035__llm_fallback import node_step_35
 from .step_036__llm_better import node_step_36
 from .step_037__use_llm import node_step_37
 from .step_038__use_rule_based import node_step_38
 from .step_039__kbpre_fetch import node_step_39
+from .step_039a__multi_query import node_step_39a
+from .step_039b__hyde import node_step_39b
+from .step_039c__parallel_retrieval import node_step_39c
 from .step_040__build_context import node_step_40
 from .step_041__select_prompt import node_step_41
 from .step_042__class_confidence import node_step_42
@@ -103,6 +109,10 @@ __all__ = [
     "node_step_32",
     "node_step_33",
     "node_step_34",
+    "node_step_34a",
+    "node_step_39a",
+    "node_step_39b",
+    "node_step_39c",
     "node_step_35",
     "node_step_36",
     "node_step_37",

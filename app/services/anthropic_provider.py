@@ -12,6 +12,7 @@ from typing import Any, Dict, Optional
 import httpx
 
 from app.core.config import settings
+from app.core.llm.base import LLMProviderType
 from app.core.logging import logger
 from app.models.query import LLMResponse
 
@@ -29,6 +30,9 @@ class AnthropicResponse:
 
 class AnthropicProvider:
     """Anthropic Claude LLM provider implementation."""
+
+    # Provider type for unified provider architecture
+    provider_type = LLMProviderType.ANTHROPIC
 
     def __init__(self, model: str = "claude-3-haiku-20240307"):
         """Initialize Anthropic provider.
@@ -146,6 +150,7 @@ class AnthropicProvider:
         pricing = {
             "claude-3-opus-20240229": {"input": 0.015, "output": 0.075},  # Per 1K tokens
             "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},
+            "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},  # Claude 3.5 Sonnet
             "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
         }
 

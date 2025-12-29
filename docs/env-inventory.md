@@ -56,8 +56,8 @@ Automatic overrides are applied based on the selected environment:
 PROJECT_NAME="Web Assistant"
 VERSION="1.0.0"
 API_V1_STR="/api/v1"
-BASE_URL="http://localhost:8000" (dev) | "https://api-staging.pratiko.ai" (staging) | "https://api.pratiko.ai" (prod)
-DEBUG=true (dev) | false (staging/prod)
+BASE_URL="http://localhost:8000" (dev) | "https://api-qa.pratiko.app" (qa) | "https://api.pratiko.app" (prod)
+DEBUG=true (dev) | false (qa/prod)
 ```
 
 #### Database Configuration
@@ -257,11 +257,11 @@ services:
 
 ### Environment-Specific Services
 
-| Service | Development | Staging | Production |
+| Service | Development | QA | Production |
 |---------|-------------|---------|------------|
-| Cluster | pratiko-dev | pratiko-staging | pratiko-prod |
-| Service | pratiko-backend-dev | pratiko-backend-staging | pratiko-backend |
-| Health URL | http://localhost:8000/health | https://api-staging.pratiko.ai/health | https://api.pratiko.ai/health |
+| Cluster | pratiko-dev | pratiko-qa | pratiko-prod |
+| Service | pratiko-backend-dev | pratiko-backend-qa | pratiko-backend |
+| Health URL | http://localhost:8000/health | https://api-qa.pratiko.app/health | https://api.pratiko.app/health |
 | Min Replicas | 1 | 2 | 3 |
 | Max Replicas | 2 | 4 | 10 |
 

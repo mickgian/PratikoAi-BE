@@ -61,17 +61,21 @@ from app.schemas.proactivity import (
     QuestionAnswerRequest,
     QuestionAnswerResponse,
 )
+
 # DEV-178: Archived services - use simplified engine instead
 # These imports are kept for backwards compatibility but will be removed in DEV-179
 try:
     from archived.phase5_templates.services.action_template_service import ActionTemplateService
     from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
+
     _LEGACY_SERVICES_AVAILABLE = True
 except ImportError:
     ActionTemplateService = None  # type: ignore
     AtomicFactsExtractor = None  # type: ignore
     _LEGACY_SERVICES_AVAILABLE = False
 
+from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
+from app.core.utils.xml_stripper import clean_proactivity_content
 from app.services.attachment_resolver import (
     AttachmentNotFoundError,
     AttachmentOwnershipError,
@@ -79,16 +83,17 @@ from app.services.attachment_resolver import (
 )
 from app.services.chat_history_service import chat_history_service
 from app.services.domain_action_classifier import DomainActionClassifier
+from app.services.llm_response_parser import parse_llm_response
 from app.services.proactivity_analytics_service import ProactivityAnalyticsService
 from app.services.proactivity_engine import ProactivityEngine
 
 # DEV-179: Import simplified proactivity engine and parser
 from app.services.proactivity_engine_simplified import (
     ProactivityEngine as SimplifiedProactivityEngine,
+)
+from app.services.proactivity_engine_simplified import (
     ProactivityResult as SimplifiedProactivityResult,
 )
-from app.services.llm_response_parser import parse_llm_response
-from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
 
 router = APIRouter()
 agent = LangGraphAgent()
@@ -253,9 +258,7 @@ import re
 
 # Compiled regex patterns for XML tag stripping
 _ANSWER_TAG_PATTERN = re.compile(r"<answer>(.*?)</answer>", re.DOTALL)
-_ACTIONS_TAG_PATTERN = re.compile(
-    r"<suggested_actions>.*?</suggested_actions>", re.DOTALL
-)
+_ACTIONS_TAG_PATTERN = re.compile(r"<suggested_actions>.*?</suggested_actions>", re.DOTALL)
 _OPENING_ANSWER_TAG = re.compile(r"<answer>")
 _CLOSING_ANSWER_TAG = re.compile(r"</answer>")
 
@@ -1299,6 +1302,8 @@ async def chat_stream(
                     collected_response_chunks = []
                     # Track if response came from golden set (for model_used in chat history)
                     golden_hit = False
+                    # DEV-200: Track proactivity actions from graph Step 100
+                    graph_proactivity_actions: list[dict] = []
 
                     # Send progress event for attachment analysis (DEV-007)
                     if resolved_attachments:
@@ -1362,6 +1367,27 @@ async def chat_stream(
                                     if "golden_hit=True" in chunk:
                                         golden_hit = True
                                     # Don't yield or collect - this is internal metadata
+                                elif chunk.startswith("__PROACTIVITY_ACTIONS__:"):
+                                    # DEV-200: Proactivity actions from graph Step 100
+                                    # Format: __PROACTIVITY_ACTIONS__:<json_array>
+                                    try:
+                                        import json as _json
+
+                                        actions_json = chunk.replace("__PROACTIVITY_ACTIONS__:", "")
+                                        graph_proactivity_actions = _json.loads(actions_json)
+                                        logger.info(
+                                            "proactivity_actions_received_from_graph",
+                                            session_id=session.id,
+                                            action_count=len(graph_proactivity_actions),
+                                        )
+                                    except Exception as parse_err:
+                                        logger.warning(
+                                            "proactivity_actions_parse_failed",
+                                            session_id=session.id,
+                                            error=str(parse_err),
+                                        )
+                                        graph_proactivity_actions = []
+                                    # Don't yield - will be sent as SSE event below
                                 else:
                                     # This is regular content (plain text string from graph)
                                     # Collect chunk for chat history
@@ -1372,81 +1398,51 @@ async def chat_stream(
                                     sse_event = format_sse_event(stream_response)
                                     yield write_sse(None, sse_event, request_id=request_id)
 
-                    # DEV-159: Process proactivity after streaming, before done frame
+                    # DEV-201: Send content_cleaned event to strip XML tags from user view
+                    # The LLM outputs <answer> and <suggested_actions> tags, but users should
+                    # never see raw XML. Clean the accumulated content and send replacement.
+                    if collected_response_chunks:
+                        raw_content = "".join(collected_response_chunks)
+                        cleaned_content = clean_proactivity_content(raw_content)
+                        if cleaned_content != raw_content:
+                            logger.info(
+                                "content_cleaned_xml_stripped",
+                                session_id=session.id,
+                                original_len=len(raw_content),
+                                cleaned_len=len(cleaned_content),
+                            )
+                            # Send content_cleaned event - frontend will replace displayed content
+                            cleaned_event = StreamResponse(
+                                content=cleaned_content,
+                                done=False,
+                                event_type="content_cleaned",
+                            )
+                            yield write_sse(None, format_sse_event(cleaned_event), request_id=request_id)
+
+                    # DEV-200: Yield proactivity events from graph Step 100
+                    # The actions are now set by PostProactivity node in the graph
                     # Skip if skip_proactivity flag is set (follow-up queries from answered questions)
-                    proactivity_result: ProactivityResult | None = None
                     if chat_request.skip_proactivity:
                         logger.debug(
                             "post_response_proactivity_skipped",
                             session_id=session.id,
                             reason="skip_proactivity flag set (follow-up query)",
                         )
-                    else:
-                        try:
-                            proactivity_engine = get_proactivity_engine()
-
-                            # Build context with classification if available
-                            if query_classification:
-                                proactivity_context = ProactivityContext(
-                                    session_id=str(session.id),
-                                    domain=query_classification.domain.value.lower(),
-                                    action_type=query_classification.action.value.lower(),
-                                    sub_domain=query_classification.sub_domain,
-                                    classification_confidence=query_classification.confidence,
-                                    document_type=None,
-                                )
-                            else:
-                                # Fallback if classification failed
-                                proactivity_context = ProactivityContext(
-                                    session_id=str(session.id),
-                                    domain="default",
-                                    action_type=None,
-                                    document_type=None,
-                                )
-
-                            proactivity_result = proactivity_engine.process(
-                                query=user_query if user_query else "",
-                                context=proactivity_context,
-                            )
-                            logger.debug(
-                                "streaming_proactivity_processed",
-                                session_id=session.id,
-                                action_count=len(proactivity_result.actions),
-                                has_question=proactivity_result.question is not None,
-                                processing_time_ms=proactivity_result.processing_time_ms,
-                            )
-                        except Exception as proactivity_error:
-                            # Graceful degradation: log warning but continue
-                            logger.warning(
-                                "streaming_proactivity_processing_failed_non_critical",
-                                session_id=session.id,
-                                error=str(proactivity_error),
-                            )
-                            proactivity_result = None
-
-                    # DEV-159: Yield proactivity events if available
-                    if proactivity_result:
-                        # Yield suggested_actions event if actions present
-                        if proactivity_result.actions:
-                            logger.info(
-                                "yielding_suggested_actions_sse",
-                                session_id=session.id,
-                                action_count=len(proactivity_result.actions),
-                                action_ids=[a.id for a in proactivity_result.actions],
-                            )
-                            actions_data = [a.model_dump() for a in proactivity_result.actions]
-                            extracted_params = None
-                            if proactivity_result.extraction_result:
-                                extracted_params = {
-                                    p.name: p.value for p in proactivity_result.extraction_result.extracted
-                                }
-                            actions_event = StreamResponse(
-                                content="",
-                                event_type="suggested_actions",
-                                suggested_actions=actions_data,
-                                extracted_params=extracted_params,
-                            )
-                            yield write_sse(None, format_sse_event(actions_event), request_id=request_id)
+                    elif graph_proactivity_actions:
+                        # DEV-200: Use actions from graph Step 100 (PostProactivity node)
+                        logger.info(
+                            "yielding_graph_proactivity_actions_sse",
+                            session_id=session.id,
+                            action_count=len(graph_proactivity_actions),
+                            action_ids=[a.get("id") for a in graph_proactivity_actions],
+                        )
+                        actions_event = StreamResponse(
+                            content="",
+                            event_type="suggested_actions",
+                            suggested_actions=graph_proactivity_actions,
+                            extracted_params=None,
+                        )
+                        yield write_sse(None, format_sse_event(actions_event), request_id=request_id)
 
                         # NOTE: Post-response proactivity should NOT yield interactive questions.
                         # Questions are for PRE-response proactivity (gathering info before LLM call).

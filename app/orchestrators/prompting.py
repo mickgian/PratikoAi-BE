@@ -477,6 +477,22 @@ async def step_41__select_prompt(
                                         "action": action,
                                     },
                                 )
+
+                            # DEV-200: Append SUGGESTED_ACTIONS_PROMPT for non-synthesis routes
+                            routing_decision = (ctx or {}).get("routing_decision", {})
+                            route = routing_decision.get("route", "") if isinstance(routing_decision, dict) else ""
+                            if route not in SYNTHESIS_ROUTES:
+                                from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
+
+                                domain_prompt = domain_prompt + "\n\n" + SUGGESTED_ACTIONS_PROMPT
+                                logger.info(
+                                    "suggested_actions_appended_to_domain_prompt",
+                                    extra={
+                                        "request_id": request_id,
+                                        "route": route,
+                                        "domain": domain,
+                                    },
+                                )
                         else:
                             # Step 43 failed to generate prompt
                             raise Exception(
@@ -586,6 +602,10 @@ async def step_41__select_prompt(
         return result
 
 
+# DEV-200: Routes that use SYNTHESIS_SYSTEM_PROMPT (VERDETTO format)
+SYNTHESIS_ROUTES = {"technical_research"}
+
+
 def step_44__default_sys_prompt(
     *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
@@ -600,10 +620,15 @@ def step_44__default_sys_prompt(
     DEV-007 Issue 11: Conditionally injects document analysis guidelines when
     query_composition is 'pure_doc' or 'hybrid' (ADR-016).
 
+    DEV-200: Route-based prompt selection:
+    - technical_research routes -> SYNTHESIS_SYSTEM_PROMPT (VERDETTO format)
+    - Other routes -> SYSTEM_PROMPT + SUGGESTED_ACTIONS_PROMPT
+
     This is the orchestrator that coordinates returning the default system prompt.
     """
     from app.core.config import settings
-    from app.core.prompts import DOCUMENT_ANALYSIS_PROMPT, SYSTEM_PROMPT
+    from app.core.prompts import DOCUMENT_ANALYSIS_PROMPT, SUGGESTED_ACTIONS_PROMPT, SYSTEM_PROMPT
+    from app.core.prompts.synthesis_critical import SYNTHESIS_SYSTEM_PROMPT
 
     # Extract parameters from context
     classification = kwargs.get("classification") or (ctx or {}).get("classification")
@@ -677,7 +702,22 @@ def step_44__default_sys_prompt(
             },
         )
 
-        if query_composition in ("pure_doc", "hybrid"):
+        # DEV-200: Route-based prompt selection
+        routing_decision = (ctx or {}).get("routing_decision", {})
+        route = routing_decision.get("route", "") if isinstance(routing_decision, dict) else ""
+
+        if route in SYNTHESIS_ROUTES:
+            # Use SYNTHESIS_SYSTEM_PROMPT for technical_research queries (VERDETTO format)
+            prompt = SYNTHESIS_SYSTEM_PROMPT
+            step44_logger.info(
+                "synthesis_prompt_selected_for_route",
+                extra={
+                    "route": route,
+                    "trigger_reason": trigger_reason,
+                    "prompt_type": "synthesis_verdetto",
+                },
+            )
+        elif query_composition in ("pure_doc", "hybrid"):
             # DEV-007 FIX: Override at TOP, not end - LLM gives priority to first instructions
             prompt = DOCUMENT_ANALYSIS_OVERRIDE + "\n\n---\n\n" + SYSTEM_PROMPT
             step44_logger.info(
@@ -689,7 +729,32 @@ def step_44__default_sys_prompt(
                 },
             )
         else:
+            # Default prompt with suggested actions for non-synthesis routes
             prompt = SYSTEM_PROMPT
+
+        # DEV-200: Append SUGGESTED_ACTIONS_PROMPT for non-synthesis routes
+        # This instructs the LLM to output <answer> and <suggested_actions> XML tags
+        # DEV-201: Enhanced logging for debugging proactivity flow
+        is_synthesis_route = route in SYNTHESIS_ROUTES
+        step44_logger.info(
+            "DEV201_prompt_injection_decision",
+            extra={
+                "route": route,
+                "is_synthesis_route": is_synthesis_route,
+                "prompt_type": "SYNTHESIS_VERDETTO" if is_synthesis_route else "SUGGESTED_ACTIONS",
+                "will_append_suggested_actions_prompt": not is_synthesis_route,
+            },
+        )
+        if not is_synthesis_route:
+            prompt = prompt + "\n\n" + SUGGESTED_ACTIONS_PROMPT
+            step44_logger.info(
+                "suggested_actions_prompt_appended",
+                extra={
+                    "route": route,
+                    "trigger_reason": trigger_reason,
+                    "prompt_length_after": len(prompt),
+                },
+            )
 
         # Inject KB context if available (from step 40)
         # Step 40 stores in 'context' key, but state may have kb_docs from step 39

@@ -298,6 +298,15 @@ class RAGState(TypedDict, total=False):
     workflow_terminated: bool | None  # Step 5: Workflow termination flag
     terminal_step: bool | None  # Step 5: Indicates terminal node reached
     status_code: int | None  # Step 5: HTTP status code for error responses
+
+    # DEV-200: Proactivity fields for LangGraph nodes (Step 14, Step 100)
+    # proactivity: {
+    #   pre_response: {question: InteractiveQuestion | None, skip_rag: bool},
+    #   post_response: {actions: list[Action], source: "template"|"llm_parsed"}
+    # }
+    proactivity: dict | None
+    skip_rag_for_proactivity: bool | None  # Step 14: If True, skip RAG and return question
+
     processing_stage: str
     node_history: list[str]
 

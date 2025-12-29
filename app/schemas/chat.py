@@ -170,15 +170,16 @@ class ChatResponse(BaseModel):
 class StreamResponse(BaseModel):
     """Response model for streaming chat endpoint.
 
-    Supports different event types for proactivity (DEV-159):
+    Supports different event types for proactivity (DEV-159, DEV-201):
     - content: Text content chunks (default)
+    - content_cleaned: Final cleaned content with XML tags stripped (DEV-201)
     - suggested_actions: Suggested actions for the user
     - interactive_question: Interactive question for clarification
 
     Attributes:
         content: The content of the current chunk.
         done: Whether the stream is complete.
-        event_type: Type of SSE event (content, suggested_actions, interactive_question).
+        event_type: Type of SSE event (content, suggested_actions, interactive_question, content_cleaned).
         suggested_actions: Actions suggested based on query context.
         interactive_question: Question for parameter clarification.
         extracted_params: Parameters extracted from user query.
@@ -187,8 +188,8 @@ class StreamResponse(BaseModel):
     content: str = Field(default="", description="The content of the current chunk")
     done: bool = Field(default=False, description="Whether the stream is complete")
 
-    # Proactivity fields (DEV-159) - Optional for backward compatibility
-    event_type: Literal["content", "suggested_actions", "interactive_question"] | None = Field(
+    # Proactivity fields (DEV-159, DEV-201) - Optional for backward compatibility
+    event_type: Literal["content", "content_cleaned", "suggested_actions", "interactive_question"] | None = Field(
         default=None, description="Type of SSE event for proactivity"
     )
     suggested_actions: list[dict[str, Any]] | None = Field(default=None, description="Suggested actions for the user")

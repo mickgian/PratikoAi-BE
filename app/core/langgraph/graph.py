@@ -158,6 +158,9 @@ from app.core.langgraph.nodes.step_011__convert_messages import node_step_11
 from app.core.langgraph.nodes.step_012__extract_query import node_step_12
 from app.core.langgraph.nodes.step_013__message_exists import node_step_13
 
+# DEV-200: Proactivity Node imports
+from app.core.langgraph.nodes.step_014__pre_proactivity import node_step_14, route_pre_proactivity
+
 # Phase 8 Node imports - Golden/KB Gates
 from app.core.langgraph.nodes.step_020__golden_fast_gate import node_step_20
 from app.core.langgraph.nodes.step_024__golden_lookup import node_step_24
@@ -172,11 +175,15 @@ from app.core.langgraph.nodes.step_031__classify_domain import node_step_31
 from app.core.langgraph.nodes.step_032__calc_scores import node_step_32
 from app.core.langgraph.nodes.step_033__confidence_check import node_step_33
 from app.core.langgraph.nodes.step_034__track_metrics import node_step_34
+from app.core.langgraph.nodes.step_034a__llm_router import node_step_34a
 from app.core.langgraph.nodes.step_035__llm_fallback import node_step_35
 from app.core.langgraph.nodes.step_036__llm_better import node_step_36
 from app.core.langgraph.nodes.step_037__use_llm import node_step_37
 from app.core.langgraph.nodes.step_038__use_rule_based import node_step_38
 from app.core.langgraph.nodes.step_039__kbpre_fetch import node_step_39
+from app.core.langgraph.nodes.step_039a__multi_query import node_step_39a
+from app.core.langgraph.nodes.step_039b__hyde import node_step_39b
+from app.core.langgraph.nodes.step_039c__parallel_retrieval import node_step_39c
 from app.core.langgraph.nodes.step_040__build_context import node_step_40
 from app.core.langgraph.nodes.step_041__select_prompt import node_step_41
 from app.core.langgraph.nodes.step_042__class_confidence import node_step_42
@@ -214,6 +221,7 @@ from app.core.langgraph.nodes.step_081__ccnl_tool import node_step_81
 from app.core.langgraph.nodes.step_082__doc_ingest_tool import node_step_82
 from app.core.langgraph.nodes.step_083__faq_tool import node_step_83
 from app.core.langgraph.nodes.step_099__tool_results import node_step_99
+from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
 # Phase 7 Node imports - Streaming/Response Lane
 from app.core.langgraph.nodes.step_104__stream_check import node_step_104
@@ -1313,21 +1321,24 @@ class LangGraphAgent:
 
     @staticmethod
     def _route_from_tool_check(state: dict[str, Any]) -> str:
-        """Route from ToolCheck node."""
+        """Route from ToolCheck node.
+
+        DEV-200: No-tools path now goes to PostProactivity for suggested actions.
+        """
         tools_requested = state.get("tools", {}).get("requested", False)
-        branch = "ToolType" if tools_requested else "StreamCheck"
+        branch = "ToolType" if tools_requested else "PostProactivity"
         logger.debug(
             "routing_decision",
             from_node="ToolCheck",
             to_node=branch,
             condition="tools.requested",
             value=tools_requested,
-            reason=f"Tools {'requested' if tools_requested else 'not requested'}, {'routing to tool type' if tools_requested else 'routing to stream check'}",
+            reason=f"Tools {'requested' if tools_requested else 'not requested'}, {'routing to tool type' if tools_requested else 'routing to post-proactivity'}",
         )
         if tools_requested:
             return "ToolType"
         else:
-            return "StreamCheck"
+            return "PostProactivity"
 
     @staticmethod
     def _route_from_tool_type(state: dict[str, Any]) -> str:
@@ -1381,6 +1392,28 @@ class LangGraphAgent:
             return "LogPII"
         else:
             return "InitAgent"
+
+    @staticmethod
+    def _route_from_pre_proactivity(state: dict[str, Any]) -> str:
+        """Route from PreProactivity - skip RAG if InteractiveQuestion needed.
+
+        DEV-200: If pre-proactivity detected missing calculator params,
+        skip the entire RAG pipeline and return the question directly.
+        """
+        skip_rag = state.get("skip_rag_for_proactivity", False)
+        branch = "CollectMetrics" if skip_rag else "GoldenFastGate"
+        logger.debug(
+            "routing_decision",
+            from_node="PreProactivity",
+            to_node=branch,
+            condition="skip_rag_for_proactivity",
+            value=skip_rag,
+            reason=f"{'InteractiveQuestion generated, skipping RAG' if skip_rag else 'No question needed, continuing to RAG'}",
+        )
+        if skip_rag:
+            return "CollectMetrics"  # Skip RAG, go directly to end
+        else:
+            return "GoldenFastGate"  # Continue normal RAG flow
 
     @staticmethod
     def _route_from_golden_fast_gate(state: dict[str, Any]) -> str:
@@ -2137,6 +2170,10 @@ class LangGraphAgent:
             graph_builder.add_node("ExtractQuery", node_step_12)
             graph_builder.add_node("MessageExists", node_step_13)
 
+            # DEV-200: Proactivity nodes
+            graph_builder.add_node("PreProactivity", node_step_14)
+            graph_builder.add_node("PostProactivity", node_step_100)
+
             # Lane 3: Golden/KB nodes
             graph_builder.add_node("GoldenFastGate", node_step_20)
             graph_builder.add_node("GoldenLookup", node_step_24)
@@ -2151,11 +2188,16 @@ class LangGraphAgent:
             graph_builder.add_node("CalcScores", node_step_32)
             graph_builder.add_node("ConfidenceCheck", node_step_33)
             graph_builder.add_node("TrackMetrics", node_step_34)
+            graph_builder.add_node("LLMRouter", node_step_34a)  # DEV-200: Semantic query classification
             graph_builder.add_node("LLMFallback", node_step_35)
             graph_builder.add_node("LLMBetter", node_step_36)
             graph_builder.add_node("UseLLM", node_step_37)
             graph_builder.add_node("UseRuleBased", node_step_38)
             graph_builder.add_node("KBPreFetch", node_step_39)
+            # DEV-195/200: Query Expansion pipeline
+            graph_builder.add_node("MultiQuery", node_step_39a)
+            graph_builder.add_node("HyDE", node_step_39b)
+            graph_builder.add_node("ParallelRetrieval", node_step_39c)
             graph_builder.add_node("BuildContext", node_step_40)
             graph_builder.add_node("SelectPrompt", node_step_41)
             graph_builder.add_node("ClassConfidence", node_step_42)
@@ -2242,9 +2284,14 @@ class LangGraphAgent:
             graph_builder.add_edge("ExtractQuery", "MessageExists")
 
             # ========== Wire Lane 2→3: Messages to Golden ==========
-            # After MessageExists, go to GoldenFastGate
-            # (Internal steps 14-19 are handled by orchestrators)
-            graph_builder.add_edge("MessageExists", "GoldenFastGate")
+            # DEV-200: Pre-proactivity check before RAG
+            # If calculator intent with missing params, skip RAG and return question
+            graph_builder.add_edge("MessageExists", "PreProactivity")
+            graph_builder.add_conditional_edges(
+                "PreProactivity",
+                self._route_from_pre_proactivity,
+                {"GoldenFastGate": "GoldenFastGate", "CollectMetrics": "CollectMetrics"},
+            )
 
             # ========== Wire Lane 3: Golden/KB ==========
             graph_builder.add_conditional_edges(
@@ -2291,9 +2338,14 @@ class LangGraphAgent:
             graph_builder.add_edge("UseLLM", "TrackMetrics")
             graph_builder.add_edge("UseRuleBased", "TrackMetrics")
 
-            # Continue to KB prefetch and context building
-            graph_builder.add_edge("TrackMetrics", "KBPreFetch")
-            graph_builder.add_edge("KBPreFetch", "BuildContext")
+            # DEV-200: LLM Router and Query Expansion pipeline
+            # TrackMetrics → LLMRouter → MultiQuery → HyDE → ParallelRetrieval → BuildContext
+            graph_builder.add_edge("TrackMetrics", "LLMRouter")
+            graph_builder.add_edge("LLMRouter", "MultiQuery")
+            graph_builder.add_edge("MultiQuery", "HyDE")
+            graph_builder.add_edge("HyDE", "ParallelRetrieval")
+            graph_builder.add_edge("ParallelRetrieval", "BuildContext")
+            # NOTE: KBPreFetch node exists but is bypassed - ParallelRetrieval handles retrieval
             graph_builder.add_edge("BuildContext", "SelectPrompt")
             graph_builder.add_edge("SelectPrompt", "ClassConfidence")
 
@@ -2349,7 +2401,8 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "CacheHit", self._route_from_cache_hit_unified, {"ReturnCached": "ReturnCached", "LLMCall": "LLMCall"}
             )
-            graph_builder.add_edge("ReturnCached", "StreamCheck")
+            # DEV-200: ReturnCached goes through PostProactivity for suggested actions
+            graph_builder.add_edge("ReturnCached", "PostProactivity")
 
             graph_builder.add_edge("LLMCall", "LLMSuccess")
             graph_builder.add_conditional_edges(
@@ -2372,9 +2425,11 @@ class LangGraphAgent:
             graph_builder.add_edge("FailoverProvider", "LLMCall")
             graph_builder.add_edge("RetrySame", "LLMCall")
 
-            # Tools path
+            # Tools path - DEV-200: No-tools path goes to PostProactivity
             graph_builder.add_conditional_edges(
-                "ToolCheck", self._route_from_tool_check, {"ToolType": "ToolType", "StreamCheck": "StreamCheck"}
+                "ToolCheck",
+                self._route_from_tool_check,
+                {"ToolType": "ToolType", "PostProactivity": "PostProactivity"},
             )
             graph_builder.add_conditional_edges(
                 "ToolType",
@@ -2385,7 +2440,11 @@ class LangGraphAgent:
             graph_builder.add_edge("CCNLTool", "ToolResults")
             graph_builder.add_edge("DocIngestTool", "ToolResults")
             graph_builder.add_edge("FAQTool", "ToolResults")
-            graph_builder.add_edge("ToolResults", "StreamCheck")
+            # DEV-200: ToolResults goes through PostProactivity for suggested actions
+            graph_builder.add_edge("ToolResults", "PostProactivity")
+
+            # DEV-200: PostProactivity always continues to StreamCheck
+            graph_builder.add_edge("PostProactivity", "StreamCheck")
 
             # ========== Wire Lane 8: Streaming ==========
             graph_builder.add_conditional_edges(
@@ -2420,7 +2479,7 @@ class LangGraphAgent:
                 graph_name=f"{settings.PROJECT_NAME} Agent Unified",
                 environment=settings.ENVIRONMENT.value,
                 has_checkpointer=checkpointer is not None,
-                total_nodes=59,
+                total_nodes=61,  # DEV-200: Added PreProactivity, PostProactivity
             )
 
             return compiled_graph
@@ -3252,6 +3311,23 @@ class LangGraphAgent:
                 # This tells chatbot.py whether to use "golden_set" or "llm" as model_used
                 golden_hit = state.get("golden_hit", False)
                 yield f"__RESPONSE_METADATA__:golden_hit={golden_hit}"
+
+                # DEV-200: Yield proactivity metadata for suggested actions
+                # The proactivity data is set by Step 100 (PostProactivity) node
+                proactivity = state.get("proactivity", {})
+                post_response = proactivity.get("post_response", {})
+                actions = post_response.get("actions", [])
+                if actions:
+                    import json as _json
+
+                    actions_json = _json.dumps(actions)
+                    yield f"__PROACTIVITY_ACTIONS__:{actions_json}"
+                    logger.info(
+                        "proactivity_actions_yielded",
+                        session_id=session_id,
+                        action_count=len(actions),
+                        source=post_response.get("source"),
+                    )
 
                 return  # Exit without making second LLM call
 

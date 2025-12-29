@@ -2913,6 +2913,317 @@ DEV-184 (LLM Config)
 
 ---
 
+## Phase 8: Bugfix - 8h
+
+**Objective:** Fix bugs and incomplete implementations discovered during Phase 7 testing.
+
+<details>
+<summary>
+<h3>DEV-200: Refactor Proactivity into LangGraph Nodes</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 12h | <strong>Status:</strong> IN PROGRESS (80%)<br>
+Refactor proactivity features from chatbot.py into proper LangGraph nodes (Step 14, Step 100) + route-based prompt injection.
+</summary>
+
+### DEV-200: Refactor Proactivity into LangGraph Nodes
+
+**Reference:** PRATIKO_1.5_REFERENCE.md Section 12 (Proactive Suggested Actions)
+
+**Priority:** HIGH | **Effort:** 12h | **Status:** IN PROGRESS (80%)
+
+**Branch:** `DEV-195-Create-Step-39-Query-Expansion-Nodes` (will create dedicated branch)
+
+---
+
+### Phase 1: LangGraph Nodes (COMPLETE ✅)
+
+**Original Problem:**
+DEV-179 (Integrate LLM-First Proactivity in /chat Endpoint) was incomplete. It added `get_simplified_proactivity_engine()` at line 177 of chatbot.py but never wired it to the 5 code paths that still call `get_proactivity_engine()` (lines 807, 1010, 1386, 1805, 2120). The original `ProactivityEngine` depends on archived services (AtomicFactsExtractor, ParameterMatcher) and raises RuntimeError.
+
+**Solution Implemented:**
+Created proper LangGraph nodes following the established pattern:
+- ✅ Step 14 (Pre-Response Proactivity) - handles calculable intent parameter collection BEFORE RAG
+- ✅ Step 100 (Post-Response Proactivity) - adds suggested actions AFTER LLM response
+- ✅ ProactivityGraphService - unified service for graph nodes
+- ✅ Graph wiring with conditional edges
+- ✅ 28 TDD tests passing
+
+**Files Created:**
+- `app/core/langgraph/nodes/step_014__pre_proactivity.py` ✅
+- `app/core/langgraph/nodes/step_100__post_proactivity.py` ✅
+- `app/services/proactivity_graph_service.py` ✅
+- `tests/langgraph/agentic_rag/test_step_014_pre_proactivity.py` ✅
+- `tests/langgraph/agentic_rag/test_step_100_post_proactivity.py` ✅
+
+---
+
+### Phase 2: Route-Based Prompt Integration (PENDING 🔄)
+
+**Gap Found During Manual Testing:**
+- Query: "Parlami della rottamazione quinquies"
+- Expected: Post-response suggested actions
+- Actual: No suggested actions shown
+
+**Root Cause Analysis:**
+1. `SUGGESTED_ACTIONS_PROMPT` exists in `app/core/prompts/suggested_actions.md` but is **never injected** into the system prompt
+2. `SYNTHESIS_SYSTEM_PROMPT` (DEV-192/193) is only imported for TYPE_CHECKING in step_064 - **not actually used at runtime**
+3. The `inject_proactivity_prompt()` function in chatbot.py exists but is never called
+4. Prompt building happens in `app/orchestrators/prompting.py` (steps 41, 43, 44) which does NOT use either prompt
+
+**Solution Required:** Route-Based Prompt Selection
+
+The LLM Router (Step 34a) classifies queries into routes. Use this classification to inject appropriate prompts:
+
+| Route | Classification | Prompt to Use |
+|-------|---------------|---------------|
+| `chitchat` | Casual conversation | Regular prompt (no actions) |
+| `theoretical_definition` | Definitions, concepts | Regular + SUGGESTED_ACTIONS_PROMPT |
+| **`technical_research`** | Complex fiscal/legal | **SYNTHESIS_SYSTEM_PROMPT + VERDETTO** |
+| `calculator` | Calculations | Regular + SUGGESTED_ACTIONS_PROMPT |
+| `golden_set` | Specific law references | Golden Set (skip RAG) |
+
+**Files to Modify (Phase 2):**
+
+| File | Change |
+|------|--------|
+| `app/orchestrators/prompting.py` | Route-based prompt injection in step_41/step_44 |
+| `app/core/langgraph/nodes/step_100__post_proactivity.py` | Add VERDETTO extraction path for `technical_research` |
+
+**Implementation (Phase 2):**
+
+1. **In `prompting.py` step_44__default_sys_prompt():**
+```python
+from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
+from app.core.prompts.synthesis_critical import SYNTHESIS_SYSTEM_PROMPT
+
+SYNTHESIS_ROUTES = {"technical_research"}
+route = (ctx or {}).get("routing_decision", {}).get("route", "")
+
+if route in SYNTHESIS_ROUTES:
+    prompt = SYNTHESIS_SYSTEM_PROMPT  # Use VERDETTO format
+else:
+    prompt = prompt + "\n\n" + SUGGESTED_ACTIONS_PROMPT  # Append actions prompt
+```
+
+2. **In `step_100__post_proactivity.py`:**
+```python
+# Priority 2: VERDETTO extraction for technical_research
+if route in SYNTHESIS_ROUTES:
+    parsed_synthesis = state.get("parsed_synthesis", {})
+    verdetto = parsed_synthesis.get("verdetto", {})
+    azione = verdetto.get("azione_consigliata")
+    if azione:
+        actions = [{"id": "azione_consigliata", "label": "Segui consiglio", "icon": "✅", "prompt": azione}]
+        return _build_proactivity_update(actions=actions, source="verdetto")
+```
+
+---
+
+**Agent Assignment:** @ezio (primary), @clelia (tests), @tiziano (integration review)
+
+**Dependencies:**
+- **Phase 1 Blocking:** None (existing proactivity schemas and constants are usable) - DONE
+- **Phase 2 Blocking:** DEV-194 (LLM Router Node) must be wired to populate `routing_decision` - DONE
+- **Unlocks:** DEV-201 (E2E Proactivity Validation), Frontend proactivity integration
+
+**Change Classification:** RESTRUCTURING + ENHANCEMENT
+
+**Testing Requirements:**
+
+| Test File | Tests | Status |
+|-----------|-------|--------|
+| `test_step_014_pre_proactivity.py` | 14 | ✅ PASSING |
+| `test_step_100_post_proactivity.py` | 14 | ✅ PASSING |
+| `test_prompting_route_based.py` | 6 | 🔄 PENDING |
+| **Total** | **34** | **28/34** |
+
+**Acceptance Criteria:**
+
+Phase 1 (COMPLETE):
+- [x] Step 14 node handles pre-response proactivity
+- [x] Step 100 node handles post-response actions
+- [x] Graph wired with conditional edges
+- [x] 28 TDD tests pass
+- [x] "Calcola IRPEF" shows input fields question (no LLM call)
+
+Phase 2 (PENDING):
+- [ ] Route-based prompt injection in prompting.py
+- [ ] SYNTHESIS_SYSTEM_PROMPT used for `technical_research` queries
+- [ ] SUGGESTED_ACTIONS_PROMPT used for other queries
+- [ ] Step 100 extracts actions from VERDETTO for `technical_research`
+- [ ] "Parlami della rottamazione quinquies" → VERDETTO with AZIONE CONSIGLIATA
+- [ ] "Cos'è il forfettario?" → SUGGESTED_ACTIONS from XML tags
+- [ ] All 34 tests pass
+- [ ] No regressions in existing tests
+
+**Implementation Order (Remaining):**
+1. Add route-based prompt injection in prompting.py (1h)
+2. Update step_100 with VERDETTO extraction (30 min)
+3. Add Phase 2 tests (1h)
+4. Manual testing with all route types (30 min)
+5. Integration testing (30 min)
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-201: Suggested Actions Quality & Compliance</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 6h | <strong>Status:</strong> TODO<br>
+Fix 4 critical issues discovered during E2E testing: action history tracking, contextual relevance, KB access affirmation, forbidden action filtering.
+</summary>
+
+### DEV-201: Suggested Actions Quality & Compliance
+
+**Reference:** E2E Testing Results from DEV-200 Completion
+
+**Priority:** HIGH | **Effort:** 6h | **Status:** TODO
+
+**Branch:** `DEV-201-Suggested-Actions-Quality`
+
+---
+
+### Problem Statement
+
+E2E testing with "Come funziona il regime forfettario?" revealed 4 critical issues:
+
+1. **No Action Selection in History** - When user clicks action, no trace remains in conversation
+2. **Generic/Irrelevant Actions** - Actions too generic ("Calcola", "Verifica") instead of context-specific
+3. **CRITICAL: "Non ho accesso a documenti" Lie** - System falsely claims no KB access (reputational damage)
+4. **CRITICAL: "Contatta un commercialista" Forbidden** - Violates system.md rules (customers ARE commercialisti)
+
+**Root Cause Analysis (by @egidio):**
+- Issue 1: Frontend doesn't track action source in message metadata
+- Issue 2: `suggested_actions.md` lacks domain-specific guidance (NOT an LLM tier issue)
+- Issue 3: `suggested_actions.md` doesn't remind LLM it HAS KB access
+- Issue 4: No validation layer to filter forbidden action patterns
+
+---
+
+### Subtask DEV-201a: Action Source Tracking (Frontend)
+**Effort:** 1h | **Agent:** @livia
+
+**Files to Modify:**
+- `src/app/chat/components/ChatMessagesArea.tsx`
+- `src/app/chat/types/chat.ts`
+- `src/app/chat/components/Message.tsx`
+
+**Changes:**
+1. Add `actionSource` field to Message type
+2. When user clicks action, include metadata in user message
+3. Display "Da azione: {label}" badge on action-triggered messages
+
+**Acceptance Criteria:**
+- [ ] Selected action visible in conversation history
+- [ ] Badge shows action source on relevant messages
+
+---
+
+### Subtask DEV-201b: Domain-Specific Action Prompting (Backend)
+**Effort:** 2h | **Agent:** @ezio
+
+**Files to Modify:**
+- `app/core/prompts/suggested_actions.md`
+
+**Changes:**
+1. Add domain-specific action categories (Regime Forfettario, IRPEF, INPS)
+2. Add context-awareness rules:
+   - "Se l'utente parla di aliquote, suggerisci azioni su aliquote/scaglioni"
+   - "Se l'utente parla di regime forfettario, suggerisci codici ATECO, coefficienti"
+   - "MAI suggerire azioni generiche come 'Calcola' senza specificare COSA"
+
+**Acceptance Criteria:**
+- [ ] Actions are contextually relevant to conversation topic
+- [ ] Domain-specific suggestions (ATECO for forfettario, scaglioni for IRPEF)
+
+---
+
+### Subtask DEV-201c: KB Access Affirmation (Backend)
+**Effort:** 1h | **Agent:** @ezio
+
+**Files to Modify:**
+- `app/core/prompts/suggested_actions.md`
+
+**Changes:**
+Add explicit KB access reminder:
+```markdown
+## IMPORTANTE - ACCESSO KNOWLEDGE BASE
+Tu HAI SEMPRE accesso alla Knowledge Base di PratikoAI che contiene:
+- Circolari e risoluzioni dell'Agenzia delle Entrate
+- Normativa fiscale italiana aggiornata
+- Documentazione INPS, INAIL, Camera di Commercio
+
+NON dire MAI:
+- "Non ho accesso a documenti"
+- "Non posso consultare circolari"
+- "Dovresti verificare sul sito dell'Agenzia delle Entrate"
+```
+
+**Acceptance Criteria:**
+- [ ] LLM never says "non ho accesso a documenti"
+- [ ] Responses cite KB sources when available
+
+---
+
+### Subtask DEV-201d: Forbidden Action Validation (Backend)
+**Effort:** 2h | **Agent:** @ezio
+
+**Files to Modify:**
+- `app/services/proactivity_graph_service.py`
+- `app/core/langgraph/nodes/step_100__post_proactivity.py`
+
+**Changes:**
+1. Add `FORBIDDEN_ACTION_PATTERNS` list with regex patterns:
+   - `r"contatt[ai] (?:un )?commercialista"`
+   - `r"contatt[ai] (?:un )?consulente del lavoro"`
+   - `r"contatt[ai] (?:un )?avvocato"`
+   - `r"visita il sito dell'Agenzia delle Entrate"`
+   - `r"consulta (?:un )?esperto"`
+
+2. Add `validate_action()` function to filter forbidden patterns
+3. Apply validation before returning actions in Step 100
+
+**Acceptance Criteria:**
+- [ ] "Contatta un commercialista" actions are filtered out
+- [ ] "Visita il sito dell'Agenzia" actions are filtered out
+- [ ] Filtered actions logged for monitoring
+- [ ] Unit tests for forbidden patterns
+
+---
+
+### Testing Requirements
+
+| Test File | Description |
+|-----------|-------------|
+| `test_action_source_tracking.tsx` | Frontend: Action source badge displayed |
+| `test_contextual_actions.py` | Backend: Actions relevant to conversation |
+| `test_kb_access_affirmation.py` | Backend: No "non ho accesso" responses |
+| `test_forbidden_action_filter.py` | Backend: Forbidden patterns filtered |
+
+---
+
+### Summary
+
+| Subtask | Effort | Agent | Priority |
+|---------|--------|-------|----------|
+| DEV-201a | 1h | @livia | HIGH |
+| DEV-201b | 2h | @ezio | HIGH |
+| DEV-201c | 1h | @ezio | CRITICAL |
+| DEV-201d | 2h | @ezio | CRITICAL |
+| **Total** | **6h** | | |
+
+**Agent Assignment:** @ezio (primary backend), @livia (frontend), @clelia (tests)
+
+**Dependencies:**
+- Depends on: DEV-200 (completed)
+- Unlocks: Production-ready suggested actions feature
+
+**Change Classification:** ENHANCEMENT + COMPLIANCE
+
+</details>
+
+---
+
 ## Summary
 
 | Phase | Tasks | Effort | Agent |
@@ -2924,6 +3235,7 @@ DEV-184 (LLM Config)
 | Phase 5: Documentation | DEV-173 | 1h | @egidio, @ezio |
 | Phase 6: LLM-First Revision | DEV-174 to DEV-183 | 17h | @ezio, @clelia |
 | Phase 7: Agentic RAG Pipeline | DEV-184 to DEV-199 | 39h | @ezio, @clelia, @primo |
-| **Total** | **50 tasks** | **~89h** | |
+| Phase 8: Bugfix | DEV-200, DEV-201 | 14h | @ezio, @livia, @clelia |
+| **Total** | **52+ tasks** | **~103h+** | |
 
 **Estimated Timeline:** 5-6 weeks at 3h/day *(with Claude Code)*

@@ -119,10 +119,12 @@ async def node_step_34a(state: RAGState) -> RAGState:
     with rag_step_timer(STEP_NUM, STEP_ID, NODE_LABEL):
         try:
             # Lazy import to avoid database connection during module load
+            from app.core.llm.model_config import get_model_config
             from app.services.llm_router_service import LLMRouterService
 
-            # Initialize router service and get routing decision
-            router_service = LLMRouterService()
+            # Initialize router service with config and get routing decision
+            config = get_model_config()
+            router_service = LLMRouterService(config=config)
             decision = await router_service.route(
                 query=user_query,
                 history=messages,

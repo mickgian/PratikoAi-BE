@@ -11,6 +11,9 @@ from .step_008__init_agent import node_step_8
 from .step_009__pii_check import node_step_9
 from .step_010__log_pii import node_step_10
 
+# DEV-200: Proactivity nodes imports
+from .step_014__pre_proactivity import node_step_14, route_pre_proactivity
+
 # Phase 8 Golden/KB Gates imports
 from .step_020__golden_fast_gate import node_step_20
 from .step_024__golden_lookup import node_step_24
@@ -75,6 +78,7 @@ from .step_081__ccnl_tool import node_step_81
 from .step_082__doc_ingest_tool import node_step_82
 from .step_083__faq_tool import node_step_83
 from .step_099__tool_results import node_step_99
+from .step_100__post_proactivity import node_step_100
 
 # Phase 7 Streaming/Response Lane imports
 from .step_104__stream_check import node_step_104
@@ -98,6 +102,9 @@ __all__ = [
     "node_step_8",
     "node_step_9",
     "node_step_10",
+    "node_step_14",
+    "route_pre_proactivity",
+    "node_step_100",
     "node_step_20",
     "node_step_24",
     "node_step_25",

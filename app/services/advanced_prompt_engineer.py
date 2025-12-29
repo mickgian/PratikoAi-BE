@@ -515,8 +515,9 @@ class AdvancedPromptEngineer:
         if context_data.get("include_practical_examples", True):
             enhanced_prompt += "\n\n**Esempi Pratici:** Quando possibile, fornire esempi concreti di applicazione."
 
-        # Add disclaimer for professional advice
-        enhanced_prompt += "\n\n---\n*Questa risposta ha carattere informativo. Per situazioni specifiche consultare un commercialista qualificato.*"
+        # DEV-200: Removed disclaimer that overrides system.md
+        # system.md explicitly says "NEVER suggest external professionals"
+        # The old disclaimer "consultare un commercialista qualificato" violated this
 
         return enhanced_prompt
 

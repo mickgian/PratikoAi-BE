@@ -5394,19 +5394,3 @@ Create A/B testing framework in PromptLoader with experiment configuration.
 | @silvano | - | 1 task (deployment) |
 
 **Estimated Timeline:** 8-10 weeks at 2-3h/day *(with Claude Code)*
-
-**Feature Flags for Gradual Rollout:**
-```python
-PHASE9_UNIFIED_OUTPUT_ENABLED = False  # DEV-214
-PHASE9_GOLDEN_LOOP_ENABLED = False     # DEV-218
-PHASE9_MULTI_MODEL_ROUTING_ENABLED = False  # DEV-222
-PHASE9_TREE_OF_THOUGHTS_ENABLED = False  # DEV-223
-PHASE9_DUAL_REASONING_ENABLED = False   # DEV-229
-```
-
-**Rollback Plan:**
-- Phase 9.1 Rollback: Revert GraphState changes, disable unified output flag
-- Phase 9.2 Rollback: Disable Golden Loop flag, use template actions
-- Phase 9.3 Rollback: Force all queries to SIMPLE complexity
-- Phase 9.4 Rollback: Disable source hierarchy (flat weighting)
-- Phase 9.5 Rollback: Disable conversation-aware HyDE

@@ -4045,12 +4045,28 @@ def _detect_source_conflicts(sources: list[dict]) -> list[dict]:
 ```
 
 **Legacy Parser Deprecation (Part of this task):**
-After unified parsing is implemented and tested:
-1. Remove `_parse_verdetto()` function and all VERDETTO XML tag parsing
-2. Remove `_extract_actions_from_xml()` function
-3. Delete `app/services/verdetto_parser.py` if no longer used
-4. Remove XML action extraction from `app/services/synthesis_prompt_builder.py`
-5. Update imports and remove dead code references
+After unified parsing is implemented and tested, follow the **DEV-178 archiving pattern** to preserve git history:
+
+1. Create `archived/phase9_legacy_parsers/` directory
+2. Archive (move, don't delete) the following files:
+   - `archived/phase9_legacy_parsers/verdetto_parser.py` ← from `app/services/verdetto_parser.py`
+   - `archived/phase9_legacy_parsers/synthesis_prompt_builder.py` ← from `app/services/synthesis_prompt_builder.py`
+   - `archived/phase9_legacy_parsers/tests/` ← related test files
+3. Remove `_parse_verdetto()` function and all VERDETTO XML tag parsing from Step 64
+4. Remove `_extract_actions_from_xml()` function
+5. Update imports to use archived path with try/except fallback (if needed for backwards compatibility)
+6. Update or archive related tests
+
+**Archiving Pattern Reference (from DEV-178):**
+```python
+# Pattern for import fallback if needed temporarily
+try:
+    from app.services.verdetto_parser import parse_verdetto
+except ImportError:
+    from archived.phase9_legacy_parsers.verdetto_parser import parse_verdetto
+    import warnings
+    warnings.warn("Using archived verdetto_parser - remove this import", DeprecationWarning)
+```
 
 **Error Handling:**
 - JSON parse failure: Log with content sample, fallback to text extraction
@@ -5457,15 +5473,15 @@ Add paragraph extraction to retrieval pipeline that identifies relevant paragrap
 
 **Reference:** Technical Intent Part 6 Phase 4 (Quality & Monitoring)
 
-**Priority:** LOW | **Effort:** 2h | **Status:** NOT STARTED
+**Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
-Need visibility into reasoning traces for debugging and quality analysis.
+Need visibility into reasoning traces for debugging and quality analysis. Logs must comply with the Logging Standards section (lines 81-101) which mandates specific context fields.
 
 **Solution:**
-Add structured logging for reasoning traces with request correlation.
+Add structured logging for reasoning traces using structlog with all mandatory context fields from Logging Standards.
 
-**Agent Assignment:** @ezio (primary)
+**Agent Assignment:** @ezio (primary), @clelia (tests)
 
 **Dependencies:**
 - **Blocking:** DEV-214 (Step 64 unified output), DEV-229 (DualReasoning)
@@ -5473,11 +5489,85 @@ Add structured logging for reasoning traces with request correlation.
 
 **Change Classification:** ADDITIVE
 
+**Required Context Fields (from Logging Standards):**
+All reasoning trace logs MUST include these mandatory fields:
+```python
+logger.info(
+    "reasoning_trace_recorded",
+    user_id=state.get("user_id"),           # MANDATORY: Current user identifier
+    session_id=state.get("session_id"),     # MANDATORY: Proactivity session context
+    operation="reasoning_trace",             # MANDATORY: What was being attempted
+    resource_id=state.get("request_id"),    # MANDATORY: Request being processed
+    reasoning_type=state.get("reasoning_type"),  # "cot" or "tot"
+    reasoning_trace=state.get("reasoning_trace"),
+    model_used=state.get("model_used"),
+    query_complexity=state.get("query_complexity"),
+    latency_ms=elapsed_ms,
+)
+```
+
+**Log Events to Implement:**
+| Event Name | When Logged | Key Fields |
+|------------|-------------|------------|
+| `reasoning_trace_recorded` | After Step 64 completes | reasoning_type, reasoning_trace, model_used |
+| `reasoning_trace_failed` | JSON parse failure | error_type, error_message, content_sample |
+| `dual_reasoning_generated` | DualReasoning completes | internal_trace, public_reasoning |
+| `tot_hypothesis_evaluated` | Each ToT branch evaluated | hypothesis_id, probability, selected |
+
+**Logging Implementation:**
+```python
+import structlog
+from app.core.logging import get_contextualized_logger
+
+logger = structlog.get_logger(__name__)
+
+def log_reasoning_trace(state: RAGState, elapsed_ms: float) -> None:
+    """Log reasoning trace with all mandatory context fields."""
+    logger.info(
+        "reasoning_trace_recorded",
+        # Mandatory fields from Logging Standards
+        user_id=state.get("user_id"),
+        session_id=state.get("session_id"),
+        operation="reasoning_trace",
+        resource_id=state.get("request_id"),
+        # Reasoning-specific fields
+        reasoning_type=state.get("reasoning_type"),
+        reasoning_trace=_truncate_for_log(state.get("reasoning_trace")),
+        model_used=state.get("model_used"),
+        query_complexity=state.get("query_complexity"),
+        latency_ms=elapsed_ms,
+    )
+
+def _truncate_for_log(trace: dict | None, max_length: int = 1000) -> str:
+    """Truncate reasoning trace for log storage."""
+    if not trace:
+        return ""
+    trace_str = str(trace)
+    if len(trace_str) > max_length:
+        return trace_str[:max_length] + "...[truncated]"
+    return trace_str
+```
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/core/test_reasoning_trace_logging.py` FIRST
+- **Unit Tests:**
+  - `test_log_includes_user_id` - user_id field present
+  - `test_log_includes_session_id` - session_id field present
+  - `test_log_includes_request_id` - resource_id field present
+  - `test_log_includes_reasoning_type` - reasoning_type field present
+  - `test_log_truncates_long_traces` - Traces >1000 chars truncated
+  - `test_log_handles_missing_trace` - Empty trace handled gracefully
+- **Coverage Target:** 90%+
+
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
-- [ ] Reasoning traces logged
-- [ ] Request ID correlation
-- [ ] Searchable in log aggregator
+- [ ] All reasoning trace logs include `user_id` (MANDATORY per Logging Standards)
+- [ ] All reasoning trace logs include `session_id` (MANDATORY per Logging Standards)
+- [ ] All reasoning trace logs include `operation` and `resource_id`
+- [ ] Request ID correlation works for log aggregator queries
+- [ ] Reasoning traces searchable by user_id/session_id in log aggregator
+- [ ] Long traces truncated to prevent log bloat
+- [ ] 90%+ test coverage
 
 ---
 

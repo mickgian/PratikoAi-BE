@@ -3711,6 +3711,41 @@ Rispondi SEMPRE con questo schema JSON:
 - **Integration Tests:** Test with actual LLM call, validate JSON output parseable
 - **Coverage Target:** 90%+
 
+**Routing Logic (Step 64 Integration):**
+Step 64 must select the appropriate prompt based on query complexity:
+
+```python
+# Routing decision in Step 64
+def _select_prompt_template(state: RAGState) -> str:
+    """Select prompt template based on query complexity.
+
+    Returns:
+        Prompt template path for PromptLoader
+    """
+    complexity = state.get("query_complexity", "SIMPLE")
+
+    if complexity in ("SIMPLE", "MODERATE"):
+        # Use unified response for simple/moderate queries
+        return "v1/unified_response_simple.md"
+    elif complexity == "COMPLEX":
+        # Use synthesis_critical for multi-domain complex queries
+        return "v1/synthesis_critical.md"
+    elif complexity == "CRITICAL":
+        # Use synthesis_critical with additional legal rigor
+        return "v1/synthesis_critical.md"
+    else:
+        # Default to simple
+        return "v1/unified_response_simple.md"
+```
+
+**Route Conditions:**
+| Complexity | Prompt Template | Model | Use Case |
+|------------|-----------------|-------|----------|
+| SIMPLE | unified_response_simple.md | GPT-4o-mini | Single-domain, direct questions |
+| MODERATE | unified_response_simple.md | GPT-4o-mini | Single-domain with some nuance |
+| COMPLEX | synthesis_critical.md | GPT-4o | Multi-domain, conflicting sources |
+| CRITICAL | synthesis_critical.md | GPT-4o | Legal risk, regulatory compliance |
+
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
 - [ ] Prompt loads without errors via PromptLoader
@@ -3719,6 +3754,7 @@ Rispondi SEMPRE con questo schema JSON:
 - [ ] Produces parseable JSON from LLM (integration test)
 - [ ] Follows Italian professional language guidelines
 - [ ] Action rules clearly specified
+- [ ] Routing logic documented and integrated with DEV-214
 
 ---
 
@@ -3894,12 +3930,6 @@ Update Step 64 to use unified_response_simple.md prompt for simple queries, pars
 - [ ] Verdetto parsing logic understood
 - [ ] Deanonymization flow documented
 
-**Feature Flag:**
-```python
-# app/core/config.py
-PHASE9_UNIFIED_OUTPUT_ENABLED: bool = os.getenv("PHASE9_UNIFIED_OUTPUT_ENABLED", "false").lower() == "true"
-```
-
 **File:** `app/core/langgraph/nodes/step_064__llm_call.py`
 
 **New Functions to Add:**
@@ -3941,32 +3971,86 @@ def _fallback_to_text(content: str, state: RAGState) -> dict:
 ```python
 # After successful LLM call, before storing response:
 
-if PHASE9_UNIFIED_OUTPUT_ENABLED:
-    # Try unified JSON parsing
-    parsed = _parse_unified_response(content)
+# Try unified JSON parsing (replaces legacy Verdetto/XML parsing)
+parsed = _parse_unified_response(content)
 
-    if parsed:
-        # Store reasoning trace
-        state["reasoning_type"] = "cot"
-        state["reasoning_trace"] = parsed.get("reasoning")
+if parsed:
+    # Store reasoning trace
+    state["reasoning_type"] = "cot"
+    state["reasoning_trace"] = parsed.get("reasoning")
 
-        # Store suggested actions for Step 100 validation
-        state["suggested_actions"] = parsed.get("suggested_actions", [])
-        state["actions_source"] = "unified_llm"
+    # Store suggested actions for Step 100 validation
+    state["suggested_actions"] = parsed.get("suggested_actions", [])
+    state["actions_source"] = "unified_llm"
 
-        # Store sources
-        state["sources_cited"] = parsed.get("sources_cited", [])
+    # Store and validate sources with hierarchy
+    sources = parsed.get("sources_cited", [])
+    state["sources_cited"] = _apply_source_hierarchy(sources)
 
-        # Use answer for display
-        content = parsed.get("answer", content)
-    else:
-        # Fallback: mark for action regeneration
-        state["actions_source"] = "fallback_needed"
-        logger.warning("step64_json_parse_failed", request_id=state.get("request_id"))
+    # Use answer for display
+    content = parsed.get("answer", content)
 else:
-    # Legacy flow: Verdetto parsing for TECHNICAL_RESEARCH
-    # (keep existing _parse_verdetto logic)
+    # Fallback: mark for action regeneration
+    state["actions_source"] = "fallback_needed"
+    logger.warning("step64_json_parse_failed", request_id=state.get("request_id"))
 ```
+
+**Source Hierarchy Validation:**
+```python
+# Italian legal source hierarchy (highest to lowest authority)
+SOURCE_HIERARCHY = {
+    "legge": 1,           # Legge (Law)
+    "decreto": 2,         # Decreto Legislativo / DPR
+    "circolare": 3,       # Circolare AdE
+    "interpello": 4,      # Interpello / Risposta
+    "prassi": 5,          # Other prassi
+    "unknown": 99
+}
+
+def _apply_source_hierarchy(sources: list[dict]) -> list[dict]:
+    """Sort sources by legal hierarchy and flag conflicts.
+
+    Args:
+        sources: List of source dicts from LLM response
+
+    Returns:
+        Sorted sources with hierarchy_rank added, highest authority first
+    """
+    for source in sources:
+        ref = source.get("ref", "").lower()
+        # Determine hierarchy rank
+        if "legge" in ref or "l." in ref:
+            source["hierarchy_rank"] = SOURCE_HIERARCHY["legge"]
+        elif "decreto" in ref or "d.lgs" in ref or "dpr" in ref:
+            source["hierarchy_rank"] = SOURCE_HIERARCHY["decreto"]
+        elif "circolare" in ref:
+            source["hierarchy_rank"] = SOURCE_HIERARCHY["circolare"]
+        elif "interpello" in ref or "risposta" in ref:
+            source["hierarchy_rank"] = SOURCE_HIERARCHY["interpello"]
+        else:
+            source["hierarchy_rank"] = SOURCE_HIERARCHY["unknown"]
+
+    # Sort by hierarchy rank (lowest number = highest authority)
+    return sorted(sources, key=lambda s: s.get("hierarchy_rank", 99))
+
+def _detect_source_conflicts(sources: list[dict]) -> list[dict]:
+    """Detect conflicting sources on the same topic with different conclusions.
+
+    Returns list of conflict dicts with source_a, source_b, reason.
+    """
+    # Group by topic, compare conclusions
+    # Flag temporal conflicts (newer supersedes older)
+    # Flag hierarchy conflicts (higher authority supersedes lower)
+    pass  # Implementation in DEV-228
+```
+
+**Legacy Parser Deprecation (Part of this task):**
+After unified parsing is implemented and tested:
+1. Remove `_parse_verdetto()` function and all VERDETTO XML tag parsing
+2. Remove `_extract_actions_from_xml()` function
+3. Delete `app/services/verdetto_parser.py` if no longer used
+4. Remove XML action extraction from `app/services/synthesis_prompt_builder.py`
+5. Update imports and remove dead code references
 
 **Error Handling:**
 - JSON parse failure: Log with content sample, fallback to text extraction
@@ -4002,7 +4086,10 @@ else:
   - `test_step64_partial_json` - Truncated JSON handled
   - `test_step64_empty_response` - Empty response handled
   - `test_step64_missing_fields_defaults` - Missing fields get defaults
-  - `test_step64_feature_flag_disabled` - Legacy flow when flag off
+- **Source Hierarchy Tests:**
+  - `test_step64_source_hierarchy_ordering` - Sources sorted by authority
+  - `test_step64_legge_ranked_highest` - Legge sources ranked first
+  - `test_step64_hierarchy_rank_added` - hierarchy_rank field added to sources
 - **Regression Tests:** `pytest tests/core/langgraph_tests/nodes/test_step_064* -v`
 - **Integration Tests:** Full pipeline test with unified prompt
 - **Coverage Target:** 90%+
@@ -4011,15 +4098,17 @@ else:
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | LLM doesn't produce JSON | CRITICAL | Robust fallback parsing, mark for regeneration |
-| Breaking Verdetto flow | HIGH | Feature flag, route-based selection preserved |
+| Legacy parser removal breaks tests | HIGH | Update tests before removing legacy code |
 | Latency increase | MEDIUM | Async JSON parsing target <10ms |
 | Breaking deanonymization | HIGH | Test deanonymization flow with new parsing |
+| Source hierarchy incorrect | MEDIUM | Comprehensive tests for Italian legal hierarchy |
 
 **Code Completeness:**
 - [ ] No TODO comments for required functionality
 - [ ] All JSON fields handled (not just happy path)
 - [ ] Fallback logic complete and tested
-- [ ] Feature flag implemented and documented
+- [ ] Source hierarchy validation implemented
+- [ ] Legacy Verdetto/XML parsing removed
 - [ ] Deanonymization still works after changes
 
 **Acceptance Criteria:**
@@ -4028,8 +4117,9 @@ else:
 - [ ] Fallback to text works when JSON invalid
 - [ ] reasoning_trace stored in state
 - [ ] suggested_actions stored in state with source
-- [ ] All existing tests pass (regression)
-- [ ] Verdetto parsing still works for TECHNICAL_RESEARCH when flag off
+- [ ] sources_cited sorted by legal hierarchy (Legge > Decreto > Circolare > Interpello)
+- [ ] Legacy Verdetto/XML parsing code removed
+- [ ] All existing tests pass (regression) or updated
 - [ ] Deanonymization flow unbroken
 - [ ] 90%+ test coverage
 
@@ -5118,15 +5208,15 @@ Add risk analysis phase to ToT that evaluates sanction risk for each hypothesis.
 
 **Reference:** Technical Intent Part 3.2.5 (Conversational HyDE)
 
-**Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
-Current HyDE ignores conversation history, generating irrelevant hypothetical documents for follow-up questions.
+Current HyDE ignores conversation history, generating irrelevant hypothetical documents for follow-up questions like "E per l'IVA?" because it lacks context about what was discussed previously.
 
 **Solution:**
-Create hyde_conversational.md that considers conversation context for continuity.
+Create hyde_conversational.md prompt template that includes conversation context and update HyDEGeneratorService to pass conversation history to the prompt.
 
-**Agent Assignment:** @ezio (primary)
+**Agent Assignment:** @ezio (primary), @clelia (tests)
 
 **Dependencies:**
 - **Blocking:** DEV-211 (PromptLoader)
@@ -5134,11 +5224,114 @@ Create hyde_conversational.md that considers conversation context for continuity
 
 **Change Classification:** ADDITIVE
 
+**File:** `app/prompts/v1/hyde_conversational.md`
+
+**Template Structure:**
+```markdown
+# HyDE Conversazionale - Generazione Documento Ipotetico
+
+## Contesto Conversazione
+{conversation_history}
+
+## Query Corrente
+{current_query}
+
+## Istruzioni
+Genera un documento ipotetico che risponda alla query considerando il contesto della conversazione.
+Se la query contiene pronomi o riferimenti impliciti (es: "questo", "quello", "E per..."),
+risolvi il riferimento usando il contesto conversazionale.
+
+## Formato Output
+[Documento ipotetico che risponde alla query nel contesto della conversazione]
+```
+
+**HyDEGeneratorService Integration:**
+```python
+# app/services/hyde_generator.py - Required changes
+
+class HyDEGeneratorService:
+    async def generate_hyde(
+        self,
+        query: str,
+        conversation_history: list[dict] | None = None,  # NEW PARAMETER
+        domain: str | None = None
+    ) -> str:
+        """Generate hypothetical document for query.
+
+        Args:
+            query: Current user query
+            conversation_history: Last N conversation turns for context
+                Format: [{"role": "user"|"assistant", "content": str}, ...]
+            domain: Optional domain hint
+
+        Returns:
+            Hypothetical document text
+        """
+        # Format conversation history for prompt
+        history_text = self._format_conversation_history(conversation_history)
+
+        # Use conversational prompt if history provided
+        if conversation_history:
+            prompt = self.prompt_loader.load(
+                "v1/hyde_conversational.md",
+                conversation_history=history_text,
+                current_query=query
+            )
+        else:
+            prompt = self.prompt_loader.load(
+                "v1/hyde_basic.md",
+                query=query
+            )
+
+        return await self._call_llm(prompt)
+
+    def _format_conversation_history(
+        self,
+        history: list[dict] | None,
+        max_turns: int = 3
+    ) -> str:
+        """Format last N conversation turns for prompt injection.
+
+        Args:
+            history: Full conversation history
+            max_turns: Maximum turns to include (default 3)
+
+        Returns:
+            Formatted string of recent conversation
+        """
+        if not history:
+            return "Nessun contesto conversazionale disponibile."
+
+        recent = history[-max_turns * 2:]  # Last N turns (user + assistant)
+        formatted = []
+        for turn in recent:
+            role = "Utente" if turn["role"] == "user" else "Assistente"
+            formatted.append(f"{role}: {turn['content']}")
+
+        return "\n".join(formatted)
+```
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/services/test_hyde_generator_conversational.py` FIRST
+- **Unit Tests:**
+  - `test_hyde_includes_conversation_history` - History passed to prompt
+  - `test_hyde_formats_last_3_turns` - Only last 3 turns used
+  - `test_hyde_resolves_pronouns` - "questo" resolved from context
+  - `test_hyde_handles_followup_queries` - "E per..." queries contextualized
+  - `test_hyde_fallback_no_history` - Works without history (basic prompt)
+- **Integration Tests:**
+  - `test_hyde_pipeline_with_history` - Full retrieval with conversational HyDE
+- **Coverage Target:** 90%+
+
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
-- [ ] Uses last 3 conversation turns
-- [ ] Generates contextually relevant HyDE
-- [ ] Handles follow-up pronouns
+- [ ] Prompt template created with conversation_history variable
+- [ ] HyDEGeneratorService accepts conversation_history parameter
+- [ ] Last 3 conversation turns formatted and passed to prompt
+- [ ] Follow-up pronouns ("questo", "quello", "E per...") resolved
+- [ ] Generates contextually relevant HyDE for follow-up queries
+- [ ] Falls back to basic HyDE when no history provided
+- [ ] 90%+ test coverage
 
 ---
 

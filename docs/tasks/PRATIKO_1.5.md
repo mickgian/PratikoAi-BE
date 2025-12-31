@@ -6,6 +6,7 @@
 **Total Effort:** ~33h (2-3 weeks at 2-3h/day) *(with Claude Code)*
 
 **Recent Completed Work:**
+- DEV-200: Refactor Proactivity into LangGraph Nodes (2024-12-29)
 - DEV-152: Create Action Templates YAML Files (2024-12-19)
 - DEV-151: Create YAML Template Loader Service (2024-12-19)
 - DEV-153: Create Interactive Question Templates YAML (2024-12-19)
@@ -2920,7 +2921,7 @@ DEV-184 (LLM Config)
 <details>
 <summary>
 <h3>DEV-200: Refactor Proactivity into LangGraph Nodes</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 12h | <strong>Status:</strong> IN PROGRESS (80%)<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 12h | <strong>Status:</strong> DONE<br>
 Refactor proactivity features from chatbot.py into proper LangGraph nodes (Step 14, Step 100) + route-based prompt injection.
 </summary>
 
@@ -2928,9 +2929,9 @@ Refactor proactivity features from chatbot.py into proper LangGraph nodes (Step 
 
 **Reference:** PRATIKO_1.5_REFERENCE.md Section 12 (Proactive Suggested Actions)
 
-**Priority:** HIGH | **Effort:** 12h | **Status:** IN PROGRESS (80%)
+**Priority:** HIGH | **Effort:** 12h | **Status:** DONE
 
-**Branch:** `DEV-195-Create-Step-39-Query-Expansion-Nodes` (will create dedicated branch)
+**Branch:** `DEV-200-Refactor-Proactivity-into-LangGraph-Nodes`
 
 ---
 
@@ -3069,15 +3070,15 @@ Phase 2 (PENDING):
 <details>
 <summary>
 <h3>DEV-201: Suggested Actions Quality & Compliance</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 6h | <strong>Status:</strong> TODO<br>
-Fix 4 critical issues discovered during E2E testing: action history tracking, contextual relevance, KB access affirmation, forbidden action filtering.
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 8.5h | <strong>Status:</strong> TODO<br>
+Fix 4 critical issues: action history tracking, domain-aware meta-prompting for contextual actions, KB access affirmation in system.md, forbidden action filtering.
 </summary>
 
 ### DEV-201: Suggested Actions Quality & Compliance
 
 **Reference:** E2E Testing Results from DEV-200 Completion
 
-**Priority:** HIGH | **Effort:** 6h | **Status:** TODO
+**Priority:** HIGH | **Effort:** 8.5h | **Status:** TODO
 
 **Branch:** `DEV-201-Suggested-Actions-Quality`
 
@@ -3092,16 +3093,44 @@ E2E testing with "Come funziona il regime forfettario?" revealed 4 critical issu
 3. **CRITICAL: "Non ho accesso a documenti" Lie** - System falsely claims no KB access (reputational damage)
 4. **CRITICAL: "Contatta un commercialista" Forbidden** - Violates system.md rules (customers ARE commercialisti)
 
+**Solution:**
+Multi-layered fix: (a) Frontend tracks action source in message metadata, (b) Redesign action prompt with **meta-prompting strategy** that teaches HOW to generate contextual actions (not hardcoded WHAT), (c) Add KB access affirmation to base `system.md` prompt (applies to ALL LLM calls), (d) Add regex-based validation layer to filter forbidden action patterns.
+
 **Root Cause Analysis (by @egidio):**
 - Issue 1: Frontend doesn't track action source in message metadata
-- Issue 2: `suggested_actions.md` lacks domain-specific guidance (NOT an LLM tier issue)
-- Issue 3: `suggested_actions.md` doesn't remind LLM it HAS KB access
+- Issue 2: Hardcoded domain examples are brittle and don't scale - need meta-prompting strategy with domain classification (TAX/LEGAL/LABOR)
+- Issue 3: KB affirmation must go in `system.md` (ALL prompts), not just `suggested_actions.md`
 - Issue 4: No validation layer to filter forbidden action patterns
+
+---
+
+### Impact Analysis
+
+**Primary Files:**
+- `app/core/prompts/system.md` - KB access affirmation (201c)
+- `app/core/prompts/suggested_actions.md` - Meta-prompting strategy (201b)
+- `app/orchestrators/prompting.py` - Pass domain classification to prompt (201b)
+- `app/services/proactivity_graph_service.py` - Forbidden action filter (201d)
+- `app/core/langgraph/nodes/step_100__post_proactivity.py` - Filter integration (201d)
+
+**Existing Service (READ ONLY - just call it):**
+- `app/services/domain_action_classifier.py` - Domain classification with confidence scores
+
+**Frontend Files:**
+- `src/app/chat/components/ChatMessagesArea.tsx` - Action source metadata
+- `src/app/chat/types/chat.ts` - Message type extension
+- `src/app/chat/components/Message.tsx` - Action source badge
+
+**Baseline Command:** `pytest tests/services/test_proactivity_graph_service.py tests/langgraph/agentic_rag/ -v`
 
 ---
 
 ### Subtask DEV-201a: Action Source Tracking (Frontend)
 **Effort:** 1h | **Agent:** @livia
+
+**Problem:** When user clicks a suggested action, no trace remains in conversation history.
+
+**Solution:** Add `actionSource` field to Message type and display badge on action-triggered messages.
 
 **Files to Modify:**
 - `src/app/chat/components/ChatMessagesArea.tsx`
@@ -3109,85 +3138,274 @@ E2E testing with "Come funziona il regime forfettario?" revealed 4 critical issu
 - `src/app/chat/components/Message.tsx`
 
 **Changes:**
-1. Add `actionSource` field to Message type
-2. When user clicks action, include metadata in user message
-3. Display "Da azione: {label}" badge on action-triggered messages
+```typescript
+// Message type extension
+actionSource?: { id: string; label: string };
+
+// Display badge: "Da azione: {label}"
+```
+
+**Edge Cases:**
+- Missing actionSource: Display message normally without badge
+- Empty label: No badge shown
+
+**Tests (TDD):**
+- `test_message_with_action_source_shows_badge`
+- `test_message_without_action_source_no_badge`
 
 **Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
 - [ ] Selected action visible in conversation history
-- [ ] Badge shows action source on relevant messages
+- [ ] Badge shows "Da azione: {label}" on relevant messages
 
 ---
 
-### Subtask DEV-201b: Domain-Specific Action Prompting (Backend)
-**Effort:** 2h | **Agent:** @ezio
+### Subtask DEV-201b: Meta-Prompting for Action Generation (Backend)
+**Effort:** 3.5h | **Agent:** @ezio
+
+**Problem:** Hardcoded domain examples are brittle, don't scale, and produce generic fallbacks when topic not matched.
+
+**Solution:** Replace with **meta-prompting strategy** that:
+1. Teaches HOW to reason about actions (not hardcoded WHAT)
+2. Uses **domain classification** from `DomainActionClassifier` to understand professional context
+3. Tailors actions based on detected domain (TAX/LEGAL/LABOR) with confidence scores
 
 **Files to Modify:**
-- `app/core/prompts/suggested_actions.md`
+- `app/core/prompts/suggested_actions.md` - Meta-prompting strategy
+- `app/orchestrators/prompting.py` - Pass domain classification to prompt
 
-**Changes:**
-1. Add domain-specific action categories (Regime Forfettario, IRPEF, INPS)
-2. Add context-awareness rules:
-   - "Se l'utente parla di aliquote, suggerisci azioni su aliquote/scaglioni"
-   - "Se l'utente parla di regime forfettario, suggerisci codici ATECO, coefficienti"
-   - "MAI suggerire azioni generiche come 'Calcola' senza specificare COSA"
+**Existing Domain Classifier (READ ONLY - just call it):**
+- `app/services/domain_action_classifier.py` - Classifies queries into domains with confidence scores
+
+**DELETE (Hardcoded - DO NOT USE):**
+```markdown
+"Se l'utente parla di aliquote, suggerisci azioni su aliquote/scaglioni"
+"Se l'utente parla di regime forfettario, suggerisci codici ATECO"
+```
+
+**ADD (Meta-Prompting Strategy with Domain Context):**
+```markdown
+## Contesto Professionale
+
+La query è stata classificata nel dominio: {domain} (confidence: {confidence})
+
+Domini professionali PratikoAI:
+- TAX → Commercialisti/Consulenti Fiscali
+- LEGAL → Avvocati
+- LABOR → Consulenti del Lavoro
+
+**IMPORTANTE - Studi Associati:** Molti utenti operano in studi associati dove commercialisti,
+consulenti del lavoro e avvocati lavorano insieme sotto lo stesso nome. La classificazione
+del dominio è un SUGGERIMENTO, non un vincolo rigido. Se la query tocca più ambiti
+(es. aspetti fiscali E giuslavoristici), proponi azioni che coprano entrambi.
+
+Usa il dominio come guida principale, ma:
+- Se confidence < 0.6: considera azioni cross-domain
+- Se la query menziona esplicitamente più ambiti: includi azioni per ciascuno
+- Non limitare mai artificialmente le azioni al solo dominio classificato
+
+## Strategia di Generazione Azioni
+
+### STEP 1: Identifica il Tema della Conversazione
+Dalla risposta appena data, estrai gli ELEMENTI CHIAVE che potrebbero generare domande successive:
+- Concetti normativi o fiscali menzionati (es. regime forfettario, IRPEF, CCNL, licenziamento)
+- Documenti o adempimenti citati (es. fattura, F24, busta paga, dichiarazione)
+- Operazioni o calcoli discussi (es. calcolo imposta, verifica scadenza, confronto opzioni)
+- Valori specifici (importi, aliquote, percentuali, date, codici)
+- Situazioni particolari del cliente (es. startup, professionista, dipendente)
+- **Qualsiasi altro elemento rilevante** che un professionista vorrebbe approfondire
+
+NON limitarti a cercare solo queste categorie - identifica CIÒ CHE È SIGNIFICATIVO nella risposta.
+
+### STEP 2: Anticipa le Domande Successive
+In base al dominio professionale e al tema, chiediti:
+- TAX: "Cosa vorrebbe approfondire un Commercialista?"
+- LEGAL: "Cosa vorrebbe verificare un Avvocato?"
+- LABOR: "Cosa vorrebbe calcolare un Consulente del Lavoro?"
+
+### STEP 3: Formula Azioni Specifiche e Complete
+Ogni azione DEVE:
+1. Riferirsi a elementi SPECIFICI della conversazione (mai generiche)
+2. Includere valori concreti menzionati (importi, aliquote, date)
+3. Essere eseguibile con un click (prompt completo, non vago)
+
+SBAGLIATO: {"label": "Calcola", "prompt": "Calcola"}
+GIUSTO: {"label": "Calcola imposta 15%", "prompt": "Calcola l'imposta sostitutiva al 15% su 50.000 euro di ricavi"}
+
+### STEP 4: Assicura Diversità
+Le 3-4 azioni devono coprire angolazioni diverse:
+- Calcolo/Quantificazione
+- Confronto/Alternative
+- Verifica/Conformità
+- Prossimi passi/Procedura
+```
+
+**Integration in prompting.py:**
+```python
+from app.services.domain_action_classifier import DomainActionClassifier
+
+# In step_44 or equivalent:
+classifier = DomainActionClassifier()
+classification = classifier.classify(user_query)
+
+# Pass to SUGGESTED_ACTIONS_PROMPT
+prompt = SUGGESTED_ACTIONS_PROMPT.format(
+    domain=classification.domain.value,
+    confidence=classification.confidence
+)
+```
+
+**Edge Cases:**
+- Empty conversation: No actions
+- Chitchat route: No actions (already handled)
+- Multiple topics: Actions for MOST RECENT topic
+- No specific values: Use qualitative references ("il tuo reddito")
+- Low confidence (<0.6): Consider cross-domain actions (studi associati)
+- Cross-domain query (e.g., fiscal + labor): Include actions for both domains
+
+**Tests (TDD):**
+- `test_action_prompt_contains_meta_strategy`
+- `test_action_prompt_no_hardcoded_domain_examples`
+- `test_domain_classification_passed_to_prompt`
+- `test_actions_tailored_to_tax_domain`
+- `test_actions_tailored_to_labor_domain`
+- `test_low_confidence_allows_cross_domain_actions`
 
 **Acceptance Criteria:**
-- [ ] Actions are contextually relevant to conversation topic
-- [ ] Domain-specific suggestions (ATECO for forfettario, scaglioni for IRPEF)
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] No hardcoded domain examples in prompt
+- [ ] 4-step meta-prompting strategy included
+- [ ] Domain classification passed to action generation
+- [ ] Domain used as hint, not rigid constraint (studi associati flexibility)
+- [ ] E2E: TAX query generates commercialista-relevant actions
+- [ ] E2E: LABOR query generates consulente del lavoro-relevant actions
+- [ ] E2E: Cross-domain query generates actions for both domains
 
 ---
 
-### Subtask DEV-201c: KB Access Affirmation (Backend)
-**Effort:** 1h | **Agent:** @ezio
+### Subtask DEV-201c: KB Access Affirmation in Base Prompt (Backend)
+**Effort:** 1.5h | **Agent:** @ezio
+
+**Problem:** LLM says "non ho accesso a documenti" - FALSE and damages PratikoAI reputation.
+
+**Solution:** Add KB affirmation to `system.md` (base prompt) so it applies to ALL LLM calls, not just suggested actions.
 
 **Files to Modify:**
-- `app/core/prompts/suggested_actions.md`
+- `app/core/prompts/system.md` (AFTER "# CRITICAL: You ARE the Expert" section)
 
-**Changes:**
-Add explicit KB access reminder:
+**ADD:**
 ```markdown
-## IMPORTANTE - ACCESSO KNOWLEDGE BASE
-Tu HAI SEMPRE accesso alla Knowledge Base di PratikoAI che contiene:
-- Circolari e risoluzioni dell'Agenzia delle Entrate
+# IMPORTANTE: Accesso alla Knowledge Base
+
+Tu sei PratikoAI e HAI SEMPRE accesso a una Knowledge Base completa che include:
+- Circolari, Risoluzioni, Interpelli dell'Agenzia delle Entrate
+- Circolari INPS e INAIL
+- Decreti legge e Gazzetta Ufficiale
 - Normativa fiscale italiana aggiornata
-- Documentazione INPS, INAIL, Camera di Commercio
 
 NON dire MAI:
 - "Non ho accesso a documenti"
 - "Non posso consultare circolari"
+- "Non ho a disposizione normative"
 - "Dovresti verificare sul sito dell'Agenzia delle Entrate"
+
+INVECE, usa questa distinzione:
+- Se documento NON TROVATO: "Non ho trovato [X] nel database. Posso cercare documenti correlati?"
+- Se hai dati: Rispondi con citazioni delle fonti
+- Se incerto: "Verifico nella Knowledge Base..."
+
+CRITICO: "Non ho trovato" (tecnico, risolvibile) ≠ "Non ho accesso" (falso, dannoso)
 ```
 
+**Key Insight:** Goes in `system.md`, NOT `suggested_actions.md`, so it applies to ALL prompts.
+
+**Tests (TDD):**
+- `test_system_prompt_contains_kb_access_affirmation`
+- `test_system_prompt_forbids_no_access_phrases`
+
 **Acceptance Criteria:**
-- [ ] LLM never says "non ho accesso a documenti"
-- [ ] Responses cite KB sources when available
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] KB access section added to system.md
+- [ ] Forbidden phrases listed
+- [ ] "Non ho trovato" alternative provided
+- [ ] E2E: LLM never says "non ho accesso a documenti"
 
 ---
 
-### Subtask DEV-201d: Forbidden Action Validation (Backend)
-**Effort:** 2h | **Agent:** @ezio
+### Subtask DEV-201d: Forbidden Action Validation Layer (Backend)
+**Effort:** 2.5h | **Agent:** @ezio
+
+**Problem:** LLM suggests "Contatta un commercialista" violating system.md rules.
+
+**Solution:** Regex-based validation to filter forbidden patterns before returning actions.
 
 **Files to Modify:**
 - `app/services/proactivity_graph_service.py`
 - `app/core/langgraph/nodes/step_100__post_proactivity.py`
 
-**Changes:**
-1. Add `FORBIDDEN_ACTION_PATTERNS` list with regex patterns:
-   - `r"contatt[ai] (?:un )?commercialista"`
-   - `r"contatt[ai] (?:un )?consulente del lavoro"`
-   - `r"contatt[ai] (?:un )?avvocato"`
-   - `r"visita il sito dell'Agenzia delle Entrate"`
-   - `r"consulta (?:un )?esperto"`
+**Code:**
+```python
+import re
+from app.core.logging import logger
 
-2. Add `validate_action()` function to filter forbidden patterns
-3. Apply validation before returning actions in Step 100
+FORBIDDEN_ACTION_PATTERNS: list[re.Pattern] = [
+    re.compile(r"contatt[ai]\s+(?:un\s+)?commercialista", re.IGNORECASE),
+    re.compile(r"contatt[ai]\s+(?:un\s+)?consulente\s+del\s+lavoro", re.IGNORECASE),
+    re.compile(r"contatt[ai]\s+(?:un\s+)?avvocato", re.IGNORECASE),
+    re.compile(r"contatt[ai]\s+(?:un\s+)?esperto", re.IGNORECASE),
+    re.compile(r"rivolgiti\s+(?:a\s+)?(?:un\s+)?professionista", re.IGNORECASE),
+    re.compile(r"consulta\s+(?:un\s+)?esperto", re.IGNORECASE),
+    re.compile(r"visita\s+il\s+sito\s+dell['']?Agenzia", re.IGNORECASE),
+    re.compile(r"verifica\s+sul\s+sito\s+ufficiale", re.IGNORECASE),
+]
+
+def validate_action(action: dict) -> bool:
+    """Return True if action is valid (no forbidden patterns)."""
+    label = action.get("label", "")
+    prompt = action.get("prompt", "")
+    text_to_check = f"{label} {prompt}"
+
+    for pattern in FORBIDDEN_ACTION_PATTERNS:
+        if pattern.search(text_to_check):
+            logger.warning("forbidden_action_filtered", action_label=label[:50])
+            return False
+    return True
+
+def filter_forbidden_actions(actions: list[dict]) -> list[dict]:
+    return [a for a in actions if validate_action(a)]
+```
+
+**Edge Cases:**
+- Empty list: Return empty
+- All forbidden: Return empty
+- Case variations: Patterns are case-insensitive
+
+**Tests (TDD):**
+- `test_validate_action_allows_valid_action`
+- `test_validate_action_blocks_contatta_commercialista`
+- `test_validate_action_blocks_consulta_esperto`
+- `test_validate_action_blocks_visita_sito`
+- `test_filter_case_insensitive`
+- `test_filter_empty_list_returns_empty`
+- `test_filter_all_forbidden_returns_empty`
 
 **Acceptance Criteria:**
-- [ ] "Contatta un commercialista" actions are filtered out
-- [ ] "Visita il sito dell'Agenzia" actions are filtered out
-- [ ] Filtered actions logged for monitoring
-- [ ] Unit tests for forbidden patterns
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] 8+ forbidden patterns defined
+- [ ] Filter integrated in step 100
+- [ ] Filtered actions logged at WARNING level
+- [ ] 95%+ test coverage on new code
+
+---
+
+### Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Meta-prompting may not improve quality | HIGH | A/B test with sample queries |
+| Regex too aggressive (false positives) | MEDIUM | Word boundaries, test corpus |
+| KB affirmation increases prompt length | LOW | ~100 tokens, minimal |
+| Breaking existing action parsing | HIGH | Baseline tests, preserve XML |
 
 ---
 
@@ -3196,8 +3414,8 @@ NON dire MAI:
 | Test File | Description |
 |-----------|-------------|
 | `test_action_source_tracking.tsx` | Frontend: Action source badge displayed |
-| `test_contextual_actions.py` | Backend: Actions relevant to conversation |
-| `test_kb_access_affirmation.py` | Backend: No "non ho accesso" responses |
+| `test_meta_prompting_strategy.py` | Backend: Meta-prompting in suggested_actions.md |
+| `test_kb_access_affirmation.py` | Backend: KB affirmation in system.md |
 | `test_forbidden_action_filter.py` | Backend: Forbidden patterns filtered |
 
 ---
@@ -3207,10 +3425,10 @@ NON dire MAI:
 | Subtask | Effort | Agent | Priority |
 |---------|--------|-------|----------|
 | DEV-201a | 1h | @livia | HIGH |
-| DEV-201b | 2h | @ezio | HIGH |
-| DEV-201c | 1h | @ezio | CRITICAL |
-| DEV-201d | 2h | @ezio | CRITICAL |
-| **Total** | **6h** | | |
+| DEV-201b | 3.5h | @ezio | HIGH |
+| DEV-201c | 1.5h | @ezio | CRITICAL |
+| DEV-201d | 2.5h | @ezio | CRITICAL |
+| **Total** | **8.5h** | | |
 
 **Agent Assignment:** @ezio (primary backend), @livia (frontend), @clelia (tests)
 
@@ -3218,7 +3436,20 @@ NON dire MAI:
 - Depends on: DEV-200 (completed)
 - Unlocks: Production-ready suggested actions feature
 
-**Change Classification:** ENHANCEMENT + COMPLIANCE
+**Change Classification:** MODIFYING + ENHANCEMENT
+
+**Proposed ADR:** ADR-018: Domain-Aware Meta-Prompting for Contextual Action Generation
+
+---
+
+### E2E Acceptance Criteria (Task-Level)
+
+- [ ] "Come funziona il regime forfettario?" produces SPECIFIC actions (not generic)
+- [ ] LLM never says "non ho accesso a documenti"
+- [ ] "Contatta un commercialista" never appears in suggestions
+- [ ] Action source visible in frontend conversation
+- [ ] All baseline tests pass
+- [ ] 90%+ test coverage on new code
 
 </details>
 
@@ -3235,7 +3466,7 @@ NON dire MAI:
 | Phase 5: Documentation | DEV-173 | 1h | @egidio, @ezio |
 | Phase 6: LLM-First Revision | DEV-174 to DEV-183 | 17h | @ezio, @clelia |
 | Phase 7: Agentic RAG Pipeline | DEV-184 to DEV-199 | 39h | @ezio, @clelia, @primo |
-| Phase 8: Bugfix | DEV-200, DEV-201 | 14h | @ezio, @livia, @clelia |
-| **Total** | **52+ tasks** | **~103h+** | |
+| Phase 8: Bugfix | DEV-200, DEV-201 | 16.5h | @ezio, @livia, @clelia |
+| **Total** | **52+ tasks** | **~105h+** | |
 
 **Estimated Timeline:** 5-6 weeks at 3h/day *(with Claude Code)*

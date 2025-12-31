@@ -1,8 +1,10 @@
-"""Step 100: Post-Response Proactivity Node (DEV-200).
+"""Step 100: Post-Response Proactivity Node (DEV-200, DEV-201).
 
 LangGraph node that adds suggested actions AFTER LLM response. It uses template
 actions for recognized document types, extracts from VERDETTO for technical_research,
 or parses LLM response for contextual actions.
+
+DEV-201d: Integrates forbidden action filtering to prevent inappropriate suggestions.
 
 The node:
 1. Checks if pre-proactivity already triggered (skip if so)
@@ -10,7 +12,8 @@ The node:
 3. Checks for document attachments → template actions
 4. Checks for VERDETTO in technical_research responses → extract AZIONE CONSIGLIATA
 5. Falls back to parsing LLM response for suggested_actions XML tags
-6. Returns proactivity state update
+6. Filters out forbidden actions (DEV-201d)
+7. Returns proactivity state update
 
 Usage in graph:
     graph.add_node("PostProactivity", node_step_100)
@@ -110,7 +113,10 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
 
     try:
         # Lazy import to avoid database connection during module load
-        from app.services.proactivity_graph_service import get_proactivity_graph_service
+        from app.services.proactivity_graph_service import (
+            filter_forbidden_actions,
+            get_proactivity_graph_service,
+        )
 
         service = get_proactivity_graph_service()
 
@@ -122,6 +128,8 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
                 if doc_type:
                     actions = service.get_document_actions(doc_type)
                     if actions:
+                        # DEV-201d: Filter forbidden actions
+                        actions = filter_forbidden_actions(actions)
                         logger.info(
                             "step_100_template_actions",
                             extra={
@@ -176,6 +184,8 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
                         }
                     )
 
+                # DEV-201d: Filter forbidden actions
+                actions = filter_forbidden_actions(actions)
                 logger.info(
                     "step_100_verdetto_actions",
                     extra={
@@ -210,6 +220,8 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
         if response_content:
             actions = service.parse_llm_actions(response_content)
             if actions:
+                # DEV-201d: Filter forbidden actions
+                actions = filter_forbidden_actions(actions)
                 logger.info(
                     "step_100_llm_parsed_actions",
                     extra={

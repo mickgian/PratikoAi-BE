@@ -3,11 +3,14 @@
 DEV-200: Unified proactivity logic extracted from chatbot.py for use by
 Step 14 (Pre-Response Proactivity) and Step 100 (Post-Response Proactivity).
 
+DEV-201: Added forbidden action filtering to prevent inappropriate suggestions.
+
 This service provides:
 - check_calculable_intent: Detect if query needs parameters before RAG
 - get_document_actions: Get template actions for document types
 - parse_llm_actions: Extract suggested actions from LLM response
 - build_proactivity_result: Build state-serializable proactivity result
+- filter_forbidden_actions: Remove inappropriate action suggestions (DEV-201d)
 """
 
 import logging
@@ -159,6 +162,80 @@ FIELD_CONFIGS: dict[str, dict[str, Any]] = {
         "required": True,
     },
 }
+
+# DEV-201d: Forbidden action patterns - filter out inappropriate suggestions
+# These patterns match actions that violate system.md rules (customers ARE the professionals)
+# Pattern notes: contatt(?:a(?:re)?|i) matches "contatta", "contattare", "contatti"
+FORBIDDEN_ACTION_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"contatt(?:a(?:re)?|i)\s+(?:un\s+)?commercialista", re.IGNORECASE),
+    re.compile(r"contatt(?:a(?:re)?|i)\s+(?:un\s+)?consulente\s+del\s+lavoro", re.IGNORECASE),
+    re.compile(r"contatt(?:a(?:re)?|i)\s+(?:un\s+)?avvocato", re.IGNORECASE),
+    re.compile(r"contatt(?:a(?:re)?|i)\s+(?:un\s+)?esperto", re.IGNORECASE),
+    re.compile(r"rivolgiti\s+(?:a\s+)?(?:un\s+)?professionista", re.IGNORECASE),
+    re.compile(r"consult(?:a(?:re)?|i)\s+(?:un\s+)?esperto", re.IGNORECASE),
+    re.compile(r"visita\s+il\s+sito\s+dell['']?Agenzia", re.IGNORECASE),
+    re.compile(r"verifica\s+sul\s+sito\s+ufficiale", re.IGNORECASE),
+    re.compile(r"chied(?:i|ere)\s+(?:a\s+)?(?:un\s+)?(?:commercialista|avvocato|esperto)", re.IGNORECASE),
+    re.compile(r"consult(?:a(?:re)?|i)\s+(?:un\s+)?(?:commercialista|avvocato)", re.IGNORECASE),
+]
+
+
+def validate_action(action: dict) -> bool:
+    """Validate an action against forbidden patterns.
+
+    DEV-201d: Returns True if action is valid (no forbidden patterns found).
+
+    Args:
+        action: Action dict with 'label' and 'prompt' keys
+
+    Returns:
+        True if action is valid, False if it matches a forbidden pattern
+    """
+    label = action.get("label", "")
+    prompt = action.get("prompt", "")
+    text_to_check = f"{label} {prompt}"
+
+    for pattern in FORBIDDEN_ACTION_PATTERNS:
+        if pattern.search(text_to_check):
+            logger.warning(
+                "forbidden_action_filtered",
+                extra={
+                    "action_label": label[:50],
+                    "pattern": pattern.pattern[:50],
+                },
+            )
+            return False
+    return True
+
+
+def filter_forbidden_actions(actions: list[dict]) -> list[dict]:
+    """Filter out actions that match forbidden patterns.
+
+    DEV-201d: Removes actions suggesting users contact external professionals
+    (violates system.md since users ARE the professionals).
+
+    Args:
+        actions: List of action dicts to filter
+
+    Returns:
+        Filtered list with forbidden actions removed
+    """
+    if not actions:
+        return []
+
+    filtered = [a for a in actions if validate_action(a)]
+
+    if len(filtered) < len(actions):
+        logger.info(
+            "forbidden_actions_removed",
+            extra={
+                "original_count": len(actions),
+                "filtered_count": len(filtered),
+                "removed_count": len(actions) - len(filtered),
+            },
+        )
+
+    return filtered
 
 
 class ProactivityGraphService:

@@ -850,14 +850,15 @@ def create_ccnl_id(sector: CCNLSector, valid_from: date) -> str:
 
 def compare_ccnl_provisions(ccnl1: CCNLAgreement, ccnl2: CCNLAgreement, provision_type: str) -> dict[str, Any]:
     """Compare specific provisions between two CCNLs."""
-    comparison = {"ccnl1": ccnl1.name, "ccnl2": ccnl2.name, "provision_type": provision_type, "differences": []}
+    differences: list[dict[str, Any]] = []
+    comparison: dict[str, Any] = {"ccnl1": ccnl1.name, "ccnl2": ccnl2.name, "provision_type": provision_type, "differences": differences}
 
     if provision_type == "leave_entitlements":
         for leave1 in ccnl1.leave_entitlements:
             for leave2 in ccnl2.leave_entitlements:
                 if leave1.leave_type == leave2.leave_type:
                     if leave1.base_annual_days != leave2.base_annual_days:
-                        comparison["differences"].append(
+                        differences.append(
                             {
                                 "leave_type": leave1.leave_type.value,
                                 "ccnl1_days": leave1.base_annual_days,
@@ -874,7 +875,7 @@ def compare_ccnl_provisions(ccnl1: CCNLAgreement, ccnl2: CCNLAgreement, provisio
                     and notice1.seniority_months_min == notice2.seniority_months_min
                 ):
                     if notice1.notice_days != notice2.notice_days:
-                        comparison["differences"].append(
+                        differences.append(
                             {
                                 "category": notice1.worker_category.value,
                                 "seniority_months": notice1.seniority_months_min,

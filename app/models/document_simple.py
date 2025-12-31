@@ -138,11 +138,11 @@ class Document(SQLModel):
     @property
     def is_expired(self) -> bool:
         """Check if document has expired"""
-        return self.expires_at and datetime.utcnow() > self.expires_at
+        return bool(self.expires_at and datetime.utcnow() > self.expires_at)
 
     def to_dict(self, include_content: bool = False) -> dict[str, Any]:
         """Convert document to dictionary for API responses"""
-        doc_dict = {
+        doc_dict: dict[str, Any] = {
             "id": str(self.id),
             "user_id": str(self.user_id) if self.user_id else None,
             "filename": self.filename,

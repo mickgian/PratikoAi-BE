@@ -259,6 +259,8 @@ class Subscription(SQLModel, table=True):
 
     def monthly_revenue(self) -> Decimal:
         """Monthly revenue for MRR calculation"""
+        if self.plan is None:
+            return Decimal("0")
         if self.plan.billing_period == BillingPeriod.ANNUAL.value:
             return self.plan.base_price() / 12
         return self.plan.base_price()
@@ -358,7 +360,7 @@ class Subscription(SQLModel, table=True):
 
         return True, "Plan change allowed"
 
-    def calculate_proration_credit(self, change_date: datetime = None) -> Decimal:
+    def calculate_proration_credit(self, change_date: Optional[datetime] = None) -> Decimal:
         """Calculate proration credit for current plan.
 
         Args:
@@ -380,6 +382,8 @@ class Subscription(SQLModel, table=True):
 
         # Calculate credit
         usage_ratio = unused_period.total_seconds() / total_period.total_seconds()
+        if self.plan is None:
+            return Decimal("0")
         credit = self.plan.base_price() * Decimal(str(usage_ratio))
 
         return credit.quantize(Decimal("0.01"))

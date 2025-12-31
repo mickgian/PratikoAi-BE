@@ -3069,11 +3069,11 @@ DEV-184 (LLM Config)
 
 ---
 
-## Phase 9: LLM Excellence - ~105h (8-10 weeks)
+## Phase 9: LLM Excellence - ~131h (10-12 weeks)
 
 **Reference:** Technical Intent Document: PratikoAI LLM Excellence Architecture v2.0 (2024-12-30)
 **Status:** NOT STARTED
-**Total Effort:** ~105h (8-10 weeks at 2-3h/day)
+**Total Effort:** ~131h (10-12 weeks at 2-3h/day)
 **Priority:** HIGH - Core reasoning capability upgrade
 
 ### Overview
@@ -4635,6 +4635,174 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
 
 <details>
 <summary>
+<h3>DEV-219: Implement Golden Loop Iteration Control and Metrics</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Golden Loop lacks configurable iteration limits, backoff strategy, and metrics tracking for monitori...
+</summary>
+
+### DEV-219: Implement Golden Loop Iteration Control and Metrics
+
+**Reference:** [Technical Intent Part 5.4](pratikoai-llm-excellence-technical-intent.md#part-5-implementation-priorities) (Iteration Control and Metrics)
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Golden Loop lacks configurable iteration limits, backoff strategy, and metrics tracking for monitoring regeneration performance and preventing infinite loops.
+
+**Solution:**
+Create GoldenLoopController service that wraps ActionValidator and ActionRegenerator with configurable limits, exponential backoff, and Prometheus metrics for iteration count, success rate, and latency.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-215 (ActionValidator), DEV-216 (ActionRegenerator), DEV-218 (Step 100 integration)
+- **Unlocks:** DEV-238 (Monitoring integration)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:**
+- **Risk Level:** LOW - New service wrapping existing functionality
+- **Affected Components:** ActionValidator, ActionRegenerator, Step 100
+
+**Pre-Implementation Verification:**
+- [ ] Confirm ActionValidator and ActionRegenerator APIs
+- [ ] Review existing metrics infrastructure
+
+**Error Handling:**
+- Max iterations reached: Return best available actions with warning log
+- Backoff overflow: Cap at max_backoff_ms
+- **Logging:** Log each iteration with action count, valid count, rejection reasons
+
+**Performance Requirements:**
+- Max latency added: <50ms per iteration (excluding LLM calls)
+- Memory: O(1) - no accumulation across iterations
+- Metrics emission: Non-blocking
+
+**Edge Cases:**
+- First iteration succeeds: No backoff needed
+- All iterations fail: Return fallback actions from ActionRegenerator
+- Zero actions input: Skip validation, use fallback directly
+- Negative backoff config: Clamp to minimum 0ms
+
+**File:** `app/services/golden_loop_controller.py`
+
+**Class Interface:**
+```python
+from dataclasses import dataclass
+from typing import Optional
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+@dataclass
+class GoldenLoopConfig:
+    """Configuration for Golden Loop iteration control."""
+    max_iterations: int = 2
+    initial_backoff_ms: int = 100
+    backoff_multiplier: float = 2.0
+    max_backoff_ms: int = 1000
+    min_valid_actions: int = 2
+
+@dataclass
+class GoldenLoopResult:
+    """Result of Golden Loop execution."""
+    actions: list[dict]
+    iterations_used: int
+    total_latency_ms: float
+    final_valid_count: int
+    regeneration_triggered: bool
+
+class GoldenLoopController:
+    """Controls Golden Loop iteration with backoff and metrics."""
+
+    def __init__(
+        self,
+        validator: "ActionValidator",
+        regenerator: "ActionRegenerator",
+        config: Optional[GoldenLoopConfig] = None
+    ):
+        self.validator = validator
+        self.regenerator = regenerator
+        self.config = config or GoldenLoopConfig()
+
+    async def execute(
+        self,
+        actions: list[dict],
+        kb_sources: list[dict],
+        query: str,
+        domain: str
+    ) -> GoldenLoopResult:
+        """
+        Execute Golden Loop with iteration control.
+
+        Args:
+            actions: Initial suggested actions from Step 64
+            kb_sources: KB sources for validation context
+            query: User query for regeneration context
+            domain: Domain classification for action generation
+
+        Returns:
+            GoldenLoopResult with validated/regenerated actions
+        """
+        ...
+
+    def _calculate_backoff(self, iteration: int) -> int:
+        """Calculate backoff delay for given iteration."""
+        ...
+
+    def _emit_metrics(self, result: GoldenLoopResult) -> None:
+        """Emit Prometheus metrics for iteration."""
+        ...
+```
+
+**Metrics to Track:**
+| Metric Name | Type | Labels | Description |
+|-------------|------|--------|-------------|
+| `golden_loop_iterations_total` | Counter | domain, success | Total iterations executed |
+| `golden_loop_regeneration_total` | Counter | domain | Regeneration triggers |
+| `golden_loop_duration_seconds` | Histogram | domain | Total loop duration |
+| `golden_loop_final_valid_actions` | Gauge | domain | Valid actions after loop |
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/services/test_golden_loop_controller.py` FIRST
+- **Unit Tests:**
+  - `test_first_iteration_succeeds` - No retry when min_valid_actions met
+  - `test_regeneration_triggered` - Retry when below threshold
+  - `test_max_iterations_reached` - Stops at limit, returns best
+  - `test_backoff_calculation` - Exponential backoff correct
+  - `test_metrics_emitted` - Prometheus metrics recorded
+  - `test_zero_actions_input` - Uses fallback directly
+- **Integration Tests:**
+  - `test_full_loop_with_validator_regenerator` - End-to-end flow
+- **Coverage Target:** 90%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Infinite loop | HIGH | Hard max_iterations cap |
+| Slow backoff | MEDIUM | max_backoff_ms cap |
+| Metric cardinality explosion | LOW | Limited label set |
+
+**Code Completeness:**
+- [ ] All methods have docstrings
+- [ ] Type hints on all parameters and returns
+- [ ] No TODO comments for required features
+- [ ] Structured logging with context fields
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Configurable iteration limits enforced
+- [ ] Exponential backoff between iterations
+- [ ] Prometheus metrics for iterations, success rate, latency
+- [ ] Graceful degradation when max iterations reached
+- [ ] 90%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
 <h3>DEV-220: Create complexity_classifier.md Prompt Template</h3>
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
 Need to classify query complexity (simple/complex/multi_domain) to route to appropriate LLM model an...
@@ -5020,6 +5188,322 @@ Create tree_of_thoughts_multi_domain.md for cross-domain synthesis.
 
 <details>
 <summary>
+<h3>DEV-225: Implement TreeOfThoughtsReasoner Service</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 5h | <strong>Status:</strong> NOT STARTED<br>
+TreeOfThoughtsReasoner service needed to orchestrate multi-hypothesis reasoning with source weightin...
+</summary>
+
+### DEV-225: Implement TreeOfThoughtsReasoner Service
+
+**Reference:** [Technical Intent Part 2.3](pratikoai-llm-excellence-technical-intent.md#part-2-target-architecture) (Tree of Thoughts Architecture)
+
+**Priority:** HIGH | **Effort:** 5h | **Status:** NOT STARTED
+
+**Problem:**
+TreeOfThoughtsReasoner service needed to orchestrate multi-hypothesis reasoning with source weighting, confidence scoring, and risk analysis for complex legal/tax queries.
+
+**Solution:**
+Create TreeOfThoughtsReasoner service that generates multiple hypotheses, scores them against sources using SourceHierarchy, and selects the best path with confidence and risk metadata.
+
+**Agent Assignment:** @ezio (primary), @egidio (review), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-223 (tree_of_thoughts.md), DEV-224 (multi_domain.md), DEV-227 (SourceHierarchy)
+- **Unlocks:** DEV-226 (Step 64 integration), DEV-231 (Risk Analysis)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:**
+- **Risk Level:** MEDIUM - Core reasoning service
+- **Affected Components:** Step 64, LLMOrchestrator, SourceHierarchy
+
+**Pre-Implementation Verification:**
+- [ ] Confirm tree_of_thoughts.md prompt template exists
+- [ ] Confirm SourceHierarchy API
+- [ ] Review LLMOrchestrator integration points
+
+**Error Handling:**
+- LLM call fails: Return single-path CoT fallback
+- No sources available: Generate hypotheses without source weighting
+- Timeout: Return best hypothesis so far with partial confidence
+- **Logging:** Log hypothesis generation, scoring, selection with structured context
+
+**Performance Requirements:**
+- Max hypotheses: 4 (configurable)
+- Parallel hypothesis generation where possible
+- Total ToT latency: <3s for complex queries
+- Memory: O(n) where n = hypothesis count
+
+**Edge Cases:**
+- Single valid hypothesis: Return directly without comparison
+- All hypotheses low confidence: Flag for human review
+- Conflicting sources: Apply SourceHierarchy precedence
+- Multi-domain query: Use tree_of_thoughts_multi_domain.md
+
+**File:** `app/services/tree_of_thoughts_reasoner.py`
+
+**Class Interface:**
+```python
+from dataclasses import dataclass
+from typing import Optional
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+@dataclass
+class ToTHypothesis:
+    """Single hypothesis in Tree of Thoughts."""
+    id: str
+    reasoning_path: str
+    conclusion: str
+    confidence: float
+    sources_used: list[dict]
+    source_weight_score: float
+    risk_level: Optional[str] = None
+    risk_factors: Optional[list[str]] = None
+
+@dataclass
+class ToTResult:
+    """Result of Tree of Thoughts reasoning."""
+    selected_hypothesis: ToTHypothesis
+    all_hypotheses: list[ToTHypothesis]
+    reasoning_trace: dict
+    total_latency_ms: float
+    complexity_used: str
+
+class TreeOfThoughtsReasoner:
+    """Orchestrates multi-hypothesis reasoning with source weighting."""
+
+    def __init__(
+        self,
+        llm_orchestrator: "LLMOrchestrator",
+        source_hierarchy: "SourceHierarchy",
+        prompt_loader: "PromptLoader"
+    ):
+        self.llm_orchestrator = llm_orchestrator
+        self.source_hierarchy = source_hierarchy
+        self.prompt_loader = prompt_loader
+
+    async def reason(
+        self,
+        query: str,
+        kb_sources: list[dict],
+        complexity: str,
+        max_hypotheses: int = 4
+    ) -> ToTResult:
+        """
+        Execute Tree of Thoughts reasoning.
+
+        Args:
+            query: User query
+            kb_sources: Retrieved KB sources with metadata
+            complexity: Query complexity (simple/complex/multi_domain)
+            max_hypotheses: Maximum hypotheses to generate
+
+        Returns:
+            ToTResult with selected hypothesis and full reasoning trace
+        """
+        ...
+
+    async def _generate_hypotheses(
+        self,
+        query: str,
+        kb_sources: list[dict],
+        count: int
+    ) -> list[ToTHypothesis]:
+        """Generate multiple reasoning hypotheses."""
+        ...
+
+    def _score_hypothesis(
+        self,
+        hypothesis: ToTHypothesis,
+        kb_sources: list[dict]
+    ) -> float:
+        """Score hypothesis using source hierarchy weighting."""
+        ...
+
+    def _select_best(
+        self,
+        hypotheses: list[ToTHypothesis]
+    ) -> ToTHypothesis:
+        """Select best hypothesis based on confidence and source weight."""
+        ...
+```
+
+**Scoring Algorithm:**
+```python
+def _score_hypothesis(self, hypothesis: ToTHypothesis, kb_sources: list[dict]) -> float:
+    """
+    Score = weighted_sum(source_authority * citation_relevance) * confidence
+
+    Source weights (from SourceHierarchy):
+    - Legge: 1.0
+    - Decreto: 0.9
+    - Circolare: 0.7
+    - Interpello: 0.5
+    - Prassi: 0.3
+    """
+    ...
+```
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/services/test_tree_of_thoughts_reasoner.py` FIRST
+- **Unit Tests:**
+  - `test_generates_multiple_hypotheses` - Correct count generated
+  - `test_scores_with_source_hierarchy` - Weighting applied
+  - `test_selects_highest_scored` - Best hypothesis returned
+  - `test_handles_no_sources` - Graceful degradation
+  - `test_handles_multi_domain` - Correct prompt used
+  - `test_includes_reasoning_trace` - Full trace in result
+- **Integration Tests:**
+  - `test_end_to_end_with_llm` - Full flow with mocked LLM
+- **Coverage Target:** 90%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| LLM latency | HIGH | Parallel hypothesis generation, timeout |
+| Inconsistent scoring | MEDIUM | Deterministic source weights |
+| Memory for many hypotheses | LOW | Cap at max_hypotheses |
+
+**Code Completeness:**
+- [ ] All methods have docstrings
+- [ ] Type hints on all parameters and returns
+- [ ] No TODO comments for required features
+- [ ] Structured logging with session_id, user_id context
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Generates configurable number of hypotheses
+- [ ] Scores using SourceHierarchy weights
+- [ ] Selects best hypothesis with confidence
+- [ ] Includes full reasoning trace
+- [ ] Handles multi-domain queries
+- [ ] 90%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-226: Integrate TreeOfThoughtsReasoner with Step 64</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+TreeOfThoughtsReasoner exists as standalone service but isn't connected to the main RAG pipeline. Co...
+</summary>
+
+### DEV-226: Integrate TreeOfThoughtsReasoner with Step 64
+
+**Reference:** [Technical Intent Part 5.2](pratikoai-llm-excellence-technical-intent.md#part-5-implementation-priorities) (Step 64 Integration)
+
+**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+TreeOfThoughtsReasoner (DEV-225) exists as standalone service but isn't connected to the main RAG pipeline. Complex queries still use single-path CoT reasoning.
+
+**Solution:**
+Modify Step 64 to use TreeOfThoughtsReasoner for complex/multi_domain queries, storing reasoning trace in GraphState and using selected hypothesis for response generation.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-225 (TreeOfThoughtsReasoner), DEV-222 (LLMOrchestrator integration)
+- **Unlocks:** DEV-230 (Dual reasoning)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Risk Level:** MEDIUM - Modifies critical RAG step
+- **Affected Components:** Step 64, GraphState, response generation
+
+**Pre-Implementation Verification:**
+- [ ] Confirm TreeOfThoughtsReasoner API
+- [ ] Confirm GraphState has reasoning_trace field (DEV-210)
+- [ ] Review current Step 64 implementation
+
+**Error Handling:**
+- ToT fails: Fall back to single-path CoT
+- Timeout: Use partial result with warning
+- **Logging:** Log ToT usage, hypothesis count, selection rationale
+
+**Performance Requirements:**
+- ToT overhead: <500ms for routing decision
+- Complex query total: <5s including ToT
+- Simple query unchanged: <2s
+
+**Edge Cases:**
+- Complexity classification uncertain: Default to CoT
+- ToT returns single hypothesis: Treat as CoT result
+- Mid-query complexity upgrade: Not supported, use initial classification
+
+**File:** `app/langgraph/step64_actions.py`
+
+**Integration Points:**
+```python
+# In Step 64 action generation
+async def generate_response(state: GraphState) -> GraphState:
+    complexity = state.get("query_complexity", "simple")
+
+    if complexity in ("complex", "multi_domain"):
+        # Use Tree of Thoughts
+        tot_result = await tree_of_thoughts_reasoner.reason(
+            query=state["query"],
+            kb_sources=state["kb_sources_metadata"],
+            complexity=complexity
+        )
+        state["reasoning_trace"] = tot_result.reasoning_trace
+        state["selected_hypothesis"] = tot_result.selected_hypothesis
+        # Use hypothesis for response generation
+        response = await generate_from_hypothesis(tot_result.selected_hypothesis)
+    else:
+        # Use standard CoT
+        response = await generate_with_cot(state)
+
+    return state
+```
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/core/langgraph/nodes/test_step64_tot_integration.py` FIRST
+- **Unit Tests:**
+  - `test_simple_query_uses_cot` - ToT not called for simple
+  - `test_complex_query_uses_tot` - ToT called for complex
+  - `test_multi_domain_uses_tot` - ToT called for multi_domain
+  - `test_tot_failure_falls_back_to_cot` - Graceful degradation
+  - `test_reasoning_trace_stored` - Trace in GraphState
+  - `test_hypothesis_used_for_response` - Selected hypothesis drives response
+- **Integration Tests:**
+  - `test_end_to_end_complex_query` - Full pipeline with ToT
+- **Regression Tests:** All existing Step 64 tests still pass
+- **Coverage Target:** 90%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Step 64 regression | HIGH | Comprehensive regression tests |
+| ToT latency impact | MEDIUM | Timeout and fallback |
+| Incorrect complexity routing | MEDIUM | Validate classifier accuracy |
+
+**Code Completeness:**
+- [ ] All methods have docstrings
+- [ ] Type hints on all parameters and returns
+- [ ] No TODO comments for required features
+- [ ] Structured logging with session_id, user_id context
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Complex queries routed to TreeOfThoughtsReasoner
+- [ ] Reasoning trace stored in GraphState
+- [ ] Selected hypothesis used for response
+- [ ] Fallback to CoT on ToT failure
+- [ ] All existing Step 64 tests pass (regression)
+- [ ] 90%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
 <h3>DEV-227: Create Source Hierarchy Mapping and Weighting</h3>
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
 Italian legal sources have hierarchy (Legge > Circolare > Interpello). ToT scoring must weight sourc...
@@ -5242,6 +5726,213 @@ Add risk analysis phase to ToT that evaluates sanction risk for each hypothesis.
 - [ ] Risk level assigned to each hypothesis
 - [ ] High-risk flagged even with low probability
 - [ ] Risk actions generated for mitigation
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-232: Implement Response Quality Scoring Service</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Need automated quality scoring for responses to enable A/B testing, model comparison, and continuou...
+</summary>
+
+### DEV-232: Implement Response Quality Scoring Service
+
+**Reference:** [Technical Intent Part 12.1](pratikoai-llm-excellence-technical-intent.md#part-12-appendices) (Quality Metrics)
+
+**Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Need automated quality scoring for responses to enable A/B testing, model comparison, and continuous improvement. Currently no objective measurement of response quality.
+
+**Solution:**
+Create ResponseQualityScorer service that evaluates responses on multiple dimensions: source citation accuracy, reasoning coherence, action relevance, and risk coverage.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-225 (TreeOfThoughtsReasoner), DEV-231 (Risk Analysis), DEV-227 (SourceHierarchy)
+- **Unlocks:** DEV-238 (Monitoring dashboard), DEV-241 (A/B testing framework)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:**
+- **Risk Level:** LOW - New scoring service, doesn't modify existing flow
+- **Affected Components:** Response pipeline (read-only), monitoring
+
+**Pre-Implementation Verification:**
+- [ ] Confirm reasoning trace format from DEV-225
+- [ ] Confirm source citation format
+- [ ] Review risk level format from DEV-231
+
+**Error Handling:**
+- Missing reasoning trace: Score only available dimensions
+- Invalid source format: Skip source scoring, log warning
+- **Logging:** Log all scores with session_id, user_id for analysis
+
+**Performance Requirements:**
+- Scoring latency: <100ms (no LLM calls)
+- Memory: O(1) - stateless scoring
+- Non-blocking: Must not delay response delivery
+
+**Edge Cases:**
+- No sources cited: Source score = 0, flag for review
+- No suggested actions: Action score = 0, acceptable for informational queries
+- Empty reasoning trace: Cannot score reasoning, use default
+- Risk analysis missing: Skip risk coverage scoring
+
+**File:** `app/services/response_quality_scorer.py`
+
+**Class Interface:**
+```python
+from dataclasses import dataclass
+from typing import Optional
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+@dataclass
+class QualityDimension:
+    """Single quality dimension score."""
+    name: str
+    score: float  # 0.0 to 1.0
+    weight: float
+    details: Optional[str] = None
+
+@dataclass
+class QualityScore:
+    """Complete quality assessment for a response."""
+    overall_score: float  # Weighted average
+    dimensions: list[QualityDimension]
+    flags: list[str]  # Quality warnings
+    recommendation: str  # "good", "review", "poor"
+
+class ResponseQualityScorer:
+    """Evaluates response quality across multiple dimensions."""
+
+    def __init__(
+        self,
+        source_hierarchy: "SourceHierarchy",
+        weights: Optional[dict[str, float]] = None
+    ):
+        self.source_hierarchy = source_hierarchy
+        self.weights = weights or {
+            "source_citation": 0.30,
+            "reasoning_coherence": 0.25,
+            "action_relevance": 0.25,
+            "risk_coverage": 0.20
+        }
+
+    def score(
+        self,
+        response: str,
+        reasoning_trace: dict,
+        sources_cited: list[dict],
+        suggested_actions: list[dict],
+        kb_sources: list[dict],
+        query: str
+    ) -> QualityScore:
+        """
+        Score response quality.
+
+        Args:
+            response: Generated response text
+            reasoning_trace: Full reasoning trace from ToT/CoT
+            sources_cited: Sources cited in response
+            suggested_actions: Suggested actions generated
+            kb_sources: Original KB sources retrieved
+            query: Original user query
+
+        Returns:
+            QualityScore with overall score and dimension breakdown
+        """
+        ...
+
+    def _score_source_citation(
+        self,
+        sources_cited: list[dict],
+        kb_sources: list[dict]
+    ) -> QualityDimension:
+        """Score source citation accuracy and authority."""
+        ...
+
+    def _score_reasoning_coherence(
+        self,
+        reasoning_trace: dict
+    ) -> QualityDimension:
+        """Score reasoning coherence and completeness."""
+        ...
+
+    def _score_action_relevance(
+        self,
+        actions: list[dict],
+        query: str,
+        response: str
+    ) -> QualityDimension:
+        """Score action relevance to query and response."""
+        ...
+
+    def _score_risk_coverage(
+        self,
+        reasoning_trace: dict,
+        response: str
+    ) -> QualityDimension:
+        """Score coverage of identified risks in response."""
+        ...
+```
+
+**Scoring Dimensions:**
+| Dimension | Weight | Criteria |
+|-----------|--------|----------|
+| Source Citation | 30% | High-authority sources cited, citation accuracy |
+| Reasoning Coherence | 25% | Logical flow, no contradictions, complete trace |
+| Action Relevance | 25% | Actions match query intent and response content |
+| Risk Coverage | 20% | Identified risks mentioned in response |
+
+**Quality Thresholds:**
+| Overall Score | Recommendation | Action |
+|---------------|----------------|--------|
+| >= 0.8 | "good" | No action needed |
+| 0.6 - 0.8 | "review" | Flag for human review |
+| < 0.6 | "poor" | Investigate, improve prompts |
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/services/test_response_quality_scorer.py` FIRST
+- **Unit Tests:**
+  - `test_scores_all_dimensions` - All 4 dimensions scored
+  - `test_weighted_average_correct` - Overall score calculation
+  - `test_high_authority_sources_boost_score` - Source hierarchy impact
+  - `test_missing_reasoning_trace_handled` - Graceful degradation
+  - `test_no_actions_acceptable` - Zero action score doesn't tank overall
+  - `test_risk_coverage_scoring` - Risks in response detected
+  - `test_quality_thresholds` - Correct recommendation assignment
+- **Integration Tests:**
+  - `test_score_real_response` - End-to-end with sample data
+- **Coverage Target:** 90%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Scoring bias | MEDIUM | Validated weights, human calibration |
+| Performance overhead | LOW | Non-blocking, <100ms target |
+| False positives | MEDIUM | Conservative thresholds, human review for "review" |
+
+**Code Completeness:**
+- [ ] All methods have docstrings
+- [ ] Type hints on all parameters and returns
+- [ ] No TODO comments for required features
+- [ ] Structured logging with session_id, user_id context
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Scores 4 quality dimensions
+- [ ] Weighted average calculated correctly
+- [ ] Quality recommendation assigned
+- [ ] Graceful handling of missing data
+- [ ] Non-blocking (<100ms latency)
+- [ ] 90%+ test coverage
 
 ---
 
@@ -5978,13 +6669,13 @@ function truncateText(text: string, maxLength: number): string;
 | Sub-Phase | Tasks | Effort | Priority |
 |-----------|-------|--------|----------|
 | 9.1: Foundation | DEV-210 to DEV-214 | 20h | CRITICAL |
-| 9.2: Golden Loop | DEV-215 to DEV-218 | 15h | HIGH |
-| 9.3: Intelligence | DEV-220 to DEV-224 | 20h | HIGH |
+| 9.2: Golden Loop | DEV-215 to DEV-219 | 18h | HIGH |
+| 9.3: Intelligence | DEV-220 to DEV-226 | 28h | HIGH |
 | 9.4: Excellence | DEV-227 to DEV-232 | 26h | HIGH/MEDIUM |
 | 9.5: Conversation | DEV-233 to DEV-237 | 18h | MEDIUM/LOW |
 | 9.6: Quality & Monitoring | DEV-238 to DEV-241 | 15h | LOW |
 | 9.7: Frontend UI | DEV-242 | 6h | MEDIUM |
-| **Total** | **33 tasks** | **~120h** | |
+| **Total** | **33 tasks** | **~131h** | |
 
 **Agent Assignment Summary:**
 | Agent | Primary Tasks | Support Tasks |

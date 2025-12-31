@@ -3509,6 +3509,7 @@ Phase 9 elevates PratikoAI's LLM reasoning capabilities through:
 | DEV-227 to DEV-232 | Phase 9.4: Excellence (Source Hierarchy, Risk Analysis, Dual Reasoning) |
 | DEV-233 to DEV-237 | Phase 9.5: Conversation (HyDE, Ambiguity, Paragraph Grounding) |
 | DEV-238 to DEV-241 | Phase 9.6: Quality & Monitoring |
+| DEV-242 | Phase 9.7: Frontend UI (Reasoning Display) |
 
 ### Files for Refactoring or Deletion
 
@@ -3566,7 +3567,7 @@ DEV-210 (GraphState) ───────────────────�
 
 ### DEV-210: Update GraphState with LLM Excellence Fields
 
-**Reference:** Technical Intent Part 3.1 (Graph State Schema)
+**Reference:** [Technical Intent Part 3.1](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Graph State Schema)
 
 **Priority:** CRITICAL | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -3687,7 +3688,7 @@ actions_validation_log: list[str] | None  # Rejection reasons for debugging
 
 ### DEV-211: Create PromptLoader Utility Service
 
-**Reference:** Technical Intent Part 3.2.2 (Prompt Loader Specification)
+**Reference:** [Technical Intent Part 3.2.2](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Prompt Loader Specification)
 
 **Priority:** CRITICAL | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -3826,7 +3827,7 @@ class PromptLoader:
 
 ### DEV-212: Create unified_response_simple.md Prompt Template
 
-**Reference:** Technical Intent Part 3.2.3 (Unified Response Prompt)
+**Reference:** [Technical Intent Part 3.2.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Unified Response Prompt)
 
 **Priority:** CRITICAL | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -3991,7 +3992,7 @@ def _select_prompt_template(state: RAGState) -> str:
 
 ### DEV-213: Update Step 40 to Preserve KB Documents and Metadata
 
-**Reference:** Technical Intent Part 3.5.2 (Step 40: Build Context Enhanced)
+**Reference:** [Technical Intent Part 3.5.2](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 40: Build Context Enhanced)
 
 **Priority:** CRITICAL | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -4126,7 +4127,7 @@ def get_hierarchy_weight(doc_type: str) -> float:
 
 ### DEV-214: Update Step 64 for Unified JSON Output with Reasoning
 
-**Reference:** Technical Intent Part 3.5.3 (Step 64: LLM Call Unified)
+**Reference:** [Technical Intent Part 3.5.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 64: LLM Call Unified)
 
 **Priority:** CRITICAL | **Effort:** 6h | **Status:** NOT STARTED
 
@@ -4374,7 +4375,7 @@ except ImportError:
 
 ### DEV-215: Create ActionValidator Service
 
-**Reference:** Technical Intent Part 3.4 (Action Validator)
+**Reference:** [Technical Intent Part 3.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Action Validator)
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** PARTIALLY IMPLEMENTED (PR #900)
 
@@ -4528,7 +4529,7 @@ class ActionValidator:
 
 ### DEV-216: Create action_regeneration.md Prompt Template
 
-**Reference:** Technical Intent Part 11.5.2 (Regeneration Prompt)
+**Reference:** [Technical Intent Part 11.5.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Regeneration Prompt)
 
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
 
@@ -4630,7 +4631,7 @@ Output JSON:
 
 ### DEV-217: Implement ActionRegenerator Service (Golden Loop)
 
-**Reference:** Technical Intent Part 11.5 (Action Regeneration Loop)
+**Reference:** [Technical Intent Part 11.5](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Action Regeneration Loop)
 
 **Priority:** HIGH | **Effort:** 6h | **Status:** NOT STARTED
 
@@ -4811,7 +4812,7 @@ def _generate_safe_fallback(self, context: ResponseContext) -> list[dict]:
 
 ### DEV-218: Update Step 100 for Validation-Only with Golden Loop
 
-**Reference:** Technical Intent Part 3.5.4 (Step 100: Action Validation)
+**Reference:** [Technical Intent Part 3.5.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 100: Action Validation)
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** PARTIALLY IMPLEMENTED (PR #900)
 
@@ -5043,7 +5044,7 @@ Analizza questa query fiscale/legale italiana e classifica la sua complessità.
 
 ### DEV-221: Implement LLMOrchestrator Service for Multi-Model Routing
 
-**Reference:** Technical Intent Part 3.3 (LLM Orchestrator)
+**Reference:** [Technical Intent Part 3.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (LLM Orchestrator)
 
 **Priority:** HIGH | **Effort:** 8h | **Status:** NOT STARTED
 
@@ -5202,7 +5203,7 @@ class LLMOrchestrator:
 
 ### DEV-222: Integrate LLMOrchestrator with Step 64
 
-**Reference:** Technical Intent Part 3.5.3 (Step 64 routing)
+**Reference:** [Technical Intent Part 3.5.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 64 routing)
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -5231,7 +5232,7 @@ Update Step 64 to call LLMOrchestrator.classify_complexity(), then generate_resp
 
 ### DEV-223: Create tree_of_thoughts.md Prompt Template
 
-**Reference:** Technical Intent Part 3.2.4 (Tree of Thoughts Prompt)
+**Reference:** [Technical Intent Part 3.2.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Tree of Thoughts Prompt)
 
 **Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5251,7 +5252,7 @@ Create tree_of_thoughts.md prompt with hypothesis generation, evaluation, and se
 
 **File:** `app/prompts/v1/tree_of_thoughts.md`
 
-**Template Structure:** (See Technical Intent Part 2.3.2)
+**Template Structure:** (See [Technical Intent Part 2.3.2](pratikoai-llm-excellence-technical-intent.md#part-2-target-architecture))
 - Hypothesis generation (3-4 scenarios)
 - Source-weighted evaluation
 - Best hypothesis selection with reasoning
@@ -5268,7 +5269,7 @@ Create tree_of_thoughts.md prompt with hypothesis generation, evaluation, and se
 
 ### DEV-224: Create tree_of_thoughts_multi_domain.md Prompt Template
 
-**Reference:** Technical Intent Part 2.3.3 (Multi-Domain ToT)
+**Reference:** [Technical Intent Part 2.3.3](pratikoai-llm-excellence-technical-intent.md#part-2-target-architecture) (Multi-Domain ToT)
 
 **Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -5296,7 +5297,7 @@ Create tree_of_thoughts_multi_domain.md for cross-domain synthesis.
 
 ### DEV-227: Create Source Hierarchy Mapping and Weighting
 
-**Reference:** Technical Intent Part 11.1 (Source Hierarchy Weighting)
+**Reference:** [Technical Intent Part 11.1](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Source Hierarchy Weighting)
 
 **Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5356,7 +5357,7 @@ SOURCE_HIERARCHY = {
 
 ### DEV-228: Implement SourceConflictDetector Service
 
-**Reference:** Technical Intent Part 11.1.3 (Conflict Detection)
+**Reference:** [Technical Intent Part 11.1.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Conflict Detection)
 
 **Priority:** HIGH | **Effort:** 6h | **Status:** NOT STARTED
 
@@ -5386,7 +5387,7 @@ Create SourceConflictDetector that identifies conflicts between sources and reco
 
 ### DEV-229: Implement DualReasoning Data Structures
 
-**Reference:** Technical Intent Part 11.4 (Internal vs Public Reasoning)
+**Reference:** [Technical Intent Part 11.4](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Internal vs Public Reasoning)
 
 **Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5416,7 +5417,7 @@ Create DualReasoning dataclasses for internal technical reasoning and public use
 
 ### DEV-230: Implement ReasoningTransformer Service
 
-**Reference:** Technical Intent Part 11.4.2 (Reasoning Transformation)
+**Reference:** [Technical Intent Part 11.4.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Reasoning Transformation)
 
 **Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5444,7 +5445,7 @@ Create ReasoningTransformer that converts internal reasoning to public explanati
 
 ### DEV-231: Add Risk Analysis Phase to Tree of Thoughts
 
-**Reference:** Technical Intent Part 11.2 (Risk/Sanction Analysis)
+**Reference:** [Technical Intent Part 11.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Risk/Sanction Analysis)
 
 **Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5480,7 +5481,7 @@ Add risk analysis phase to ToT that evaluates sanction risk for each hypothesis.
 
 ### DEV-233: Create hyde_conversational.md Prompt Template
 
-**Reference:** Technical Intent Part 3.2.5 (Conversational HyDE)
+**Reference:** [Technical Intent Part 3.2.5](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Conversational HyDE)
 
 **Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -5611,7 +5612,7 @@ class HyDEGeneratorService:
 
 ### DEV-234: Implement QueryAmbiguityDetector Service
 
-**Reference:** Technical Intent Part 11.3 (Query Vaghe)
+**Reference:** [Technical Intent Part 11.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Query Vaghe)
 
 **Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5645,7 +5646,7 @@ Create QueryAmbiguityDetector that identifies ambiguous queries and triggers mul
 
 ### DEV-235: Update HyDE Generator for Conversation Awareness
 
-**Reference:** Technical Intent Part 11.3.3 (Updated HyDE Generator)
+**Reference:** [Technical Intent Part 11.3.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Updated HyDE Generator)
 
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
@@ -5673,7 +5674,7 @@ Update HyDEGeneratorService to check ambiguity and generate multi-variant HyDE w
 
 ### DEV-236: Update Source Schema for Paragraph-Level Grounding
 
-**Reference:** Technical Intent Part 11.6 (Paragraph-Level Grounding)
+**Reference:** [Technical Intent Part 11.6](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Paragraph-Level Grounding)
 
 **Priority:** LOW | **Effort:** 6h | **Status:** NOT STARTED
 
@@ -5701,7 +5702,7 @@ Add paragraph-level tracking to source schema with paragraph_id and excerpt fiel
 
 ### DEV-237: Implement Paragraph Extraction in Retrieval
 
-**Reference:** Technical Intent Part 11.6.2 (Paragraph Extraction)
+**Reference:** [Technical Intent Part 11.6.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Paragraph Extraction)
 
 **Priority:** LOW | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5729,7 +5730,7 @@ Add paragraph extraction to retrieval pipeline that identifies relevant paragrap
 
 ### DEV-238: Add Detailed Logging for Reasoning Traces
 
-**Reference:** Technical Intent Part 6 Phase 4 (Quality & Monitoring)
+**Reference:** [Technical Intent Part 6](pratikoai-llm-excellence-technical-intent.md#part-6-implementation-phases) Phase 4 (Quality & Monitoring)
 
 **Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -5831,7 +5832,7 @@ def _truncate_for_log(trace: dict | None, max_length: int = 1000) -> str:
 
 ### DEV-239: Create Cost Monitoring Dashboard
 
-**Reference:** Technical Intent Part 7.3 (Cost Metrics)
+**Reference:** [Technical Intent Part 7.3](pratikoai-llm-excellence-technical-intent.md#part-7-success-metrics) (Cost Metrics)
 
 **Priority:** LOW | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5859,7 +5860,7 @@ Create cost monitoring endpoint and dashboard integration.
 
 ### DEV-240: Add Action Quality Metrics
 
-**Reference:** Technical Intent Part 7.1 (Quality Metrics)
+**Reference:** [Technical Intent Part 7.1](pratikoai-llm-excellence-technical-intent.md#part-7-success-metrics) (Quality Metrics)
 
 **Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -5887,7 +5888,7 @@ Add action quality metrics collection and reporting.
 
 ### DEV-241: Create Prompt A/B Testing Framework
 
-**Reference:** Technical Intent Part 6 Phase 4 (A/B Testing)
+**Reference:** [Technical Intent Part 6](pratikoai-llm-excellence-technical-intent.md#part-6-implementation-phases) Phase 4 (A/B Testing)
 
 **Priority:** LOW | **Effort:** 6h | **Status:** NOT STARTED
 
@@ -5913,6 +5914,207 @@ Create A/B testing framework in PromptLoader with experiment configuration.
 
 ---
 
+### DEV-242: Create Reasoning Trace UI Component
+
+**Reference:** [Technical Intent Part 12](pratikoai-llm-excellence-technical-intent.md#part-12-user-experience-uiux) (User Experience)
+
+**Priority:** MEDIUM | **Effort:** 6h | **Status:** NOT STARTED
+
+**Problem:**
+Reasoning traces and Tree of Thoughts logic are generated by the backend (DEV-214, DEV-223) but hidden in logs. Professional users (accountants, lawyers) cannot see how PratikoAI reached its conclusions, limiting trust and verification capabilities.
+
+**Solution:**
+Create an expandable "Visualizza Ragionamento" (Show Reasoning) UI component in the chat response bubble that displays the step-by-step reasoning logic, source hierarchy used, and any conflict detection results.
+
+**Agent Assignment:** @livia (primary), @ezio (API support), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-214 (Unified JSON Output with reasoning_trace), DEV-166 (Chat Integration)
+- **Unlocks:** User trust, verification capability, educational value
+
+**Change Classification:** ADDITIVE
+
+**File:** `src/components/chat/ReasoningTrace.tsx`
+
+**Why This Matters for Professional Users:**
+| Benefit | Example |
+|---------|---------|
+| **Trust** | User sees AI weighted "Legge" higher than "Circolare" (DEV-227) |
+| **Verification** | User checks if conflict detection found contradictions (DEV-228) |
+| **Educational** | User understands the legal path to the "Verdetto Operativo" |
+
+**Performance Requirements:**
+- Initial render: <50ms
+- Expand/collapse animation: 60fps (no jank)
+- Memory footprint: <1MB for 100 reasoning traces in DOM
+- Lazy rendering for long lists (virtualization if >10 items)
+
+**API Response Structure (from DEV-214):**
+```json
+{
+  "answer": "...",
+  "reasoning": {
+    "tema_identificato": "Regime forfettario contributi INPS",
+    "fonti_utilizzate": [
+      "Legge 190/2014, Art. 1, comma 54",
+      "Circolare INPS 35/2019"
+    ],
+    "elementi_chiave": [
+      "Aliquota ridotta 35% per forfettari",
+      "Applicabile solo a gestione artigiani/commercianti"
+    ],
+    "conclusione": "L'agevolazione è applicabile con riduzione del 35%"
+  },
+  "sources_cited": [...],
+  "suggested_actions": [...]
+}
+```
+
+**Component Interface:**
+```tsx
+// src/components/chat/ReasoningTrace.tsx
+
+interface ReasoningData {
+  tema_identificato: string;
+  fonti_utilizzate: string[];
+  elementi_chiave: string[];
+  conclusione: string;
+}
+
+interface ReasoningTraceProps {
+  reasoning: ReasoningData | null;
+  isExpanded?: boolean;
+  onToggle?: (expanded: boolean) => void;
+  className?: string;
+}
+
+// Exported component
+export function ReasoningTrace(props: ReasoningTraceProps): JSX.Element | null;
+
+// Helper functions (internal)
+function isSourcePrimary(source: string): boolean;  // Detects Legge, D.Lgs, DPR
+function formatSourceWithHierarchy(source: string): JSX.Element;
+function truncateText(text: string, maxLength: number): string;
+```
+
+**Visual Design:**
+```
+┌─────────────────────────────────────────────────────┐
+│ [Answer text here...]                               │
+│                                                     │
+│ ▶ 💡 Visualizza ragionamento                       │  ← Collapsed (default)
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│ [Answer text here...]                               │
+│                                                     │
+│ ▼ 💡 Visualizza ragionamento                       │  ← Expanded
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ 📋 Tema: Regime forfettario contributi INPS    │ │
+│ │                                                 │ │
+│ │ 📚 Fonti utilizzate:                           │ │
+│ │   1. Legge 190/2014, Art. 1, comma 54 (⭐)     │ │
+│ │   2. Circolare INPS 35/2019                    │ │
+│ │                                                 │ │
+│ │ 🔑 Elementi chiave:                            │ │
+│ │   • Aliquota ridotta 35% per forfettari        │ │
+│ │   • Applicabile solo a gestione artigiani/...  │ │
+│ │                                                 │ │
+│ │ ✅ Conclusione:                                 │ │
+│ │   L'agevolazione è applicabile con riduzione   │ │
+│ │   del 35% sui contributi previdenziali.        │ │
+│ └─────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────┘
+```
+
+**Edge Cases:**
+- **Nulls/Empty:**
+  - `reasoning: null` → Hide accordion entirely (don't show empty state)
+  - `reasoning: {}` → Hide accordion (no valid data)
+  - `fonti_utilizzate: []` → Hide "Fonti" section, show others
+  - `elementi_chiave: []` → Hide "Elementi" section, show others
+  - `tema_identificato: ""` → Show "Tema non specificato" placeholder
+- **Boundaries:**
+  - `fonti_utilizzate.length > 10` → Show first 5, "Mostra altre N fonti"
+  - `elementi_chiave.length > 20` → Virtualize list
+  - `conclusione.length > 500` → Truncate with "Leggi tutto" expander
+- **Validation:**
+  - Invalid source format → Render as plain text without hierarchy badge
+  - Special characters in text → Escape properly (XSS prevention)
+  - Unicode/emoji in content → Render correctly
+- **Mobile/Touch:**
+  - Touch-friendly tap targets (min 44x44px)
+  - Swipe-to-expand gesture (optional enhancement)
+  - Landscape/portrait orientation changes
+
+**Testing Requirements:**
+- **TDD:** Write `src/__tests__/components/chat/ReasoningTrace.test.tsx` FIRST
+- **Unit Tests:**
+  - `test_renders_collapsed_by_default` - Accordion starts collapsed
+  - `test_expands_on_click` - Click toggles visibility
+  - `test_renders_all_reasoning_sections` - All 4 sections shown when data present
+  - `test_handles_null_reasoning` - Returns null, no DOM output
+  - `test_handles_empty_reasoning` - Returns null for empty object
+  - `test_handles_empty_arrays` - Hides sections with empty arrays
+  - `test_source_hierarchy_indicator` - ⭐ shows for Legge, D.Lgs, DPR
+  - `test_source_hierarchy_not_shown_for_circolari` - No ⭐ for Circolare
+  - `test_truncates_long_conclusione` - Text >500 chars truncated
+  - `test_shows_expand_button_for_many_fonti` - "Mostra altre" for >5 sources
+- **Accessibility Tests:**
+  - `test_keyboard_navigation` - Enter/Space toggles accordion
+  - `test_aria_expanded_attribute` - Correct ARIA states (true/false)
+  - `test_aria_controls_attribute` - Links trigger to content
+  - `test_focus_management` - Focus moves appropriately on expand
+- **Edge Case Tests:**
+  - `test_escapes_special_characters` - XSS prevention
+  - `test_handles_unicode_content` - Italian accents, special chars
+  - `test_handles_very_long_source_names` - Truncation with tooltip
+- **Integration Tests:** `src/__tests__/integration/ChatMessage.test.tsx`
+  - `test_reasoning_trace_renders_in_chat_bubble` - Component integrates
+- **Regression Tests:** Run `npm test -- --testPathPattern=chat` to verify no conflicts
+- **Coverage Target:** 90%+ for new code
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| API schema changes | HIGH | Type validation at boundary, graceful degradation |
+| Performance with many traces | MEDIUM | Virtualization for >10 items, lazy loading |
+| Mobile layout breaks | MEDIUM | Responsive design tests, viewport testing |
+| Accessibility compliance | HIGH | WCAG 2.1 AA checklist, automated a11y testing |
+| XSS via reasoning content | CRITICAL | Sanitize all text content before rendering |
+
+**Code Structure:**
+- Max component file: 150 lines, extract sub-components if larger
+- Max hook: 50 lines, split into smaller hooks
+- Extract `ReasoningSection.tsx` for each section (tema, fonti, elementi, conclusione)
+- Extract `useReasoningTrace.ts` hook for expand/collapse state management
+
+**Code Completeness:** (MANDATORY - NO EXCEPTIONS)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values (e.g., `reasoning={mockData}`)
+- [ ] All props handled (null, undefined, empty)
+- [ ] All conditional rendering paths tested
+- [ ] No "will implement later" patterns - component must work end-to-end
+- [ ] Integration with ChatMessage component complete and verified
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Accordion component with collapse/expand functionality
+- [ ] Displays all 4 reasoning sections (tema, fonti, elementi, conclusione)
+- [ ] Source hierarchy indicated (⭐ for primary sources: Legge, D.Lgs, DPR)
+- [ ] Keyboard accessible (Enter/Space to toggle)
+- [ ] Gracefully handles missing/null/empty reasoning
+- [ ] Mobile-responsive design (tested on 320px-1920px viewports)
+- [ ] Integrates with existing ChatMessage component
+- [ ] ARIA attributes for accessibility (aria-expanded, aria-controls)
+- [ ] Performance: <50ms render, 60fps animations
+- [ ] 90%+ test coverage achieved
+- [ ] All existing chat tests still pass (regression)
+- [ ] No TODO/FIXME comments for required features
+- [ ] XSS protection verified
+
+---
+
 ### Phase 9 Summary
 
 | Sub-Phase | Tasks | Effort | Priority |
@@ -5923,13 +6125,15 @@ Create A/B testing framework in PromptLoader with experiment configuration.
 | 9.4: Excellence | DEV-227 to DEV-232 | 26h | HIGH/MEDIUM |
 | 9.5: Conversation | DEV-233 to DEV-237 | 18h | MEDIUM/LOW |
 | 9.6: Quality & Monitoring | DEV-238 to DEV-241 | 15h | LOW |
-| **Total** | **32 tasks** | **~105h** | |
+| 9.7: Frontend UI | DEV-242 | 6h | MEDIUM |
+| **Total** | **33 tasks** | **~120h** | |
 
 **Agent Assignment Summary:**
 | Agent | Primary Tasks | Support Tasks |
 |-------|---------------|---------------|
-| @ezio | 28 tasks | - |
-| @clelia | - | 28 tasks (tests) |
+| @ezio | 28 tasks | 1 task (API support for DEV-242) |
+| @livia | 1 task (DEV-242) | - |
+| @clelia | - | 29 tasks (tests) |
 | @egidio | - | 8 tasks (review) |
 | @primo | - | 1 task (DB review) |
 | @silvano | - | 1 task (deployment) |

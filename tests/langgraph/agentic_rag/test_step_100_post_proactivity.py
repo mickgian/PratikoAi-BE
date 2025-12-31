@@ -1,7 +1,9 @@
-"""TDD Tests for Step 100: Post-Response Proactivity Node (DEV-200).
+"""TDD Tests for Step 100: Post-Response Proactivity Node (DEV-200, DEV-201).
 
 This node adds suggested actions AFTER LLM response. It uses template actions
 for recognized document types, or parses LLM response for contextual actions.
+
+DEV-201d: Added tests for forbidden action filtering.
 
 Test Strategy:
 - Test document template actions for known document types
@@ -9,6 +11,7 @@ Test Strategy:
 - Test skip logic for pre-proactivity triggered (skip_rag_for_proactivity)
 - Test skip logic for chitchat routes
 - Test error handling and graceful degradation
+- Test forbidden action filtering (DEV-201d)
 """
 
 import sys
@@ -518,3 +521,237 @@ class TestStep100VerdettoExtraction:
 
         assert post_response.get("source") == "llm_parsed"
         assert post_response.get("actions", [])[0]["id"] == "definition_action"
+
+
+# =============================================================================
+# TestStep100ForbiddenActionFilter - Forbidden Action Filtering Tests (DEV-201d)
+# =============================================================================
+class TestStep100ForbiddenActionFilter:
+    """Tests for forbidden action filtering in Step 100 (DEV-201d).
+
+    Users of PratikoAI ARE professionals (commercialisti, consulenti del lavoro,
+    avvocati). Actions suggesting to contact these professionals are forbidden
+    as they violate system.md rules.
+    """
+
+    def test_validate_action_allows_valid_action(self):
+        """Valid actions without forbidden patterns should pass."""
+        from app.services.proactivity_graph_service import validate_action
+
+        valid_action = {
+            "id": "calc_taxes",
+            "label": "Calcola imposta",
+            "icon": "💰",
+            "prompt": "Calcola l'imposta sostitutiva al 15%",
+        }
+
+        assert validate_action(valid_action) is True
+
+    def test_validate_action_blocks_contatta_commercialista(self):
+        """Actions suggesting to contact commercialista should be blocked."""
+        from app.services.proactivity_graph_service import validate_action
+
+        forbidden_action = {
+            "id": "contact_pro",
+            "label": "Contatta un commercialista",
+            "icon": "📞",
+            "prompt": "Per maggiori dettagli, contatta un commercialista",
+        }
+
+        assert validate_action(forbidden_action) is False
+
+    def test_validate_action_blocks_contatti_commercialista(self):
+        """Variant 'contatti' should also be blocked."""
+        from app.services.proactivity_graph_service import validate_action
+
+        forbidden_action = {
+            "id": "suggest",
+            "label": "Suggerimento",
+            "icon": "💡",
+            "prompt": "Ti consiglio di contattare un commercialista",
+        }
+
+        # The prompt contains "contattare" which matches pattern
+        assert validate_action(forbidden_action) is False
+
+    def test_validate_action_blocks_consulente_lavoro(self):
+        """Actions suggesting consulente del lavoro should be blocked."""
+        from app.services.proactivity_graph_service import validate_action
+
+        forbidden_action = {
+            "id": "contact_labor",
+            "label": "Contatta consulente",
+            "icon": "📞",
+            "prompt": "Contatta un consulente del lavoro per assistenza",
+        }
+
+        assert validate_action(forbidden_action) is False
+
+    def test_validate_action_blocks_consulta_esperto(self):
+        """Actions suggesting to consult an expert should be blocked."""
+        from app.services.proactivity_graph_service import validate_action
+
+        forbidden_action = {
+            "id": "consult_expert",
+            "label": "Consulta un esperto",
+            "icon": "👤",
+            "prompt": "Consulta un esperto per questo caso",
+        }
+
+        assert validate_action(forbidden_action) is False
+
+    def test_validate_action_blocks_visita_sito_agenzia(self):
+        """Actions suggesting to visit Agenzia site should be blocked."""
+        from app.services.proactivity_graph_service import validate_action
+
+        forbidden_action = {
+            "id": "visit_site",
+            "label": "Verifica online",
+            "icon": "🌐",
+            "prompt": "Visita il sito dell'Agenzia delle Entrate",
+        }
+
+        assert validate_action(forbidden_action) is False
+
+    def test_validate_action_blocks_rivolgiti_professionista(self):
+        """Actions suggesting to turn to a professional should be blocked."""
+        from app.services.proactivity_graph_service import validate_action
+
+        forbidden_action = {
+            "id": "seek_help",
+            "label": "Cerca aiuto",
+            "icon": "🆘",
+            "prompt": "Rivolgiti a un professionista per questo caso complesso",
+        }
+
+        assert validate_action(forbidden_action) is False
+
+    def test_validate_action_blocks_chiedi_avvocato(self):
+        """Actions suggesting to ask a lawyer should be blocked."""
+        from app.services.proactivity_graph_service import validate_action
+
+        forbidden_action = {
+            "id": "ask_lawyer",
+            "label": "Assistenza legale",
+            "icon": "⚖️",
+            "prompt": "Chiedi a un avvocato per conferma",
+        }
+
+        assert validate_action(forbidden_action) is False
+
+    def test_filter_case_insensitive(self):
+        """Filtering should be case-insensitive."""
+        from app.services.proactivity_graph_service import validate_action
+
+        uppercase_action = {
+            "id": "upper",
+            "label": "CONTATTA UN COMMERCIALISTA",
+            "icon": "📞",
+            "prompt": "Per dettagli",
+        }
+
+        mixedcase_action = {
+            "id": "mixed",
+            "label": "Consiglio",
+            "icon": "💡",
+            "prompt": "VISITA IL SITO DELL'AGENZIA delle Entrate",
+        }
+
+        assert validate_action(uppercase_action) is False
+        assert validate_action(mixedcase_action) is False
+
+    def test_filter_empty_list_returns_empty(self):
+        """Filtering empty list should return empty list."""
+        from app.services.proactivity_graph_service import filter_forbidden_actions
+
+        result = filter_forbidden_actions([])
+        assert result == []
+
+    def test_filter_all_forbidden_returns_empty(self):
+        """Filtering list with all forbidden actions returns empty."""
+        from app.services.proactivity_graph_service import filter_forbidden_actions
+
+        all_forbidden = [
+            {"id": "1", "label": "Contatta commercialista", "prompt": "Contact"},
+            {"id": "2", "label": "Consulta un esperto", "prompt": "Consult"},
+        ]
+
+        result = filter_forbidden_actions(all_forbidden)
+        assert result == []
+
+    def test_filter_mixed_keeps_valid_only(self):
+        """Filtering mixed list keeps only valid actions."""
+        from app.services.proactivity_graph_service import filter_forbidden_actions
+
+        mixed_actions = [
+            {"id": "valid1", "label": "Calcola IRPEF", "prompt": "Calcola", "icon": "💰"},
+            {"id": "forbidden", "label": "Contatta commercialista", "prompt": "Call", "icon": "📞"},
+            {"id": "valid2", "label": "Verifica scadenza", "prompt": "Check deadline", "icon": "📅"},
+        ]
+
+        result = filter_forbidden_actions(mixed_actions)
+        assert len(result) == 2
+        assert result[0]["id"] == "valid1"
+        assert result[1]["id"] == "valid2"
+
+    @pytest.mark.asyncio
+    async def test_step_100_filters_forbidden_llm_actions(self):
+        """Step 100 should filter forbidden actions from LLM parsed response."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
+
+        # LLM response with a forbidden action
+        llm_response = """<answer>Ecco le informazioni.</answer>
+<suggested_actions>
+[
+  {"id": "calc", "label": "Calcola", "icon": "💰", "prompt": "Calcola imposta"},
+  {"id": "bad", "label": "Contatta commercialista", "icon": "📞", "prompt": "Contatta un commercialista per assistenza"}
+]
+</suggested_actions>"""
+
+        state = {
+            "request_id": "test-filter-001",
+            "user_query": "Calcolo IRPEF",
+            "routing_decision": {"route": "theoretical_definition", "confidence": 0.9},
+            "llm": {"response": {"content": llm_response}},
+        }
+
+        result = await node_step_100(state)
+
+        proactivity = result.get("proactivity", {})
+        actions = proactivity.get("post_response", {}).get("actions", [])
+
+        # Forbidden action should be filtered out
+        action_ids = [a["id"] for a in actions]
+        assert "calc" in action_ids
+        assert "bad" not in action_ids
+
+    @pytest.mark.asyncio
+    async def test_step_100_filters_forbidden_verdetto_actions(self):
+        """Step 100 should filter forbidden actions from VERDETTO extraction."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
+
+        state = {
+            "request_id": "test-filter-002",
+            "user_query": "Consulenza fiscale",
+            "routing_decision": {"route": "technical_research", "confidence": 0.9},
+            "parsed_synthesis": {
+                "verdetto": {
+                    # Forbidden suggestion in azione_consigliata
+                    "azione_consigliata": "Consulta un esperto fiscale per questo caso",
+                    "analisi_rischio": None,
+                    "scadenza": "Nessuna",
+                    "documentazione": [],
+                    "indice_fonti": [],
+                },
+            },
+            "llm": {"response": {"content": "..."}},
+        }
+
+        result = await node_step_100(state)
+
+        proactivity = result.get("proactivity", {})
+        actions = proactivity.get("post_response", {}).get("actions", [])
+
+        # The forbidden "consulta un esperto" action should be filtered
+        action_ids = [a.get("id") for a in actions]
+        assert "azione_consigliata" not in action_ids

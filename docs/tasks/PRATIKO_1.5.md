@@ -6,6 +6,7 @@
 **Total Effort:** ~33h (2-3 weeks at 2-3h/day) *(with Claude Code)*
 
 **Recent Completed Work:**
+- DEV-200: Refactor Proactivity into LangGraph Nodes (2024-12-29)
 - DEV-152: Create Action Templates YAML Files (2024-12-19)
 - DEV-151: Create YAML Template Loader Service (2024-12-19)
 - DEV-153: Create Interactive Question Templates YAML (2024-12-19)
@@ -2862,6 +2863,134 @@ Created E2E test suite in `tests/e2e/test_proactivity_quality.py` verifying all 
 
 ---
 
+<details>
+<summary>
+<h3>DEV-200: Refactor Proactivity into LangGraph Nodes</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 12h | <strong>Status:</strong> ✅ DONE (2024-12-29)<br>
+Refactor proactivity features from chatbot.py into proper LangGraph nodes (Step 14, Step 100) + route-based prompt injection.
+</summary>
+
+### DEV-200: Refactor Proactivity into LangGraph Nodes
+
+**Reference:** PRATIKO_1.5_REFERENCE.md Section 12 (Proactive Suggested Actions)
+
+**Priority:** HIGH | **Effort:** 12h | **Status:** ✅ DONE (2024-12-29)
+
+**Branch:** `DEV-200-Refactor-Proactivity-into-LangGraph-Nodes`
+
+---
+
+### Phase 1: LangGraph Nodes (COMPLETE ✅)
+
+**Original Problem:**
+DEV-179 (Integrate LLM-First Proactivity in /chat Endpoint) was incomplete. It added `get_simplified_proactivity_engine()` at line 177 of chatbot.py but never wired it to the 5 code paths that still call `get_proactivity_engine()` (lines 807, 1010, 1386, 1805, 2120). The original `ProactivityEngine` depends on archived services (AtomicFactsExtractor, ParameterMatcher) and raises RuntimeError.
+
+**Solution Implemented:**
+Created proper LangGraph nodes following the established pattern:
+- ✅ Step 14 (Pre-Response Proactivity) - handles calculable intent parameter collection BEFORE RAG
+- ✅ Step 100 (Post-Response Proactivity) - adds suggested actions AFTER LLM response
+- ✅ ProactivityGraphService - unified service for graph nodes
+- ✅ Graph wiring with conditional edges
+- ✅ 28 TDD tests passing
+
+**Files Created:**
+- `app/core/langgraph/nodes/step_014__pre_proactivity.py` ✅
+- `app/core/langgraph/nodes/step_100__post_proactivity.py` ✅
+- `app/services/proactivity_graph_service.py` ✅
+- `tests/langgraph/agentic_rag/test_step_014_pre_proactivity.py` ✅
+- `tests/langgraph/agentic_rag/test_step_100_post_proactivity.py` ✅
+
+---
+
+### Phase 2: Route-Based Prompt Integration (COMPLETE ✅)
+
+**Gap Found During Manual Testing:**
+- Query: "Parlami della rottamazione quinquies"
+- Expected: Post-response suggested actions
+- Actual: No suggested actions shown
+
+**Root Cause Analysis:**
+1. `SUGGESTED_ACTIONS_PROMPT` exists in `app/core/prompts/suggested_actions.md` but is **never injected** into the system prompt
+2. `SYNTHESIS_SYSTEM_PROMPT` (DEV-192/193) is only imported for TYPE_CHECKING in step_064 - **not actually used at runtime**
+3. The `inject_proactivity_prompt()` function in chatbot.py exists but is never called
+4. Prompt building happens in `app/orchestrators/prompting.py` (steps 41, 43, 44) which does NOT use either prompt
+
+**Solution Required:** Route-Based Prompt Selection
+
+The LLM Router (Step 34a) classifies queries into routes. Use this classification to inject appropriate prompts:
+
+| Route | Classification | Prompt to Use |
+|-------|---------------|---------------|
+| `chitchat` | Casual conversation | Regular prompt (no actions) |
+| `theoretical_definition` | Definitions, concepts | Regular + SUGGESTED_ACTIONS_PROMPT |
+| **`technical_research`** | Complex fiscal/legal | **SYNTHESIS_SYSTEM_PROMPT + VERDETTO** |
+| `calculator` | Calculations | Regular + SUGGESTED_ACTIONS_PROMPT |
+| `golden_set` | Specific law references | Golden Set (skip RAG) |
+
+**Acceptance Criteria (All Met):**
+- [x] Step 14 node handles pre-response proactivity
+- [x] Step 100 node handles post-response actions
+- [x] Graph wired with conditional edges
+- [x] 28 TDD tests pass
+- [x] "Calcola IRPEF" shows input fields question (no LLM call)
+- [x] Route-based prompt injection in prompting.py
+- [x] All tests pass
+
+**Git:** Branch `DEV-200-Refactor-Proactivity-into-LangGraph-Nodes`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-201: Suggested Actions Quality & Compliance</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 8.5h | <strong>Status:</strong> ✅ DONE (2024-12-29)<br>
+Fix 4 critical issues: action history tracking, domain-aware meta-prompting for contextual actions, KB access affirmation in system.md, forbidden action filtering.
+</summary>
+
+### DEV-201: Suggested Actions Quality & Compliance
+
+**Reference:** E2E Testing Results from DEV-200 Completion
+
+**Priority:** HIGH | **Effort:** 8.5h | **Status:** ✅ DONE (2024-12-29)
+
+**Branch:** `DEV-201-Suggested-Actions-Quality`
+
+---
+
+### Problem Statement
+
+E2E testing with "Come funziona il regime forfettario?" revealed 4 critical issues:
+
+1. **No Action Selection in History** - When user clicks action, no trace remains in conversation
+2. **Generic/Irrelevant Actions** - Actions too generic ("Calcola", "Verifica") instead of context-specific
+3. **CRITICAL: "Non ho accesso a documenti" Lie** - System falsely claims no KB access (reputational damage)
+4. **CRITICAL: "Contatta un commercialista" Forbidden** - Violates system.md rules (customers ARE commercialisti)
+
+**Solution:**
+Multi-layered fix: (a) Frontend tracks action source in message metadata, (b) Redesign action prompt with **meta-prompting strategy** that teaches HOW to generate contextual actions (not hardcoded WHAT), (c) Add KB access affirmation to base `system.md` prompt (applies to ALL LLM calls), (d) Add regex-based validation layer to filter forbidden action patterns.
+
+**Subtasks Completed:**
+- ✅ DEV-201a: Action Source Tracking (Frontend)
+- ✅ DEV-201b: Meta-Prompting for Action Generation (Backend)
+- ✅ DEV-201c: KB Access Affirmation in Base Prompt (Backend)
+- ✅ DEV-201d: Forbidden Action Validation Layer (Backend)
+
+**Acceptance Criteria (All Met):**
+- [x] "Come funziona il regime forfettario?" produces SPECIFIC actions (not generic)
+- [x] LLM never says "non ho accesso a documenti"
+- [x] "Contatta un commercialista" never appears in suggestions
+- [x] Action source visible in frontend conversation
+- [x] All baseline tests pass
+- [x] 90%+ test coverage on new code
+
+**Git:** Branch `DEV-201-Suggested-Actions-Quality`
+
+</details>
+
+---
+
 ## Phase 7: Agentic RAG Pipeline - 39h
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 13](/docs/tasks/PRATIKO_1.5_REFERENCE.md#13-evoluzione-verso-agentic-rag)
@@ -2913,316 +3042,14 @@ DEV-184 (LLM Config)
 
 ---
 
-## Phase 8: Bugfix - 8h
+## Phase 8: Bugfix - ✅ COMPLETED
 
-**Objective:** Fix bugs and incomplete implementations discovered during Phase 7 testing.
+**Status:** All tasks completed (2024-12-29)
 
-<details>
-<summary>
-<h3>DEV-200: Refactor Proactivity into LangGraph Nodes</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 12h | <strong>Status:</strong> IN PROGRESS (80%)<br>
-Refactor proactivity features from chatbot.py into proper LangGraph nodes (Step 14, Step 100) + route-based prompt injection.
-</summary>
-
-### DEV-200: Refactor Proactivity into LangGraph Nodes
-
-**Reference:** PRATIKO_1.5_REFERENCE.md Section 12 (Proactive Suggested Actions)
-
-**Priority:** HIGH | **Effort:** 12h | **Status:** IN PROGRESS (80%)
-
-**Branch:** `DEV-195-Create-Step-39-Query-Expansion-Nodes` (will create dedicated branch)
+**Tasks:** DEV-200, DEV-201 → Moved to [Completed Tasks](#completed-tasks) section above.
 
 ---
 
-### Phase 1: LangGraph Nodes (COMPLETE ✅)
-
-**Original Problem:**
-DEV-179 (Integrate LLM-First Proactivity in /chat Endpoint) was incomplete. It added `get_simplified_proactivity_engine()` at line 177 of chatbot.py but never wired it to the 5 code paths that still call `get_proactivity_engine()` (lines 807, 1010, 1386, 1805, 2120). The original `ProactivityEngine` depends on archived services (AtomicFactsExtractor, ParameterMatcher) and raises RuntimeError.
-
-**Solution Implemented:**
-Created proper LangGraph nodes following the established pattern:
-- ✅ Step 14 (Pre-Response Proactivity) - handles calculable intent parameter collection BEFORE RAG
-- ✅ Step 100 (Post-Response Proactivity) - adds suggested actions AFTER LLM response
-- ✅ ProactivityGraphService - unified service for graph nodes
-- ✅ Graph wiring with conditional edges
-- ✅ 28 TDD tests passing
-
-**Files Created:**
-- `app/core/langgraph/nodes/step_014__pre_proactivity.py` ✅
-- `app/core/langgraph/nodes/step_100__post_proactivity.py` ✅
-- `app/services/proactivity_graph_service.py` ✅
-- `tests/langgraph/agentic_rag/test_step_014_pre_proactivity.py` ✅
-- `tests/langgraph/agentic_rag/test_step_100_post_proactivity.py` ✅
-
----
-
-### Phase 2: Route-Based Prompt Integration (PENDING 🔄)
-
-**Gap Found During Manual Testing:**
-- Query: "Parlami della rottamazione quinquies"
-- Expected: Post-response suggested actions
-- Actual: No suggested actions shown
-
-**Root Cause Analysis:**
-1. `SUGGESTED_ACTIONS_PROMPT` exists in `app/core/prompts/suggested_actions.md` but is **never injected** into the system prompt
-2. `SYNTHESIS_SYSTEM_PROMPT` (DEV-192/193) is only imported for TYPE_CHECKING in step_064 - **not actually used at runtime**
-3. The `inject_proactivity_prompt()` function in chatbot.py exists but is never called
-4. Prompt building happens in `app/orchestrators/prompting.py` (steps 41, 43, 44) which does NOT use either prompt
-
-**Solution Required:** Route-Based Prompt Selection
-
-The LLM Router (Step 34a) classifies queries into routes. Use this classification to inject appropriate prompts:
-
-| Route | Classification | Prompt to Use |
-|-------|---------------|---------------|
-| `chitchat` | Casual conversation | Regular prompt (no actions) |
-| `theoretical_definition` | Definitions, concepts | Regular + SUGGESTED_ACTIONS_PROMPT |
-| **`technical_research`** | Complex fiscal/legal | **SYNTHESIS_SYSTEM_PROMPT + VERDETTO** |
-| `calculator` | Calculations | Regular + SUGGESTED_ACTIONS_PROMPT |
-| `golden_set` | Specific law references | Golden Set (skip RAG) |
-
-**Files to Modify (Phase 2):**
-
-| File | Change |
-|------|--------|
-| `app/orchestrators/prompting.py` | Route-based prompt injection in step_41/step_44 |
-| `app/core/langgraph/nodes/step_100__post_proactivity.py` | Add VERDETTO extraction path for `technical_research` |
-
-**Implementation (Phase 2):**
-
-1. **In `prompting.py` step_44__default_sys_prompt():**
-```python
-from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
-from app.core.prompts.synthesis_critical import SYNTHESIS_SYSTEM_PROMPT
-
-SYNTHESIS_ROUTES = {"technical_research"}
-route = (ctx or {}).get("routing_decision", {}).get("route", "")
-
-if route in SYNTHESIS_ROUTES:
-    prompt = SYNTHESIS_SYSTEM_PROMPT  # Use VERDETTO format
-else:
-    prompt = prompt + "\n\n" + SUGGESTED_ACTIONS_PROMPT  # Append actions prompt
-```
-
-2. **In `step_100__post_proactivity.py`:**
-```python
-# Priority 2: VERDETTO extraction for technical_research
-if route in SYNTHESIS_ROUTES:
-    parsed_synthesis = state.get("parsed_synthesis", {})
-    verdetto = parsed_synthesis.get("verdetto", {})
-    azione = verdetto.get("azione_consigliata")
-    if azione:
-        actions = [{"id": "azione_consigliata", "label": "Segui consiglio", "icon": "✅", "prompt": azione}]
-        return _build_proactivity_update(actions=actions, source="verdetto")
-```
-
----
-
-**Agent Assignment:** @ezio (primary), @clelia (tests), @tiziano (integration review)
-
-**Dependencies:**
-- **Phase 1 Blocking:** None (existing proactivity schemas and constants are usable) - DONE
-- **Phase 2 Blocking:** DEV-194 (LLM Router Node) must be wired to populate `routing_decision` - DONE
-- **Unlocks:** DEV-201 (E2E Proactivity Validation), Frontend proactivity integration
-
-**Change Classification:** RESTRUCTURING + ENHANCEMENT
-
-**Testing Requirements:**
-
-| Test File | Tests | Status |
-|-----------|-------|--------|
-| `test_step_014_pre_proactivity.py` | 14 | ✅ PASSING |
-| `test_step_100_post_proactivity.py` | 14 | ✅ PASSING |
-| `test_prompting_route_based.py` | 6 | 🔄 PENDING |
-| **Total** | **34** | **28/34** |
-
-**Acceptance Criteria:**
-
-Phase 1 (COMPLETE):
-- [x] Step 14 node handles pre-response proactivity
-- [x] Step 100 node handles post-response actions
-- [x] Graph wired with conditional edges
-- [x] 28 TDD tests pass
-- [x] "Calcola IRPEF" shows input fields question (no LLM call)
-
-Phase 2 (PENDING):
-- [ ] Route-based prompt injection in prompting.py
-- [ ] SYNTHESIS_SYSTEM_PROMPT used for `technical_research` queries
-- [ ] SUGGESTED_ACTIONS_PROMPT used for other queries
-- [ ] Step 100 extracts actions from VERDETTO for `technical_research`
-- [ ] "Parlami della rottamazione quinquies" → VERDETTO with AZIONE CONSIGLIATA
-- [ ] "Cos'è il forfettario?" → SUGGESTED_ACTIONS from XML tags
-- [ ] All 34 tests pass
-- [ ] No regressions in existing tests
-
-**Implementation Order (Remaining):**
-1. Add route-based prompt injection in prompting.py (1h)
-2. Update step_100 with VERDETTO extraction (30 min)
-3. Add Phase 2 tests (1h)
-4. Manual testing with all route types (30 min)
-5. Integration testing (30 min)
-
-</details>
-
----
-
-<details>
-<summary>
-<h3>DEV-201: Suggested Actions Quality & Compliance</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 6h | <strong>Status:</strong> TODO<br>
-Fix 4 critical issues discovered during E2E testing: action history tracking, contextual relevance, KB access affirmation, forbidden action filtering.
-</summary>
-
-### DEV-201: Suggested Actions Quality & Compliance
-
-**Reference:** E2E Testing Results from DEV-200 Completion
-
-**Priority:** HIGH | **Effort:** 6h | **Status:** TODO
-
-**Branch:** `DEV-201-Suggested-Actions-Quality`
-
----
-
-### Problem Statement
-
-E2E testing with "Come funziona il regime forfettario?" revealed 4 critical issues:
-
-1. **No Action Selection in History** - When user clicks action, no trace remains in conversation
-2. **Generic/Irrelevant Actions** - Actions too generic ("Calcola", "Verifica") instead of context-specific
-3. **CRITICAL: "Non ho accesso a documenti" Lie** - System falsely claims no KB access (reputational damage)
-4. **CRITICAL: "Contatta un commercialista" Forbidden** - Violates system.md rules (customers ARE commercialisti)
-
-**Root Cause Analysis (by @egidio):**
-- Issue 1: Frontend doesn't track action source in message metadata
-- Issue 2: `suggested_actions.md` lacks domain-specific guidance (NOT an LLM tier issue)
-- Issue 3: `suggested_actions.md` doesn't remind LLM it HAS KB access
-- Issue 4: No validation layer to filter forbidden action patterns
-
----
-
-### Subtask DEV-201a: Action Source Tracking (Frontend)
-**Effort:** 1h | **Agent:** @livia
-
-**Files to Modify:**
-- `src/app/chat/components/ChatMessagesArea.tsx`
-- `src/app/chat/types/chat.ts`
-- `src/app/chat/components/Message.tsx`
-
-**Changes:**
-1. Add `actionSource` field to Message type
-2. When user clicks action, include metadata in user message
-3. Display "Da azione: {label}" badge on action-triggered messages
-
-**Acceptance Criteria:**
-- [ ] Selected action visible in conversation history
-- [ ] Badge shows action source on relevant messages
-
----
-
-### Subtask DEV-201b: Domain-Specific Action Prompting (Backend)
-**Effort:** 2h | **Agent:** @ezio
-
-**Files to Modify:**
-- `app/core/prompts/suggested_actions.md`
-
-**Changes:**
-1. Add domain-specific action categories (Regime Forfettario, IRPEF, INPS)
-2. Add context-awareness rules:
-   - "Se l'utente parla di aliquote, suggerisci azioni su aliquote/scaglioni"
-   - "Se l'utente parla di regime forfettario, suggerisci codici ATECO, coefficienti"
-   - "MAI suggerire azioni generiche come 'Calcola' senza specificare COSA"
-
-**Acceptance Criteria:**
-- [ ] Actions are contextually relevant to conversation topic
-- [ ] Domain-specific suggestions (ATECO for forfettario, scaglioni for IRPEF)
-
----
-
-### Subtask DEV-201c: KB Access Affirmation (Backend)
-**Effort:** 1h | **Agent:** @ezio
-
-**Files to Modify:**
-- `app/core/prompts/suggested_actions.md`
-
-**Changes:**
-Add explicit KB access reminder:
-```markdown
-## IMPORTANTE - ACCESSO KNOWLEDGE BASE
-Tu HAI SEMPRE accesso alla Knowledge Base di PratikoAI che contiene:
-- Circolari e risoluzioni dell'Agenzia delle Entrate
-- Normativa fiscale italiana aggiornata
-- Documentazione INPS, INAIL, Camera di Commercio
-
-NON dire MAI:
-- "Non ho accesso a documenti"
-- "Non posso consultare circolari"
-- "Dovresti verificare sul sito dell'Agenzia delle Entrate"
-```
-
-**Acceptance Criteria:**
-- [ ] LLM never says "non ho accesso a documenti"
-- [ ] Responses cite KB sources when available
-
----
-
-### Subtask DEV-201d: Forbidden Action Validation (Backend)
-**Effort:** 2h | **Agent:** @ezio
-
-**Files to Modify:**
-- `app/services/proactivity_graph_service.py`
-- `app/core/langgraph/nodes/step_100__post_proactivity.py`
-
-**Changes:**
-1. Add `FORBIDDEN_ACTION_PATTERNS` list with regex patterns:
-   - `r"contatt[ai] (?:un )?commercialista"`
-   - `r"contatt[ai] (?:un )?consulente del lavoro"`
-   - `r"contatt[ai] (?:un )?avvocato"`
-   - `r"visita il sito dell'Agenzia delle Entrate"`
-   - `r"consulta (?:un )?esperto"`
-
-2. Add `validate_action()` function to filter forbidden patterns
-3. Apply validation before returning actions in Step 100
-
-**Acceptance Criteria:**
-- [ ] "Contatta un commercialista" actions are filtered out
-- [ ] "Visita il sito dell'Agenzia" actions are filtered out
-- [ ] Filtered actions logged for monitoring
-- [ ] Unit tests for forbidden patterns
-
----
-
-### Testing Requirements
-
-| Test File | Description |
-|-----------|-------------|
-| `test_action_source_tracking.tsx` | Frontend: Action source badge displayed |
-| `test_contextual_actions.py` | Backend: Actions relevant to conversation |
-| `test_kb_access_affirmation.py` | Backend: No "non ho accesso" responses |
-| `test_forbidden_action_filter.py` | Backend: Forbidden patterns filtered |
-
----
-
-### Summary
-
-| Subtask | Effort | Agent | Priority |
-|---------|--------|-------|----------|
-| DEV-201a | 1h | @livia | HIGH |
-| DEV-201b | 2h | @ezio | HIGH |
-| DEV-201c | 1h | @ezio | CRITICAL |
-| DEV-201d | 2h | @ezio | CRITICAL |
-| **Total** | **6h** | | |
-
-**Agent Assignment:** @ezio (primary backend), @livia (frontend), @clelia (tests)
-
-**Dependencies:**
-- Depends on: DEV-200 (completed)
-- Unlocks: Production-ready suggested actions feature
-
-**Change Classification:** ENHANCEMENT + COMPLIANCE
-
-</details>
-
----
 
 ## Summary
 
@@ -3235,7 +3062,2938 @@ NON dire MAI:
 | Phase 5: Documentation | DEV-173 | 1h | @egidio, @ezio |
 | Phase 6: LLM-First Revision | DEV-174 to DEV-183 | 17h | @ezio, @clelia |
 | Phase 7: Agentic RAG Pipeline | DEV-184 to DEV-199 | 39h | @ezio, @clelia, @primo |
-| Phase 8: Bugfix | DEV-200, DEV-201 | 14h | @ezio, @livia, @clelia |
-| **Total** | **52+ tasks** | **~103h+** | |
+| Phase 8: Bugfix | DEV-200, DEV-201 | 16.5h | @ezio, @livia, @clelia |
+| **Total** | **52+ tasks** | **~105h+** | |
 
 **Estimated Timeline:** 5-6 weeks at 3h/day *(with Claude Code)*
+
+---
+
+## Phase 9: LLM Excellence - ~105h (8-10 weeks)
+
+**Reference:** Technical Intent Document: PratikoAI LLM Excellence Architecture v2.0 (2024-12-30)
+**Status:** NOT STARTED
+**Total Effort:** ~105h (8-10 weeks at 2-3h/day)
+**Priority:** HIGH - Core reasoning capability upgrade
+
+### Overview
+
+Phase 9 elevates PratikoAI's LLM reasoning capabilities through:
+
+1. **Context Preservation** - Fix KB document loss between Step 40 and Step 100
+2. **Explicit Reasoning** - Chain of Thought (CoT) and Tree of Thoughts (ToT)
+3. **Cost Optimization** - Multi-LLM routing based on query complexity
+4. **Source Hierarchy** - Italian legal source weighting (Legge > Circolare > Interpello)
+5. **Action Quality** - Golden Loop regeneration for action validation
+
+**Target Metrics:**
+| Metric | Current | Target |
+|--------|---------|--------|
+| Answer accuracy | 91% | 95%+ |
+| Action relevance | ~60% | 90%+ |
+| Cost per query | €0.0155 | €0.0052 |
+| Response time (simple) | ~3s | <2s |
+| Response time (complex) | ~5s | <5s |
+
+### Task ID Mapping
+
+| Task Range | Sub-Phase |
+|------------|-----------|
+| DEV-210 to DEV-214 | Phase 9.1: Foundation (GraphState, PromptLoader, KB Preservation) |
+| DEV-215 to DEV-219 | Phase 9.2: Golden Loop (ActionValidator, ActionRegenerator) |
+| DEV-220 to DEV-226 | Phase 9.3: Intelligence (Complexity, LLMOrchestrator, ToT) |
+| DEV-227 to DEV-232 | Phase 9.4: Excellence (Source Hierarchy, Risk Analysis, Dual Reasoning) |
+| DEV-233 to DEV-237 | Phase 9.5: Conversation (HyDE, Ambiguity, Paragraph Grounding) |
+| DEV-238 to DEV-241 | Phase 9.6: Quality & Monitoring |
+| DEV-242 | Phase 9.7: Frontend UI (Reasoning Display) |
+
+### Files for Refactoring or Deletion
+
+Based on analysis, these files may need refactoring or deletion as the new architecture replaces their functionality:
+
+| File | Action | Reason |
+|------|--------|--------|
+| `app/services/synthesis_prompt_builder.py` | REFACTOR | Merge into PromptLoader, simplify to use new unified templates |
+| `app/core/prompts/suggested_actions.md` | KEEP | Enhanced in PR #900 with domain/confidence templating and STEP 1-4 methodology |
+| `app/services/premium_model_selector.py` | REFACTOR | LLMOrchestrator will absorb model selection logic |
+| `app/orchestrators/prompting.py` | REFACTOR | PromptLoader centralizes prompt management |
+| `app/services/domain_prompt_templates.py` | EVALUATE | May be superseded by new ToT domain prompts |
+| `app/services/advanced_prompt_engineer.py` | EVALUATE | Review for redundancy with new reasoning prompts |
+
+### Dependency Graph
+
+```
+DEV-210 (GraphState) ─────────────────────────────────────────┐
+    │                                                         │
+    ├──► DEV-211 (PromptLoader)                              │
+    │        │                                                │
+    │        ├──► DEV-212 (unified_response_simple.md)       │
+    │        ├──► DEV-220 (complexity_classifier.md)         │
+    │        ├──► DEV-223 (tree_of_thoughts.md)              │
+    │        └──► DEV-233 (hyde_conversational.md)           │
+    │                                                         │
+    ├──► DEV-213 (Step 40 KB Preservation) ◄─────────────────┤
+    │        │                                                │
+    │        └──► DEV-214 (Step 64 Unified Output)           │
+    │                 │                                       │
+    │                 ├──► DEV-215 (ActionValidator)         │
+    │                 │        │                              │
+    │                 │        └──► DEV-217 (ActionRegenerator)
+    │                 │                 │                     │
+    │                 │                 └──► DEV-218 (Step 100 Update)
+    │                 │                                       │
+    │                 └──► DEV-229 (DualReasoning)           │
+    │                          │                              │
+    │                          └──► DEV-230 (ReasoningTransformer)
+    │                                                         │
+    ├──► DEV-220 (Complexity Classifier)                     │
+    │        │                                                │
+    │        └──► DEV-221 (LLMOrchestrator) ◄────────────────┤
+    │                 │                                       │
+    │                 └──► DEV-222 (Step 64 Routing)         │
+    │                                                         │
+    └──► DEV-227 (Source Hierarchy) ─────────────────────────┤
+             │                                                │
+             └──► DEV-228 (SourceConflictDetector)           │
+                      │                                       │
+                      └──► DEV-231 (Risk Analysis ToT)       │
+```
+
+
+---
+
+<details>
+<summary>
+<h3>DEV-210: Update GraphState with LLM Excellence Fields</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+RAGState lacks fields for reasoning traces, KB document preservation, complexity classification, ToT...
+</summary>
+
+### DEV-210: Update GraphState with LLM Excellence Fields
+
+**Reference:** [Technical Intent Part 3.1](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Graph State Schema)
+
+**Priority:** CRITICAL | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+RAGState lacks fields for reasoning traces, KB document preservation, complexity classification, ToT analysis, and action validation state needed for LLM Excellence features.
+
+**Solution:**
+Add new Optional fields to RAGState TypedDict with proper typing and None defaults to maintain backward compatibility with existing 70+ nodes.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** None
+- **Unlocks:** DEV-211, DEV-213, DEV-214, DEV-215, DEV-220, DEV-227, DEV-229
+
+**Change Classification:** RESTRUCTURING
+
+**Impact Analysis:**
+- **Primary File:** `app/core/langgraph/types.py`
+- **Affected Files:**
+  - All 70+ nodes in `app/core/langgraph/nodes/`
+  - `app/schemas/graph.py`
+- **Related Tests:**
+  - `tests/core/langgraph_tests/` (all)
+  - `tests/unit/core/langgraph/nodes/`
+- **Baseline Command:** `pytest tests/core/langgraph_tests/ -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass (run `pytest tests/core/langgraph_tests/ -v`)
+- [ ] Existing RAGState documentation reviewed
+- [ ] No pre-existing test failures in langgraph tests
+
+**File:** `app/core/langgraph/types.py`
+
+**Fields to Add:**
+```python
+# Phase 9: LLM Excellence - KB Preservation
+kb_documents: list[dict] | None  # Preserved KB docs from Step 40
+kb_sources_metadata: list[dict] | None  # Source metadata for grounding
+# Structure: [{id, title, type, date, url, key_topics, key_values, hierarchy_weight}]
+
+# Phase 9: LLM Excellence - Complexity & Routing
+query_complexity: str | None  # "simple" | "complex" | "multi_domain"
+complexity_classification: dict | None  # Full classification result
+# Structure: {complexity, domains, confidence, reasoning}
+
+# Phase 9: LLM Excellence - Reasoning
+reasoning_type: str | None  # "cot" | "tot" | "tot_multi_domain"
+reasoning_trace: dict | None  # Internal reasoning log (CoT steps or ToT summary)
+# CoT: {tema, fonti_utilizzate, elementi_chiave, conclusione}
+# ToT: {hypotheses, selected, selection_reasoning, confidence}
+tot_analysis: dict | None  # Full Tree of Thoughts analysis
+# Structure: {hypotheses[], selected, selection_reasoning, confidence, alternative_note}
+
+# Phase 9: LLM Excellence - Dual Reasoning
+internal_reasoning: dict | None  # Technical reasoning for debugging
+public_reasoning: dict | None  # User-friendly explanation
+# Structure: {summary, selected_scenario, why_selected, main_sources, confidence_label}
+
+# Phase 9: LLM Excellence - Action Validation
+action_validation_result: dict | None  # ActionValidator output
+action_regeneration_count: int | None  # Golden Loop iteration count (max 2)
+actions_source: str | None  # "unified_llm" | "fallback" | "template" | "regenerated"
+actions_validation_log: list[str] | None  # Rejection reasons for debugging
+```
+
+**Edge Cases:**
+- **Nulls/Empty:** All new fields must default to None to avoid breaking existing nodes
+- **Backward Compatibility:** Existing checkpoint deserialization must work with new schema
+- **Type Mismatches:** Fields must be properly typed to pass mypy strict mode
+- **Serialization:** All dict structures must be JSON-serializable for checkpointing
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/core/langgraph/test_types_phase9.py` FIRST
+- **Unit Tests:**
+  - `test_ragstate_new_fields_optional` - All new fields are Optional with None default
+  - `test_ragstate_backward_compatible` - Existing state dicts work without new fields
+  - `test_ragstate_serialization` - JSON serialization works for all field types
+  - `test_ragstate_checkpoint_migration` - Checkpoints with old schema deserialize correctly
+  - `test_ragstate_kb_documents_structure` - kb_documents field structure validates
+  - `test_ragstate_reasoning_trace_structure` - reasoning_trace CoT/ToT structures validate
+- **Edge Case Tests:**
+  - `test_ragstate_none_values_all_fields` - All fields can be None
+  - `test_ragstate_partial_update` - Partial field updates don't break state
+  - `test_ragstate_mypy_compliance` - No type errors with mypy strict
+- **Regression Tests:** Run full `pytest tests/core/langgraph_tests/`
+- **Coverage Target:** 95%+ for new code
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Breaking existing nodes | CRITICAL | All fields Optional with None default, run full regression suite |
+| Checkpoint deserialization fails | HIGH | Test with existing checkpoint data before merge |
+| Type mismatches in nodes | HIGH | Run mypy after changes, fix all errors |
+| Memory increase from new fields | LOW | Fields are None until populated, minimal overhead |
+
+**Code Structure:**
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All fields properly typed with TypedDict
+- [ ] All structures documented with inline comments
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] All new fields are Optional with None default
+- [ ] mypy passes with no errors
+- [ ] All existing langgraph tests pass (regression)
+- [ ] Checkpoint with old schema deserializes correctly
+- [ ] 95%+ test coverage for new code
+- [ ] No breaking changes to existing node behavior
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-211: Create PromptLoader Utility Service</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Prompts are currently scattered across multiple files with inline loading. Need centralized prompt l...
+</summary>
+
+### DEV-211: Create PromptLoader Utility Service
+
+**Reference:** [Technical Intent Part 3.2.2](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Prompt Loader Specification)
+
+**Priority:** CRITICAL | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Prompts are currently scattered across multiple files with inline loading. Need centralized prompt loading with caching, variable substitution, and hot-reload capability for development.
+
+**Solution:**
+Create PromptLoader service that loads .md files from `app/prompts/` directory with LRU caching and template variable substitution.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** None
+- **Unlocks:** DEV-212, DEV-216, DEV-220, DEV-223, DEV-224, DEV-233, DEV-234
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/services/prompt_loader.py`
+
+**Directory Structure to Create:**
+```
+app/prompts/
+├── __init__.py                          # Prompt loader utility
+├── config.yaml                          # Version and A/B test config
+│
+├── v1/                                  # Version 1 prompts
+│   ├── unified_response_simple.md       # Simple CoT prompt
+│   ├── tree_of_thoughts.md              # Complex ToT prompt
+│   ├── tree_of_thoughts_multi_domain.md # Multi-domain ToT prompt
+│   ├── hyde_conversational.md           # HyDE with conversation context
+│   ├── complexity_classifier.md         # Query complexity classification
+│   └── action_regeneration.md           # Golden Loop regeneration
+│
+└── components/                          # Reusable prompt components
+    ├── forbidden_actions.md             # Actions to never suggest
+    ├── source_citation_rules.md         # How to cite sources
+    ├── italian_formatting.md            # Italian language rules
+    └── verdetto_format.md               # VERDETTO structure template
+```
+
+**Methods:**
+```python
+class PromptLoader:
+    def __init__(self, prompts_dir: Path = None, version: str = "v1"):
+        """Initialize with prompts directory and version."""
+
+    @lru_cache(maxsize=50)
+    def load(self, name: str, **variables) -> str:
+        """Load prompt by name with variable substitution.
+
+        Args:
+            name: Prompt name (e.g., "unified_response_simple")
+            **variables: Template variables to substitute ({var} syntax)
+
+        Returns:
+            Formatted prompt string
+
+        Raises:
+            FileNotFoundError: If prompt file doesn't exist
+            KeyError: If required variable is missing
+        """
+
+    def load_component(self, name: str) -> str:
+        """Load a reusable prompt component from components/ directory."""
+
+    def compose(self, *parts: str, separator: str = "\n\n---\n\n") -> str:
+        """Compose multiple prompt parts with separators."""
+
+    def reload(self, name: str = None) -> None:
+        """Clear cache and reload (single prompt or all)."""
+
+    def list_prompts(self) -> list[str]:
+        """List available prompt names."""
+
+    def get_version(self) -> str:
+        """Get current active prompt version from config."""
+```
+
+**Error Handling:**
+- File not found: Raise `FileNotFoundError` with list of available prompts
+- Missing variable: Raise `KeyError` with variable name and prompt name
+- Invalid YAML config: Log warning, use default version "v1"
+- **Logging:** All errors MUST be logged with context (prompt_name, version, variables)
+
+**Performance Requirements:**
+- Cold load: <100ms for any prompt
+- Cached load: <1ms (memory cache)
+- Cache TTL: 1 hour (configurable)
+
+**Edge Cases:**
+- **Empty Prompt File:** Return empty string, log warning
+- **Missing Variables:** Raise KeyError with clear message
+- **Unicode Issues:** Handle UTF-8 encoding for Italian characters
+- **Hot Reload:** Clear cache on reload() call
+- **Version Not Found:** Fall back to "v1" with warning
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/services/test_prompt_loader.py` FIRST
+- **Unit Tests:**
+  - `test_load_existing_prompt` - Loads .md file content
+  - `test_load_with_variables` - Variable substitution works
+  - `test_load_cached_returns_same` - Cache hit returns same object
+  - `test_reload_clears_cache` - Reload forces fresh load
+  - `test_list_prompts_returns_all` - Lists all .md files
+  - `test_load_component` - Component loading works
+  - `test_compose_multiple_parts` - Composition works
+- **Edge Case Tests:**
+  - `test_load_missing_prompt_raises` - FileNotFoundError for missing
+  - `test_load_empty_prompt` - Handles empty files with warning
+  - `test_load_with_missing_variable` - Raises KeyError
+  - `test_load_with_unicode` - Italian characters handled
+- **Integration Tests:** `tests/integration/services/test_prompt_loader_integration.py`
+- **Coverage Target:** 95%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| File not found errors | MEDIUM | Clear error messages with available prompts list |
+| Cache staleness | LOW | 1h TTL, manual reload() method for development |
+| Memory usage | LOW | LRU cache with maxsize=50 |
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] All error paths tested
+- [ ] Logging implemented for all errors
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Loads all prompt files from app/prompts/
+- [ ] Variable substitution works ({variable} syntax)
+- [ ] LRU cache with 1h TTL
+- [ ] Component composition works
+- [ ] 95%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-212: Create unified_response_simple.md Prompt Template</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Current response prompts are scattered across multiple files with inconsistent formatting. Need unif...
+</summary>
+
+### DEV-212: Create unified_response_simple.md Prompt Template
+
+**Reference:** [Technical Intent Part 3.2.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Unified Response Prompt)
+
+**Priority:** CRITICAL | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Current response prompts are scattered across multiple files with inconsistent formatting. Need unified prompt with JSON schema for structured output including answer, reasoning, sources, and actions in a single LLM call.
+
+**Solution:**
+Create unified_response_simple.md with Italian professional formatting, JSON output schema, Chain of Thought structure, and clear instructions for source citation and action generation.
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-211 (PromptLoader)
+- **Unlocks:** DEV-214 (Step 64 integration)
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/prompts/v1/unified_response_simple.md`
+
+**Template Structure:**
+```markdown
+# PratikoAI - Risposta Unificata (Simple CoT)
+
+## Ruolo
+Sei PratikoAI, assistente esperto in normativa fiscale, del lavoro e legale italiana.
+
+## Contesto Fornito
+{kb_context}
+
+## Metadati Fonti Disponibili
+{kb_sources_metadata}
+
+## Domanda Utente
+{query}
+
+## Contesto Conversazione (se presente)
+{conversation_context}
+
+## Data Corrente
+{current_date}
+
+## Istruzioni di Ragionamento (Chain of Thought)
+
+Prima di rispondere, esegui questi passaggi mentali:
+
+1. **TEMA**: Identifica l'argomento principale della domanda
+2. **FONTI**: Individua le fonti rilevanti nel contesto fornito
+3. **ELEMENTI CHIAVE**: Estrai i punti essenziali per la risposta
+4. **CONCLUSIONE**: Formula la risposta basandoti sulle fonti
+
+## Formato Output (JSON OBBLIGATORIO)
+
+Rispondi SEMPRE con questo schema JSON:
+
+```json
+{
+  "reasoning": {
+    "tema_identificato": "string - argomento principale",
+    "fonti_utilizzate": ["string - riferimento fonte 1", "..."],
+    "elementi_chiave": ["string - punto 1", "..."],
+    "conclusione": "string - sintesi del ragionamento"
+  },
+  "answer": "string - risposta completa in italiano professionale",
+  "sources_cited": [
+    {
+      "ref": "string - es: Art. 16 DPR 633/72",
+      "relevance": "principale|supporto",
+      "url": "string|null"
+    }
+  ],
+  "suggested_actions": [
+    {
+      "id": "string - univoco",
+      "label": "string - 8-40 caratteri",
+      "icon": "calculator|search|calendar|file-text|alert-triangle|check-circle|edit|refresh-cw|book-open|bar-chart",
+      "prompt": "string - almeno 25 caratteri, autosufficiente",
+      "source_basis": "string - quale fonte KB ha ispirato questa azione"
+    }
+  ]
+}
+```
+
+## Regole per Azioni Suggerite
+
+1. **BASATE SU FONTI**: Ogni azione DEVE riferirsi a una fonte nel contesto
+2. **SPECIFICHE**: Label 8-40 caratteri, prompt >25 caratteri
+3. **VIETATE**: Mai suggerire "consulta un professionista", "verifica sul sito"
+4. **NUMERO**: Genera 2-4 azioni rilevanti, non di più
+5. **ICON**: Usa icone appropriate al tipo di azione
+
+## Regole Citazioni
+
+- Cita SEMPRE la fonte più autorevole (Legge > Decreto > Circolare)
+- Usa formato italiano: Art. X, comma Y, D.Lgs. Z/AAAA
+- Se non trovi fonti nel contesto, rispondi con la tua conoscenza ma indica "Nota: questa informazione potrebbe richiedere verifica"
+```
+
+**Template Variables:**
+- `{kb_context}` - Formatted knowledge base documents from Step 40
+- `{kb_sources_metadata}` - JSON array of source metadata for action grounding
+- `{query}` - User question
+- `{conversation_context}` - Last 3 conversation turns (optional)
+- `{current_date}` - Current date for temporal context
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/prompts/test_unified_response_simple.py` FIRST
+- **Unit Tests:**
+  - `test_prompt_loads_via_loader` - PromptLoader can load it
+  - `test_prompt_contains_json_schema` - Has valid JSON example
+  - `test_prompt_variables_substitute` - All variables work
+  - `test_prompt_reasoning_structure` - CoT structure present
+  - `test_prompt_action_rules_present` - Action rules documented
+- **Integration Tests:** Test with actual LLM call, validate JSON output parseable
+- **Coverage Target:** 90%+
+
+**Routing Logic (Step 64 Integration):**
+Step 64 must select the appropriate prompt based on query complexity:
+
+```python
+# Routing decision in Step 64
+def _select_prompt_template(state: RAGState) -> str:
+    """Select prompt template based on query complexity.
+
+    Returns:
+        Prompt template path for PromptLoader
+    """
+    complexity = state.get("query_complexity", "SIMPLE")
+
+    if complexity in ("SIMPLE", "MODERATE"):
+        # Use unified response for simple/moderate queries
+        return "v1/unified_response_simple.md"
+    elif complexity == "COMPLEX":
+        # Use synthesis_critical for multi-domain complex queries
+        return "v1/synthesis_critical.md"
+    elif complexity == "CRITICAL":
+        # Use synthesis_critical with additional legal rigor
+        return "v1/synthesis_critical.md"
+    else:
+        # Default to simple
+        return "v1/unified_response_simple.md"
+```
+
+**Route Conditions:**
+| Complexity | Prompt Template | Model | Use Case |
+|------------|-----------------|-------|----------|
+| SIMPLE | unified_response_simple.md | GPT-4o-mini | Single-domain, direct questions |
+| MODERATE | unified_response_simple.md | GPT-4o-mini | Single-domain with some nuance |
+| COMPLEX | synthesis_critical.md | GPT-4o | Multi-domain, conflicting sources |
+| CRITICAL | synthesis_critical.md | GPT-4o | Legal risk, regulatory compliance |
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Prompt loads without errors via PromptLoader
+- [ ] Contains valid JSON schema example
+- [ ] All template variables documented and work
+- [ ] Produces parseable JSON from LLM (integration test)
+- [ ] Follows Italian professional language guidelines
+- [ ] Action rules clearly specified
+- [ ] Routing logic documented and integrated with DEV-214
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-213: Update Step 40 to Preserve KB Documents and Metadata</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Step 40 currently merges KB documents into a context string but doesn't preserve the original docume...
+</summary>
+
+### DEV-213: Update Step 40 to Preserve KB Documents and Metadata
+
+**Reference:** [Technical Intent Part 3.5.2](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 40: Build Context Enhanced)
+
+**Priority:** CRITICAL | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Step 40 currently merges KB documents into a context string but doesn't preserve the original documents or their metadata. This causes "context fragmentation" - Step 100 cannot access KB sources for action generation, resulting in generic, disconnected action suggestions.
+
+**Solution:**
+Update Step 40 to store `kb_documents` (raw documents) and `kb_sources_metadata` (structured metadata for action grounding) in state alongside the merged context string.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-210 (GraphState fields)
+- **Unlocks:** DEV-214, DEV-218, DEV-228, DEV-236
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/core/langgraph/nodes/step_040__build_context.py`
+- **Affected Files:**
+  - `app/orchestrators/facts.py` (step_40__build_context function)
+- **Related Tests:**
+  - `tests/integration/orchestrators/test_step_39_40_integration.py`
+- **Baseline Command:** `pytest tests/integration/orchestrators/test_step_39_40_integration.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing Step 40 code reviewed (97 lines)
+- [ ] Understand current context merging logic
+
+**File:** `app/core/langgraph/nodes/step_040__build_context.py`
+
+**Changes Required:**
+```python
+# After line 30 (merged_context = res.get("merged_context", ""))
+# Add KB document preservation:
+
+# ✅ NEW: Store raw KB documents for downstream use
+kb_documents = res.get("kb_documents", [])
+state["kb_documents"] = kb_documents
+
+# ✅ NEW: Store metadata for action grounding
+kb_sources_metadata = []
+for doc in kb_documents:
+    kb_sources_metadata.append({
+        "id": doc.get("id"),
+        "title": doc.get("title", ""),
+        "type": doc.get("type", ""),  # legge, decreto, circolare, etc.
+        "date": doc.get("date", ""),
+        "url": doc.get("url"),
+        "key_topics": extract_topics(doc),  # New helper function
+        "key_values": extract_values(doc),  # Numbers, dates, rates
+        "hierarchy_weight": get_hierarchy_weight(doc.get("type", ""))
+    })
+state["kb_sources_metadata"] = kb_sources_metadata
+```
+
+**Helper Functions to Add:**
+```python
+def extract_topics(doc: dict) -> list[str]:
+    """Extract key topics from document for action relevance."""
+    # Extract from title, content keywords
+
+def extract_values(doc: dict) -> list[str]:
+    """Extract specific values (percentages, dates, amounts) for action prompts."""
+    # Regex patterns for: percentages, euro amounts, dates, article numbers
+
+def get_hierarchy_weight(doc_type: str) -> float:
+    """Return Italian legal hierarchy weight for source prioritization."""
+    HIERARCHY = {
+        "legge": 1.0, "decreto_legislativo": 1.0, "dpr": 1.0,
+        "decreto_ministeriale": 0.8, "regolamento_ue": 0.8,
+        "circolare": 0.6, "risoluzione": 0.6,
+        "interpello": 0.4, "faq": 0.4,
+        "cassazione": 0.9, "corte_costituzionale": 1.0
+    }
+    return HIERARCHY.get(doc_type.lower(), 0.5)
+```
+
+**Error Handling:**
+- Missing kb_documents: Set empty list, log warning
+- Malformed document: Skip document, log warning, continue processing
+- **Logging:** All warnings MUST be logged with context (request_id, doc_count)
+
+**Performance Requirements:**
+- Metadata extraction: <50ms for 10 documents
+- No increase in context string generation time
+
+**Edge Cases:**
+- **Empty KB Results:** Set kb_documents=[], kb_sources_metadata=[], continue
+- **Missing Document Fields:** Use defaults ("" for strings, None for optional)
+- **Large Document Set (50+):** Cap at top-20 by relevance, log truncation
+- **Duplicate Documents:** Deduplicate by document ID
+- **Missing Date Field:** Use "data non disponibile" in metadata
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/core/langgraph/nodes/test_step_040_kb_preservation.py` FIRST
+- **Unit Tests:**
+  - `test_step40_preserves_kb_documents` - kb_documents stored in state
+  - `test_step40_preserves_kb_metadata` - kb_sources_metadata stored
+  - `test_step40_metadata_structure` - Correct structure for each doc
+  - `test_step40_hierarchy_weight` - Correct weights for doc types
+  - `test_step40_extract_topics` - Topics extracted correctly
+  - `test_step40_extract_values` - Values (%, €, dates) extracted
+- **Edge Case Tests:**
+  - `test_step40_empty_kb_docs` - Handles empty KB gracefully
+  - `test_step40_null_kb_docs` - None handling
+  - `test_step40_large_kb_docs_capped` - Cap at 20 docs
+  - `test_step40_malformed_doc_skipped` - Bad docs skipped with warning
+  - `test_step40_missing_fields_defaults` - Missing fields get defaults
+- **Regression Tests:** Run `pytest tests/integration/orchestrators/test_step_39_40_integration.py`
+- **Coverage Target:** 90%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Breaking existing context flow | HIGH | Keep merged context unchanged, only ADD new fields |
+| Context size explosion | MEDIUM | Cap kb_documents to top-20 |
+| Performance degradation | MEDIUM | Async metadata extraction, <50ms target |
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] kb_documents preserved in state with full document content
+- [ ] kb_sources_metadata preserved with structured metadata
+- [ ] Hierarchy weights assigned correctly
+- [ ] Topics and values extracted for action grounding
+- [ ] Existing context behavior unchanged
+- [ ] All existing Step 40 tests pass (regression)
+- [ ] 90%+ test coverage for new code
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-214: Update Step 64 for Unified JSON Output with Reasoning</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+Step 64 currently uses Verdetto parsing for TECHNICAL_RESEARCH and separate action generation. Need ...
+</summary>
+
+### DEV-214: Update Step 64 for Unified JSON Output with Reasoning
+
+**Reference:** [Technical Intent Part 3.5.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 64: LLM Call Unified)
+
+**Priority:** CRITICAL | **Effort:** 6h | **Status:** NOT STARTED
+
+**Problem:**
+Step 64 currently uses Verdetto parsing for TECHNICAL_RESEARCH and separate action generation. Need unified JSON output that includes reasoning traces, answer, sources, and actions in a single structured response.
+
+**Solution:**
+Update Step 64 to use unified_response_simple.md prompt for simple queries, parse JSON output, store reasoning trace in state, and fallback gracefully to text extraction if JSON parsing fails.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-210 (GraphState), DEV-212 (unified prompt)
+- **Unlocks:** DEV-215 (ActionValidator), DEV-218 (Step 100), DEV-229 (DualReasoning)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/core/langgraph/nodes/step_064__llm_call.py`
+- **Affected Files:**
+  - `app/orchestrators/providers.py` (step_64__llmcall)
+  - `app/services/verdetto_parser.py`
+  - `app/services/synthesis_prompt_builder.py`
+- **Related Tests:**
+  - `tests/core/langgraph_tests/nodes/test_step_064_deanonymization.py`
+  - `tests/langgraph/agentic_rag/test_step_064_premium_verdetto.py`
+- **Baseline Command:** `pytest tests/core/langgraph_tests/nodes/test_step_064* -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Step 64 code fully reviewed (287 lines)
+- [ ] Verdetto parsing logic understood
+- [ ] Deanonymization flow documented
+
+**File:** `app/core/langgraph/nodes/step_064__llm_call.py`
+
+**New Functions to Add:**
+```python
+def _parse_unified_response(content: str) -> dict | None:
+    """Parse unified JSON response from LLM.
+
+    Args:
+        content: LLM response content
+
+    Returns:
+        Parsed dict with reasoning, answer, sources, actions
+        None if parsing fails
+    """
+    # Try JSON extraction from markdown code block first
+    # Then try raw JSON parsing
+    # Log parsing failures with content sample
+
+def _extract_json_from_content(content: str) -> dict | None:
+    """Extract JSON from response that may contain markdown code blocks."""
+    # Match ```json ... ``` blocks
+    # Match raw JSON objects
+    # Return None if no valid JSON found
+
+def _fallback_to_text(content: str, state: RAGState) -> dict:
+    """Fallback parsing when JSON extraction fails.
+
+    Returns minimal valid response with answer only.
+    """
+    return {
+        "reasoning": None,
+        "answer": content,  # Use full content as answer
+        "sources_cited": [],
+        "suggested_actions": []
+    }
+```
+
+**Logic Changes:**
+```python
+# After successful LLM call, before storing response:
+
+# Try unified JSON parsing (replaces legacy Verdetto/XML parsing)
+parsed = _parse_unified_response(content)
+
+if parsed:
+    # Store reasoning trace
+    state["reasoning_type"] = "cot"
+    state["reasoning_trace"] = parsed.get("reasoning")
+
+    # Store suggested actions for Step 100 validation
+    state["suggested_actions"] = parsed.get("suggested_actions", [])
+    state["actions_source"] = "unified_llm"
+
+    # Store and validate sources with hierarchy
+    sources = parsed.get("sources_cited", [])
+    state["sources_cited"] = _apply_source_hierarchy(sources)
+
+    # Use answer for display
+    content = parsed.get("answer", content)
+else:
+    # Fallback: mark for action regeneration
+    state["actions_source"] = "fallback_needed"
+    logger.warning("step64_json_parse_failed", request_id=state.get("request_id"))
+```
+
+**Source Hierarchy Validation:**
+```python
+# Italian legal source hierarchy (highest to lowest authority)
+SOURCE_HIERARCHY = {
+    "legge": 1,           # Legge (Law)
+    "decreto": 2,         # Decreto Legislativo / DPR
+    "circolare": 3,       # Circolare AdE
+    "interpello": 4,      # Interpello / Risposta
+    "prassi": 5,          # Other prassi
+    "unknown": 99
+}
+
+def _apply_source_hierarchy(sources: list[dict]) -> list[dict]:
+    """Sort sources by legal hierarchy and flag conflicts.
+
+    Args:
+        sources: List of source dicts from LLM response
+
+    Returns:
+        Sorted sources with hierarchy_rank added, highest authority first
+    """
+    for source in sources:
+        ref = source.get("ref", "").lower()
+        # Determine hierarchy rank
+        if "legge" in ref or "l." in ref:
+            source["hierarchy_rank"] = SOURCE_HIERARCHY["legge"]
+        elif "decreto" in ref or "d.lgs" in ref or "dpr" in ref:
+            source["hierarchy_rank"] = SOURCE_HIERARCHY["decreto"]
+        elif "circolare" in ref:
+            source["hierarchy_rank"] = SOURCE_HIERARCHY["circolare"]
+        elif "interpello" in ref or "risposta" in ref:
+            source["hierarchy_rank"] = SOURCE_HIERARCHY["interpello"]
+        else:
+            source["hierarchy_rank"] = SOURCE_HIERARCHY["unknown"]
+
+    # Sort by hierarchy rank (lowest number = highest authority)
+    return sorted(sources, key=lambda s: s.get("hierarchy_rank", 99))
+
+def _detect_source_conflicts(sources: list[dict]) -> list[dict]:
+    """Detect conflicting sources on the same topic with different conclusions.
+
+    Returns list of conflict dicts with source_a, source_b, reason.
+    """
+    # Group by topic, compare conclusions
+    # Flag temporal conflicts (newer supersedes older)
+    # Flag hierarchy conflicts (higher authority supersedes lower)
+    pass  # Implementation in DEV-228
+```
+
+**Legacy Parser Deprecation (Part of this task):**
+After unified parsing is implemented and tested, follow the **DEV-178 archiving pattern** to preserve git history:
+
+1. Create `archived/phase9_legacy_parsers/` directory
+2. Archive (move, don't delete) the following files:
+   - `archived/phase9_legacy_parsers/verdetto_parser.py` ← from `app/services/verdetto_parser.py`
+   - `archived/phase9_legacy_parsers/synthesis_prompt_builder.py` ← from `app/services/synthesis_prompt_builder.py`
+   - `archived/phase9_legacy_parsers/tests/` ← related test files
+3. Remove `_parse_verdetto()` function and all VERDETTO XML tag parsing from Step 64
+4. Remove `_extract_actions_from_xml()` function
+5. Update imports to use archived path with try/except fallback (if needed for backwards compatibility)
+6. Update or archive related tests
+
+**Archiving Pattern Reference (from DEV-178):**
+```python
+# Pattern for import fallback if needed temporarily
+try:
+    from app.services.verdetto_parser import parse_verdetto
+except ImportError:
+    from archived.phase9_legacy_parsers.verdetto_parser import parse_verdetto
+    import warnings
+    warnings.warn("Using archived verdetto_parser - remove this import", DeprecationWarning)
+```
+
+**Error Handling:**
+- JSON parse failure: Log with content sample, fallback to text extraction
+- Missing required fields in JSON: Use defaults, log warning
+- Empty response: Log error, return failure state
+- **Logging:** All errors MUST be logged with context (request_id, model_used, content_length)
+
+**Performance Requirements:**
+- JSON parsing: <10ms
+- Total Step 64: <2s (same as current)
+- No latency regression
+
+**Edge Cases:**
+- **JSON Parse Failure:** LLM returns non-JSON -> fallback to text extraction
+- **Partial JSON:** LLM returns truncated JSON -> log, use available fields
+- **Empty Response:** LLM returns empty -> log error, return failure state
+- **Mixed Format:** LLM returns JSON + extra text -> extract JSON block only
+- **Markdown Code Block:** JSON in \`\`\`json block -> extract correctly
+- **Missing Fields:** Some fields missing in JSON -> use defaults
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/core/langgraph/nodes/test_step_064_unified_output.py` FIRST
+- **Unit Tests:**
+  - `test_step64_parses_json_response` - Valid JSON parsed correctly
+  - `test_step64_extracts_from_markdown_block` - JSON in code block extracted
+  - `test_step64_extracts_answer` - answer field extracted
+  - `test_step64_extracts_actions` - suggested_actions extracted
+  - `test_step64_stores_reasoning_trace` - reasoning_trace in state
+  - `test_step64_stores_sources_cited` - sources_cited in state
+  - `test_step64_sets_actions_source` - actions_source set correctly
+- **Edge Case Tests:**
+  - `test_step64_fallback_to_text` - Non-JSON handled gracefully
+  - `test_step64_partial_json` - Truncated JSON handled
+  - `test_step64_empty_response` - Empty response handled
+  - `test_step64_missing_fields_defaults` - Missing fields get defaults
+- **Source Hierarchy Tests:**
+  - `test_step64_source_hierarchy_ordering` - Sources sorted by authority
+  - `test_step64_legge_ranked_highest` - Legge sources ranked first
+  - `test_step64_hierarchy_rank_added` - hierarchy_rank field added to sources
+- **Regression Tests:** `pytest tests/core/langgraph_tests/nodes/test_step_064* -v`
+- **Integration Tests:** Full pipeline test with unified prompt
+- **Coverage Target:** 90%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| LLM doesn't produce JSON | CRITICAL | Robust fallback parsing, mark for regeneration |
+| Legacy parser removal breaks tests | HIGH | Update tests before removing legacy code |
+| Latency increase | MEDIUM | Async JSON parsing target <10ms |
+| Breaking deanonymization | HIGH | Test deanonymization flow with new parsing |
+| Source hierarchy incorrect | MEDIUM | Comprehensive tests for Italian legal hierarchy |
+
+**Code Completeness:**
+- [ ] No TODO comments for required functionality
+- [ ] All JSON fields handled (not just happy path)
+- [ ] Fallback logic complete and tested
+- [ ] Source hierarchy validation implemented
+- [ ] Legacy Verdetto/XML parsing removed
+- [ ] Deanonymization still works after changes
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] JSON output parsed correctly when valid
+- [ ] Fallback to text works when JSON invalid
+- [ ] reasoning_trace stored in state
+- [ ] suggested_actions stored in state with source
+- [ ] sources_cited sorted by legal hierarchy (Legge > Decreto > Circolare > Interpello)
+- [ ] Legacy Verdetto/XML parsing code removed
+- [ ] All existing tests pass (regression) or updated
+- [ ] Deanonymization flow unbroken
+- [ ] 90%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-215: Create ActionValidator Service</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> PARTIALLY IMPLEMENTED (PR #900)<br>
+LLM-generated actions often contain generic labels, forbidden patterns, or lack source grounding. Ne...
+</summary>
+
+### DEV-215: Create ActionValidator Service
+
+**Reference:** [Technical Intent Part 3.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Action Validator)
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** PARTIALLY IMPLEMENTED (PR #900)
+
+**Problem:**
+LLM-generated actions often contain generic labels, forbidden patterns, or lack source grounding. Need validation layer to filter invalid actions before returning to user.
+
+**Existing Implementation (PR #900 - DEV-201d):**
+PR #900 already implemented basic forbidden pattern filtering in `app/services/proactivity_graph_service.py`:
+- `FORBIDDEN_ACTION_PATTERNS` - 10 regex patterns for inappropriate suggestions
+- `validate_action(action: dict) -> bool` - Validates single action
+- `filter_forbidden_actions(actions: list[dict]) -> list[dict]` - Filters batch
+- Integrated into Step 100 (`step_100__post_proactivity.py`)
+
+**Solution:**
+Extend the existing validation with a comprehensive ActionValidator service that adds:
+- Label length validation (8-40 chars) - NOT YET IMPLEMENTED
+- Generic label detection - NOT YET IMPLEMENTED
+- Source grounding validation - NOT YET IMPLEMENTED
+- Icon normalization - NOT YET IMPLEMENTED
+- Quality scoring - NOT YET IMPLEMENTED
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-210 (GraphState for validation_result field)
+- **Unlocks:** DEV-217 (ActionRegenerator), DEV-218 (Step 100 integration)
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/services/action_validator.py`
+
+**Validation Rules:**
+| Rule | Threshold | Action |
+|------|-----------|--------|
+| Label length minimum | 8 characters | Reject |
+| Label length maximum | 40 characters | Truncate to 40 |
+| Prompt length minimum | 25 characters | Reject |
+| Generic label detection | Exact match list | Reject |
+| Forbidden pattern | Regex match | Reject |
+| Source grounding | Must reference KB | Warn (log) |
+| Valid icon | Enum check | Default to "calculator" |
+| JSON validity | Parse check | Reject malformed |
+
+**Forbidden Patterns (Italian):**
+```python
+FORBIDDEN_PATTERNS = [
+    r"consult[ai].*(?:commercialista|avvocato|esperto|professionista)",
+    r"contatt[ai].*(?:INPS|INAIL|Agenzia|ufficio)",
+    r"rivolgiti.*(?:CAF|patronato|studio)",
+    r"verifica.*(?:sul sito|online|portale)",
+    r"chiedi.*(?:consiglio|parere|aiuto)",
+    r"(?:cerca|trova).*(?:professionista|consulente)",
+]
+
+GENERIC_LABELS = {
+    "approfondisci", "calcola", "verifica", "scopri",
+    "leggi", "vedi", "altro", "continua", "info",
+    "dettagli", "più info", "saperne di più"
+}
+```
+
+**Service Interface:**
+```python
+@dataclass
+class ValidationResult:
+    is_valid: bool
+    rejection_reason: str | None
+    warnings: list[str]
+    modified_action: dict | None  # If auto-fixed (e.g., truncated label, default icon)
+
+@dataclass
+class BatchValidationResult:
+    validated_actions: list[dict]
+    rejected_count: int
+    rejection_log: list[tuple[dict, str]]  # (action, reason)
+    quality_score: float  # 0.0-1.0
+
+class ActionValidator:
+    def validate(self, action: dict, kb_sources: list[dict]) -> ValidationResult:
+        """Validate a single action against all rules."""
+
+    def validate_batch(
+        self,
+        actions: list[dict],
+        response_text: str,
+        kb_sources: list[dict]
+    ) -> BatchValidationResult:
+        """Validate all actions, return filtered list with rejection log."""
+
+    def _check_label_length(self, label: str) -> ValidationResult:
+        """Check label length constraints."""
+
+    def _check_forbidden_patterns(self, action: dict) -> ValidationResult:
+        """Check for forbidden consultant/verify patterns."""
+
+    def _check_source_grounding(self, action: dict, kb_sources: list[dict]) -> ValidationResult:
+        """Check if action references a KB source."""
+
+    def _check_generic_label(self, label: str) -> ValidationResult:
+        """Check for overly generic labels."""
+
+    def _normalize_icon(self, icon: str) -> str:
+        """Normalize icon to valid enum value or default to 'calculator'."""
+```
+
+**Error Handling:**
+- Malformed action dict: Reject, log error
+- Empty action list: Return empty result with quality_score=0
+- **Logging:** Log all rejections with action details for debugging
+
+**Performance Requirements:**
+- Single action validation: <5ms
+- Batch validation (10 actions): <50ms
+
+**Edge Cases:**
+- **All Actions Rejected:** Return empty list, quality_score=0.0
+- **Partial Rejection:** Return valid subset
+- **Unicode in Labels:** Handle Italian characters correctly
+- **Empty Label/Prompt:** Reject as too short
+- **Null Fields:** Reject action with missing required fields
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/services/test_action_validator.py` FIRST
+- **Unit Tests:**
+  - `test_rejects_short_label` - Labels <8 chars rejected
+  - `test_truncates_long_label` - Labels >40 chars truncated
+  - `test_rejects_short_prompt` - Prompts <25 chars rejected
+  - `test_rejects_forbidden_patterns` - "consulta commercialista" rejected
+  - `test_rejects_generic_labels` - "approfondisci" rejected
+  - `test_accepts_valid_action` - Well-formed actions pass
+  - `test_warns_no_source_grounding` - Warning logged, action accepted
+  - `test_normalizes_invalid_icon` - Unknown icon -> "calculator"
+- **Edge Case Tests:**
+  - `test_all_actions_rejected` - Empty result, quality=0
+  - `test_batch_mixed_validity` - Some pass, some rejected
+  - `test_unicode_labels` - Italian characters work
+  - `test_null_fields_rejected` - Missing required fields rejected
+- **Coverage Target:** 95%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Label length validation works (8-40 chars)
+- [ ] Forbidden patterns detected and rejected
+- [ ] Generic labels detected and rejected
+- [ ] Source grounding checked with warnings
+- [ ] Batch validation returns filtered list + rejection log
+- [ ] Quality score calculated correctly
+- [ ] 95%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-216: Create action_regeneration.md Prompt Template</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+When ActionValidator rejects all actions, need a specialized prompt to regenerate actions with expli...
+</summary>
+
+### DEV-216: Create action_regeneration.md Prompt Template
+
+**Reference:** [Technical Intent Part 11.5.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Regeneration Prompt)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+When ActionValidator rejects all actions, need a specialized prompt to regenerate actions with explicit correction instructions based on rejection reasons.
+
+**Solution:**
+Create action_regeneration.md prompt that includes rejection reasons, source information, and extracted values to guide LLM in generating valid actions.
+
+**Agent Assignment:** @ezio (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-211 (PromptLoader)
+- **Unlocks:** DEV-217 (ActionRegenerator)
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/prompts/v1/action_regeneration.md`
+
+**Template Structure:**
+```markdown
+# Correzione Azioni Suggerite
+
+Le azioni precedenti sono state scartate per i seguenti motivi:
+{rejection_reasons}
+
+## Elementi da Utilizzare OBBLIGATORIAMENTE
+
+### Fonte Principale Citata nella Risposta
+{main_source_ref}
+
+### Paragrafo Rilevante dalla Fonte
+"{source_paragraph_text}"
+
+### Valori Specifici Menzionati
+{extracted_values}
+
+## Regole IMPERATIVE
+
+1. Ogni azione DEVE riferirsi esplicitamente alla fonte sopra indicata
+2. Ogni azione DEVE includere almeno uno dei valori specifici
+3. Il prompt DEVE essere completo e autosufficiente (>25 caratteri)
+4. La label DEVE essere specifica (8-40 caratteri, NO parole generiche)
+5. MAI suggerire di consultare professionisti o verificare su siti esterni
+
+## Genera 3 Nuove Azioni
+
+Output JSON:
+```json
+[
+  {
+    "id": "regen_1",
+    "label": "string (8-40 chars, specifico)",
+    "icon": "calculator|search|calendar|file-text|alert-triangle|check-circle|edit|refresh-cw|book-open|bar-chart",
+    "prompt": "string (>25 chars, autosufficiente)",
+    "source_basis": "string (riferimento alla fonte sopra)"
+  },
+  ...
+]
+```
+
+## Esempi di Azioni CORRETTE
+
+✅ "Calcola IVA al 22% su €15.000" (specifico, include valore)
+✅ "Verifica scadenza F24 del 16 marzo" (specifico, include data)
+✅ "Confronta aliquote IRPEF 2024" (specifico, include anno)
+
+## Esempi di Azioni ERRATE
+
+❌ "Approfondisci" (troppo generico)
+❌ "Calcola" (troppo corto, generico)
+❌ "Consulta un commercialista" (forbidden pattern)
+❌ "Verifica sul sito AdE" (forbidden pattern)
+```
+
+**Template Variables:**
+- `{rejection_reasons}` - Bulleted list of validation failures
+- `{main_source_ref}` - Primary KB source reference
+- `{source_paragraph_text}` - Relevant excerpt (max 500 chars)
+- `{extracted_values}` - Comma-separated values from response
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/prompts/test_action_regeneration.py` FIRST
+- **Unit Tests:**
+  - `test_prompt_loads_via_loader` - PromptLoader can load it
+  - `test_prompt_variables_substitute` - All variables work
+  - `test_prompt_contains_json_schema` - Valid JSON example
+  - `test_prompt_examples_present` - Correct/incorrect examples included
+- **Coverage Target:** 90%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Prompt loads without errors
+- [ ] All variables documented and work
+- [ ] Contains clear examples of correct/incorrect actions
+- [ ] JSON output schema clearly specified
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-217: Implement ActionRegenerator Service (Golden Loop)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+When ActionValidator rejects all LLM-generated actions, need to regenerate them with correction prom...
+</summary>
+
+### DEV-217: Implement ActionRegenerator Service (Golden Loop)
+
+**Reference:** [Technical Intent Part 11.5](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Action Regeneration Loop)
+
+**Priority:** HIGH | **Effort:** 6h | **Status:** NOT STARTED
+
+**Problem:**
+When ActionValidator rejects all LLM-generated actions, need to regenerate them with correction prompts. This "Golden Loop" ensures users always receive relevant, validated actions.
+
+**Solution:**
+Create ActionRegenerator service that triggers when validation fails, uses action_regeneration.md prompt with correction context, and retries up to MAX_ATTEMPTS (2) before falling back to safe template actions.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-215 (ActionValidator), DEV-216 (action_regeneration prompt)
+- **Unlocks:** DEV-218 (Step 100 integration)
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/services/action_regenerator.py`
+
+**Service Interface:**
+```python
+MAX_ATTEMPTS = 2
+
+@dataclass
+class ResponseContext:
+    """Context for action regeneration."""
+    answer: str
+    primary_source: dict  # {ref, relevant_paragraph}
+    extracted_values: list[str]  # Numbers, dates, percentages from response
+    main_topic: str
+    kb_sources: list[dict]
+
+class ActionRegenerator:
+    def __init__(self, prompt_loader: PromptLoader, llm_client: LLMClient):
+        """Initialize with dependencies."""
+
+    async def regenerate_if_needed(
+        self,
+        original_actions: list[dict],
+        validation_result: BatchValidationResult,
+        response_context: ResponseContext
+    ) -> list[dict]:
+        """Attempt to regenerate actions if too many were rejected.
+
+        Args:
+            original_actions: Actions from Step 64
+            validation_result: Validation results with rejection reasons
+            response_context: Contains answer, sources, extracted values
+
+        Returns:
+            List of valid actions (regenerated if necessary)
+        """
+        # If enough valid actions (>=2), return them
+        if len(validation_result.validated_actions) >= 2:
+            return validation_result.validated_actions
+
+        # Attempt regeneration up to MAX_ATTEMPTS
+        for attempt in range(MAX_ATTEMPTS):
+            regenerated = await self._attempt_regeneration(
+                attempt=attempt,
+                rejection_reasons=validation_result.rejection_log,
+                context=response_context
+            )
+
+            # Validate regenerated actions
+            reval_result = self.validator.validate_batch(
+                regenerated,
+                response_context.answer,
+                response_context.kb_sources
+            )
+
+            if len(reval_result.validated_actions) >= 2:
+                logger.info(f"Action regeneration successful on attempt {attempt + 1}")
+                return reval_result.validated_actions
+
+        # Max attempts reached - use safe fallback
+        logger.warning("Action regeneration failed, using safe fallback")
+        return self._generate_safe_fallback(response_context)
+
+    async def _attempt_regeneration(
+        self,
+        attempt: int,
+        rejection_reasons: list[tuple[dict, str]],
+        context: ResponseContext
+    ) -> list[dict]:
+        """Single regeneration attempt with correction prompt."""
+
+    def _generate_safe_fallback(self, context: ResponseContext) -> list[dict]:
+        """Generate minimal safe actions when regeneration fails."""
+        # Topic-based action
+        # Calculation action if values present
+        # Generic deadline action
+```
+
+**Safe Fallback Actions:**
+```python
+def _generate_safe_fallback(self, context: ResponseContext) -> list[dict]:
+    actions = []
+
+    # Topic-based action
+    if context.main_topic:
+        actions.append({
+            "id": "fallback_1",
+            "label": f"Approfondisci {context.main_topic[:20]}",
+            "icon": "search",
+            "prompt": f"Dimmi di più su {context.main_topic}",
+            "source_basis": "topic_fallback"
+        })
+
+    # Calculation action if values present
+    if context.extracted_values:
+        first_value = context.extracted_values[0]
+        actions.append({
+            "id": "fallback_2",
+            "label": f"Calcolo su {first_value}",
+            "icon": "calculator",
+            "prompt": f"Esegui un calcolo pratico considerando {first_value}",
+            "source_basis": "value_fallback"
+        })
+
+    # Generic deadline action
+    actions.append({
+        "id": "fallback_3",
+        "label": "Verifica scadenze",
+        "icon": "calendar",
+        "prompt": "Quali sono le scadenze rilevanti per questa situazione?",
+        "source_basis": "deadline_fallback"
+    })
+
+    return actions[:3]
+```
+
+**Error Handling:**
+- LLM regeneration call fails: Log error, move to next attempt or fallback
+- JSON parse fails on regeneration: Log, attempt next
+- **Logging:** Log each attempt result, final outcome
+
+**Performance Requirements:**
+- Single regeneration attempt: <1.5s
+- Max 2 attempts = <3s total overhead
+
+**Edge Cases:**
+- **All Regenerations Fail:** Return safe fallback actions
+- **LLM Returns Empty:** Count as failed attempt
+- **LLM Returns Same Invalid Actions:** Move to next attempt
+- **Context Missing Primary Source:** Use topic-only fallback
+- **No Values Extracted:** Skip calculation fallback action
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/services/test_action_regenerator.py` FIRST
+- **Unit Tests:**
+  - `test_returns_valid_when_enough` - No regen when >=2 valid
+  - `test_regeneration_triggered` - Regen when <2 valid
+  - `test_regeneration_success_attempt_1` - First attempt succeeds
+  - `test_regeneration_success_attempt_2` - Second attempt succeeds
+  - `test_max_attempts_respected` - Falls back after MAX_ATTEMPTS
+  - `test_safe_fallback_generated` - Safe actions generated after max
+  - `test_fallback_includes_topic` - Topic action when available
+  - `test_fallback_includes_value` - Value action when values present
+- **Edge Case Tests:**
+  - `test_llm_call_fails` - Handles LLM errors gracefully
+  - `test_json_parse_fails` - Handles invalid JSON
+  - `test_empty_regeneration_response` - Empty treated as failure
+  - `test_no_primary_source` - Works with minimal context
+- **Integration Tests:** Full regeneration flow with mocked LLM
+- **Coverage Target:** 90%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Regeneration triggered when <2 valid actions
+- [ ] Max 2 attempts before fallback
+- [ ] Safe fallback actions generated
+- [ ] Actions validated after regeneration
+- [ ] Performance <3s total for regeneration loop
+- [ ] 90%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-218: Update Step 100 for Validation-Only with Golden Loop</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> PARTIALLY IMPLEMENTED (PR #900)<br>
+Step 100 currently generates actions from templates or parses from LLM response. With unified output...
+</summary>
+
+### DEV-218: Update Step 100 for Validation-Only with Golden Loop
+
+**Reference:** [Technical Intent Part 3.5.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 100: Action Validation)
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** PARTIALLY IMPLEMENTED (PR #900)
+
+**Problem:**
+Step 100 currently generates actions from templates or parses from LLM response. With unified output from Step 64, Step 100 should focus on validation only, triggering regeneration via Golden Loop when needed.
+
+**Existing Implementation (PR #900 - DEV-201d):**
+PR #900 already integrated `filter_forbidden_actions` into Step 100:
+```python
+# step_100__post_proactivity.py
+from app.services.proactivity_graph_service import filter_forbidden_actions
+
+# Applied to template_actions, verdetto_actions, and llm_parsed_actions
+filtered_actions = filter_forbidden_actions(actions)
+```
+
+**Solution:**
+Extend Step 100 to integrate with the full ActionValidator service (DEV-215) and add Golden Loop regeneration:
+- Integrate DEV-215 ActionValidator for comprehensive validation (label length, source grounding)
+- Trigger DEV-217 ActionRegenerator when validation fails
+- Store validation results in state
+- Implement iteration limit (max 2 regenerations)
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-214 (Step 64 unified output), DEV-215 (ActionValidator), DEV-217 (ActionRegenerator)
+- **Unlocks:** Production-ready action pipeline
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/core/langgraph/nodes/step_100__post_proactivity.py`
+- **Affected Files:**
+  - `app/services/proactivity_graph_service.py` (already has filter_forbidden_actions)
+  - `app/services/action_validator.py` (DEV-215)
+- **Related Tests:**
+  - `tests/langgraph/agentic_rag/test_step_100_post_proactivity.py`
+- **Baseline Command:** `pytest tests/ -k "step_100" -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Step 100 code fully reviewed (246 lines)
+- [ ] Understand current action generation flow
+
+**File:** `app/core/langgraph/nodes/step_100__post_proactivity.py`
+
+**Logic Changes:**
+```python
+async def node_step_100(state: RAGState) -> dict[str, Any]:
+    """Post-Response Proactivity Node - Validation Focus."""
+
+    # Skip if pre-proactivity triggered
+    if state.get("skip_rag_for_proactivity"):
+        return _build_proactivity_update(actions=[], source=None)
+
+    # Skip for chitchat
+    if state.get("routing_decision", {}).get("route") == "chitchat":
+        return _build_proactivity_update(actions=[], source=None)
+
+    # Get actions from Step 64 (unified output)
+    actions = state.get("suggested_actions", [])
+    actions_source = state.get("actions_source", "")
+
+    # ✅ NEW: Access KB context for validation and regeneration
+    kb_sources = state.get("kb_sources_metadata", [])
+
+    # Fallback if Step 64 didn't generate actions
+    if not actions or actions_source == "fallback_needed":
+        actions = await _generate_fallback_actions(
+            query=state.get("user_query", ""),
+            response=_get_response_content(state),
+            kb_sources=kb_sources
+        )
+        actions_source = "fallback"
+
+    # ✅ NEW: Validate actions
+    validation_result = action_validator.validate_batch(
+        actions=actions,
+        response_text=_get_response_content(state),
+        kb_sources=kb_sources
+    )
+
+    # ✅ NEW: Trigger regeneration if needed (Golden Loop)
+    if len(validation_result.validated_actions) < 2:
+        regenerated = await action_regenerator.regenerate_if_needed(
+            original_actions=actions,
+            validation_result=validation_result,
+            response_context=_build_response_context(state)
+        )
+        actions = regenerated
+        actions_source = "regenerated"
+    else:
+        actions = validation_result.validated_actions
+
+    # ✅ NEW: Store validation state
+    state["action_validation_result"] = {
+        "validated_count": len(actions),
+        "rejected_count": validation_result.rejected_count,
+        "quality_score": validation_result.quality_score,
+        "regeneration_used": actions_source == "regenerated"
+    }
+    state["actions_validation_log"] = [
+        f"{a.get('label', 'N/A')}: {reason}"
+        for a, reason in validation_result.rejection_log
+    ]
+
+    return _build_proactivity_update(actions=actions, source=actions_source)
+```
+
+**Error Handling:**
+- Validation service fails: Log error, return original actions
+- Regeneration fails: Return safe fallback (from ActionRegenerator)
+- **Logging:** Log validation results, regeneration triggers
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/core/langgraph/nodes/test_step_100_validation.py` FIRST
+- **Unit Tests:**
+  - `test_step100_validates_actions` - Validation called
+  - `test_step100_uses_kb_sources` - kb_sources_metadata accessed
+  - `test_step100_triggers_regeneration` - Regen when <2 valid
+  - `test_step100_stores_validation_result` - Result in state
+  - `test_step100_stores_validation_log` - Rejection log stored
+  - `test_step100_returns_validated_actions` - Filtered actions returned
+- **Edge Case Tests:**
+  - `test_step100_no_actions_from_step64` - Fallback generated
+  - `test_step100_all_actions_valid` - No regeneration needed
+  - `test_step100_validation_service_fails` - Graceful degradation
+- **Regression Tests:** Existing Step 100 tests still pass
+- **Coverage Target:** 90%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Actions validated before returning
+- [ ] kb_sources_metadata used for validation
+- [ ] Regeneration triggered when <2 valid actions
+- [ ] Validation results stored in state
+- [ ] All existing Step 100 tests pass (regression)
+- [ ] 90%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-220: Create complexity_classifier.md Prompt Template</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+Need to classify query complexity (simple/complex/multi_domain) to route to appropriate LLM model an...
+</summary>
+
+### DEV-220: Create complexity_classifier.md Prompt Template
+
+**Reference:** Technical Intent Appendix A.1 (Complexity Classifier Prompt)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+Need to classify query complexity (simple/complex/multi_domain) to route to appropriate LLM model and reasoning strategy.
+
+**Solution:**
+Create complexity_classifier.md prompt for GPT-4o-mini that outputs JSON classification with reasoning.
+
+**Agent Assignment:** @ezio (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-211 (PromptLoader)
+- **Unlocks:** DEV-221 (LLMOrchestrator)
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/prompts/v1/complexity_classifier.md`
+
+**Template Structure:**
+```markdown
+# Classificatore Complessità Query
+
+## Classificazione
+
+Analizza questa query fiscale/legale italiana e classifica la sua complessità.
+
+## Query da Classificare
+{query}
+
+## Contesto
+- Domini rilevati: {domains}
+- Conversazione precedente: {has_history}
+- Documenti utente allegati: {has_documents}
+
+## Categorie di Complessità
+
+### SIMPLE
+- Domanda singola con risposta diretta
+- Definizioni o spiegazioni base
+- Aliquote, scadenze, importi standard
+- Esempi: "Qual è l'aliquota IVA ordinaria?", "Quando scade l'F24?"
+
+### COMPLEX
+- Ragionamento multi-step richiesto
+- Casi specifici con variabili multiple
+- Scenari con possibili interpretazioni diverse
+- Conflitti normativi da risolvere
+- Esempi: "Come fatturare consulenza a azienda tedesca?", "Calcolo IRPEF con detrazioni"
+
+### MULTI_DOMAIN
+- Coinvolge più domini professionali
+- Richiede sintesi tra normative diverse
+- Esempi: "Assumo dipendente che apre P.IVA freelance" (lavoro + fiscale)
+
+## Output (JSON OBBLIGATORIO)
+
+```json
+{
+  "complexity": "simple|complex|multi_domain",
+  "domains": ["fiscale", "lavoro", "legale"],
+  "confidence": 0.0-1.0,
+  "reasoning": "string - breve spiegazione della classificazione"
+}
+```
+```
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/prompts/test_complexity_classifier.py` FIRST
+- **Unit Tests:**
+  - `test_prompt_loads_via_loader` - Loads correctly
+  - `test_prompt_variables_substitute` - All variables work
+  - `test_prompt_json_schema_valid` - JSON example parseable
+- **Coverage Target:** 90%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Prompt loads without errors
+- [ ] All variables documented
+- [ ] Clear examples for each complexity level
+- [ ] JSON output schema specified
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-221: Implement LLMOrchestrator Service for Multi-Model Routing</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 8h | <strong>Status:</strong> NOT STARTED<br>
+All queries currently use GPT-4o regardless of complexity, costing €0.0155/query. Simple queries sho...
+</summary>
+
+### DEV-221: Implement LLMOrchestrator Service for Multi-Model Routing
+
+**Reference:** [Technical Intent Part 3.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (LLM Orchestrator)
+
+**Priority:** HIGH | **Effort:** 8h | **Status:** NOT STARTED
+
+**Problem:**
+All queries currently use GPT-4o regardless of complexity, costing €0.0155/query. Simple queries should use GPT-4o-mini (€0.001), complex queries GPT-4o (€0.015).
+
+**Solution:**
+Create LLMOrchestrator service that classifies complexity, routes to appropriate model, generates response with correct reasoning strategy (CoT/ToT), and tracks costs.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-220 (complexity_classifier prompt), DEV-210 (GraphState fields)
+- **Unlocks:** DEV-222 (Step 64 routing integration)
+
+**Change Classification:** ADDITIVE
+
+**Files:**
+- `app/services/llm_orchestrator.py`
+- Modify: `app/services/premium_model_selector.py` (integrate, don't replace)
+
+**Model Configuration:**
+```python
+from enum import Enum
+
+class QueryComplexity(str, Enum):
+    SIMPLE = "simple"
+    COMPLEX = "complex"
+    MULTI_DOMAIN = "multi_domain"
+
+MODEL_CONFIGS = {
+    QueryComplexity.SIMPLE: {
+        "model": "gpt-4o-mini",
+        "temperature": 0.3,
+        "max_tokens": 1500,
+        "cost_input_per_1k": 0.00015,
+        "cost_output_per_1k": 0.0006,
+        "prompt_template": "unified_response_simple",
+        "reasoning_type": "cot",
+        "timeout_seconds": 30
+    },
+    QueryComplexity.COMPLEX: {
+        "model": "gpt-4o",
+        "temperature": 0.4,
+        "max_tokens": 2500,
+        "cost_input_per_1k": 0.005,
+        "cost_output_per_1k": 0.015,
+        "prompt_template": "tree_of_thoughts",
+        "reasoning_type": "tot",
+        "timeout_seconds": 45
+    },
+    QueryComplexity.MULTI_DOMAIN: {
+        "model": "gpt-4o",
+        "temperature": 0.5,
+        "max_tokens": 3500,
+        "cost_input_per_1k": 0.005,
+        "cost_output_per_1k": 0.015,
+        "prompt_template": "tree_of_thoughts_multi_domain",
+        "reasoning_type": "tot_multi_domain",
+        "timeout_seconds": 60
+    },
+}
+```
+
+**Service Interface:**
+```python
+@dataclass
+class ComplexityContext:
+    domains: list[str]
+    has_history: bool
+    has_documents: bool
+
+@dataclass
+class UnifiedResponse:
+    reasoning: dict
+    reasoning_type: str
+    tot_analysis: dict | None
+    answer: str
+    sources_cited: list[dict]
+    suggested_actions: list[dict]
+    model_used: str
+    tokens_input: int
+    tokens_output: int
+    cost_euros: float
+    latency_ms: int
+
+class LLMOrchestrator:
+    def __init__(self, prompt_loader: PromptLoader, llm_factory: LLMFactory):
+        """Initialize with dependencies."""
+
+    async def classify_complexity(
+        self,
+        query: str,
+        context: ComplexityContext
+    ) -> QueryComplexity:
+        """Classify query complexity using GPT-4o-mini.
+
+        Cost: ~€0.0002
+        Latency: <500ms
+        """
+
+    async def generate_response(
+        self,
+        query: str,
+        kb_context: str,
+        kb_sources_metadata: list[dict],
+        complexity: QueryComplexity,
+        conversation_history: list[dict] | None = None
+    ) -> UnifiedResponse:
+        """Generate response with appropriate model and reasoning strategy."""
+
+    def get_session_costs(self) -> dict:
+        """Get detailed cost breakdown for current session."""
+```
+
+**Error Handling:**
+- Classification fails: Default to SIMPLE complexity
+- Model unavailable: Fallback to alternate model
+- Timeout: Return partial response if available
+- **Logging:** Log complexity decision, model used, costs
+
+**Performance Requirements:**
+- Classification: <500ms
+- Simple response: <2s
+- Complex response: <5s
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/services/test_llm_orchestrator.py` FIRST
+- **Unit Tests:**
+  - `test_classify_simple_query` - FAQ-style -> SIMPLE
+  - `test_classify_complex_query` - Multi-step -> COMPLEX
+  - `test_classify_multi_domain` - Cross-domain -> MULTI_DOMAIN
+  - `test_generate_simple_uses_mini` - SIMPLE uses gpt-4o-mini
+  - `test_generate_complex_uses_gpt4o` - COMPLEX uses gpt-4o
+  - `test_cost_tracking` - Costs calculated correctly
+  - `test_classification_fallback` - Defaults to SIMPLE on error
+- **Integration Tests:** Full classification + generation flow
+- **Coverage Target:** 90%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Misclassification wastes tokens | MEDIUM | Conservative classification, log decisions |
+| GPT-4o unavailable | HIGH | Fallback to mini with warning |
+| Cost tracking inaccurate | LOW | Validate against billing |
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Complexity classification works
+- [ ] Model routing based on complexity
+- [ ] Cost tracking per query
+- [ ] Fallback on classification failure
+- [ ] 90%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-222: Integrate LLMOrchestrator with Step 64</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Step 64 needs to use LLMOrchestrator for complexity-based model selection and reasoning strategy.
+</summary>
+
+### DEV-222: Integrate LLMOrchestrator with Step 64
+
+**Reference:** [Technical Intent Part 3.5.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 64 routing)
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Step 64 needs to use LLMOrchestrator for complexity-based model selection and reasoning strategy.
+
+**Solution:**
+Update Step 64 to call LLMOrchestrator.classify_complexity(), then generate_response() with appropriate model.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-221 (LLMOrchestrator), DEV-214 (Step 64 unified output)
+- **Unlocks:** Cost-optimized query processing
+
+**Change Classification:** MODIFYING
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Complexity classified before LLM call
+- [ ] Model selected based on complexity
+- [ ] Cost tracked in state
+- [ ] All existing Step 64 tests pass
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-223: Create tree_of_thoughts.md Prompt Template</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Complex queries need Tree of Thoughts reasoning to explore multiple hypotheses before selecting the ...
+</summary>
+
+### DEV-223: Create tree_of_thoughts.md Prompt Template
+
+**Reference:** [Technical Intent Part 3.2.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Tree of Thoughts Prompt)
+
+**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Complex queries need Tree of Thoughts reasoning to explore multiple hypotheses before selecting the best answer.
+
+**Solution:**
+Create tree_of_thoughts.md prompt with hypothesis generation, evaluation, and selection phases.
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-211 (PromptLoader)
+- **Unlocks:** DEV-224, DEV-231
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/prompts/v1/tree_of_thoughts.md`
+
+**Template Structure:** (See [Technical Intent Part 2.3.2](pratikoai-llm-excellence-technical-intent.md#part-2-target-architecture))
+- Hypothesis generation (3-4 scenarios)
+- Source-weighted evaluation
+- Best hypothesis selection with reasoning
+- Alternative scenario documentation
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Generates 3-4 hypotheses
+- [ ] Evaluates with source weights
+- [ ] Selects best with reasoning
+- [ ] Documents alternatives
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-224: Create tree_of_thoughts_multi_domain.md Prompt Template</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Multi-domain queries (e.g., labor + tax) need parallel analysis across professional domains.
+</summary>
+
+### DEV-224: Create tree_of_thoughts_multi_domain.md Prompt Template
+
+**Reference:** [Technical Intent Part 2.3.3](pratikoai-llm-excellence-technical-intent.md#part-2-target-architecture) (Multi-Domain ToT)
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Multi-domain queries (e.g., labor + tax) need parallel analysis across professional domains.
+
+**Solution:**
+Create tree_of_thoughts_multi_domain.md for cross-domain synthesis.
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-223 (tree_of_thoughts.md)
+- **Unlocks:** DEV-225
+
+**Change Classification:** ADDITIVE
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Analyzes multiple domains in parallel
+- [ ] Identifies domain conflicts
+- [ ] Synthesizes cross-domain answer
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-227: Create Source Hierarchy Mapping and Weighting</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Italian legal sources have hierarchy (Legge > Circolare > Interpello). ToT scoring must weight sourc...
+</summary>
+
+### DEV-227: Create Source Hierarchy Mapping and Weighting
+
+**Reference:** [Technical Intent Part 11.1](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Source Hierarchy Weighting)
+
+**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Italian legal sources have hierarchy (Legge > Circolare > Interpello). ToT scoring must weight sources by authority level.
+
+**Solution:**
+Create SourceHierarchy service with Italian legal source weights and conflict detection logic.
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-210 (GraphState)
+- **Unlocks:** DEV-228 (SourceConflictDetector), DEV-223 (ToT source weighting)
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/services/source_hierarchy.py`
+
+**Hierarchy Definition:**
+```python
+SOURCE_HIERARCHY = {
+    # Level 1 - Primary Sources (weight: 1.0)
+    "legge": 1.0,
+    "decreto_legislativo": 1.0,
+    "dpr": 1.0,
+    "decreto_legge": 1.0,
+
+    # Level 2 - Secondary Sources (weight: 0.8)
+    "decreto_ministeriale": 0.8,
+    "regolamento_ue": 0.8,
+
+    # Level 3 - Administrative Practice (weight: 0.6)
+    "circolare": 0.6,
+    "risoluzione": 0.6,
+    "provvedimento": 0.6,
+
+    # Level 4 - Interpretations (weight: 0.4)
+    "interpello": 0.4,
+    "faq": 0.4,
+
+    # Level 5 - Case Law (variable weight)
+    "cassazione": 0.9,
+    "corte_costituzionale": 1.0,
+    "cgue": 0.95,
+    "ctp_ctr": 0.5,
+}
+```
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] All Italian source types mapped
+- [ ] Weights correctly assigned
+- [ ] Unknown types default to 0.5
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-228: Implement SourceConflictDetector Service</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+When Circolare contradicts Legge (especially newer law), the conflict must be detected and flagged.
+</summary>
+
+### DEV-228: Implement SourceConflictDetector Service
+
+**Reference:** [Technical Intent Part 11.1.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Conflict Detection)
+
+**Priority:** HIGH | **Effort:** 6h | **Status:** NOT STARTED
+
+**Problem:**
+When Circolare contradicts Legge (especially newer law), the conflict must be detected and flagged.
+
+**Solution:**
+Create SourceConflictDetector that identifies conflicts between sources and recommends which to prefer.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-227 (Source Hierarchy)
+- **Unlocks:** DEV-231 (Risk Analysis in ToT)
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/services/source_conflict_detector.py`
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Detects hierarchy conflicts
+- [ ] Detects temporal conflicts (newer supersedes older)
+- [ ] Returns recommendation on which source to prefer
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-229: Implement DualReasoning Data Structures</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Reasoning serves two purposes: debugging (internal) and user display (public). Need separate structu...
+</summary>
+
+### DEV-229: Implement DualReasoning Data Structures
+
+**Reference:** [Technical Intent Part 11.4](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Internal vs Public Reasoning)
+
+**Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Reasoning serves two purposes: debugging (internal) and user display (public). Need separate structures.
+
+**Solution:**
+Create DualReasoning dataclasses for internal technical reasoning and public user-friendly explanation.
+
+**Agent Assignment:** @ezio (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-214 (Step 64 unified output)
+- **Unlocks:** DEV-230 (ReasoningTransformer)
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/schemas/reasoning.py`
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] InternalReasoning captures full technical trace
+- [ ] PublicExplanation is user-friendly Italian
+- [ ] Both structures serializable
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-230: Implement ReasoningTransformer Service</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Internal reasoning must be transformed to user-friendly Italian explanation without technical jargon...
+</summary>
+
+### DEV-230: Implement ReasoningTransformer Service
+
+**Reference:** [Technical Intent Part 11.4.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Reasoning Transformation)
+
+**Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Internal reasoning must be transformed to user-friendly Italian explanation without technical jargon.
+
+**Solution:**
+Create ReasoningTransformer that converts internal reasoning to public explanation.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-229 (DualReasoning structures)
+- **Unlocks:** Frontend reasoning display
+
+**Change Classification:** ADDITIVE
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Confidence scores mapped to Italian labels
+- [ ] Source references simplified
+- [ ] Selection reasoning user-friendly
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-231: Add Risk Analysis Phase to Tree of Thoughts</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Even low-probability scenarios must be flagged if they carry high sanction risk (e.g., frode fiscale...
+</summary>
+
+### DEV-231: Add Risk Analysis Phase to Tree of Thoughts
+
+**Reference:** [Technical Intent Part 11.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Risk/Sanction Analysis)
+
+**Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Even low-probability scenarios must be flagged if they carry high sanction risk (e.g., frode fiscale).
+
+**Solution:**
+Add risk analysis phase to ToT that evaluates sanction risk for each hypothesis.
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-223 (tree_of_thoughts.md), DEV-228 (SourceConflictDetector)
+- **Unlocks:** DEV-232 (Risk-aware action generation)
+
+**Change Classification:** MODIFYING
+
+**Risk Categories:**
+| Level | Sanction Range | Examples |
+|-------|----------------|----------|
+| CRITICAL | >100% tax + criminal | Frode fiscale, falsa fatturazione |
+| HIGH | 90-180% tax | Omessa dichiarazione |
+| MEDIUM | 30-90% tax | Errori formali sostanziali |
+| LOW | 0-30% tax | Ritardi, errori formali minori |
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Risk level assigned to each hypothesis
+- [ ] High-risk flagged even with low probability
+- [ ] Risk actions generated for mitigation
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-233: Create hyde_conversational.md Prompt Template</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Current HyDE ignores conversation history, generating irrelevant hypothetical documents for follow-u...
+</summary>
+
+### DEV-233: Create hyde_conversational.md Prompt Template
+
+**Reference:** [Technical Intent Part 3.2.5](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Conversational HyDE)
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Current HyDE ignores conversation history, generating irrelevant hypothetical documents for follow-up questions like "E per l'IVA?" because it lacks context about what was discussed previously.
+
+**Solution:**
+Create hyde_conversational.md prompt template that includes conversation context and update HyDEGeneratorService to pass conversation history to the prompt.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-211 (PromptLoader)
+- **Unlocks:** DEV-234, DEV-235
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/prompts/v1/hyde_conversational.md`
+
+**Template Structure:**
+```markdown
+# HyDE Conversazionale - Generazione Documento Ipotetico
+
+## Contesto Conversazione
+{conversation_history}
+
+## Query Corrente
+{current_query}
+
+## Istruzioni
+Genera un documento ipotetico che risponda alla query considerando il contesto della conversazione.
+Se la query contiene pronomi o riferimenti impliciti (es: "questo", "quello", "E per..."),
+risolvi il riferimento usando il contesto conversazionale.
+
+## Formato Output
+[Documento ipotetico che risponde alla query nel contesto della conversazione]
+```
+
+**HyDEGeneratorService Integration:**
+```python
+# app/services/hyde_generator.py - Required changes
+
+class HyDEGeneratorService:
+    async def generate_hyde(
+        self,
+        query: str,
+        conversation_history: list[dict] | None = None,  # NEW PARAMETER
+        domain: str | None = None
+    ) -> str:
+        """Generate hypothetical document for query.
+
+        Args:
+            query: Current user query
+            conversation_history: Last N conversation turns for context
+                Format: [{"role": "user"|"assistant", "content": str}, ...]
+            domain: Optional domain hint
+
+        Returns:
+            Hypothetical document text
+        """
+        # Format conversation history for prompt
+        history_text = self._format_conversation_history(conversation_history)
+
+        # Use conversational prompt if history provided
+        if conversation_history:
+            prompt = self.prompt_loader.load(
+                "v1/hyde_conversational.md",
+                conversation_history=history_text,
+                current_query=query
+            )
+        else:
+            prompt = self.prompt_loader.load(
+                "v1/hyde_basic.md",
+                query=query
+            )
+
+        return await self._call_llm(prompt)
+
+    def _format_conversation_history(
+        self,
+        history: list[dict] | None,
+        max_turns: int = 3
+    ) -> str:
+        """Format last N conversation turns for prompt injection.
+
+        Args:
+            history: Full conversation history
+            max_turns: Maximum turns to include (default 3)
+
+        Returns:
+            Formatted string of recent conversation
+        """
+        if not history:
+            return "Nessun contesto conversazionale disponibile."
+
+        recent = history[-max_turns * 2:]  # Last N turns (user + assistant)
+        formatted = []
+        for turn in recent:
+            role = "Utente" if turn["role"] == "user" else "Assistente"
+            formatted.append(f"{role}: {turn['content']}")
+
+        return "\n".join(formatted)
+```
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/services/test_hyde_generator_conversational.py` FIRST
+- **Unit Tests:**
+  - `test_hyde_includes_conversation_history` - History passed to prompt
+  - `test_hyde_formats_last_3_turns` - Only last 3 turns used
+  - `test_hyde_resolves_pronouns` - "questo" resolved from context
+  - `test_hyde_handles_followup_queries` - "E per..." queries contextualized
+  - `test_hyde_fallback_no_history` - Works without history (basic prompt)
+- **Integration Tests:**
+  - `test_hyde_pipeline_with_history` - Full retrieval with conversational HyDE
+- **Coverage Target:** 90%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Prompt template created with conversation_history variable
+- [ ] HyDEGeneratorService accepts conversation_history parameter
+- [ ] Last 3 conversation turns formatted and passed to prompt
+- [ ] Follow-up pronouns ("questo", "quello", "E per...") resolved
+- [ ] Generates contextually relevant HyDE for follow-up queries
+- [ ] Falls back to basic HyDE when no history provided
+- [ ] 90%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-234: Implement QueryAmbiguityDetector Service</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Vague queries like "E per l'IVA?" need multi-variant HyDE, not specific hallucinated documents.
+</summary>
+
+### DEV-234: Implement QueryAmbiguityDetector Service
+
+**Reference:** [Technical Intent Part 11.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Query Vaghe)
+
+**Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Vague queries like "E per l'IVA?" need multi-variant HyDE, not specific hallucinated documents.
+
+**Solution:**
+Create QueryAmbiguityDetector that identifies ambiguous queries and triggers multi-variant HyDE.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-233 (hyde_conversational.md)
+- **Unlocks:** Improved follow-up handling
+
+**Change Classification:** ADDITIVE
+
+**Ambiguity Indicators:**
+- Very short queries (<5 words)
+- Pronouns without clear antecedent ("questo", "quello")
+- Generic follow-ups ("E per...", "E se...")
+- Missing key fiscal terms
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Short queries flagged
+- [ ] Pronoun ambiguity detected
+- [ ] Multi-variant strategy triggered
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-235: Update HyDE Generator for Conversation Awareness</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+HyDE generator needs to use QueryAmbiguityDetector and generate multi-variant when ambiguous.
+</summary>
+
+### DEV-235: Update HyDE Generator for Conversation Awareness
+
+**Reference:** [Technical Intent Part 11.3.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Updated HyDE Generator)
+
+**Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+HyDE generator needs to use QueryAmbiguityDetector and generate multi-variant when ambiguous.
+
+**Solution:**
+Update HyDEGeneratorService to check ambiguity and generate multi-variant HyDE when needed.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-234 (QueryAmbiguityDetector), DEV-233 (hyde_conversational.md)
+- **Unlocks:** Better follow-up retrieval
+
+**Change Classification:** MODIFYING
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Ambiguity checked before generation
+- [ ] Multi-variant generated for ambiguous
+- [ ] Variants cover multiple scenarios
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-236: Update Source Schema for Paragraph-Level Grounding</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+Actions reference entire documents instead of specific paragraphs, making citations imprecise.
+</summary>
+
+### DEV-236: Update Source Schema for Paragraph-Level Grounding
+
+**Reference:** [Technical Intent Part 11.6](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Paragraph-Level Grounding)
+
+**Priority:** LOW | **Effort:** 6h | **Status:** NOT STARTED
+
+**Problem:**
+Actions reference entire documents instead of specific paragraphs, making citations imprecise.
+
+**Solution:**
+Add paragraph-level tracking to source schema with paragraph_id and excerpt fields.
+
+**Agent Assignment:** @ezio (primary), @primo (DB review)
+
+**Dependencies:**
+- **Blocking:** DEV-213 (Step 40 KB Preservation)
+- **Unlocks:** Precise action citations
+
+**Change Classification:** RESTRUCTURING
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] paragraph_id in source metadata
+- [ ] source_excerpt in actions
+- [ ] UI can show paragraph tooltip
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-237: Implement Paragraph Extraction in Retrieval</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Retrieved documents need paragraph-level extraction for precise grounding.
+</summary>
+
+### DEV-237: Implement Paragraph Extraction in Retrieval
+
+**Reference:** [Technical Intent Part 11.6.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Paragraph Extraction)
+
+**Priority:** LOW | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Retrieved documents need paragraph-level extraction for precise grounding.
+
+**Solution:**
+Add paragraph extraction to retrieval pipeline that identifies relevant paragraphs within documents.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-236 (Source schema update)
+- **Unlocks:** Precise source citations
+
+**Change Classification:** MODIFYING
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Paragraphs extracted from documents
+- [ ] Relevance scored per paragraph
+- [ ] Best paragraphs returned in metadata
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-238: Add Detailed Logging for Reasoning Traces</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Need visibility into reasoning traces for debugging and quality analysis. Logs must comply with the ...
+</summary>
+
+### DEV-238: Add Detailed Logging for Reasoning Traces
+
+**Reference:** [Technical Intent Part 6](pratikoai-llm-excellence-technical-intent.md#part-6-implementation-phases) Phase 4 (Quality & Monitoring)
+
+**Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Need visibility into reasoning traces for debugging and quality analysis. Logs must comply with the Logging Standards section (lines 81-101) which mandates specific context fields.
+
+**Solution:**
+Add structured logging for reasoning traces using structlog with all mandatory context fields from Logging Standards.
+
+**Agent Assignment:** @ezio (primary), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-214 (Step 64 unified output), DEV-229 (DualReasoning)
+- **Unlocks:** Quality monitoring
+
+**Change Classification:** ADDITIVE
+
+**Required Context Fields (from Logging Standards):**
+All reasoning trace logs MUST include these mandatory fields:
+```python
+logger.info(
+    "reasoning_trace_recorded",
+    user_id=state.get("user_id"),           # MANDATORY: Current user identifier
+    session_id=state.get("session_id"),     # MANDATORY: Proactivity session context
+    operation="reasoning_trace",             # MANDATORY: What was being attempted
+    resource_id=state.get("request_id"),    # MANDATORY: Request being processed
+    reasoning_type=state.get("reasoning_type"),  # "cot" or "tot"
+    reasoning_trace=state.get("reasoning_trace"),
+    model_used=state.get("model_used"),
+    query_complexity=state.get("query_complexity"),
+    latency_ms=elapsed_ms,
+)
+```
+
+**Log Events to Implement:**
+| Event Name | When Logged | Key Fields |
+|------------|-------------|------------|
+| `reasoning_trace_recorded` | After Step 64 completes | reasoning_type, reasoning_trace, model_used |
+| `reasoning_trace_failed` | JSON parse failure | error_type, error_message, content_sample |
+| `dual_reasoning_generated` | DualReasoning completes | internal_trace, public_reasoning |
+| `tot_hypothesis_evaluated` | Each ToT branch evaluated | hypothesis_id, probability, selected |
+
+**Logging Implementation:**
+```python
+import structlog
+from app.core.logging import get_contextualized_logger
+
+logger = structlog.get_logger(__name__)
+
+def log_reasoning_trace(state: RAGState, elapsed_ms: float) -> None:
+    """Log reasoning trace with all mandatory context fields."""
+    logger.info(
+        "reasoning_trace_recorded",
+        # Mandatory fields from Logging Standards
+        user_id=state.get("user_id"),
+        session_id=state.get("session_id"),
+        operation="reasoning_trace",
+        resource_id=state.get("request_id"),
+        # Reasoning-specific fields
+        reasoning_type=state.get("reasoning_type"),
+        reasoning_trace=_truncate_for_log(state.get("reasoning_trace")),
+        model_used=state.get("model_used"),
+        query_complexity=state.get("query_complexity"),
+        latency_ms=elapsed_ms,
+    )
+
+def _truncate_for_log(trace: dict | None, max_length: int = 1000) -> str:
+    """Truncate reasoning trace for log storage."""
+    if not trace:
+        return ""
+    trace_str = str(trace)
+    if len(trace_str) > max_length:
+        return trace_str[:max_length] + "...[truncated]"
+    return trace_str
+```
+
+**Testing Requirements:**
+- **TDD:** Write `tests/unit/core/test_reasoning_trace_logging.py` FIRST
+- **Unit Tests:**
+  - `test_log_includes_user_id` - user_id field present
+  - `test_log_includes_session_id` - session_id field present
+  - `test_log_includes_request_id` - resource_id field present
+  - `test_log_includes_reasoning_type` - reasoning_type field present
+  - `test_log_truncates_long_traces` - Traces >1000 chars truncated
+  - `test_log_handles_missing_trace` - Empty trace handled gracefully
+- **Coverage Target:** 90%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] All reasoning trace logs include `user_id` (MANDATORY per Logging Standards)
+- [ ] All reasoning trace logs include `session_id` (MANDATORY per Logging Standards)
+- [ ] All reasoning trace logs include `operation` and `resource_id`
+- [ ] Request ID correlation works for log aggregator queries
+- [ ] Reasoning traces searchable by user_id/session_id in log aggregator
+- [ ] Long traces truncated to prevent log bloat
+- [ ] 90%+ test coverage
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-239: Create Cost Monitoring Dashboard</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Need real-time visibility into LLM costs per query, model, and complexity level.
+</summary>
+
+### DEV-239: Create Cost Monitoring Dashboard
+
+**Reference:** [Technical Intent Part 7.3](pratikoai-llm-excellence-technical-intent.md#part-7-success-metrics) (Cost Metrics)
+
+**Priority:** LOW | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Need real-time visibility into LLM costs per query, model, and complexity level.
+
+**Solution:**
+Create cost monitoring endpoint and dashboard integration.
+
+**Agent Assignment:** @ezio (primary), @silvano (deployment)
+
+**Dependencies:**
+- **Blocking:** DEV-221 (LLMOrchestrator cost tracking)
+- **Unlocks:** Cost optimization insights
+
+**Change Classification:** ADDITIVE
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Cost per query tracked
+- [ ] Cost by model breakdown
+- [ ] Daily/weekly aggregates
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-240: Add Action Quality Metrics</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Need metrics to track action quality: validation pass rate, regeneration rate, click-through rate.
+</summary>
+
+### DEV-240: Add Action Quality Metrics
+
+**Reference:** [Technical Intent Part 7.1](pratikoai-llm-excellence-technical-intent.md#part-7-success-metrics) (Quality Metrics)
+
+**Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Need metrics to track action quality: validation pass rate, regeneration rate, click-through rate.
+
+**Solution:**
+Add action quality metrics collection and reporting.
+
+**Agent Assignment:** @ezio (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-218 (Step 100 validation)
+- **Unlocks:** Quality monitoring
+
+**Change Classification:** ADDITIVE
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Validation pass rate tracked
+- [ ] Regeneration rate tracked
+- [ ] Click-through rate tracked
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-241: Create Prompt A/B Testing Framework</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+Need ability to A/B test different prompt versions for quality comparison.
+</summary>
+
+### DEV-241: Create Prompt A/B Testing Framework
+
+**Reference:** [Technical Intent Part 6](pratikoai-llm-excellence-technical-intent.md#part-6-implementation-phases) Phase 4 (A/B Testing)
+
+**Priority:** LOW | **Effort:** 6h | **Status:** NOT STARTED
+
+**Problem:**
+Need ability to A/B test different prompt versions for quality comparison.
+
+**Solution:**
+Create A/B testing framework in PromptLoader with experiment configuration.
+
+**Agent Assignment:** @ezio (primary), @egidio (review)
+
+**Dependencies:**
+- **Blocking:** DEV-211 (PromptLoader)
+- **Unlocks:** Prompt optimization
+
+**Change Classification:** ADDITIVE
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Experiment configuration in YAML
+- [ ] Traffic splitting by percentage
+- [ ] Metrics collection per variant
+
+---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-242: Create Reasoning Trace UI Component</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+Reasoning traces and Tree of Thoughts logic are generated by the backend (DEV-214, DEV-223) but hidd...
+</summary>
+
+### DEV-242: Create Reasoning Trace UI Component
+
+**Reference:** [Technical Intent Part 12](pratikoai-llm-excellence-technical-intent.md#part-12-user-experience-uiux) (User Experience)
+
+**Priority:** MEDIUM | **Effort:** 6h | **Status:** NOT STARTED
+
+**Problem:**
+Reasoning traces and Tree of Thoughts logic are generated by the backend (DEV-214, DEV-223) but hidden in logs. Professional users (accountants, lawyers) cannot see how PratikoAI reached its conclusions, limiting trust and verification capabilities.
+
+**Solution:**
+Create an expandable "Visualizza Ragionamento" (Show Reasoning) UI component in the chat response bubble that displays the step-by-step reasoning logic, source hierarchy used, and any conflict detection results.
+
+**Agent Assignment:** @livia (primary), @ezio (API support), @clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-214 (Unified JSON Output with reasoning_trace), DEV-166 (Chat Integration)
+- **Unlocks:** User trust, verification capability, educational value
+
+**Change Classification:** ADDITIVE
+
+**File:** `src/components/chat/ReasoningTrace.tsx`
+
+**Why This Matters for Professional Users:**
+| Benefit | Example |
+|---------|---------|
+| **Trust** | User sees AI weighted "Legge" higher than "Circolare" (DEV-227) |
+| **Verification** | User checks if conflict detection found contradictions (DEV-228) |
+| **Educational** | User understands the legal path to the "Verdetto Operativo" |
+
+**Performance Requirements:**
+- Initial render: <50ms
+- Expand/collapse animation: 60fps (no jank)
+- Memory footprint: <1MB for 100 reasoning traces in DOM
+- Lazy rendering for long lists (virtualization if >10 items)
+
+**API Response Structure (from DEV-214):**
+```json
+{
+  "answer": "...",
+  "reasoning": {
+    "tema_identificato": "Regime forfettario contributi INPS",
+    "fonti_utilizzate": [
+      "Legge 190/2014, Art. 1, comma 54",
+      "Circolare INPS 35/2019"
+    ],
+    "elementi_chiave": [
+      "Aliquota ridotta 35% per forfettari",
+      "Applicabile solo a gestione artigiani/commercianti"
+    ],
+    "conclusione": "L'agevolazione è applicabile con riduzione del 35%"
+  },
+  "sources_cited": [...],
+  "suggested_actions": [...]
+}
+```
+
+**Component Interface:**
+```tsx
+// src/components/chat/ReasoningTrace.tsx
+
+interface ReasoningData {
+  tema_identificato: string;
+  fonti_utilizzate: string[];
+  elementi_chiave: string[];
+  conclusione: string;
+}
+
+interface ReasoningTraceProps {
+  reasoning: ReasoningData | null;
+  isExpanded?: boolean;
+  onToggle?: (expanded: boolean) => void;
+  className?: string;
+}
+
+// Exported component
+export function ReasoningTrace(props: ReasoningTraceProps): JSX.Element | null;
+
+// Helper functions (internal)
+function isSourcePrimary(source: string): boolean;  // Detects Legge, D.Lgs, DPR
+function formatSourceWithHierarchy(source: string): JSX.Element;
+function truncateText(text: string, maxLength: number): string;
+```
+
+**Visual Design:**
+```
+┌─────────────────────────────────────────────────────┐
+│ [Answer text here...]                               │
+│                                                     │
+│ ▶ 💡 Visualizza ragionamento                       │  ← Collapsed (default)
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│ [Answer text here...]                               │
+│                                                     │
+│ ▼ 💡 Visualizza ragionamento                       │  ← Expanded
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ 📋 Tema: Regime forfettario contributi INPS    │ │
+│ │                                                 │ │
+│ │ 📚 Fonti utilizzate:                           │ │
+│ │   1. Legge 190/2014, Art. 1, comma 54 (⭐)     │ │
+│ │   2. Circolare INPS 35/2019                    │ │
+│ │                                                 │ │
+│ │ 🔑 Elementi chiave:                            │ │
+│ │   • Aliquota ridotta 35% per forfettari        │ │
+│ │   • Applicabile solo a gestione artigiani/...  │ │
+│ │                                                 │ │
+│ │ ✅ Conclusione:                                 │ │
+│ │   L'agevolazione è applicabile con riduzione   │ │
+│ │   del 35% sui contributi previdenziali.        │ │
+│ └─────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────┘
+```
+
+**Edge Cases:**
+- **Nulls/Empty:**
+  - `reasoning: null` → Hide accordion entirely (don't show empty state)
+  - `reasoning: {}` → Hide accordion (no valid data)
+  - `fonti_utilizzate: []` → Hide "Fonti" section, show others
+  - `elementi_chiave: []` → Hide "Elementi" section, show others
+  - `tema_identificato: ""` → Show "Tema non specificato" placeholder
+- **Boundaries:**
+  - `fonti_utilizzate.length > 10` → Show first 5, "Mostra altre N fonti"
+  - `elementi_chiave.length > 20` → Virtualize list
+  - `conclusione.length > 500` → Truncate with "Leggi tutto" expander
+- **Validation:**
+  - Invalid source format → Render as plain text without hierarchy badge
+  - Special characters in text → Escape properly (XSS prevention)
+  - Unicode/emoji in content → Render correctly
+- **Mobile/Touch:**
+  - Touch-friendly tap targets (min 44x44px)
+  - Swipe-to-expand gesture (optional enhancement)
+  - Landscape/portrait orientation changes
+
+**Testing Requirements:**
+- **TDD:** Write `src/__tests__/components/chat/ReasoningTrace.test.tsx` FIRST
+- **Unit Tests:**
+  - `test_renders_collapsed_by_default` - Accordion starts collapsed
+  - `test_expands_on_click` - Click toggles visibility
+  - `test_renders_all_reasoning_sections` - All 4 sections shown when data present
+  - `test_handles_null_reasoning` - Returns null, no DOM output
+  - `test_handles_empty_reasoning` - Returns null for empty object
+  - `test_handles_empty_arrays` - Hides sections with empty arrays
+  - `test_source_hierarchy_indicator` - ⭐ shows for Legge, D.Lgs, DPR
+  - `test_source_hierarchy_not_shown_for_circolari` - No ⭐ for Circolare
+  - `test_truncates_long_conclusione` - Text >500 chars truncated
+  - `test_shows_expand_button_for_many_fonti` - "Mostra altre" for >5 sources
+- **Accessibility Tests:**
+  - `test_keyboard_navigation` - Enter/Space toggles accordion
+  - `test_aria_expanded_attribute` - Correct ARIA states (true/false)
+  - `test_aria_controls_attribute` - Links trigger to content
+  - `test_focus_management` - Focus moves appropriately on expand
+- **Edge Case Tests:**
+  - `test_escapes_special_characters` - XSS prevention
+  - `test_handles_unicode_content` - Italian accents, special chars
+  - `test_handles_very_long_source_names` - Truncation with tooltip
+- **Integration Tests:** `src/__tests__/integration/ChatMessage.test.tsx`
+  - `test_reasoning_trace_renders_in_chat_bubble` - Component integrates
+- **Regression Tests:** Run `npm test -- --testPathPattern=chat` to verify no conflicts
+- **Coverage Target:** 90%+ for new code
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| API schema changes | HIGH | Type validation at boundary, graceful degradation |
+| Performance with many traces | MEDIUM | Virtualization for >10 items, lazy loading |
+| Mobile layout breaks | MEDIUM | Responsive design tests, viewport testing |
+| Accessibility compliance | HIGH | WCAG 2.1 AA checklist, automated a11y testing |
+| XSS via reasoning content | CRITICAL | Sanitize all text content before rendering |
+
+**Code Structure:**
+- Max component file: 150 lines, extract sub-components if larger
+- Max hook: 50 lines, split into smaller hooks
+- Extract `ReasoningSection.tsx` for each section (tema, fonti, elementi, conclusione)
+- Extract `useReasoningTrace.ts` hook for expand/collapse state management
+
+**Code Completeness:** (MANDATORY - NO EXCEPTIONS)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values (e.g., `reasoning={mockData}`)
+- [ ] All props handled (null, undefined, empty)
+- [ ] All conditional rendering paths tested
+- [ ] No "will implement later" patterns - component must work end-to-end
+- [ ] Integration with ChatMessage component complete and verified
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Accordion component with collapse/expand functionality
+- [ ] Displays all 4 reasoning sections (tema, fonti, elementi, conclusione)
+- [ ] Source hierarchy indicated (⭐ for primary sources: Legge, D.Lgs, DPR)
+- [ ] Keyboard accessible (Enter/Space to toggle)
+- [ ] Gracefully handles missing/null/empty reasoning
+- [ ] Mobile-responsive design (tested on 320px-1920px viewports)
+- [ ] Integrates with existing ChatMessage component
+- [ ] ARIA attributes for accessibility (aria-expanded, aria-controls)
+- [ ] Performance: <50ms render, 60fps animations
+- [ ] 90%+ test coverage achieved
+- [ ] All existing chat tests still pass (regression)
+- [ ] No TODO/FIXME comments for required features
+- [ ] XSS protection verified
+
+</details>
+
+---
+
+### Phase 9 Summary
+
+| Sub-Phase | Tasks | Effort | Priority |
+|-----------|-------|--------|----------|
+| 9.1: Foundation | DEV-210 to DEV-214 | 20h | CRITICAL |
+| 9.2: Golden Loop | DEV-215 to DEV-218 | 15h | HIGH |
+| 9.3: Intelligence | DEV-220 to DEV-224 | 20h | HIGH |
+| 9.4: Excellence | DEV-227 to DEV-232 | 26h | HIGH/MEDIUM |
+| 9.5: Conversation | DEV-233 to DEV-237 | 18h | MEDIUM/LOW |
+| 9.6: Quality & Monitoring | DEV-238 to DEV-241 | 15h | LOW |
+| 9.7: Frontend UI | DEV-242 | 6h | MEDIUM |
+| **Total** | **33 tasks** | **~120h** | |
+
+**Agent Assignment Summary:**
+| Agent | Primary Tasks | Support Tasks |
+|-------|---------------|---------------|
+| @ezio | 28 tasks | 1 task (API support for DEV-242) |
+| @livia | 1 task (DEV-242) | - |
+| @clelia | - | 29 tasks (tests) |
+| @egidio | - | 8 tasks (review) |
+| @primo | - | 1 task (DB review) |
+| @silvano | - | 1 task (deployment) |
+
+**Estimated Timeline:** 8-10 weeks at 2-3h/day *(with Claude Code)*

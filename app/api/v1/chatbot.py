@@ -11,6 +11,7 @@ DEV-162: Added analytics tracking for action clicks and question answers.
 
 import asyncio
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import (
@@ -34,6 +35,7 @@ from app.core.privacy.gdpr import (
     ProcessingPurpose,
     gdpr_compliance,
 )
+from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
 from app.core.sse_formatter import (
     format_sse_done,
     format_sse_event,
@@ -43,6 +45,7 @@ from app.core.sse_write import (
     write_sse,
 )
 from app.core.streaming_guard import SinglePassStream
+from app.core.utils.xml_stripper import clean_proactivity_content
 from app.models.database import get_db, get_sync_session
 from app.models.session import Session
 from app.observability.rag_logging import rag_step_log
@@ -56,26 +59,9 @@ from app.schemas.chat import (
 from app.schemas.proactivity import (
     Action,
     ActionExecuteRequest,
-    ProactivityContext,
-    ProactivityResult,
     QuestionAnswerRequest,
     QuestionAnswerResponse,
 )
-
-# DEV-178: Archived services - use simplified engine instead
-# These imports are kept for backwards compatibility but will be removed in DEV-179
-try:
-    from archived.phase5_templates.services.action_template_service import ActionTemplateService
-    from archived.phase5_templates.services.atomic_facts_extractor import AtomicFactsExtractor
-
-    _LEGACY_SERVICES_AVAILABLE = True
-except ImportError:
-    ActionTemplateService = None  # type: ignore
-    AtomicFactsExtractor = None  # type: ignore
-    _LEGACY_SERVICES_AVAILABLE = False
-
-from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
-from app.core.utils.xml_stripper import clean_proactivity_content
 from app.services.attachment_resolver import (
     AttachmentNotFoundError,
     AttachmentOwnershipError,
@@ -85,9 +71,8 @@ from app.services.chat_history_service import chat_history_service
 from app.services.domain_action_classifier import DomainActionClassifier
 from app.services.llm_response_parser import parse_llm_response
 from app.services.proactivity_analytics_service import ProactivityAnalyticsService
-from app.services.proactivity_engine import ProactivityEngine
 
-# DEV-179: Import simplified proactivity engine and parser
+# DEV-179: Import simplified proactivity engine (replaces deprecated ProactivityEngine)
 from app.services.proactivity_engine_simplified import (
     ProactivityEngine as SimplifiedProactivityEngine,
 )
@@ -98,81 +83,27 @@ from app.services.proactivity_engine_simplified import (
 router = APIRouter()
 agent = LangGraphAgent()
 
-# DEV-158: Singleton ProactivityEngine instance
-# DEV-178: DEPRECATED - Will be replaced by simplified engine in DEV-179
-_proactivity_engine: ProactivityEngine | None = None
-
-
-def get_proactivity_engine() -> ProactivityEngine:
-    """Get or create the ProactivityEngine singleton.
-
-    DEPRECATED: This function uses the legacy ProactivityEngine.
-    DEV-179 will update this to use the simplified engine.
-
-    Returns:
-        ProactivityEngine: The singleton engine instance
-
-    Raises:
-        RuntimeError: If legacy services are not available
-    """
-    global _proactivity_engine
-    if _proactivity_engine is None:
-        if not _LEGACY_SERVICES_AVAILABLE:
-            # DEV-178: Legacy services archived, return None for now
-            # DEV-179 will implement the new engine integration
-            logger.warning(
-                "proactivity_legacy_unavailable",
-                extra={"message": "Legacy proactivity services archived. Use simplified engine."},
-            )
-            raise RuntimeError(
-                "Legacy ProactivityEngine services have been archived. "
-                "Please update to use the simplified engine from DEV-177."
-            )
-        template_service = ActionTemplateService()
-        template_service.load_templates()
-        facts_extractor = AtomicFactsExtractor()
-        _proactivity_engine = ProactivityEngine(
-            template_service=template_service,
-            facts_extractor=facts_extractor,
-        )
-    return _proactivity_engine
-
-
-# DEV-160: Singleton ActionTemplateService instance
-# DEV-178: DEPRECATED - Service archived to archived/phase5_templates/
-_template_service = None
-
 
 def get_template_service():
-    """Get or create the ActionTemplateService singleton.
+    """DEPRECATED: Get template service (archived in DEV-178).
 
-    DEPRECATED: This service has been archived as of DEV-178.
-    Use DOCUMENT_ACTION_TEMPLATES from app.core.proactivity_constants instead.
+    This function is no longer available. The ActionTemplateService has been
+    archived and replaced by the simplified LLM-First proactivity engine.
 
-    Returns:
-        ActionTemplateService: The singleton service instance
+    Action templates are now defined in app.core.proactivity_constants.
 
     Raises:
-        RuntimeError: If legacy service is not available
+        RuntimeError: Always, since this functionality is deprecated.
     """
-    global _template_service
-    if _template_service is None:
-        if not _LEGACY_SERVICES_AVAILABLE:
-            logger.warning(
-                "template_service_archived",
-                extra={"message": "ActionTemplateService archived. Use proactivity_constants."},
-            )
-            raise RuntimeError(
-                "ActionTemplateService has been archived. "
-                "Use DOCUMENT_ACTION_TEMPLATES from app.core.proactivity_constants."
-            )
-        _template_service = ActionTemplateService()
-        _template_service.load_templates()
-    return _template_service
+    raise RuntimeError(
+        "DEV-179: ActionTemplateService has been deprecated. "
+        "Action and question templates are now defined in proactivity_constants. "
+        "Use get_simplified_proactivity_engine() for proactivity processing."
+    )
 
 
 # =============================================================================
-# DEV-179: LLM-First Proactivity Helpers
+# Proactivity Engine (DEV-179: Using simplified LLM-First engine)
 # =============================================================================
 
 # Singleton simplified proactivity engine
@@ -254,9 +185,7 @@ def apply_action_override(
 # DEV-180: Streaming Tag Stripping and Buffering Helpers
 # =============================================================================
 
-import re
-
-# Compiled regex patterns for XML tag stripping
+# Compiled regex patterns for XML tag stripping (uses 're' imported at top)
 _ANSWER_TAG_PATTERN = re.compile(r"<answer>(.*?)</answer>", re.DOTALL)
 _ACTIONS_TAG_PATTERN = re.compile(r"<suggested_actions>.*?</suggested_actions>", re.DOTALL)
 _OPENING_ANSWER_TAG = re.compile(r"<answer>")
@@ -803,65 +732,63 @@ async def chat(
                     exc_info=True,
                 )
 
-            # DEV-158: Process proactivity for suggested actions and questions
-            # BUGFIX: Integrate DomainActionClassifier to provide domain/action/sub_domain
-            proactivity_result: ProactivityResult | None = None
+            # DEV-179: Process proactivity using simplified engine
+            # Only generates interactive_question for explicit calculation requests
+            simplified_proactivity_result: SimplifiedProactivityResult | None = None
+            interactive_question = None
+            template_actions = None
             try:
-                proactivity_engine = get_proactivity_engine()
-
-                # Classify query to get domain, action, and sub_domain
+                simplified_engine = get_simplified_proactivity_engine()
                 query_text = user_query if user_query else ""
-                classifier = DomainActionClassifier()
-                classification = await classifier.classify(query_text)
-
-                logger.debug(
-                    "proactivity_classification",
-                    session_id=session.id,
-                    domain=classification.domain.value,
-                    action=classification.action.value,
-                    sub_domain=classification.sub_domain,
-                    confidence=classification.confidence,
-                )
-
-                # Build ProactivityContext with classification results
-                proactivity_context = ProactivityContext(
-                    session_id=str(session.id),
-                    domain=classification.domain.value.lower(),
-                    action_type=classification.action.value.lower(),
-                    sub_domain=classification.sub_domain,
-                    classification_confidence=classification.confidence,
-                    document_type=None,
-                )
-                proactivity_result = proactivity_engine.process(
+                simplified_proactivity_result = simplified_engine.process_query(
                     query=query_text,
-                    context=proactivity_context,
+                    document=None,
                 )
+
                 logger.debug(
                     "proactivity_processed",
                     session_id=session.id,
-                    action_count=len(proactivity_result.actions),
-                    has_question=proactivity_result.question is not None,
-                    processing_time_ms=proactivity_result.processing_time_ms,
+                    has_question=simplified_proactivity_result.interactive_question is not None,
+                    has_template_actions=simplified_proactivity_result.template_actions is not None,
+                    use_llm_actions=simplified_proactivity_result.use_llm_actions,
                 )
+
+                # Convert to schema types if present
+                if simplified_proactivity_result.interactive_question:
+                    from app.schemas.proactivity import InputField, InteractiveQuestion
+
+                    question_dict = simplified_proactivity_result.interactive_question
+                    fields = [InputField(**f) if isinstance(f, dict) else f for f in question_dict.get("fields", [])]
+                    interactive_question = InteractiveQuestion(
+                        id=question_dict.get("id", "unknown"),
+                        text=question_dict.get("text", "Ho bisogno di alcune informazioni:"),
+                        question_type=question_dict.get("question_type", "multi_field"),
+                        fields=fields,
+                        prefilled_params=question_dict.get("prefilled"),
+                    )
+
+                if simplified_proactivity_result.template_actions:
+                    # Convert template actions to Action schema
+                    from app.schemas.proactivity import Action
+
+                    template_actions = [
+                        Action(**a) if isinstance(a, dict) else a
+                        for a in simplified_proactivity_result.template_actions
+                    ]
+
             except Exception as proactivity_error:
-                # Graceful degradation: log warning but continue without actions
+                # Graceful degradation: log warning but continue without proactivity
                 logger.warning(
                     "proactivity_processing_failed_non_critical",
                     session_id=session.id,
                     error=str(proactivity_error),
                 )
-                proactivity_result = None
-
-            # Build response with proactivity fields
-            extracted_params = None
-            if proactivity_result and proactivity_result.extraction_result:
-                extracted_params = {p.name: p.value for p in proactivity_result.extraction_result.extracted}
 
             return ChatResponse(
                 messages=result,
-                suggested_actions=proactivity_result.actions if proactivity_result else None,
-                interactive_question=proactivity_result.question if proactivity_result else None,
-                extracted_params=extracted_params if extracted_params else None,
+                suggested_actions=template_actions,  # Only from document templates
+                interactive_question=interactive_question,
+                extracted_params=None,  # Not available in simplified engine
             )
     except Exception as e:
         logger.error("chat_request_failed", session_id=session.id, error=str(e), exc_info=True)
@@ -990,14 +917,16 @@ async def chat_stream(
             )
 
         # =====================================================================
-        # PRE-RESPONSE PROACTIVITY DETECTION
+        # PRE-RESPONSE PROACTIVITY DETECTION (DEV-179: Simplified Engine)
         # =====================================================================
-        # For ALL vague/generic queries with missing parameters, show interactive
-        # question FIRST (before LLM call) to avoid generic Wikipedia-style
-        # responses. This improves UX by collecting all needed data upfront.
+        # Shows interactive question BEFORE LLM call ONLY for explicit calculation
+        # requests (e.g., "calcola IRPEF", "quanto IVA") that are missing required
+        # parameters like income amount or tax rate.
         #
-        # Applies to: Any query where proactivity determines we need more info.
-        # Exception: Queries that match KB/Golden Set should proceed to RAG.
+        # The simplified engine uses pattern matching (not classification) so it
+        # won't trigger for vague queries like "Non so cosa posso dedurre" - these
+        # go directly to the LLM for a helpful answer.
+        #
         # Skip: When skip_proactivity flag is set (follow-up queries from answered questions).
         # =====================================================================
         pre_response_question = None
@@ -1008,115 +937,71 @@ async def chat_stream(
                 session_id=session.id,
                 reason="skip_proactivity flag set (follow-up query)",
             )
-        elif query_classification:
+        else:
             try:
-                proactivity_engine = get_proactivity_engine()
-
-                # Handle potentially null domain/action from failed classification
-                domain_value = "default"
-                action_value = "information_request"
-                if query_classification.domain:
-                    domain_value = (
-                        query_classification.domain.value.lower()
-                        if hasattr(query_classification.domain, "value")
-                        else str(query_classification.domain).lower()
-                    )
-                if query_classification.action:
-                    action_value = (
-                        query_classification.action.value.lower()
-                        if hasattr(query_classification.action, "value")
-                        else str(query_classification.action).lower()
-                    )
+                # DEV-179: Use simplified engine (no classification dependency)
+                simplified_engine = get_simplified_proactivity_engine()
+                simplified_result = simplified_engine.process_query(
+                    query=user_query if user_query != "N/A" else "",
+                    document=None,  # No document for pre-response
+                )
 
                 logger.debug(
-                    "pre_response_proactivity_starting",
+                    "pre_response_proactivity_check",
                     session_id=session.id,
-                    domain=domain_value,
-                    action=action_value,
-                    confidence=query_classification.confidence,
                     user_query=user_query[:100] if user_query else "N/A",
+                    has_question=simplified_result.interactive_question is not None,
+                    use_llm_actions=simplified_result.use_llm_actions,
                 )
 
-                # Build context with classification
-                pre_context = ProactivityContext(
-                    session_id=str(session.id),
-                    domain=domain_value,
-                    action_type=action_value,
-                    sub_domain=query_classification.sub_domain,
-                    classification_confidence=query_classification.confidence,
-                    document_type=None,
-                )
+                # If simplified engine detected a calculable intent with missing params
+                if simplified_result.interactive_question:
+                    question_dict = simplified_result.interactive_question
+                    question_id = question_dict.get("id", "unknown")
 
-                # Extract parameters and check coverage
-                pre_result = proactivity_engine.process(
-                    query=user_query if user_query != "N/A" else "",
-                    context=pre_context,
-                )
+                    # Convert dict to InteractiveQuestion pydantic model
+                    # Handle field name mapping: prefilled -> prefilled_params
+                    from app.schemas.proactivity import InputField, InteractiveQuestion
 
-                # If proactivity engine says we should ask a question,
-                # return it BEFORE calling LLM
-                if pre_result.question and proactivity_engine.should_ask_question(
-                    pre_result.extraction_result, user_query
-                ):
-                    pre_response_question = pre_result.question
-                    # Generate explanation based on the ACTUAL question being shown
-                    # (not the possibly-wrong classification)
-                    detected_intent = (
-                        pre_result.extraction_result.intent if pre_result.extraction_result else "unknown"
+                    fields = [InputField(**f) if isinstance(f, dict) else f for f in question_dict.get("fields", [])]
+                    pre_response_question = InteractiveQuestion(
+                        id=question_id,
+                        text=question_dict.get("text", "Ho bisogno di alcune informazioni:"),
+                        question_type=question_dict.get("question_type", "multi_field"),
+                        fields=fields,
+                        prefilled_params=question_dict.get("prefilled"),
                     )
-                    question_id = pre_result.question.id
 
-                    # Match explanation to the specific question being shown
-                    if question_id == "irpef_input_fields":
+                    # Generate explanation based on the calculation type
+                    if "irpef" in question_id:
                         pre_response_explanation = "L'IRPEF dipende dal tuo reddito e dalla tua situazione personale. Inserisci i dati per un calcolo preciso."
-                    elif question_id == "iva_input_fields":
+                    elif "iva" in question_id:
                         pre_response_explanation = (
                             "Per calcolare l'IVA correttamente, ho bisogno di conoscere l'importo e l'aliquota."
                         )
-                    elif question_id == "inps_input_fields":
+                    elif "inps" in question_id or "contributi" in question_id:
                         pre_response_explanation = "I contributi INPS variano in base al reddito e alla categoria. Inserisci i dati per il calcolo."
-                    elif question_id == "tfr_input_fields":
+                    elif "ravvedimento" in question_id:
                         pre_response_explanation = (
-                            "Il TFR dipende dalla retribuzione e dagli anni di servizio. Inserisci i dati."
+                            "Per calcolare il ravvedimento operoso, ho bisogno di conoscere importo e data scadenza."
                         )
-                    elif question_id == "tax_type_selection":
-                        pre_response_explanation = "Le tasse variano molto in base al tipo e alla tua situazione. Aiutami a capire di cosa hai bisogno."
-                    elif question_id == "deadline_type_selection":
-                        pre_response_explanation = (
-                            "Le scadenze fiscali variano in base all'adempimento. Quale ti interessa verificare?"
-                        )
-                    elif question_id == "topic_clarification":
-                        # Fallback question - use a generic but helpful explanation
-                        pre_response_explanation = (
-                            "Per darti una risposta utile e precisa, aiutami a capire meglio la tua richiesta."
-                        )
+                    elif "f24" in question_id:
+                        pre_response_explanation = "Per compilare il modello F24, ho bisogno di alcune informazioni."
                     else:
                         pre_response_explanation = "Per aiutarti al meglio, ho bisogno di qualche dettaglio in più."
 
                     logger.info(
                         "pre_response_proactivity_triggered",
                         session_id=session.id,
-                        question_id=pre_result.question.id,
-                        question_type=pre_result.question.question_type,
-                        action_type=action_value,
-                        coverage=pre_result.extraction_result.coverage if pre_result.extraction_result else 0,
-                        intent=pre_result.extraction_result.intent if pre_result.extraction_result else None,
+                        question_id=question_id,
+                        question_type=question_dict.get("question_type"),
                     )
                 else:
-                    # Log why no question was triggered
+                    # No question needed - query will go to LLM
                     logger.debug(
                         "pre_response_proactivity_no_question",
                         session_id=session.id,
-                        has_question=pre_result.question is not None,
-                        should_ask=proactivity_engine.should_ask_question(pre_result.extraction_result, user_query)
-                        if pre_result.extraction_result
-                        else False,
-                        coverage=pre_result.extraction_result.coverage if pre_result.extraction_result else 0,
-                        intent=pre_result.extraction_result.intent if pre_result.extraction_result else None,
-                        can_proceed=pre_result.extraction_result.can_proceed if pre_result.extraction_result else True,
-                        missing_required=pre_result.extraction_result.missing_required
-                        if pre_result.extraction_result
-                        else [],
+                        reason="no_calculable_intent" if simplified_result.use_llm_actions else "document_actions",
                     )
             except Exception as pre_proactivity_error:
                 logger.warning(
@@ -1794,28 +1679,38 @@ async def execute_action(
         # Convert response to messages for return
         messages = [Message(role="assistant", content=str(response))]
 
-        # Process proactivity for follow-up actions
-        # BUGFIX: Use DomainActionClassifier for better intent detection
-        proactivity_result: ProactivityResult | None = None
+        # DEV-179: Process proactivity using simplified engine
+        simplified_proactivity_result: SimplifiedProactivityResult | None = None
+        suggested_actions = None
+        interactive_question = None
         try:
-            proactivity_engine = get_proactivity_engine()
-
-            # Classify the executed prompt
-            classifier = DomainActionClassifier()
-            classification = await classifier.classify(prompt)
-
-            proactivity_context = ProactivityContext(
-                session_id=action_request.session_id,
-                domain=classification.domain.value.lower(),
-                action_type=classification.action.value.lower(),
-                sub_domain=classification.sub_domain,
-                classification_confidence=classification.confidence,
-                document_type=None,
-            )
-            proactivity_result = proactivity_engine.process(
+            simplified_engine = get_simplified_proactivity_engine()
+            simplified_proactivity_result = simplified_engine.process_query(
                 query=prompt,
-                context=proactivity_context,
+                document=None,
             )
+
+            # Convert to schema types if present
+            if simplified_proactivity_result.interactive_question:
+                from app.schemas.proactivity import InputField, InteractiveQuestion
+
+                question_dict = simplified_proactivity_result.interactive_question
+                fields = [InputField(**f) if isinstance(f, dict) else f for f in question_dict.get("fields", [])]
+                interactive_question = InteractiveQuestion(
+                    id=question_dict.get("id", "unknown"),
+                    text=question_dict.get("text", "Ho bisogno di alcune informazioni:"),
+                    question_type=question_dict.get("question_type", "multi_field"),
+                    fields=fields,
+                    prefilled_params=question_dict.get("prefilled"),
+                )
+
+            if simplified_proactivity_result.template_actions:
+                from app.schemas.proactivity import Action
+
+                suggested_actions = [
+                    Action(**a) if isinstance(a, dict) else a for a in simplified_proactivity_result.template_actions
+                ]
+
         except Exception as proactivity_error:
             logger.warning(
                 "action_proactivity_processing_failed",
@@ -1823,19 +1718,6 @@ async def execute_action(
                 session_id=action_request.session_id,
                 error=str(proactivity_error),
             )
-
-        # Build response
-        suggested_actions = None
-        interactive_question = None
-        extracted_params = None
-
-        if proactivity_result:
-            if proactivity_result.actions:
-                suggested_actions = proactivity_result.actions
-            if proactivity_result.question:
-                interactive_question = proactivity_result.question
-            if proactivity_result.extraction_result:
-                extracted_params = {p.name: p.value for p in proactivity_result.extraction_result.extracted}
 
         logger.info(
             "action_execution_completed",
@@ -1857,7 +1739,7 @@ async def execute_action(
             messages=messages,
             suggested_actions=suggested_actions,
             interactive_question=interactive_question,
-            extracted_params=extracted_params,
+            extracted_params=None,  # DEV-179: Not available in simplified engine
         )
 
     except HTTPException:
@@ -2109,30 +1991,23 @@ async def answer_question(
             user_id=session.user_id,
         )
 
-        # Process proactivity for follow-up actions
-        # BUGFIX: Use DomainActionClassifier for better intent detection
+        # DEV-179: Process proactivity using simplified engine
         suggested_actions = None
         try:
-            proactivity_engine = get_proactivity_engine()
-
-            # Classify the question answer prompt
-            classifier = DomainActionClassifier()
-            classification = await classifier.classify(prompt)
-
-            proactivity_context = ProactivityContext(
-                session_id=answer_request.session_id,
-                domain=classification.domain.value.lower(),
-                action_type=classification.action.value.lower(),
-                sub_domain=classification.sub_domain,
-                classification_confidence=classification.confidence,
-                document_type=None,
-            )
-            proactivity_result = proactivity_engine.process(
+            simplified_engine = get_simplified_proactivity_engine()
+            simplified_proactivity_result = simplified_engine.process_query(
                 query=prompt,
-                context=proactivity_context,
+                document=None,
             )
-            if proactivity_result and proactivity_result.actions:
-                suggested_actions = proactivity_result.actions
+
+            # Only get template actions (not interactive questions for follow-ups)
+            if simplified_proactivity_result.template_actions:
+                from app.schemas.proactivity import Action
+
+                suggested_actions = [
+                    Action(**a) if isinstance(a, dict) else a for a in simplified_proactivity_result.template_actions
+                ]
+
         except Exception as proactivity_error:
             logger.warning(
                 "question_proactivity_processing_failed",

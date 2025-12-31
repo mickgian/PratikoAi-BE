@@ -3335,7 +3335,7 @@ DEV-210 (GraphState) ───────────────────�
 
 ### DEV-210: Update GraphState with LLM Excellence Fields
 
-**Reference:** Technical Intent Part 3.1 (Graph State Schema)
+**Reference:** [Technical Intent Part 3.1](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Graph State Schema)
 
 **Priority:** CRITICAL | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -3456,7 +3456,7 @@ actions_validation_log: list[str] | None  # Rejection reasons for debugging
 
 ### DEV-211: Create PromptLoader Utility Service
 
-**Reference:** Technical Intent Part 3.2.2 (Prompt Loader Specification)
+**Reference:** [Technical Intent Part 3.2.2](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Prompt Loader Specification)
 
 **Priority:** CRITICAL | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -3595,7 +3595,7 @@ class PromptLoader:
 
 ### DEV-212: Create unified_response_simple.md Prompt Template
 
-**Reference:** Technical Intent Part 3.2.3 (Unified Response Prompt)
+**Reference:** [Technical Intent Part 3.2.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Unified Response Prompt)
 
 **Priority:** CRITICAL | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -3760,7 +3760,7 @@ def _select_prompt_template(state: RAGState) -> str:
 
 ### DEV-213: Update Step 40 to Preserve KB Documents and Metadata
 
-**Reference:** Technical Intent Part 3.5.2 (Step 40: Build Context Enhanced)
+**Reference:** [Technical Intent Part 3.5.2](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 40: Build Context Enhanced)
 
 **Priority:** CRITICAL | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -3895,7 +3895,7 @@ def get_hierarchy_weight(doc_type: str) -> float:
 
 ### DEV-214: Update Step 64 for Unified JSON Output with Reasoning
 
-**Reference:** Technical Intent Part 3.5.3 (Step 64: LLM Call Unified)
+**Reference:** [Technical Intent Part 3.5.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 64: LLM Call Unified)
 
 **Priority:** CRITICAL | **Effort:** 6h | **Status:** NOT STARTED
 
@@ -4143,7 +4143,7 @@ except ImportError:
 
 ### DEV-215: Create ActionValidator Service
 
-**Reference:** Technical Intent Part 3.4 (Action Validator)
+**Reference:** [Technical Intent Part 3.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Action Validator)
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** PARTIALLY IMPLEMENTED (PR #900)
 
@@ -4297,7 +4297,7 @@ class ActionValidator:
 
 ### DEV-216: Create action_regeneration.md Prompt Template
 
-**Reference:** Technical Intent Part 11.5.2 (Regeneration Prompt)
+**Reference:** [Technical Intent Part 11.5.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Regeneration Prompt)
 
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
 
@@ -4399,7 +4399,7 @@ Output JSON:
 
 ### DEV-217: Implement ActionRegenerator Service (Golden Loop)
 
-**Reference:** Technical Intent Part 11.5 (Action Regeneration Loop)
+**Reference:** [Technical Intent Part 11.5](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Action Regeneration Loop)
 
 **Priority:** HIGH | **Effort:** 6h | **Status:** NOT STARTED
 
@@ -4580,7 +4580,7 @@ def _generate_safe_fallback(self, context: ResponseContext) -> list[dict]:
 
 ### DEV-218: Update Step 100 for Validation-Only with Golden Loop
 
-**Reference:** Technical Intent Part 3.5.4 (Step 100: Action Validation)
+**Reference:** [Technical Intent Part 3.5.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 100: Action Validation)
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** PARTIALLY IMPLEMENTED (PR #900)
 
@@ -4812,7 +4812,7 @@ Analizza questa query fiscale/legale italiana e classifica la sua complessità.
 
 ### DEV-221: Implement LLMOrchestrator Service for Multi-Model Routing
 
-**Reference:** Technical Intent Part 3.3 (LLM Orchestrator)
+**Reference:** [Technical Intent Part 3.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (LLM Orchestrator)
 
 **Priority:** HIGH | **Effort:** 8h | **Status:** NOT STARTED
 
@@ -4971,7 +4971,7 @@ class LLMOrchestrator:
 
 ### DEV-222: Integrate LLMOrchestrator with Step 64
 
-**Reference:** Technical Intent Part 3.5.3 (Step 64 routing)
+**Reference:** [Technical Intent Part 3.5.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 64 routing)
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -5000,7 +5000,7 @@ Update Step 64 to call LLMOrchestrator.classify_complexity(), then generate_resp
 
 ### DEV-223: Create tree_of_thoughts.md Prompt Template
 
-**Reference:** Technical Intent Part 3.2.4 (Tree of Thoughts Prompt)
+**Reference:** [Technical Intent Part 3.2.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Tree of Thoughts Prompt)
 
 **Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5020,7 +5020,7 @@ Create tree_of_thoughts.md prompt with hypothesis generation, evaluation, and se
 
 **File:** `app/prompts/v1/tree_of_thoughts.md`
 
-**Template Structure:** (See Technical Intent Part 2.3.2)
+**Template Structure:** (See [Technical Intent Part 2.3.2](pratikoai-llm-excellence-technical-intent.md#part-2-target-architecture))
 - Hypothesis generation (3-4 scenarios)
 - Source-weighted evaluation
 - Best hypothesis selection with reasoning
@@ -5037,7 +5037,7 @@ Create tree_of_thoughts.md prompt with hypothesis generation, evaluation, and se
 
 ### DEV-224: Create tree_of_thoughts_multi_domain.md Prompt Template
 
-**Reference:** Technical Intent Part 2.3.3 (Multi-Domain ToT)
+**Reference:** [Technical Intent Part 2.3.3](pratikoai-llm-excellence-technical-intent.md#part-2-target-architecture) (Multi-Domain ToT)
 
 **Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -5065,7 +5065,7 @@ Create tree_of_thoughts_multi_domain.md for cross-domain synthesis.
 
 ### DEV-227: Create Source Hierarchy Mapping and Weighting
 
-**Reference:** Technical Intent Part 11.1 (Source Hierarchy Weighting)
+**Reference:** [Technical Intent Part 11.1](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Source Hierarchy Weighting)
 
 **Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5125,7 +5125,7 @@ SOURCE_HIERARCHY = {
 
 ### DEV-228: Implement SourceConflictDetector Service
 
-**Reference:** Technical Intent Part 11.1.3 (Conflict Detection)
+**Reference:** [Technical Intent Part 11.1.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Conflict Detection)
 
 **Priority:** HIGH | **Effort:** 6h | **Status:** NOT STARTED
 
@@ -5155,7 +5155,7 @@ Create SourceConflictDetector that identifies conflicts between sources and reco
 
 ### DEV-229: Implement DualReasoning Data Structures
 
-**Reference:** Technical Intent Part 11.4 (Internal vs Public Reasoning)
+**Reference:** [Technical Intent Part 11.4](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Internal vs Public Reasoning)
 
 **Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5185,7 +5185,7 @@ Create DualReasoning dataclasses for internal technical reasoning and public use
 
 ### DEV-230: Implement ReasoningTransformer Service
 
-**Reference:** Technical Intent Part 11.4.2 (Reasoning Transformation)
+**Reference:** [Technical Intent Part 11.4.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Reasoning Transformation)
 
 **Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5213,7 +5213,7 @@ Create ReasoningTransformer that converts internal reasoning to public explanati
 
 ### DEV-231: Add Risk Analysis Phase to Tree of Thoughts
 
-**Reference:** Technical Intent Part 11.2 (Risk/Sanction Analysis)
+**Reference:** [Technical Intent Part 11.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Risk/Sanction Analysis)
 
 **Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5249,7 +5249,7 @@ Add risk analysis phase to ToT that evaluates sanction risk for each hypothesis.
 
 ### DEV-233: Create hyde_conversational.md Prompt Template
 
-**Reference:** Technical Intent Part 3.2.5 (Conversational HyDE)
+**Reference:** [Technical Intent Part 3.2.5](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Conversational HyDE)
 
 **Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -5380,7 +5380,7 @@ class HyDEGeneratorService:
 
 ### DEV-234: Implement QueryAmbiguityDetector Service
 
-**Reference:** Technical Intent Part 11.3 (Query Vaghe)
+**Reference:** [Technical Intent Part 11.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Query Vaghe)
 
 **Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5414,7 +5414,7 @@ Create QueryAmbiguityDetector that identifies ambiguous queries and triggers mul
 
 ### DEV-235: Update HyDE Generator for Conversation Awareness
 
-**Reference:** Technical Intent Part 11.3.3 (Updated HyDE Generator)
+**Reference:** [Technical Intent Part 11.3.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Updated HyDE Generator)
 
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
@@ -5442,7 +5442,7 @@ Update HyDEGeneratorService to check ambiguity and generate multi-variant HyDE w
 
 ### DEV-236: Update Source Schema for Paragraph-Level Grounding
 
-**Reference:** Technical Intent Part 11.6 (Paragraph-Level Grounding)
+**Reference:** [Technical Intent Part 11.6](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Paragraph-Level Grounding)
 
 **Priority:** LOW | **Effort:** 6h | **Status:** NOT STARTED
 
@@ -5470,7 +5470,7 @@ Add paragraph-level tracking to source schema with paragraph_id and excerpt fiel
 
 ### DEV-237: Implement Paragraph Extraction in Retrieval
 
-**Reference:** Technical Intent Part 11.6.2 (Paragraph Extraction)
+**Reference:** [Technical Intent Part 11.6.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Paragraph Extraction)
 
 **Priority:** LOW | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5498,7 +5498,7 @@ Add paragraph extraction to retrieval pipeline that identifies relevant paragrap
 
 ### DEV-238: Add Detailed Logging for Reasoning Traces
 
-**Reference:** Technical Intent Part 6 Phase 4 (Quality & Monitoring)
+**Reference:** [Technical Intent Part 6](pratikoai-llm-excellence-technical-intent.md#part-6-implementation-phases) Phase 4 (Quality & Monitoring)
 
 **Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -5600,7 +5600,7 @@ def _truncate_for_log(trace: dict | None, max_length: int = 1000) -> str:
 
 ### DEV-239: Create Cost Monitoring Dashboard
 
-**Reference:** Technical Intent Part 7.3 (Cost Metrics)
+**Reference:** [Technical Intent Part 7.3](pratikoai-llm-excellence-technical-intent.md#part-7-success-metrics) (Cost Metrics)
 
 **Priority:** LOW | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -5628,7 +5628,7 @@ Create cost monitoring endpoint and dashboard integration.
 
 ### DEV-240: Add Action Quality Metrics
 
-**Reference:** Technical Intent Part 7.1 (Quality Metrics)
+**Reference:** [Technical Intent Part 7.1](pratikoai-llm-excellence-technical-intent.md#part-7-success-metrics) (Quality Metrics)
 
 **Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -5656,7 +5656,7 @@ Add action quality metrics collection and reporting.
 
 ### DEV-241: Create Prompt A/B Testing Framework
 
-**Reference:** Technical Intent Part 6 Phase 4 (A/B Testing)
+**Reference:** [Technical Intent Part 6](pratikoai-llm-excellence-technical-intent.md#part-6-implementation-phases) Phase 4 (A/B Testing)
 
 **Priority:** LOW | **Effort:** 6h | **Status:** NOT STARTED
 

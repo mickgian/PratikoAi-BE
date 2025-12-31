@@ -1,0 +1,83 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Triage issue with Claude
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            You are triaging a GitHub issue for PratikoAI, an Italian AI-powered tax and financial assistant.
+
+            ## Issue Details
+            - **Number:** #${{ github.event.issue.number }}
+            - **Title:** "${{ github.event.issue.title }}"
+            - **Body:**
+            ${{ github.event.issue.body }}
+
+            ## Your Tasks
+
+            ### 1. Categorize the Issue
+            Determine the type:
+            - `tipo: bug` - Something is broken or not working as expected
+            - `tipo: feature` - New functionality request
+            - `tipo: domanda` - Question about usage or functionality
+            - `tipo: docs` - Documentation improvement needed
+            - `tipo: sicurezza` - Security concern or vulnerability
+
+            ### 2. Assign Priority
+            - `priorità: critica` - System down, data loss, security breach
+            - `priorità: alta` - Major feature broken, blocking users
+            - `priorità: media` - Important but workaround exists
+            - `priorità: bassa` - Nice to have, cosmetic issues
+
+            ### 3. Identify Area
+            - `area: rag` - RAG pipeline, vector search, embeddings
+            - `area: auth` - Authentication, authorization, sessions
+            - `area: chat` - Chat interface, streaming, messages
+            - `area: database` - PostgreSQL, migrations, models
+            - `area: api` - REST endpoints, schemas
+            - `area: infra` - CI/CD, deployment, Docker
+
+            ### 4. Add Labels
+            Use the gh CLI to add the appropriate labels:
+            ```bash
+            gh issue edit ${{ github.event.issue.number }} --add-label "tipo: <type>" --add-label "priorità: <priority>" --add-label "area: <area>"
+            ```
+
+            ### 5. Post Response (IN ITALIAN)
+            Post a helpful first response in Italian that:
+            - Acknowledges the issue was received
+            - Confirms the categorization
+            - Provides relevant next steps or asks clarifying questions if needed
+            - Is professional and friendly
+
+            Use:
+            ```bash
+            gh issue comment ${{ github.event.issue.number }} --body "Your Italian response here"
+            ```
+
+            ## Guidelines
+            - If the issue is unclear, ask for more details in Italian
+            - For bugs, ask for reproduction steps if not provided
+            - For features, acknowledge the request and mention it will be reviewed
+            - For security issues, thank them and mention the team will investigate privately
+            - Keep responses concise but helpful
+
+            ## Label Validation
+            Before adding labels, verify they exist. If a label doesn't exist, skip it rather than failing.
+          allowed_tools: "Bash,Read,Glob,Grep"
+          timeout_minutes: 5

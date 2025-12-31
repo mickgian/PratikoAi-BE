@@ -1,0 +1,166 @@
+name: Claude Security Analysis
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - 'app/**'
+      - 'tests/**'
+      - '*.py'
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - 'app/**'
+      - 'tests/**'
+      - '*.py'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  security-events: write
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Security analysis with Claude
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            You are performing a security analysis on PratikoAI backend code changes.
+
+            ## Context
+            - **Event:** ${{ github.event_name }}
+            - **Branch:** ${{ github.ref_name }}
+            - **Commit:** ${{ github.sha }}
+
+            ## Analysis Scope
+
+            ### 1. Get Changed Files
+            For PRs:
+            ```bash
+            git diff --name-only ${{ github.event.pull_request.base.sha || 'HEAD~1' }}..${{ github.sha }} -- '*.py'
+            ```
+
+            For pushes:
+            ```bash
+            git diff --name-only HEAD~1..HEAD -- '*.py'
+            ```
+
+            ### 2. Security Checks
+
+            #### A. Hardcoded Secrets
+            Search for patterns that might indicate secrets:
+            ```bash
+            grep -rn --include="*.py" -E "(api_key|secret|password|token)\s*=\s*['\"][^'\"]+['\"]" app/ || true
+            grep -rn --include="*.py" -E "sk-[a-zA-Z0-9]{20,}" app/ || true
+            grep -rn --include="*.py" -E "AKIA[0-9A-Z]{16}" app/ || true
+            ```
+
+            #### B. SQL Injection Vulnerabilities
+            Look for raw SQL without parameterization:
+            ```bash
+            grep -rn --include="*.py" -E "execute\([^)]*\+|execute\([^)]*%|execute\([^)]*\.format" app/ || true
+            grep -rn --include="*.py" -E "text\([^)]*\+|text\([^)]*%" app/ || true
+            ```
+
+            #### C. Dangerous Functions
+            Check for potentially dangerous patterns:
+            ```bash
+            grep -rn --include="*.py" -E "eval\(|exec\(|__import__\(" app/ || true
+            grep -rn --include="*.py" -E "pickle\.loads?|yaml\.load\(" app/ || true
+            grep -rn --include="*.py" -E "subprocess\..*shell=True" app/ || true
+            ```
+
+            #### D. GDPR Compliance
+            Check for proper handling of personal data:
+            ```bash
+            grep -rn --include="*.py" -E "(email|phone|address|codice_fiscale|partita_iva)" app/ | head -50
+            ```
+            Ensure personal data is:
+            - Properly encrypted in transit and at rest
+            - Has retention policies
+            - Can be deleted (GDPR Article 17)
+            - Can be exported (GDPR Article 20)
+
+            #### E. Authentication Issues
+            Check for auth-related vulnerabilities:
+            ```bash
+            grep -rn --include="*.py" -E "verify=False|VERIFY_SSL.*False" app/ || true
+            grep -rn --include="*.py" -E "jwt\.decode.*verify=False" app/ || true
+            ```
+
+            #### F. Logging Sensitive Data
+            Ensure sensitive data isn't logged:
+            ```bash
+            grep -rn --include="*.py" -E "log.*password|log.*token|log.*secret|log.*api_key" app/ || true
+            ```
+
+            ### 3. OWASP Top 10 Assessment
+            Review changes for:
+            - A01: Broken Access Control
+            - A02: Cryptographic Failures
+            - A03: Injection
+            - A04: Insecure Design
+            - A05: Security Misconfiguration
+            - A06: Vulnerable Components
+            - A07: Auth Failures
+            - A08: Data Integrity Failures
+            - A09: Security Logging Failures
+            - A10: SSRF
+
+            ### 4. Generate Report
+
+            If this is a PR, post findings as a comment:
+            ```bash
+            gh pr comment ${{ github.event.pull_request.number }} --body "Security report here"
+            ```
+
+            If critical issues found on push to protected branch, create an issue:
+            ```bash
+            gh issue create --title "🔒 Security: [Brief description]" --body "Details" --label "tipo: sicurezza,priorità: critica"
+            ```
+
+            ## Report Format
+            ```markdown
+            ## 🔒 Security Analysis Report
+
+            **Commit:** `${{ github.sha }}`
+            **Branch:** `${{ github.ref_name }}`
+
+            ### Summary
+            [Overall security assessment]
+
+            ### 🔴 Critical Issues
+            - [Issues requiring immediate attention]
+
+            ### 🟡 Warnings
+            - [Potential issues to review]
+
+            ### 🟢 Passed Checks
+            - [Security checks that passed]
+
+            ### GDPR Compliance
+            - [Assessment of personal data handling]
+
+            ### Recommendations
+            - [Suggested improvements]
+
+            ---
+            *Automated security scan by Claude Code*
+            ```
+
+            ## Guidelines
+            - Be thorough but avoid false positives
+            - Distinguish between actual vulnerabilities and theoretical risks
+            - Provide actionable remediation steps
+            - Consider the Italian regulatory context (GDPR, Garante Privacy)
+          allowed_tools: "Bash,Read,Glob,Grep"
+          timeout_minutes: 10

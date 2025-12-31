@@ -1,0 +1,120 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    # Skip if PR has 'skip-ai-review' label
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-ai-review') }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Review PR with Claude
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            You are reviewing a pull request for PratikoAI backend (Python/FastAPI/LangGraph).
+
+            ## PR Details
+            - **Number:** #${{ github.event.pull_request.number }}
+            - **Title:** "${{ github.event.pull_request.title }}"
+            - **Author:** @${{ github.event.pull_request.user.login }}
+            - **Branch:** ${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}
+            - **Description:**
+            ${{ github.event.pull_request.body }}
+
+            ## Review Process
+
+            ### 1. Analyze Changes
+            First, get the diff to understand what changed:
+            ```bash
+            git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} --stat
+            git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}
+            ```
+
+            ### 2. Read CLAUDE.md Guidelines
+            Read the project guidelines:
+            ```bash
+            cat CLAUDE.md
+            ```
+
+            ### 3. Check for Violations
+
+            #### Code Size Limits
+            - Functions: max 50 lines
+            - Classes: max 200 lines
+            - Files: max 400 lines
+            - LangGraph nodes: max 100 lines
+
+            #### Critical Rules
+            - **SQLModel ONLY** - No SQLAlchemy Base patterns
+            - **TDD Required** - New code should have tests
+            - **No TODOs** - Code must be complete, no "will implement later"
+            - **Proper Error Handling** - Exceptions should be logged
+            - **Type Hints** - All functions should have type annotations
+
+            #### Patterns to Flag
+            - `from sqlalchemy import` without SQLModel
+            - `class.*Base.*:` patterns (SQLAlchemy Base)
+            - `# TODO`, `# FIXME`, `# XXX` comments
+            - Functions without return type hints
+            - Bare `except:` clauses
+            - Hardcoded secrets or API keys
+            - Print statements instead of logging
+
+            ### 4. Check Test Coverage
+            Look for corresponding test files for new/modified code:
+            - `app/services/foo.py` should have `tests/test_foo.py` or `tests/services/test_foo.py`
+            - New endpoints should have API tests
+            - New models should have unit tests
+
+            ### 5. Post Review Comment
+            Create a review comment with your findings. Format:
+
+            ```markdown
+            ## 🤖 Claude Code Review
+
+            ### Summary
+            [Brief summary of changes and overall assessment]
+
+            ### ✅ What Looks Good
+            - [Positive aspects]
+
+            ### ⚠️ Suggestions
+            - [Non-blocking suggestions for improvement]
+
+            ### ❌ Issues to Address
+            - [Critical issues that should be fixed]
+
+            ### 📊 Code Quality Metrics
+            - Files changed: X
+            - Lines added: X
+            - Lines removed: X
+            - Test coverage: [if determinable]
+
+            ---
+            *This is an advisory review. The PR can be merged at maintainer discretion.*
+            ```
+
+            Use:
+            ```bash
+            gh pr comment ${{ github.event.pull_request.number }} --body "Your review here"
+            ```
+
+            ## Review Mode: ADVISORY
+            This review is advisory only. Do NOT request changes or block the PR.
+            Focus on helpful suggestions rather than blocking issues.
+            Be constructive and professional.
+          allowed_tools: "Bash,Read,Glob,Grep"
+          timeout_minutes: 10

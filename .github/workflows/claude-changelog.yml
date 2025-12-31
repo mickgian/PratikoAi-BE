@@ -1,0 +1,175 @@
+name: Claude Changelog Generator
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate changelog with Claude
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            You are generating changelogs for a new release of PratikoAI backend.
+
+            **IMPORTANT:** Generate TWO separate changelog versions:
+            1. **Internal** (CHANGELOG_INTERNAL.md) - Complete changelog for developers and managers
+            2. **Customer** (CHANGELOG.md) - User-facing changes only for customers
+
+            ## Release Details
+            - **Tag:** ${{ github.event.release.tag_name }}
+            - **Name:** ${{ github.event.release.name }}
+            - **Target:** ${{ github.event.release.target_commitish }}
+            - **Created:** ${{ github.event.release.created_at }}
+
+            ## Your Tasks
+
+            ### 1. Find Previous Release
+            Get the previous release tag to determine the commit range:
+            ```bash
+            git describe --tags --abbrev=0 ${{ github.event.release.tag_name }}^ 2>/dev/null || echo "initial"
+            ```
+
+            ### 2. Analyze Commits
+            Get all commits since the last release:
+            ```bash
+            PREV_TAG=$(git describe --tags --abbrev=0 ${{ github.event.release.tag_name }}^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+            git log ${PREV_TAG}..${{ github.event.release.tag_name }} --pretty=format:"%h %s (%an)" --no-merges
+            ```
+
+            ### 3. Generate INTERNAL Changelog (CHANGELOG_INTERNAL.md)
+
+            Include ALL changes - this is for developers and managers.
+
+            **Categories (Italian headers):**
+            - `✨ Nuove Funzionalità` - feat: commits
+            - `🐛 Correzioni` - fix: commits
+            - `⚡ Miglioramenti Performance` - perf: commits
+            - `📚 Documentazione` - docs: commits
+            - `🔒 Sicurezza` - security: commits
+            - `🏗️ Refactoring` - refactor: commits
+            - `🧪 Test` - test: commits
+            - `⚙️ CI/CD & Configurazione` - chore:, ci:, build: commits
+            - `🔧 Manutenzione` - Other internal changes
+            - `⚠️ Breaking Changes` - commits with BREAKING CHANGE
+
+            **Internal Format:**
+            ```markdown
+            ## [${{ github.event.release.tag_name }}] - YYYY-MM-DD
+
+            ### ✨ Nuove Funzionalità
+            - **Feature name:** Brief description (#PR)
+
+            ### 🐛 Correzioni
+            - Descrizione del fix (#PR)
+
+            ### ⚡ Miglioramenti Performance
+            - Performance improvement description
+
+            ### 🔒 Sicurezza
+            - Security update description
+
+            ### 🏗️ Refactoring
+            - Refactoring description
+
+            ### 🧪 Test
+            - Test additions/improvements
+
+            ### ⚙️ CI/CD & Configurazione
+            - CI/CD and config changes
+
+            ### ⚠️ Breaking Changes
+            - Description of breaking change and migration path
+            ```
+
+            ### 4. Generate CUSTOMER Changelog (CHANGELOG.md)
+
+            **ONLY include user-facing changes.** Exclude:
+            - ❌ Test changes (test:)
+            - ❌ CI/CD changes (ci:, build:)
+            - ❌ Internal configurations (chore:)
+            - ❌ Refactoring with no user impact (refactor:)
+            - ❌ Internal documentation (docs: for developer docs)
+            - ❌ Dependencies updates (unless security-related)
+            - ❌ Code cleanup
+
+            **INCLUDE customer-facing:**
+            - ✅ New features (feat:)
+            - ✅ Bug fixes that affect users (fix:)
+            - ✅ Performance improvements users will notice (perf:)
+            - ✅ Security fixes (security:) - without exposing vulnerability details
+            - ✅ Breaking changes that require user action (BREAKING CHANGE)
+
+            **Customer Categories (Italian, simpler):**
+            - `✨ Novità` - New features
+            - `🐛 Correzioni` - Bug fixes
+            - `⚡ Miglioramenti` - Performance and improvements
+            - `🔒 Sicurezza` - Security updates (high-level only)
+            - `⚠️ Importante` - Breaking changes requiring action
+
+            **Customer Format:**
+            ```markdown
+            ## Versione ${{ github.event.release.tag_name }} - YYYY-MM-DD
+
+            ### ✨ Novità
+            - Aggiunta nuova funzionalità X che permette di...
+
+            ### 🐛 Correzioni
+            - Risolto un problema che causava...
+
+            ### ⚡ Miglioramenti
+            - Migliorata la velocità di...
+
+            ### 🔒 Sicurezza
+            - Aggiornamenti di sicurezza
+
+            ### ⚠️ Importante
+            - Attenzione: da questa versione...
+            ```
+
+            ### 5. Update Both Changelogs
+
+            a) Update CHANGELOG_INTERNAL.md (create if doesn't exist):
+            ```bash
+            cat CHANGELOG_INTERNAL.md 2>/dev/null || echo "# Changelog Interno\n\nStorico completo delle modifiche per sviluppatori e manager.\n"
+            ```
+
+            b) Update CHANGELOG.md for customers (create if doesn't exist):
+            ```bash
+            cat CHANGELOG.md 2>/dev/null || echo "# Note di Rilascio\n\nStorico delle novità e miglioramenti di PratikoAI.\n"
+            ```
+
+            ### 6. Update Release Notes
+            Use the CUSTOMER changelog content for the GitHub release notes:
+            ```bash
+            gh release edit ${{ github.event.release.tag_name }} --notes "Customer-friendly release notes here"
+            ```
+
+            ## Guidelines
+            - Use Italian for all text
+            - Customer changelog: focus on benefits, not technical details
+            - Internal changelog: be specific with technical details
+            - Include PR/issue numbers in internal changelog only
+            - Customer changelog should be understandable by non-technical users
+            - Add migration notes for breaking changes in both
+
+            ## Output
+            1. Update CHANGELOG_INTERNAL.md with complete entry
+            2. Update CHANGELOG.md with customer-facing entry
+            3. Update GitHub release notes with customer content
+            4. Create a commit with both changelog updates
+          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep"
+          timeout_minutes: 10

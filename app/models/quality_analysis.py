@@ -632,7 +632,7 @@ class QualityAnalysisConfig:
 
     # Feedback collection settings
     MAX_FEEDBACK_PROCESSING_TIME_SECONDS: int = 30
-    REQUIRED_EXPERT_CREDENTIALS: list[str] = None
+    REQUIRED_EXPERT_CREDENTIALS: list[str] | None = None
     MIN_EXPERT_TRUST_SCORE: float = 0.7
 
     # Pattern analysis settings

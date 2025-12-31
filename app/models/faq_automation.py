@@ -129,8 +129,8 @@ class QueryCluster(SQLModel, table=True):
         if self.query_count == 0 or days_window == 0:
             return Decimal("0")
 
-        monthly_queries = self.query_count * (30 / days_window)
-        current_cost = monthly_queries * (self.avg_cost_cents / 100)
+        monthly_queries = Decimal(str(self.query_count * (30 / days_window)))
+        current_cost = monthly_queries * (Decimal(str(self.avg_cost_cents)) / 100)
         faq_cost = monthly_queries * Decimal("0.0003")  # GPT-3.5 variation cost
 
         return max(current_cost - faq_cost, Decimal("0"))
@@ -159,7 +159,9 @@ class QueryCluster(SQLModel, table=True):
         self.potential_savings_cents = int(self.calculate_monthly_savings() * 100)
 
         # Update timestamps
-        timestamps = [q.get("timestamp") for q in new_queries if q.get("timestamp")]
+        timestamps: list[datetime] = [
+            ts for q in new_queries if isinstance((ts := q.get("timestamp")), datetime)
+        ]
         if timestamps:
             self.last_seen = max(timestamps)
 

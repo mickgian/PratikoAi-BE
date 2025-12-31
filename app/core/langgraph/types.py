@@ -307,6 +307,56 @@ class RAGState(TypedDict, total=False):
     proactivity: dict | None
     skip_rag_for_proactivity: bool | None  # Step 14: If True, skip RAG and return question
 
+    # ==========================================================================
+    # Phase 9: LLM Excellence Fields (DEV-210)
+    # ==========================================================================
+
+    # Phase 9: LLM Excellence - KB Preservation (DEV-213)
+    # Preserved KB documents from Step 40 for downstream use (Step 64, Step 100)
+    kb_documents: list[dict] | None
+    # Source metadata for action grounding with hierarchy weights
+    # Structure: [{id, title, type, date, url, key_topics, key_values, hierarchy_weight}]
+    kb_sources_metadata: list[dict] | None
+
+    # Phase 9: LLM Excellence - Complexity & Routing (DEV-220, DEV-221)
+    # Query complexity level: "simple" | "complex" | "multi_domain"
+    query_complexity: str | None
+    # Full classification result from ComplexityClassifier
+    # Structure: {complexity, domains, confidence, reasoning}
+    complexity_classification: dict | None
+
+    # Phase 9: LLM Excellence - Reasoning (DEV-223, DEV-229)
+    # Reasoning approach used: "cot" | "tot" | "tot_multi_domain"
+    reasoning_type: str | None
+    # Internal reasoning log (CoT steps or ToT summary)
+    # CoT Structure: {tema, fonti_utilizzate, elementi_chiave, conclusione}
+    # ToT Structure: {hypotheses, selected, selection_reasoning, confidence}
+    reasoning_trace: dict | None
+    # Full Tree of Thoughts analysis when ToT is used
+    # Structure: {hypotheses[], selected, selection_reasoning, confidence, alternative_note}
+    tot_analysis: dict | None
+
+    # Phase 9: LLM Excellence - Dual Reasoning (DEV-229, DEV-230)
+    # Technical reasoning for debugging/logging (not shown to user)
+    internal_reasoning: dict | None
+    # User-friendly explanation of reasoning
+    # Structure: {summary, selected_scenario, why_selected, main_sources, confidence_label}
+    public_reasoning: dict | None
+
+    # Phase 9: LLM Excellence - Action Validation (DEV-215, DEV-217, DEV-218)
+    # ActionValidator output with validation results
+    action_validation_result: dict | None
+    # Golden Loop iteration count (max 2 regenerations)
+    action_regeneration_count: int | None
+    # Source of actions: "unified_llm" | "fallback" | "template" | "regenerated"
+    actions_source: str | None
+    # Rejection reasons for debugging failed validations
+    actions_validation_log: list[str] | None
+
+    # ==========================================================================
+    # End Phase 9 Fields
+    # ==========================================================================
+
     processing_stage: str
     node_history: list[str]
 

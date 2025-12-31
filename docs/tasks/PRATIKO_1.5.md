@@ -3761,7 +3761,7 @@ def get_hierarchy_weight(doc_type: str) -> float:
 <details>
 <summary>
 <h3>DEV-214: Update Step 64 for Unified JSON Output with Reasoning</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 6h | <strong>Status:</strong> COMPLETED<br>
 Step 64 currently uses Verdetto parsing for TECHNICAL_RESEARCH and separate action generation. Need ...
 </summary>
 
@@ -3769,7 +3769,7 @@ Step 64 currently uses Verdetto parsing for TECHNICAL_RESEARCH and separate acti
 
 **Reference:** [Technical Intent Part 3.5.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 64: LLM Call Unified)
 
-**Priority:** CRITICAL | **Effort:** 6h | **Status:** NOT STARTED
+**Priority:** CRITICAL | **Effort:** 6h | **Status:** COMPLETED
 
 **Problem:**
 Step 64 currently uses Verdetto parsing for TECHNICAL_RESEARCH and separate action generation. Need unified JSON output that includes reasoning traces, answer, sources, and actions in a single structured response.

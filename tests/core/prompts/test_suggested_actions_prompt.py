@@ -64,50 +64,57 @@ class TestPromptContent:
         assert '"prompt"' in prompt_content
 
     def test_prompt_json_examples_are_valid_json(self, prompt_content):
-        """JSON examples in prompt must be valid JSON."""
+        """JSON examples in prompt must be valid JSON (after unescaping {{ }})."""
         # Extract JSON from suggested_actions tags in the example
         pattern = r"<suggested_actions>\s*(\[[\s\S]*?\])\s*</suggested_actions>"
         match = re.search(pattern, prompt_content)
         assert match is not None, "No JSON example found in suggested_actions tags"
 
         json_str = match.group(1)
+        # DEV-201b: Unescape {{ and }} used for Python .format() compatibility
+        json_str = json_str.replace("{{", "{").replace("}}", "}")
         # Should not raise JSONDecodeError
         parsed = json.loads(json_str)
         assert isinstance(parsed, list)
         assert len(parsed) >= 2  # At least 2 example actions
 
     def test_prompt_contains_all_icon_suggestions(self, prompt_content):
-        """Prompt must include all icon suggestions from Section 12.5.1."""
+        """Prompt must include all icon suggestions (Lucide icon names)."""
+        # DEV-201b: Icons changed from emojis to Lucide icon names
         required_icons = [
-            "💰",  # Calcoli, importi, costi
-            "📋",  # Documenti, liste, procedure
-            "🔍",  # Ricerca, verifica, approfondimento
-            "📊",  # Analisi, confronti, statistiche
-            "📅",  # Scadenze, timeline, date
-            "⚠️",  # Avvertenze, sanzioni, rischi
-            "✅",  # Verifiche, controlli
-            "📝",  # Generazione testi, modelli
-            "🔄",  # Ricalcoli, aggiornamenti
-            "📖",  # Normativa, leggi, circolari
+            "calculator",     # Calcoli, importi, costi
+            "file-text",      # Documenti, liste, procedure
+            "search",         # Ricerca, verifica, approfondimento
+            "bar-chart",      # Analisi, confronti, statistiche
+            "calendar",       # Scadenze, timeline, date
+            "alert-triangle", # Avvertenze, sanzioni, rischi
+            "check-circle",   # Verifiche, controlli
+            "edit",           # Generazione testi, modelli
+            "refresh-cw",     # Ricalcoli, aggiornamenti
+            "book-open",      # Normativa, leggi, circolari
         ]
         for icon in required_icons:
             assert icon in prompt_content, f"Missing icon: {icon}"
 
     def test_prompt_contains_action_requirements(self, prompt_content):
-        """Prompt must specify action requirements (pertinent, professional, actionable, diverse)."""
-        # Check for Italian terms as per spec
-        assert "Pertinenti" in prompt_content or "pertinenti" in prompt_content
-        assert "Professionali" in prompt_content or "professionali" in prompt_content
-        assert "Azionabili" in prompt_content or "azionabili" in prompt_content
-        assert "Diverse" in prompt_content or "diverse" in prompt_content
+        """Prompt must specify action requirements (specific, complete, executable, diverse)."""
+        # DEV-201b: Check for Italian terms in the new prompt format
+        # STEP 3 mentions: Specifiche, Complete, eseguibile
+        # STEP 4 mentions: Diversità
+        assert "Specific" in prompt_content or "specific" in prompt_content or "SPECIFICI" in prompt_content
+        assert "Complet" in prompt_content or "complet" in prompt_content  # Complete/completo
+        assert "eseguibile" in prompt_content or "click" in prompt_content  # actionable
+        assert "Divers" in prompt_content or "divers" in prompt_content  # Diversità/diverse
 
     def test_prompt_contains_example_categories(self, prompt_content):
         """Prompt must contain examples for different response types."""
-        # Check for category examples
-        assert "fiscale" in prompt_content.lower() or "calcolo" in prompt_content.lower()
-        assert "normativa" in prompt_content.lower() or "circolare" in prompt_content.lower()
-        assert "procedura" in prompt_content.lower()
-        assert "documento" in prompt_content.lower()
+        # DEV-201b: Check for category examples in new prompt format
+        # The prompt mentions these categories in STEP 1 and icon descriptions
+        lower_content = prompt_content.lower()
+        assert "fiscal" in lower_content or "calcol" in lower_content  # fiscale/fiscali, calcolo/calcoli
+        assert "normativ" in lower_content  # normativa/normativi
+        assert "procedur" in lower_content or "adempiment" in lower_content  # procedura, adempimenti
+        assert "document" in lower_content  # documento/documenti
 
     def test_prompt_specifies_action_count(self, prompt_content):
         """Prompt must specify 2-4 actions requirement."""
@@ -157,7 +164,7 @@ class TestPromptTokenBudget:
     """Tests for prompt token count constraints."""
 
     def test_prompt_token_count_within_budget(self):
-        """Prompt must not exceed ~400 tokens to preserve KB context allocation."""
+        """Prompt must not exceed ~1000 tokens to preserve KB context allocation."""
         from app.core.prompts import load_suggested_actions_prompt
 
         content = load_suggested_actions_prompt()
@@ -166,9 +173,10 @@ class TestPromptTokenBudget:
         # More accurate would use tiktoken, but this is a reasonable approximation
         approx_tokens = len(content) / 4
 
-        # Allow some margin: 500 tokens max (slightly above 400 for safety)
-        assert approx_tokens <= 500, (
-            f"Prompt too long: ~{int(approx_tokens)} tokens (max 400-500)"
+        # DEV-201b: Increased budget to 1000 tokens for comprehensive prompt
+        # with domain classification, multi-step strategy, and icon documentation
+        assert approx_tokens <= 1000, (
+            f"Prompt too long: ~{int(approx_tokens)} tokens (max 1000)"
         )
 
 

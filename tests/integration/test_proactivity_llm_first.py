@@ -406,8 +406,9 @@ class TestGoldenSetKBRegression:
         # Suggested actions prompt should be reasonable size
         prompt_length = len(SUGGESTED_ACTIONS_PROMPT)
 
-        # Should be under 2000 chars (leaving room for KB docs)
-        assert prompt_length < 2000, f"Prompt too long: {prompt_length} chars"
+        # DEV-201b: Increased limit to 4000 chars for comprehensive prompt
+        # with domain classification, multi-step strategy, and icon documentation
+        assert prompt_length < 4000, f"Prompt too long: {prompt_length} chars"
 
         # Verify it's appendable (not too disruptive to token budget)
         assert prompt_length > 100, "Prompt too short to be meaningful"

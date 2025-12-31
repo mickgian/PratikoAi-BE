@@ -484,13 +484,19 @@ async def step_41__select_prompt(
                             if route not in SYNTHESIS_ROUTES:
                                 from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
 
-                                domain_prompt = domain_prompt + "\n\n" + SUGGESTED_ACTIONS_PROMPT
+                                # DEV-201b: Format template with domain classification
+                                formatted_actions_prompt = SUGGESTED_ACTIONS_PROMPT.format(
+                                    domain=domain.upper() if domain else "TAX",
+                                    confidence=f"{conf:.2f}" if conf else "0.50",
+                                )
+                                domain_prompt = domain_prompt + "\n\n" + formatted_actions_prompt
                                 logger.info(
                                     "suggested_actions_appended_to_domain_prompt",
                                     extra={
                                         "request_id": request_id,
                                         "route": route,
                                         "domain": domain,
+                                        "confidence": conf,
                                     },
                                 )
                         else:
@@ -746,13 +752,31 @@ def step_44__default_sys_prompt(
             },
         )
         if not is_synthesis_route:
-            prompt = prompt + "\n\n" + SUGGESTED_ACTIONS_PROMPT
+            # DEV-201b: Format SUGGESTED_ACTIONS_PROMPT with domain classification
+            # Extract domain and confidence from classification in ctx
+            classification = (ctx or {}).get("classification")
+            if classification:
+                cls_domain = getattr(classification, "domain", None)
+                if hasattr(cls_domain, "value"):
+                    cls_domain = cls_domain.value
+                cls_conf = getattr(classification, "confidence", 0.5)
+            else:
+                cls_domain = "TAX"  # Default domain
+                cls_conf = 0.5
+
+            formatted_actions_prompt = SUGGESTED_ACTIONS_PROMPT.format(
+                domain=cls_domain.upper() if cls_domain else "TAX",
+                confidence=f"{cls_conf:.2f}",
+            )
+            prompt = prompt + "\n\n" + formatted_actions_prompt
             step44_logger.info(
                 "suggested_actions_prompt_appended",
                 extra={
                     "route": route,
                     "trigger_reason": trigger_reason,
                     "prompt_length_after": len(prompt),
+                    "domain_classification": cls_domain,
+                    "confidence": cls_conf,
                 },
             )
 

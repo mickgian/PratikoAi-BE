@@ -216,8 +216,9 @@ class TestProactivityCostTracking:
         """Verify suggested_actions prompt is reasonable size for cost control."""
         from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
 
-        # Should be reasonable size (under 2000 chars)
-        assert len(SUGGESTED_ACTIONS_PROMPT) < 2000
+        # DEV-201b: Increased limit to 4000 chars for comprehensive prompt
+        # with domain classification, multi-step strategy, and icon documentation
+        assert len(SUGGESTED_ACTIONS_PROMPT) < 4000
         # Should contain required instructions
         assert "<answer>" in SUGGESTED_ACTIONS_PROMPT
         assert "<suggested_actions>" in SUGGESTED_ACTIONS_PROMPT

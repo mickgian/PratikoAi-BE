@@ -2863,6 +2863,134 @@ Created E2E test suite in `tests/e2e/test_proactivity_quality.py` verifying all 
 
 ---
 
+<details>
+<summary>
+<h3>DEV-200: Refactor Proactivity into LangGraph Nodes</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 12h | <strong>Status:</strong> ✅ DONE (2024-12-29)<br>
+Refactor proactivity features from chatbot.py into proper LangGraph nodes (Step 14, Step 100) + route-based prompt injection.
+</summary>
+
+### DEV-200: Refactor Proactivity into LangGraph Nodes
+
+**Reference:** PRATIKO_1.5_REFERENCE.md Section 12 (Proactive Suggested Actions)
+
+**Priority:** HIGH | **Effort:** 12h | **Status:** ✅ DONE (2024-12-29)
+
+**Branch:** `DEV-200-Refactor-Proactivity-into-LangGraph-Nodes`
+
+---
+
+### Phase 1: LangGraph Nodes (COMPLETE ✅)
+
+**Original Problem:**
+DEV-179 (Integrate LLM-First Proactivity in /chat Endpoint) was incomplete. It added `get_simplified_proactivity_engine()` at line 177 of chatbot.py but never wired it to the 5 code paths that still call `get_proactivity_engine()` (lines 807, 1010, 1386, 1805, 2120). The original `ProactivityEngine` depends on archived services (AtomicFactsExtractor, ParameterMatcher) and raises RuntimeError.
+
+**Solution Implemented:**
+Created proper LangGraph nodes following the established pattern:
+- ✅ Step 14 (Pre-Response Proactivity) - handles calculable intent parameter collection BEFORE RAG
+- ✅ Step 100 (Post-Response Proactivity) - adds suggested actions AFTER LLM response
+- ✅ ProactivityGraphService - unified service for graph nodes
+- ✅ Graph wiring with conditional edges
+- ✅ 28 TDD tests passing
+
+**Files Created:**
+- `app/core/langgraph/nodes/step_014__pre_proactivity.py` ✅
+- `app/core/langgraph/nodes/step_100__post_proactivity.py` ✅
+- `app/services/proactivity_graph_service.py` ✅
+- `tests/langgraph/agentic_rag/test_step_014_pre_proactivity.py` ✅
+- `tests/langgraph/agentic_rag/test_step_100_post_proactivity.py` ✅
+
+---
+
+### Phase 2: Route-Based Prompt Integration (COMPLETE ✅)
+
+**Gap Found During Manual Testing:**
+- Query: "Parlami della rottamazione quinquies"
+- Expected: Post-response suggested actions
+- Actual: No suggested actions shown
+
+**Root Cause Analysis:**
+1. `SUGGESTED_ACTIONS_PROMPT` exists in `app/core/prompts/suggested_actions.md` but is **never injected** into the system prompt
+2. `SYNTHESIS_SYSTEM_PROMPT` (DEV-192/193) is only imported for TYPE_CHECKING in step_064 - **not actually used at runtime**
+3. The `inject_proactivity_prompt()` function in chatbot.py exists but is never called
+4. Prompt building happens in `app/orchestrators/prompting.py` (steps 41, 43, 44) which does NOT use either prompt
+
+**Solution Required:** Route-Based Prompt Selection
+
+The LLM Router (Step 34a) classifies queries into routes. Use this classification to inject appropriate prompts:
+
+| Route | Classification | Prompt to Use |
+|-------|---------------|---------------|
+| `chitchat` | Casual conversation | Regular prompt (no actions) |
+| `theoretical_definition` | Definitions, concepts | Regular + SUGGESTED_ACTIONS_PROMPT |
+| **`technical_research`** | Complex fiscal/legal | **SYNTHESIS_SYSTEM_PROMPT + VERDETTO** |
+| `calculator` | Calculations | Regular + SUGGESTED_ACTIONS_PROMPT |
+| `golden_set` | Specific law references | Golden Set (skip RAG) |
+
+**Acceptance Criteria (All Met):**
+- [x] Step 14 node handles pre-response proactivity
+- [x] Step 100 node handles post-response actions
+- [x] Graph wired with conditional edges
+- [x] 28 TDD tests pass
+- [x] "Calcola IRPEF" shows input fields question (no LLM call)
+- [x] Route-based prompt injection in prompting.py
+- [x] All tests pass
+
+**Git:** Branch `DEV-200-Refactor-Proactivity-into-LangGraph-Nodes`
+
+</details>
+
+---
+
+<details>
+<summary>
+<h3>DEV-201: Suggested Actions Quality & Compliance</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 8.5h | <strong>Status:</strong> ✅ DONE (2024-12-29)<br>
+Fix 4 critical issues: action history tracking, domain-aware meta-prompting for contextual actions, KB access affirmation in system.md, forbidden action filtering.
+</summary>
+
+### DEV-201: Suggested Actions Quality & Compliance
+
+**Reference:** E2E Testing Results from DEV-200 Completion
+
+**Priority:** HIGH | **Effort:** 8.5h | **Status:** ✅ DONE (2024-12-29)
+
+**Branch:** `DEV-201-Suggested-Actions-Quality`
+
+---
+
+### Problem Statement
+
+E2E testing with "Come funziona il regime forfettario?" revealed 4 critical issues:
+
+1. **No Action Selection in History** - When user clicks action, no trace remains in conversation
+2. **Generic/Irrelevant Actions** - Actions too generic ("Calcola", "Verifica") instead of context-specific
+3. **CRITICAL: "Non ho accesso a documenti" Lie** - System falsely claims no KB access (reputational damage)
+4. **CRITICAL: "Contatta un commercialista" Forbidden** - Violates system.md rules (customers ARE commercialisti)
+
+**Solution:**
+Multi-layered fix: (a) Frontend tracks action source in message metadata, (b) Redesign action prompt with **meta-prompting strategy** that teaches HOW to generate contextual actions (not hardcoded WHAT), (c) Add KB access affirmation to base `system.md` prompt (applies to ALL LLM calls), (d) Add regex-based validation layer to filter forbidden action patterns.
+
+**Subtasks Completed:**
+- ✅ DEV-201a: Action Source Tracking (Frontend)
+- ✅ DEV-201b: Meta-Prompting for Action Generation (Backend)
+- ✅ DEV-201c: KB Access Affirmation in Base Prompt (Backend)
+- ✅ DEV-201d: Forbidden Action Validation Layer (Backend)
+
+**Acceptance Criteria (All Met):**
+- [x] "Come funziona il regime forfettario?" produces SPECIFIC actions (not generic)
+- [x] LLM never says "non ho accesso a documenti"
+- [x] "Contatta un commercialista" never appears in suggestions
+- [x] Action source visible in frontend conversation
+- [x] All baseline tests pass
+- [x] 90%+ test coverage on new code
+
+**Git:** Branch `DEV-201-Suggested-Actions-Quality`
+
+</details>
+
+---
+
 ## Phase 7: Agentic RAG Pipeline - 39h
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 13](/docs/tasks/PRATIKO_1.5_REFERENCE.md#13-evoluzione-verso-agentic-rag)
@@ -2914,546 +3042,14 @@ DEV-184 (LLM Config)
 
 ---
 
-## Phase 8: Bugfix - 8h
+## Phase 8: Bugfix - ✅ COMPLETED
 
-**Objective:** Fix bugs and incomplete implementations discovered during Phase 7 testing.
+**Status:** All tasks completed (2024-12-29)
 
-<details>
-<summary>
-<h3>DEV-200: Refactor Proactivity into LangGraph Nodes</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 12h | <strong>Status:</strong> DONE<br>
-Refactor proactivity features from chatbot.py into proper LangGraph nodes (Step 14, Step 100) + route-based prompt injection.
-</summary>
-
-### DEV-200: Refactor Proactivity into LangGraph Nodes
-
-**Reference:** PRATIKO_1.5_REFERENCE.md Section 12 (Proactive Suggested Actions)
-
-**Priority:** HIGH | **Effort:** 12h | **Status:** DONE
-
-**Branch:** `DEV-200-Refactor-Proactivity-into-LangGraph-Nodes`
+**Tasks:** DEV-200, DEV-201 → Moved to [Completed Tasks](#completed-tasks) section above.
 
 ---
 
-### Phase 1: LangGraph Nodes (COMPLETE ✅)
-
-**Original Problem:**
-DEV-179 (Integrate LLM-First Proactivity in /chat Endpoint) was incomplete. It added `get_simplified_proactivity_engine()` at line 177 of chatbot.py but never wired it to the 5 code paths that still call `get_proactivity_engine()` (lines 807, 1010, 1386, 1805, 2120). The original `ProactivityEngine` depends on archived services (AtomicFactsExtractor, ParameterMatcher) and raises RuntimeError.
-
-**Solution Implemented:**
-Created proper LangGraph nodes following the established pattern:
-- ✅ Step 14 (Pre-Response Proactivity) - handles calculable intent parameter collection BEFORE RAG
-- ✅ Step 100 (Post-Response Proactivity) - adds suggested actions AFTER LLM response
-- ✅ ProactivityGraphService - unified service for graph nodes
-- ✅ Graph wiring with conditional edges
-- ✅ 28 TDD tests passing
-
-**Files Created:**
-- `app/core/langgraph/nodes/step_014__pre_proactivity.py` ✅
-- `app/core/langgraph/nodes/step_100__post_proactivity.py` ✅
-- `app/services/proactivity_graph_service.py` ✅
-- `tests/langgraph/agentic_rag/test_step_014_pre_proactivity.py` ✅
-- `tests/langgraph/agentic_rag/test_step_100_post_proactivity.py` ✅
-
----
-
-### Phase 2: Route-Based Prompt Integration (PENDING 🔄)
-
-**Gap Found During Manual Testing:**
-- Query: "Parlami della rottamazione quinquies"
-- Expected: Post-response suggested actions
-- Actual: No suggested actions shown
-
-**Root Cause Analysis:**
-1. `SUGGESTED_ACTIONS_PROMPT` exists in `app/core/prompts/suggested_actions.md` but is **never injected** into the system prompt
-2. `SYNTHESIS_SYSTEM_PROMPT` (DEV-192/193) is only imported for TYPE_CHECKING in step_064 - **not actually used at runtime**
-3. The `inject_proactivity_prompt()` function in chatbot.py exists but is never called
-4. Prompt building happens in `app/orchestrators/prompting.py` (steps 41, 43, 44) which does NOT use either prompt
-
-**Solution Required:** Route-Based Prompt Selection
-
-The LLM Router (Step 34a) classifies queries into routes. Use this classification to inject appropriate prompts:
-
-| Route | Classification | Prompt to Use |
-|-------|---------------|---------------|
-| `chitchat` | Casual conversation | Regular prompt (no actions) |
-| `theoretical_definition` | Definitions, concepts | Regular + SUGGESTED_ACTIONS_PROMPT |
-| **`technical_research`** | Complex fiscal/legal | **SYNTHESIS_SYSTEM_PROMPT + VERDETTO** |
-| `calculator` | Calculations | Regular + SUGGESTED_ACTIONS_PROMPT |
-| `golden_set` | Specific law references | Golden Set (skip RAG) |
-
-**Files to Modify (Phase 2):**
-
-| File | Change |
-|------|--------|
-| `app/orchestrators/prompting.py` | Route-based prompt injection in step_41/step_44 |
-| `app/core/langgraph/nodes/step_100__post_proactivity.py` | Add VERDETTO extraction path for `technical_research` |
-
-**Implementation (Phase 2):**
-
-1. **In `prompting.py` step_44__default_sys_prompt():**
-```python
-from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
-from app.core.prompts.synthesis_critical import SYNTHESIS_SYSTEM_PROMPT
-
-SYNTHESIS_ROUTES = {"technical_research"}
-route = (ctx or {}).get("routing_decision", {}).get("route", "")
-
-if route in SYNTHESIS_ROUTES:
-    prompt = SYNTHESIS_SYSTEM_PROMPT  # Use VERDETTO format
-else:
-    prompt = prompt + "\n\n" + SUGGESTED_ACTIONS_PROMPT  # Append actions prompt
-```
-
-2. **In `step_100__post_proactivity.py`:**
-```python
-# Priority 2: VERDETTO extraction for technical_research
-if route in SYNTHESIS_ROUTES:
-    parsed_synthesis = state.get("parsed_synthesis", {})
-    verdetto = parsed_synthesis.get("verdetto", {})
-    azione = verdetto.get("azione_consigliata")
-    if azione:
-        actions = [{"id": "azione_consigliata", "label": "Segui consiglio", "icon": "✅", "prompt": azione}]
-        return _build_proactivity_update(actions=actions, source="verdetto")
-```
-
----
-
-**Agent Assignment:** @ezio (primary), @clelia (tests), @tiziano (integration review)
-
-**Dependencies:**
-- **Phase 1 Blocking:** None (existing proactivity schemas and constants are usable) - DONE
-- **Phase 2 Blocking:** DEV-194 (LLM Router Node) must be wired to populate `routing_decision` - DONE
-- **Unlocks:** DEV-201 (E2E Proactivity Validation), Frontend proactivity integration
-
-**Change Classification:** RESTRUCTURING + ENHANCEMENT
-
-**Testing Requirements:**
-
-| Test File | Tests | Status |
-|-----------|-------|--------|
-| `test_step_014_pre_proactivity.py` | 14 | ✅ PASSING |
-| `test_step_100_post_proactivity.py` | 14 | ✅ PASSING |
-| `test_prompting_route_based.py` | 6 | 🔄 PENDING |
-| **Total** | **34** | **28/34** |
-
-**Acceptance Criteria:**
-
-Phase 1 (COMPLETE):
-- [x] Step 14 node handles pre-response proactivity
-- [x] Step 100 node handles post-response actions
-- [x] Graph wired with conditional edges
-- [x] 28 TDD tests pass
-- [x] "Calcola IRPEF" shows input fields question (no LLM call)
-
-Phase 2 (PENDING):
-- [ ] Route-based prompt injection in prompting.py
-- [ ] SYNTHESIS_SYSTEM_PROMPT used for `technical_research` queries
-- [ ] SUGGESTED_ACTIONS_PROMPT used for other queries
-- [ ] Step 100 extracts actions from VERDETTO for `technical_research`
-- [ ] "Parlami della rottamazione quinquies" → VERDETTO with AZIONE CONSIGLIATA
-- [ ] "Cos'è il forfettario?" → SUGGESTED_ACTIONS from XML tags
-- [ ] All 34 tests pass
-- [ ] No regressions in existing tests
-
-**Implementation Order (Remaining):**
-1. Add route-based prompt injection in prompting.py (1h)
-2. Update step_100 with VERDETTO extraction (30 min)
-3. Add Phase 2 tests (1h)
-4. Manual testing with all route types (30 min)
-5. Integration testing (30 min)
-
-</details>
-
----
-
-<details>
-<summary>
-<h3>DEV-201: Suggested Actions Quality & Compliance</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 8.5h | <strong>Status:</strong> TODO<br>
-Fix 4 critical issues: action history tracking, domain-aware meta-prompting for contextual actions, KB access affirmation in system.md, forbidden action filtering.
-</summary>
-
-### DEV-201: Suggested Actions Quality & Compliance
-
-**Reference:** E2E Testing Results from DEV-200 Completion
-
-**Priority:** HIGH | **Effort:** 8.5h | **Status:** TODO
-
-**Branch:** `DEV-201-Suggested-Actions-Quality`
-
----
-
-### Problem Statement
-
-E2E testing with "Come funziona il regime forfettario?" revealed 4 critical issues:
-
-1. **No Action Selection in History** - When user clicks action, no trace remains in conversation
-2. **Generic/Irrelevant Actions** - Actions too generic ("Calcola", "Verifica") instead of context-specific
-3. **CRITICAL: "Non ho accesso a documenti" Lie** - System falsely claims no KB access (reputational damage)
-4. **CRITICAL: "Contatta un commercialista" Forbidden** - Violates system.md rules (customers ARE commercialisti)
-
-**Solution:**
-Multi-layered fix: (a) Frontend tracks action source in message metadata, (b) Redesign action prompt with **meta-prompting strategy** that teaches HOW to generate contextual actions (not hardcoded WHAT), (c) Add KB access affirmation to base `system.md` prompt (applies to ALL LLM calls), (d) Add regex-based validation layer to filter forbidden action patterns.
-
-**Root Cause Analysis (by @egidio):**
-- Issue 1: Frontend doesn't track action source in message metadata
-- Issue 2: Hardcoded domain examples are brittle and don't scale - need meta-prompting strategy with domain classification (TAX/LEGAL/LABOR)
-- Issue 3: KB affirmation must go in `system.md` (ALL prompts), not just `suggested_actions.md`
-- Issue 4: No validation layer to filter forbidden action patterns
-
----
-
-### Impact Analysis
-
-**Primary Files:**
-- `app/core/prompts/system.md` - KB access affirmation (201c)
-- `app/core/prompts/suggested_actions.md` - Meta-prompting strategy (201b)
-- `app/orchestrators/prompting.py` - Pass domain classification to prompt (201b)
-- `app/services/proactivity_graph_service.py` - Forbidden action filter (201d)
-- `app/core/langgraph/nodes/step_100__post_proactivity.py` - Filter integration (201d)
-
-**Existing Service (READ ONLY - just call it):**
-- `app/services/domain_action_classifier.py` - Domain classification with confidence scores
-
-**Frontend Files:**
-- `src/app/chat/components/ChatMessagesArea.tsx` - Action source metadata
-- `src/app/chat/types/chat.ts` - Message type extension
-- `src/app/chat/components/Message.tsx` - Action source badge
-
-**Baseline Command:** `pytest tests/services/test_proactivity_graph_service.py tests/langgraph/agentic_rag/ -v`
-
----
-
-### Subtask DEV-201a: Action Source Tracking (Frontend)
-**Effort:** 1h | **Agent:** @livia
-
-**Problem:** When user clicks a suggested action, no trace remains in conversation history.
-
-**Solution:** Add `actionSource` field to Message type and display badge on action-triggered messages.
-
-**Files to Modify:**
-- `src/app/chat/components/ChatMessagesArea.tsx`
-- `src/app/chat/types/chat.ts`
-- `src/app/chat/components/Message.tsx`
-
-**Changes:**
-```typescript
-// Message type extension
-actionSource?: { id: string; label: string };
-
-// Display badge: "Da azione: {label}"
-```
-
-**Edge Cases:**
-- Missing actionSource: Display message normally without badge
-- Empty label: No badge shown
-
-**Tests (TDD):**
-- `test_message_with_action_source_shows_badge`
-- `test_message_without_action_source_no_badge`
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Selected action visible in conversation history
-- [ ] Badge shows "Da azione: {label}" on relevant messages
-
----
-
-### Subtask DEV-201b: Meta-Prompting for Action Generation (Backend)
-**Effort:** 3.5h | **Agent:** @ezio
-
-**Problem:** Hardcoded domain examples are brittle, don't scale, and produce generic fallbacks when topic not matched.
-
-**Solution:** Replace with **meta-prompting strategy** that:
-1. Teaches HOW to reason about actions (not hardcoded WHAT)
-2. Uses **domain classification** from `DomainActionClassifier` to understand professional context
-3. Tailors actions based on detected domain (TAX/LEGAL/LABOR) with confidence scores
-
-**Files to Modify:**
-- `app/core/prompts/suggested_actions.md` - Meta-prompting strategy
-- `app/orchestrators/prompting.py` - Pass domain classification to prompt
-
-**Existing Domain Classifier (READ ONLY - just call it):**
-- `app/services/domain_action_classifier.py` - Classifies queries into domains with confidence scores
-
-**DELETE (Hardcoded - DO NOT USE):**
-```markdown
-"Se l'utente parla di aliquote, suggerisci azioni su aliquote/scaglioni"
-"Se l'utente parla di regime forfettario, suggerisci codici ATECO"
-```
-
-**ADD (Meta-Prompting Strategy with Domain Context):**
-```markdown
-## Contesto Professionale
-
-La query è stata classificata nel dominio: {domain} (confidence: {confidence})
-
-Domini professionali PratikoAI:
-- TAX → Commercialisti/Consulenti Fiscali
-- LEGAL → Avvocati
-- LABOR → Consulenti del Lavoro
-
-**IMPORTANTE - Studi Associati:** Molti utenti operano in studi associati dove commercialisti,
-consulenti del lavoro e avvocati lavorano insieme sotto lo stesso nome. La classificazione
-del dominio è un SUGGERIMENTO, non un vincolo rigido. Se la query tocca più ambiti
-(es. aspetti fiscali E giuslavoristici), proponi azioni che coprano entrambi.
-
-Usa il dominio come guida principale, ma:
-- Se confidence < 0.6: considera azioni cross-domain
-- Se la query menziona esplicitamente più ambiti: includi azioni per ciascuno
-- Non limitare mai artificialmente le azioni al solo dominio classificato
-
-## Strategia di Generazione Azioni
-
-### STEP 1: Identifica il Tema della Conversazione
-Dalla risposta appena data, estrai gli ELEMENTI CHIAVE che potrebbero generare domande successive:
-- Concetti normativi o fiscali menzionati (es. regime forfettario, IRPEF, CCNL, licenziamento)
-- Documenti o adempimenti citati (es. fattura, F24, busta paga, dichiarazione)
-- Operazioni o calcoli discussi (es. calcolo imposta, verifica scadenza, confronto opzioni)
-- Valori specifici (importi, aliquote, percentuali, date, codici)
-- Situazioni particolari del cliente (es. startup, professionista, dipendente)
-- **Qualsiasi altro elemento rilevante** che un professionista vorrebbe approfondire
-
-NON limitarti a cercare solo queste categorie - identifica CIÒ CHE È SIGNIFICATIVO nella risposta.
-
-### STEP 2: Anticipa le Domande Successive
-In base al dominio professionale e al tema, chiediti:
-- TAX: "Cosa vorrebbe approfondire un Commercialista?"
-- LEGAL: "Cosa vorrebbe verificare un Avvocato?"
-- LABOR: "Cosa vorrebbe calcolare un Consulente del Lavoro?"
-
-### STEP 3: Formula Azioni Specifiche e Complete
-Ogni azione DEVE:
-1. Riferirsi a elementi SPECIFICI della conversazione (mai generiche)
-2. Includere valori concreti menzionati (importi, aliquote, date)
-3. Essere eseguibile con un click (prompt completo, non vago)
-
-SBAGLIATO: {"label": "Calcola", "prompt": "Calcola"}
-GIUSTO: {"label": "Calcola imposta 15%", "prompt": "Calcola l'imposta sostitutiva al 15% su 50.000 euro di ricavi"}
-
-### STEP 4: Assicura Diversità
-Le 3-4 azioni devono coprire angolazioni diverse:
-- Calcolo/Quantificazione
-- Confronto/Alternative
-- Verifica/Conformità
-- Prossimi passi/Procedura
-```
-
-**Integration in prompting.py:**
-```python
-from app.services.domain_action_classifier import DomainActionClassifier
-
-# In step_44 or equivalent:
-classifier = DomainActionClassifier()
-classification = classifier.classify(user_query)
-
-# Pass to SUGGESTED_ACTIONS_PROMPT
-prompt = SUGGESTED_ACTIONS_PROMPT.format(
-    domain=classification.domain.value,
-    confidence=classification.confidence
-)
-```
-
-**Edge Cases:**
-- Empty conversation: No actions
-- Chitchat route: No actions (already handled)
-- Multiple topics: Actions for MOST RECENT topic
-- No specific values: Use qualitative references ("il tuo reddito")
-- Low confidence (<0.6): Consider cross-domain actions (studi associati)
-- Cross-domain query (e.g., fiscal + labor): Include actions for both domains
-
-**Tests (TDD):**
-- `test_action_prompt_contains_meta_strategy`
-- `test_action_prompt_no_hardcoded_domain_examples`
-- `test_domain_classification_passed_to_prompt`
-- `test_actions_tailored_to_tax_domain`
-- `test_actions_tailored_to_labor_domain`
-- `test_low_confidence_allows_cross_domain_actions`
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] No hardcoded domain examples in prompt
-- [ ] 4-step meta-prompting strategy included
-- [ ] Domain classification passed to action generation
-- [ ] Domain used as hint, not rigid constraint (studi associati flexibility)
-- [ ] E2E: TAX query generates commercialista-relevant actions
-- [ ] E2E: LABOR query generates consulente del lavoro-relevant actions
-- [ ] E2E: Cross-domain query generates actions for both domains
-
----
-
-### Subtask DEV-201c: KB Access Affirmation in Base Prompt (Backend)
-**Effort:** 1.5h | **Agent:** @ezio
-
-**Problem:** LLM says "non ho accesso a documenti" - FALSE and damages PratikoAI reputation.
-
-**Solution:** Add KB affirmation to `system.md` (base prompt) so it applies to ALL LLM calls, not just suggested actions.
-
-**Files to Modify:**
-- `app/core/prompts/system.md` (AFTER "# CRITICAL: You ARE the Expert" section)
-
-**ADD:**
-```markdown
-# IMPORTANTE: Accesso alla Knowledge Base
-
-Tu sei PratikoAI e HAI SEMPRE accesso a una Knowledge Base completa che include:
-- Circolari, Risoluzioni, Interpelli dell'Agenzia delle Entrate
-- Circolari INPS e INAIL
-- Decreti legge e Gazzetta Ufficiale
-- Normativa fiscale italiana aggiornata
-
-NON dire MAI:
-- "Non ho accesso a documenti"
-- "Non posso consultare circolari"
-- "Non ho a disposizione normative"
-- "Dovresti verificare sul sito dell'Agenzia delle Entrate"
-
-INVECE, usa questa distinzione:
-- Se documento NON TROVATO: "Non ho trovato [X] nel database. Posso cercare documenti correlati?"
-- Se hai dati: Rispondi con citazioni delle fonti
-- Se incerto: "Verifico nella Knowledge Base..."
-
-CRITICO: "Non ho trovato" (tecnico, risolvibile) ≠ "Non ho accesso" (falso, dannoso)
-```
-
-**Key Insight:** Goes in `system.md`, NOT `suggested_actions.md`, so it applies to ALL prompts.
-
-**Tests (TDD):**
-- `test_system_prompt_contains_kb_access_affirmation`
-- `test_system_prompt_forbids_no_access_phrases`
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] KB access section added to system.md
-- [ ] Forbidden phrases listed
-- [ ] "Non ho trovato" alternative provided
-- [ ] E2E: LLM never says "non ho accesso a documenti"
-
----
-
-### Subtask DEV-201d: Forbidden Action Validation Layer (Backend)
-**Effort:** 2.5h | **Agent:** @ezio
-
-**Problem:** LLM suggests "Contatta un commercialista" violating system.md rules.
-
-**Solution:** Regex-based validation to filter forbidden patterns before returning actions.
-
-**Files to Modify:**
-- `app/services/proactivity_graph_service.py`
-- `app/core/langgraph/nodes/step_100__post_proactivity.py`
-
-**Code:**
-```python
-import re
-from app.core.logging import logger
-
-FORBIDDEN_ACTION_PATTERNS: list[re.Pattern] = [
-    re.compile(r"contatt[ai]\s+(?:un\s+)?commercialista", re.IGNORECASE),
-    re.compile(r"contatt[ai]\s+(?:un\s+)?consulente\s+del\s+lavoro", re.IGNORECASE),
-    re.compile(r"contatt[ai]\s+(?:un\s+)?avvocato", re.IGNORECASE),
-    re.compile(r"contatt[ai]\s+(?:un\s+)?esperto", re.IGNORECASE),
-    re.compile(r"rivolgiti\s+(?:a\s+)?(?:un\s+)?professionista", re.IGNORECASE),
-    re.compile(r"consulta\s+(?:un\s+)?esperto", re.IGNORECASE),
-    re.compile(r"visita\s+il\s+sito\s+dell['']?Agenzia", re.IGNORECASE),
-    re.compile(r"verifica\s+sul\s+sito\s+ufficiale", re.IGNORECASE),
-]
-
-def validate_action(action: dict) -> bool:
-    """Return True if action is valid (no forbidden patterns)."""
-    label = action.get("label", "")
-    prompt = action.get("prompt", "")
-    text_to_check = f"{label} {prompt}"
-
-    for pattern in FORBIDDEN_ACTION_PATTERNS:
-        if pattern.search(text_to_check):
-            logger.warning("forbidden_action_filtered", action_label=label[:50])
-            return False
-    return True
-
-def filter_forbidden_actions(actions: list[dict]) -> list[dict]:
-    return [a for a in actions if validate_action(a)]
-```
-
-**Edge Cases:**
-- Empty list: Return empty
-- All forbidden: Return empty
-- Case variations: Patterns are case-insensitive
-
-**Tests (TDD):**
-- `test_validate_action_allows_valid_action`
-- `test_validate_action_blocks_contatta_commercialista`
-- `test_validate_action_blocks_consulta_esperto`
-- `test_validate_action_blocks_visita_sito`
-- `test_filter_case_insensitive`
-- `test_filter_empty_list_returns_empty`
-- `test_filter_all_forbidden_returns_empty`
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] 8+ forbidden patterns defined
-- [ ] Filter integrated in step 100
-- [ ] Filtered actions logged at WARNING level
-- [ ] 95%+ test coverage on new code
-
----
-
-### Risks & Mitigations
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Meta-prompting may not improve quality | HIGH | A/B test with sample queries |
-| Regex too aggressive (false positives) | MEDIUM | Word boundaries, test corpus |
-| KB affirmation increases prompt length | LOW | ~100 tokens, minimal |
-| Breaking existing action parsing | HIGH | Baseline tests, preserve XML |
-
----
-
-### Testing Requirements
-
-| Test File | Description |
-|-----------|-------------|
-| `test_action_source_tracking.tsx` | Frontend: Action source badge displayed |
-| `test_meta_prompting_strategy.py` | Backend: Meta-prompting in suggested_actions.md |
-| `test_kb_access_affirmation.py` | Backend: KB affirmation in system.md |
-| `test_forbidden_action_filter.py` | Backend: Forbidden patterns filtered |
-
----
-
-### Summary
-
-| Subtask | Effort | Agent | Priority |
-|---------|--------|-------|----------|
-| DEV-201a | 1h | @livia | HIGH |
-| DEV-201b | 3.5h | @ezio | HIGH |
-| DEV-201c | 1.5h | @ezio | CRITICAL |
-| DEV-201d | 2.5h | @ezio | CRITICAL |
-| **Total** | **8.5h** | | |
-
-**Agent Assignment:** @ezio (primary backend), @livia (frontend), @clelia (tests)
-
-**Dependencies:**
-- Depends on: DEV-200 (completed)
-- Unlocks: Production-ready suggested actions feature
-
-**Change Classification:** MODIFYING + ENHANCEMENT
-
-**Proposed ADR:** ADR-018: Domain-Aware Meta-Prompting for Contextual Action Generation
-
----
-
-### E2E Acceptance Criteria (Task-Level)
-
-- [ ] "Come funziona il regime forfettario?" produces SPECIFIC actions (not generic)
-- [ ] LLM never says "non ho accesso a documenti"
-- [ ] "Contatta un commercialista" never appears in suggestions
-- [ ] Action source visible in frontend conversation
-- [ ] All baseline tests pass
-- [ ] 90%+ test coverage on new code
-
-</details>
-
----
 
 ## Summary
 
@@ -3563,7 +3159,15 @@ DEV-210 (GraphState) ───────────────────�
                       └──► DEV-231 (Risk Analysis ToT)       │
 ```
 
+
 ---
+
+<details>
+<summary>
+<h3>DEV-210: Update GraphState with LLM Excellence Fields</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+RAGState lacks fields for reasoning traces, KB document preservation, complexity classification, ToT...
+</summary>
 
 ### DEV-210: Update GraphState with LLM Excellence Fields
 
@@ -3685,6 +3289,15 @@ actions_validation_log: list[str] | None  # Rejection reasons for debugging
 - [ ] No breaking changes to existing node behavior
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-211: Create PromptLoader Utility Service</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Prompts are currently scattered across multiple files with inline loading. Need centralized prompt l...
+</summary>
 
 ### DEV-211: Create PromptLoader Utility Service
 
@@ -3824,6 +3437,15 @@ class PromptLoader:
 - [ ] 95%+ test coverage
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-212: Create unified_response_simple.md Prompt Template</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Current response prompts are scattered across multiple files with inconsistent formatting. Need unif...
+</summary>
 
 ### DEV-212: Create unified_response_simple.md Prompt Template
 
@@ -3990,6 +3612,15 @@ def _select_prompt_template(state: RAGState) -> str:
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-213: Update Step 40 to Preserve KB Documents and Metadata</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Step 40 currently merges KB documents into a context string but doesn't preserve the original docume...
+</summary>
+
 ### DEV-213: Update Step 40 to Preserve KB Documents and Metadata
 
 **Reference:** [Technical Intent Part 3.5.2](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 40: Build Context Enhanced)
@@ -4124,6 +3755,15 @@ def get_hierarchy_weight(doc_type: str) -> float:
 - [ ] 90%+ test coverage for new code
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-214: Update Step 64 for Unified JSON Output with Reasoning</h3>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+Step 64 currently uses Verdetto parsing for TECHNICAL_RESEARCH and separate action generation. Need ...
+</summary>
 
 ### DEV-214: Update Step 64 for Unified JSON Output with Reasoning
 
@@ -4373,6 +4013,15 @@ except ImportError:
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-215: Create ActionValidator Service</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> PARTIALLY IMPLEMENTED (PR #900)<br>
+LLM-generated actions often contain generic labels, forbidden patterns, or lack source grounding. Ne...
+</summary>
+
 ### DEV-215: Create ActionValidator Service
 
 **Reference:** [Technical Intent Part 3.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Action Validator)
@@ -4527,6 +4176,15 @@ class ActionValidator:
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-216: Create action_regeneration.md Prompt Template</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+When ActionValidator rejects all actions, need a specialized prompt to regenerate actions with expli...
+</summary>
+
 ### DEV-216: Create action_regeneration.md Prompt Template
 
 **Reference:** [Technical Intent Part 11.5.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Regeneration Prompt)
@@ -4628,6 +4286,15 @@ Output JSON:
 - [ ] JSON output schema clearly specified
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-217: Implement ActionRegenerator Service (Golden Loop)</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+When ActionValidator rejects all LLM-generated actions, need to regenerate them with correction prom...
+</summary>
 
 ### DEV-217: Implement ActionRegenerator Service (Golden Loop)
 
@@ -4810,6 +4477,15 @@ def _generate_safe_fallback(self, context: ResponseContext) -> list[dict]:
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-218: Update Step 100 for Validation-Only with Golden Loop</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> PARTIALLY IMPLEMENTED (PR #900)<br>
+Step 100 currently generates actions from templates or parses from LLM response. With unified output...
+</summary>
+
 ### DEV-218: Update Step 100 for Validation-Only with Golden Loop
 
 **Reference:** [Technical Intent Part 3.5.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 100: Action Validation)
@@ -4955,6 +4631,15 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-220: Create complexity_classifier.md Prompt Template</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+Need to classify query complexity (simple/complex/multi_domain) to route to appropriate LLM model an...
+</summary>
+
 ### DEV-220: Create complexity_classifier.md Prompt Template
 
 **Reference:** Technical Intent Appendix A.1 (Complexity Classifier Prompt)
@@ -5041,6 +4726,15 @@ Analizza questa query fiscale/legale italiana e classifica la sua complessità.
 - [ ] JSON output schema specified
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-221: Implement LLMOrchestrator Service for Multi-Model Routing</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 8h | <strong>Status:</strong> NOT STARTED<br>
+All queries currently use GPT-4o regardless of complexity, costing €0.0155/query. Simple queries sho...
+</summary>
 
 ### DEV-221: Implement LLMOrchestrator Service for Multi-Model Routing
 
@@ -5201,6 +4895,15 @@ class LLMOrchestrator:
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-222: Integrate LLMOrchestrator with Step 64</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Step 64 needs to use LLMOrchestrator for complexity-based model selection and reasoning strategy.
+</summary>
+
 ### DEV-222: Integrate LLMOrchestrator with Step 64
 
 **Reference:** [Technical Intent Part 3.5.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 64 routing)
@@ -5229,6 +4932,15 @@ Update Step 64 to call LLMOrchestrator.classify_complexity(), then generate_resp
 - [ ] All existing Step 64 tests pass
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-223: Create tree_of_thoughts.md Prompt Template</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Complex queries need Tree of Thoughts reasoning to explore multiple hypotheses before selecting the ...
+</summary>
 
 ### DEV-223: Create tree_of_thoughts.md Prompt Template
 
@@ -5267,6 +4979,15 @@ Create tree_of_thoughts.md prompt with hypothesis generation, evaluation, and se
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-224: Create tree_of_thoughts_multi_domain.md Prompt Template</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Multi-domain queries (e.g., labor + tax) need parallel analysis across professional domains.
+</summary>
+
 ### DEV-224: Create tree_of_thoughts_multi_domain.md Prompt Template
 
 **Reference:** [Technical Intent Part 2.3.3](pratikoai-llm-excellence-technical-intent.md#part-2-target-architecture) (Multi-Domain ToT)
@@ -5294,6 +5015,15 @@ Create tree_of_thoughts_multi_domain.md for cross-domain synthesis.
 - [ ] Synthesizes cross-domain answer
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-227: Create Source Hierarchy Mapping and Weighting</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Italian legal sources have hierarchy (Legge > Circolare > Interpello). ToT scoring must weight sourc...
+</summary>
 
 ### DEV-227: Create Source Hierarchy Mapping and Weighting
 
@@ -5355,6 +5085,15 @@ SOURCE_HIERARCHY = {
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-228: Implement SourceConflictDetector Service</h3>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+When Circolare contradicts Legge (especially newer law), the conflict must be detected and flagged.
+</summary>
+
 ### DEV-228: Implement SourceConflictDetector Service
 
 **Reference:** [Technical Intent Part 11.1.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Conflict Detection)
@@ -5384,6 +5123,15 @@ Create SourceConflictDetector that identifies conflicts between sources and reco
 - [ ] Returns recommendation on which source to prefer
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-229: Implement DualReasoning Data Structures</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Reasoning serves two purposes: debugging (internal) and user display (public). Need separate structu...
+</summary>
 
 ### DEV-229: Implement DualReasoning Data Structures
 
@@ -5415,6 +5163,15 @@ Create DualReasoning dataclasses for internal technical reasoning and public use
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-230: Implement ReasoningTransformer Service</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Internal reasoning must be transformed to user-friendly Italian explanation without technical jargon...
+</summary>
+
 ### DEV-230: Implement ReasoningTransformer Service
 
 **Reference:** [Technical Intent Part 11.4.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Reasoning Transformation)
@@ -5442,6 +5199,15 @@ Create ReasoningTransformer that converts internal reasoning to public explanati
 - [ ] Selection reasoning user-friendly
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-231: Add Risk Analysis Phase to Tree of Thoughts</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Even low-probability scenarios must be flagged if they carry high sanction risk (e.g., frode fiscale...
+</summary>
 
 ### DEV-231: Add Risk Analysis Phase to Tree of Thoughts
 
@@ -5478,6 +5244,15 @@ Add risk analysis phase to ToT that evaluates sanction risk for each hypothesis.
 - [ ] Risk actions generated for mitigation
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-233: Create hyde_conversational.md Prompt Template</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Current HyDE ignores conversation history, generating irrelevant hypothetical documents for follow-u...
+</summary>
 
 ### DEV-233: Create hyde_conversational.md Prompt Template
 
@@ -5610,6 +5385,15 @@ class HyDEGeneratorService:
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-234: Implement QueryAmbiguityDetector Service</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Vague queries like "E per l'IVA?" need multi-variant HyDE, not specific hallucinated documents.
+</summary>
+
 ### DEV-234: Implement QueryAmbiguityDetector Service
 
 **Reference:** [Technical Intent Part 11.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Query Vaghe)
@@ -5644,6 +5428,15 @@ Create QueryAmbiguityDetector that identifies ambiguous queries and triggers mul
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-235: Update HyDE Generator for Conversation Awareness</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+HyDE generator needs to use QueryAmbiguityDetector and generate multi-variant when ambiguous.
+</summary>
+
 ### DEV-235: Update HyDE Generator for Conversation Awareness
 
 **Reference:** [Technical Intent Part 11.3.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Updated HyDE Generator)
@@ -5671,6 +5464,15 @@ Update HyDEGeneratorService to check ambiguity and generate multi-variant HyDE w
 - [ ] Variants cover multiple scenarios
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-236: Update Source Schema for Paragraph-Level Grounding</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+Actions reference entire documents instead of specific paragraphs, making citations imprecise.
+</summary>
 
 ### DEV-236: Update Source Schema for Paragraph-Level Grounding
 
@@ -5700,6 +5502,15 @@ Add paragraph-level tracking to source schema with paragraph_id and excerpt fiel
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-237: Implement Paragraph Extraction in Retrieval</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Retrieved documents need paragraph-level extraction for precise grounding.
+</summary>
+
 ### DEV-237: Implement Paragraph Extraction in Retrieval
 
 **Reference:** [Technical Intent Part 11.6.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Paragraph Extraction)
@@ -5727,6 +5538,15 @@ Add paragraph extraction to retrieval pipeline that identifies relevant paragrap
 - [ ] Best paragraphs returned in metadata
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-238: Add Detailed Logging for Reasoning Traces</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Need visibility into reasoning traces for debugging and quality analysis. Logs must comply with the ...
+</summary>
 
 ### DEV-238: Add Detailed Logging for Reasoning Traces
 
@@ -5830,6 +5650,15 @@ def _truncate_for_log(trace: dict | None, max_length: int = 1000) -> str:
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-239: Create Cost Monitoring Dashboard</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+Need real-time visibility into LLM costs per query, model, and complexity level.
+</summary>
+
 ### DEV-239: Create Cost Monitoring Dashboard
 
 **Reference:** [Technical Intent Part 7.3](pratikoai-llm-excellence-technical-intent.md#part-7-success-metrics) (Cost Metrics)
@@ -5857,6 +5686,15 @@ Create cost monitoring endpoint and dashboard integration.
 - [ ] Daily/weekly aggregates
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-240: Add Action Quality Metrics</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+Need metrics to track action quality: validation pass rate, regeneration rate, click-through rate.
+</summary>
 
 ### DEV-240: Add Action Quality Metrics
 
@@ -5886,6 +5724,15 @@ Add action quality metrics collection and reporting.
 
 ---
 
+</details>
+
+<details>
+<summary>
+<h3>DEV-241: Create Prompt A/B Testing Framework</h3>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+Need ability to A/B test different prompt versions for quality comparison.
+</summary>
+
 ### DEV-241: Create Prompt A/B Testing Framework
 
 **Reference:** [Technical Intent Part 6](pratikoai-llm-excellence-technical-intent.md#part-6-implementation-phases) Phase 4 (A/B Testing)
@@ -5913,6 +5760,15 @@ Create A/B testing framework in PromptLoader with experiment configuration.
 - [ ] Metrics collection per variant
 
 ---
+
+</details>
+
+<details>
+<summary>
+<h3>DEV-242: Create Reasoning Trace UI Component</h3>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+Reasoning traces and Tree of Thoughts logic are generated by the backend (DEV-214, DEV-223) but hidd...
+</summary>
 
 ### DEV-242: Create Reasoning Trace UI Component
 
@@ -6112,6 +5968,8 @@ function truncateText(text: string, maxLength: number): string;
 - [ ] All existing chat tests still pass (regression)
 - [ ] No TODO/FIXME comments for required features
 - [ ] XSS protection verified
+
+</details>
 
 ---
 

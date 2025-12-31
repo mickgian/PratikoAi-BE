@@ -15,18 +15,18 @@ jobs:
       new_features: ${{ steps.analyze.outputs.new_features }}
       bug_fixes: ${{ steps.analyze.outputs.bug_fixes }}
       version_bump: ${{ steps.analyze.outputs.version_bump }}
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Analyze Changes
       id: analyze
       run: |
@@ -36,33 +36,33 @@ jobs:
         import subprocess
         import sys
         import os
-        
+
         def get_commit_messages_since_last_tag():
             """Get commit messages since the last tag."""
             try:
                 # Get the last tag
-                result = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'], 
+                result = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'],
                                       capture_output=True, text=True, check=True)
                 last_tag = result.stdout.strip()
-                
+
                 # Get commits since last tag
-                result = subprocess.run(['git', 'log', f'{last_tag}..HEAD', '--pretty=format:%s'], 
+                result = subprocess.run(['git', 'log', f'{last_tag}..HEAD', '--pretty=format:%s'],
                                       capture_output=True, text=True, check=True)
                 commits = result.stdout.strip().split('\n') if result.stdout.strip() else []
             except subprocess.CalledProcessError:
                 # No tags found, get all commits
-                result = subprocess.run(['git', 'log', '--pretty=format:%s'], 
+                result = subprocess.run(['git', 'log', '--pretty=format:%s'],
                                       capture_output=True, text=True, check=True)
                 commits = result.stdout.strip().split('\n') if result.stdout.strip() else []
-            
+
             return [commit for commit in commits if commit.strip()]
-        
+
         def analyze_commits(commits):
             """Analyze commit messages for breaking changes, features, and fixes."""
             breaking_changes = []
             new_features = []
             bug_fixes = []
-            
+
             # Patterns for different types of changes
             breaking_patterns = [
                 r'BREAKING CHANGE',
@@ -71,7 +71,7 @@ jobs:
                 r'major:',
                 r'MAJOR:'
             ]
-            
+
             feature_patterns = [
                 r'^feat(\([^)]*\))?:',
                 r'^feature(\([^)]*\))?:',
@@ -80,7 +80,7 @@ jobs:
                 r'new:',
                 r'NEW:'
             ]
-            
+
             fix_patterns = [
                 r'^fix(\([^)]*\))?:',
                 r'^bugfix(\([^)]*\))?:',
@@ -89,42 +89,42 @@ jobs:
                 r'bug:',
                 r'BUG:'
             ]
-            
+
             for commit in commits:
                 commit_clean = commit.strip()
                 if not commit_clean:
                     continue
-                
+
                 # Check for breaking changes
                 if any(re.search(pattern, commit_clean, re.IGNORECASE) for pattern in breaking_patterns):
                     breaking_changes.append(commit_clean)
-                
+
                 # Check for new features
                 elif any(re.search(pattern, commit_clean, re.IGNORECASE) for pattern in feature_patterns):
                     new_features.append(commit_clean)
-                
+
                 # Check for bug fixes
                 elif any(re.search(pattern, commit_clean, re.IGNORECASE) for pattern in fix_patterns):
                     bug_fixes.append(commit_clean)
-                
+
                 # If no specific pattern, categorize as feature if it looks like new functionality
                 elif any(word in commit_clean.lower() for word in ['add', 'create', 'implement', 'introduce']):
                     new_features.append(commit_clean)
-                
+
                 # Otherwise categorize as bug fix if it looks like a fix
                 elif any(word in commit_clean.lower() for word in ['fix', 'resolve', 'correct', 'update', 'improve']):
                     bug_fixes.append(commit_clean)
-                
+
                 # Default to feature for other commits
                 else:
                     new_features.append(commit_clean)
-            
+
             return {
                 'breaking_changes': breaking_changes,
                 'new_features': new_features,
                 'bug_fixes': bug_fixes
             }
-        
+
         def determine_version_bump(analysis):
             """Determine version bump type based on changes."""
             if analysis['breaking_changes']:
@@ -135,7 +135,7 @@ jobs:
                 return 'patch'
             else:
                 return 'patch'  # Default to patch
-        
+
         def determine_change_type(analysis):
             """Determine the primary type of changes."""
             if analysis['breaking_changes']:
@@ -146,12 +146,12 @@ jobs:
                 return 'fix'
             else:
                 return 'maintenance'
-        
+
         # Main analysis
         try:
             commits = get_commit_messages_since_last_tag()
             print(f"Found {len(commits)} commits to analyze")
-            
+
             if not commits:
                 print("No commits found, using default values")
                 commit_analysis = {
@@ -161,17 +161,17 @@ jobs:
                 }
             else:
                 commit_analysis = analyze_commits(commits)
-            
+
             change_type = determine_change_type(commit_analysis)
             version_bump = determine_version_bump(commit_analysis)
-            
+
             print(f"Analysis complete:")
             print(f"  Change type: {change_type}")
             print(f"  Version bump: {version_bump}")
             print(f"  Breaking changes: {len(commit_analysis['breaking_changes'])}")
             print(f"  New features: {len(commit_analysis['new_features'])}")
             print(f"  Bug fixes: {len(commit_analysis['bug_fixes'])}")
-            
+
             # FIXED: Use proper GitHub Actions output format with JSON escaping
             # Write to GITHUB_OUTPUT environment file (new method)
             with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
@@ -181,9 +181,9 @@ jobs:
                 f.write(f"breaking_changes={json.dumps(commit_analysis['breaking_changes'])}\n")
                 f.write(f"new_features={json.dumps(commit_analysis['new_features'])}\n")
                 f.write(f"bug_fixes={json.dumps(commit_analysis['bug_fixes'])}\n")
-            
+
             print("Outputs written to GITHUB_OUTPUT")
-            
+
         except Exception as e:
             print(f"Error during analysis: {e}", file=sys.stderr)
             # Set default values on error
@@ -195,16 +195,16 @@ jobs:
                 f.write("bug_fixes=[]\n")
             sys.exit(1)
         EOF
-    
+
   generate-release-notes:
     needs: analyze-changes
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Generate Release Notes
       id: notes
       env:
@@ -217,27 +217,27 @@ jobs:
         python3 - <<'EOF'
         import json
         import os
-        
+
         # FIXED: Safely parse JSON from GitHub Actions outputs using environment variables
-        
+
         # Get outputs from environment variables to avoid shell escaping issues
         breaking_changes_json = os.environ.get('BREAKING_CHANGES', '[]')
         new_features_json = os.environ.get('NEW_FEATURES', '[]')
         bug_fixes_json = os.environ.get('BUG_FIXES', '[]')
         change_type = os.environ.get('CHANGE_TYPE', 'maintenance')
         version_bump = os.environ.get('VERSION_BUMP', 'patch')
-        
+
         try:
             # Parse the JSON outputs safely
             breaking_changes = json.loads(breaking_changes_json)
             new_features = json.loads(new_features_json)
             bug_fixes = json.loads(bug_fixes_json)
-            
+
             print(f"Parsed inputs successfully:")
             print(f"  Breaking changes: {len(breaking_changes)}")
             print(f"  New features: {len(new_features)}")
             print(f"  Bug fixes: {len(bug_fixes)}")
-            
+
         except json.JSONDecodeError as e:
             print(f"JSON parsing error: {e}")
             print("Using empty lists as fallback")
@@ -246,83 +246,83 @@ jobs:
             bug_fixes = []
             change_type = 'maintenance'
             version_bump = 'patch'
-        
+
         # Generate release notes
         release_notes = []
-        
+
         if breaking_changes:
             release_notes.append("## 💥 Breaking Changes")
             for change in breaking_changes:
                 release_notes.append(f"- {change}")
             release_notes.append("")
-        
+
         if new_features:
             release_notes.append("## ✨ New Features")
             for feature in new_features:
                 release_notes.append(f"- {feature}")
             release_notes.append("")
-        
+
         if bug_fixes:
             release_notes.append("## 🐛 Bug Fixes")
             for fix in bug_fixes:
                 release_notes.append(f"- {fix}")
             release_notes.append("")
-        
+
         if not (breaking_changes or new_features or bug_fixes):
             release_notes.append("## 🔧 Maintenance")
             release_notes.append("- Maintenance and infrastructure updates")
             release_notes.append("")
-        
+
         release_notes.append("---")
         release_notes.append("*This release was automatically generated based on commit analysis.*")
-        
+
         full_notes = "\n".join(release_notes)
-        
+
         # Write to GitHub output file safely
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
             # Use multiline output format for complex content
             f.write("release_notes<<EOF\n")
             f.write(full_notes)
             f.write("\nEOF\n")
-        
+
         print("Release notes generated successfully")
         EOF
-    
+
     - name: Display Release Notes
       run: |
         echo "Generated Release Notes:"
         echo "======================="
         echo "${{ steps.notes.outputs.release_notes }}"
-  
+
   version-check:
     needs: analyze-changes
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Check Version Consistency
       run: |
         echo "Change Type: ${{ needs.analyze-changes.outputs.change_type }}"
         echo "Recommended Version Bump: ${{ needs.analyze-changes.outputs.version_bump }}"
-        
+
         # Check if version files exist and are consistent
         if [ -f "pyproject.toml" ]; then
           echo "Found pyproject.toml - checking version"
           grep -E '^version\s*=' pyproject.toml || echo "No version found in pyproject.toml"
         fi
-        
+
         if [ -f "version-management/core/version_schema.py" ]; then
           echo "Found version schema - checking current version"
           grep -E 'version.*=' version-management/core/version_schema.py || echo "No version found in schema"
         fi
-  
+
   pr-analysis:
     needs: analyze-changes
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-    
+
     steps:
     - name: PR Change Analysis
       env:
@@ -337,30 +337,30 @@ jobs:
         echo "**Change Type:** $CHANGE_TYPE" >> $GITHUB_STEP_SUMMARY
         echo "**Recommended Version Bump:** $VERSION_BUMP" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
+
         # Parse and display changes safely using environment variables
         python3 - <<'EOF'
-import json
-import os
+        import json
+        import os
 
-try:
-    breaking_changes = json.loads(os.environ.get('BREAKING_CHANGES', '[]'))
-    new_features = json.loads(os.environ.get('NEW_FEATURES', '[]'))
-    bug_fixes = json.loads(os.environ.get('BUG_FIXES', '[]'))
-    
-    breaking_count = len(breaking_changes)
-    features_count = len(new_features)
-    fixes_count = len(bug_fixes)
-except json.JSONDecodeError:
-    # Fallback if JSON parsing fails
-    breaking_count = 0
-    features_count = 0 
-    fixes_count = 0
+        try:
+            breaking_changes = json.loads(os.environ.get('BREAKING_CHANGES', '[]'))
+            new_features = json.loads(os.environ.get('NEW_FEATURES', '[]'))
+            bug_fixes = json.loads(os.environ.get('BUG_FIXES', '[]'))
 
-# Write to step summary using environment variable
-with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
-    f.write("**Changes Detected:**\n")
-    f.write(f"- 💥 Breaking Changes: {breaking_count}\n")
-    f.write(f"- ✨ New Features: {features_count}\n")
-    f.write(f"- 🐛 Bug Fixes: {fixes_count}\n")
-EOF
+            breaking_count = len(breaking_changes)
+            features_count = len(new_features)
+            fixes_count = len(bug_fixes)
+        except json.JSONDecodeError:
+            # Fallback if JSON parsing fails
+            breaking_count = 0
+            features_count = 0
+            fixes_count = 0
+
+        # Write to step summary using environment variable
+        with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+            f.write("**Changes Detected:**\n")
+            f.write(f"- 💥 Breaking Changes: {breaking_count}\n")
+            f.write(f"- ✨ New Features: {features_count}\n")
+            f.write(f"- 🐛 Bug Fixes: {fixes_count}\n")
+        EOF

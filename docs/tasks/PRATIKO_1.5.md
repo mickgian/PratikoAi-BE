@@ -3286,7 +3286,7 @@ Based on analysis, these files may need refactoring or deletion as the new archi
 | File | Action | Reason |
 |------|--------|--------|
 | `app/services/synthesis_prompt_builder.py` | REFACTOR | Merge into PromptLoader, simplify to use new unified templates |
-| `app/core/prompts/suggested_actions.md` | DELETE | Replaced by new action regeneration prompts with source grounding |
+| `app/core/prompts/suggested_actions.md` | KEEP | Enhanced in PR #900 with domain/confidence templating and STEP 1-4 methodology |
 | `app/services/premium_model_selector.py` | REFACTOR | LLMOrchestrator will absorb model selection logic |
 | `app/orchestrators/prompting.py` | REFACTOR | PromptLoader centralizes prompt management |
 | `app/services/domain_prompt_templates.py` | EVALUATE | May be superseded by new ToT domain prompts |
@@ -3670,7 +3670,7 @@ Rispondi SEMPRE con questo schema JSON:
     {
       "id": "string - univoco",
       "label": "string - 8-40 caratteri",
-      "icon": "calculator|search|calendar|info|document|law|euro|warning",
+      "icon": "calculator|search|calendar|file-text|alert-triangle|check-circle|edit|refresh-cw|book-open|bar-chart",
       "prompt": "string - almeno 25 caratteri, autosufficiente",
       "source_basis": "string - quale fonte KB ha ispirato questa azione"
     }
@@ -4145,13 +4145,25 @@ except ImportError:
 
 **Reference:** Technical Intent Part 3.4 (Action Validator)
 
-**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 3h | **Status:** PARTIALLY IMPLEMENTED (PR #900)
 
 **Problem:**
 LLM-generated actions often contain generic labels, forbidden patterns, or lack source grounding. Need validation layer to filter invalid actions before returning to user.
 
+**Existing Implementation (PR #900 - DEV-201d):**
+PR #900 already implemented basic forbidden pattern filtering in `app/services/proactivity_graph_service.py`:
+- `FORBIDDEN_ACTION_PATTERNS` - 10 regex patterns for inappropriate suggestions
+- `validate_action(action: dict) -> bool` - Validates single action
+- `filter_forbidden_actions(actions: list[dict]) -> list[dict]` - Filters batch
+- Integrated into Step 100 (`step_100__post_proactivity.py`)
+
 **Solution:**
-Create ActionValidator service that validates actions against rules (label length, forbidden patterns, source grounding) and returns validation results with rejection reasons.
+Extend the existing validation with a comprehensive ActionValidator service that adds:
+- Label length validation (8-40 chars) - NOT YET IMPLEMENTED
+- Generic label detection - NOT YET IMPLEMENTED
+- Source grounding validation - NOT YET IMPLEMENTED
+- Icon normalization - NOT YET IMPLEMENTED
+- Quality scoring - NOT YET IMPLEMENTED
 
 **Agent Assignment:** @ezio (primary), @clelia (tests)
 
@@ -4172,7 +4184,7 @@ Create ActionValidator service that validates actions against rules (label lengt
 | Generic label detection | Exact match list | Reject |
 | Forbidden pattern | Regex match | Reject |
 | Source grounding | Must reference KB | Warn (log) |
-| Valid icon | Enum check | Default to "info" |
+| Valid icon | Enum check | Default to "calculator" |
 | JSON validity | Parse check | Reject malformed |
 
 **Forbidden Patterns (Italian):**
@@ -4234,7 +4246,7 @@ class ActionValidator:
         """Check for overly generic labels."""
 
     def _normalize_icon(self, icon: str) -> str:
-        """Normalize icon to valid enum value or default to 'info'."""
+        """Normalize icon to valid enum value or default to 'calculator'."""
 ```
 
 **Error Handling:**
@@ -4263,7 +4275,7 @@ class ActionValidator:
   - `test_rejects_generic_labels` - "approfondisci" rejected
   - `test_accepts_valid_action` - Well-formed actions pass
   - `test_warns_no_source_grounding` - Warning logged, action accepted
-  - `test_normalizes_invalid_icon` - Unknown icon -> "info"
+  - `test_normalizes_invalid_icon` - Unknown icon -> "calculator"
 - **Edge Case Tests:**
   - `test_all_actions_rejected` - Empty result, quality=0
   - `test_batch_mixed_validity` - Some pass, some rejected
@@ -4339,7 +4351,7 @@ Output JSON:
   {
     "id": "regen_1",
     "label": "string (8-40 chars, specifico)",
-    "icon": "calculator|search|calendar|info|document|law|euro|warning",
+    "icon": "calculator|search|calendar|file-text|alert-triangle|check-circle|edit|refresh-cw|book-open|bar-chart",
     "prompt": "string (>25 chars, autosufficiente)",
     "source_basis": "string (riferimento alla fonte sopra)"
   },
@@ -4570,13 +4582,27 @@ def _generate_safe_fallback(self, context: ResponseContext) -> list[dict]:
 
 **Reference:** Technical Intent Part 3.5.4 (Step 100: Action Validation)
 
-**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 3h | **Status:** PARTIALLY IMPLEMENTED (PR #900)
 
 **Problem:**
 Step 100 currently generates actions from templates or parses from LLM response. With unified output from Step 64, Step 100 should focus on validation only, triggering regeneration via Golden Loop when needed.
 
+**Existing Implementation (PR #900 - DEV-201d):**
+PR #900 already integrated `filter_forbidden_actions` into Step 100:
+```python
+# step_100__post_proactivity.py
+from app.services.proactivity_graph_service import filter_forbidden_actions
+
+# Applied to template_actions, verdetto_actions, and llm_parsed_actions
+filtered_actions = filter_forbidden_actions(actions)
+```
+
 **Solution:**
-Update Step 100 to validate actions from Step 64, trigger ActionRegenerator when validation fails, and store validation results in state.
+Extend Step 100 to integrate with the full ActionValidator service (DEV-215) and add Golden Loop regeneration:
+- Integrate DEV-215 ActionValidator for comprehensive validation (label length, source grounding)
+- Trigger DEV-217 ActionRegenerator when validation fails
+- Store validation results in state
+- Implement iteration limit (max 2 regenerations)
 
 **Agent Assignment:** @ezio (primary), @clelia (tests)
 
@@ -4589,9 +4615,10 @@ Update Step 100 to validate actions from Step 64, trigger ActionRegenerator when
 **Impact Analysis:**
 - **Primary File:** `app/core/langgraph/nodes/step_100__post_proactivity.py`
 - **Affected Files:**
-  - `app/services/proactivity_graph_service.py`
+  - `app/services/proactivity_graph_service.py` (already has filter_forbidden_actions)
+  - `app/services/action_validator.py` (DEV-215)
 - **Related Tests:**
-  - `tests/langgraph/agentic_rag/test_step_100_post_proactivity.py` (if exists)
+  - `tests/langgraph/agentic_rag/test_step_100_post_proactivity.py`
 - **Baseline Command:** `pytest tests/ -k "step_100" -v`
 
 **Pre-Implementation Verification:**

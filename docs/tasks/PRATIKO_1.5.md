@@ -3617,7 +3617,7 @@ def _select_prompt_template(state: RAGState) -> str:
 <details>
 <summary>
 <h3>DEV-213: Update Step 40 to Preserve KB Documents and Metadata</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 4h | <strong>Status:</strong> ✅ COMPLETED (2024-12-31)<br>
 Step 40 currently merges KB documents into a context string but doesn't preserve the original docume...
 </summary>
 

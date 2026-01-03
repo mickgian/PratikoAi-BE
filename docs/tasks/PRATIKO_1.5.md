@@ -5170,7 +5170,7 @@ Update Step 64 to call LLMOrchestrator.classify_complexity(), then generate_resp
 <details>
 <summary>
 <h3>DEV-223: Create tree_of_thoughts.md Prompt Template</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> ✅ COMPLETED (2025-01-03)<br>
 Complex queries need Tree of Thoughts reasoning to explore multiple hypotheses before selecting the ...
 </summary>
 
@@ -5179,7 +5179,7 @@ Complex queries need Tree of Thoughts reasoning to explore multiple hypotheses b
 
 **Reference:** [Technical Intent Part 3.2.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Tree of Thoughts Prompt)
 
-**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 4h | **Status:** ✅ COMPLETED (2025-01-03)
 
 **Problem:**
 Complex queries need Tree of Thoughts reasoning to explore multiple hypotheses before selecting the best answer.
@@ -5204,11 +5204,11 @@ Create tree_of_thoughts.md prompt with hypothesis generation, evaluation, and se
 - Alternative scenario documentation
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Generates 3-4 hypotheses
-- [ ] Evaluates with source weights
-- [ ] Selects best with reasoning
-- [ ] Documents alternatives
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Generates 3-4 hypotheses
+- [x] Evaluates with source weights (Italian legal hierarchy)
+- [x] Selects best with reasoning
+- [x] Documents alternatives
 
 ---
 

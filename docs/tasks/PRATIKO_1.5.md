@@ -235,6 +235,7 @@ DEV-166 ─── DEV-167 (Mobile Styling)
 Created YAML-based configuration for tiered LLM model selection with 20 tests and 100% coverage.
 </summary>
 
+
 ### DEV-184: Create LLM Model Configuration System
 
 **Status:** ✅ COMPLETED (2024-12-27)
@@ -285,6 +286,7 @@ Created YAML-based configuration (`config/llm_models.yaml`) with environment ove
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h (Actual: ~2h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
 Created dynamic model selector for synthesis step with execute() method bridging to LLMFactory, 25 tests, 95%+ coverage.
 </summary>
+
 
 ### DEV-185: Implement PremiumModelSelector Service
 
@@ -341,6 +343,7 @@ Implemented `PremiumModelSelector` class that:
 Created Pydantic models and enums for LLM router with 21 tests and 100% coverage.
 </summary>
 
+
 ### DEV-186: Define RouterDecision Schema and Constants
 
 **Status:** ✅ COMPLETED (2024-12-27)
@@ -380,6 +383,7 @@ Created Pydantic models for `RoutingCategory`, `RouterDecision`, and `ExtractedE
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h (Actual: ~2h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
 Implemented GPT-4o-mini Chain-of-Thought router with 23 tests and 95%+ coverage.
 </summary>
+
 
 ### DEV-187: Implement LLM Router Service
 
@@ -427,6 +431,7 @@ Implemented `LLMRouterService` using GPT-4o-mini with Chain-of-Thought prompting
 Implemented 3 query variants (BM25, Vector, Entity) generator with 20 tests and 100% coverage.
 </summary>
 
+
 ### DEV-188: Implement Multi-Query Generator Service
 
 **Status:** ✅ COMPLETED (2024-12-27)
@@ -473,6 +478,7 @@ Implemented `MultiQueryGeneratorService` using GPT-4o-mini to generate BM25, vec
 Implemented hypothetical document generation in Italian bureaucratic style with 21 tests and 100% coverage.
 </summary>
 
+
 ### DEV-189: Implement HyDE Generator Service
 
 **Status:** ✅ COMPLETED (2024-12-27)
@@ -517,6 +523,7 @@ Implemented `HyDEGeneratorService` using GPT-4o-mini to generate 150-250 word hy
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h (Actual: ~2h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
 Implemented parallel search with RRF fusion, source authority hierarchy, and recency boost with 20 tests.
 </summary>
+
 
 ### DEV-190: Implement Parallel Hybrid Retrieval with RRF Fusion
 
@@ -572,6 +579,7 @@ Implemented `ParallelRetrievalService` with RRF fusion per Section 13.7.
 Implemented metadata extraction and context formatting for LLM synthesis with 19 tests.
 </summary>
 
+
 ### DEV-191: Create Document Metadata Preservation Layer
 
 **Status:** ✅ COMPLETED (2024-12-27)
@@ -618,6 +626,7 @@ Implemented `MetadataExtractor` service that extracts DocumentMetadata from Rank
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2h (Actual: ~1.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
 Created synthesis system prompt with Verdetto Operativo structure and SynthesisPromptBuilder per Section 13.8.5.
 </summary>
+
 
 ### DEV-192: Create Critical Synthesis Prompt Template
 
@@ -667,6 +676,7 @@ Created `SYNTHESIS_SYSTEM_PROMPT` per Section 13.8.5 with all 4 compiti (chronol
 Implemented parser to extract structured Verdetto Operativo sections from LLM synthesis output with 27 tests.
 </summary>
 
+
 ### DEV-193: Implement Verdetto Operativo Output Parser
 
 **Status:** ✅ COMPLETED (2024-12-27)
@@ -714,6 +724,7 @@ Implemented `VerdettoOperativoParser` that extracts all 5 sections per Section 1
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2.5h (Actual: ~2h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-28)<br>
 LangGraph node wrapper for semantic query classification with 14 tests and 95% coverage.
 </summary>
+
 
 ### DEV-194: Create Step 34a LLM Router Node
 
@@ -766,6 +777,7 @@ Created `step_034a__llm_router.py` node that integrates `LLMRouterService` for s
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2.5h (Actual: ~2h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-28)<br>
 LangGraph nodes for Multi-Query, HyDE, and Parallel Retrieval with 15 tests.
 </summary>
+
 
 ### DEV-195: Create Step 39 Query Expansion Nodes
 
@@ -821,6 +833,7 @@ Created three nodes that integrate with corresponding services for enhanced docu
 Integrated VerdettoOperativoParser for TECHNICAL_RESEARCH route with 7 tests.
 </summary>
 
+
 ### DEV-196: Update Step 64 for Premium Model and Verdetto
 
 **Status:** ✅ COMPLETED (2024-12-28)
@@ -862,6 +875,7 @@ Added verdetto parsing integration to Step 64 with `_parse_verdetto()` helper fu
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-28)<br>
 Consolidated and verified 261+ unit tests across all Phase 7 components.
 </summary>
+
 
 ### DEV-197: Unit Tests for Phase 7 Components
 
@@ -913,6 +927,7 @@ Created consolidation test suite to verify all Phase 7 tests exist and pass.
 Created integration tests with mocked LLM for full pipeline verification.
 </summary>
 
+
 ### DEV-198: Integration Tests for Agentic RAG Flow
 
 **Status:** ✅ COMPLETED (2024-12-28)
@@ -952,6 +967,7 @@ Created integration tests with mocked LLM to verify full pipeline.
 <strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 2.5h (Actual: ~1.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-28)<br>
 Created E2E tests and validation script for all AC-ARAG criteria.
 </summary>
+
 
 ### DEV-199: E2E Validation with Real LLM Calls
 
@@ -1002,6 +1018,7 @@ Created E2E test suite and validation script for acceptance criteria verificatio
 Created Pydantic V2 models for proactivity features with 41 tests and 96.2% coverage.
 </summary>
 
+
 ### DEV-150: Create Pydantic Models for Actions and Interactive Questions
 
 **Status:** ✅ COMPLETED (2024-12-19)
@@ -1045,6 +1062,7 @@ Created Pydantic V2 models in `app/schemas/proactivity.py` with comprehensive te
 Created 46 interactive questions across 3 YAML template files with validation script.
 </summary>
 
+
 ### DEV-153: Create Interactive Question Templates YAML
 
 **Status:** ✅ COMPLETED (2024-12-19)
@@ -1086,6 +1104,7 @@ Created YAML template files in `app/core/templates/interactive_questions/` cover
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created ActionTemplateService for loading and caching YAML templates with 30 tests and 95.2% coverage.
 </summary>
+
 
 ### DEV-151: Create YAML Template Loader Service
 
@@ -1136,6 +1155,7 @@ Created ActionTemplateService that loads templates from `app/core/templates/`, c
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created comprehensive action templates for tax, labor, legal domains plus document-specific actions with 18 validation tests.
 </summary>
+
 
 ### DEV-152: Create Action Templates YAML Files
 
@@ -1196,6 +1216,7 @@ actions:
 Extended AtomicFactsExtractor with parameter coverage calculation and intent schema support. 35 tests passing.
 </summary>
 
+
 ### DEV-154: Extend AtomicFactsExtractor for Parameter Coverage
 
 **Status:** ✅ COMPLETED (2024-12-19)
@@ -1250,6 +1271,7 @@ Extended AtomicFactsExtractor with INTENT_SCHEMAS dictionary, coverage calculati
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 2.5h (Actual: ~1.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-19)<br>
 Created ProactivityEngine service orchestrating parameter extraction, action selection, and question generation. 27 tests passing.
 </summary>
+
 
 ### DEV-155: Create ProactivityEngine Service
 
@@ -1311,6 +1333,7 @@ Created ProactivityEngine service with dependency injection that orchestrates al
 Created SQLModel analytics tables and ProactivityAnalyticsService with 22 tests for tracking user interactions.
 </summary>
 
+
 ### DEV-156: Create Analytics Tracking Model and Service
 
 **Status:** ✅ COMPLETED (2024-12-20)
@@ -1358,6 +1381,7 @@ Created SQLModel tables and analytics service with non-blocking writes and GDPR 
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 0.5h (Actual: ~0.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-20)<br>
 Extended ChatResponse schema with proactivity fields in a backward-compatible way.
 </summary>
+
 
 ### DEV-157: Extend ChatResponse Schema with Actions/Questions
 
@@ -1409,6 +1433,7 @@ extracted_params: dict[str, Any] | None = None
 Integrated ProactivityEngine with /chat endpoint for suggested actions and interactive questions.
 </summary>
 
+
 ### DEV-158: Modify /chat Endpoint to Include Suggested Actions
 
 **Status:** ✅ COMPLETED (2024-12-20)
@@ -1451,6 +1476,7 @@ Integrated ProactivityEngine into /chat endpoint with graceful degradation.
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1.5h (Actual: ~1.5h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-20)<br>
 Modified streaming endpoint to include proactivity events as SSE events before [DONE] token.
 </summary>
+
 
 ### DEV-159: Modify /chat/stream Endpoint for Actions
 
@@ -1504,6 +1530,7 @@ data: {"content": "", "done": true}
 Created endpoint to execute suggested actions with parameter substitution.
 </summary>
 
+
 ### DEV-160: Create /actions/execute Endpoint
 
 **Status:** ✅ COMPLETED (2024-12-22)
@@ -1550,6 +1577,7 @@ Created POST /api/v1/chatbot/actions/execute endpoint that looks up action templ
 Created endpoint to process answers to interactive questions with multi-step flow support.
 </summary>
 
+
 ### DEV-161: Create /questions/answer Endpoint
 
 **Status:** ✅ COMPLETED (2024-12-22)
@@ -1593,6 +1621,7 @@ Created POST /api/v1/chatbot/questions/answer endpoint that validates question/o
 Added fire-and-forget analytics tracking for action clicks and question answers.
 </summary>
 
+
 ### DEV-162: Add Analytics Tracking to Action/Question Endpoints
 
 **Status:** ✅ COMPLETED (2024-12-22)
@@ -1634,6 +1663,7 @@ Integrated ProactivityAnalyticsService into /actions/execute and /questions/answ
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
 Created React component for rendering suggested action buttons after AI responses.
 </summary>
+
 
 ### DEV-163: Create SuggestedActionsBar Component
 
@@ -1698,6 +1728,7 @@ interface SuggestedActionsBarProps {
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
 Created React component for inline interactive questions, Claude Code style.
 </summary>
+
 
 ### DEV-164: Create InteractiveQuestionInline Component
 
@@ -1765,6 +1796,7 @@ interface InteractiveQuestionInlineProps {
 <strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1.5h (Actual: ~30min) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
 Created reusable keyboard navigation hook for lists and option selection.
 </summary>
+
 
 ### DEV-165: Create useKeyboardNavigation Hook
 
@@ -1834,6 +1866,7 @@ interface UseKeyboardNavigationReturn {
 Integrated SuggestedActionsBar and InteractiveQuestionInline into AIMessageV2 component with 13 TDD tests.
 </summary>
 
+
 ### DEV-166: Integrate Components into ChatInterface
 
 **Status:** ✅ COMPLETED (2024-12-22)
@@ -1883,6 +1916,7 @@ Modified AIMessageV2.tsx to accept new props and render the proactivity componen
 <strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1.5h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
 Added mobile responsive styling to SuggestedActionsBar and InteractiveQuestionInline with 11 TDD tests.
 </summary>
+
 
 ### DEV-167: Mobile Responsive Styling
 
@@ -1938,6 +1972,7 @@ Enhanced SuggestedActionsBar and InteractiveQuestionInline with mobile-first res
 Comprehensive unit tests for ProactivityEngine with 27 tests covering all scenarios.
 </summary>
 
+
 ### DEV-168: Unit Tests for ProactivityEngine
 
 **Status:** ✅ COMPLETED (2024-12-22)
@@ -1981,6 +2016,7 @@ Created 27 unit tests covering all scenarios and edge cases for ProactivityEngin
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
 Comprehensive unit tests for ActionTemplateService with 30 tests covering all scenarios.
 </summary>
+
 
 ### DEV-169: Unit Tests for Template Services
 
@@ -2045,6 +2081,7 @@ Created 30 unit tests covering all scenarios and edge cases for ActionTemplateSe
 Comprehensive integration tests for chat endpoints with proactivity features - 76 tests.
 </summary>
 
+
 ### DEV-170: Integration Tests for Chat Endpoints
 
 **Status:** ✅ COMPLETED (2024-12-22)
@@ -2096,6 +2133,7 @@ Created 76 integration tests covering all chat endpoints with proactivity featur
 Comprehensive frontend component tests for proactivity features - 100 tests.
 </summary>
 
+
 ### DEV-171: Frontend Component Tests
 
 **Status:** ✅ COMPLETED (2024-12-22)
@@ -2145,6 +2183,7 @@ Created 100 Jest tests covering all proactivity frontend components.
 <strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 1.5h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
 Playwright E2E tests for proactivity features - 13 tests.
 </summary>
+
 
 ### DEV-172: E2E Tests for Proactive Flows
 
@@ -2198,6 +2237,7 @@ Created 13 Playwright E2E tests covering all proactivity user flows.
 <strong>Priority:</strong> LOW | <strong>Effort:</strong> 1h (Actual: ~1h) | <strong>Status:</strong> ✅ COMPLETED (2024-12-22)<br>
 ADRs for Suggested Actions and Interactive Questions architecture.
 </summary>
+
 
 ### DEV-173: Documentation Package
 
@@ -2261,6 +2301,7 @@ Created comprehensive documentation package including architectural decision rec
 Created core constants for LLM-First proactivity: 5 calculable intents and 4 document action templates with 29 tests.
 </summary>
 
+
 ### DEV-174: Define CALCULABLE_INTENTS and DOCUMENT_ACTION_TEMPLATES Constants
 
 **Status:** ✅ COMPLETED (2024-12-27)
@@ -2300,6 +2341,7 @@ Created `app/core/proactivity_constants.py` with CALCULABLE_INTENTS (5 intents) 
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 1h | <strong>Status:</strong> ✅ COMPLETED (2024-12-27)<br>
 Created suggested_actions.md prompt with &lt;answer&gt; and &lt;suggested_actions&gt; format instructions and 16 tests.
 </summary>
+
 
 ### DEV-175: Update System Prompt with Suggested Actions Output Format
 
@@ -2342,6 +2384,7 @@ Created `app/core/prompts/suggested_actions.md` with output format specification
 <strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-176-Implement-parse_llm_response-Function
 </summary>
 
+
 ### DEV-176: Implement parse_llm_response Function
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.5.2](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1252-parsing-della-risposta)
@@ -2383,6 +2426,7 @@ Created `app/services/llm_response_parser.py` with compiled regex patterns and P
 <h3>✅ DEV-177: Simplify ProactivityEngine Decision Logic</h3>
 <strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-177-Simplify-ProactivityEngine-Decision-Logic
 </summary>
+
 
 ### DEV-177: Simplify ProactivityEngine Decision Logic
 
@@ -2428,6 +2472,7 @@ Created `app/services/proactivity_engine_simplified.py` implementing the LLM-Fir
 <strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-178-Remove-Unused-Templates-and-Simplify-Template-Service
 </summary>
 
+
 ### DEV-178: Remove Unused Templates and Simplify Template Service
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.11](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1211-piano-di-migrazione)
@@ -2471,6 +2516,7 @@ Archived entire `ActionTemplateService`, unused YAML template files, and `Atomic
 <strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-179-Integrate-LLM-First-Proactivity-in-chat-Endpoint
 </summary>
 
+
 ### DEV-179: Integrate LLM-First Proactivity in /chat Endpoint
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.7](/docs/tasks/PRATIKO_1.5_REFERENCE.md#127-logica-decisionale-completa)
@@ -2513,6 +2559,7 @@ Added new helper functions to integrate the simplified ProactivityEngine and LLM
 <h3>✅ DEV-180: Integrate LLM-First Proactivity in /chat/stream Endpoint</h3>
 <strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-180-Integrate-LLM-First-Proactivity-in-chat-stream-Endpoint
 </summary>
+
 
 ### DEV-180: Integrate LLM-First Proactivity in /chat/stream Endpoint
 
@@ -2561,6 +2608,7 @@ Implemented streaming tag stripping and buffering helpers:
 <h3>✅ DEV-181: Unit Tests for LLM-First Components</h3>
 <strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-181-Unit-Tests-for-LLM-First-Components
 </summary>
+
 
 ### DEV-181: Unit Tests for LLM-First Components
 
@@ -2776,6 +2824,7 @@ DEV-174 (CALCULABLE_INTENTS Constants)
 <strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-182-Integration-Tests-for-LLM-First-Flow
 </summary>
 
+
 ### DEV-182: Integration Tests for LLM-First Flow
 
 **Reference:** [PRATIKO_1.5_REFERENCE.md Section 12.10](/docs/tasks/PRATIKO_1.5_REFERENCE.md#1210-criteri-di-accettazione-rivisti)
@@ -2820,6 +2869,7 @@ Create integration tests that mock LLM but test full component integration.
 <h3>✅ DEV-183: E2E Validation and Quality Verification</h3>
 <strong>Status:</strong> DONE | <strong>Branch:</strong> DEV-183-E2E-Validation-and-Quality-Verification
 </summary>
+
 
 ### DEV-183: E2E Validation and Quality Verification
 
@@ -2869,6 +2919,7 @@ Created E2E test suite in `tests/e2e/test_proactivity_quality.py` verifying all 
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 12h | <strong>Status:</strong> ✅ DONE (2024-12-29)<br>
 Refactor proactivity features from chatbot.py into proper LangGraph nodes (Step 14, Step 100) + route-based prompt injection.
 </summary>
+
 
 ### DEV-200: Refactor Proactivity into LangGraph Nodes
 
@@ -2948,6 +2999,7 @@ The LLM Router (Step 34a) classifies queries into routes. Use this classificatio
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 8.5h | <strong>Status:</strong> ✅ DONE (2024-12-29)<br>
 Fix 4 critical issues: action history tracking, domain-aware meta-prompting for contextual actions, KB access affirmation in system.md, forbidden action filtering.
 </summary>
+
 
 ### DEV-201: Suggested Actions Quality & Compliance
 
@@ -3169,6 +3221,7 @@ DEV-210 (GraphState) ───────────────────�
 Added 13 new Optional fields to RAGState for LLM Excellence: kb_documents, kb_sources_metadata, query_complexity, complexity_classification, reasoning_type, reasoning_trace, tot_analysis, internal_reasoning, public_reasoning, action_validation_result, action_regeneration_count, actions_source, actions_validation_log.
 </summary>
 
+
 ### DEV-210: Update GraphState with LLM Excellence Fields
 
 **Reference:** [Technical Intent Part 3.1](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Graph State Schema)
@@ -3298,6 +3351,7 @@ actions_validation_log: list[str] | None  # Rejection reasons for debugging
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h | <strong>Status:</strong> ✅ COMPLETED (2024-12-31)<br>
 Prompts are currently scattered across multiple files with inline loading. Need centralized prompt l...
 </summary>
+
 
 ### DEV-211: Create PromptLoader Utility Service
 
@@ -3446,6 +3500,7 @@ class PromptLoader:
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 3h | <strong>Status:</strong> ✅ COMPLETED (2024-12-31)<br>
 Current response prompts are scattered across multiple files with inconsistent formatting. Need unif...
 </summary>
+
 
 ### DEV-212: Create unified_response_simple.md Prompt Template
 
@@ -3621,6 +3676,7 @@ def _select_prompt_template(state: RAGState) -> str:
 Step 40 currently merges KB documents into a context string but doesn't preserve the original docume...
 </summary>
 
+
 ### DEV-213: Update Step 40 to Preserve KB Documents and Metadata
 
 **Reference:** [Technical Intent Part 3.5.2](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 40: Build Context Enhanced)
@@ -3764,6 +3820,7 @@ def get_hierarchy_weight(doc_type: str) -> float:
 <strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 6h | <strong>Status:</strong> ✅ COMPLETED (2025-01-03)<br>
 Step 64 currently uses Verdetto parsing for TECHNICAL_RESEARCH and separate action generation. Need ...
 </summary>
+
 
 ### DEV-214: Update Step 64 for Unified JSON Output with Reasoning
 
@@ -4022,6 +4079,7 @@ except ImportError:
 LLM-generated actions often contain generic labels, forbidden patterns, or lack source grounding. Ne...
 </summary>
 
+
 ### DEV-215: Create ActionValidator Service
 
 **Reference:** [Technical Intent Part 3.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Action Validator)
@@ -4185,6 +4243,7 @@ class ActionValidator:
 When ActionValidator rejects all actions, need a specialized prompt to regenerate actions with expli...
 </summary>
 
+
 ### DEV-216: Create action_regeneration.md Prompt Template
 
 **Reference:** [Technical Intent Part 11.5.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Regeneration Prompt)
@@ -4261,7 +4320,7 @@ Output JSON:
 ❌ "Calcola" (troppo corto, generico)
 ❌ "Consulta un commercialista" (forbidden pattern)
 ❌ "Verifica sul sito AdE" (forbidden pattern)
-```
+
 
 **Template Variables:**
 - `{rejection_reasons}` - Bulleted list of validation failures
@@ -4292,15 +4351,16 @@ Output JSON:
 <details>
 <summary>
 <h3>DEV-217: Implement ActionRegenerator Service (Golden Loop)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 6h | <strong>Status:</strong> ✅ COMPLETED (2025-01-03)<br>
 When ActionValidator rejects all LLM-generated actions, need to regenerate them with correction prom...
 </summary>
+
 
 ### DEV-217: Implement ActionRegenerator Service (Golden Loop)
 
 **Reference:** [Technical Intent Part 11.5](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Action Regeneration Loop)
 
-**Priority:** HIGH | **Effort:** 6h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 6h | **Status:** ✅ COMPLETED (2025-01-03)
 
 **Problem:**
 When ActionValidator rejects all LLM-generated actions, need to regenerate them with correction prompts. This "Golden Loop" ensures users always receive relevant, validated actions.
@@ -4486,6 +4546,7 @@ def _generate_safe_fallback(self, context: ResponseContext) -> list[dict]:
 Step 100 currently generates actions from templates or parses from LLM response. With unified output...
 </summary>
 
+
 ### DEV-218: Update Step 100 for Validation-Only with Golden Loop
 
 **Reference:** [Technical Intent Part 3.5.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 100: Action Validation)
@@ -4639,6 +4700,7 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
 Golden Loop lacks configurable iteration limits, backoff strategy, and metrics tracking for monitori...
 </summary>
+
 
 ### DEV-219: Implement Golden Loop Iteration Control and Metrics
 
@@ -4808,6 +4870,7 @@ class GoldenLoopController:
 Need to classify query complexity (simple/complex/multi_domain) to route to appropriate LLM model an...
 </summary>
 
+
 ### DEV-220: Create complexity_classifier.md Prompt Template
 
 **Reference:** Technical Intent Appendix A.1 (Complexity Classifier Prompt)
@@ -4903,6 +4966,7 @@ Analizza questa query fiscale/legale italiana e classifica la sua complessità.
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 8h | <strong>Status:</strong> NOT STARTED<br>
 All queries currently use GPT-4o regardless of complexity, costing €0.0155/query. Simple queries sho...
 </summary>
+
 
 ### DEV-221: Implement LLMOrchestrator Service for Multi-Model Routing
 
@@ -5072,6 +5136,7 @@ class LLMOrchestrator:
 Step 64 needs to use LLMOrchestrator for complexity-based model selection and reasoning strategy.
 </summary>
 
+
 ### DEV-222: Integrate LLMOrchestrator with Step 64
 
 **Reference:** [Technical Intent Part 3.5.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 64 routing)
@@ -5109,6 +5174,7 @@ Update Step 64 to call LLMOrchestrator.classify_complexity(), then generate_resp
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
 Complex queries need Tree of Thoughts reasoning to explore multiple hypotheses before selecting the ...
 </summary>
+
 
 ### DEV-223: Create tree_of_thoughts.md Prompt Template
 
@@ -5156,6 +5222,7 @@ Create tree_of_thoughts.md prompt with hypothesis generation, evaluation, and se
 Multi-domain queries (e.g., labor + tax) need parallel analysis across professional domains.
 </summary>
 
+
 ### DEV-224: Create tree_of_thoughts_multi_domain.md Prompt Template
 
 **Reference:** [Technical Intent Part 2.3.3](pratikoai-llm-excellence-technical-intent.md#part-2-target-architecture) (Multi-Domain ToT)
@@ -5192,6 +5259,7 @@ Create tree_of_thoughts_multi_domain.md for cross-domain synthesis.
 <strong>Priority:</strong> HIGH | <strong>Effort:</strong> 5h | <strong>Status:</strong> NOT STARTED<br>
 TreeOfThoughtsReasoner service needed to orchestrate multi-hypothesis reasoning with source weightin...
 </summary>
+
 
 ### DEV-225: Implement TreeOfThoughtsReasoner Service
 
@@ -5392,6 +5460,7 @@ def _score_hypothesis(self, hypothesis: ToTHypothesis, kb_sources: list[dict]) -
 TreeOfThoughtsReasoner exists as standalone service but isn't connected to the main RAG pipeline. Co...
 </summary>
 
+
 ### DEV-226: Integrate TreeOfThoughtsReasoner with Step 64
 
 **Reference:** [Technical Intent Part 5.2](pratikoai-llm-excellence-technical-intent.md#part-5-implementation-priorities) (Step 64 Integration)
@@ -5509,6 +5578,7 @@ async def generate_response(state: GraphState) -> GraphState:
 Italian legal sources have hierarchy (Legge > Circolare > Interpello). ToT scoring must weight sourc...
 </summary>
 
+
 ### DEV-227: Create Source Hierarchy Mapping and Weighting
 
 **Reference:** [Technical Intent Part 11.1](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Source Hierarchy Weighting)
@@ -5578,6 +5648,7 @@ SOURCE_HIERARCHY = {
 When Circolare contradicts Legge (especially newer law), the conflict must be detected and flagged.
 </summary>
 
+
 ### DEV-228: Implement SourceConflictDetector Service
 
 **Reference:** [Technical Intent Part 11.1.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Conflict Detection)
@@ -5616,6 +5687,7 @@ Create SourceConflictDetector that identifies conflicts between sources and reco
 <strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
 Reasoning serves two purposes: debugging (internal) and user display (public). Need separate structu...
 </summary>
+
 
 ### DEV-229: Implement DualReasoning Data Structures
 
@@ -5656,6 +5728,7 @@ Create DualReasoning dataclasses for internal technical reasoning and public use
 Internal reasoning must be transformed to user-friendly Italian explanation without technical jargon...
 </summary>
 
+
 ### DEV-230: Implement ReasoningTransformer Service
 
 **Reference:** [Technical Intent Part 11.4.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Reasoning Transformation)
@@ -5692,6 +5765,7 @@ Create ReasoningTransformer that converts internal reasoning to public explanati
 <strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
 Even low-probability scenarios must be flagged if they carry high sanction risk (e.g., frode fiscale...
 </summary>
+
 
 ### DEV-231: Add Risk Analysis Phase to Tree of Thoughts
 
@@ -5737,6 +5811,7 @@ Add risk analysis phase to ToT that evaluates sanction risk for each hypothesis.
 <strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
 Need automated quality scoring for responses to enable A/B testing, model comparison, and continuou...
 </summary>
+
 
 ### DEV-232: Implement Response Quality Scoring Service
 
@@ -5945,6 +6020,7 @@ class ResponseQualityScorer:
 Current HyDE ignores conversation history, generating irrelevant hypothetical documents for follow-u...
 </summary>
 
+
 ### DEV-233: Create hyde_conversational.md Prompt Template
 
 **Reference:** [Technical Intent Part 3.2.5](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Conversational HyDE)
@@ -6085,6 +6161,7 @@ class HyDEGeneratorService:
 Vague queries like "E per l'IVA?" need multi-variant HyDE, not specific hallucinated documents.
 </summary>
 
+
 ### DEV-234: Implement QueryAmbiguityDetector Service
 
 **Reference:** [Technical Intent Part 11.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Query Vaghe)
@@ -6128,6 +6205,7 @@ Create QueryAmbiguityDetector that identifies ambiguous queries and triggers mul
 HyDE generator needs to use QueryAmbiguityDetector and generate multi-variant when ambiguous.
 </summary>
 
+
 ### DEV-235: Update HyDE Generator for Conversation Awareness
 
 **Reference:** [Technical Intent Part 11.3.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Updated HyDE Generator)
@@ -6164,6 +6242,7 @@ Update HyDEGeneratorService to check ambiguity and generate multi-variant HyDE w
 <strong>Priority:</strong> LOW | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
 Actions reference entire documents instead of specific paragraphs, making citations imprecise.
 </summary>
+
 
 ### DEV-236: Update Source Schema for Paragraph-Level Grounding
 
@@ -6202,6 +6281,7 @@ Add paragraph-level tracking to source schema with paragraph_id and excerpt fiel
 Retrieved documents need paragraph-level extraction for precise grounding.
 </summary>
 
+
 ### DEV-237: Implement Paragraph Extraction in Retrieval
 
 **Reference:** [Technical Intent Part 11.6.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Paragraph Extraction)
@@ -6238,6 +6318,7 @@ Add paragraph extraction to retrieval pipeline that identifies relevant paragrap
 <strong>Priority:</strong> LOW | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
 Need visibility into reasoning traces for debugging and quality analysis. Logs must comply with the ...
 </summary>
+
 
 ### DEV-238: Add Detailed Logging for Reasoning Traces
 
@@ -6350,6 +6431,7 @@ def _truncate_for_log(trace: dict | None, max_length: int = 1000) -> str:
 Need real-time visibility into LLM costs per query, model, and complexity level.
 </summary>
 
+
 ### DEV-239: Create Cost Monitoring Dashboard
 
 **Reference:** [Technical Intent Part 7.3](pratikoai-llm-excellence-technical-intent.md#part-7-success-metrics) (Cost Metrics)
@@ -6386,6 +6468,7 @@ Create cost monitoring endpoint and dashboard integration.
 <strong>Priority:</strong> LOW | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
 Need metrics to track action quality: validation pass rate, regeneration rate, click-through rate.
 </summary>
+
 
 ### DEV-240: Add Action Quality Metrics
 
@@ -6424,6 +6507,7 @@ Add action quality metrics collection and reporting.
 Need ability to A/B test different prompt versions for quality comparison.
 </summary>
 
+
 ### DEV-241: Create Prompt A/B Testing Framework
 
 **Reference:** [Technical Intent Part 6](pratikoai-llm-excellence-technical-intent.md#part-6-implementation-phases) Phase 4 (A/B Testing)
@@ -6460,6 +6544,7 @@ Create A/B testing framework in PromptLoader with experiment configuration.
 <strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 6h | <strong>Status:</strong> NOT STARTED<br>
 Reasoning traces and Tree of Thoughts logic are generated by the backend (DEV-214, DEV-223) but hidd...
 </summary>
+
 
 ### DEV-242: Create Reasoning Trace UI Component
 

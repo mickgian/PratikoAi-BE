@@ -37,6 +37,7 @@ from app.services.llm_orchestrator import (
     get_llm_orchestrator,
 )
 from app.services.prompt_loader import PromptLoader, get_prompt_loader
+from app.services.source_hierarchy import SourceHierarchy, get_source_hierarchy
 
 logger = structlog.get_logger(__name__)
 
@@ -62,7 +63,9 @@ class SourceHierarchyProtocol(Protocol):
 class DefaultSourceHierarchy:
     """Default source hierarchy with Italian legal source weights.
 
-    This is a minimal implementation until DEV-227 creates the full SourceHierarchy.
+    DEPRECATED: Use app.services.source_hierarchy.SourceHierarchy instead.
+    This class is kept for backward compatibility only.
+    DEV-227 created the full SourceHierarchy service.
     """
 
     # Italian legal source hierarchy weights
@@ -234,9 +237,7 @@ class TreeOfThoughtsReasoner:
 
             # Score each hypothesis using source hierarchy
             for hypothesis in hypotheses:
-                hypothesis.source_weight_score = self._score_hypothesis(
-                    hypothesis, kb_sources
-                )
+                hypothesis.source_weight_score = self._score_hypothesis(hypothesis, kb_sources)
 
             # Select best hypothesis
             selected = self._select_best(hypotheses)
@@ -378,7 +379,7 @@ class TreeOfThoughtsReasoner:
         Returns:
             Float confidence between 0.0 and 1.0
         """
-        if isinstance(confidence_value, (int, float)):
+        if isinstance(confidence_value, int | float):
             return float(confidence_value)
 
         # Map Italian confidence labels
@@ -402,10 +403,7 @@ class TreeOfThoughtsReasoner:
             List of source dicts
         """
         if isinstance(sources, list):
-            return [
-                {"ref": s} if isinstance(s, str) else s
-                for s in sources
-            ]
+            return [{"ref": s} if isinstance(s, str) else s for s in sources]
         return [{"ref": str(sources)}]
 
     def _parse_risk_level(self, risks: str) -> str | None:
@@ -680,7 +678,7 @@ def get_tree_of_thoughts_reasoner() -> TreeOfThoughtsReasoner:
     if _reasoner_instance is None:
         _reasoner_instance = TreeOfThoughtsReasoner(
             llm_orchestrator=get_llm_orchestrator(),
-            source_hierarchy=DefaultSourceHierarchy(),
+            source_hierarchy=get_source_hierarchy(),  # DEV-227: Use full SourceHierarchy
             prompt_loader=get_prompt_loader(),
         )
     return _reasoner_instance

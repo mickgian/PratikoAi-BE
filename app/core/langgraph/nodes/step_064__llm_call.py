@@ -8,6 +8,9 @@ sources with hierarchy, and suggested actions.
 
 DEV-222: Integrates LLMOrchestrator for complexity-based model routing
 and cost tracking.
+
+DEV-226: Integrates TreeOfThoughtsReasoner for complex/multi_domain queries.
+Uses ToT for multi-hypothesis reasoning with source-weighted scoring.
 """
 
 import json
@@ -30,6 +33,7 @@ if TYPE_CHECKING:
     from app.services.llm_orchestrator import LLMOrchestrator
     from app.services.premium_model_selector import PremiumModelSelector
     from app.services.synthesis_prompt_builder import SynthesisPromptBuilder
+    from app.services.tree_of_thoughts_reasoner import ToTResult, TreeOfThoughtsReasoner
 
 STEP = 64
 
@@ -124,6 +128,92 @@ async def _classify_query_complexity(state: RAGState) -> tuple[str, dict]:
             request_id=state.get("request_id"),
         )
         return "simple", {"complexity": "simple", "fallback": True, "error": str(e)}
+
+
+# DEV-226: Cached TreeOfThoughtsReasoner instance
+_tot_reasoner_instance: "TreeOfThoughtsReasoner | None" = None
+
+
+def _get_tot_reasoner() -> "TreeOfThoughtsReasoner":
+    """Get or create TreeOfThoughtsReasoner instance.
+
+    DEV-226: Uses lazy initialization to avoid circular imports.
+
+    Returns:
+        TreeOfThoughtsReasoner singleton instance
+    """
+    global _tot_reasoner_instance
+    if _tot_reasoner_instance is None:
+        from app.services.tree_of_thoughts_reasoner import (
+            get_tree_of_thoughts_reasoner,
+        )
+
+        _tot_reasoner_instance = get_tree_of_thoughts_reasoner()
+    return _tot_reasoner_instance
+
+
+async def _use_tree_of_thoughts(
+    state: RAGState,
+    complexity: str,
+) -> "ToTResult":
+    """Execute Tree of Thoughts reasoning for complex queries.
+
+    DEV-226: Uses TreeOfThoughtsReasoner for multi-hypothesis reasoning
+    with source-weighted scoring for complex and multi_domain queries.
+
+    Args:
+        state: RAG state with query and KB sources
+        complexity: Query complexity ("complex" or "multi_domain")
+
+    Returns:
+        ToTResult with selected hypothesis and reasoning trace
+    """
+    from app.services.tree_of_thoughts_reasoner import ToTResult
+
+    # Get user query
+    user_message = state.get("user_message", "")
+    if not user_message:
+        messages = state.get("messages", [])
+        for msg in reversed(messages):
+            if isinstance(msg, dict) and msg.get("role") == "user":
+                user_message = msg.get("content", "")
+                break
+
+    # Get KB sources
+    kb_sources = state.get("kb_sources_metadata", [])
+
+    # Get domains for multi-domain queries
+    domains = state.get("detected_domains", [])
+
+    # Get reasoner and execute
+    reasoner = _get_tot_reasoner()
+
+    logger.info(
+        "step64_tot_reasoning_started",
+        complexity=complexity,
+        query_preview=user_message[:100] if user_message else "",
+        num_sources=len(kb_sources),
+        domains=domains,
+        request_id=state.get("request_id"),
+    )
+
+    result = await reasoner.reason(
+        query=user_message,
+        kb_sources=kb_sources,
+        complexity=complexity,
+        domains=domains if complexity == "multi_domain" else None,
+    )
+
+    logger.info(
+        "step64_tot_reasoning_completed",
+        selected_hypothesis_id=result.selected_hypothesis.id,
+        confidence=result.selected_hypothesis.confidence,
+        latency_ms=result.total_latency_ms,
+        request_id=state.get("request_id"),
+    )
+
+    return result
+
 
 # DEV-214: Italian legal source hierarchy (highest to lowest authority)
 SOURCE_HIERARCHY = {
@@ -332,6 +422,8 @@ def _process_unified_response(content: str, state: RAGState) -> str:
     DEV-214: Extracts and stores reasoning, sources, and actions from JSON response.
     Falls back to text extraction if JSON parsing fails.
 
+    DEV-226: Preserves ToT reasoning_type if already set (from TreeOfThoughtsReasoner).
+
     Args:
         content: LLM response content
         state: RAG state to update with parsed fields
@@ -343,9 +435,11 @@ def _process_unified_response(content: str, state: RAGState) -> str:
     parsed = _parse_unified_response(content)
 
     if parsed:
-        # Store reasoning trace
-        state["reasoning_type"] = "cot"
-        state["reasoning_trace"] = parsed.get("reasoning")
+        # DEV-226: Preserve ToT reasoning if already set, otherwise use CoT
+        if state.get("reasoning_type") != "tot":
+            state["reasoning_type"] = "cot"
+            state["reasoning_trace"] = parsed.get("reasoning")
+        # If ToT, reasoning_trace is already set by _use_tree_of_thoughts
 
         # Store suggested actions for Step 100 validation
         state["suggested_actions"] = parsed.get("suggested_actions", [])
@@ -370,8 +464,10 @@ def _process_unified_response(content: str, state: RAGState) -> str:
     else:
         # Fallback: mark for action regeneration
         state["actions_source"] = "fallback_needed"
-        state["reasoning_type"] = None
-        state["reasoning_trace"] = None
+        # DEV-226: Preserve ToT reasoning_type if already set
+        if state.get("reasoning_type") != "tot":
+            state["reasoning_type"] = None
+            state["reasoning_trace"] = None
         state["sources_cited"] = []
         state["suggested_actions"] = []
 
@@ -390,6 +486,7 @@ async def node_step_64(state: RAGState) -> RAGState:
 
     DEV-214: Enhanced with unified JSON output parsing.
     DEV-222: Integrates LLMOrchestrator for complexity classification and cost tracking.
+    DEV-226: Integrates TreeOfThoughtsReasoner for complex/multi_domain queries.
     """
     rag_step_log(STEP, "enter", provider=state.get("provider", {}).get("selected"))
     with rag_step_timer(STEP):
@@ -406,10 +503,51 @@ async def node_step_64(state: RAGState) -> RAGState:
             request_id=state.get("request_id"),
         )
 
+        # DEV-226: Use Tree of Thoughts for complex/multi_domain queries
+        tot_used = False
+        if complexity in ("complex", "multi_domain"):
+            try:
+                tot_result = await _use_tree_of_thoughts(state, complexity)
+
+                # Store ToT results in state
+                state["reasoning_type"] = "tot"
+                state["reasoning_trace"] = tot_result.reasoning_trace
+                state["tot_analysis"] = {
+                    "selected_hypothesis_id": tot_result.selected_hypothesis.id,
+                    "selected_confidence": tot_result.selected_hypothesis.confidence,
+                    "source_weight_score": tot_result.selected_hypothesis.source_weight_score,
+                    "total_hypotheses": len(tot_result.all_hypotheses),
+                    "complexity_used": tot_result.complexity_used,
+                    "latency_ms": tot_result.total_latency_ms,
+                }
+                tot_used = True
+
+                logger.info(
+                    "step64_tot_results_stored",
+                    hypothesis_id=tot_result.selected_hypothesis.id,
+                    confidence=tot_result.selected_hypothesis.confidence,
+                    request_id=state.get("request_id"),
+                )
+
+            except Exception as e:
+                # DEV-226: Fall back to CoT on ToT failure
+                logger.warning(
+                    "step64_tot_failed_fallback_to_cot",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    complexity=complexity,
+                    request_id=state.get("request_id"),
+                )
+                # Mark as CoT fallback
+                state["reasoning_type"] = "cot"
+                state["tot_fallback"] = True
+                state["tot_error"] = str(e)
+
         # Call orchestrator with business inputs only
         # DEV-222: Include complexity in context for model routing
         ctx = dict(state)
         ctx["query_complexity"] = complexity
+        ctx["tot_used"] = tot_used
         res = await step_64__llmcall(messages=state.get("messages"), ctx=ctx)
 
         # Map orchestrator outputs to canonical state keys (additive)

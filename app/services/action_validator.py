@@ -21,44 +21,67 @@ MAX_LABEL_LENGTH = 40
 MIN_PROMPT_LENGTH = 25
 
 # Generic labels that are too vague (Italian)
-GENERIC_LABELS: frozenset[str] = frozenset({
-    "approfondisci",
-    "calcola",
-    "verifica",
-    "scopri",
-    "leggi",
-    "vedi",
-    "altro",
-    "continua",
-    "info",
-    "dettagli",
-    "più info",
-    "saperne di più",
-})
+GENERIC_LABELS: frozenset[str] = frozenset(
+    {
+        "approfondisci",
+        "calcola",
+        "verifica",
+        "scopri",
+        "leggi",
+        "vedi",
+        "altro",
+        "continua",
+        "info",
+        "dettagli",
+        "più info",
+        "saperne di più",
+    }
+)
 
-# Valid icon values
-VALID_ICONS: frozenset[str] = frozenset({
-    "calculator",
-    "calendar",
-    "document",
-    "euro",
-    "info",
-    "warning",
-    "check",
-    "clock",
-    "user",
-    "building",
-    "briefcase",
-    "chart",
-    "file",
-    "folder",
-    "search",
-    "settings",
-    "star",
-    "tag",
-    "truck",
-    "wallet",
-})
+# Valid icon values (text and emoji)
+VALID_ICONS: frozenset[str] = frozenset(
+    {
+        # Text icons
+        "calculator",
+        "calendar",
+        "document",
+        "euro",
+        "info",
+        "warning",
+        "check",
+        "clock",
+        "user",
+        "building",
+        "briefcase",
+        "chart",
+        "file",
+        "folder",
+        "search",
+        "settings",
+        "star",
+        "tag",
+        "truck",
+        "wallet",
+        # Emoji icons (for backward compatibility)
+        "✅",
+        "📅",
+        "⚠️",
+        "💰",
+        "💡",
+        "📞",
+        "🔍",
+        "📖",
+        "🔄",
+        "🤖",
+        "📋",
+        "📊",
+        "🏠",
+        "🌐",
+        "⚖️",
+        "🆘",
+        "👤",
+    }
+)
 
 DEFAULT_ICON = "calculator"
 
@@ -387,9 +410,7 @@ class ActionValidator:
             modified_action=None,
         )
 
-    def _check_source_grounding(
-        self, action: dict, kb_sources: list[dict]
-    ) -> ValidationResult:
+    def _check_source_grounding(self, action: dict, kb_sources: list[dict]) -> ValidationResult:
         """Check if action references a KB source.
 
         Args:
@@ -442,7 +463,13 @@ class ActionValidator:
         Returns:
             Valid icon value (original if valid, default otherwise)
         """
-        if icon and icon.lower() in VALID_ICONS:
+        if not icon:
+            return DEFAULT_ICON
+        # Check exact match first (for emojis)
+        if icon in VALID_ICONS:
+            return icon
+        # Try lowercase match (for text icons)
+        if icon.lower() in VALID_ICONS:
             return icon.lower()
         return DEFAULT_ICON
 

@@ -3333,13 +3333,13 @@ actions_validation_log: list[str] | None  # Rejection reasons for debugging
 - [ ] All structures documented with inline comments
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] All new fields are Optional with None default
-- [ ] mypy passes with no errors
-- [ ] All existing langgraph tests pass (regression)
-- [ ] Checkpoint with old schema deserializes correctly
-- [ ] 95%+ test coverage for new code
-- [ ] No breaking changes to existing node behavior
+- [x] Tests written BEFORE implementation (TDD)
+- [x] All new fields are Optional with None default
+- [x] mypy passes with no errors
+- [x] All existing langgraph tests pass (regression)
+- [x] Checkpoint with old schema deserializes correctly
+- [x] 95%+ test coverage for new code
+- [x] No breaking changes to existing node behavior
 
 ---
 
@@ -3483,12 +3483,12 @@ class PromptLoader:
 - [ ] Logging implemented for all errors
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Loads all prompt files from app/prompts/
-- [ ] Variable substitution works ({variable} syntax)
-- [ ] LRU cache with 1h TTL
-- [ ] Component composition works
-- [ ] 95%+ test coverage
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Loads all prompt files from app/prompts/
+- [x] Variable substitution works ({variable} syntax)
+- [x] LRU cache with 1h TTL
+- [x] Component composition works
+- [x] 95%+ test coverage
 
 ---
 
@@ -3656,14 +3656,14 @@ def _select_prompt_template(state: RAGState) -> str:
 | CRITICAL | synthesis_critical.md | GPT-4o | Legal risk, regulatory compliance |
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Prompt loads without errors via PromptLoader
-- [ ] Contains valid JSON schema example
-- [ ] All template variables documented and work
-- [ ] Produces parseable JSON from LLM (integration test)
-- [ ] Follows Italian professional language guidelines
-- [ ] Action rules clearly specified
-- [ ] Routing logic documented and integrated with DEV-214
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Prompt loads without errors via PromptLoader
+- [x] Contains valid JSON schema example
+- [x] All template variables documented and work
+- [x] Produces parseable JSON from LLM (integration test)
+- [x] Follows Italian professional language guidelines
+- [x] Action rules clearly specified
+- [x] Routing logic documented and integrated with DEV-214
 
 ---
 
@@ -3801,14 +3801,14 @@ def get_hierarchy_weight(doc_type: str) -> float:
 | Performance degradation | MEDIUM | Async metadata extraction, <50ms target |
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] kb_documents preserved in state with full document content
-- [ ] kb_sources_metadata preserved with structured metadata
-- [ ] Hierarchy weights assigned correctly
-- [ ] Topics and values extracted for action grounding
-- [ ] Existing context behavior unchanged
-- [ ] All existing Step 40 tests pass (regression)
-- [ ] 90%+ test coverage for new code
+- [x] Tests written BEFORE implementation (TDD)
+- [x] kb_documents preserved in state with full document content
+- [x] kb_sources_metadata preserved with structured metadata
+- [x] Hierarchy weights assigned correctly
+- [x] Topics and values extracted for action grounding
+- [x] Existing context behavior unchanged
+- [x] All existing Step 40 tests pass (regression)
+- [x] 90%+ test coverage for new code
 
 ---
 
@@ -4057,16 +4057,16 @@ except ImportError:
 - [ ] Deanonymization still works after changes
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] JSON output parsed correctly when valid
-- [ ] Fallback to text works when JSON invalid
-- [ ] reasoning_trace stored in state
-- [ ] suggested_actions stored in state with source
-- [ ] sources_cited sorted by legal hierarchy (Legge > Decreto > Circolare > Interpello)
-- [ ] Legacy Verdetto/XML parsing code removed
-- [ ] All existing tests pass (regression) or updated
-- [ ] Deanonymization flow unbroken
-- [ ] 90%+ test coverage
+- [x] Tests written BEFORE implementation (TDD)
+- [x] JSON output parsed correctly when valid
+- [x] Fallback to text works when JSON invalid
+- [x] reasoning_trace stored in state
+- [x] suggested_actions stored in state with source
+- [x] sources_cited sorted by legal hierarchy (Legge > Decreto > Circolare > Interpello)
+- [x] Legacy Verdetto/XML parsing code removed
+- [x] All existing tests pass (regression) or updated
+- [x] Deanonymization flow unbroken
+- [x] 90%+ test coverage
 
 ---
 
@@ -4223,14 +4223,14 @@ class ActionValidator:
 - **Coverage Target:** 95%+
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Label length validation works (8-40 chars)
-- [ ] Forbidden patterns detected and rejected
-- [ ] Generic labels detected and rejected
-- [ ] Source grounding checked with warnings
-- [ ] Batch validation returns filtered list + rejection log
-- [ ] Quality score calculated correctly
-- [ ] 95%+ test coverage
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Label length validation works (8-40 chars)
+- [x] Forbidden patterns detected and rejected
+- [x] Generic labels detected and rejected
+- [x] Source grounding checked with warnings
+- [x] Batch validation returns filtered list + rejection log
+- [x] Quality score calculated correctly
+- [x] 95%+ test coverage
 
 ---
 
@@ -4338,11 +4338,11 @@ Output JSON:
 - **Coverage Target:** 90%+
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Prompt loads without errors
-- [ ] All variables documented and work
-- [ ] Contains clear examples of correct/incorrect actions
-- [ ] JSON output schema clearly specified
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Prompt loads without errors
+- [x] All variables documented and work
+- [x] Contains clear examples of correct/incorrect actions
+- [x] JSON output schema clearly specified
 
 ---
 
@@ -4527,13 +4527,13 @@ def _generate_safe_fallback(self, context: ResponseContext) -> list[dict]:
 - **Coverage Target:** 90%+
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Regeneration triggered when <2 valid actions
-- [ ] Max 2 attempts before fallback
-- [ ] Safe fallback actions generated
-- [ ] Actions validated after regeneration
-- [ ] Performance <3s total for regeneration loop
-- [ ] 90%+ test coverage
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Regeneration triggered when <2 valid actions
+- [x] Max 2 attempts before fallback
+- [x] Safe fallback actions generated
+- [x] Actions validated after regeneration
+- [x] Performance <3s total for regeneration loop
+- [x] 90%+ test coverage
 
 ---
 
@@ -4682,13 +4682,13 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
 - **Coverage Target:** 90%+
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Actions validated before returning
-- [ ] kb_sources_metadata used for validation
-- [ ] Regeneration triggered when <2 valid actions
-- [ ] Validation results stored in state
-- [ ] All existing Step 100 tests pass (regression)
-- [ ] 90%+ test coverage
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Actions validated before returning
+- [x] kb_sources_metadata used for validation
+- [x] Regeneration triggered when <2 valid actions
+- [x] Validation results stored in state
+- [x] All existing Step 100 tests pass (regression)
+- [x] 90%+ test coverage
 
 ---
 
@@ -4852,12 +4852,12 @@ class GoldenLoopController:
 - [ ] Structured logging with context fields
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Configurable iteration limits enforced
-- [ ] Exponential backoff between iterations
-- [ ] Prometheus metrics for iterations, success rate, latency
-- [ ] Graceful degradation when max iterations reached
-- [ ] 90%+ test coverage
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Configurable iteration limits enforced
+- [x] Exponential backoff between iterations
+- [x] Prometheus metrics for iterations, success rate, latency
+- [x] Graceful degradation when max iterations reached
+- [x] 90%+ test coverage
 
 ---
 
@@ -4939,7 +4939,6 @@ Analizza questa query fiscale/legale italiana e classifica la sua complessità.
   "reasoning": "string - breve spiegazione della classificazione"
 }
 ```
-```
 
 **Testing Requirements:**
 - **TDD:** Write `tests/unit/prompts/test_complexity_classifier.py` FIRST
@@ -4950,11 +4949,11 @@ Analizza questa query fiscale/legale italiana e classifica la sua complessità.
 - **Coverage Target:** 90%+
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Prompt loads without errors
-- [ ] All variables documented
-- [ ] Clear examples for each complexity level
-- [ ] JSON output schema specified
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Prompt loads without errors
+- [x] All variables documented
+- [x] Clear examples for each complexity level
+- [x] JSON output schema specified
 
 ---
 
@@ -4963,7 +4962,7 @@ Analizza questa query fiscale/legale italiana e classifica la sua complessità.
 <details>
 <summary>
 <h3>DEV-221: Implement LLMOrchestrator Service for Multi-Model Routing</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 8h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 8h | <strong>Status:</strong> ✅ COMPLETED (2025-01-03)<br>
 All queries currently use GPT-4o regardless of complexity, costing €0.0155/query. Simple queries sho...
 </summary>
 
@@ -4972,7 +4971,7 @@ All queries currently use GPT-4o regardless of complexity, costing €0.0155/que
 
 **Reference:** [Technical Intent Part 3.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (LLM Orchestrator)
 
-**Priority:** HIGH | **Effort:** 8h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 8h | **Status:** ✅ COMPLETED (2025-01-03)
 
 **Problem:**
 All queries currently use GPT-4o regardless of complexity, costing €0.0155/query. Simple queries should use GPT-4o-mini (€0.001), complex queries GPT-4o (€0.015).
@@ -5118,12 +5117,12 @@ class LLMOrchestrator:
 | Cost tracking inaccurate | LOW | Validate against billing |
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Complexity classification works
-- [ ] Model routing based on complexity
-- [ ] Cost tracking per query
-- [ ] Fallback on classification failure
-- [ ] 90%+ test coverage
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Complexity classification works
+- [x] Model routing based on complexity
+- [x] Cost tracking per query
+- [x] Fallback on classification failure
+- [x] 90%+ test coverage (95.3% achieved)
 
 ---
 

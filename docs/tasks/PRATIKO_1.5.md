@@ -3761,7 +3761,7 @@ def get_hierarchy_weight(doc_type: str) -> float:
 <details>
 <summary>
 <h3>DEV-214: Update Step 64 for Unified JSON Output with Reasoning</h3>
-<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 6h | <strong>Status:</strong> COMPLETED<br>
+<strong>Priority:</strong> CRITICAL | <strong>Effort:</strong> 6h | <strong>Status:</strong> ✅ COMPLETED (2025-01-03)<br>
 Step 64 currently uses Verdetto parsing for TECHNICAL_RESEARCH and separate action generation. Need ...
 </summary>
 
@@ -3769,7 +3769,7 @@ Step 64 currently uses Verdetto parsing for TECHNICAL_RESEARCH and separate acti
 
 **Reference:** [Technical Intent Part 3.5.3](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Step 64: LLM Call Unified)
 
-**Priority:** CRITICAL | **Effort:** 6h | **Status:** COMPLETED
+**Priority:** CRITICAL | **Effort:** 6h | **Status:** ✅ COMPLETED (2025-01-03)
 
 **Problem:**
 Step 64 currently uses Verdetto parsing for TECHNICAL_RESEARCH and separate action generation. Need unified JSON output that includes reasoning traces, answer, sources, and actions in a single structured response.
@@ -4018,7 +4018,7 @@ except ImportError:
 <details>
 <summary>
 <h3>DEV-215: Create ActionValidator Service</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> COMPLETED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 3h | <strong>Status:</strong> ✅ COMPLETED (2025-01-03)<br>
 LLM-generated actions often contain generic labels, forbidden patterns, or lack source grounding. Ne...
 </summary>
 
@@ -4026,7 +4026,7 @@ LLM-generated actions often contain generic labels, forbidden patterns, or lack 
 
 **Reference:** [Technical Intent Part 3.4](pratikoai-llm-excellence-technical-intent.md#part-3-component-specifications) (Action Validator)
 
-**Priority:** HIGH | **Effort:** 3h | **Status:** COMPLETED
+**Priority:** HIGH | **Effort:** 3h | **Status:** ✅ COMPLETED (2025-01-03)
 
 **Problem:**
 LLM-generated actions often contain generic labels, forbidden patterns, or lack source grounding. Need validation layer to filter invalid actions before returning to user.
@@ -4181,7 +4181,7 @@ class ActionValidator:
 <details>
 <summary>
 <h3>DEV-216: Create action_regeneration.md Prompt Template</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 2h | <strong>Status:</strong> ✅ COMPLETED (2025-01-03)<br>
 When ActionValidator rejects all actions, need a specialized prompt to regenerate actions with expli...
 </summary>
 
@@ -4189,7 +4189,7 @@ When ActionValidator rejects all actions, need a specialized prompt to regenerat
 
 **Reference:** [Technical Intent Part 11.5.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Regeneration Prompt)
 
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 2h | **Status:** ✅ COMPLETED (2025-01-03)
 
 **Problem:**
 When ActionValidator rejects all actions, need a specialized prompt to regenerate actions with explicit correction instructions based on rejection reasons.

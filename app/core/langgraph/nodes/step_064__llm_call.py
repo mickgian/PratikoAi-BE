@@ -5,6 +5,9 @@ VerdettoOperativoParser for TECHNICAL_RESEARCH route queries.
 
 DEV-214: Enhanced with unified JSON output parsing for reasoning traces,
 sources with hierarchy, and suggested actions.
+
+DEV-222: Integrates LLMOrchestrator for complexity-based model routing
+and cost tracking.
 """
 
 import json
@@ -24,6 +27,7 @@ from app.orchestrators.providers import step_64__llmcall
 
 # DEV-196: Lazy imports to avoid database connection during module load
 if TYPE_CHECKING:
+    from app.services.llm_orchestrator import LLMOrchestrator
     from app.services.premium_model_selector import PremiumModelSelector
     from app.services.synthesis_prompt_builder import SynthesisPromptBuilder
 
@@ -31,6 +35,95 @@ STEP = 64
 
 # Routes that should use premium model and verdetto parsing
 SYNTHESIS_ROUTES = {"technical_research"}
+
+# DEV-222: Cached orchestrator instance
+_orchestrator_instance: "LLMOrchestrator | None" = None
+
+
+def get_llm_orchestrator() -> "LLMOrchestrator":
+    """Get or create LLMOrchestrator instance.
+
+    DEV-222: Uses lazy initialization to avoid circular imports
+    and database connection during module load.
+
+    Returns:
+        LLMOrchestrator singleton instance
+    """
+    global _orchestrator_instance
+    if _orchestrator_instance is None:
+        from app.services.llm_orchestrator import get_llm_orchestrator as _get_orchestrator
+
+        _orchestrator_instance = _get_orchestrator()
+    return _orchestrator_instance
+
+
+async def _classify_query_complexity(state: RAGState) -> tuple[str, dict]:
+    """Classify query complexity before LLM call.
+
+    DEV-222: Uses LLMOrchestrator to determine if query is SIMPLE, COMPLEX,
+    or MULTI_DOMAIN. Returns complexity and context for logging.
+
+    Args:
+        state: RAG state with user query and context
+
+    Returns:
+        Tuple of (complexity string, context dict for logging)
+    """
+    from app.services.llm_orchestrator import ComplexityContext, QueryComplexity
+
+    try:
+        orchestrator = get_llm_orchestrator()
+
+        # Extract user query from messages
+        messages = state.get("messages", [])
+        user_message = state.get("user_message", "")
+
+        # Get the last user message if not explicitly set
+        if not user_message and messages:
+            for msg in reversed(messages):
+                if isinstance(msg, dict) and msg.get("role") == "user":
+                    user_message = msg.get("content", "")
+                    break
+
+        # Build complexity context
+        detected_domains = state.get("detected_domains", [])
+        has_history = len(messages) > 1
+        has_documents = bool(state.get("kb_sources_metadata"))
+
+        context = ComplexityContext(
+            domains=detected_domains,
+            has_history=has_history,
+            has_documents=has_documents,
+        )
+
+        # Classify complexity
+        complexity = await orchestrator.classify_complexity(user_message, context)
+
+        complexity_context = {
+            "complexity": complexity.value,
+            "domains": detected_domains,
+            "has_history": has_history,
+            "has_documents": has_documents,
+        }
+
+        logger.info(
+            "step64_complexity_classified",
+            complexity=complexity.value,
+            query_preview=user_message[:100] if user_message else "",
+            domains=detected_domains,
+            request_id=state.get("request_id"),
+        )
+
+        return complexity.value, complexity_context
+
+    except Exception as e:
+        # Fallback to SIMPLE on classification error
+        logger.warning(
+            "step64_complexity_classification_failed",
+            error=str(e),
+            request_id=state.get("request_id"),
+        )
+        return "simple", {"complexity": "simple", "fallback": True, "error": str(e)}
 
 # DEV-214: Italian legal source hierarchy (highest to lowest authority)
 SOURCE_HIERARCHY = {
@@ -296,11 +389,28 @@ async def node_step_64(state: RAGState) -> RAGState:
     """Node wrapper for Step 64: LLM Call.
 
     DEV-214: Enhanced with unified JSON output parsing.
+    DEV-222: Integrates LLMOrchestrator for complexity classification and cost tracking.
     """
     rag_step_log(STEP, "enter", provider=state.get("provider", {}).get("selected"))
     with rag_step_timer(STEP):
+        # DEV-222: Classify query complexity before LLM call
+        complexity, complexity_context = await _classify_query_complexity(state)
+
+        # Store complexity in state for analytics and model selection
+        state["query_complexity"] = complexity
+        state["complexity_context"] = complexity_context
+
+        logger.info(
+            "step64_pre_llm_complexity",
+            complexity=complexity,
+            request_id=state.get("request_id"),
+        )
+
         # Call orchestrator with business inputs only
-        res = await step_64__llmcall(messages=state.get("messages"), ctx=dict(state))
+        # DEV-222: Include complexity in context for model routing
+        ctx = dict(state)
+        ctx["query_complexity"] = complexity
+        res = await step_64__llmcall(messages=state.get("messages"), ctx=ctx)
 
         # Map orchestrator outputs to canonical state keys (additive)
         llm = ns(state, "llm")
@@ -434,11 +544,38 @@ async def node_step_64(state: RAGState) -> RAGState:
         _merge(llm, res.get("llm_extra", {}))
         _merge(decisions, res.get("decisions", {}))
 
+        # DEV-222: Track LLM costs in state
+        tokens_used = res.get("tokens_used")
+        cost_estimate = res.get("cost_estimate")
+
+        if tokens_used is not None:
+            llm["tokens_used"] = tokens_used
+        if cost_estimate is not None:
+            llm["cost_estimate"] = cost_estimate
+
+        # Store model used for cost analytics
+        model_used = res.get("model")
+        if model_used:
+            llm["model_used"] = model_used
+            state["model_used"] = model_used
+
+        # Log cost tracking info
+        logger.info(
+            "step64_cost_tracking",
+            complexity=complexity,
+            model_used=model_used,
+            tokens_used=tokens_used,
+            cost_estimate=cost_estimate,
+            request_id=state.get("request_id"),
+        )
+
     rag_step_log(
         STEP,
         "exit",
         llm_success=llm.get("success"),
         actions_source=state.get("actions_source"),
         reasoning_type=state.get("reasoning_type"),
+        query_complexity=state.get("query_complexity"),
+        model_used=state.get("model_used"),
     )
     return state

@@ -5573,7 +5573,7 @@ async def generate_response(state: GraphState) -> GraphState:
 <details>
 <summary>
 <h3>DEV-227: Create Source Hierarchy Mapping and Weighting</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 4h | <strong>Status:</strong> ✅ COMPLETED (2025-01-03)<br>
 Italian legal sources have hierarchy (Legge > Circolare > Interpello). ToT scoring must weight sourc...
 </summary>
 
@@ -5582,7 +5582,7 @@ Italian legal sources have hierarchy (Legge > Circolare > Interpello). ToT scori
 
 **Reference:** [Technical Intent Part 11.1](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Source Hierarchy Weighting)
 
-**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
+**Priority:** HIGH | **Effort:** 4h | **Status:** ✅ COMPLETED (2025-01-03)
 
 **Problem:**
 Italian legal sources have hierarchy (Legge > Circolare > Interpello). ToT scoring must weight sources by authority level.
@@ -5631,10 +5631,10 @@ SOURCE_HIERARCHY = {
 ```
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] All Italian source types mapped
-- [ ] Weights correctly assigned
-- [ ] Unknown types default to 0.5
+- [x] Tests written BEFORE implementation (TDD)
+- [x] All Italian source types mapped
+- [x] Weights correctly assigned
+- [x] Unknown types default to 0.5
 
 ---
 

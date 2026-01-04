@@ -6156,8 +6156,8 @@ class HyDEGeneratorService:
 <details>
 <summary>
 <h3>DEV-234: Implement QueryAmbiguityDetector Service</h3>
-<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
-Vague queries like "E per l'IVA?" need multi-variant HyDE, not specific hallucinated documents.
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> ✅ COMPLETED (2025-01-04)<br>
+QueryAmbiguityDetector service that identifies vague queries using 4 indicators: short_query, pronoun_ambiguity, followup_pattern, missing_fiscal_terms. Recommends strategy: standard, conversational, or multi_variant. TDD with 40 tests, 95.5% coverage.
 </summary>
 
 
@@ -6165,7 +6165,7 @@ Vague queries like "E per l'IVA?" need multi-variant HyDE, not specific hallucin
 
 **Reference:** [Technical Intent Part 11.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Query Vaghe)
 
-**Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
+**Priority:** MEDIUM | **Effort:** 4h | **Status:** ✅ COMPLETED (2025-01-04)
 
 **Problem:**
 Vague queries like "E per l'IVA?" need multi-variant HyDE, not specific hallucinated documents.
@@ -6188,10 +6188,10 @@ Create QueryAmbiguityDetector that identifies ambiguous queries and triggers mul
 - Missing key fiscal terms
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Short queries flagged
-- [ ] Pronoun ambiguity detected
-- [ ] Multi-variant strategy triggered
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Short queries flagged
+- [x] Pronoun ambiguity detected
+- [x] Multi-variant strategy triggered
 
 ---
 

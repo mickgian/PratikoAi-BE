@@ -6200,8 +6200,8 @@ Create QueryAmbiguityDetector that identifies ambiguous queries and triggers mul
 <details>
 <summary>
 <h3>DEV-235: Update HyDE Generator for Conversation Awareness</h3>
-<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 2h | <strong>Status:</strong> NOT STARTED<br>
-HyDE generator needs to use QueryAmbiguityDetector and generate multi-variant when ambiguous.
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 2h | <strong>Status:</strong> ✅ COMPLETED (2025-01-04)<br>
+HyDE generator updated with QueryAmbiguityDetector integration, multi-variant generation for ambiguous queries, and conversational prompt support. TDD with 23 tests.
 </summary>
 
 
@@ -6209,7 +6209,7 @@ HyDE generator needs to use QueryAmbiguityDetector and generate multi-variant wh
 
 **Reference:** [Technical Intent Part 11.3.3](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Updated HyDE Generator)
 
-**Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
+**Priority:** MEDIUM | **Effort:** 2h | **Status:** ✅ COMPLETED (2025-01-04)
 
 **Problem:**
 HyDE generator needs to use QueryAmbiguityDetector and generate multi-variant when ambiguous.
@@ -6226,10 +6226,10 @@ Update HyDEGeneratorService to check ambiguity and generate multi-variant HyDE w
 **Change Classification:** MODIFYING
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Ambiguity checked before generation
-- [ ] Multi-variant generated for ambiguous
-- [ ] Variants cover multiple scenarios
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Ambiguity checked before generation
+- [x] Multi-variant generated for ambiguous
+- [x] Variants cover multiple scenarios
 
 ---
 

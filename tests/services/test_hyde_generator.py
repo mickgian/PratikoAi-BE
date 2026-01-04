@@ -11,6 +11,18 @@ import pytest
 from app.schemas.router import RoutingCategory
 
 
+def _mock_standard_ambiguity():
+    """Create a mock that returns 'standard' strategy for ambiguity detection."""
+    mock_detector = MagicMock()
+    mock_detector.detect.return_value = MagicMock(
+        is_ambiguous=False,
+        score=0.0,
+        recommended_strategy="standard",
+        indicators=[],
+    )
+    return mock_detector
+
+
 class TestHyDEResultSchema:
     """Tests for HyDEResult dataclass."""
 
@@ -82,7 +94,13 @@ class TestHyDEGeneratorServiceGeneration:
             skip_reason=None,
         )
 
-        with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
+        with (
+            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch(
+                "app.services.hyde_generator.get_query_ambiguity_detector",
+                return_value=_mock_standard_ambiguity(),
+            ),
+        ):
             mock_llm.return_value = mock_response
 
             result = await service.generate(
@@ -92,10 +110,20 @@ class TestHyDEGeneratorServiceGeneration:
 
         # Check for bureaucratic style markers
         doc = result.hypothetical_document.lower()
-        assert any(marker in doc for marker in [
-            "ai sensi", "d.lgs", "decreto", "circolare", "agenzia",
-            "normativa", "comma", "articolo", "legge",
-        ])
+        assert any(
+            marker in doc
+            for marker in [
+                "ai sensi",
+                "d.lgs",
+                "decreto",
+                "circolare",
+                "agenzia",
+                "normativa",
+                "comma",
+                "articolo",
+                "legge",
+            ]
+        )
 
     @pytest.mark.asyncio
     async def test_document_length_150_250_words(self, mock_config):
@@ -113,7 +141,13 @@ class TestHyDEGeneratorServiceGeneration:
             skip_reason=None,
         )
 
-        with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
+        with (
+            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch(
+                "app.services.hyde_generator.get_query_ambiguity_detector",
+                return_value=_mock_standard_ambiguity(),
+            ),
+        ):
             mock_llm.return_value = mock_response
 
             result = await service.generate(
@@ -144,7 +178,13 @@ class TestHyDEGeneratorServiceGeneration:
             skip_reason=None,
         )
 
-        with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
+        with (
+            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch(
+                "app.services.hyde_generator.get_query_ambiguity_detector",
+                return_value=_mock_standard_ambiguity(),
+            ),
+        ):
             mock_llm.return_value = mock_response
 
             result = await service.generate(
@@ -154,9 +194,16 @@ class TestHyDEGeneratorServiceGeneration:
 
         doc = result.hypothetical_document
         # Should include legal references
-        assert any(ref in doc for ref in [
-            "Legge", "D.Lgs", "art.", "comma", "circolare",
-        ])
+        assert any(
+            ref in doc
+            for ref in [
+                "Legge",
+                "D.Lgs",
+                "art.",
+                "comma",
+                "circolare",
+            ]
+        )
 
 
 class TestHyDEGeneratorServiceSkipping:
@@ -260,7 +307,13 @@ class TestHyDEGeneratorServiceFallback:
 
         service = HyDEGeneratorService(config=mock_config)
 
-        with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
+        with (
+            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch(
+                "app.services.hyde_generator.get_query_ambiguity_detector",
+                return_value=_mock_standard_ambiguity(),
+            ),
+        ):
             mock_llm.side_effect = Exception("LLM API error")
 
             result = await service.generate(
@@ -280,8 +333,14 @@ class TestHyDEGeneratorServiceFallback:
 
         service = HyDEGeneratorService(config=mock_config)
 
-        with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
-            mock_llm.side_effect = asyncio.TimeoutError()
+        with (
+            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch(
+                "app.services.hyde_generator.get_query_ambiguity_detector",
+                return_value=_mock_standard_ambiguity(),
+            ),
+        ):
+            mock_llm.side_effect = TimeoutError()
 
             result = await service.generate(
                 query="Test query",
@@ -307,7 +366,13 @@ class TestHyDEGeneratorServiceFallback:
             skip_reason=None,
         )
 
-        with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
+        with (
+            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch(
+                "app.services.hyde_generator.get_query_ambiguity_detector",
+                return_value=_mock_standard_ambiguity(),
+            ),
+        ):
             mock_llm.return_value = mock_response
 
             result = await service.generate(
@@ -346,7 +411,13 @@ class TestHyDEGeneratorServicePerformance:
             skip_reason=None,
         )
 
-        with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
+        with (
+            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch(
+                "app.services.hyde_generator.get_query_ambiguity_detector",
+                return_value=_mock_standard_ambiguity(),
+            ),
+        ):
             mock_llm.return_value = mock_response
 
             start = time.perf_counter()

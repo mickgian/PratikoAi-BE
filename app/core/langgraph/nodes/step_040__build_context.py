@@ -130,8 +130,58 @@ def extract_values(doc: dict) -> list[str]:
     return list(dict.fromkeys(values))[:15]  # Cap at 15 values
 
 
+def generate_paragraph_id(doc_id: str, paragraph_index: int) -> str:
+    """Generate a unique paragraph ID for source tracking (DEV-236).
+
+    Args:
+        doc_id: Document ID
+        paragraph_index: Index of the paragraph within the document
+
+    Returns:
+        Unique paragraph ID in format "doc_id_p{index}"
+    """
+    if not doc_id:
+        return f"unknown_p{paragraph_index}"
+    return f"{doc_id}_p{paragraph_index}"
+
+
+def extract_paragraph_excerpt(content: str | None, max_length: int = 150) -> str:
+    """Extract the first meaningful paragraph as excerpt for tooltip display (DEV-236).
+
+    Args:
+        content: Document content text
+        max_length: Maximum excerpt length (default 150 for UI tooltip)
+
+    Returns:
+        First paragraph excerpt, truncated with ellipsis if needed
+    """
+    if not content:
+        return ""
+
+    # Strip and check for whitespace-only
+    content = content.strip()
+    if not content:
+        return ""
+
+    # Take the first part up to max_length
+    if len(content) <= max_length:
+        return content
+
+    # Truncate at max_length and add ellipsis
+    truncated = content[:max_length]
+
+    # Try to break at word boundary
+    last_space = truncated.rfind(" ")
+    if last_space > max_length * 0.7:  # Only if we can keep 70%+ of the content
+        truncated = truncated[:last_space]
+
+    return truncated + "..."
+
+
 def _build_kb_sources_metadata(kb_documents: list[dict]) -> list[dict]:
     """Build structured metadata for action grounding from KB documents.
+
+    DEV-236: Now includes paragraph_id and paragraph_excerpt for paragraph-level grounding.
 
     Args:
         kb_documents: List of KB document dictionaries
@@ -141,12 +191,15 @@ def _build_kb_sources_metadata(kb_documents: list[dict]) -> list[dict]:
     """
     metadata_list = []
 
-    for doc in kb_documents:
+    for idx, doc in enumerate(kb_documents):
         if not isinstance(doc, dict):
             continue
 
+        doc_id = doc.get("id", "")
+        content = doc.get("content", "")
+
         metadata = {
-            "id": doc.get("id"),
+            "id": doc_id,
             "title": doc.get("title", ""),
             "type": doc.get("type", ""),
             "date": doc.get("date") or "data non disponibile",
@@ -154,6 +207,9 @@ def _build_kb_sources_metadata(kb_documents: list[dict]) -> list[dict]:
             "key_topics": extract_topics(doc),
             "key_values": extract_values(doc),
             "hierarchy_weight": get_hierarchy_weight(doc.get("type", "")),
+            # DEV-236: Paragraph-level grounding fields
+            "paragraph_id": generate_paragraph_id(doc_id, 0),  # Primary paragraph
+            "paragraph_excerpt": extract_paragraph_excerpt(content),
         }
         metadata_list.append(metadata)
 

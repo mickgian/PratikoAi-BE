@@ -5761,7 +5761,7 @@ Create ReasoningTransformer that converts internal reasoning to public explanati
 <details>
 <summary>
 <h3>DEV-231: Add Risk Analysis Phase to Tree of Thoughts</h3>
-<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> MEDIUM | <strong>Effort:</strong> 4h | <strong>Status:</strong> ✅ COMPLETED (2025-01-04)<br>
 Even low-probability scenarios must be flagged if they carry high sanction risk (e.g., frode fiscale...
 </summary>
 
@@ -5770,7 +5770,7 @@ Even low-probability scenarios must be flagged if they carry high sanction risk 
 
 **Reference:** [Technical Intent Part 11.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Risk/Sanction Analysis)
 
-**Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
+**Priority:** MEDIUM | **Effort:** 4h | **Status:** ✅ COMPLETED (2025-01-04)
 
 **Problem:**
 Even low-probability scenarios must be flagged if they carry high sanction risk (e.g., frode fiscale).
@@ -5795,10 +5795,10 @@ Add risk analysis phase to ToT that evaluates sanction risk for each hypothesis.
 | LOW | 0-30% tax | Ritardi, errori formali minori |
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Risk level assigned to each hypothesis
-- [ ] High-risk flagged even with low probability
-- [ ] Risk actions generated for mitigation
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Risk level assigned to each hypothesis
+- [x] High-risk flagged even with low probability
+- [x] Risk actions generated for mitigation
 
 ---
 

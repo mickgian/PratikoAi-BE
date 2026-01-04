@@ -1934,6 +1934,33 @@ Adding a separate semantic cache layer would create architectural complexity wit
 
 ---
 
+### 5. Prompt A/B Testing Framework
+
+**Original Architectural Design:**
+A/B testing framework in PromptLoader with experiment configuration in YAML, traffic splitting by percentage, and metrics collection per variant to compare prompt effectiveness.
+
+**Why Not Implemented:**
+A/B testing is premature during pre-production development. The framework requires:
+- Real users generating diverse queries for statistical significance
+- Production traffic to split between variants
+- Baseline metrics to compare against
+- Actual customer usage patterns to optimize for
+
+During development, prompt quality can be evaluated directly using the test suite, golden set evaluation, and synthetic benchmarks (`tests/e2e/test_agentic_rag_quality.py`).
+
+**When to Revisit:**
+After production launch with paying customers, when:
+- Baseline response quality metrics are established
+- User satisfaction data is available (action click-through rates)
+- Query volume supports statistical significance
+- Specific prompts are identified as needing optimization
+
+**Estimated Effort:** 6h to implement when needed.
+
+**Decision Date:** 2026-01-04
+
+---
+
 ### Trade-offs Summary
 
 | Feature | Complexity Avoided | When to Revisit |
@@ -1942,8 +1969,9 @@ Adding a separate semantic cache layer would create architectural complexity wit
 | **Admin Dashboard** | 6 API endpoints, full frontend dashboard, email notifications | Quality issues emerge with SUPER_USER FAQs |
 | **Obsolescence Tracking** | Background jobs, staleness algorithm, 4 new DB fields | FAQ volume exceeds 500+ entries |
 | **Semantic Cache Layer** | Embedding storage, similarity search, cache key refactoring | LLM costs become prohibitive (>€5/user/month) |
+| **Prompt A/B Testing** | Experiment configuration, traffic splitting, variant metrics | Production launch with paying customers |
 
-**Total Development Time Saved:** 16-21 days (3-4 weeks)
+**Total Development Time Saved:** 17-22 days (3-4 weeks)
 
 ---
 

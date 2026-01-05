@@ -1,8 +1,8 @@
 """Monitoring API endpoints for Prometheus metrics and cost monitoring.
 
 This module provides endpoints for Prometheus to scrape metrics,
-for administrators to check monitoring status, and for the
-cost monitoring dashboard (DEV-239).
+for administrators to check monitoring status, the cost monitoring
+dashboard (DEV-239), and action quality metrics (DEV-240).
 """
 
 from datetime import datetime
@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.core.monitoring.metrics import get_metrics_content, get_registry
 from app.models.session import Session
+from app.services.action_quality_metrics import get_action_quality_metrics
 from app.services.cost_monitoring_dashboard import get_cost_monitoring_dashboard
 
 router = APIRouter()
@@ -422,3 +423,135 @@ async def get_weekly_costs(
     except Exception as e:
         logger.error("weekly_costs_failed", session_id=session.id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to get weekly costs")
+
+
+# =============================================================================
+# Action Quality Metrics Endpoints (DEV-240)
+# =============================================================================
+
+
+@router.get("/actions/quality/dashboard")
+async def get_action_quality_dashboard(
+    session: Session = Depends(get_current_session),
+) -> dict[str, Any]:
+    """Get complete action quality metrics dashboard.
+
+    Returns validation pass rate, regeneration rate, and click-through rate.
+    Requires authentication.
+
+    Args:
+        session: Current user session
+
+    Returns:
+        Complete action quality dashboard data
+    """
+    try:
+        metrics = get_action_quality_metrics()
+        result = metrics.get_dashboard_summary()
+
+        logger.info(
+            "action_quality_dashboard_requested",
+            user_id=session.user_id,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("action_quality_dashboard_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get action quality dashboard")
+
+
+@router.get("/actions/quality/validation")
+async def get_action_validation_metrics(
+    session: Session = Depends(get_current_session),
+) -> dict[str, Any]:
+    """Get action validation metrics.
+
+    Returns validation pass rate and rejection statistics.
+    Requires authentication.
+
+    Args:
+        session: Current user session
+
+    Returns:
+        Validation metrics including pass rate
+    """
+    try:
+        metrics = get_action_quality_metrics()
+        result = metrics.get_validation_summary()
+
+        logger.info(
+            "action_validation_metrics_requested",
+            user_id=session.user_id,
+            pass_rate=result["pass_rate"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("action_validation_metrics_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get validation metrics")
+
+
+@router.get("/actions/quality/regeneration")
+async def get_action_regeneration_metrics(
+    session: Session = Depends(get_current_session),
+) -> dict[str, Any]:
+    """Get action regeneration metrics.
+
+    Returns regeneration rate and success statistics.
+    Requires authentication.
+
+    Args:
+        session: Current user session
+
+    Returns:
+        Regeneration metrics including rate and success rate
+    """
+    try:
+        metrics = get_action_quality_metrics()
+        result = metrics.get_regeneration_summary()
+
+        logger.info(
+            "action_regeneration_metrics_requested",
+            user_id=session.user_id,
+            regeneration_rate=result["regeneration_rate"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("action_regeneration_metrics_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get regeneration metrics")
+
+
+@router.get("/actions/quality/clicks")
+async def get_action_click_metrics(
+    session: Session = Depends(get_current_session),
+) -> dict[str, Any]:
+    """Get action click-through metrics.
+
+    Returns click-through rate for displayed actions.
+    Requires authentication.
+
+    Args:
+        session: Current user session
+
+    Returns:
+        Click metrics including click-through rate
+    """
+    try:
+        metrics = get_action_quality_metrics()
+        result = metrics.get_click_summary()
+
+        logger.info(
+            "action_click_metrics_requested",
+            user_id=session.user_id,
+            click_through_rate=result["click_through_rate"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("action_click_metrics_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get click metrics")

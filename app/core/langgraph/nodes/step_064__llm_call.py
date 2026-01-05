@@ -11,10 +11,13 @@ and cost tracking.
 
 DEV-226: Integrates TreeOfThoughtsReasoner for complex/multi_domain queries.
 Uses ToT for multi-hypothesis reasoning with source-weighted scoring.
+
+DEV-238: Integrates detailed reasoning trace logging with mandatory context fields.
 """
 
 import json
 import re
+import time
 from typing import TYPE_CHECKING, Any
 
 from app.core.langgraph.node_utils import mirror, ns
@@ -27,6 +30,11 @@ from app.observability.rag_logging import (
     rag_step_timer_compat as rag_step_timer,
 )
 from app.orchestrators.providers import step_64__llmcall
+from app.services.reasoning_trace_logger import (
+    log_reasoning_trace_failed,
+    log_reasoning_trace_recorded,
+    log_tot_hypothesis_evaluated,
+)
 
 # DEV-196: Lazy imports to avoid database connection during module load
 if TYPE_CHECKING:
@@ -478,6 +486,14 @@ def _process_unified_response(content: str, state: RAGState) -> str:
             request_id=state.get("request_id"),
         )
 
+        # DEV-238: Log reasoning trace parse failure with mandatory context
+        log_reasoning_trace_failed(
+            state=state,
+            error_type="JSONParseError",
+            error_message="Failed to extract unified JSON response",
+            content_sample=content[:500] if content else "",
+        )
+
         return content
 
 
@@ -487,7 +503,11 @@ async def node_step_64(state: RAGState) -> RAGState:
     DEV-214: Enhanced with unified JSON output parsing.
     DEV-222: Integrates LLMOrchestrator for complexity classification and cost tracking.
     DEV-226: Integrates TreeOfThoughtsReasoner for complex/multi_domain queries.
+    DEV-238: Integrates detailed reasoning trace logging with mandatory context fields.
     """
+    # DEV-238: Start timing for reasoning trace logging
+    step_start_time = time.perf_counter()
+
     rag_step_log(STEP, "enter", provider=state.get("provider", {}).get("selected"))
     with rag_step_timer(STEP):
         # DEV-222: Classify query complexity before LLM call
@@ -521,6 +541,17 @@ async def node_step_64(state: RAGState) -> RAGState:
                     "latency_ms": tot_result.total_latency_ms,
                 }
                 tot_used = True
+
+                # DEV-238: Log each ToT hypothesis evaluation with mandatory context
+                for hypothesis in tot_result.all_hypotheses:
+                    is_selected = hypothesis.id == tot_result.selected_hypothesis.id
+                    log_tot_hypothesis_evaluated(
+                        state=state,
+                        hypothesis_id=hypothesis.id,
+                        probability=hypothesis.confidence,
+                        source_weight_score=hypothesis.source_weight_score,
+                        selected=is_selected,
+                    )
 
                 logger.info(
                     "step64_tot_results_stored",
@@ -706,6 +737,11 @@ async def node_step_64(state: RAGState) -> RAGState:
             cost_estimate=cost_estimate,
             request_id=state.get("request_id"),
         )
+
+    # DEV-238: Log reasoning trace with all mandatory context fields
+    step_elapsed_ms = (time.perf_counter() - step_start_time) * 1000
+    if state.get("reasoning_trace") is not None:
+        log_reasoning_trace_recorded(state, elapsed_ms=step_elapsed_ms)
 
     rag_step_log(
         STEP,

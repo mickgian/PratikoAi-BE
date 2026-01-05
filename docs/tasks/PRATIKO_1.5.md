@@ -6285,7 +6285,7 @@ Retrieved documents need paragraph-level extraction for precise grounding.
 
 **Reference:** [Technical Intent Part 11.6.2](pratikoai-llm-excellence-technical-intent.md#part-11-excellence-refinements) (Paragraph Extraction)
 
-**Priority:** LOW | **Effort:** 4h | **Status:** NOT STARTED
+**Priority:** LOW | **Effort:** 4h | **Status:** ✅ COMPLETED (2025-01-05)
 
 **Problem:**
 Retrieved documents need paragraph-level extraction for precise grounding.
@@ -6301,11 +6301,17 @@ Add paragraph extraction to retrieval pipeline that identifies relevant paragrap
 
 **Change Classification:** MODIFYING
 
+**Implementation:**
+- Created `app/services/paragraph_extractor.py` with ParagraphExtractor service
+- Integrated into `step_040__build_context.py` for relevance-based extraction
+- Added `paragraph_relevance_score` to kb_sources_metadata
+- 24 TDD tests in `tests/unit/services/test_paragraph_extractor.py`
+
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Paragraphs extracted from documents
-- [ ] Relevance scored per paragraph
-- [ ] Best paragraphs returned in metadata
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Paragraphs extracted from documents
+- [x] Relevance scored per paragraph
+- [x] Best paragraphs returned in metadata
 
 ---
 
@@ -6323,13 +6329,18 @@ Need visibility into reasoning traces for debugging and quality analysis. Logs m
 
 **Reference:** [Technical Intent Part 6](pratikoai-llm-excellence-technical-intent.md#part-6-implementation-phases) Phase 4 (Quality & Monitoring)
 
-**Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
+**Priority:** LOW | **Effort:** 3h | **Status:** ✅ COMPLETED (2025-01-05)
 
 **Problem:**
 Need visibility into reasoning traces for debugging and quality analysis. Logs must comply with the Logging Standards section (lines 81-101) which mandates specific context fields.
 
 **Solution:**
 Add structured logging for reasoning traces using structlog with all mandatory context fields from Logging Standards.
+
+**Implementation:**
+- Created `app/services/reasoning_trace_logger.py` with 4 log functions
+- Integrated into `step_064__llm_call.py` for automatic logging
+- 18 TDD tests in `tests/unit/services/test_reasoning_trace_logger.py`
 
 **Agent Assignment:** @ezio (primary), @clelia (tests)
 
@@ -6410,14 +6421,14 @@ def _truncate_for_log(trace: dict | None, max_length: int = 1000) -> str:
 - **Coverage Target:** 90%+
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] All reasoning trace logs include `user_id` (MANDATORY per Logging Standards)
-- [ ] All reasoning trace logs include `session_id` (MANDATORY per Logging Standards)
-- [ ] All reasoning trace logs include `operation` and `resource_id`
-- [ ] Request ID correlation works for log aggregator queries
-- [ ] Reasoning traces searchable by user_id/session_id in log aggregator
-- [ ] Long traces truncated to prevent log bloat
-- [ ] 90%+ test coverage
+- [x] Tests written BEFORE implementation (TDD)
+- [x] All reasoning trace logs include `user_id` (MANDATORY per Logging Standards)
+- [x] All reasoning trace logs include `session_id` (MANDATORY per Logging Standards)
+- [x] All reasoning trace logs include `operation` and `resource_id`
+- [x] Request ID correlation works for log aggregator queries
+- [x] Reasoning traces searchable by user_id/session_id in log aggregator
+- [x] Long traces truncated to prevent log bloat
+- [x] 90%+ test coverage
 
 ---
 

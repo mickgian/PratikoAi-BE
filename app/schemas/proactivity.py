@@ -54,6 +54,8 @@ class Action(BaseModel):
         requires_input: Whether action needs user input before execution
         input_placeholder: Placeholder text for input field
         input_type: Type of input field (text, number, etc.)
+        source_id: DEV-236 - Paragraph ID for source grounding (links to kb_sources_metadata)
+        source_excerpt: DEV-236 - Excerpt from source document for tooltip display
     """
 
     id: str = Field(..., description="Unique identifier for the action", min_length=1)
@@ -64,6 +66,9 @@ class Action(BaseModel):
     requires_input: bool = Field(default=False, description="Whether action needs user input")
     input_placeholder: str | None = Field(default=None, description="Placeholder for input field")
     input_type: str | None = Field(default=None, description="Input type (text, number, etc.)")
+    # DEV-236: Paragraph-level source grounding
+    source_id: str | None = Field(default=None, description="Paragraph ID linking to kb_sources_metadata")
+    source_excerpt: str | None = Field(default=None, description="Excerpt from source for tooltip display")
 
 
 class InteractiveOption(BaseModel):

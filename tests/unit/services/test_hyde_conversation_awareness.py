@@ -242,7 +242,7 @@ class TestMultiVariantGeneration:
             patch.object(service, "_call_llm_with_prompt", new_callable=AsyncMock) as mock_llm,
             patch("app.services.hyde_generator.get_query_ambiguity_detector") as mock_detector_factory,
         ):
-            # Return different docs for each call
+            # Return different docs for each call (use HyDEResult, not MagicMock)
             mock_llm.side_effect = [
                 HyDEResult(
                     hypothetical_document="Variant 1 about IVA rates",
@@ -706,6 +706,7 @@ class TestStrategyBasedGeneration:
         with (
             patch.object(service, "_call_llm_with_prompt", new_callable=AsyncMock) as mock_llm,
             patch("app.services.hyde_generator.get_query_ambiguity_detector") as mock_detector_factory,
+            patch("app.services.hyde_generator.get_prompt_loader") as mock_loader_factory,
         ):
             mock_llm.return_value = mock_response
 
@@ -717,6 +718,10 @@ class TestStrategyBasedGeneration:
                 indicators=["pronoun_ambiguity"],
             )
             mock_detector_factory.return_value = mock_detector
+
+            mock_loader = MagicMock()
+            mock_loader.load.return_value = "Conversational prompt content"
+            mock_loader_factory.return_value = mock_loader
 
             result = await service.generate(
                 query="E questo come si calcola?",

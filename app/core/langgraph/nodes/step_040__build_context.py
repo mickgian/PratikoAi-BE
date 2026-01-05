@@ -3,6 +3,7 @@
 Internal step - merges facts, KB docs, and optional document facts into unified context.
 
 DEV-213: Enhanced to preserve KB documents and metadata for action grounding.
+DEV-237: Uses ParagraphExtractor for query-relevant paragraph extraction.
 """
 
 import re
@@ -12,6 +13,7 @@ from app.core.logging import logger as step40_logger
 from app.observability.rag_logging import rag_step_log_compat as rag_step_log
 from app.observability.rag_logging import rag_step_timer_compat as rag_step_timer
 from app.orchestrators.facts import step_40__build_context
+from app.services.paragraph_extractor import ParagraphExtractor
 
 STEP = 40
 
@@ -178,18 +180,26 @@ def extract_paragraph_excerpt(content: str | None, max_length: int = 150) -> str
     return truncated + "..."
 
 
-def _build_kb_sources_metadata(kb_documents: list[dict]) -> list[dict]:
+def _build_kb_sources_metadata(
+    kb_documents: list[dict],
+    user_query: str | None = None,
+) -> list[dict]:
     """Build structured metadata for action grounding from KB documents.
 
     DEV-236: Now includes paragraph_id and paragraph_excerpt for paragraph-level grounding.
+    DEV-237: Uses ParagraphExtractor for query-relevant paragraph extraction.
 
     Args:
         kb_documents: List of KB document dictionaries
+        user_query: User query for relevance-based paragraph extraction (DEV-237)
 
     Returns:
         List of metadata dictionaries for each document
     """
     metadata_list = []
+
+    # DEV-237: Initialize paragraph extractor for relevance-based extraction
+    extractor = ParagraphExtractor()
 
     for idx, doc in enumerate(kb_documents):
         if not isinstance(doc, dict):
@@ -197,6 +207,22 @@ def _build_kb_sources_metadata(kb_documents: list[dict]) -> list[dict]:
 
         doc_id = doc.get("id", "")
         content = doc.get("content", "")
+
+        # DEV-237: Extract most relevant paragraph using query
+        paragraph_id = generate_paragraph_id(doc_id, 0)  # Default to first
+        paragraph_excerpt = extract_paragraph_excerpt(content)
+        relevance_score = 0.0
+
+        if user_query and content:
+            paragraph_result = extractor.extract_best_paragraph(
+                content=content,
+                query=user_query,
+                doc_id=doc_id,
+            )
+            if paragraph_result:
+                paragraph_id = paragraph_result.paragraph_id
+                paragraph_excerpt = paragraph_result.excerpt
+                relevance_score = paragraph_result.relevance_score
 
         metadata = {
             "id": doc_id,
@@ -208,8 +234,10 @@ def _build_kb_sources_metadata(kb_documents: list[dict]) -> list[dict]:
             "key_values": extract_values(doc),
             "hierarchy_weight": get_hierarchy_weight(doc.get("type", "")),
             # DEV-236: Paragraph-level grounding fields
-            "paragraph_id": generate_paragraph_id(doc_id, 0),  # Primary paragraph
-            "paragraph_excerpt": extract_paragraph_excerpt(content),
+            # DEV-237: Now using relevance-based extraction
+            "paragraph_id": paragraph_id,
+            "paragraph_excerpt": paragraph_excerpt,
+            "paragraph_relevance_score": relevance_score,  # DEV-237
         }
         metadata_list.append(metadata)
 
@@ -286,7 +314,9 @@ async def node_step_40(state: RAGState) -> RAGState:
         state["kb_documents"] = valid_kb_docs
 
         # Build and store structured metadata
-        state["kb_sources_metadata"] = _build_kb_sources_metadata(valid_kb_docs)
+        # DEV-237: Pass user_query for relevance-based paragraph extraction
+        user_query = state.get("user_query")
+        state["kb_sources_metadata"] = _build_kb_sources_metadata(valid_kb_docs, user_query)
 
         step40_logger.debug(
             "step40_kb_preservation_complete",

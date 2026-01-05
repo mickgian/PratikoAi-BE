@@ -234,29 +234,29 @@ class TestMultiVariantGeneration:
     async def test_multi_variant_generated_for_ambiguous_query(self, mock_config):
         """Test that multiple variants are generated for ambiguous queries."""
         from app.schemas.router import RoutingCategory
-        from app.services.hyde_generator import HyDEGeneratorService
+        from app.services.hyde_generator import HyDEGeneratorService, HyDEResult
 
         service = HyDEGeneratorService(config=mock_config)
 
         with (
-            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch.object(service, "_call_llm_with_prompt", new_callable=AsyncMock) as mock_llm,
             patch("app.services.hyde_generator.get_query_ambiguity_detector") as mock_detector_factory,
         ):
-            # Return different docs for each call
+            # Return different docs for each call (use HyDEResult, not MagicMock)
             mock_llm.side_effect = [
-                MagicMock(
+                HyDEResult(
                     hypothetical_document="Variant 1 about IVA rates",
                     word_count=5,
                     skipped=False,
                     skip_reason=None,
                 ),
-                MagicMock(
+                HyDEResult(
                     hypothetical_document="Variant 2 about IVA deadlines",
                     word_count=5,
                     skipped=False,
                     skip_reason=None,
                 ),
-                MagicMock(
+                HyDEResult(
                     hypothetical_document="Variant 3 about IVA exemptions",
                     word_count=5,
                     skipped=False,
@@ -286,22 +286,22 @@ class TestMultiVariantGeneration:
     async def test_variants_cover_different_scenarios(self, mock_config):
         """Test that variants cover different interpretation scenarios."""
         from app.schemas.router import RoutingCategory
-        from app.services.hyde_generator import HyDEGeneratorService
+        from app.services.hyde_generator import HyDEGeneratorService, HyDEResult
 
         service = HyDEGeneratorService(config=mock_config)
 
         with (
-            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch.object(service, "_call_llm_with_prompt", new_callable=AsyncMock) as mock_llm,
             patch("app.services.hyde_generator.get_query_ambiguity_detector") as mock_detector_factory,
         ):
             mock_llm.side_effect = [
-                MagicMock(
+                HyDEResult(
                     hypothetical_document="Document about aliquote IVA",
                     word_count=4,
                     skipped=False,
                     skip_reason=None,
                 ),
-                MagicMock(
+                HyDEResult(
                     hypothetical_document="Document about scadenze IVA",
                     word_count=4,
                     skipped=False,
@@ -704,8 +704,9 @@ class TestStrategyBasedGeneration:
         ]
 
         with (
-            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch.object(service, "_call_llm_with_prompt", new_callable=AsyncMock) as mock_llm,
             patch("app.services.hyde_generator.get_query_ambiguity_detector") as mock_detector_factory,
+            patch("app.services.hyde_generator.get_prompt_loader") as mock_loader_factory,
         ):
             mock_llm.return_value = mock_response
 
@@ -717,6 +718,10 @@ class TestStrategyBasedGeneration:
                 indicators=["pronoun_ambiguity"],
             )
             mock_detector_factory.return_value = mock_detector
+
+            mock_loader = MagicMock()
+            mock_loader.load.return_value = "Conversational prompt content"
+            mock_loader_factory.return_value = mock_loader
 
             result = await service.generate(
                 query="E questo come si calcola?",
@@ -732,28 +737,28 @@ class TestStrategyBasedGeneration:
     async def test_multi_variant_strategy_generates_multiple(self, mock_config):
         """Test that multi_variant strategy generates multiple documents."""
         from app.schemas.router import RoutingCategory
-        from app.services.hyde_generator import HyDEGeneratorService
+        from app.services.hyde_generator import HyDEGeneratorService, HyDEResult
 
         service = HyDEGeneratorService(config=mock_config)
 
         with (
-            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch.object(service, "_call_llm_with_prompt", new_callable=AsyncMock) as mock_llm,
             patch("app.services.hyde_generator.get_query_ambiguity_detector") as mock_detector_factory,
         ):
             mock_llm.side_effect = [
-                MagicMock(
+                HyDEResult(
                     hypothetical_document="Variant 1",
                     word_count=2,
                     skipped=False,
                     skip_reason=None,
                 ),
-                MagicMock(
+                HyDEResult(
                     hypothetical_document="Variant 2",
                     word_count=2,
                     skipped=False,
                     skip_reason=None,
                 ),
-                MagicMock(
+                HyDEResult(
                     hypothetical_document="Variant 3",
                     word_count=2,
                     skipped=False,
@@ -857,24 +862,24 @@ class TestEdgeCasesAndErrors:
     async def test_partial_variant_failure_returns_successful_variants(self, mock_config):
         """Test that partial variant failures still return successful variants."""
         from app.schemas.router import RoutingCategory
-        from app.services.hyde_generator import HyDEGeneratorService
+        from app.services.hyde_generator import HyDEGeneratorService, HyDEResult
 
         service = HyDEGeneratorService(config=mock_config)
 
         with (
-            patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm,
+            patch.object(service, "_call_llm_with_prompt", new_callable=AsyncMock) as mock_llm,
             patch("app.services.hyde_generator.get_query_ambiguity_detector") as mock_detector_factory,
         ):
             # First succeeds, second fails, third succeeds
             mock_llm.side_effect = [
-                MagicMock(
+                HyDEResult(
                     hypothetical_document="Variant 1",
                     word_count=2,
                     skipped=False,
                     skip_reason=None,
                 ),
                 Exception("LLM error"),
-                MagicMock(
+                HyDEResult(
                     hypothetical_document="Variant 3",
                     word_count=2,
                     skipped=False,

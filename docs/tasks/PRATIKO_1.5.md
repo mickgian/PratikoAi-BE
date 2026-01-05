@@ -6276,7 +6276,7 @@ Add paragraph-level tracking to source schema with paragraph_id and excerpt fiel
 <details>
 <summary>
 <h3>DEV-237: Implement Paragraph Extraction in Retrieval</h3>
-<strong>Priority:</strong> LOW | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 4h | <strong>Status:</strong> ✅ COMPLETED<br>
 Retrieved documents need paragraph-level extraction for precise grounding.
 </summary>
 
@@ -6320,7 +6320,7 @@ Add paragraph extraction to retrieval pipeline that identifies relevant paragrap
 <details>
 <summary>
 <h3>DEV-238: Add Detailed Logging for Reasoning Traces</h3>
-<strong>Priority:</strong> LOW | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 3h | <strong>Status:</strong> ✅ COMPLETED<br>
 Need visibility into reasoning traces for debugging and quality analysis. Logs must comply with the ...
 </summary>
 
@@ -6437,7 +6437,7 @@ def _truncate_for_log(trace: dict | None, max_length: int = 1000) -> str:
 <details>
 <summary>
 <h3>DEV-239: Create Cost Monitoring Dashboard</h3>
-<strong>Priority:</strong> LOW | <strong>Effort:</strong> 4h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 4h | <strong>Status:</strong> ✅ COMPLETED<br>
 Need real-time visibility into LLM costs per query, model, and complexity level.
 </summary>
 
@@ -6446,7 +6446,7 @@ Need real-time visibility into LLM costs per query, model, and complexity level.
 
 **Reference:** [Technical Intent Part 7.3](pratikoai-llm-excellence-technical-intent.md#part-7-success-metrics) (Cost Metrics)
 
-**Priority:** LOW | **Effort:** 4h | **Status:** NOT STARTED
+**Priority:** LOW | **Effort:** 4h | **Status:** ✅ COMPLETED (2025-01-05)
 
 **Problem:**
 Need real-time visibility into LLM costs per query, model, and complexity level.
@@ -6463,10 +6463,23 @@ Create cost monitoring endpoint and dashboard integration.
 **Change Classification:** ADDITIVE
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Cost per query tracked
-- [ ] Cost by model breakdown
-- [ ] Daily/weekly aggregates
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Cost per query tracked
+- [x] Cost by model breakdown
+- [x] Daily/weekly aggregates
+
+**Implementation:**
+- `app/services/cost_monitoring_dashboard.py`: CostMonitoringDashboard service
+- `app/api/v1/monitoring.py`: Added 6 cost monitoring endpoints
+- `tests/unit/services/test_cost_monitoring_dashboard.py`: 15 TDD tests
+
+**Endpoints Added:**
+- `GET /api/v1/monitoring/costs/dashboard` - Full dashboard summary
+- `GET /api/v1/monitoring/costs/queries` - Per-query costs
+- `GET /api/v1/monitoring/costs/by-model` - Cost breakdown by model
+- `GET /api/v1/monitoring/costs/by-complexity` - Cost breakdown by complexity
+- `GET /api/v1/monitoring/costs/daily` - Daily aggregates
+- `GET /api/v1/monitoring/costs/weekly` - Weekly aggregates
 
 ---
 

@@ -162,7 +162,7 @@ class TestPhase7ComponentCoverage:
 
         # Verify key test classes exist and have tests
         assert hasattr(TestPremiumModelSelector, "test_selects_gpt4o_by_default")
-        assert hasattr(TestPremiumModelSelector, "test_selects_claude_for_long_context")
+        assert hasattr(TestPremiumModelSelector, "test_selects_gpt4o_for_long_context")
 
     def test_llm_router_service_has_tests(self):
         """Verify LLMRouterService has comprehensive tests."""

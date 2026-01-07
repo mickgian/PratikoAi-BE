@@ -6488,7 +6488,7 @@ Create cost monitoring endpoint and dashboard integration.
 <details>
 <summary>
 <h3>DEV-240: Add Action Quality Metrics</h3>
-<strong>Priority:</strong> LOW | <strong>Effort:</strong> 3h | <strong>Status:</strong> NOT STARTED<br>
+<strong>Priority:</strong> LOW | <strong>Effort:</strong> 3h | <strong>Status:</strong> ✅ COMPLETED<br>
 Need metrics to track action quality: validation pass rate, regeneration rate, click-through rate.
 </summary>
 
@@ -6497,7 +6497,7 @@ Need metrics to track action quality: validation pass rate, regeneration rate, c
 
 **Reference:** [Technical Intent Part 7.1](pratikoai-llm-excellence-technical-intent.md#part-7-success-metrics) (Quality Metrics)
 
-**Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
+**Priority:** LOW | **Effort:** 3h | **Status:** ✅ COMPLETED (2025-01-05)
 
 **Problem:**
 Need metrics to track action quality: validation pass rate, regeneration rate, click-through rate.
@@ -6514,10 +6514,21 @@ Add action quality metrics collection and reporting.
 **Change Classification:** ADDITIVE
 
 **Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Validation pass rate tracked
-- [ ] Regeneration rate tracked
-- [ ] Click-through rate tracked
+- [x] Tests written BEFORE implementation (TDD)
+- [x] Validation pass rate tracked
+- [x] Regeneration rate tracked
+- [x] Click-through rate tracked
+
+**Implementation:**
+- `app/services/action_quality_metrics.py`: ActionQualityMetrics service
+- `app/api/v1/monitoring.py`: Added 4 action quality endpoints
+- `tests/unit/services/test_action_quality_metrics.py`: 19 TDD tests
+
+**Endpoints Added:**
+- `GET /api/v1/monitoring/actions/quality/dashboard` - Full quality dashboard
+- `GET /api/v1/monitoring/actions/quality/validation` - Validation pass rate
+- `GET /api/v1/monitoring/actions/quality/regeneration` - Regeneration rate
+- `GET /api/v1/monitoring/actions/quality/clicks` - Click-through rate
 
 ---
 

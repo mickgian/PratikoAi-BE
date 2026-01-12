@@ -105,6 +105,15 @@ FORBIDDEN_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"verifica.*(?:sul sito|online|portale)", re.IGNORECASE),
     re.compile(r"chiedi.*(?:consiglio|parere|aiuto)", re.IGNORECASE),
     re.compile(r"(?:cerca|trova).*(?:professionista|consulente)", re.IGNORECASE),
+    # DEV-242: Anti-monitoring patterns - PratikoAI IS the monitoring service
+    re.compile(r"monitor(?:a(?:re)?|i)\s+(?:(?:le|gli)\s+)?(?:comunicazioni|aggiornamenti)", re.IGNORECASE),
+    re.compile(r"controlla(?:re)?\s+periodicamente", re.IGNORECASE),
+    re.compile(r"tien[ei]\s+d['']?occhio", re.IGNORECASE),
+    re.compile(r"segui(?:re)?\s+(?:le\s+)?novit[àa]", re.IGNORECASE),
+    re.compile(r"rest(?:a(?:re)?|i)\s+aggiornat[oiae]", re.IGNORECASE),
+    re.compile(r"verificare?\s+periodicamente", re.IGNORECASE),
+    re.compile(r"consulta(?:re)?\s+regolarmente", re.IGNORECASE),
+    re.compile(r"(?:le\s+)?fonti\s+ufficiali\s+per\s+aggiornamenti", re.IGNORECASE),
 ]
 
 
@@ -472,6 +481,292 @@ class ActionValidator:
         if icon.lower() in VALID_ICONS:
             return icon.lower()
         return DEFAULT_ICON
+
+    def validate_batch_with_context(
+        self,
+        actions: list[dict],
+        response_text: str,
+        kb_sources: list[dict],
+        previous_actions_used: list[str] | None = None,
+    ) -> BatchValidationResult:
+        """Validate actions with context awareness.
+
+        DEV-242: Enhanced validation that considers:
+        - Previously used actions (avoid repetition)
+        - Semantic similarity (deduplicate similar actions)
+
+        Args:
+            actions: List of action dicts to validate
+            response_text: LLM response text (for context)
+            kb_sources: KB source metadata for grounding checks
+            previous_actions_used: Labels of actions user already clicked
+
+        Returns:
+            BatchValidationResult with deduplicated, context-aware actions
+        """
+        # Standard validation first
+        base_result = self.validate_batch(actions, response_text, kb_sources)
+
+        if not base_result.validated_actions:
+            return base_result
+
+        # Remove actions similar to previously used
+        filtered_actions = base_result.validated_actions
+        if previous_actions_used:
+            filtered_actions = self._filter_previously_used(
+                filtered_actions,
+                previous_actions_used,
+            )
+
+        # Deduplicate semantically similar actions
+        deduplicated = self._deduplicate_actions(filtered_actions)
+
+        # Recalculate quality score
+        original_count = len(actions)
+        final_count = len(deduplicated)
+        quality_score = final_count / original_count if original_count > 0 else 0.0
+
+        return BatchValidationResult(
+            validated_actions=deduplicated,
+            rejected_count=base_result.rejected_count + (len(filtered_actions) - len(deduplicated)),
+            rejection_log=base_result.rejection_log,
+            quality_score=quality_score,
+        )
+
+    def _deduplicate_actions(self, actions: list[dict]) -> list[dict]:
+        """Remove semantically similar actions.
+
+        DEV-242: Removes actions with >50% word overlap to avoid
+        presenting nearly identical options to user.
+
+        Args:
+            actions: List of validated action dicts
+
+        Returns:
+            Deduplicated list of actions
+        """
+        if len(actions) <= 1:
+            return actions
+
+        deduplicated: list[dict] = []
+
+        for action in actions:
+            if not self._is_duplicate_of_any(action, deduplicated):
+                deduplicated.append(action)
+
+        if len(deduplicated) < len(actions):
+            logger.info(
+                "action_deduplication_applied",
+                original_count=len(actions),
+                deduplicated_count=len(deduplicated),
+            )
+
+        return deduplicated
+
+    def _is_duplicate_of_any(self, action: dict, existing: list[dict]) -> bool:
+        """Check if action is semantically similar to any existing action.
+
+        Args:
+            action: Action to check
+            existing: List of already accepted actions
+
+        Returns:
+            True if action is a duplicate of any existing action
+        """
+        action_words = self._extract_significant_words(action)
+
+        for existing_action in existing:
+            existing_words = self._extract_significant_words(existing_action)
+            overlap = self._calculate_word_overlap(action_words, existing_words)
+
+            if overlap > 0.5:  # >50% overlap threshold
+                logger.debug(
+                    "action_duplicate_detected",
+                    action_label=action.get("label", "")[:30],
+                    existing_label=existing_action.get("label", "")[:30],
+                    overlap=overlap,
+                )
+                return True
+
+        return False
+
+    def _extract_significant_words(self, action: dict) -> set[str]:
+        """Extract significant words from action for comparison.
+
+        Excludes common Italian stop words and short words.
+
+        Args:
+            action: Action dict with label and prompt
+
+        Returns:
+            Set of significant lowercase words
+        """
+        # Italian stop words to exclude
+        stop_words = {
+            "il",
+            "lo",
+            "la",
+            "i",
+            "gli",
+            "le",
+            "un",
+            "una",
+            "uno",
+            "del",
+            "della",
+            "dello",
+            "dei",
+            "delle",
+            "degli",
+            "al",
+            "alla",
+            "allo",
+            "ai",
+            "alle",
+            "agli",
+            "da",
+            "dal",
+            "dalla",
+            "dallo",
+            "dai",
+            "dalle",
+            "dagli",
+            "in",
+            "nel",
+            "nella",
+            "nello",
+            "nei",
+            "nelle",
+            "negli",
+            "su",
+            "sul",
+            "sulla",
+            "sullo",
+            "sui",
+            "sulle",
+            "sugli",
+            "con",
+            "per",
+            "tra",
+            "fra",
+            "di",
+            "a",
+            "e",
+            "o",
+            "che",
+            "come",
+            "cosa",
+            "quale",
+            "quali",
+            "quanto",
+            "quanti",
+            "questo",
+            "questa",
+            "questi",
+            "queste",
+            "quello",
+            "quella",
+            "quelli",
+            "quelle",
+            "sono",
+            "è",
+            "hai",
+            "ho",
+            "ha",
+            "hanno",
+            "abbiamo",
+            "essere",
+            "avere",
+            "fare",
+            "dire",
+        }
+
+        label = action.get("label", "").lower()
+        prompt = action.get("prompt", "").lower()
+        text = f"{label} {prompt}"
+
+        # Extract words, exclude stop words and short words
+        words = set()
+        for word in re.findall(r"\b\w+\b", text):
+            if len(word) > 2 and word not in stop_words:
+                words.add(word)
+
+        return words
+
+    def _calculate_word_overlap(self, words1: set[str], words2: set[str]) -> float:
+        """Calculate Jaccard similarity between word sets.
+
+        Args:
+            words1: First set of words
+            words2: Second set of words
+
+        Returns:
+            Overlap ratio (0.0 to 1.0)
+        """
+        if not words1 or not words2:
+            return 0.0
+
+        intersection = len(words1 & words2)
+        union = len(words1 | words2)
+
+        return intersection / union if union > 0 else 0.0
+
+    def _filter_previously_used(
+        self,
+        actions: list[dict],
+        previous_labels: list[str],
+    ) -> list[dict]:
+        """Filter out actions similar to previously used ones.
+
+        DEV-242: Prevents showing actions user already clicked/used.
+
+        Args:
+            actions: List of validated actions
+            previous_labels: Labels of actions user already used
+
+        Returns:
+            Filtered list without previously-used-similar actions
+        """
+        if not previous_labels:
+            return actions
+
+        # Normalize previous labels for comparison
+        normalized_previous = {label.lower().strip() for label in previous_labels}
+
+        filtered: list[dict] = []
+        for action in actions:
+            action_label = action.get("label", "").lower().strip()
+
+            # Check exact match
+            if action_label in normalized_previous:
+                logger.debug(
+                    "action_filtered_previously_used",
+                    action_label=action.get("label", "")[:30],
+                )
+                continue
+
+            # Check word overlap with previous actions
+            action_words = self._extract_significant_words(action)
+            is_similar = False
+
+            for prev_label in previous_labels:
+                prev_words = self._extract_significant_words({"label": prev_label, "prompt": ""})
+                overlap = self._calculate_word_overlap(action_words, prev_words)
+
+                if overlap > 0.5:  # 50% overlap with previous = too similar
+                    is_similar = True
+                    logger.debug(
+                        "action_filtered_similar_to_previous",
+                        action_label=action.get("label", "")[:30],
+                        previous_label=prev_label[:30],
+                        overlap=overlap,
+                    )
+                    break
+
+            if not is_similar:
+                filtered.append(action)
+
+        return filtered
 
 
 # Singleton instance for convenience

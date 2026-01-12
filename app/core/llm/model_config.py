@@ -53,7 +53,7 @@ def get_default_config() -> dict[str, Any]:
                 "model": "gpt-4o",
                 "timeout_ms": 60000,
                 "temperature": 0.2,
-                "max_tokens": 4000,
+                "max_tokens": 6000,  # DEV-242 Phase 19: Increased for detailed responses
                 "fallback": {
                     "provider": "anthropic",
                     "model": "claude-3-5-sonnet-20241022",

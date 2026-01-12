@@ -43,11 +43,16 @@ Caratteristiche:
 - Conflitti normativi da risolvere
 - Calcoli articolati richiesti
 - Analisi di situazioni specifiche
+- Procedure normative con scadenze, rate, o percentuali specifiche (DEV-242)
+- Sanatorie, rottamazioni, definizioni agevolate, condoni (DEV-242)
+- Query che richiedono elenco dettagliato di requisiti/condizioni (DEV-242)
 
 Esempi:
 - "Come fatturare consulenza a azienda tedesca?"
 - "Calcolo IRPEF con detrazioni per figli e mutuo"
 - "Quale regime fiscale conviene per un freelancer con 50k di fatturato?"
+- "Parlami della rottamazione quinquies" (procedure con date, rate, interessi specifici)
+- "Come funziona la definizione agevolata?" (scadenze e importi da elencare)
 
 ### MULTI_DOMAIN
 
@@ -101,7 +106,8 @@ Rispondi SEMPRE con questo schema JSON:
 
 ## Note Importanti
 
-- Privilegia SIMPLE quando possibile (costo minore)
+- Se la risposta completa richiede elenchi dettagliati con date/importi, scegli COMPLEX (DEV-242)
+- Il costo aggiuntivo è giustificato per risposte accurate e complete (DEV-242)
 - MULTI_DOMAIN solo se effettivamente coinvolge più aree
 - Il reasoning deve essere conciso (max 100 caratteri)
 - In caso di dubbio tra SIMPLE e COMPLEX, scegli COMPLEX

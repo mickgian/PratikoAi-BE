@@ -1273,6 +1273,58 @@ async def chat_stream(
                                         )
                                         graph_proactivity_actions = []
                                     # Don't yield - will be sent as SSE event below
+                                elif chunk.startswith("__REASONING_TRACE__:"):
+                                    # DEV-242: Reasoning trace for Chain of Thought display
+                                    # Format: __REASONING_TRACE__:<json_object>
+                                    try:
+                                        import json as _json
+
+                                        reasoning_json = chunk.replace("__REASONING_TRACE__:", "")
+                                        reasoning_data = _json.loads(reasoning_json)
+                                        logger.info(
+                                            "reasoning_trace_received_from_graph",
+                                            session_id=session.id,
+                                            has_tema=bool(reasoning_data.get("tema_identificato")),
+                                        )
+                                        # Send reasoning as SSE event immediately
+                                        reasoning_event = StreamResponse(
+                                            content="",
+                                            event_type="reasoning",
+                                            reasoning=reasoning_data,
+                                        )
+                                        yield write_sse(None, format_sse_event(reasoning_event), request_id=request_id)
+                                    except Exception as parse_err:
+                                        logger.warning(
+                                            "reasoning_trace_parse_failed",
+                                            session_id=session.id,
+                                            error=str(parse_err),
+                                        )
+                                elif chunk.startswith("__STRUCTURED_SOURCES__:"):
+                                    # DEV-242 Phase 12B: Structured sources for SourcesIndex
+                                    # Format: __STRUCTURED_SOURCES__:<json_array>
+                                    try:
+                                        import json as _json
+
+                                        sources_json = chunk.replace("__STRUCTURED_SOURCES__:", "")
+                                        structured_sources_data = _json.loads(sources_json)
+                                        logger.info(
+                                            "structured_sources_received_from_graph",
+                                            session_id=session.id,
+                                            sources_count=len(structured_sources_data),
+                                        )
+                                        # Send structured sources as SSE event immediately
+                                        sources_event = StreamResponse(
+                                            content="",
+                                            event_type="structured_sources",
+                                            structured_sources=structured_sources_data,
+                                        )
+                                        yield write_sse(None, format_sse_event(sources_event), request_id=request_id)
+                                    except Exception as parse_err:
+                                        logger.warning(
+                                            "structured_sources_parse_failed",
+                                            session_id=session.id,
+                                            error=str(parse_err),
+                                        )
                                 else:
                                     # This is regular content (plain text string from graph)
                                     # Collect chunk for chat history

@@ -18,6 +18,7 @@ Usage in graph:
 import logging
 from typing import TYPE_CHECKING, Any
 
+from app.core.config import CONTEXT_TOP_K
 from app.core.langgraph.types import RAGState
 from app.observability.rag_logging import rag_step_log, rag_step_timer
 
@@ -111,9 +112,11 @@ async def node_step_39c(state: RAGState) -> RAGState:
         else:
             try:
                 # Lazy imports
+                from app.models.database import AsyncSessionLocal
                 from app.services.hyde_generator import HyDEResult
                 from app.services.multi_query_generator import QueryVariants
                 from app.services.parallel_retrieval import ParallelRetrievalService
+                from app.services.search_service import SearchService
 
                 # Reconstruct QueryVariants from state
                 query_variants_dict = state.get("query_variants", {})
@@ -131,6 +134,8 @@ async def node_step_39c(state: RAGState) -> RAGState:
                         vector_query=query_variants_dict.get("vector_query", user_query),
                         entity_query=query_variants_dict.get("entity_query", user_query),
                         original_query=query_variants_dict.get("original_query", user_query),
+                        document_references=query_variants_dict.get("document_references"),  # ADR-022
+                        semantic_expansions=query_variants_dict.get("semantic_expansions"),  # DEV-242 Phase 24
                     )
 
                 # Reconstruct HyDEResult from state
@@ -142,26 +147,34 @@ async def node_step_39c(state: RAGState) -> RAGState:
                     skip_reason=hyde_dict.get("skip_reason"),
                 )
 
-                # Initialize service and retrieve
-                # Note: search_service and embedding_service are passed as None for now
-                # since ParallelRetrievalService has placeholder implementations.
-                # In production, these would be injected via dependency injection.
-                service = ParallelRetrievalService(
-                    search_service=None,
-                    embedding_service=None,
-                )
-                result = await service.retrieve(
-                    queries=query_variants,
-                    hyde=hyde_result,
-                )
+                # DEV-242: Initialize service with REAL SearchService for BM25 search
+                # Create async session for database access
+                async with AsyncSessionLocal() as db_session:
+                    search_service = SearchService(db_session=db_session)
 
-                retrieval_result = _retrieval_result_to_dict(result)
+                    service = ParallelRetrievalService(
+                        search_service=search_service,
+                        embedding_service=None,  # Vector search still uses placeholder
+                    )
+                    result = await service.retrieve(
+                        queries=query_variants,
+                        hyde=hyde_result,
+                        top_k=CONTEXT_TOP_K,  # DEV-242 Phase 26: Use config value (20) instead of default (10)
+                    )
 
-                logger.info(
-                    f"Step {NODE_LABEL}: Retrieved {len(retrieval_result['documents'])} docs "
-                    f"from {retrieval_result['total_found']} total in "
-                    f"{retrieval_result['search_time_ms']:.1f}ms"
-                )
+                    retrieval_result = _retrieval_result_to_dict(result)
+
+                    logger.info(
+                        f"Step {NODE_LABEL}: Retrieved {len(retrieval_result['documents'])} docs "
+                        f"from {retrieval_result['total_found']} total in "
+                        f"{retrieval_result['search_time_ms']:.1f}ms"
+                    )
+
+                    # DEV-242 Phase 25: Log chunk IDs to debug which chunks are in TOP-K
+                    chunk_ids = [
+                        doc.get("metadata", {}).get("chunk_id") for doc in retrieval_result.get("documents", [])
+                    ]
+                    logger.info(f"Step {NODE_LABEL}: Chunk IDs retrieved: {chunk_ids}")
 
             except Exception as e:
                 logger.warning(f"Step {NODE_LABEL}: Retrieval error: {e}")

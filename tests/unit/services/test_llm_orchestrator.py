@@ -150,25 +150,34 @@ class TestModelConfig:
     """Test ModelConfig dataclass."""
 
     def test_simple_config_exists(self):
-        """SIMPLE complexity should have model config."""
+        """SIMPLE complexity should have model config.
+
+        DEV-242 Phase 13A: Upgraded to gpt-4o with 3000 max_tokens.
+        """
         config = ModelConfig.for_complexity(QueryComplexity.SIMPLE)
-        assert config.model == "gpt-4o-mini"
+        assert config.model == "gpt-4o"  # DEV-242: Upgraded from gpt-4o-mini
         assert config.temperature == 0.3
-        assert config.max_tokens == 1500
+        assert config.max_tokens == 3000  # DEV-242: Doubled from 1500
 
     def test_complex_config_exists(self):
-        """COMPLEX complexity should have model config."""
+        """COMPLEX complexity should have model config.
+
+        DEV-242 Phase 13A: Doubled max_tokens from 2500 to 5000.
+        """
         config = ModelConfig.for_complexity(QueryComplexity.COMPLEX)
         assert config.model == "gpt-4o"
         assert config.temperature == 0.4
-        assert config.max_tokens == 2500
+        assert config.max_tokens == 5000  # DEV-242: Doubled from 2500
 
     def test_multi_domain_config_exists(self):
-        """MULTI_DOMAIN complexity should have model config."""
+        """MULTI_DOMAIN complexity should have model config.
+
+        DEV-242 Phase 13A: Doubled max_tokens from 3500 to 7000.
+        """
         config = ModelConfig.for_complexity(QueryComplexity.MULTI_DOMAIN)
         assert config.model == "gpt-4o"
         assert config.temperature == 0.5
-        assert config.max_tokens == 3500
+        assert config.max_tokens == 7000  # DEV-242: Doubled from 3500
 
     def test_config_has_cost_info(self):
         """Model config should have cost information."""
@@ -374,8 +383,8 @@ class TestGenerateResponse:
     """Test response generation."""
 
     @pytest.mark.asyncio
-    async def test_generate_simple_uses_mini(self, orchestrator, mock_unified_response):
-        """SIMPLE complexity should use gpt-4o-mini."""
+    async def test_generate_simple_uses_gpt4o(self, orchestrator, mock_unified_response):
+        """SIMPLE complexity should use gpt-4o (DEV-242 Phase 13A upgrade)."""
         with patch.object(orchestrator, "_call_llm") as mock_call:
             mock_call.return_value = (json.dumps(mock_unified_response), 200, 150)
 
@@ -386,7 +395,8 @@ class TestGenerateResponse:
                 complexity=QueryComplexity.SIMPLE,
             )
 
-            assert result.model_used == "gpt-4o-mini"
+            # DEV-242: Upgraded from gpt-4o-mini to gpt-4o for quality
+            assert result.model_used == "gpt-4o"
 
     @pytest.mark.asyncio
     async def test_generate_complex_uses_gpt4o(self, orchestrator, mock_unified_response):
@@ -537,7 +547,11 @@ class TestCostTracking:
 
     @pytest.mark.asyncio
     async def test_cost_calculation_simple(self, orchestrator, mock_unified_response):
-        """Cost should be calculated correctly for SIMPLE queries."""
+        """Cost should be calculated correctly for SIMPLE queries.
+
+        DEV-242 Phase 13A: SIMPLE now uses gpt-4o (upgraded from gpt-4o-mini).
+        Cost rates: input=$0.005/1k, output=$0.015/1k
+        """
         with patch.object(orchestrator, "_call_llm") as mock_call:
             mock_call.return_value = (json.dumps(mock_unified_response), 1000, 500)
 
@@ -548,10 +562,10 @@ class TestCostTracking:
                 complexity=QueryComplexity.SIMPLE,
             )
 
-            # gpt-4o-mini: input=$0.00015/1k, output=$0.0006/1k
-            # Expected: (1000 * 0.00015 / 1000) + (500 * 0.0006 / 1000) = 0.00045
+            # DEV-242: gpt-4o: input=$0.005/1k, output=$0.015/1k
+            # Expected: (1000 * 0.005 / 1000) + (500 * 0.015 / 1000) = 0.0125
             assert result.cost_euros > 0
-            assert result.cost_euros < 0.01  # Should be cheap for simple
+            assert result.cost_euros < 0.05  # Higher than mini but reasonable for quality
 
     @pytest.mark.asyncio
     async def test_cost_calculation_complex(self, orchestrator, mock_unified_response):

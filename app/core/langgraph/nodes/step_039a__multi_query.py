@@ -32,7 +32,9 @@ STEP_ID = "RAG.query.multi_query"
 NODE_LABEL = "step_039a_multi_query"
 
 # Routes that should skip multi-query expansion
-SKIP_EXPANSION_ROUTES = {"chitchat", "theoretical_definition"}
+# NOTE: theoretical_definition was removed (ADR-022) because queries like
+# "Parlami della rottamazione quinquies" need document_references extraction
+SKIP_EXPANSION_ROUTES = {"chitchat"}
 
 
 def _variants_to_dict(variants: Any) -> dict[str, Any]:
@@ -42,6 +44,8 @@ def _variants_to_dict(variants: Any) -> dict[str, Any]:
         "vector_query": variants.vector_query,
         "entity_query": variants.entity_query,
         "original_query": variants.original_query,
+        "document_references": variants.document_references,  # ADR-022
+        "semantic_expansions": variants.semantic_expansions,  # DEV-242
         "skipped": False,
         "fallback": False,
     }
@@ -54,6 +58,8 @@ def _create_skip_result(query: str, reason: str) -> dict[str, Any]:
         "vector_query": query,
         "entity_query": query,
         "original_query": query,
+        "document_references": None,
+        "semantic_expansions": None,  # DEV-242
         "skipped": True,
         "skip_reason": reason,
         "fallback": False,
@@ -67,6 +73,8 @@ def _create_fallback_result(query: str) -> dict[str, Any]:
         "vector_query": query,
         "entity_query": query,
         "original_query": query,
+        "document_references": None,
+        "semantic_expansions": None,  # DEV-242
         "skipped": False,
         "fallback": True,
     }
@@ -125,10 +133,12 @@ async def node_step_39a(state: RAGState) -> RAGState:
 
                 query_variants = _variants_to_dict(variants)
 
+                semantic_exp_count = len(query_variants.get("semantic_expansions") or [])
                 logger.info(
                     f"Step {NODE_LABEL}: Generated variants - "
                     f"bm25={len(query_variants['bm25_query'])} chars, "
-                    f"vector={len(query_variants['vector_query'])} chars"
+                    f"vector={len(query_variants['vector_query'])} chars, "
+                    f"semantic_expansions={semantic_exp_count}"
                 )
 
             except Exception as e:
@@ -141,6 +151,7 @@ async def node_step_39a(state: RAGState) -> RAGState:
         f"{NODE_LABEL}.exit",
         skipped=query_variants.get("skipped", False),
         fallback=query_variants.get("fallback", False),
+        semantic_expansions_count=len(query_variants.get("semantic_expansions") or []),
     )
 
     return {

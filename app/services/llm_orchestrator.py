@@ -80,13 +80,15 @@ class ModelConfig:
         Returns:
             ModelConfig for the specified complexity
         """
+        # DEV-242 Phase 13A: Upgraded SIMPLE to gpt-4o and doubled all max_tokens
+        # for detailed regulatory responses with specific values (dates, rates, etc.)
         configs = {
             QueryComplexity.SIMPLE: cls(
-                model="gpt-4o-mini",
+                model="gpt-4o",  # DEV-242: Upgraded from gpt-4o-mini for quality
                 temperature=0.3,
-                max_tokens=1500,
-                cost_input_per_1k=0.00015,
-                cost_output_per_1k=0.0006,
+                max_tokens=3000,  # DEV-242: Doubled from 1500
+                cost_input_per_1k=0.005,  # DEV-242: Updated for gpt-4o
+                cost_output_per_1k=0.015,  # DEV-242: Updated for gpt-4o
                 prompt_template="unified_response_simple",
                 reasoning_type="cot",
                 timeout_seconds=30,
@@ -94,7 +96,7 @@ class ModelConfig:
             QueryComplexity.COMPLEX: cls(
                 model="gpt-4o",
                 temperature=0.4,
-                max_tokens=2500,
+                max_tokens=5000,  # DEV-242: Doubled from 2500
                 cost_input_per_1k=0.005,
                 cost_output_per_1k=0.015,
                 prompt_template="tree_of_thoughts",
@@ -104,7 +106,7 @@ class ModelConfig:
             QueryComplexity.MULTI_DOMAIN: cls(
                 model="gpt-4o",
                 temperature=0.5,
-                max_tokens=3500,
+                max_tokens=7000,  # DEV-242: Doubled from 3500
                 cost_input_per_1k=0.005,
                 cost_output_per_1k=0.015,
                 prompt_template="tree_of_thoughts_multi_domain",
@@ -337,12 +339,17 @@ class LLMOrchestrator:
             # Track session costs
             self._track_costs(complexity, cost_euros, tokens_input, tokens_output)
 
+            # DEV-242 Phase 13C: Enhanced logging with token utilization analysis
+            token_utilization_pct = round(tokens_output / config.max_tokens * 100, 1)
             logger.info(
                 "llm_response_generated",
                 complexity=complexity.value,
                 model=config.model,
                 tokens_input=tokens_input,
                 tokens_output=tokens_output,
+                max_tokens_budget=config.max_tokens,
+                token_utilization_pct=token_utilization_pct,
+                answer_length=len(response.answer),
                 cost_euros=cost_euros,
                 latency_ms=latency_ms,
             )

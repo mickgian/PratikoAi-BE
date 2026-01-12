@@ -31,6 +31,49 @@ class TestQueryVariantsSchema:
         assert variants.entity_query == "modello 730 Agenzia delle Entrate dichiarazione"
         assert variants.original_query == "Come faccio il 730?"
 
+    def test_query_variants_has_document_references_field(self):
+        """ADR-022: QueryVariants should have document_references field for LLM-identified documents."""
+        from app.services.multi_query_generator import QueryVariants
+
+        # Should be able to create with document_references
+        variants = QueryVariants(
+            bm25_query="rottamazione quinquies definizione agevolata",
+            vector_query="Quali sono le disposizioni sulla rottamazione quinquies?",
+            entity_query="Legge 199/2025 definizione agevolata",
+            original_query="Parlami della rottamazione quinquies",
+            document_references=["Legge 199/2025", "LEGGE 30 dicembre 2025, n. 199"],
+        )
+
+        assert variants.document_references == ["Legge 199/2025", "LEGGE 30 dicembre 2025, n. 199"]
+
+    def test_query_variants_document_references_optional(self):
+        """ADR-022: document_references should be optional (None by default)."""
+        from app.services.multi_query_generator import QueryVariants
+
+        # Should work without document_references (backward compatible)
+        variants = QueryVariants(
+            bm25_query="test query",
+            vector_query="test query",
+            entity_query="test query",
+            original_query="test query",
+        )
+
+        assert variants.document_references is None
+
+    def test_query_variants_document_references_empty_list(self):
+        """ADR-022: document_references can be an empty list when no documents identified."""
+        from app.services.multi_query_generator import QueryVariants
+
+        variants = QueryVariants(
+            bm25_query="generic tax question",
+            vector_query="generic tax question",
+            entity_query="generic tax question",
+            original_query="Come funziona il fisco?",
+            document_references=[],
+        )
+
+        assert variants.document_references == []
+
     def test_query_variants_all_distinct(self):
         """Test that variants can be distinct."""
         from app.services.multi_query_generator import QueryVariants
@@ -233,7 +276,7 @@ class TestMultiQueryGeneratorServiceFallback:
         original_query = "Timeout test query"
 
         with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
-            mock_llm.side_effect = asyncio.TimeoutError()
+            mock_llm.side_effect = TimeoutError()
 
             result = await service.generate(original_query, [])
 
@@ -347,6 +390,16 @@ class TestMultiQueryGeneratorServicePromptBuilding:
         assert "vector" in MULTI_QUERY_SYSTEM_PROMPT.lower()
         assert "entity" in MULTI_QUERY_SYSTEM_PROMPT.lower() or "entità" in MULTI_QUERY_SYSTEM_PROMPT.lower()
 
+    def test_system_prompt_includes_document_references(self, mock_config):
+        """ADR-022: Test that system prompt includes document_references instructions."""
+        from app.services.multi_query_generator import MULTI_QUERY_SYSTEM_PROMPT
+
+        # Should mention document_references field
+        assert "document_references" in MULTI_QUERY_SYSTEM_PROMPT.lower()
+        # Should provide Italian instructions about identifying normative documents
+        prompt_lower = MULTI_QUERY_SYSTEM_PROMPT.lower()
+        assert "legge" in prompt_lower or "decreto" in prompt_lower or "normativo" in prompt_lower
+
 
 class TestMultiQueryGeneratorServiceResponseParsing:
     """Tests for response parsing."""
@@ -367,11 +420,13 @@ class TestMultiQueryGeneratorServiceResponseParsing:
 
         service = MultiQueryGeneratorService(config=mock_config)
 
-        json_response = json.dumps({
-            "bm25_query": "keyword query",
-            "vector_query": "semantic query",
-            "entity_query": "entity query",
-        })
+        json_response = json.dumps(
+            {
+                "bm25_query": "keyword query",
+                "vector_query": "semantic query",
+                "entity_query": "entity query",
+            }
+        )
 
         result = service._parse_response(json_response, "original query")
 
@@ -379,6 +434,62 @@ class TestMultiQueryGeneratorServiceResponseParsing:
         assert result.vector_query == "semantic query"
         assert result.entity_query == "entity query"
         assert result.original_query == "original query"
+
+    def test_parse_response_with_document_references(self, mock_config):
+        """ADR-022: Test parsing response that includes document_references."""
+        from app.services.multi_query_generator import MultiQueryGeneratorService
+
+        service = MultiQueryGeneratorService(config=mock_config)
+
+        json_response = json.dumps(
+            {
+                "bm25_query": "rottamazione quinquies definizione agevolata",
+                "vector_query": "Quali sono le disposizioni sulla rottamazione quinquies?",
+                "entity_query": "Legge 199/2025 definizione agevolata",
+                "document_references": ["Legge 199/2025", "LEGGE 30 dicembre 2025, n. 199"],
+            }
+        )
+
+        result = service._parse_response(json_response, "rottamazione quinquies")
+
+        assert result.document_references == ["Legge 199/2025", "LEGGE 30 dicembre 2025, n. 199"]
+
+    def test_parse_response_without_document_references(self, mock_config):
+        """ADR-022: Test that missing document_references defaults to None."""
+        from app.services.multi_query_generator import MultiQueryGeneratorService
+
+        service = MultiQueryGeneratorService(config=mock_config)
+
+        json_response = json.dumps(
+            {
+                "bm25_query": "generic query",
+                "vector_query": "generic semantic query",
+                "entity_query": "generic entity query",
+            }
+        )
+
+        result = service._parse_response(json_response, "generic question")
+
+        assert result.document_references is None
+
+    def test_parse_response_with_empty_document_references(self, mock_config):
+        """ADR-022: Test parsing response with empty document_references array."""
+        from app.services.multi_query_generator import MultiQueryGeneratorService
+
+        service = MultiQueryGeneratorService(config=mock_config)
+
+        json_response = json.dumps(
+            {
+                "bm25_query": "test query",
+                "vector_query": "test semantic",
+                "entity_query": "test entity",
+                "document_references": [],
+            }
+        )
+
+        result = service._parse_response(json_response, "test")
+
+        assert result.document_references == []
 
     def test_parse_response_with_markdown_wrapper(self, mock_config):
         """Test parsing response wrapped in markdown code block."""
@@ -416,9 +527,11 @@ class TestMultiQueryGeneratorServiceResponseParsing:
         service = MultiQueryGeneratorService(config=mock_config)
 
         # Only bm25_query provided
-        json_response = json.dumps({
-            "bm25_query": "only bm25",
-        })
+        json_response = json.dumps(
+            {
+                "bm25_query": "only bm25",
+            }
+        )
 
         result = service._parse_response(json_response, "original query")
 
@@ -492,3 +605,160 @@ class TestMultiQueryGeneratorServiceEdgeCases:
         assert "104" in result.entity_query
         assert "Art" in result.entity_query or "3" in result.entity_query
         assert "INPS" in result.entity_query
+
+
+class TestSemanticExpansions:
+    """DEV-242 Phase 16: Tests for semantic_expansions functionality."""
+
+    @pytest.fixture
+    def mock_config(self):
+        """Create a mock LLMModelConfig."""
+        config = MagicMock()
+        config.get_model.return_value = "gpt-4o-mini"
+        config.get_provider.return_value = "openai"
+        config.get_timeout.return_value = 3000
+        config.get_temperature.return_value = 0.3
+        return config
+
+    def test_query_variants_has_semantic_expansions_field(self):
+        """DEV-242: QueryVariants should have semantic_expansions field."""
+        from app.services.multi_query_generator import QueryVariants
+
+        variants = QueryVariants(
+            bm25_query="rottamazione quinquies definizione agevolata",
+            vector_query="Quali sono le disposizioni sulla rottamazione quinquies?",
+            entity_query="Legge 199/2025 definizione agevolata",
+            original_query="Parlami della rottamazione quinquies",
+            document_references=["n. 199", "Legge di Bilancio 2026"],
+            semantic_expansions=["pace fiscale", "pacificazione fiscale", "definizione agevolata"],
+        )
+
+        assert variants.semantic_expansions == ["pace fiscale", "pacificazione fiscale", "definizione agevolata"]
+
+    def test_query_variants_semantic_expansions_optional(self):
+        """DEV-242: semantic_expansions should be optional (None by default)."""
+        from app.services.multi_query_generator import QueryVariants
+
+        variants = QueryVariants(
+            bm25_query="test query",
+            vector_query="test query",
+            entity_query="test query",
+            original_query="test query",
+        )
+
+        assert variants.semantic_expansions is None
+
+    def test_query_variants_semantic_expansions_empty_list(self):
+        """DEV-242: semantic_expansions can be an empty list when no expansions identified."""
+        from app.services.multi_query_generator import QueryVariants
+
+        variants = QueryVariants(
+            bm25_query="generic iva question",
+            vector_query="generic iva question",
+            entity_query="generic iva question",
+            original_query="Come funziona l'IVA?",
+            semantic_expansions=[],
+        )
+
+        assert variants.semantic_expansions == []
+
+    def test_system_prompt_includes_semantic_expansions(self, mock_config):
+        """DEV-242: Test that system prompt includes semantic_expansions instructions."""
+        from app.services.multi_query_generator import MULTI_QUERY_SYSTEM_PROMPT
+
+        # Should mention semantic_expansions field
+        assert "semantic_expansions" in MULTI_QUERY_SYSTEM_PROMPT.lower()
+        # Should provide examples of semantic gap bridging
+        prompt_lower = MULTI_QUERY_SYSTEM_PROMPT.lower()
+        assert "pace fiscale" in prompt_lower or "terminolog" in prompt_lower
+
+    def test_parse_response_with_semantic_expansions(self, mock_config):
+        """DEV-242: Test parsing response that includes semantic_expansions."""
+        from app.services.multi_query_generator import MultiQueryGeneratorService
+
+        service = MultiQueryGeneratorService(config=mock_config)
+
+        json_response = json.dumps(
+            {
+                "bm25_query": "rottamazione quinquies definizione agevolata",
+                "vector_query": "Quali sono le disposizioni sulla rottamazione quinquies?",
+                "entity_query": "Legge 199/2025 definizione agevolata",
+                "document_references": ["n. 199", "Legge di Bilancio 2026"],
+                "semantic_expansions": ["pace fiscale", "pacificazione fiscale", "definizione agevolata"],
+            }
+        )
+
+        result = service._parse_response(json_response, "rottamazione quinquies")
+
+        assert result.semantic_expansions == ["pace fiscale", "pacificazione fiscale", "definizione agevolata"]
+
+    def test_parse_response_without_semantic_expansions(self, mock_config):
+        """DEV-242: Test that missing semantic_expansions defaults to None."""
+        from app.services.multi_query_generator import MultiQueryGeneratorService
+
+        service = MultiQueryGeneratorService(config=mock_config)
+
+        json_response = json.dumps(
+            {
+                "bm25_query": "generic query",
+                "vector_query": "generic semantic query",
+                "entity_query": "generic entity query",
+            }
+        )
+
+        result = service._parse_response(json_response, "generic question")
+
+        assert result.semantic_expansions is None
+
+    def test_parse_response_with_empty_semantic_expansions(self, mock_config):
+        """DEV-242: Test parsing response with empty semantic_expansions array."""
+        from app.services.multi_query_generator import MultiQueryGeneratorService
+
+        service = MultiQueryGeneratorService(config=mock_config)
+
+        json_response = json.dumps(
+            {
+                "bm25_query": "test query",
+                "vector_query": "test semantic",
+                "entity_query": "test entity",
+                "semantic_expansions": [],
+            }
+        )
+
+        result = service._parse_response(json_response, "test")
+
+        assert result.semantic_expansions == []
+
+    def test_fallback_variants_has_semantic_expansions_none(self, mock_config):
+        """DEV-242: Test that fallback variants have semantic_expansions=None."""
+        from app.services.multi_query_generator import MultiQueryGeneratorService
+
+        service = MultiQueryGeneratorService(config=mock_config)
+        fallback = service._fallback_variants("test query")
+
+        assert fallback.semantic_expansions is None
+        assert fallback.document_references is None
+
+    @pytest.mark.asyncio
+    async def test_generate_with_semantic_expansions(self, mock_config):
+        """DEV-242: Test that generate() returns semantic_expansions when LLM provides them."""
+        from app.services.multi_query_generator import MultiQueryGeneratorService, QueryVariants
+
+        service = MultiQueryGeneratorService(config=mock_config)
+
+        mock_response = QueryVariants(
+            bm25_query="rottamazione quinquies pace fiscale definizione",
+            vector_query="Quali sono le disposizioni sulla pace fiscale e rottamazione quinquies?",
+            entity_query="Legge 199/2025 definizione agevolata pacificazione",
+            original_query="Parlami della rottamazione quinquies",
+            document_references=["n. 199", "Legge di Bilancio 2026"],
+            semantic_expansions=["pace fiscale", "pacificazione fiscale", "definizione agevolata"],
+        )
+
+        with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = mock_response
+
+            result = await service.generate("Parlami della rottamazione quinquies", [])
+
+        assert result.semantic_expansions == ["pace fiscale", "pacificazione fiscale", "definizione agevolata"]
+        assert result.document_references == ["n. 199", "Legge di Bilancio 2026"]

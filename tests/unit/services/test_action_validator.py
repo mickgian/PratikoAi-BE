@@ -175,7 +175,9 @@ class TestPromptLengthValidation:
         result = validator.validate(action, kb_sources=[])
         # May fail for other reasons but not prompt length
         if not result.is_valid:
-            assert "prompt" not in result.rejection_reason.lower() or "too short" not in result.rejection_reason.lower()
+            assert (
+                "prompt" not in result.rejection_reason.lower() or "too short" not in result.rejection_reason.lower()
+            )
 
 
 class TestForbiddenPatterns:
@@ -583,3 +585,360 @@ class TestValidIconsConstant:
     def test_valid_icons_is_set(self):
         """VALID_ICONS should be a set for O(1) lookup."""
         assert isinstance(VALID_ICONS, set | frozenset)
+
+
+class TestForbiddenMonitoringPatterns:
+    """Test DEV-242: Anti-monitoring patterns.
+
+    PratikoAI IS the monitoring service - should never suggest users monitor sources.
+    """
+
+    @pytest.fixture
+    def validator(self):
+        return ActionValidator()
+
+    @pytest.mark.parametrize(
+        "label,prompt",
+        [
+            ("Monitora le comunicazioni", "Monitora le comunicazioni ufficiali dell'AdE"),
+            ("Monitorare gli aggiornamenti", "Monitorare gli aggiornamenti dell'Agenzia delle Entrate"),
+            ("Controlla periodicamente", "Controlla periodicamente il sito per aggiornamenti"),
+            ("Tieni d'occhio le novità", "Tieni d'occhio le novità normative"),
+            ("Resta aggiornato", "Resta aggiornato sulle comunicazioni ufficiali"),
+            ("Verifica periodicamente", "Verificare periodicamente le fonti ufficiali"),
+            ("Consulta regolarmente", "Consultare regolarmente il sito dell'Agenzia"),
+            ("Segui le novità", "Seguire le novità dell'Agenzia delle Entrate"),
+        ],
+    )
+    def test_rejects_monitoring_patterns(self, validator, label, prompt):
+        """DEV-242: PratikoAI IS the monitor - never suggest user monitors."""
+        action = {"label": label, "prompt": prompt}
+        result = validator.validate(action, kb_sources=[])
+        assert result.is_valid is False
+        assert "forbidden" in result.rejection_reason.lower() or "pattern" in result.rejection_reason.lower()
+
+    def test_rejects_monitoring_in_prompt_only(self, validator):
+        """Monitoring pattern in prompt should also be rejected."""
+        action = {
+            "label": "Aggiornamenti rottamazione",
+            "prompt": "Monitorare le comunicazioni ufficiali sulla rottamazione quinquies",
+        }
+        result = validator.validate(action, kb_sources=[])
+        assert result.is_valid is False
+
+    def test_accepts_non_monitoring_action(self, validator):
+        """Actions without monitoring patterns should pass."""
+        action = {
+            "label": "Scadenze rottamazione quinquies",
+            "prompt": "Quali sono le scadenze della rottamazione quinquies?",
+        }
+        result = validator.validate(action, kb_sources=[])
+        # May fail other checks but not forbidden patterns
+        if not result.is_valid:
+            assert (
+                "forbidden" not in result.rejection_reason.lower()
+                or "monitoring" not in result.rejection_reason.lower()
+            )
+
+    def test_accepts_pratikoai_monitoring_statement(self, validator):
+        """Actions stating PratikoAI monitors should be allowed."""
+        action = {
+            "label": "PratikoAI monitora per te",
+            "prompt": "Il sistema PratikoAI monitora automaticamente gli aggiornamenti",
+        }
+        result = validator.validate(action, kb_sources=[])
+        # This should pass since it's saying PratikoAI monitors, not asking user to
+        # Note: May still fail due to length requirements
+        if not result.is_valid:
+            # Should not fail due to monitoring pattern
+            reason_lower = result.rejection_reason.lower()
+            assert "forbidden" not in reason_lower or "pattern" not in reason_lower
+
+
+class TestDEV242SemanticDeduplication:
+    """DEV-242: Test semantic deduplication of actions."""
+
+    @pytest.fixture
+    def validator(self):
+        return ActionValidator()
+
+    @pytest.fixture
+    def kb_sources(self):
+        return [{"title": "Test", "key_topics": ["IVA", "scadenze"]}]
+
+    # Tests for _extract_significant_words()
+    def test_extracts_significant_words(self, validator):
+        """Extracts significant words, excluding stop words."""
+        action = {
+            "label": "Calcola IVA applicabile",
+            "prompt": "Calcola l'IVA sul totale della fattura",
+        }
+        words = validator._extract_significant_words(action)
+
+        assert "calcola" in words
+        assert "iva" in words
+        assert "fattura" in words
+        # Stop words excluded
+        assert "il" not in words
+        assert "della" not in words
+
+    def test_excludes_short_words(self, validator):
+        """Excludes words with 2 or fewer characters."""
+        action = {
+            "label": "A e o test azione",
+            "prompt": "Di la un test per azione",
+        }
+        words = validator._extract_significant_words(action)
+
+        assert "test" in words
+        assert "azione" in words
+        # Short words excluded
+        assert "a" not in words
+        assert "e" not in words
+        assert "o" not in words
+
+    # Tests for _calculate_word_overlap()
+    def test_calculates_overlap_identical_sets(self, validator):
+        """Identical sets have 100% overlap."""
+        words = {"calcola", "iva", "fattura"}
+        overlap = validator._calculate_word_overlap(words, words)
+        assert overlap == 1.0
+
+    def test_calculates_overlap_disjoint_sets(self, validator):
+        """Disjoint sets have 0% overlap."""
+        words1 = {"calcola", "iva"}
+        words2 = {"scadenza", "fiscale"}
+        overlap = validator._calculate_word_overlap(words1, words2)
+        assert overlap == 0.0
+
+    def test_calculates_overlap_partial(self, validator):
+        """Partial overlap calculated correctly."""
+        words1 = {"calcola", "iva", "fattura"}
+        words2 = {"calcola", "iva", "scadenza"}
+        overlap = validator._calculate_word_overlap(words1, words2)
+        # Intersection: {calcola, iva} = 2
+        # Union: {calcola, iva, fattura, scadenza} = 4
+        # Overlap = 2/4 = 0.5
+        assert overlap == 0.5
+
+    def test_overlap_empty_sets(self, validator):
+        """Empty sets return 0.0 overlap."""
+        assert validator._calculate_word_overlap(set(), set()) == 0.0
+        assert validator._calculate_word_overlap({"test"}, set()) == 0.0
+
+    # Tests for _deduplicate_actions()
+    def test_removes_duplicate_actions(self, validator):
+        """Actions with >50% overlap are deduplicated."""
+        # These actions share most of the same significant words
+        actions = [
+            {
+                "id": "1",
+                "label": "Calcola IVA fattura",
+                "prompt": "Calcola IVA fattura cliente",
+            },
+            {
+                "id": "2",
+                "label": "Calcola IVA fattura",  # Nearly identical
+                "prompt": "Calcola IVA fattura oggi",
+            },
+            {
+                "id": "3",
+                "label": "Scadenze fiscali 2026",  # Different
+                "prompt": "Mostra le scadenze fiscali per il 2026",
+            },
+        ]
+        result = validator._deduplicate_actions(actions)
+
+        assert len(result) == 2
+        assert result[0]["id"] == "1"  # First kept
+        assert result[1]["id"] == "3"  # Different kept
+
+    def test_keeps_distinct_actions(self, validator):
+        """Distinct actions are all kept."""
+        actions = [
+            {"id": "1", "label": "Calcola IVA 22%", "prompt": "Calcola IVA al 22%"},
+            {"id": "2", "label": "Scadenze fiscali", "prompt": "Mostra scadenze fiscali"},
+            {"id": "3", "label": "Contributi INPS", "prompt": "Calcola contributi INPS"},
+        ]
+        result = validator._deduplicate_actions(actions)
+
+        assert len(result) == 3
+
+    def test_single_action_unchanged(self, validator):
+        """Single action is returned unchanged."""
+        actions = [{"id": "1", "label": "Test azione", "prompt": "Test prompt"}]
+        result = validator._deduplicate_actions(actions)
+        assert len(result) == 1
+
+    def test_empty_list_unchanged(self, validator):
+        """Empty list returns empty list."""
+        result = validator._deduplicate_actions([])
+        assert result == []
+
+    # Tests for _filter_previously_used()
+    def test_filters_exact_match_previous(self, validator):
+        """Filters actions that exactly match previous."""
+        actions = [
+            {"id": "1", "label": "Calcola IVA 22%", "prompt": "Prompt 1"},
+            {"id": "2", "label": "Scadenze fiscali", "prompt": "Prompt 2"},
+        ]
+        previous = ["Calcola IVA 22%"]
+
+        result = validator._filter_previously_used(actions, previous)
+
+        assert len(result) == 1
+        assert result[0]["id"] == "2"
+
+    def test_filters_similar_to_previous(self, validator):
+        """Filters actions similar to previous (>50% overlap)."""
+        actions = [
+            {"id": "1", "label": "Calcola IVA applicabile", "prompt": "Calcola IVA su fattura"},
+            {"id": "2", "label": "Scadenze fiscali 2026", "prompt": "Mostra scadenze"},
+        ]
+        previous = ["Calcola IVA fattura"]  # Similar to action 1
+
+        result = validator._filter_previously_used(actions, previous)
+
+        # Action 1 should be filtered due to similarity
+        assert len(result) == 1
+        assert result[0]["id"] == "2"
+
+    def test_keeps_dissimilar_actions(self, validator):
+        """Keeps actions dissimilar to previous."""
+        actions = [
+            {"id": "1", "label": "Calcola IVA 22%", "prompt": "Prompt 1"},
+            {"id": "2", "label": "Scadenze fiscali", "prompt": "Prompt 2"},
+        ]
+        previous = ["Contributi INPS"]  # Unrelated
+
+        result = validator._filter_previously_used(actions, previous)
+
+        assert len(result) == 2
+
+    def test_empty_previous_returns_all(self, validator):
+        """Empty previous list returns all actions."""
+        actions = [
+            {"id": "1", "label": "Test 1", "prompt": "Prompt 1"},
+            {"id": "2", "label": "Test 2", "prompt": "Prompt 2"},
+        ]
+        result = validator._filter_previously_used(actions, [])
+        assert len(result) == 2
+
+    def test_none_previous_returns_all(self, validator):
+        """None previous list returns all actions."""
+        actions = [{"id": "1", "label": "Test", "prompt": "Prompt"}]
+        result = validator._filter_previously_used(actions, None)
+        assert len(result) == 1
+
+    # Tests for validate_batch_with_context()
+    def test_validate_batch_with_context_deduplicates(self, validator, kb_sources):
+        """validate_batch_with_context deduplicates similar actions."""
+        # These actions share most significant words (>50% overlap)
+        actions = [
+            {"id": "1", "label": "Calcola IVA fattura", "prompt": "Calcola IVA fattura cliente oggi"},
+            {"id": "2", "label": "Calcola IVA fattura", "prompt": "Calcola IVA fattura fornitore oggi"},
+            {"id": "3", "label": "Scadenze fiscali 2026", "prompt": "Mostra scadenze fiscali anno 2026"},
+        ]
+        result = validator.validate_batch_with_context(actions, "Test response", kb_sources)
+
+        # Should deduplicate nearly identical actions
+        assert len(result.validated_actions) == 2
+
+    def test_validate_batch_with_context_filters_previous(self, validator, kb_sources):
+        """validate_batch_with_context filters previously used actions."""
+        actions = [
+            {"id": "1", "label": "Calcola IVA 22%", "prompt": "Calcola l'IVA al 22% sulla fattura"},
+            {"id": "2", "label": "Scadenze fiscali 2026", "prompt": "Mostra le scadenze fiscali 2026"},
+        ]
+        previous = ["Calcola IVA 22%"]
+
+        result = validator.validate_batch_with_context(actions, "Test response", kb_sources, previous)
+
+        # Should filter out exact match
+        assert len(result.validated_actions) == 1
+        assert result.validated_actions[0]["id"] == "2"
+
+    def test_validate_batch_with_context_empty_input(self, validator, kb_sources):
+        """validate_batch_with_context handles empty input."""
+        result = validator.validate_batch_with_context([], "Test response", kb_sources)
+
+        assert len(result.validated_actions) == 0
+        assert result.quality_score == 0.0
+
+    def test_validate_batch_with_context_all_invalid(self, validator, kb_sources):
+        """validate_batch_with_context handles all invalid actions."""
+        actions = [
+            {"id": "1", "label": "Bad", "prompt": "x"},  # Too short
+            {"id": "2", "label": "Also bad", "prompt": "y"},  # Too short
+        ]
+        result = validator.validate_batch_with_context(actions, "Test response", kb_sources)
+
+        assert len(result.validated_actions) == 0
+
+
+class TestDEV242IntegrationScenarios:
+    """DEV-242: Integration tests for realistic scenarios."""
+
+    @pytest.fixture
+    def validator(self):
+        return ActionValidator()
+
+    @pytest.fixture
+    def kb_sources(self):
+        return [
+            {"title": "Rottamazione quinquies", "key_topics": ["rottamazione", "scadenze"]},
+            {"title": "IVA ordinaria", "key_topics": ["IVA", "aliquote"]},
+        ]
+
+    def test_realistic_action_set_deduplication(self, validator, kb_sources):
+        """Realistic scenario with multiple similar actions."""
+        # Nearly identical actions should be deduplicated
+        actions = [
+            {
+                "id": "1",
+                "label": "Scadenze rottamazione quinquies 2026",
+                "prompt": "Scadenze rottamazione quinquies 2026 elenco completo",
+            },
+            {
+                "id": "2",
+                "label": "Scadenze rottamazione quinquies 2026",  # Nearly identical
+                "prompt": "Scadenze rottamazione quinquies 2026 calendario",
+            },
+            {
+                "id": "3",
+                "label": "Calcola IVA ordinaria 22%",
+                "prompt": "Calcola l'IVA ordinaria al 22% su un importo",
+            },
+            {
+                "id": "4",
+                "label": "Contributi INPS artigiani",  # Completely different
+                "prompt": "Qual è l'importo contributi INPS per artigiani?",
+            },
+        ]
+
+        result = validator.validate_batch_with_context(actions, "Test", kb_sources)
+
+        # Should deduplicate action 1 and 2 (nearly identical)
+        assert len(result.validated_actions) == 3
+
+    def test_user_clicked_action_filtered(self, validator, kb_sources):
+        """After user clicks action, exact match or highly similar filtered."""
+        actions = [
+            {
+                "id": "1",
+                "label": "Scadenze rottamazione quinquies",  # Exact match to previous
+                "prompt": "Mostra scadenze rottamazione quinquies 2026",
+            },
+            {
+                "id": "2",
+                "label": "Calcola importo dovuto",
+                "prompt": "Calcola l'importo totale dovuto al fisco",
+            },
+        ]
+        previous_used = ["Scadenze rottamazione quinquies"]  # User already clicked this
+
+        result = validator.validate_batch_with_context(actions, "Test", kb_sources, previous_used)
+
+        # Action 1 should be filtered (exact match to previously used)
+        assert len(result.validated_actions) == 1
+        assert result.validated_actions[0]["id"] == "2"

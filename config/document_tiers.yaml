@@ -1,0 +1,173 @@
+# Document Tier Classification Configuration (ADR-023)
+# Used by DocumentClassifier to assign ingestion strategy
+#
+# Tiers:
+#   1 (CRITICAL): Article-level parsing for laws and major regulatory documents
+#   2 (IMPORTANT): Standard chunking for regulatory guidance
+#   3 (REFERENCE): Light indexing for news and communications
+#
+# Related to:
+#   - DEV-242: Response Quality & Suggested Actions Fixes
+#   - ADR-023: Tiered Document Ingestion
+
+tiers:
+  tier_1_critical:
+    description: "Critical legal documents requiring article-level parsing"
+    parsing_strategy: "article_level"
+    patterns:
+      # Leggi di Bilancio (annual budget laws)
+      - regex: "Legge.*Bilancio.*\\d{4}"
+        example: "Legge di Bilancio 2026"
+      - regex: "LEGGE\\s+\\d+\\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\\s+\\d{4},?\\s*n\\.?\\s*\\d+"
+        example: "LEGGE 30 dicembre 2025, n. 199"
+
+      # Decreti Legge
+      - regex: "Decreto[-\\s]?Legge.*\\d+"
+        example: "Decreto-Legge 34/2020"
+      - regex: "D\\.?L\\.?\\s*\\d+/\\d{4}"
+        example: "DL 34/2020"
+
+      # Decreti Legislativi
+      - regex: "Decreto\\s+Legislativo.*\\d+"
+        example: "Decreto Legislativo 241/1997"
+      - regex: "D\\.?Lgs\\.?\\s*\\d+"
+        example: "D.Lgs. 241/1997"
+
+      # DPR (Decreti del Presidente della Repubblica)
+      - regex: "D\\.?P\\.?R\\.?\\s*\\d+"
+        example: "DPR 633/1972"
+
+      # TUIR and other major codes
+      - regex: "T\\.?U\\.?I\\.?R\\.?"
+        example: "TUIR"
+      - regex: "Testo\\s+Unico.*Imposte"
+        example: "Testo Unico delle Imposte sui Redditi"
+
+      # Named critical laws
+      - exact: "Decreto Rilancio"
+      - exact: "Decreto Sostegni"
+      - exact: "Riforma Fiscale"
+      - exact: "Riforma IRPEF"
+      - exact: "Codice della Crisi"
+      - exact: "Jobs Act"
+
+    # Explicit list of known critical documents (highest priority)
+    explicit_documents:
+      - "LEGGE 30 dicembre 2025, n. 199"  # Legge di Bilancio 2026
+      - "LEGGE 29 dicembre 2022, n. 197"  # Legge di Bilancio 2023
+      - "LEGGE 30 dicembre 2023, n. 213"  # Legge di Bilancio 2024
+      - "LEGGE 30 dicembre 2024, n. 207"  # Legge di Bilancio 2025
+      - "Decreto-Legge 19 maggio 2020, n. 34"  # Decreto Rilancio
+      - "Decreto-Legge 22 marzo 2021, n. 41"  # Decreto Sostegni
+      - "Decreto Legislativo 9 luglio 1997, n. 241"  # Versamenti unificati
+
+  tier_2_important:
+    description: "Important regulatory documents with standard chunking"
+    parsing_strategy: "standard_chunking"
+    patterns:
+      - regex: "Circolare.*n\\.?\\s*\\d+"
+        example: "Circolare n. 19/E"
+      - regex: "Interpello.*n\\.?\\s*\\d+"
+        example: "Interpello n. 280/2025"
+      - regex: "Risoluzione.*n\\.?\\s*\\d+"
+        example: "Risoluzione n. 56/E"
+      - regex: "Risposta.*n\\.?\\s*\\d+"
+        example: "Risposta n. 297"
+      - regex: "Provvedimento.*\\d+"
+        example: "Provvedimento 123456/2025"
+      - regex: "Messaggio.*n\\.?\\s*\\d+"
+        example: "Messaggio n. 1234"
+    sources:
+      - "agenzia_entrate_normativa"
+      - "agenzia_entrate_normativa_prassi"
+      - "inps_circolari"
+      - "inail_circolari"
+      - "agenzia_entrate_risposte"
+
+  tier_3_reference:
+    description: "Reference material with light indexing"
+    parsing_strategy: "light_indexing"
+    patterns:
+      - regex: "Comunicato\\s+stampa"
+        example: "Comunicato stampa"
+      - regex: "^News$"
+        example: "News"
+      - regex: "^FAQ"
+        example: "FAQ"
+      - regex: "Nota\\s+informativa"
+        example: "Nota informativa"
+    sources:
+      - "ministero_economia_documenti"
+      - "ministero_lavoro_news"
+      - "inps_comunicati"
+      - "inail_comunicati"
+      - "agenzia_entrate_news"
+
+# Topic keywords for automatic tagging
+# These keywords are used to detect topics from document content
+topic_keywords:
+  rottamazione:
+    - "rottamazione"
+    - "definizione agevolata"
+    - "stralcio"
+    - "pace fiscale"
+    - "rottamazione quinquies"
+    - "rottamazione quater"
+  irpef:
+    - "IRPEF"
+    - "imposta sul reddito"
+    - "aliquote"
+    - "scaglioni"
+    - "detrazioni lavoro"
+    - "no tax area"
+  iva:
+    - "IVA"
+    - "imposta sul valore aggiunto"
+    - "aliquota IVA"
+    - "reverse charge"
+    - "split payment"
+  contributi:
+    - "contributi"
+    - "INPS"
+    - "previdenza"
+    - "pensione"
+    - "gestione separata"
+    - "artigiani"
+    - "commercianti"
+  bonus:
+    - "bonus"
+    - "credito d'imposta"
+    - "agevolazione"
+    - "incentivo"
+    - "superbonus"
+    - "ecobonus"
+  fatturazione:
+    - "fattura elettronica"
+    - "e-fattura"
+    - "SDI"
+    - "fatturazione"
+    - "corrispettivi"
+  forfettario:
+    - "forfettario"
+    - "regime forfetario"
+    - "flat tax"
+    - "partita IVA"
+  lavoro:
+    - "assunzione"
+    - "licenziamento"
+    - "TFR"
+    - "contratto"
+    - "dipendente"
+    - "datore di lavoro"
+  casa:
+    - "superbonus"
+    - "bonus casa"
+    - "ristrutturazione"
+    - "mutuo"
+    - "prima casa"
+    - "IMU"
+  successioni:
+    - "successione"
+    - "donazione"
+    - "eredità"
+    - "imposta di successione"

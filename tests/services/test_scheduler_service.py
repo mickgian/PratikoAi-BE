@@ -436,3 +436,241 @@ class TestSchedulerService:
 
         assert scheduler_service is not None
         assert isinstance(scheduler_service, SchedulerService)
+
+
+class TestNonBlockingStartup:
+    """DEV-242: Tests for non-blocking scheduler startup.
+
+    These tests ensure that start_scheduler() returns immediately
+    without waiting for immediate tasks to complete.
+    """
+
+    @pytest.mark.asyncio
+    async def test_start_scheduler_returns_immediately(self):
+        """start_scheduler() must return within 100ms even with slow immediate tasks."""
+        import time
+
+        from app.services.scheduler_service import SchedulerService
+
+        scheduler = SchedulerService()
+
+        # Add a slow task that would block startup if awaited
+        async def slow_task():
+            await asyncio.sleep(5)  # 5 seconds - would timeout test if blocking
+
+        task = ScheduledTask(
+            name="slow_test",
+            interval=ScheduleInterval.DAILY,
+            function=slow_task,
+            run_immediately=True,
+            enabled=True,
+        )
+        scheduler.add_task(task)
+
+        # start() should return immediately, not wait for slow_task
+        start = time.perf_counter()
+        await scheduler.start()
+        elapsed = time.perf_counter() - start
+
+        # Must return within 100ms (not wait for 5s slow_task)
+        assert elapsed < 0.5, f"start() took {elapsed:.2f}s - should be < 0.5s"
+
+        # Cleanup - wait a bit for background task to start, then stop
+        await asyncio.sleep(0.1)
+        await scheduler.stop()
+
+    @pytest.mark.asyncio
+    async def test_immediate_tasks_run_in_background(self):
+        """Immediate tasks should run in background, not block startup."""
+        from app.services.scheduler_service import SchedulerService
+
+        scheduler = SchedulerService()
+        executed = []
+
+        async def track_task():
+            executed.append("started")
+            await asyncio.sleep(0.2)
+            executed.append("finished")
+
+        task = ScheduledTask(
+            name="track_test",
+            interval=ScheduleInterval.DAILY,
+            function=track_task,
+            run_immediately=True,
+            enabled=True,
+        )
+        scheduler.add_task(task)
+
+        await scheduler.start()
+
+        # Task should have STARTED but NOT finished yet
+        await asyncio.sleep(0.05)  # Give it a moment to start
+        assert "started" in executed, "Task should have started"
+        assert "finished" not in executed, "Task should still be running"
+
+        # Wait for task to complete
+        await asyncio.sleep(0.3)
+        assert "finished" in executed, "Task should have finished"
+
+        await scheduler.stop()
+
+    @pytest.mark.asyncio
+    async def test_background_tasks_tracked_for_shutdown(self):
+        """Background tasks should be tracked for graceful shutdown."""
+        from app.services.scheduler_service import SchedulerService
+
+        scheduler = SchedulerService()
+
+        async def long_task():
+            await asyncio.sleep(10)
+
+        task = ScheduledTask(
+            name="long_test",
+            interval=ScheduleInterval.DAILY,
+            function=long_task,
+            run_immediately=True,
+            enabled=True,
+        )
+        scheduler.add_task(task)
+
+        await scheduler.start()
+        await asyncio.sleep(0.05)  # Let task start
+
+        # Should have pending background tasks
+        assert hasattr(scheduler, "_background_tasks"), "Should track background tasks"
+        assert len(scheduler._background_tasks) > 0, "Should have running background task"
+
+        await scheduler.stop()
+
+    @pytest.mark.asyncio
+    async def test_stop_cancels_background_tasks(self):
+        """stop() should cancel running background tasks gracefully."""
+        from app.services.scheduler_service import SchedulerService
+
+        scheduler = SchedulerService()
+        cancelled = []
+
+        async def cancellable_task():
+            try:
+                await asyncio.sleep(10)
+            except asyncio.CancelledError:
+                cancelled.append("cancelled")
+                raise
+
+        task = ScheduledTask(
+            name="cancel_test",
+            interval=ScheduleInterval.DAILY,
+            function=cancellable_task,
+            run_immediately=True,
+            enabled=True,
+        )
+        scheduler.add_task(task)
+
+        await scheduler.start()
+        await asyncio.sleep(0.05)  # Let task start
+
+        await scheduler.stop()
+
+        # Task should have been cancelled
+        assert "cancelled" in cancelled, "Background task should be cancelled on stop"
+
+
+class TestTaskTimeout:
+    """DEV-242: Tests for task timeout protection."""
+
+    @pytest.mark.asyncio
+    async def test_task_with_timeout_field(self):
+        """ScheduledTask should support timeout_seconds field."""
+        task = ScheduledTask(
+            name="timeout_test",
+            interval=ScheduleInterval.HOURLY,
+            function=lambda: None,
+            timeout_seconds=30,
+        )
+
+        assert task.timeout_seconds == 30
+
+    @pytest.mark.asyncio
+    async def test_task_timeout_cancels_slow_task(self):
+        """Tasks exceeding timeout should be cancelled."""
+        from app.services.scheduler_service import SchedulerService
+
+        scheduler = SchedulerService()
+        timed_out = []
+
+        async def very_slow_task():
+            try:
+                await asyncio.sleep(10)  # Would take 10s
+            except asyncio.CancelledError:
+                timed_out.append("timeout")
+                raise
+
+        task = ScheduledTask(
+            name="timeout_test",
+            interval=ScheduleInterval.DAILY,
+            function=very_slow_task,
+            timeout_seconds=0.2,  # 200ms timeout
+        )
+        scheduler.add_task(task)
+
+        await scheduler._execute_task(task)
+
+        # Task should have been cancelled due to timeout
+        assert "timeout" in timed_out, "Task should be cancelled after timeout"
+
+    @pytest.mark.asyncio
+    async def test_task_timeout_default_none(self):
+        """Tasks without explicit timeout should have no timeout (None)."""
+        task = ScheduledTask(
+            name="no_timeout",
+            interval=ScheduleInterval.HOURLY,
+            function=lambda: None,
+        )
+
+        assert task.timeout_seconds is None
+
+
+class TestThreadPoolExecution:
+    """DEV-242: Tests for running sync tasks in thread pool."""
+
+    @pytest.mark.asyncio
+    async def test_sync_task_runs_in_thread_pool(self):
+        """CPU-bound sync tasks should run in thread pool to avoid blocking."""
+        import threading
+
+        from app.services.scheduler_service import SchedulerService
+
+        scheduler = SchedulerService()
+        thread_ids = []
+
+        def cpu_bound_task():
+            thread_ids.append(threading.current_thread().ident)
+            import time
+
+            time.sleep(0.1)  # Simulate CPU work
+
+        task = ScheduledTask(
+            name="cpu_test",
+            interval=ScheduleInterval.HOURLY,
+            function=cpu_bound_task,
+            run_in_thread=True,  # New field to indicate thread pool execution
+        )
+        scheduler.add_task(task)
+
+        main_thread = threading.current_thread().ident
+        await scheduler._execute_task(task)
+
+        # Task should have run in a different thread
+        assert len(thread_ids) == 1, "Task should have run"
+        assert thread_ids[0] != main_thread, "Task should run in thread pool, not main thread"
+
+    @pytest.mark.asyncio
+    async def test_run_in_thread_default_false(self):
+        """Tasks should NOT run in thread pool by default."""
+        task = ScheduledTask(
+            name="default_thread",
+            interval=ScheduleInterval.HOURLY,
+            function=lambda: None,
+        )
+
+        assert task.run_in_thread is False

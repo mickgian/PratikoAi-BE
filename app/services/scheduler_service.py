@@ -56,6 +56,9 @@ class ScheduledTask:
     next_run: datetime | None = None
     target_time: str | None = None  # Time of day to run (e.g., "06:00" for 6 AM Europe/Rome)
     timezone_name: str = "Europe/Rome"  # Timezone for target_time
+    # DEV-242: New fields for non-blocking startup
+    timeout_seconds: float | None = None  # Task execution timeout (None = no timeout)
+    run_in_thread: bool = False  # Run sync tasks in thread pool to avoid blocking
 
 
 class SchedulerService:
@@ -66,6 +69,8 @@ class SchedulerService:
         self.tasks: dict[str, ScheduledTask] = {}
         self.running = False
         self._task_handle: asyncio.Task | None = None
+        # DEV-242: Track background tasks for graceful shutdown
+        self._background_tasks: set[asyncio.Task] = set()
 
     def add_task(self, task: ScheduledTask) -> None:
         """Add a scheduled task."""
@@ -110,7 +115,11 @@ class SchedulerService:
         return False
 
     async def start(self) -> None:
-        """Start the scheduler."""
+        """Start the scheduler.
+
+        DEV-242: Immediate tasks now run in background (non-blocking).
+        This ensures FastAPI lifespan startup completes quickly.
+        """
         if self.running:
             self.logger.warning("Scheduler is already running")
             return
@@ -119,12 +128,52 @@ class SchedulerService:
         self._task_handle = asyncio.create_task(self._scheduler_loop())
         self.logger.info("Scheduler started")
 
+        # DEV-242: Run immediate tasks in background (non-blocking)
+        immediate_tasks = [task for task in self.tasks.values() if task.run_immediately and task.enabled]
+        if immediate_tasks:
+            self.logger.info(
+                f"Scheduling {len(immediate_tasks)} immediate task(s) in background: "
+                f"{[t.name for t in immediate_tasks]}"
+            )
+            for task in immediate_tasks:
+                bg_task = asyncio.create_task(
+                    self._execute_task_with_cleanup(task),
+                    name=f"immediate_{task.name}",
+                )
+                self._background_tasks.add(bg_task)
+
+    async def _execute_task_with_cleanup(self, task: ScheduledTask) -> None:
+        """Execute a task and remove from background tasks when done.
+
+        DEV-242: Wrapper for background task execution with cleanup.
+        """
+        try:
+            await self._execute_task(task)
+        finally:
+            # Find and remove this task from background tasks
+            current_task = asyncio.current_task()
+            if current_task in self._background_tasks:
+                self._background_tasks.discard(current_task)
+
     async def stop(self) -> None:
-        """Stop the scheduler."""
+        """Stop the scheduler.
+
+        DEV-242: Also cancels any running background tasks gracefully.
+        """
         if not self.running:
             return
 
         self.running = False
+
+        # DEV-242: Cancel all background tasks
+        if self._background_tasks:
+            self.logger.info(f"Cancelling {len(self._background_tasks)} background task(s)")
+            for bg_task in self._background_tasks:
+                bg_task.cancel()
+
+            # Wait for all background tasks to complete (with cancellation)
+            await asyncio.gather(*self._background_tasks, return_exceptions=True)
+            self._background_tasks.clear()
 
         if self._task_handle:
             self._task_handle.cancel()
@@ -161,16 +210,37 @@ class SchedulerService:
         self.logger.info("Scheduler loop ended")
 
     async def _execute_task(self, task: ScheduledTask) -> None:
-        """Execute a scheduled task."""
+        """Execute a scheduled task.
+
+        DEV-242: Now supports timeout and thread pool execution.
+        """
         try:
             self.logger.info(f"Executing scheduled task: {task.name}")
 
             # Execute the task
             kwargs = task.kwargs or {}
+
+            # DEV-242: Build the coroutine or wrap sync function
             if asyncio.iscoroutinefunction(task.function):
-                await task.function(*task.args, **kwargs)
+                coro = task.function(*task.args, **kwargs)
+            elif task.run_in_thread:
+                # Run sync function in thread pool to avoid blocking event loop
+                coro = asyncio.to_thread(task.function, *task.args, **kwargs)
             else:
+                # Run sync function directly (legacy behavior)
                 task.function(*task.args, **kwargs)
+                coro = None
+
+            # DEV-242: Execute with optional timeout
+            if coro is not None:
+                if task.timeout_seconds is not None:
+                    try:
+                        await asyncio.wait_for(coro, timeout=task.timeout_seconds)
+                    except TimeoutError:
+                        self.logger.warning(f"Task {task.name} timed out after {task.timeout_seconds}s")
+                        raise  # Re-raise to trigger error handling
+                else:
+                    await coro
 
             # Update task timing - use time-of-day if target_time is set
             task.last_run = datetime.now(UTC)
@@ -603,6 +673,47 @@ async def scrape_cassazione_task() -> None:
         logger.error("cassazione_scraping_task_failed", error=str(e), exc_info=True)
 
 
+async def scrape_ader_task() -> None:
+    """Scheduled task for AdER (Agenzia Entrate-Riscossione) scraping.
+
+    DEV-242 Phase 38: Recurring ingestion for AdER to capture critical content
+    like rottamazione rules, 5-day grace period info, and interest rates.
+
+    This task is called by the scheduler service daily at the configured time.
+    Scrapes news and official communications from the AdER portal.
+    """
+    try:
+        from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+        from sqlalchemy.orm import sessionmaker
+
+        from app.services.scrapers.ader_scraper import scrape_ader_daily_task
+
+        logger.info("ader_scraping_task_started")
+
+        # Create async database session
+        postgres_url = settings.POSTGRES_URL
+        if postgres_url.startswith("postgresql://"):
+            postgres_url = postgres_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        engine = create_async_engine(postgres_url, echo=False, pool_pre_ping=True)
+        async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session_maker() as session:
+            result = await scrape_ader_daily_task(db_session=session)
+
+            logger.info(
+                "ader_scraping_task_completed",
+                documents_found=result.documents_found,
+                documents_saved=result.documents_saved,
+                errors=result.errors,
+            )
+
+        await engine.dispose()
+
+    except Exception as e:
+        logger.error("ader_scraping_task_failed", error=str(e), exc_info=True)
+
+
 def setup_default_tasks() -> None:
     """Setup default scheduled tasks."""
     # Add 12-hour metrics report task
@@ -617,13 +728,15 @@ def setup_default_tasks() -> None:
     # Add RSS feed collection task - daily at configured time (default 01:00 Europe/Rome)
     # run_immediately=True ensures feeds are collected right after app startup
     rss_collection_time = getattr(settings, "RSS_COLLECTION_TIME", "01:00")
+    # DEV-242: RSS feeds now run in background with timeout protection
     rss_feeds_task = ScheduledTask(
         name="rss_feeds_daily",
         interval=ScheduleInterval.DAILY,
         function=collect_rss_feeds_task,
         enabled=True,
-        run_immediately=True,  # Collect feeds immediately on startup
+        run_immediately=True,  # Collect feeds immediately on startup (non-blocking)
         target_time=rss_collection_time,  # Run daily at configured time
+        timeout_seconds=1800,  # DEV-242: 30 min timeout to prevent infinite hangs
     )
     scheduler_service.add_task(rss_feeds_task)
 
@@ -651,6 +764,18 @@ def setup_default_tasks() -> None:
     )
     scheduler_service.add_task(cassazione_scraper_task)
 
+    # Add AdER (Agenzia Entrate-Riscossione) scraper task - daily at same time as RSS (01:00 Europe/Rome)
+    # DEV-242 Phase 38: Scrapes rottamazione rules, payment deadlines, grace periods
+    ader_scraper_task = ScheduledTask(
+        name="ader_scraper_daily",
+        interval=ScheduleInterval.DAILY,
+        function=scrape_ader_task,
+        enabled=True,
+        run_immediately=False,  # Don't scrape external site on every startup
+        target_time=rss_collection_time,  # Same time as RSS collection
+    )
+    scheduler_service.add_task(ader_scraper_task)
+
     # Add daily ingestion report task (DEV-BE-70)
     # Sends daily email with RSS + scraper metrics, alerts, WoW comparison
     # Default time: 06:00 Europe/Rome (configured via INGESTION_REPORT_TIME)
@@ -666,26 +791,20 @@ def setup_default_tasks() -> None:
     scheduler_service.add_task(ingestion_report_task)
 
     logger.info(
-        f"Default scheduled tasks configured (metrics reports + RSS feeds + Gazzetta scraper + Cassazione scraper + daily ingestion report [enabled={ingestion_report_enabled}])"
+        f"Default scheduled tasks configured (metrics reports + RSS feeds + Gazzetta scraper + Cassazione scraper + AdER scraper + daily ingestion report [enabled={ingestion_report_enabled}])"
     )
 
 
 async def start_scheduler() -> None:
-    """Start the scheduler with default tasks."""
+    """Start the scheduler with default tasks.
+
+    DEV-242: Immediate tasks now run in background (non-blocking).
+    The scheduler.start() method handles this automatically.
+    """
     setup_default_tasks()
     await scheduler_service.start()
-
-    # Run tasks marked with run_immediately=True
-    immediate_tasks = [task for task in scheduler_service.tasks.values() if task.run_immediately and task.enabled]
-    if immediate_tasks:
-        logger.info(
-            f"Running {len(immediate_tasks)} immediate task(s) on startup: {[t.name for t in immediate_tasks]}"
-        )
-        for task in immediate_tasks:
-            try:
-                await scheduler_service._execute_task(task)
-            except Exception as e:
-                logger.error(f"Failed to run immediate task {task.name} on startup: {e}")
+    # DEV-242: Immediate tasks are now scheduled in background by start()
+    # No blocking loop here - app startup completes immediately
 
 
 async def stop_scheduler() -> None:

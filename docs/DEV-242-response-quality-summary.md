@@ -1,9 +1,9 @@
 # DEV-242: Response Quality & Completeness Improvement - Summary
 
 **Issue:** GitHub #975
-**Status:** Phase 22-32 ✅ | Phase 29A 🔴 Pending
+**Status:** Phase 22-32, 45, 54 ✅ | Phase 29A 🔴 Pending
 **Started:** January 8, 2026
-**Last Updated:** January 12, 2026
+**Last Updated:** January 13, 2026
 
 ---
 
@@ -467,7 +467,8 @@ WHERE kc.id IN (9537, 9538, 9539, 9540, 9541, 9542);
 | `app/core/config.py` | CONTEXT_TOP_K=15, HYBRID_K_* increases (Phase 21, 27, 29B) |
 | `app/prompts/v1/unified_response_simple.md` | COMPLETEZZA OBBLIGATORIA section (Phase 20) |
 | `app/services/search_service.py` | TOPIC_SYNONYMS update (Phase 15) |
-| `app/orchestrators/prompting.py` | grounding_rules completeness + ECCELLENZA PROFESSIONALE (Phase 28, 31) |
+| `app/orchestrators/prompting.py` | grounding_rules completeness + ECCELLENZA PROFESSIONALE + FONTI procedural (Phase 28, 31, 52-53) |
+| `app/services/context_builder_merge.py` | Fix source_url loss during document grouping (Phase 54) |
 
 ---
 
@@ -499,6 +500,47 @@ La risposta DEVE essere avvolta in tag XML:
 
 ---
 
+## Phase 54: Fix Source URL Loss During Document Grouping ✅
+
+**File:** `app/services/context_builder_merge.py`
+
+**Problem:** Despite prompt improvements (Phase 52-53), Gazzetta Ufficiale link was STILL missing from Fonti. Only AdER link appeared. Investigation revealed this was a **CODE BUG**, not a prompt issue.
+
+**Root Cause:** When chunks are grouped by document title (lines 694-699), only the FIRST chunk's metadata was stored:
+
+```python
+# BUG: Only first chunk's metadata preserved
+if doc_title not in docs_by_title:
+    docs_by_title[doc_title] = {"chunks": [], "metadata": part.metadata}
+```
+
+If AdER chunk came before Gazzetta chunk, or if they had similar titles, the Gazzetta `source_url` was silently lost.
+
+**Solution:**
+1. Track ALL source_urls in a set during chunk grouping (lines 694-708)
+2. Output ALL collected source URLs in the final context (lines 802-806)
+
+```python
+# FIX: Track all unique source URLs from all chunks
+docs_by_title[doc_title] = {
+    "chunks": [],
+    "metadata": part.metadata,
+    "source_urls": set(),  # NEW: Track ALL unique source URLs
+}
+# Collect source_url from EVERY chunk
+chunk_url = part.metadata.get("source_url")
+if chunk_url:
+    docs_by_title[doc_title]["source_urls"].add(chunk_url)
+
+# Output ALL source URLs
+for url in sorted(source_urls):
+    kb_item += f"\nSource URL: {url}"
+```
+
+**Result:** All source URLs from retrieved chunks now appear in the KB context, enabling proper citation in Fonti.
+
+---
+
 ## Success Criteria
 
 Response to "Parlami della rottamazione quinquies" must include:
@@ -510,3 +552,4 @@ Response to "Parlami della rottamazione quinquies" must include:
 - ✅ "NON previsti i 5 giorni di tolleranza" (Phase 45)
 - ✅ `<answer>` wrapper tags (Phase 45)
 - ✅ `<suggested_actions>` JSON block (Phase 45)
+- ✅ ALL source URLs in Fonti section (Phase 54)

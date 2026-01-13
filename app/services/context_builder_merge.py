@@ -691,12 +691,21 @@ class ContextBuilderMerge:
         # KB docs section - NOW GROUPS CHUNKS BY DOCUMENT
         if kb_parts:
             # Group chunks by document title (since chunks from same doc share same title)
+            # DEV-242 Phase 54: Track ALL source_urls to avoid losing links during grouping
             docs_by_title = {}
             for part in kb_parts:
                 doc_title = part.metadata.get("title", "Untitled")
                 if doc_title not in docs_by_title:
-                    docs_by_title[doc_title] = {"chunks": [], "metadata": part.metadata}
+                    docs_by_title[doc_title] = {
+                        "chunks": [],
+                        "metadata": part.metadata,
+                        "source_urls": set(),  # Track ALL unique source URLs from all chunks
+                    }
                 docs_by_title[doc_title]["chunks"].append(part)
+                # Collect source_url from EVERY chunk (DEV-242 Phase 54 fix)
+                chunk_url = part.metadata.get("source_url")
+                if chunk_url:
+                    docs_by_title[doc_title]["source_urls"].add(chunk_url)
 
             kb_items = []
             for doc_title, doc_data in docs_by_title.items():
@@ -708,7 +717,7 @@ class ContextBuilderMerge:
 
                 # Extract metadata
                 document_source = metadata.get("document_source", "")
-                source_url = metadata.get("source_url", "")
+                # Note: source_url now comes from doc_data["source_urls"] set (DEV-242 Phase 54)
 
                 # Determine document type label
                 if document_source and "news" in document_source.lower():
@@ -790,9 +799,11 @@ class ContextBuilderMerge:
 
                 kb_item += "\n".join(chunk_texts)
 
-                # Add source URL if available
-                if source_url:
-                    kb_item += f"\nSource URL: {source_url}"
+                # DEV-242 Phase 54: Add ALL source URLs collected from chunks
+                source_urls = doc_data.get("source_urls", set())
+                if source_urls:
+                    for url in sorted(source_urls):  # Sorted for consistency
+                        kb_item += f"\nSource URL: {url}"
 
                 kb_items.append(kb_item)
 

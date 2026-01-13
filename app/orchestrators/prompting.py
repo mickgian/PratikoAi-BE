@@ -924,22 +924,33 @@ Per essere una risposta ECCELLENTE (non solo completa), DEVI:
    - Legge > Decreto > Circolare > Guida
    - "Fonte primaria: Legge 199/2025, Art. 1"
 
-### FONTI (DEV-242 Phase 42/43) - OBBLIGATORIO
-DOPO aver completato TUTTI i contenuti obbligatori sopra, aggiungi la sezione fonti alla fine.
+### FONTI (DEV-242 Phase 42/43/52/53) - OBBLIGATORIO
+DOPO aver completato TUTTI i contenuti obbligatori sopra, ESEGUI questa procedura:
 
-🔴 SCANSIONA tutto il contesto KB e cerca OGNI riga che inizia con "Source URL:".
-Per OGNI URL unico trovato, aggiungilo alle fonti.
+📋 PROCEDURA ESTRAZIONE FONTI (SEGUI OGNI STEP):
 
-Formato:
-**Fonti:**
-- [Nome documento 1](URL 1)
-- [Nome documento 2](URL 2)
+**STEP 1** - CERCA: Scorri tutto il contesto KB e trova OGNI riga che inizia con "Source URL:".
+
+**STEP 2** - CONTA: Quanti Source URL hai trovato? Se hai trovato N URL, devi avere N righe in Fonti.
+
+**STEP 3** - ELENCA: Per CIASCUN Source URL trovato, crea una riga nel formato:
+   - [Nome descrittivo](URL completo)
 
 Regole:
-1. Se trovi "Source URL: https://www.gazzettaufficiale.it/..." → INCLUDI come "Gazzetta Ufficiale"
-2. Se trovi "Source URL: https://www.agenziaentrateriscossione.gov.it/..." → INCLUDI come "AdER"
-3. DEDUPLICATI: se lo stesso URL appare più volte, includilo UNA sola volta
-4. NON inventare URL - usa SOLO quelli presenti nel KB
+- Se l'URL contiene "gazzettaufficiale.it" → nome: "Gazzetta Ufficiale"
+- Se l'URL contiene "agenziaentrateriscossione" → nome: "AdER"
+- Se l'URL contiene "inps.it" → nome: "INPS"
+- Altrimenti → usa il dominio o il titolo del documento
+
+**STEP 4** - VERIFICA: Il numero di righe in Fonti deve corrispondere al numero di Source URL unici nel KB.
+
+Formato finale:
+**Fonti:**
+- [Nome 1](URL 1)
+- [Nome 2](URL 2)
+- ... (una riga per OGNI Source URL unico)
+
+⛔ Se nel KB ci sono 2 Source URL diversi e tu ne includi solo 1, la risposta è INCOMPLETA.
 
 ### ⚠️ PROMEMORIA FINALE FORMATO (DEV-242 Phase 43)
 🔴 PRIMA DI RISPONDERE, VERIFICA IL TUO FORMATO:
@@ -964,6 +975,12 @@ Possono aderire...
 
 OGNI sezione DEVE iniziare con un NUMERO seguito da **etichetta in grassetto** e due punti.
 
+### ⛔ EVITA SEZIONI RIDONDANTI (DEV-242 Phase 48/49/51)
+NON creare MAI una sezione separata chiamata "Riferimento normativo" o "Base legale".
+
+Il riferimento normativo (es. "Legge n. 199/2025") DEVE apparire integrato nella Definizione
+(es. "introdotta dalla Legge n. 199/2025"), NON come punto separato.
+
 ### 🔴 FORMATO OUTPUT FINALE (DEV-242 Phase 45) - CRITICO
 La risposta DEVE essere avvolta in tag XML:
 
@@ -982,6 +999,22 @@ La risposta DEVE essere avvolta in tag XML:
 ```
 
 ⛔ OBBLIGATORIO: Se NON includi i tag <answer> e <suggested_actions>, la risposta sarà RIFIUTATA.
+
+### 🚨 VERIFICA FINALE FORMATO (DEV-242 Phase 50/52) - ULTIMO CHECK
+PRIMA di generare la risposta, VERIFICA che OGNI sezione usi questo formato:
+
+✅ CORRETTO: `N. **Etichetta**: Contenuto...` (numero + grassetto + contenuto)
+❌ SBAGLIATO: `Etichetta:` poi `Contenuto` su righe separate
+
+Il NUMERO di sezioni dipende dal contenuto nel KB - NON limitarti a 4 sezioni.
+INCLUDI TUTTE le informazioni rilevanti dal KB, organizzate in sezioni numerate.
+
+Se la tua risposta ha sezioni senza numero e grassetto, RIFORMATTALA prima di inviarla.
+
+### 📊 COMPLETEZZA CONTENUTI (DEV-242 Phase 52)
+NON limitare la risposta a un numero fisso di sezioni.
+Se il KB contiene informazioni su Decadenza, Interessi, Sanzioni, Tolleranza, ecc. → INCLUDI TUTTO.
+La lunghezza della risposta deve corrispondere alla quantità di informazioni rilevanti nel KB.
 
 """
             context_section = f"\n\n{grounding_rules}# Relevant Knowledge Base Context\n\n{merged_context}\n"

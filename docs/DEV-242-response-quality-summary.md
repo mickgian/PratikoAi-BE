@@ -471,6 +471,34 @@ WHERE kc.id IN (9537, 9538, 9539, 9540, 9541, 9542);
 
 ---
 
+## Phase 45: Fix Missing `<answer>` Tags ✅
+
+**File:** `app/orchestrators/prompting.py`
+
+**Problem:** LLM follows grounding rules format (numbered list) but ignores `<answer>` wrapper tags from SUGGESTED_ACTIONS_PROMPT because grounding rules come later in prompt and don't mention the wrapper.
+
+**Solution:**
+1. Added `<answer>` tag reminder at END of grounding rules (lines 967-985)
+2. Added "5 giorni tolleranza" to COMPLETEZZA checklist (line 862)
+
+**Key Addition (lines 967-984):**
+```
+### 🔴 FORMATO OUTPUT FINALE (DEV-242 Phase 45) - CRITICO
+La risposta DEVE essere avvolta in tag XML:
+
+<answer>
+[Tutta la tua risposta qui: lista numerata + fonti]
+</answer>
+
+<suggested_actions>
+[JSON array with 2-4 actions]
+</suggested_actions>
+
+⛔ OBBLIGATORIO: Se NON includi i tag <answer> e <suggested_actions>, la risposta sarà RIFIUTATA.
+```
+
+---
+
 ## Success Criteria
 
 Response to "Parlami della rottamazione quinquies" must include:
@@ -479,3 +507,6 @@ Response to "Parlami della rottamazione quinquies" must include:
 - ✅ "3 per cento annuo" (interest rate)
 - ✅ "54 rate bimestrali" (payment schedule)
 - ✅ "due rate = decadenza" (forfeiture rule)
+- ✅ "NON previsti i 5 giorni di tolleranza" (Phase 45)
+- ✅ `<answer>` wrapper tags (Phase 45)
+- ✅ `<suggested_actions>` JSON block (Phase 45)

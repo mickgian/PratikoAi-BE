@@ -595,9 +595,13 @@ def _transform_retrieval_documents(documents: list[dict]) -> list[dict]:
     - source_name -> title
     - source_type -> type
     - published_date -> publication_date
+    - source_url -> url (DEV-242 Phase 42: for citation links)
     """
     transformed = []
     for doc in documents:
+        # DEV-242 Phase 42: Get source_url from doc or metadata
+        source_url = doc.get("source_url") or doc.get("metadata", {}).get("source_url")
+
         transformed_doc = {
             # Map document_id to id (fallback to existing id if present)
             "id": doc.get("document_id") or doc.get("id"),
@@ -613,8 +617,13 @@ def _transform_retrieval_documents(documents: list[dict]) -> list[dict]:
             "publication_date": doc.get("published_date") or doc.get("publication_date"),
             # Preserve source as source_type for compatibility
             "source": doc.get("source_type") or doc.get("source", ""),
-            # Preserve metadata as-is
-            "metadata": doc.get("metadata", {}),
+            # DEV-242 Phase 42: Map source_url to url for citation links
+            "url": source_url,
+            # Preserve metadata with source_url included
+            "metadata": {
+                **doc.get("metadata", {}),
+                "source_url": source_url,
+            },
             # Preserve rrf_score if present
             "rrf_score": doc.get("rrf_score"),
         }

@@ -86,7 +86,7 @@ class ModelConfig:
             QueryComplexity.SIMPLE: cls(
                 model="gpt-4o",  # DEV-242: Upgraded from gpt-4o-mini for quality
                 temperature=0.3,
-                max_tokens=3000,  # DEV-242: Doubled from 1500
+                max_tokens=4500,  # DEV-242 Phase 44: Increased from 3000 for complete responses with sources
                 cost_input_per_1k=0.005,  # DEV-242: Updated for gpt-4o
                 cost_output_per_1k=0.015,  # DEV-242: Updated for gpt-4o
                 prompt_template="unified_response_simple",
@@ -96,7 +96,7 @@ class ModelConfig:
             QueryComplexity.COMPLEX: cls(
                 model="gpt-4o",
                 temperature=0.4,
-                max_tokens=5000,  # DEV-242: Doubled from 2500
+                max_tokens=6500,  # DEV-242 Phase 44: Increased from 5000 for complete responses with sources
                 cost_input_per_1k=0.005,
                 cost_output_per_1k=0.015,
                 prompt_template="tree_of_thoughts",
@@ -106,7 +106,7 @@ class ModelConfig:
             QueryComplexity.MULTI_DOMAIN: cls(
                 model="gpt-4o",
                 temperature=0.5,
-                max_tokens=7000,  # DEV-242: Doubled from 3500
+                max_tokens=9000,  # DEV-242 Phase 44: Increased from 7000 for complete responses with sources
                 cost_input_per_1k=0.005,
                 cost_output_per_1k=0.015,
                 prompt_template="tree_of_thoughts_multi_domain",

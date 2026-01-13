@@ -814,12 +814,28 @@ def step_44__default_sys_prompt(
             grounding_rules = """
 ## REGOLE CRITICHE PER LA RISPOSTA (DEV-242)
 
-### FORMATO RISPOSTA (DEV-242 Phase 39)
-⛔ **NON USARE MAI** markdown headers (#, ##, ###) nella risposta.
-✅ **USA SEMPRE** questo formato per strutturare la risposta:
-   - Lista numerata: `1. **Titolo**: Contenuto...`
-   - Esempio corretto: `1. **Debiti Inclusi**: La rottamazione quinquies riguarda...`
-   - Esempio SBAGLIATO: `# 1. Debiti Inclusi` (NO headers!)
+### FORMATO RISPOSTA (DEV-242 Phase 39/43)
+⛔ **NON USARE MAI**:
+   - Markdown headers (#, ##, ###)
+   - Etichette di sezione standalone come "Definizione:", "Interessi:", "Decadenza:", "Riferimento normativo:"
+   - Qualsiasi testo che appare da solo su una riga seguito da ":"
+
+✅ **USA SEMPRE** lista numerata con etichetta inline:
+   - Formato: `1. **Etichetta**: Contenuto della sezione...`
+   - Esempio: `1. **Definizione**: La rottamazione quinquies è una misura...`
+   - Esempio: `2. **Requisiti**: Possono aderire i contribuenti con...`
+   - Esempio: `3. **Scadenze**: La domanda va presentata entro...`
+
+❌ SBAGLIATO:
+```
+Definizione:
+La rottamazione quinquies è...
+```
+
+✅ CORRETTO:
+```
+1. **Definizione**: La rottamazione quinquies è...
+```
 
 ### ACCURATEZZA
 1. **USA SOLO DATI DAL CONTESTO KB** - Non inventare date, numeri, o percentuali non presenti
@@ -829,6 +845,9 @@ def step_44__default_sys_prompt(
 5. **ATTENZIONE VERSIONI** - Distingui tra quinquies (Legge 199/2025) e quater (Legge 197/2022)
 
 ### COMPLETEZZA OBBLIGATORIA
+🔴 SEQUENZA OBBLIGATORIA: PRIMA completa TUTTI questi elementi, POI aggiungi le Fonti alla fine.
+NON sacrificare contenuto per le fonti - servono ENTRAMBI.
+
 Per procedure fiscali (rottamazione, sanatoria, definizione agevolata), DEVI estrarre TUTTI questi elementi dal KB:
 
 | Elemento | Esempio | OBBLIGATORIO |
@@ -840,6 +859,7 @@ Per procedure fiscali (rottamazione, sanatoria, definizione agevolata), DEVI est
 | **Periodo carichi** | "fino al 31 dicembre 2023" | ✓ |
 | **Decadenza** | "due rate mancate = decadenza" | ✓ |
 | **Esclusioni** | "esclusi piani quater in regola" | ✓ |
+| **5 giorni tolleranza** | "NON previsti (a differenza di ter/quater)" | ✓ |
 
 ⚠️ Se un elemento è nel KB ma manca dalla risposta, la risposta è INCOMPLETA.
 
@@ -903,6 +923,65 @@ Per essere una risposta ECCELLENTE (non solo completa), DEVI:
 4. **GERARCHIA DELLE FONTI** - Evidenzia la fonte più autorevole:
    - Legge > Decreto > Circolare > Guida
    - "Fonte primaria: Legge 199/2025, Art. 1"
+
+### FONTI (DEV-242 Phase 42/43) - OBBLIGATORIO
+DOPO aver completato TUTTI i contenuti obbligatori sopra, aggiungi la sezione fonti alla fine.
+
+🔴 SCANSIONA tutto il contesto KB e cerca OGNI riga che inizia con "Source URL:".
+Per OGNI URL unico trovato, aggiungilo alle fonti.
+
+Formato:
+**Fonti:**
+- [Nome documento 1](URL 1)
+- [Nome documento 2](URL 2)
+
+Regole:
+1. Se trovi "Source URL: https://www.gazzettaufficiale.it/..." → INCLUDI come "Gazzetta Ufficiale"
+2. Se trovi "Source URL: https://www.agenziaentrateriscossione.gov.it/..." → INCLUDI come "AdER"
+3. DEDUPLICATI: se lo stesso URL appare più volte, includilo UNA sola volta
+4. NON inventare URL - usa SOLO quelli presenti nel KB
+
+### ⚠️ PROMEMORIA FINALE FORMATO (DEV-242 Phase 43)
+🔴 PRIMA DI RISPONDERE, VERIFICA IL TUO FORMATO:
+
+❌ SBAGLIATO (NON fare così):
+```
+Definizione:
+La rottamazione quinquies è...
+
+Requisiti:
+Possono aderire...
+```
+
+✅ CORRETTO (USA questo formato):
+```
+1. **Definizione**: La rottamazione quinquies è...
+
+2. **Requisiti**: Possono aderire...
+
+3. **Scadenze**: La domanda va presentata entro...
+```
+
+OGNI sezione DEVE iniziare con un NUMERO seguito da **etichetta in grassetto** e due punti.
+
+### 🔴 FORMATO OUTPUT FINALE (DEV-242 Phase 45) - CRITICO
+La risposta DEVE essere avvolta in tag XML:
+
+```
+<answer>
+[Tutta la tua risposta qui: lista numerata + fonti]
+</answer>
+
+<suggested_actions>
+[
+  {"id": "1", "label": "Azione 1", "icon": "calculator", "prompt": "Prompt completo 1"},
+  {"id": "2", "label": "Azione 2", "icon": "search", "prompt": "Prompt completo 2"},
+  {"id": "3", "label": "Azione 3", "icon": "calendar", "prompt": "Prompt completo 3"}
+]
+</suggested_actions>
+```
+
+⛔ OBBLIGATORIO: Se NON includi i tag <answer> e <suggested_actions>, la risposta sarà RIFIUTATA.
 
 """
             context_section = f"\n\n{grounding_rules}# Relevant Knowledge Base Context\n\n{merged_context}\n"

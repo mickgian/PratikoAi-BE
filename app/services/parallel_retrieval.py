@@ -407,11 +407,14 @@ class ParallelRetrievalService:
                     # then fall back to source (e.g., "gazzetta_ufficiale_reingest")
                     "source_name": result.title or result.source or "",
                     "published_date": result.publication_date,
+                    # DEV-242 Phase 42: Add source_url for citation links
+                    "source_url": result.source_url,
                     "metadata": {
                         "title": result.title,
                         "source": result.source,
                         "category": result.category,
                         "chunk_id": result.id,
+                        "source_url": result.source_url,  # Also in metadata for context builder
                     },
                 }
                 docs.append(doc)

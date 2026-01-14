@@ -38,12 +38,18 @@ sys.modules.setdefault("app.services.database", _mock_db_module)
 # Define local dataclasses to avoid importing from app.services (triggers database)
 @dataclass
 class QueryVariants:
-    """Local copy for testing - avoids database import chain."""
+    """Local copy for testing - avoids database import chain.
+
+    Must include ALL fields that _variants_to_dict expects, otherwise
+    AttributeError triggers fallback behavior.
+    """
 
     bm25_query: str
     vector_query: str
     entity_query: str
     original_query: str
+    document_references: list[dict[str, Any]] | None = None  # ADR-022
+    semantic_expansions: list[str] | None = None  # DEV-242
 
 
 @dataclass

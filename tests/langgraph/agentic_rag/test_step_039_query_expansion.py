@@ -90,23 +90,26 @@ class TestNodeStep39aMultiQuery:
         """Test successful multi-query generation for technical research."""
         from app.core.langgraph.nodes.step_039a__multi_query import node_step_39a
 
-        mock_service = AsyncMock()
-        mock_service.generate.return_value = QueryVariants(
+        mock_service_instance = AsyncMock()
+        mock_service_instance.generate.return_value = QueryVariants(
             bm25_query="P.IVA forfettaria apertura requisiti",
             vector_query="Come aprire una partita IVA con regime forfettario?",
             entity_query="Agenzia Entrate P.IVA regime forfettario",
             original_query="Come apro P.IVA forfettaria?",
         )
 
-        # FIX: Patch at the location where the import happens (lazy import inside function)
+        # Mock the class to return our mock instance when instantiated
+        mock_service_class = MagicMock(return_value=mock_service_instance)
+
+        # Patch at the source module where the class is defined
         with (
             patch(
                 "app.core.llm.model_config.get_model_config",
                 return_value=MagicMock(),
             ),
             patch(
-                "app.core.langgraph.nodes.step_039a__multi_query.MultiQueryGeneratorService",
-                return_value=mock_service,
+                "app.services.multi_query_generator.MultiQueryGeneratorService",
+                mock_service_class,
             ),
         ):
             state = {
@@ -155,22 +158,26 @@ class TestNodeStep39aMultiQuery:
         """
         from app.core.langgraph.nodes.step_039a__multi_query import node_step_39a
 
-        mock_service = AsyncMock()
-        mock_service.generate.return_value = QueryVariants(
+        mock_service_instance = AsyncMock()
+        mock_service_instance.generate.return_value = QueryVariants(
             bm25_query="IRPEF definizione imposta",
             vector_query="Cos'è l'IRPEF e come funziona?",
             entity_query="IRPEF imposta reddito persone fisiche",
             original_query="Cos'e l'IRPEF?",
         )
 
+        # Mock the class to return our mock instance when instantiated
+        mock_service_class = MagicMock(return_value=mock_service_instance)
+
+        # Patch at the source module where the class is defined
         with (
             patch(
                 "app.core.llm.model_config.get_model_config",
                 return_value=MagicMock(),
             ),
             patch(
-                "app.core.langgraph.nodes.step_039a__multi_query.MultiQueryGeneratorService",
-                return_value=mock_service,
+                "app.services.multi_query_generator.MultiQueryGeneratorService",
+                mock_service_class,
             ),
         ):
             state = {
@@ -194,18 +201,21 @@ class TestNodeStep39aMultiQuery:
         """Test fallback to original query on service error."""
         from app.core.langgraph.nodes.step_039a__multi_query import node_step_39a
 
-        mock_service = AsyncMock()
-        mock_service.generate.side_effect = Exception("LLM service unavailable")
+        mock_service_instance = AsyncMock()
+        mock_service_instance.generate.side_effect = Exception("LLM service unavailable")
 
-        # FIX: Patch at the location where the import happens (lazy import inside function)
+        # Mock the class to return our mock instance when instantiated
+        mock_service_class = MagicMock(return_value=mock_service_instance)
+
+        # Patch at the source module where the class is defined
         with (
             patch(
                 "app.core.llm.model_config.get_model_config",
                 return_value=MagicMock(),
             ),
             patch(
-                "app.core.langgraph.nodes.step_039a__multi_query.MultiQueryGeneratorService",
-                return_value=mock_service,
+                "app.services.multi_query_generator.MultiQueryGeneratorService",
+                mock_service_class,
             ),
         ):
             state = {

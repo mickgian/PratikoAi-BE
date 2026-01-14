@@ -2547,7 +2547,9 @@ class LangGraphAgent:
                 "attachments": attachments or [],
             }
             response = await self._graph.ainvoke(input_state, config)  # type: ignore[union-attr]
-            return self.__process_messages(response["messages"])
+            # DEV-241: Extract reasoning_trace from state and pass to message processing
+            reasoning_trace = response.get("reasoning_trace")
+            return self.__process_messages(response["messages"], reasoning_trace=reasoning_trace)
         except Exception as e:
             logger.error(f"Error getting response: {str(e)}")
             raise e
@@ -3329,6 +3331,33 @@ class LangGraphAgent:
                         source=post_response.get("source"),
                     )
 
+                # DEV-242: Yield reasoning trace for Chain of Thought display
+                reasoning_trace = state.get("reasoning_trace")
+                if reasoning_trace:
+                    import json as _json
+
+                    reasoning_json = _json.dumps(reasoning_trace)
+                    yield f"__REASONING_TRACE__:{reasoning_json}"
+                    logger.info(
+                        "reasoning_trace_yielded",
+                        session_id=session_id,
+                        has_tema=bool(reasoning_trace.get("tema_identificato")),
+                        fonti_count=len(reasoning_trace.get("fonti_utilizzate", [])),
+                    )
+
+                # DEV-242 Phase 12B: Yield structured sources for frontend SourcesIndex
+                structured_sources = state.get("structured_sources")
+                if structured_sources:
+                    import json as _json
+
+                    sources_json = _json.dumps(structured_sources)
+                    yield f"__STRUCTURED_SOURCES__:{sources_json}"
+                    logger.info(
+                        "structured_sources_yielded",
+                        session_id=session_id,
+                        sources_count=len(structured_sources),
+                    )
+
                 return  # Exit without making second LLM call
 
             # DIAGNOSTIC: We reached the fallback streaming path (content was not found)
@@ -3580,7 +3609,11 @@ class LangGraphAgent:
             config={"configurable": {"thread_id": session_id}}
         )
         # StateSnapshot.values exists but IDE type stubs don't recognize it
-        messages = self.__process_messages(state.values["messages"]) if state.values else []
+        # DEV-241: Extract reasoning_trace from state for chat history
+        reasoning_trace = state.values.get("reasoning_trace") if state.values else None
+        messages = (
+            self.__process_messages(state.values["messages"], reasoning_trace=reasoning_trace) if state.values else []
+        )
 
         # DEV-007 FIX: Restore attachments to correct messages using message_index
         # Each attachment has a message_index indicating which user message it belongs to
@@ -3653,11 +3686,19 @@ class LangGraphAgent:
         return messages
 
     @staticmethod
-    def __process_messages(messages: list[BaseMessage]) -> list[Message]:
+    def __process_messages(
+        messages: list[BaseMessage],
+        reasoning_trace: dict | None = None,
+    ) -> list[Message]:
         """Convert messages from state to Message objects.
 
         Messages may be stored as dicts, Message objects, or BaseMessage objects.
         We need to convert them to BaseMessage objects before passing to convert_to_openai_messages.
+
+        Args:
+            messages: List of messages from the graph state.
+            reasoning_trace: Optional Chain of Thought reasoning trace (DEV-241).
+                            Will be attached to the last assistant message.
         """
         # Convert dict/Message objects to BaseMessage objects
         base_messages = []
@@ -3704,6 +3745,31 @@ class LangGraphAgent:
             for message in openai_style_messages
             if message["role"] in ["assistant", "user"] and message["content"]
         ]
+
+        # DEV-241: Attach reasoning_trace to the last assistant message
+        if reasoning_trace and filtered:
+            # Find the last assistant message and attach reasoning
+            for msg in reversed(filtered):
+                if msg.role == "assistant":
+                    # Import here to avoid circular import
+                    from app.schemas.chat import ReasoningTrace
+
+                    msg.reasoning = ReasoningTrace(
+                        tema_identificato=reasoning_trace.get("tema_identificato"),
+                        fonti_utilizzate=reasoning_trace.get("fonti_utilizzate"),
+                        elementi_chiave=reasoning_trace.get("elementi_chiave"),
+                        conclusione=reasoning_trace.get("conclusione"),
+                    )
+                    logger.debug(
+                        "reasoning_trace_attached",
+                        tema=reasoning_trace.get("tema_identificato", "")[:50]
+                        if reasoning_trace.get("tema_identificato")
+                        else None,
+                        fonti_count=len(reasoning_trace.get("fonti_utilizzate", []))
+                        if reasoning_trace.get("fonti_utilizzate")
+                        else 0,
+                    )
+                    break
 
         logger.debug(
             "process_messages_filtered",

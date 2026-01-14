@@ -867,8 +867,38 @@ Layer 4: RAG context (Step 40 merged_context)
 |------|---------|----------------------|
 | `app/core/prompts/system.md` | Base rules | Rare (high impact) |
 | `app/core/prompts/document_analysis.md` | Doc handling | Rare |
+| `app/core/prompts/suggested_actions.md` | Output format with XML tags | Rare |
 | `app/services/domain_prompt_templates.py` | Domain templates | Occasional |
-| `app/orchestrators/prompting.py` | Flow logic | Rare |
+| `app/orchestrators/prompting.py` | Flow logic + grounding rules | Occasional |
+
+### Prompt Layer Conflict Prevention (DEV-242 Lesson)
+
+**Critical Learning (January 2026):** When multiple prompt layers define format instructions, LLMs follow the LAST instruction encountered. This caused `<answer>` tags to be ignored.
+
+**Problem Pattern:**
+```
+SUGGESTED_ACTIONS_PROMPT (defines <answer> tags) → injected FIRST
+    ↓
+grounding_rules (defines numbered list format) → injected LATER
+    ↓
+LLM follows grounding_rules format, ignores <answer> wrapper
+```
+
+**Solution Pattern:**
+When grounding_rules or any later injection defines format instructions, it MUST reinforce ALL format requirements from earlier layers:
+
+```python
+# At END of grounding_rules (prompting.py):
+### 🔴 FORMATO OUTPUT FINALE - CRITICO
+La risposta DEVE essere avvolta in tag XML:
+<answer>[risposta]</answer>
+<suggested_actions>[JSON]</suggested_actions>
+```
+
+**Prevention Checklist:**
+- [ ] New format instructions reinforce existing format requirements
+- [ ] Format reminders placed at END of grounding rules (closest to generation)
+- [ ] Test with real queries to verify all format elements appear
 
 ---
 
@@ -1230,10 +1260,11 @@ PratikoAI targets Italian tax/fiscal professionals with expected scale:
 | 2025-12-16 | Added Error Handling & Logging Standards | Mandatory structured logging for Docker log visibility |
 | 2025-12-18 | Added Regression Prevention Protocol (Section 7) | Prevent breaking existing code with Change Classification, Impact Analysis, and Pre-Implementation Verification |
 | 2025-12-22 | Added Code Completeness Standards | Prevent incomplete features: no TODO comments for required features, no hardcoded placeholders, all integrations must be complete (ProactivityContext bug lesson) |
+| 2026-01-13 | Added Prompt Layer Conflict Prevention | DEV-242 lesson: LLMs follow LAST format instruction, so later layers must reinforce earlier format requirements |
 
 ---
 
 **Configuration Status:** 🟢 ACTIVE
-**Last Updated:** 2025-12-22
+**Last Updated:** 2026-01-13
 **Next Monthly Report Due:** 2025-12-15
 **Maintained By:** PratikoAI System Administrator

@@ -170,15 +170,60 @@ class TestRecencyBoost:
         assert boost == 1.5
 
 
+class TestRecencyBoostDateTypes:
+    """DEV-242: Tests for date vs datetime type handling in recency boost."""
+
+    def test_recency_boost_handles_date_type(self):
+        """publication_date as date (not datetime) should work."""
+        from datetime import date, timedelta
+
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService.__new__(ParallelRetrievalService)
+
+        # Recent date (within 12 months) - using date, not datetime
+        recent_date = date.today() - timedelta(days=30)
+        boost = service._calculate_recency_boost(recent_date)
+
+        assert boost == 1.5  # Should get recency boost
+
+    def test_recency_boost_handles_datetime_type(self):
+        """publication_date as datetime should still work."""
+        from datetime import datetime, timedelta
+
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService.__new__(ParallelRetrievalService)
+
+        recent_dt = datetime.now() - timedelta(days=30)
+        boost = service._calculate_recency_boost(recent_dt)
+
+        assert boost == 1.5
+
+    def test_recency_boost_old_date_type(self):
+        """Old date (>12 months) as date type should return 1.0."""
+        from datetime import date, timedelta
+
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService.__new__(ParallelRetrievalService)
+
+        old_date = date.today() - timedelta(days=400)
+        boost = service._calculate_recency_boost(old_date)
+
+        assert boost == 1.0  # No boost for old documents
+
+
 class TestSourceAuthority:
     """Tests for source authority hierarchy."""
 
     def test_authority_hierarchy_constant(self):
-        """Test GERARCHIA_FONTI contains correct weights."""
+        """Test GERARCHIA_FONTI contains correct weights (DEV-242 updated values)."""
         from app.services.parallel_retrieval import GERARCHIA_FONTI
 
-        assert GERARCHIA_FONTI["legge"] == 1.3
-        assert GERARCHIA_FONTI["circolare"] == 1.15
+        # DEV-242 Phase 17: Increased values to prioritize laws over summaries
+        assert GERARCHIA_FONTI["legge"] == 1.8  # Was 1.3
+        assert GERARCHIA_FONTI["circolare"] == 1.3  # Was 1.15
         assert GERARCHIA_FONTI["faq"] == 1.0
 
     def test_authority_boost_legge_highest(self):
@@ -187,9 +232,10 @@ class TestSourceAuthority:
 
         service = ParallelRetrievalService.__new__(ParallelRetrievalService)
 
-        legge_boost = service._get_authority_boost("legge")
-        circolare_boost = service._get_authority_boost("circolare")
-        faq_boost = service._get_authority_boost("faq")
+        # DEV-242 Phase 18: _get_authority_boost now takes source parameter
+        legge_boost = service._get_authority_boost("legge", "")
+        circolare_boost = service._get_authority_boost("circolare", "")
+        faq_boost = service._get_authority_boost("faq", "")
 
         assert legge_boost > circolare_boost > faq_boost
 
@@ -199,9 +245,42 @@ class TestSourceAuthority:
 
         service = ParallelRetrievalService.__new__(ParallelRetrievalService)
 
-        unknown_boost = service._get_authority_boost("unknown_type")
+        # DEV-242 Phase 18: _get_authority_boost now takes source parameter
+        unknown_boost = service._get_authority_boost("unknown_type", "")
 
         assert unknown_boost == 1.0  # Default
+
+    def test_source_authority_boost_gazzetta_ufficiale(self):
+        """Test that gazzetta_ufficiale source gets additional boost (DEV-242 Phase 18)."""
+        from app.services.parallel_retrieval import SOURCE_AUTHORITY, ParallelRetrievalService
+
+        service = ParallelRetrievalService.__new__(ParallelRetrievalService)
+
+        # gazzetta_ufficiale should get 1.3x source boost
+        assert SOURCE_AUTHORITY["gazzetta_ufficiale"] == 1.3
+
+        # Combined boost: legge (1.8) * gazzetta_ufficiale (1.3) = 2.34
+        combined_boost = service._get_authority_boost("legge", "gazzetta_ufficiale")
+        assert combined_boost == 1.8 * 1.3  # 2.34
+
+        # Summary sources should get penalty
+        assert SOURCE_AUTHORITY["ministero_economia_documenti"] == 0.9
+
+    def test_source_authority_combined_boost(self):
+        """Test that type and source boosts are multiplicative (DEV-242 Phase 18)."""
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService.__new__(ParallelRetrievalService)
+
+        # Full law from Gazzetta Ufficiale: legge (1.8) * gazzetta (1.3) = 2.34
+        gazzetta_legge = service._get_authority_boost("legge", "gazzetta_ufficiale")
+
+        # Summary from MEF: unknown type (1.0) * mef (0.9) = 0.9
+        mef_summary = service._get_authority_boost("", "ministero_economia_documenti")
+
+        # Full law should rank much higher than summary
+        assert gazzetta_legge > mef_summary
+        assert gazzetta_legge / mef_summary > 2.5  # At least 2.5x higher
 
 
 class TestDeduplication:
@@ -497,3 +576,443 @@ class TestPerformance:
 
         # With mocked services, should be very fast
         assert elapsed < 450, f"Retrieval took {elapsed:.1f}ms, should be <450ms"
+
+
+class TestDocumentReferenceFiltering:
+    """ADR-022: Tests for document_references-based search filtering."""
+
+    @pytest.mark.asyncio
+    async def test_bm25_uses_document_references_filter(self):
+        """ADR-022: BM25 search should use document_references as title_patterns."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        # Create mock search service
+        mock_search_service = AsyncMock()
+
+        # Mock search result
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "doc_1"
+        mock_result.knowledge_item_id = 123
+        mock_result.content = "Legge 199/2025 content about rottamazione"
+        mock_result.rank_score = 0.9
+        mock_result.category = "legge"
+        mock_result.title = "LEGGE 30 dicembre 2025, n. 199"
+        mock_result.source = "gazzetta_ufficiale"
+        mock_result.publication_date = None
+
+        mock_search_service.search.return_value = [mock_result]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        # Query with document_references
+        queries = QueryVariants(
+            bm25_query="rottamazione quinquies definizione agevolata",
+            vector_query="test",
+            entity_query="test",
+            original_query="Parlami della rottamazione quinquies",
+            document_references=["Legge 199/2025", "LEGGE 30 dicembre 2025, n. 199"],
+        )
+
+        # Execute search
+        result = await service._search_bm25(queries)
+
+        # Verify search was called with title_patterns
+        mock_search_service.search.assert_called()
+        call_kwargs = mock_search_service.search.call_args.kwargs
+        assert "title_patterns" in call_kwargs
+        # DEV-242 Phase 9: Patterns are now normalized to improve matching
+        # Original patterns are preserved, plus normalized variants added
+        patterns = call_kwargs["title_patterns"]
+        assert "Legge 199/2025" in patterns  # Original preserved
+        assert "LEGGE 30 dicembre 2025, n. 199" in patterns  # Original preserved
+        assert "n. 199" in patterns  # Normalized from "Legge 199/2025"
+
+    @pytest.mark.asyncio
+    async def test_bm25_falls_back_when_filter_returns_empty(self):
+        """ADR-022: BM25 should fall back to regular search when document filter finds nothing."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        mock_search_service = AsyncMock()
+
+        # First call (with filter) returns empty, second call (without filter) returns results
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "doc_fallback"
+        mock_result.knowledge_item_id = 456
+        mock_result.content = "Fallback result content"
+        mock_result.rank_score = 0.7
+        mock_result.category = "circolare"
+        mock_result.title = "Some other document"
+        mock_result.source = "other_source"
+        mock_result.publication_date = None
+
+        # First call returns empty, second returns result
+        mock_search_service.search.side_effect = [[], [mock_result]]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="test query",
+            vector_query="test",
+            entity_query="test",
+            original_query="test",
+            document_references=["NonExistent/2025"],  # Filter that won't match anything
+        )
+
+        result = await service._search_bm25(queries)
+
+        # Should have called search twice (filtered + fallback)
+        assert mock_search_service.search.call_count == 2
+
+        # First call should have title_patterns, second should not
+        first_call = mock_search_service.search.call_args_list[0]
+        second_call = mock_search_service.search.call_args_list[1]
+
+        assert first_call.kwargs.get("title_patterns") == ["NonExistent/2025"]
+        assert second_call.kwargs.get("title_patterns") is None
+
+        # Should return fallback results
+        assert len(result) == 1
+        assert result[0]["document_id"] == "doc_fallback"  # DEV-242 Phase 27: Now uses chunk_id
+
+    @pytest.mark.asyncio
+    async def test_bm25_no_filter_when_document_references_none(self):
+        """ADR-022: BM25 should not use filter when document_references is None."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        mock_search_service = AsyncMock()
+
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "doc_regular"
+        mock_result.knowledge_item_id = 789
+        mock_result.content = "Regular search content"
+        mock_result.rank_score = 0.8
+        mock_result.category = "faq"
+        mock_result.title = "FAQ Document"
+        mock_result.source = "faq_source"
+        mock_result.publication_date = None
+
+        mock_search_service.search.return_value = [mock_result]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="test query",
+            vector_query="test",
+            entity_query="test",
+            original_query="test",
+            document_references=None,  # No document references
+        )
+
+        await service._search_bm25(queries)
+
+        # Should call search only once, without title_patterns
+        assert mock_search_service.search.call_count == 1
+        call_kwargs = mock_search_service.search.call_args.kwargs
+        assert call_kwargs.get("title_patterns") is None
+
+    @pytest.mark.asyncio
+    async def test_bm25_no_filter_when_document_references_empty(self):
+        """ADR-022: BM25 should not use filter when document_references is empty list."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        mock_search_service = AsyncMock()
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "doc_1"
+        mock_result.knowledge_item_id = 111
+        mock_result.content = "Content"
+        mock_result.rank_score = 0.5
+        mock_result.category = "guida"
+        mock_result.title = "Guide"
+        mock_result.source = "source"
+        mock_result.publication_date = None
+
+        mock_search_service.search.return_value = [mock_result]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="test query",
+            vector_query="test",
+            entity_query="test",
+            original_query="test",
+            document_references=[],  # Empty list (generic query)
+        )
+
+        await service._search_bm25(queries)
+
+        # Should call search only once, without title_patterns
+        assert mock_search_service.search.call_count == 1
+        call_kwargs = mock_search_service.search.call_args.kwargs
+        assert call_kwargs.get("title_patterns") is None
+
+
+class TestNormalizeDocumentPatterns:
+    """Tests for DEV-242 Phase 9: Document pattern normalization."""
+
+    def test_normalizes_legge_slash_year_pattern(self):
+        """Test normalizing 'Legge 199/2025' to include 'n. 199'."""
+        from app.services.parallel_retrieval import _normalize_document_patterns
+
+        refs = ["Legge 199/2025"]
+        result = _normalize_document_patterns(refs)
+
+        assert "Legge 199/2025" in result  # Original preserved
+        assert "n. 199" in result  # Normalized pattern
+        assert "199" in result  # Number-only fallback
+
+    def test_normalizes_decreto_slash_year_pattern(self):
+        """Test normalizing 'DL 145/2023' to include 'n. 145'."""
+        from app.services.parallel_retrieval import _normalize_document_patterns
+
+        refs = ["DL 145/2023"]
+        result = _normalize_document_patterns(refs)
+
+        assert "DL 145/2023" in result
+        assert "n. 145" in result
+        assert "145" in result
+
+    def test_preserves_n_pattern(self):
+        """Test that 'n. 199' patterns are preserved."""
+        from app.services.parallel_retrieval import _normalize_document_patterns
+
+        refs = ["n. 199", "Legge di Bilancio 2026"]
+        result = _normalize_document_patterns(refs)
+
+        assert "n. 199" in result
+        assert "199" in result  # Number extracted
+        assert "Legge di Bilancio 2026" in result
+
+    def test_handles_empty_input(self):
+        """Test that empty input returns empty list."""
+        from app.services.parallel_retrieval import _normalize_document_patterns
+
+        assert _normalize_document_patterns(None) == []
+        assert _normalize_document_patterns([]) == []
+
+    def test_removes_duplicates(self):
+        """Test that duplicate patterns are removed."""
+        from app.services.parallel_retrieval import _normalize_document_patterns
+
+        refs = ["Legge 199/2025", "n. 199"]  # Both produce "199"
+        result = _normalize_document_patterns(refs)
+
+        # Count occurrences of "199"
+        assert result.count("199") == 1
+        assert result.count("n. 199") == 1
+
+    def test_real_world_rottamazione_quinquies_patterns(self):
+        """Test patterns that should match LEGGE 30 dicembre 2025, n. 199."""
+        from app.services.parallel_retrieval import _normalize_document_patterns
+
+        # What the LLM might generate
+        refs = ["Legge 199/2025", "Legge di Bilancio 2026"]
+        result = _normalize_document_patterns(refs)
+
+        # These patterns should match "LEGGE 30 dicembre 2025, n. 199"
+        assert "n. 199" in result  # Matches "n. 199" in title
+        assert "199" in result  # Matches "199" anywhere
+
+
+class TestSemanticExpansionsInBM25:
+    """DEV-242 Phase 16: Tests for semantic_expansions query expansion in BM25."""
+
+    @pytest.mark.asyncio
+    async def test_bm25_expands_query_with_semantic_expansions(self):
+        """DEV-242: BM25 search should expand query with semantic_expansions."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        mock_search_service = AsyncMock()
+
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "doc_1"
+        mock_result.knowledge_item_id = 2080
+        mock_result.content = "Pace fiscale 54 rate bimestrali"
+        mock_result.rank_score = 0.9
+        mock_result.category = "legge"
+        mock_result.title = "Principali misure della legge di bilancio 2026"
+        mock_result.source = "gazzetta_ufficiale"
+        mock_result.publication_date = None
+
+        mock_search_service.search.return_value = [mock_result]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        # Query with semantic_expansions
+        queries = QueryVariants(
+            bm25_query="rottamazione quinquies definizione",
+            vector_query="test",
+            entity_query="test",
+            original_query="Parlami della rottamazione quinquies",
+            document_references=["n. 199", "Legge di Bilancio 2026"],
+            semantic_expansions=["pace fiscale", "pacificazione fiscale", "definizione agevolata"],
+        )
+
+        await service._search_bm25(queries)
+
+        # Verify search was called with expanded query
+        mock_search_service.search.assert_called()
+        call_kwargs = mock_search_service.search.call_args.kwargs
+
+        # The query should include the semantic expansions
+        query_arg = call_kwargs.get("query")
+        assert "pace fiscale" in query_arg
+        assert "pacificazione fiscale" in query_arg
+        assert "definizione agevolata" in query_arg
+
+    @pytest.mark.asyncio
+    async def test_bm25_no_expansion_when_semantic_expansions_none(self):
+        """DEV-242: BM25 should not modify query when semantic_expansions is None."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        mock_search_service = AsyncMock()
+
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "doc_1"
+        mock_result.knowledge_item_id = 123
+        mock_result.content = "Content"
+        mock_result.rank_score = 0.8
+        mock_result.category = "faq"
+        mock_result.title = "FAQ"
+        mock_result.source = "source"
+        mock_result.publication_date = None
+
+        mock_search_service.search.return_value = [mock_result]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="test bm25 query",
+            vector_query="test",
+            entity_query="test",
+            original_query="test",
+            semantic_expansions=None,  # No semantic expansions
+        )
+
+        await service._search_bm25(queries)
+
+        # Query should be unchanged
+        call_kwargs = mock_search_service.search.call_args.kwargs
+        query_arg = call_kwargs.get("query")
+        assert query_arg == "test bm25 query"
+
+    @pytest.mark.asyncio
+    async def test_bm25_no_expansion_when_semantic_expansions_empty(self):
+        """DEV-242: BM25 should not modify query when semantic_expansions is empty."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        mock_search_service = AsyncMock()
+
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "doc_1"
+        mock_result.knowledge_item_id = 123
+        mock_result.content = "Content"
+        mock_result.rank_score = 0.8
+        mock_result.category = "faq"
+        mock_result.title = "FAQ"
+        mock_result.source = "source"
+        mock_result.publication_date = None
+
+        mock_search_service.search.return_value = [mock_result]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="test bm25 query",
+            vector_query="test",
+            entity_query="test",
+            original_query="test",
+            semantic_expansions=[],  # Empty list
+        )
+
+        await service._search_bm25(queries)
+
+        # Query should be unchanged
+        call_kwargs = mock_search_service.search.call_args.kwargs
+        query_arg = call_kwargs.get("query")
+        assert query_arg == "test bm25 query"
+
+    @pytest.mark.asyncio
+    async def test_semantic_expansions_combined_with_document_references(self):
+        """DEV-242: Both semantic_expansions and document_references should work together."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        mock_search_service = AsyncMock()
+
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "doc_1"
+        mock_result.knowledge_item_id = 2080
+        mock_result.content = "Pace fiscale 54 rate bimestrali"
+        mock_result.rank_score = 0.95
+        mock_result.category = "legge"
+        mock_result.title = "Principali misure della legge di bilancio 2026"
+        mock_result.source = "gazzetta_ufficiale"
+        mock_result.publication_date = None
+
+        mock_search_service.search.return_value = [mock_result]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        # Query with BOTH semantic_expansions AND document_references
+        queries = QueryVariants(
+            bm25_query="rottamazione quinquies",
+            vector_query="test",
+            entity_query="test",
+            original_query="Parlami della rottamazione quinquies",
+            document_references=["n. 199", "Legge di Bilancio 2026"],
+            semantic_expansions=["pace fiscale", "pacificazione fiscale"],
+        )
+
+        await service._search_bm25(queries)
+
+        # Both features should be used
+        call_kwargs = mock_search_service.search.call_args.kwargs
+
+        # Query should have semantic expansions
+        query_arg = call_kwargs.get("query")
+        assert "pace fiscale" in query_arg
+        assert "pacificazione fiscale" in query_arg
+
+        # Title patterns should also be present
+        assert "title_patterns" in call_kwargs
+        patterns = call_kwargs["title_patterns"]
+        assert "n. 199" in patterns or "Legge di Bilancio 2026" in patterns

@@ -14,11 +14,13 @@ Usage:
 """
 
 import asyncio
+import re
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
+from app.core.config import HYBRID_K_FTS
 from app.core.logging import logger
 from app.services.hyde_generator import HyDEResult
 from app.services.multi_query_generator import QueryVariants
@@ -34,14 +36,26 @@ SEARCH_WEIGHTS = {
 }
 
 # Source authority hierarchy per Section 13.7.4
+# DEV-242 Phase 17: Increased boosts to prioritize full laws over summaries
 GERARCHIA_FONTI = {
-    "legge": 1.3,
-    "decreto": 1.25,
-    "circolare": 1.15,
-    "risoluzione": 1.1,
-    "interpello": 1.05,
+    "legge": 1.8,  # Was 1.3 - increased to ensure laws rank above summaries
+    "decreto": 1.6,  # Was 1.25
+    "circolare": 1.3,  # Was 1.15
+    "risoluzione": 1.2,  # Was 1.1
+    "interpello": 1.1,  # Was 1.05
     "faq": 1.0,
-    "guida": 0.95,
+    "guida": 0.8,  # Was 0.95 - penalty for summaries
+}
+
+# DEV-242 Phase 18: Source-based authority boost
+# Gazzetta Ufficiale documents should rank higher than ministry summaries
+SOURCE_AUTHORITY = {
+    "gazzetta_ufficiale": 1.3,  # Official law source gets 30% boost
+    "agenzia_entrate": 1.2,
+    "inps": 1.2,
+    "corte_cassazione": 1.15,
+    "ministero_economia_documenti": 0.9,  # Summaries penalized
+    "ministero_lavoro_news": 0.9,
 }
 
 # Recency boost threshold (12 months)
@@ -50,6 +64,56 @@ RECENCY_BOOST = 1.5  # +50%
 
 # Default top-K results
 DEFAULT_TOP_K = 10
+
+
+def _normalize_document_patterns(refs: list[str] | None) -> list[str]:
+    """Normalize document reference patterns for ILIKE matching.
+
+    DEV-242 Phase 9: LLM may generate patterns like "Legge 199/2025" but
+    actual Italian law titles use "LEGGE 30 dicembre 2025, n. 199".
+    This function expands patterns to improve matching.
+
+    Args:
+        refs: List of document references from LLM
+
+    Returns:
+        Expanded list of normalized patterns for ILIKE matching
+
+    Example:
+        Input: ["Legge 199/2025", "Legge di Bilancio 2026"]
+        Output: ["Legge 199/2025", "n. 199", "199", "Legge di Bilancio 2026"]
+    """
+    if not refs:
+        return []
+
+    patterns = []
+    for ref in refs:
+        # Always include the original pattern
+        patterns.append(ref)
+
+        # Extract law number patterns: "Legge 199/2025" → "n. 199", "199"
+        if match := re.search(r"(\d+)/(\d+)", ref):
+            number = match.group(1)
+            # Add "n. XXX" pattern (matches Italian law title format)
+            patterns.append(f"n. {number}")
+            # Add just the number as fallback
+            patterns.append(number)
+
+        # Extract standalone numbers from patterns like "n. 199" or "DL 145"
+        if match := re.search(r"n\.\s*(\d+)", ref, re.IGNORECASE):
+            number = match.group(1)
+            if number not in patterns:
+                patterns.append(number)
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_patterns = []
+    for p in patterns:
+        if p not in seen:
+            seen.add(p)
+            unique_patterns.append(p)
+
+    return unique_patterns
 
 
 @dataclass
@@ -243,15 +307,128 @@ class ParallelRetrievalService:
     ) -> list[dict[str, Any]]:
         """Execute BM25 searches for all query variants.
 
+        ADR-022: Uses document_references from LLM to filter search by title.
+        DEV-242: Uses semantic_expansions to bridge terminology gaps.
+        Falls back to regular search if filtered search returns no results.
+
         Args:
-            queries: Query variants
+            queries: Query variants (may include document_references and semantic_expansions)
 
         Returns:
             List of BM25 search results
         """
-        # In real implementation, would call search service
-        # For now, return empty list (mocked in tests)
-        return []
+        if not self._search_service:
+            logger.warning("bm25_search_skipped", reason="no_search_service")
+            return []
+
+        try:
+            # DEV-242: Use bm25_query from query variants for BM25 search
+            search_query = queries.bm25_query or queries.original_query
+
+            # DEV-242 Phase 16: Expand query with semantic_expansions to bridge terminology gaps
+            # E.g., "rottamazione quinquies" → "rottamazione quinquies pace fiscale pacificazione definizione"
+            # This helps FTS find documents using official legal terminology
+            if queries.semantic_expansions:
+                # Append semantic expansions to the query for better FTS matching
+                semantic_terms = " ".join(queries.semantic_expansions)
+                search_query = f"{search_query} {semantic_terms}"
+                logger.info(
+                    "bm25_semantic_expansion",
+                    original_query=queries.original_query[:100] if queries.original_query else "",
+                    expanded_query=search_query[:200] if search_query else "",
+                    semantic_expansions=queries.semantic_expansions,
+                )
+
+            logger.info(
+                "bm25_search_executing",
+                query=search_query[:100] if search_query else "EMPTY",
+                original_query=queries.original_query[:100] if queries.original_query else "",
+                has_document_refs=bool(queries.document_references),
+                has_semantic_expansions=bool(queries.semantic_expansions),
+            )
+
+            results = []
+
+            # ADR-022: If LLM identified specific documents, search within those first
+            if queries.document_references:
+                # DEV-242 Phase 9: Normalize patterns for better ILIKE matching
+                # E.g., "Legge 199/2025" → ["Legge 199/2025", "n. 199", "199"]
+                normalized_patterns = _normalize_document_patterns(queries.document_references)
+
+                logger.info(
+                    "bm25_search_with_document_filter",
+                    document_references=queries.document_references,
+                    normalized_patterns=normalized_patterns,
+                )
+
+                # Priority search: filter to identified documents
+                # DEV-242 Phase 30: Use HYBRID_K_FTS config instead of hardcoded 20
+                results = await self._search_service.search(
+                    query=search_query,
+                    limit=HYBRID_K_FTS,
+                    title_patterns=normalized_patterns,
+                )
+
+                if results:
+                    logger.info(
+                        "bm25_document_filter_success",
+                        count=len(results),
+                        document_references=queries.document_references,
+                    )
+                else:
+                    # Fallback: document filter found no results
+                    logger.info(
+                        "bm25_document_filter_fallback",
+                        reason="no_results",
+                        document_references=queries.document_references,
+                    )
+                    # Fall through to regular search
+
+            # Regular search (no filter, or fallback from empty filter results)
+            # DEV-242 Phase 30: Use HYBRID_K_FTS config instead of hardcoded 20
+            if not results:
+                results = await self._search_service.search(
+                    query=search_query,
+                    limit=HYBRID_K_FTS,
+                )
+
+            # Convert SearchResult objects to dicts
+            docs: list[dict[str, Any]] = []
+            for result in results:
+                doc = {
+                    # DEV-242 Phase 27: Use chunk ID for deduplication to keep multiple chunks per document
+                    # Before: knowledge_item_id caused all chunks from same doc to dedupe to one
+                    "document_id": str(result.id),
+                    "content": result.content or "",
+                    "score": result.rank_score,
+                    "source_type": result.category or "",
+                    "source": result.source or "",  # DEV-242 Phase 22: Add for SOURCE_AUTHORITY matching
+                    # DEV-242: Use title first (e.g., "LEGGE 30 dicembre 2025, n. 199")
+                    # then fall back to source (e.g., "gazzetta_ufficiale_reingest")
+                    "source_name": result.title or result.source or "",
+                    "published_date": result.publication_date,
+                    # DEV-242 Phase 42: Add source_url for citation links
+                    "source_url": result.source_url,
+                    "metadata": {
+                        "title": result.title,
+                        "source": result.source,
+                        "category": result.category,
+                        "chunk_id": result.id,
+                        "source_url": result.source_url,  # Also in metadata for context builder
+                    },
+                }
+                docs.append(doc)
+
+            logger.info(
+                "bm25_search_complete",
+                query=search_query[:50] if search_query else "",
+                results_count=len(docs),
+            )
+            return docs
+
+        except Exception as e:
+            logger.error("bm25_search_error", error=str(e))
+            return []
 
     async def _search_vector(
         self,
@@ -349,9 +526,10 @@ class ParallelRetrievalService:
         boosted = []
 
         for doc in docs:
-            # Get source authority boost
+            # Get source authority boost (DEV-242 Phase 17-18)
             source_type = doc.get("source_type", "").lower()
-            authority_boost = self._get_authority_boost(source_type)
+            source = doc.get("source", "").lower()  # DEV-242: Also use source field
+            authority_boost = self._get_authority_boost(source_type, source)
 
             # Get recency boost
             published_date = doc.get("published_date")
@@ -374,33 +552,51 @@ class ParallelRetrievalService:
 
         return boosted
 
-    def _get_authority_boost(self, source_type: str) -> float:
-        """Get authority boost for a source type.
+    def _get_authority_boost(self, source_type: str, source: str = "") -> float:
+        """Get authority boost for a source type and source.
+
+        DEV-242 Phase 17-18: Combines document type boost (GERARCHIA_FONTI)
+        with source authority boost (SOURCE_AUTHORITY) to ensure full law
+        documents rank higher than summaries.
 
         Args:
-            source_type: Type of document source
+            source_type: Type of document (e.g., "legge", "decreto")
+            source: Source field from database (e.g., "gazzetta_ufficiale")
 
         Returns:
-            Authority multiplier (1.0 for unknown types)
+            Combined authority multiplier (1.0 for unknown types)
         """
-        return GERARCHIA_FONTI.get(source_type.lower(), 1.0)
+        # Get document type boost (from title pattern matching)
+        type_boost = GERARCHIA_FONTI.get(source_type.lower(), 1.0)
+
+        # Get source authority boost (from database source field)
+        source_boost = SOURCE_AUTHORITY.get(source.lower(), 1.0)
+
+        # Combine boosts (multiplicative)
+        combined_boost = type_boost * source_boost
+
+        return combined_boost
 
     def _calculate_recency_boost(
         self,
-        published_date: datetime | None,
+        published_date: datetime | date | None,
     ) -> float:
         """Calculate recency boost for a document.
 
         Documents published within 12 months get +50% boost.
 
         Args:
-            published_date: Document publication date
+            published_date: Document publication date (datetime or date)
 
         Returns:
             Recency multiplier (1.0 or 1.5)
         """
         if not published_date:
             return 1.0
+
+        # DEV-242: Convert date to datetime for comparison
+        if isinstance(published_date, date) and not isinstance(published_date, datetime):
+            published_date = datetime.combine(published_date, datetime.min.time())
 
         threshold = datetime.now() - timedelta(days=RECENCY_THRESHOLD_DAYS)
 

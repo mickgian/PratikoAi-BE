@@ -584,6 +584,53 @@ def _convert_attachments_to_doc_facts(
     return doc_facts, combined_deanonymization_map
 
 
+def _transform_retrieval_documents(documents: list[dict]) -> list[dict]:
+    """Transform Step 39c document format to context builder format.
+
+    DEV-242: Step 39c uses different field names than what the context builder expects.
+    This function maps the fields to ensure proper context building.
+
+    Step 39c fields -> Context builder fields:
+    - document_id -> id
+    - source_name -> title
+    - source_type -> type
+    - published_date -> publication_date
+    - source_url -> url (DEV-242 Phase 42: for citation links)
+    """
+    transformed = []
+    for doc in documents:
+        # DEV-242 Phase 42: Get source_url from doc or metadata
+        source_url = doc.get("source_url") or doc.get("metadata", {}).get("source_url")
+
+        transformed_doc = {
+            # Map document_id to id (fallback to existing id if present)
+            "id": doc.get("document_id") or doc.get("id"),
+            # Map source_name to title (fallback to existing title if present)
+            "title": doc.get("source_name") or doc.get("title", ""),
+            # Preserve content as-is
+            "content": doc.get("content", ""),
+            # Map source_type to type (fallback to existing type if present)
+            "type": doc.get("source_type") or doc.get("type", ""),
+            # Preserve score as-is
+            "score": doc.get("score", 0.0),
+            # Map published_date to publication_date (fallback to existing)
+            "publication_date": doc.get("published_date") or doc.get("publication_date"),
+            # Preserve source as source_type for compatibility
+            "source": doc.get("source_type") or doc.get("source", ""),
+            # DEV-242 Phase 42: Map source_url to url for citation links
+            "url": source_url,
+            # Preserve metadata with source_url included
+            "metadata": {
+                **doc.get("metadata", {}),
+                "source_url": source_url,
+            },
+            # Preserve rrf_score if present
+            "rrf_score": doc.get("rrf_score"),
+        }
+        transformed.append(transformed_doc)
+    return transformed
+
+
 async def step_40__build_context(
     *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
@@ -613,10 +660,19 @@ async def step_40__build_context(
         # Extract context parameters
         request_id = kwargs.get("request_id") or (ctx or {}).get("request_id", "unknown")
         canonical_facts = kwargs.get("canonical_facts") or (ctx or {}).get("canonical_facts", [])
-        # Try multiple locations for KB results: kb_results kwarg, knowledge_items, or kb_docs from RAGState
+        # Try multiple locations for KB results: kb_results kwarg, knowledge_items, kb_docs, or retrieval_result
+        # DEV-242: Added retrieval_result.documents fallback for Step 39c parallel retrieval integration
+        # Also transform field names from Step 39c format to context builder format
+        retrieval_docs = (ctx or {}).get("retrieval_result", {}).get("documents", [])
+        if retrieval_docs:
+            retrieval_docs = _transform_retrieval_documents(retrieval_docs)
+
         kb_results = (
-            kwargs.get("kb_results") or (ctx or {}).get("knowledge_items", []) or (ctx or {}).get("kb_docs", [])
-        )  # From Step 39
+            kwargs.get("kb_results")
+            or (ctx or {}).get("knowledge_items", [])
+            or (ctx or {}).get("kb_docs", [])
+            or retrieval_docs
+        )  # From Step 39 or Step 39c (transformed)
         document_facts = kwargs.get("document_facts") or (ctx or {}).get("document_facts", [])
 
         # DEV-007: Convert chat attachments to document_facts if present

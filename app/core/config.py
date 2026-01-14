@@ -460,6 +460,7 @@ HYBRID_WEIGHT_SOURCE = float(os.getenv("HYBRID_WEIGHT_SOURCE", "0.05"))
 SOURCE_AUTHORITY_WEIGHTS = {
     # Official government sources: +0.15 boost
     "agenzia_entrate": 0.15,
+    "agenzia_entrate_riscossione": 0.15,  # DEV-242 Phase 35A: AdER official rules
     "inps": 0.15,
     "mef": 0.15,
     "gazzetta_ufficiale": 0.15,
@@ -474,6 +475,14 @@ SOURCE_AUTHORITY_WEIGHTS = {
 }
 
 # Retrieval Parameters
-HYBRID_K_FTS = int(os.getenv("HYBRID_K_FTS", "20"))  # Top-K for FTS candidates
-HYBRID_K_VEC = int(os.getenv("HYBRID_K_VEC", "20"))  # Top-K for vector candidates
-CONTEXT_TOP_K = int(os.getenv("CONTEXT_TOP_K", "14"))  # Final top-K for context
+# DEV-242 Phase 21: Increased limits for more comprehensive context
+
+# CONTEXT_TOP_K: Number of chunks to include in LLM context
+# DEV-242 Phase 36: Increased from 18 to 22 to capture AdER chunks (5-day grace period info)
+CONTEXT_TOP_K = int(os.getenv("CONTEXT_TOP_K", "22"))
+
+# HYBRID_K_FTS: Number of candidates from BM25/FTS search
+HYBRID_K_FTS = int(os.getenv("HYBRID_K_FTS", "30"))
+
+# HYBRID_K_VEC: Number of candidates from vector search (not yet implemented)
+HYBRID_K_VEC = int(os.getenv("HYBRID_K_VEC", "30"))

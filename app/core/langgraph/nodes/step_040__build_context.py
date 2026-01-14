@@ -318,6 +318,20 @@ async def node_step_40(state: RAGState) -> RAGState:
         user_query = state.get("user_query")
         state["kb_sources_metadata"] = _build_kb_sources_metadata(valid_kb_docs, user_query)
 
+        # DEV-242 FIX: Check KB-empty BEFORE prompt is built in Step 41
+        # This ensures the warning is in kb_context when the system prompt is rendered
+        from app.core.langgraph.nodes.step_064__llm_call import _check_kb_empty_and_inject_warning
+
+        kb_empty = _check_kb_empty_and_inject_warning(state)
+        state["kb_was_empty"] = kb_empty
+        if kb_empty:
+            step40_logger.warning(
+                "kb_empty_detected_step40",
+                user_query=(state.get("user_message") or state.get("user_query", ""))[:100],
+                kb_sources_count=len(state.get("kb_sources_metadata", [])),
+                kb_context_len=len(state.get("kb_context", "")),
+            )
+
         step40_logger.debug(
             "step40_kb_preservation_complete",
             kb_documents_count=len(state["kb_documents"]),

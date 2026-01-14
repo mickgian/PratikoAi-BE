@@ -233,6 +233,12 @@ class ActionRegenerator:
     def _generate_safe_fallback(self, context: ResponseContext) -> list[dict]:
         """Generate minimal safe actions when regeneration fails.
 
+        DEV-242: Fixed to produce grammatically correct Italian labels.
+        - Truncates at word boundaries (no mid-word cuts)
+        - Uses noun phrases instead of imperative verbs
+        - Context-appropriate labels for values (dates vs amounts vs percentages)
+        - Avoids double-verb patterns like "Approfondisci Verifica"
+
         Args:
             context: Response context for grounding
 
@@ -241,38 +247,196 @@ class ActionRegenerator:
         """
         actions = []
 
-        # Topic-based action
-        if context.main_topic:
-            topic_short = context.main_topic[:20]
-            actions.append({
-                "id": "fallback_1",
-                "label": f"Approfondisci {topic_short}",
-                "icon": "search",
-                "prompt": f"Dimmi di più su {context.main_topic}",
-                "source_basis": "topic_fallback",
-            })
+        # Topic-based action with proper grammar
+        if context.main_topic and len(context.main_topic) >= 5:
+            # Truncate at word boundary to avoid mid-word cuts
+            topic_clean = self._truncate_at_word_boundary(context.main_topic, 25)
+            if topic_clean and not self._starts_with_verb(topic_clean):
+                actions.append(
+                    {
+                        "id": "fallback_1",
+                        "label": f"Dettagli su {topic_clean}",
+                        "icon": "search",
+                        "prompt": f"Vorrei maggiori dettagli su {context.main_topic}",
+                        "source_basis": "topic_fallback",
+                    }
+                )
 
-        # Calculation action if values present
+        # Value-based action with context-appropriate label
         if context.extracted_values:
             first_value = context.extracted_values[0]
-            actions.append({
+            action = self._create_value_action(first_value)
+            if action:
+                actions.append(action)
+
+        # Contextual deadline action (only if we have fewer than 2 actions)
+        if len(actions) < 2:
+            topic_context = (
+                self._truncate_at_word_boundary(context.main_topic, 15) if context.main_topic else "questa pratica"
+            )
+            actions.append(
+                {
+                    "id": "fallback_3",
+                    "label": "Prossime scadenze fiscali",
+                    "icon": "calendar",
+                    "prompt": f"Quali sono le scadenze rilevanti per {topic_context}?",
+                    "source_basis": "deadline_fallback",
+                }
+            )
+
+        return self._validate_fallback_grammar(actions[:3])
+
+    def _truncate_at_word_boundary(self, text: str, max_length: int) -> str:
+        """Truncate text at word boundary to avoid mid-word cuts.
+
+        DEV-242: Ensures labels don't end with partial words like 'scaden...'
+
+        Args:
+            text: Text to truncate
+            max_length: Maximum length
+
+        Returns:
+            Truncated text at word boundary, or original if short enough
+        """
+        if not text:
+            return ""
+        text = text.strip()
+        if len(text) <= max_length:
+            return text
+
+        # Find last space within max_length
+        truncated = text[:max_length]
+        last_space = truncated.rfind(" ")
+
+        # If space found in reasonable position, truncate there
+        if last_space > max_length // 2:
+            result = truncated[:last_space].strip()
+            # Also strip trailing punctuation
+            return result.rstrip(".,;:-").strip()
+
+        # Otherwise use full truncation but strip trailing punctuation
+        return truncated.rstrip(".,;:-").strip()
+
+    def _starts_with_verb(self, text: str) -> bool:
+        """Check if text starts with an imperative verb.
+
+        DEV-242: Detects common Italian imperative verbs to avoid
+        double-verb patterns like "Dettagli su Verifica le scadenze"
+
+        Args:
+            text: Text to check
+
+        Returns:
+            True if starts with imperative verb
+        """
+        imperative_verbs = {
+            "verifica",
+            "calcola",
+            "controlla",
+            "consulta",
+            "leggi",
+            "vedi",
+            "scopri",
+            "approfondisci",
+            "cerca",
+            "trova",
+            "monitora",
+            "segui",
+            "chiedi",
+            "contatta",
+        }
+        first_word = text.lower().split()[0] if text else ""
+        return first_word in imperative_verbs
+
+    def _create_value_action(self, value: str) -> dict | None:
+        """Create contextually appropriate action for extracted value.
+
+        DEV-242: Creates different labels based on value type:
+        - Percentages: "Calcolo con aliquota X%"
+        - Euro amounts: "Calcolo importo €X"
+        - Dates: "Scadenza del DD/MM/YYYY"
+
+        Args:
+            value: Extracted value (percentage, amount, or date)
+
+        Returns:
+            Action dict or None if value is invalid
+        """
+        if not value:
+            return None
+
+        if "%" in value:
+            return {
                 "id": "fallback_2",
-                "label": f"Calcolo su {first_value}",
+                "label": f"Calcolo con aliquota {value}",
                 "icon": "calculator",
-                "prompt": f"Esegui un calcolo pratico considerando {first_value}",
+                "prompt": f"Effettua un calcolo pratico applicando l'aliquota del {value}",
                 "source_basis": "value_fallback",
-            })
+            }
+        elif "€" in value or "euro" in value.lower():
+            return {
+                "id": "fallback_2",
+                "label": f"Calcolo importo {value}",
+                "icon": "calculator",
+                "prompt": f"Effettua un calcolo pratico considerando l'importo di {value}",
+                "source_basis": "value_fallback",
+            }
+        elif "/" in value or "-" in value:
+            # Date format - create deadline action
+            return {
+                "id": "fallback_2",
+                "label": f"Scadenza del {value}",
+                "icon": "calendar",
+                "prompt": f"Dettagli sulla scadenza del {value}",
+                "source_basis": "date_fallback",
+            }
+        else:
+            # Generic numeric value
+            return {
+                "id": "fallback_2",
+                "label": f"Esempio con {value}",
+                "icon": "calculator",
+                "prompt": f"Mostrami un esempio pratico con il valore {value}",
+                "source_basis": "value_fallback",
+            }
 
-        # Generic deadline action (always included)
-        actions.append({
-            "id": "fallback_3",
-            "label": "Verifica scadenze",
-            "icon": "calendar",
-            "prompt": "Quali sono le scadenze rilevanti per questa situazione?",
-            "source_basis": "deadline_fallback",
-        })
+    def _validate_fallback_grammar(self, actions: list[dict]) -> list[dict]:
+        """Ensure fallback actions have valid Italian grammar.
 
-        return actions[:3]
+        DEV-242: Final validation to catch any remaining grammar issues.
+
+        Args:
+            actions: List of fallback actions
+
+        Returns:
+            List of grammatically valid actions
+        """
+        validated = []
+        for action in actions:
+            label = action.get("label", "")
+
+            # Skip if label is too short
+            if len(label) < 8:
+                continue
+
+            # Check for double-verb patterns and fix them
+            words = label.split()
+            if len(words) >= 2:
+                first_word = words[0].lower()
+                second_word = words[1] if len(words) > 1 else ""
+
+                # If pattern is "Verb1 Verb2...", remove first verb
+                if self._starts_with_verb(first_word) and second_word and second_word[0].isupper():
+                    if self._starts_with_verb(second_word):
+                        action = dict(action)
+                        action["label"] = " ".join(words[1:])
+                        label = action["label"]
+
+            # Ensure label is still valid after fixes
+            if len(label) >= 8:
+                validated.append(action)
+
+        return validated
 
     def _build_rejection_reasons(self, rejection_log: list[tuple[dict, str]]) -> str:
         """Build rejection reasons text for prompt.
@@ -289,7 +453,7 @@ class ActionRegenerator:
         reasons = []
         for action, reason in rejection_log:
             label = action.get("label", "Unknown")[:30]
-            reasons.append(f"- \"{label}\": {reason}")
+            reasons.append(f'- "{label}": {reason}')
 
         return "\n".join(reasons)
 

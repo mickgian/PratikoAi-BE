@@ -92,6 +92,7 @@ async def hybrid_retrieve(
                 ki.subcategory,
                 ki.extraction_method,
                 ki.text_quality,
+                ki.tier,  -- DEV-242 Phase 11: Tier for ranking
 
                 -- FTS score (normalized)
                 ts_rank_cd(kc.search_vector, websearch_to_tsquery('italian', :query)) AS fts_score,
@@ -158,6 +159,7 @@ async def hybrid_retrieve(
                 "subcategory": row.subcategory,
                 "extraction_method": row.extraction_method,
                 "text_quality": float(row.text_quality) if row.text_quality else None,
+                "tier": row.tier,  # DEV-242 Phase 11
                 # Scores
                 "fts_score": float(row.fts_score) if row.fts_score else 0.0,
                 "vector_score": float(row.vector_score) if row.vector_score else 0.0,
@@ -196,6 +198,7 @@ async def fts_only_retrieve(session: AsyncSession, query: str, top_k: int = 10) 
             ki.subcategory,
             ki.extraction_method,
             ki.text_quality,
+            ki.tier,  -- DEV-242 Phase 11: Tier for ranking
             ts_rank_cd(kc.search_vector, websearch_to_tsquery('italian', :query)) AS fts_score
         FROM knowledge_chunks kc
         INNER JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id
@@ -226,6 +229,7 @@ async def fts_only_retrieve(session: AsyncSession, query: str, top_k: int = 10) 
                 "subcategory": row.subcategory,
                 "extraction_method": row.extraction_method,
                 "text_quality": float(row.text_quality) if row.text_quality else None,
+                "tier": row.tier,  # DEV-242 Phase 11
                 # Scores
                 "fts_score": float(row.fts_score) if row.fts_score else 0.0,
                 "vector_score": 0.0,

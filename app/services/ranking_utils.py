@@ -72,6 +72,37 @@ def get_source_authority_boost(source: Any) -> float:
     return 0.0
 
 
+# DEV-242 Phase 11: Tier-based ranking multipliers
+# Applied to combined score to prioritize authoritative documents
+TIER_MULTIPLIERS = {
+    1: 1.25,  # CRITICAL: Laws, Decrees, DPR - highest priority
+    2: 1.10,  # IMPORTANT: Circulars, Resolutions, Interpelli
+    3: 0.80,  # REFERENCE: News, FAQ, Guides - lower priority
+}
+
+
+def get_tier_multiplier(tier: int | None) -> float:
+    """Get score multiplier based on document tier classification.
+
+    Args:
+        tier: Document tier (1=CRITICAL, 2=IMPORTANT, 3=REFERENCE)
+              None for unclassified documents
+
+    Returns:
+        Multiplier value:
+        - 1.25 for Tier 1 (laws, decrees)
+        - 1.10 for Tier 2 (circulars)
+        - 0.80 for Tier 3 (news, FAQ)
+        - 1.00 for unknown/None
+
+    Performance:
+        O(1) dictionary lookup
+    """
+    if tier is None:
+        return 1.0
+    return TIER_MULTIPLIERS.get(tier, 1.0)
+
+
 def normalize_weights(
     fts: float,
     vector: float,

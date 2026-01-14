@@ -19,9 +19,13 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Date,
     DateTime,
+    ForeignKey,
     Index,
 )
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy import (
+    Text as SAText,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlmodel import (
     JSON,
     Column,
@@ -128,6 +132,41 @@ class KnowledgeItem(SQLModel, table=True):  # type: ignore[call-arg]
         default_factory=dict, sa_column=Column(JSON), description="Additional metadata"
     )
 
+    # Tiered document ingestion fields (ADR-023)
+    tier: int = Field(
+        default=2,
+        description="Document importance tier: 1=CRITICAL, 2=IMPORTANT, 3=REFERENCE",
+    )
+    parent_document_id: int | None = Field(
+        default=None,
+        sa_column=Column(
+            "parent_document_id",
+            ForeignKey("knowledge_items.id", ondelete="CASCADE"),
+            nullable=True,
+        ),
+        description="Parent document ID for hierarchical storage (law -> articles)",
+    )
+    article_number: str | None = Field(
+        default=None,
+        max_length=50,
+        description="Article identifier for Italian laws (e.g., 'Art. 1', 'Art. 2-bis')",
+    )
+    topics: list[str] | None = Field(
+        default=None,
+        sa_column=Column(ARRAY(SAText)),
+        description="Topic tags for enhanced search (e.g., ['rottamazione', 'irpef'])",
+    )
+    document_type: str = Field(
+        default="chunk",
+        max_length=50,
+        description="Type: 'full_document', 'article', 'chunk', 'allegato'",
+    )
+    parsing_metadata: dict[str, Any] | None = Field(
+        default=None,
+        sa_column=Column(JSONB),
+        description="Parsing details: cross-references, commi count, titolo/capo structure",
+    )
+
     __table_args__ = (
         # Primary indexes for search performance
         Index("idx_knowledge_title", "title"),
@@ -142,9 +181,16 @@ class KnowledgeItem(SQLModel, table=True):  # type: ignore[call-arg]
         # Composite indexes for common queries
         Index("idx_knowledge_category_relevance", "category", "relevance_score"),
         Index("idx_knowledge_status_updated", "status", "updated_at"),
+        # Tiered document ingestion indexes (ADR-023)
+        # Note: These indexes are also created in migration for existing DBs
+        Index("idx_knowledge_tier", "tier"),
+        Index("idx_knowledge_parent_document_id", "parent_document_id"),
+        Index("idx_knowledge_article_number", "article_number"),
+        Index("idx_knowledge_document_type", "document_type"),
         # Full-text search indexes (added by migration)
         # Index("idx_knowledge_search_vector", "search_vector", postgresql_using="gin"),
         # Index("idx_knowledge_category_search", "category", "search_vector", postgresql_using="gin"),
+        # Index("idx_knowledge_topics", "topics", postgresql_using="gin"),  # GIN for array
     )
 
 

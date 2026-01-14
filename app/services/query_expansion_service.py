@@ -8,12 +8,15 @@ import asyncio
 import hashlib
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from app.core.config import settings
 from app.core.logging import logger
 from app.services.cache import CacheService
-from app.services.embedding_service import EmbeddingService
+
+if TYPE_CHECKING:
+    # EmbeddingService is optional - only needed for async semantic expansion
+    pass
 
 
 @dataclass
@@ -37,7 +40,14 @@ class ItalianTaxQueryExpander:
     - Regional and dialectal variations
     """
 
-    def __init__(self, embedding_service: EmbeddingService, cache_service: CacheService | None = None):
+    def __init__(self, embedding_service: Any | None = None, cache_service: CacheService | None = None):
+        """Initialize the query expander.
+
+        Args:
+            embedding_service: Optional embedding service for semantic expansion.
+                              Can be None for sync-only colloquial expansion.
+            cache_service: Optional cache service for caching expansion results.
+        """
         self.embeddings = embedding_service
         self.cache = cache_service
 

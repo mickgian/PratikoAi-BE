@@ -1,8 +1,8 @@
 """Premium Model Selector Service for DEV-185.
 
 Dynamic model selection for synthesis step per Section 13.10.4.
-Selects between GPT-4o and Claude 3.5 Sonnet based on context length
-and provider availability.
+Always prefers GPT-4o with Anthropic Claude as fallback when OpenAI
+is unavailable.
 
 Usage:
     from app.services.premium_model_selector import PremiumModelSelector, SynthesisContext
@@ -22,9 +22,6 @@ from app.core.logging import logger
 
 if TYPE_CHECKING:
     from app.schemas.chat import Message
-
-# Token threshold for switching to Claude (>8000 tokens)
-LONG_CONTEXT_THRESHOLD = 8000
 
 # Pre-warm timeout in seconds
 DEFAULT_PRE_WARM_TIMEOUT = 3.0
@@ -63,10 +60,8 @@ class ModelSelection:
 class PremiumModelSelector:
     """Dynamic model selector for premium tier synthesis.
 
-    Selects the optimal model based on:
-    - Context length (GPT-4o for ≤8k tokens, Claude for >8k tokens)
-    - Provider availability (health checks)
-    - Fallback configuration
+    Always prefers GPT-4o (OpenAI) as the primary model. Falls back to
+    Anthropic Claude only when OpenAI is unavailable.
 
     Example:
         config = get_model_config()
@@ -110,10 +105,9 @@ class PremiumModelSelector:
         """Select the optimal model for the given context.
 
         Selection logic:
-        1. If context >8k tokens → prefer Claude 3.5 Sonnet (200k context)
-        2. Otherwise → prefer GPT-4o (lower cost)
-        3. If preferred provider unavailable → use fallback
-        4. If both unavailable → return degraded selection
+        1. Always prefer GPT-4o (OpenAI) as primary
+        2. If OpenAI unavailable → use Anthropic Claude as fallback
+        3. If both unavailable → return degraded selection
 
         Args:
             context: Synthesis context with token count and complexity
@@ -121,17 +115,11 @@ class PremiumModelSelector:
         Returns:
             ModelSelection with chosen model and metadata
         """
-        # Determine preferred model based on context length
-        if context.total_tokens > LONG_CONTEXT_THRESHOLD:
-            preferred_model = self._fallback_model
-            preferred_provider = self._fallback_provider
-            alternate_model = self._primary_model
-            alternate_provider = self._primary_provider
-        else:
-            preferred_model = self._primary_model
-            preferred_provider = self._primary_provider
-            alternate_model = self._fallback_model
-            alternate_provider = self._fallback_provider
+        # Always prefer primary model (GPT-4o) regardless of context size
+        preferred_model = self._primary_model
+        preferred_provider = self._primary_provider
+        alternate_model = self._fallback_model
+        alternate_provider = self._fallback_provider
 
         # Check provider availability
         if self.is_available(preferred_provider):

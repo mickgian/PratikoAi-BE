@@ -1,0 +1,6 @@
+# PratikoAI Prompt Configuration
+# Version: Controls which prompt version to use (v1, v2, etc.)
+# Cache TTL: How long to cache prompts in seconds
+
+version: v1
+cache_ttl: 3600  # 1 hour

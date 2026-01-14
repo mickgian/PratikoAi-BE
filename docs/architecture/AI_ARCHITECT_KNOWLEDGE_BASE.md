@@ -851,6 +851,207 @@ When reviewing Italian legal/tax features, systematically ask:
 
 ---
 
+## Part 9: Response Quality & RAG Optimization Patterns (DEV-242)
+
+### Core Principles
+
+| Principle | Explanation |
+|-----------|-------------|
+| **Retrieval completeness > retrieval precision** | Missing critical chunks causes incomplete responses. Better to include more chunks than miss important content. |
+| **Grounding rules position matters** | Rules injected RIGHT BEFORE KB context get highest LLM attention. |
+| **Formatting vs content rules separation** | Formatting instructions (structure, headers) cause LLM to use large headers. Keep formatting minimal. |
+| **Source authority affects ranking** | New authoritative sources need explicit weight configuration or they rank too low. |
+
+### Retrieval Pipeline Parameters
+
+Critical parameters that control what chunks reach the LLM:
+
+| Parameter | Location | Default | Purpose |
+|-----------|----------|---------|---------|
+| `CONTEXT_TOP_K` | `app/core/config.py` | 22 | Maximum chunks sent to LLM context |
+| `HYBRID_K_FTS` | `app/core/config.py` | 30 | BM25/FTS candidates before fusion |
+| `HYBRID_K_VEC` | `app/core/config.py` | 30 | Vector search candidates (if enabled) |
+
+**The Funnel:**
+```
+BM25 Search → HYBRID_K_FTS candidates (30)
+     ↓
+RRF Fusion + Authority Boosts
+     ↓
+Final Selection → CONTEXT_TOP_K chunks (22) → LLM
+```
+
+**Lesson Learned (DEV-242 Phase 27):**
+Deduplication MUST use `chunk_id`, NOT `knowledge_item_id` (document ID). Using document ID causes all chunks from the same document to deduplicate to just ONE chunk - losing critical information.
+
+### Source Authority Weights
+
+Location: `app/core/config.py` → `SOURCE_AUTHORITY_WEIGHTS`
+
+```python
+SOURCE_AUTHORITY_WEIGHTS = {
+    "gazzetta_ufficiale": 0.20,           # Official laws - highest authority
+    "agenzia_entrate": 0.18,              # Tax authority
+    "agenzia_entrate_riscossione": 0.15,  # AdER rules (DEV-242)
+    "inps": 0.12,                         # Social security
+    "ministero_economia_documenti": 0.10, # MEF documents
+    ...
+}
+```
+
+**Pattern:** When adding a new authoritative source:
+1. Add to `DocumentSource` enum in `app/models/regulatory_documents.py`
+2. Add to `SOURCE_AUTHORITY_WEIGHTS` in `app/core/config.py`
+3. Without weight, new sources rank lower than existing ones
+
+### Grounding Rules Architecture
+
+Location: `app/orchestrators/prompting.py` (injected before KB context)
+
+**Structure (DEV-242 Phase 28-39):**
+```
+## REGOLE CRITICHE PER LA RISPOSTA (DEV-242)
+
+### FORMATO RISPOSTA (Phase 39)
+- NO markdown headers (#, ##, ###)
+- USE numbered list: `1. **Label**: Content...`
+
+### ACCURATEZZA
+- Use only KB data
+- Copy exact values
+- Cite sources
+
+### COMPLETEZZA OBBLIGATORIA
+- Table of required elements for fiscal procedures
+- Scadenza, Prima rata, Tasso interessi, etc.
+
+### ESTRAZIONE DATI NUMERICI (Phase 33)
+- Pattern scanning for percentages, dates, penalties
+- "3 per cento annuo" → MUST appear in response
+
+### ESTRAZIONE OBBLIGATORIA ROTTAMAZIONE (Phase 34/37)
+- Domain-specific extraction rules
+- 5-day tolerance warning
+- Decadenza rule
+
+### ECCELLENZA PROFESSIONALE (Phase 31/39)
+- Content quality rules (KEEP)
+- NO formatting structure rules (REMOVED - caused large headers)
+```
+
+**Critical Lesson (DEV-242 Phase 39):**
+Formatting instructions like "STRUTTURA OPERATIVA" with section headers (✅ COSA FARE, ⚠️ RISCHI) cause the LLM to use large markdown headers (`# 1. Title`), breaking the clean numbered list format. Keep formatting rules minimal and explicit.
+
+### Recurring Source Ingestion Patterns
+
+For sources without RSS feeds, use web scraper pattern:
+
+| Source Type | Implementation | Example |
+|-------------|----------------|---------|
+| RSS Feed | `app/ingest/rss_normativa.py` + `feed_status` table | Agenzia Entrate, INPS |
+| Web Scraper | `app/services/scrapers/*.py` + scheduler task | Gazzetta, Cassazione, AdER |
+
+**AdER Scraper Pattern (DEV-242 Phase 38):**
+```python
+# app/services/scrapers/ader_scraper.py
+class AdERScraper:
+    BASE_URL = "https://www.agenziaentrateriscossione.gov.it"
+
+    # Topic filtering keywords
+    RELEVANT_KEYWORDS = [
+        "rottamazione", "definizione agevolata", "pace fiscale",
+        "rateizzazione", "pagamento", "decadenza", "tolleranza",
+    ]
+
+    # Rate limiting: 2s between requests
+    # Deduplication: content hash
+    # Integration: KnowledgeIntegrator for DB persistence
+```
+
+**Scheduler Registration:**
+```python
+# app/services/scheduler_service.py
+ader_scraper_task = ScheduledTask(
+    name="ader_scraper_daily",
+    interval=ScheduleInterval.DAILY,
+    function=scrape_ader_task,
+    target_time=rss_collection_time,  # 01:00 Europe/Rome
+)
+```
+
+### Multi-Query Expansion
+
+Location: `app/services/multi_query_generator.py`
+
+**Pattern:** Add semantic expansions for domain-specific terms to improve retrieval:
+
+```python
+semantic_expansions = {
+    "rottamazione": [
+        "definizione agevolata", "pace fiscale",
+        "tolleranza", "decadenza", "rate", "pagamento"
+    ],
+    ...
+}
+```
+
+**Lesson (DEV-242 Phase 35):** Missing semantic expansions cause relevant chunks (like AdER rules with "tolleranza" keyword) to rank too low in BM25 search.
+
+### Prompt Injection Points
+
+Understanding where rules have highest impact:
+
+| Injection Point | File | LLM Attention | Use For |
+|-----------------|------|---------------|---------|
+| System prompt | `app/core/prompts/system.md` | Medium | Base behavior |
+| Domain templates | `PromptTemplateManager` | Medium | Domain-specific |
+| **Grounding rules** | `app/orchestrators/prompting.py` | **HIGH** | Critical rules |
+| Response format | `unified_response_simple.md` | Low | JSON schema |
+
+**Critical:** Rules injected RIGHT BEFORE KB context (grounding_rules) get highest LLM attention because they're closest to the retrieval context the LLM needs to process.
+
+### Decision Framework: Response Quality Issues
+
+When debugging response quality, systematically check:
+
+```
+1. RETRIEVAL COMPLETENESS
+   - Are relevant chunks in TOP-K? (check chunk IDs in logs)
+   - Is CONTEXT_TOP_K high enough?
+   - Is the source in SOURCE_AUTHORITY_WEIGHTS?
+
+2. CONTENT EXTRACTION
+   - Are grounding rules in place for this content type?
+   - Is there domain-specific extraction (like ROTTAMAZIONE rules)?
+   - Are numeric patterns being scanned?
+
+3. FORMATTING
+   - Is formatting rule minimal? (no headers, just numbered list)
+   - Is there conflicting structure instruction?
+
+4. SEMANTIC EXPANSION
+   - Are domain terms in semantic_expansions?
+   - Is BM25 finding the right chunks?
+
+5. SOURCE INGESTION
+   - Is the source being ingested? (RSS or scraper)
+   - Is there a scheduled task for recurring updates?
+```
+
+### Response Quality Checklist
+
+Use this when reviewing response quality issues:
+
+- [ ] Check chunk IDs retrieved (logs in step_039c)
+- [ ] Verify `CONTEXT_TOP_K` includes relevant chunks
+- [ ] Confirm source has authority weight
+- [ ] Check semantic expansions for query terms
+- [ ] Verify grounding rules have extraction patterns
+- [ ] Confirm formatting rules don't force headers
+- [ ] Test with target query after changes
+
+---
+
 ## Version History
 
 | Date | Change | Author |
@@ -859,6 +1060,7 @@ When reviewing Italian legal/tax features, systematically ask:
 | 2025-12-12 | Added Part 6 (Evaluation & Metrics) | System |
 | 2025-12-12 | Added Part 7 (Cost Optimization) | System |
 | 2025-12-12 | Added Part 8 (Italian Legal/Tax Domain) | System |
+| 2026-01-12 | Added Part 9 (Response Quality & RAG Optimization - DEV-242) | System |
 
 ---
 

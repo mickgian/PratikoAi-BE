@@ -1,7 +1,7 @@
 # Master Documentation Index
 
-**Auto-generated:** 2025-12-31 12:19:38
-**Total Documents:** 317 markdown files
+**Auto-generated:** 2026-01-13 13:32:55
+**Total Documents:** 326 markdown files
 
 > 💡 This index is automatically generated. To update, run: `python scripts/generate_docs_index.py`
 
@@ -50,7 +50,7 @@
 | Subsystem | Documents | Primary Index |
 |-----------|-----------|---------------|
 | **RAG Architecture** | 138 steps | [docs/architecture/](docs/architecture/INDEX.md) |
-| **Core Docs** | 22 docs | [docs/](docs/INDEX.md) |
+| **Core Docs** | 23 docs | [docs/](docs/INDEX.md) |
 | **Monitoring** | 11 docs | [monitoring/](monitoring/INDEX.md) |
 | **Deployment** | 3 docs | [deployment-orchestration/](deployment-orchestration/INDEX.md) |
 | **MCP Servers** | 5 docs | [mcp-servers/](mcp-servers/INDEX.md) |

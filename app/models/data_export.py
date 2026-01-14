@@ -164,7 +164,7 @@ class DataExportRequest(SQLModel, table=True):
         """Check if export can be retried"""
         return self.status == ExportStatus.FAILED.value and self.retry_count < self.max_retries
 
-    def increment_download(self, ip_address: str = None) -> bool:
+    def increment_download(self, ip_address: Optional[str] = None) -> bool:
         """Increment download count and track IP"""
         if not self.is_downloadable():
             return False
@@ -196,8 +196,8 @@ class DataExportRequest(SQLModel, table=True):
             "is_expired": self.is_expired(),
             "is_downloadable": self.is_downloadable(),
             "processing_time_seconds": self.processing_time_seconds(),
-            "time_until_expiry_hours": round(self.time_until_expiry().total_seconds() / 3600, 1)
-            if self.time_until_expiry()
+            "time_until_expiry_hours": round(expiry.total_seconds() / 3600, 1)
+            if (expiry := self.time_until_expiry())
             else 0,
             "error_message": self.error_message,
             "data_categories": {

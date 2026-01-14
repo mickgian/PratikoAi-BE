@@ -31,6 +31,7 @@ class DocumentSource(str, Enum):
     """Enumeration of regulatory document sources."""
 
     AGENZIA_ENTRATE = "agenzia_entrate"
+    AGENZIA_ENTRATE_RISCOSSIONE = "agenzia_entrate_riscossione"  # AdER - DEV-242 Phase 38
     INPS = "inps"
     GAZZETTA_UFFICIALE = "gazzetta_ufficiale"
     GOVERNO = "governo"

@@ -32,18 +32,27 @@ class QueryVariants:
         vector_query: Semantically expanded for vector search
         entity_query: Focused on legal entities and references
         original_query: The original user query
+        document_references: List of document references identified by LLM (ADR-022)
+            E.g., ["Legge 199/2025", "LEGGE 30 dicembre 2025, n. 199"]
+            None if no specific documents were identified.
+        semantic_expansions: List of semantic equivalences for terminology bridging (DEV-242)
+            Maps colloquial terms to official legal terminology and vice versa.
+            E.g., ["pace fiscale", "pacificazione fiscale", "definizione agevolata"]
+            None if no semantic expansions were identified.
     """
 
     bm25_query: str
     vector_query: str
     entity_query: str
     original_query: str
+    document_references: list[str] | None = None
+    semantic_expansions: list[str] | None = None
 
 
 # System prompt for multi-query generation
 MULTI_QUERY_SYSTEM_PROMPT = """Sei un assistente specializzato nella generazione di varianti di query per un sistema di ricerca fiscale/legale italiano.
 
-Il tuo compito è generare 3 varianti ottimizzate della query dell'utente:
+Il tuo compito è generare 3 varianti ottimizzate della query dell'utente PIÙ identificare documenti e termini semanticamente equivalenti:
 
 1. **bm25_query**: Query ottimizzata per ricerca lessicale (BM25)
    - Estrai solo le parole chiave rilevanti
@@ -64,11 +73,55 @@ Il tuo compito è generare 3 varianti ottimizzate della query dell'utente:
    - Aggiungi date e numeri di riferimento
    - Esempio: "Legge 104/1992 Art. 3 permessi INPS lavoratori"
 
+4. **document_references**: Riferimenti a documenti specifici (ADR-022)
+   - Identifica quale legge, decreto o documento normativo l'utente sta chiedendo
+   - IMPORTANTE: Usa pattern che funzionano con ILIKE matching sui titoli dei documenti
+   - Preferisci formato "n. XXX" (es. "n. 199") perché i titoli usano questo formato
+   - Includi anche nomi colloquiali (es. "Legge di Bilancio 2026")
+   - Se non riesci a identificare un documento specifico, lascia array vuoto []
+
+   FORMATO TITOLI ITALIANI:
+   - "LEGGE 30 dicembre 2025, n. 199" → usa "n. 199" o "dicembre 2025, n. 199"
+   - "DECRETO-LEGGE 18 ottobre 2023, n. 145" → usa "n. 145" o "DL n. 145"
+
+   Esempi:
+   - "rottamazione quinquies" → ["n. 199", "dicembre 2025", "Legge di Bilancio 2026", "Rottamazione Quinquies", "AdER", "Regole Ufficiali"]
+     (DEV-242 Phase 36B: Includi ANCHE "Rottamazione Quinquies" e "AdER" per trovare le regole ufficiali AdER oltre alla legge)
+   - "bonus 110" → ["n. 34", "Decreto Rilancio", "maggio 2020"]
+   - "flat tax" → ["n. 145", "Legge di Bilancio 2019"]
+   - "Come funziona l'IVA?" → [] (domanda generica, nessun documento specifico)
+
+5. **semantic_expansions**: Termini semanticamente equivalenti per colmare il gap terminologico (DEV-242)
+   - CRITICO: I documenti legali usano terminologia DIVERSA da quella usata dagli utenti
+   - Mappa i termini colloquiali → terminologia legale ufficiale e viceversa
+   - Includi ENTRAMBE le direzioni: colloquiale ↔ ufficiale
+   - Questi termini verranno usati per espandere la ricerca FTS
+   - Se non ci sono equivalenze semantiche rilevanti, lascia array vuoto []
+
+   IMPORTANTE - Esempi di gap terminologico:
+   - "rottamazione quinquies" → ["pace fiscale", "pacificazione fiscale", "definizione agevolata", "pagamento", "rata", "dichiarazione", "versamento", "decadenza", "scadenza", "carichi affidati", "debiti risultanti", "periodo", "interessi", "tolleranza", "giorni tolleranza", "margine"]
+     (La legge NON usa mai "rottamazione", usa "definizione agevolata" e "pace fiscale". Includi "tolleranza" per trovare info su 5 giorni di tolleranza - DEV-242 Phase 35B)
+   - "flat tax" → ["imposta sostitutiva", "regime forfettario", "tassazione fissa", "aliquota fissa"]
+   - "bonus 110" → ["detrazione 110%", "superbonus", "ecobonus", "sismabonus"]
+   - "cedolare secca" → ["imposta sostitutiva affitti", "tassazione locazioni"]
+   - "tasse sullo stipendio" → ["IRPEF", "imposta reddito lavoro dipendente", "ritenute"]
+   - "Come funziona l'IVA?" → [] (termine già tecnico, nessuna espansione necessaria)
+
+   REGOLA AGGIUNTIVA (DEV-242 Phase 23/32): Per domande su normative/procedure fiscali, INCLUDI SEMPRE:
+   - "pagamento", "rata", "versamento" (per trovare modalità di pagamento)
+   - "dichiarazione", "scadenza", "termine" (per trovare tempistiche)
+   - "decadenza", "sanzione" (per trovare conseguenze)
+   - "carichi affidati", "debiti risultanti", "periodo" (per trovare i debiti ammessi e il periodo di riferimento - DEV-242 Phase 32)
+   - "interessi", "tasso" (per trovare tassi di interesse applicati)
+   Questi termini aiutano a recuperare i chunks con dettagli specifici come date, importi e periodo dei debiti.
+
 RISPOSTA in formato JSON:
 {
     "bm25_query": "<query keywords>",
     "vector_query": "<query semantica espansa>",
-    "entity_query": "<query con entità legali>"
+    "entity_query": "<query con entità legali>",
+    "document_references": ["<riferimento 1>", "<riferimento 2>"],
+    "semantic_expansions": ["<termine equivalente 1>", "<termine equivalente 2>"]
 }
 
 Rispondi SOLO con il JSON, senza testo aggiuntivo."""
@@ -146,11 +199,13 @@ class MultiQueryGeneratorService:
                 vector_length=len(variants.vector_query),
                 entity_length=len(variants.entity_query),
                 entity_count=len(entities),
+                document_refs_count=len(variants.document_references) if variants.document_references else 0,
+                semantic_expansions_count=len(variants.semantic_expansions) if variants.semantic_expansions else 0,
             )
 
             return variants
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(
                 "multi_query_timeout",
                 query_length=len(query),
@@ -183,10 +238,7 @@ class MultiQueryGeneratorService:
         # Build entities context if available
         entities_context = ""
         if entities:
-            entity_strings = [
-                f"- {e.text} ({e.type}, confidence: {e.confidence:.2f})"
-                for e in entities
-            ]
+            entity_strings = [f"- {e.text} ({e.type}, confidence: {e.confidence:.2f})" for e in entities]
             entities_context = "\nEntità estratte:\n" + "\n".join(entity_strings) + "\n"
 
         return MULTI_QUERY_USER_PROMPT_TEMPLATE.format(
@@ -227,7 +279,7 @@ class MultiQueryGeneratorService:
             response = await provider.chat_completion(
                 messages=messages,
                 temperature=self._temperature,
-                max_tokens=400,
+                max_tokens=500,  # Increased for semantic_expansions (DEV-242)
             )
 
             return self._parse_response(response.content, original_query)
@@ -285,11 +337,18 @@ class MultiQueryGeneratorService:
             raise ValueError(f"Invalid JSON response: {e}")
 
         # Extract fields with fallback to original
+        # ADR-022: Extract document_references if present (None if missing)
+        document_refs = data.get("document_references")
+        # DEV-242: Extract semantic_expansions for terminology bridging
+        semantic_exps = data.get("semantic_expansions")
+
         return QueryVariants(
             bm25_query=data.get("bm25_query", original_query),
             vector_query=data.get("vector_query", original_query),
             entity_query=data.get("entity_query", original_query),
             original_query=original_query,
+            document_references=document_refs,
+            semantic_expansions=semantic_exps,
         )
 
     def _fallback_variants(self, query: str) -> QueryVariants:
@@ -308,4 +367,6 @@ class MultiQueryGeneratorService:
             vector_query=query,
             entity_query=query,
             original_query=query,
+            document_references=None,
+            semantic_expansions=None,
         )

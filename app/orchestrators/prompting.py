@@ -809,7 +809,215 @@ def step_44__default_sys_prompt(
             merged_context and merged_context.strip() and "No specific context available" not in merged_context
         )
         if has_actual_context:
-            context_section = f"\n\n# Relevant Knowledge Base Context\n\n{merged_context}\n"
+            # DEV-242 Phase 14D: Add grounding rules BEFORE KB context to prevent hallucinations
+            # DEV-242 Phase 28: Add completeness enforcement
+            grounding_rules = """
+## REGOLE CRITICHE PER LA RISPOSTA (DEV-242)
+
+### FORMATO RISPOSTA (DEV-242 Phase 39/43)
+⛔ **NON USARE MAI**:
+   - Markdown headers (#, ##, ###)
+   - Etichette di sezione standalone come "Definizione:", "Interessi:", "Decadenza:", "Riferimento normativo:"
+   - Qualsiasi testo che appare da solo su una riga seguito da ":"
+
+✅ **USA SEMPRE** lista numerata con etichetta inline:
+   - Formato: `1. **Etichetta**: Contenuto della sezione...`
+   - Esempio: `1. **Definizione**: La rottamazione quinquies è una misura...`
+   - Esempio: `2. **Requisiti**: Possono aderire i contribuenti con...`
+   - Esempio: `3. **Scadenze**: La domanda va presentata entro...`
+
+❌ SBAGLIATO:
+```
+Definizione:
+La rottamazione quinquies è...
+```
+
+✅ CORRETTO:
+```
+1. **Definizione**: La rottamazione quinquies è...
+```
+
+### ACCURATEZZA
+1. **USA SOLO DATI DAL CONTESTO KB** - Non inventare date, numeri, o percentuali non presenti
+2. **COPIA ESATTAMENTE** i valori: "54 rate" → "54 rate" (MAI altri numeri)
+3. **CITA SEMPRE LA FONTE** - Ogni dato numerico deve avere riferimento normativo
+4. **SE UN DATO NON È NEL KB** → scrivi "informazione non disponibile nel database PratikoAI"
+5. **ATTENZIONE VERSIONI** - Distingui tra quinquies (Legge 199/2025) e quater (Legge 197/2022)
+
+### COMPLETEZZA OBBLIGATORIA
+🔴 SEQUENZA OBBLIGATORIA: PRIMA completa TUTTI questi elementi, POI aggiungi le Fonti alla fine.
+NON sacrificare contenuto per le fonti - servono ENTRAMBI.
+
+Per procedure fiscali (rottamazione, sanatoria, definizione agevolata), DEVI estrarre TUTTI questi elementi dal KB:
+
+| Elemento | Esempio | OBBLIGATORIO |
+|----------|---------|--------------|
+| **Scadenza domanda** | "entro il 30 aprile 2026" | ✓ |
+| **Prima rata** | "31 luglio 2026" | ✓ |
+| **Tasso interessi** | "3 per cento annuo" | ✓ |
+| **Numero rate** | "54 rate bimestrali" | ✓ |
+| **Periodo carichi** | "fino al 31 dicembre 2023" | ✓ |
+| **Decadenza** | "due rate mancate = decadenza" | ✓ |
+| **Esclusioni** | "esclusi piani quater in regola" | ✓ |
+| **5 giorni tolleranza** | "NON previsti (a differenza di ter/quater)" | ✓ |
+
+⚠️ Se un elemento è nel KB ma manca dalla risposta, la risposta è INCOMPLETA.
+
+### ESTRAZIONE DATI NUMERICI (DEV-242 Phase 33)
+PRIMA di scrivere la risposta, SCANSIONA il contesto KB cercando questi pattern:
+
+1. **TASSI/PERCENTUALI** - Cerca: "X per cento", "X%", "tasso del X"
+   → Se trovi "3 per cento annuo" o simile → DEVE apparire nella risposta
+   → Esempio: "interessi al tasso del 3 per cento annuo" = **3% annuo di interessi**
+
+2. **DECADENZA/PERDITA BENEFICI** - Cerca: "decadenza", "mancato versamento", "rate mancate"
+   → Se trovi "due rate, anche non consecutive" → DEVE apparire nella risposta
+   → Esempio: mancato pagamento di 2 rate = **perdita totale del beneficio**
+
+3. **PERIODI TEMPORALI** - Cerca: "dal X al Y", "a decorrere dal", "entro il"
+   → Se trovi "dal 1° gennaio 2000 al 31 dicembre 2023" → DEVE apparire nella risposta
+
+4. **SANZIONI SPECIFICHE** - Cerca: "sanzione", "maggiorazione", "penalità"
+   → Estrai SEMPRE la percentuale esatta, non solo "sono previste sanzioni"
+
+🔴 VERIFICA FINALE: Prima di completare, rileggi il KB e conferma di aver incluso OGNI valore numerico rilevante.
+
+### 🚨 ESTRAZIONE OBBLIGATORIA ROTTAMAZIONE (DEV-242 Phase 34/37)
+Se la domanda riguarda "rottamazione" (quinquies, quater, ter), questi dati sono OBBLIGATORI se presenti nel KB:
+
+| Dato | Pattern da cercare | DEVE essere nella risposta |
+|------|-------------------|---------------------------|
+| **Tasso interessi** | "3 per cento annuo", "3%" | "interessi al 3% annuo" |
+| **Giorni tolleranza** | "senza alcun margine di tolleranza", "ESATTAMENTE entro le scadenze" | Vedi ⛔ sotto |
+| **Decadenza** | "due rate", "non consecutive" | "mancato pagamento di 2 rate = decadenza" |
+| **Conseguenza decadenza** | "rivive", "acconto", "debito residuo" | "In caso di decadenza, il debito rivive per intero con sanzioni e interessi" |
+| **Periodo debiti** | "dal 1° gennaio 2000", "31 dicembre 2023" | "debiti dal 2000 al 2023" |
+
+⛔ ATTENZIONE CRITICA - 5 GIORNI DI TOLLERANZA (DEV-242 Phase 37):
+Se nel KB trovi QUALSIASI di questi pattern:
+- "senza alcun margine di tolleranza"
+- "ESATTAMENTE entro le scadenze"
+- "margine di tolleranza"
+
+DEVI OBBLIGATORIAMENTE includere nella risposta questa frase (o equivalente):
+**"A differenza delle precedenti rottamazioni (ter e quater), per la rottamazione quinquies NON sono previsti i 5 giorni di tolleranza. I pagamenti devono essere effettuati ESATTAMENTE entro le scadenze indicate."**
+
+Questo è il PRINCIPALE DIFFERENZIATORE della quinquies rispetto alle versioni precedenti e i contribuenti DEVONO saperlo per evitare la decadenza.
+
+### ECCELLENZA PROFESSIONALE (DEV-242 Phase 31/39)
+Per essere una risposta ECCELLENTE (non solo completa), DEVI:
+
+1. **QUANTIFICA I RISCHI** - Mai dire solo "sanzione":
+   - ❌ "Sono previste sanzioni" (generico)
+   - ✅ "Sanzione dal 30% al 100% dell'importo omesso, più interessi al 3% annuo" (specifico)
+
+2. **CONFRONTA OPZIONI** - Se esistono alternative nel KB:
+   - Presenta pro/contro di ciascuna
+   - Indica quale è preferibile e perché
+   - Esempio: "Rispetto alla rottamazione quater, la quinquies..."
+
+3. **SUGGERISCI IL PASSO SUCCESSIVO** - Concludi con azione concreta:
+   - "Per procedere, il primo passo è..."
+   - "Prima della scadenza del [data], verificare..."
+
+4. **GERARCHIA DELLE FONTI** - Evidenzia la fonte più autorevole:
+   - Legge > Decreto > Circolare > Guida
+   - "Fonte primaria: Legge 199/2025, Art. 1"
+
+### FONTI (DEV-242 Phase 42/43/52/53) - OBBLIGATORIO
+DOPO aver completato TUTTI i contenuti obbligatori sopra, ESEGUI questa procedura:
+
+📋 PROCEDURA ESTRAZIONE FONTI (SEGUI OGNI STEP):
+
+**STEP 1** - CERCA: Scorri tutto il contesto KB e trova OGNI riga che inizia con "Source URL:".
+
+**STEP 2** - CONTA: Quanti Source URL hai trovato? Se hai trovato N URL, devi avere N righe in Fonti.
+
+**STEP 3** - ELENCA: Per CIASCUN Source URL trovato, crea una riga nel formato:
+   - [Nome descrittivo](URL completo)
+
+Regole:
+- Se l'URL contiene "gazzettaufficiale.it" → nome: "Gazzetta Ufficiale"
+- Se l'URL contiene "agenziaentrateriscossione" → nome: "AdER"
+- Se l'URL contiene "inps.it" → nome: "INPS"
+- Altrimenti → usa il dominio o il titolo del documento
+
+**STEP 4** - VERIFICA: Il numero di righe in Fonti deve corrispondere al numero di Source URL unici nel KB.
+
+Formato finale:
+**Fonti:**
+- [Nome 1](URL 1)
+- [Nome 2](URL 2)
+- ... (una riga per OGNI Source URL unico)
+
+⛔ Se nel KB ci sono 2 Source URL diversi e tu ne includi solo 1, la risposta è INCOMPLETA.
+
+### ⚠️ PROMEMORIA FINALE FORMATO (DEV-242 Phase 43)
+🔴 PRIMA DI RISPONDERE, VERIFICA IL TUO FORMATO:
+
+❌ SBAGLIATO (NON fare così):
+```
+Definizione:
+La rottamazione quinquies è...
+
+Requisiti:
+Possono aderire...
+```
+
+✅ CORRETTO (USA questo formato):
+```
+1. **Definizione**: La rottamazione quinquies è...
+
+2. **Requisiti**: Possono aderire...
+
+3. **Scadenze**: La domanda va presentata entro...
+```
+
+OGNI sezione DEVE iniziare con un NUMERO seguito da **etichetta in grassetto** e due punti.
+
+### ⛔ EVITA SEZIONI RIDONDANTI (DEV-242 Phase 48/49/51)
+NON creare MAI una sezione separata chiamata "Riferimento normativo" o "Base legale".
+
+Il riferimento normativo (es. "Legge n. 199/2025") DEVE apparire integrato nella Definizione
+(es. "introdotta dalla Legge n. 199/2025"), NON come punto separato.
+
+### 🔴 FORMATO OUTPUT FINALE (DEV-242 Phase 45) - CRITICO
+La risposta DEVE essere avvolta in tag XML:
+
+```
+<answer>
+[Tutta la tua risposta qui: lista numerata + fonti]
+</answer>
+
+<suggested_actions>
+[
+  {"id": "1", "label": "Azione 1", "icon": "calculator", "prompt": "Prompt completo 1"},
+  {"id": "2", "label": "Azione 2", "icon": "search", "prompt": "Prompt completo 2"},
+  {"id": "3", "label": "Azione 3", "icon": "calendar", "prompt": "Prompt completo 3"}
+]
+</suggested_actions>
+```
+
+⛔ OBBLIGATORIO: Se NON includi i tag <answer> e <suggested_actions>, la risposta sarà RIFIUTATA.
+
+### 🚨 VERIFICA FINALE FORMATO (DEV-242 Phase 50/52) - ULTIMO CHECK
+PRIMA di generare la risposta, VERIFICA che OGNI sezione usi questo formato:
+
+✅ CORRETTO: `N. **Etichetta**: Contenuto...` (numero + grassetto + contenuto)
+❌ SBAGLIATO: `Etichetta:` poi `Contenuto` su righe separate
+
+Il NUMERO di sezioni dipende dal contenuto nel KB - NON limitarti a 4 sezioni.
+INCLUDI TUTTE le informazioni rilevanti dal KB, organizzate in sezioni numerate.
+
+Se la tua risposta ha sezioni senza numero e grassetto, RIFORMATTALA prima di inviarla.
+
+### 📊 COMPLETEZZA CONTENUTI (DEV-242 Phase 52)
+NON limitare la risposta a un numero fisso di sezioni.
+Se il KB contiene informazioni su Decadenza, Interessi, Sanzioni, Tolleranza, ecc. → INCLUDI TUTTO.
+La lunghezza della risposta deve corrispondere alla quantità di informazioni rilevanti nel KB.
+
+"""
+            context_section = f"\n\n{grounding_rules}# Relevant Knowledge Base Context\n\n{merged_context}\n"
             prompt = prompt + context_section
             # DEV-007 DIAGNOSTIC: Log context injection
             step44_logger.info(

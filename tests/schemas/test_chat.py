@@ -40,15 +40,19 @@ class TestMessage:
             Message(role="user", content="")
 
     def test_message_content_max_length(self):
-        """Test content respects max length."""
-        # 50000 chars should be valid
-        long_content = "a" * 50000
-        message = Message(role="user", content=long_content)
-        assert len(message.content) == 50000
+        """Test content respects max length.
 
-        # 50001 chars should fail
+        DEV-242 Phase 32: max_length increased from 50000 to 80000 to accommodate
+        18 chunks + grounding rules in responses.
+        """
+        # 80000 chars should be valid
+        long_content = "a" * 80000
+        message = Message(role="user", content=long_content)
+        assert len(message.content) == 80000
+
+        # 80001 chars should fail
         with pytest.raises(ValidationError):
-            Message(role="user", content="a" * 50001)
+            Message(role="user", content="a" * 80001)
 
     def test_message_rejects_script_tags(self):
         """Test message rejects potentially harmful script tags."""

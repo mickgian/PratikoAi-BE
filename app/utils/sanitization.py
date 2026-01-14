@@ -64,7 +64,7 @@ def sanitize_dict(data: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Dict[str, Any]: The sanitized dictionary
     """
-    sanitized = {}
+    sanitized: dict[str, Any] = {}
     for key, value in data.items():
         if isinstance(value, str):
             sanitized[key] = sanitize_string(value)
@@ -86,7 +86,7 @@ def sanitize_list(data: list[Any]) -> list[Any]:
     Returns:
         List[Any]: The sanitized list
     """
-    sanitized = []
+    sanitized: list[Any] = []
     for item in data:
         if isinstance(item, str):
             sanitized.append(sanitize_string(item))

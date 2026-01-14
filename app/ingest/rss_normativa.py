@@ -76,6 +76,9 @@ def _determine_feed_source(feed_url: str) -> tuple[str, str]:
         return "inps", "inps"
     elif "inail.it" in url_lower:
         return "inail", "inail"
+    # DEV-242 Phase 38: AdER (Agenzia Entrate-Riscossione) - must check before agenzia_entrate
+    elif "agenziaentrateriscossione" in url_lower:
+        return "agenzia_entrate_riscossione", "agenzia_entrate_riscossione"
     elif "agenziaentrate" in url_lower:
         return "agenzia_entrate", "agenzia_entrate"
     elif "lavoro.gov.it" in url_lower:

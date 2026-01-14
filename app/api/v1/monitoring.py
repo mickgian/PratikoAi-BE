@@ -1,10 +1,14 @@
-"""Monitoring API endpoints for Prometheus metrics.
+"""Monitoring API endpoints for Prometheus metrics and cost monitoring.
 
-This module provides endpoints for Prometheus to scrape metrics
-and for administrators to check monitoring status.
+This module provides endpoints for Prometheus to scrape metrics,
+for administrators to check monitoring status, the cost monitoring
+dashboard (DEV-239), and action quality metrics (DEV-240).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from datetime import datetime
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST
 
@@ -13,6 +17,8 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.core.monitoring.metrics import get_metrics_content, get_registry
 from app.models.session import Session
+from app.services.action_quality_metrics import get_action_quality_metrics
+from app.services.cost_monitoring_dashboard import get_cost_monitoring_dashboard
 
 router = APIRouter()
 
@@ -183,3 +189,369 @@ async def get_metrics_summary(session: Session = Depends(get_current_session)):
     except Exception as e:
         logger.error("metrics_summary_failed", session_id=session.id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to get metrics summary")
+
+
+# =============================================================================
+# Cost Monitoring Dashboard Endpoints (DEV-239)
+# =============================================================================
+
+
+@router.get("/costs/dashboard")
+async def get_cost_dashboard(
+    start_date: datetime | None = Query(None, description="Start of period"),
+    end_date: datetime | None = Query(None, description="End of period"),
+    session: Session = Depends(get_current_session),
+) -> dict[str, Any]:
+    """Get complete cost monitoring dashboard summary.
+
+    Returns cost breakdown by model, complexity, and daily trends.
+    Requires authentication.
+
+    Args:
+        start_date: Optional start of period (default: 30 days ago)
+        end_date: Optional end of period (default: now)
+        session: Current user session
+
+    Returns:
+        Complete dashboard data with all cost metrics
+    """
+    try:
+        dashboard = get_cost_monitoring_dashboard()
+        result = await dashboard.get_dashboard_summary(start_date, end_date)
+
+        logger.info(
+            "cost_dashboard_requested",
+            user_id=session.user_id,
+            start_date=str(start_date),
+            end_date=str(end_date),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("cost_dashboard_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get cost dashboard")
+
+
+@router.get("/costs/queries")
+async def get_query_costs(
+    user_id: str | None = Query(None, description="Filter by user ID"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    session: Session = Depends(get_current_session),
+) -> list[dict[str, Any]]:
+    """Get individual query costs.
+
+    Returns per-query cost data with model, complexity, and timestamps.
+    Requires authentication.
+
+    Args:
+        user_id: Optional user ID filter
+        limit: Maximum number of results (1-1000)
+        offset: Pagination offset
+        session: Current user session
+
+    Returns:
+        List of query cost records
+    """
+    try:
+        dashboard = get_cost_monitoring_dashboard()
+        result = await dashboard.get_query_costs(user_id=user_id, limit=limit, offset=offset)
+
+        logger.info(
+            "query_costs_requested",
+            requesting_user_id=session.user_id,
+            filter_user_id=user_id,
+            limit=limit,
+            offset=offset,
+            result_count=len(result),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("query_costs_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get query costs")
+
+
+@router.get("/costs/by-model")
+async def get_cost_by_model(
+    start_date: datetime | None = Query(None, description="Start of period"),
+    end_date: datetime | None = Query(None, description="End of period"),
+    session: Session = Depends(get_current_session),
+) -> dict[str, dict[str, Any]]:
+    """Get cost breakdown by model.
+
+    Returns total cost, query count, and average cost per model.
+    Requires authentication.
+
+    Args:
+        start_date: Optional start of period
+        end_date: Optional end of period
+        session: Current user session
+
+    Returns:
+        Dict mapping model name to cost metrics
+    """
+    try:
+        dashboard = get_cost_monitoring_dashboard()
+        result = await dashboard.get_cost_by_model(start_date, end_date)
+
+        logger.info(
+            "cost_by_model_requested",
+            user_id=session.user_id,
+            start_date=str(start_date),
+            end_date=str(end_date),
+            model_count=len(result),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("cost_by_model_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get cost by model")
+
+
+@router.get("/costs/by-complexity")
+async def get_cost_by_complexity(
+    start_date: datetime | None = Query(None, description="Start of period"),
+    end_date: datetime | None = Query(None, description="End of period"),
+    session: Session = Depends(get_current_session),
+) -> dict[str, dict[str, Any]]:
+    """Get cost breakdown by query complexity.
+
+    Returns total cost, query count, and percentage by complexity level.
+    Requires authentication.
+
+    Args:
+        start_date: Optional start of period
+        end_date: Optional end of period
+        session: Current user session
+
+    Returns:
+        Dict mapping complexity level to cost metrics
+    """
+    try:
+        dashboard = get_cost_monitoring_dashboard()
+        result = await dashboard.get_cost_by_complexity(start_date, end_date)
+
+        logger.info(
+            "cost_by_complexity_requested",
+            user_id=session.user_id,
+            start_date=str(start_date),
+            end_date=str(end_date),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("cost_by_complexity_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get cost by complexity")
+
+
+@router.get("/costs/daily")
+async def get_daily_costs(
+    days: int = Query(7, ge=1, le=90, description="Number of days to look back"),
+    user_id: str | None = Query(None, description="Filter by user ID"),
+    session: Session = Depends(get_current_session),
+) -> list[dict[str, Any]]:
+    """Get daily cost aggregates.
+
+    Returns daily total cost and query count.
+    Requires authentication.
+
+    Args:
+        days: Number of days to look back (1-90)
+        user_id: Optional user ID filter
+        session: Current user session
+
+    Returns:
+        List of daily aggregate records
+    """
+    try:
+        dashboard = get_cost_monitoring_dashboard()
+        result = await dashboard.get_daily_aggregates(days=days, user_id=user_id)
+
+        logger.info(
+            "daily_costs_requested",
+            requesting_user_id=session.user_id,
+            filter_user_id=user_id,
+            days=days,
+            result_count=len(result),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("daily_costs_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get daily costs")
+
+
+@router.get("/costs/weekly")
+async def get_weekly_costs(
+    weeks: int = Query(4, ge=1, le=52, description="Number of weeks to look back"),
+    user_id: str | None = Query(None, description="Filter by user ID"),
+    session: Session = Depends(get_current_session),
+) -> list[dict[str, Any]]:
+    """Get weekly cost aggregates.
+
+    Returns weekly total cost and query count.
+    Requires authentication.
+
+    Args:
+        weeks: Number of weeks to look back (1-52)
+        user_id: Optional user ID filter
+        session: Current user session
+
+    Returns:
+        List of weekly aggregate records
+    """
+    try:
+        dashboard = get_cost_monitoring_dashboard()
+        result = await dashboard.get_weekly_aggregates(weeks=weeks, user_id=user_id)
+
+        logger.info(
+            "weekly_costs_requested",
+            requesting_user_id=session.user_id,
+            filter_user_id=user_id,
+            weeks=weeks,
+            result_count=len(result),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("weekly_costs_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get weekly costs")
+
+
+# =============================================================================
+# Action Quality Metrics Endpoints (DEV-240)
+# =============================================================================
+
+
+@router.get("/actions/quality/dashboard")
+async def get_action_quality_dashboard(
+    session: Session = Depends(get_current_session),
+) -> dict[str, Any]:
+    """Get complete action quality metrics dashboard.
+
+    Returns validation pass rate, regeneration rate, and click-through rate.
+    Requires authentication.
+
+    Args:
+        session: Current user session
+
+    Returns:
+        Complete action quality dashboard data
+    """
+    try:
+        metrics = get_action_quality_metrics()
+        result = metrics.get_dashboard_summary()
+
+        logger.info(
+            "action_quality_dashboard_requested",
+            user_id=session.user_id,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("action_quality_dashboard_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get action quality dashboard")
+
+
+@router.get("/actions/quality/validation")
+async def get_action_validation_metrics(
+    session: Session = Depends(get_current_session),
+) -> dict[str, Any]:
+    """Get action validation metrics.
+
+    Returns validation pass rate and rejection statistics.
+    Requires authentication.
+
+    Args:
+        session: Current user session
+
+    Returns:
+        Validation metrics including pass rate
+    """
+    try:
+        metrics = get_action_quality_metrics()
+        result = metrics.get_validation_summary()
+
+        logger.info(
+            "action_validation_metrics_requested",
+            user_id=session.user_id,
+            pass_rate=result["pass_rate"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("action_validation_metrics_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get validation metrics")
+
+
+@router.get("/actions/quality/regeneration")
+async def get_action_regeneration_metrics(
+    session: Session = Depends(get_current_session),
+) -> dict[str, Any]:
+    """Get action regeneration metrics.
+
+    Returns regeneration rate and success statistics.
+    Requires authentication.
+
+    Args:
+        session: Current user session
+
+    Returns:
+        Regeneration metrics including rate and success rate
+    """
+    try:
+        metrics = get_action_quality_metrics()
+        result = metrics.get_regeneration_summary()
+
+        logger.info(
+            "action_regeneration_metrics_requested",
+            user_id=session.user_id,
+            regeneration_rate=result["regeneration_rate"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("action_regeneration_metrics_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get regeneration metrics")
+
+
+@router.get("/actions/quality/clicks")
+async def get_action_click_metrics(
+    session: Session = Depends(get_current_session),
+) -> dict[str, Any]:
+    """Get action click-through metrics.
+
+    Returns click-through rate for displayed actions.
+    Requires authentication.
+
+    Args:
+        session: Current user session
+
+    Returns:
+        Click metrics including click-through rate
+    """
+    try:
+        metrics = get_action_quality_metrics()
+        result = metrics.get_click_summary()
+
+        logger.info(
+            "action_click_metrics_requested",
+            user_id=session.user_id,
+            click_through_rate=result["click_through_rate"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("action_click_metrics_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get click metrics")

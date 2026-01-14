@@ -54,6 +54,8 @@ class Action(BaseModel):
         requires_input: Whether action needs user input before execution
         input_placeholder: Placeholder text for input field
         input_type: Type of input field (text, number, etc.)
+        source_id: DEV-236 - Paragraph ID for source grounding (links to kb_sources_metadata)
+        source_excerpt: DEV-236 - Excerpt from source document for tooltip display
     """
 
     id: str = Field(..., description="Unique identifier for the action", min_length=1)
@@ -64,6 +66,39 @@ class Action(BaseModel):
     requires_input: bool = Field(default=False, description="Whether action needs user input")
     input_placeholder: str | None = Field(default=None, description="Placeholder for input field")
     input_type: str | None = Field(default=None, description="Input type (text, number, etc.)")
+    # DEV-236: Paragraph-level source grounding
+    source_id: str | None = Field(default=None, description="Paragraph ID linking to kb_sources_metadata")
+    source_excerpt: str | None = Field(default=None, description="Excerpt from source for tooltip display")
+
+
+class ActionSummary(BaseModel):
+    """Minimal action summary for ActionContext (DEV-242 Phase 12A).
+
+    Used to record available actions without full details.
+    """
+
+    id: str = Field(..., description="Action ID")
+    label: str = Field(..., description="Action label")
+
+
+class ActionContext(BaseModel):
+    """Context for messages originated from suggested actions (DEV-242 Phase 12A).
+
+    Tracks which suggested action was selected and what alternatives were available.
+    This enables historical traceability - users can see, even months later, what
+    actions were available and which one they chose.
+
+    Attributes:
+        selected_action_id: ID of the action that was clicked
+        selected_action_label: Label of the selected action
+        available_actions: All actions that were available at that moment
+        timestamp: When the action was selected
+    """
+
+    selected_action_id: str = Field(..., description="ID of the action that was clicked")
+    selected_action_label: str = Field(..., description="Label of the selected action")
+    available_actions: list[ActionSummary] = Field(default_factory=list, description="All actions that were available")
+    timestamp: str = Field(..., description="ISO timestamp when action was selected")
 
 
 class InteractiveOption(BaseModel):

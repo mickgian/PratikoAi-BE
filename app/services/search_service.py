@@ -27,6 +27,33 @@ from app.core.logging import logger
 from app.models.knowledge import KnowledgeItem
 from app.services.cache import cache_service
 
+# DEV-242 Phase 7: Topic-based synonym expansion for FTS
+# Maps colloquial tax terms to their ACTUAL legal equivalents found in law text
+# IMPORTANT: Use single words, not phrases - FTS matches on individual terms
+TOPIC_SYNONYMS = {
+    "rottamazione quinquies": [
+        # DEV-242 Phase 15: Prioritize terms from doc 2080 which has "54 rate bimestrali"
+        "pace fiscale",  # Doc 2080 uses "Pace fiscale" heading - HIGHEST PRIORITY
+        "pacificazione",  # Doc 2080 uses "pacificazione fiscale"
+        "definizione",  # Law uses "definizione di cui al comma 82"
+        "comma 82",  # Specific to quinquies (Legge 199/2025)
+        "54 rate",  # Specific number for quinquies
+    ],
+    "rottamazione quater": [
+        "definizione",
+        "comma 1 articolo 3",  # Specific to quater (Legge 197/2022)
+    ],
+    "rottamazione": [
+        "definizione",  # Generic term used in all rottamazione laws
+        "pace fiscale",
+        "stralcio",
+    ],
+    "saldo e stralcio": [
+        "definizione",
+        "stralcio debiti",
+    ],
+}
+
 
 @dataclass
 class SearchResult:
@@ -74,6 +101,7 @@ class SearchService:
         source_pattern: str | None = None,
         publication_year: int | None = None,
         title_patterns: list[str] | None = None,
+        topics: list[str] | None = None,
     ) -> list[SearchResult]:
         """Perform full-text search on knowledge items.
 
@@ -87,6 +115,8 @@ class SearchService:
             publication_year: Filter by publication year (e.g., 2025)
             title_patterns: List of title filter patterns (for ILIKE matching on document numbers,
                            e.g., ["n. 64", "numero 64", "risoluzione n. 64"]). Uses OR for multiple.
+            topics: List of topic tags to filter by (uses GIN index with && overlap operator).
+                   Documents matching ANY of the topics will be returned.
 
         Returns:
             List of SearchResult objects ordered by relevance
@@ -100,8 +130,11 @@ class SearchService:
         normalized_query = self._normalize_italian_query(query)
 
         # Check cache (using Redis client directly for custom keys)
-        # FIX: Include source_pattern and publication_year in cache key to avoid incorrect cache hits
-        cache_key = f"search:{normalized_query}:{category}:{source_pattern}:{publication_year}:{limit}:{offset}"
+        # FIX: Include source_pattern, publication_year, and topics in cache key to avoid incorrect cache hits
+        topics_key = ",".join(sorted(topics)) if topics else ""
+        cache_key = (
+            f"search:{normalized_query}:{category}:{source_pattern}:{publication_year}:{topics_key}:{limit}:{offset}"
+        )
         redis_client = await self.cache._get_redis()
         cached_results = None
         if redis_client:
@@ -136,7 +169,15 @@ class SearchService:
 
         # Build and execute search query
         results = await self._execute_search(
-            normalized_query, limit, offset, category, min_rank, source_pattern, publication_year, title_patterns
+            normalized_query,
+            limit,
+            offset,
+            category,
+            min_rank,
+            source_pattern,
+            publication_year,
+            title_patterns,
+            topics,
         )
 
         # Cache results
@@ -161,20 +202,22 @@ class SearchService:
         source_pattern: str | None = None,
         publication_year: int | None = None,
         title_patterns: list[str] | None = None,
+        topics: list[str] | None = None,
     ) -> list[SearchResult]:
         """Execute the PostgreSQL full-text search query using strict AND matching"""
         # CRITICAL FIX: Use Python conditionals to build separate SQL for title vs FTS
         # This prevents tsquery evaluation in FROM clause from blocking title ILIKE matching
 
         if title_patterns:
-            # PATH A: Title-based search (NO FTS, no tsquery in FROM clause)
-            # This path is triggered for document number queries like "Risoluzione n. 64"
-            # MULTI-PATTERN: Build dynamic OR conditions for multiple title patterns
+            # PATH A: Title-based search with FTS ranking (DEV-242 Phase 8)
+            # Filters by title ILIKE, but ALSO applies FTS ranking to prioritize
+            # query-relevant chunks instead of just returning from document start.
             logger.info(
-                "search_path_title_based",
+                "search_path_title_based_with_fts",
                 title_patterns=title_patterns,
                 patterns_count=len(title_patterns),
-                reason="bypassing_fts_for_document_number_search",
+                search_term=query[:100] if query else "",
+                reason="title_filter_with_fts_ranking",
             )
 
             # Build dynamic OR conditions for title patterns (max 7 patterns)
@@ -183,8 +226,13 @@ class SearchService:
                 [f"ki.title ILIKE '%' || :pattern_{i} || '%'" for i in range(len(patterns_to_use))]
             )
 
+            # DEV-242 Phase 8: Add FTS ranking within title-filtered results
+            # This ensures chunks containing query terms (e.g., "definizione", "comma 82")
+            # are prioritized over chunks from the beginning of the document.
+            # CRITICAL: Use OR logic (|) not AND (&) because we want to rank by ANY matching term,
+            # not require ALL terms to match. The document is already filtered by title.
             search_query = text(
-                f"""
+                rf"""
                 WITH search_results AS (
                     SELECT
                         kc.id,
@@ -198,8 +246,23 @@ class SearchService:
                         ki.publication_date,
                         kc.knowledge_item_id,
                         kc.chunk_index,
-                        1.0 AS rank,
-                        kc.chunk_text AS highlight
+                        -- DEV-242 Phase 8: FTS rank using OR logic for query-relevant chunks
+                        -- Convert "term1 term2" to "term1 | term2" for OR matching
+                        ts_rank(
+                            kc.search_vector,
+                            to_tsquery('italian', regexp_replace(:search_term, '\s+', ' | ', 'g')),
+                            32
+                        ) AS rank,
+                        CASE
+                            WHEN kc.search_vector @@ to_tsquery('italian', regexp_replace(:search_term, '\s+', ' | ', 'g'))
+                            THEN ts_headline(
+                                'italian',
+                                kc.chunk_text,
+                                to_tsquery('italian', regexp_replace(:search_term, '\s+', ' | ', 'g')),
+                                'StartSel=<b>, StopSel=</b>, MaxWords=30, MinWords=15'
+                            )
+                            ELSE LEFT(kc.chunk_text, 2000)  -- DEV-242 Phase 14A: 10x increase to preserve specific values
+                        END AS highlight
                     FROM
                         knowledge_chunks kc
                         JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id
@@ -211,7 +274,10 @@ class SearchService:
                         AND (CAST(:publication_year AS INTEGER) IS NULL
                              OR EXTRACT(YEAR FROM ki.publication_date) = CAST(:publication_year AS INTEGER)
                              OR ki.publication_date IS NULL)
+                        AND (CARDINALITY(CAST(:topics_filter AS text[])) = 0 OR ki.topics && CAST(:topics_filter AS text[]))
                     ORDER BY
+                        -- DEV-242 Phase 8: FTS rank first, then fallback to chunk_index
+                        rank DESC,
                         ki.relevance_score DESC,
                         kc.chunk_index ASC
                     LIMIT :limit
@@ -223,16 +289,18 @@ class SearchService:
 
             # Build params dict with pattern_0, pattern_1, etc.
             params = {
+                "search_term": query,  # DEV-242 Phase 8: Add search term for FTS ranking
                 "category": category,
                 "source_pattern": source_pattern,
                 "publication_year": publication_year,
+                "topics_filter": topics or [],  # Always pass array (empty if no topics)
                 "limit": limit,
                 "offset": offset,
             }
             for i, pattern in enumerate(patterns_to_use):
                 params[f"pattern_{i}"] = pattern
 
-            # Execute title-based query (no search_term or min_rank needed)
+            # Execute title-based query with FTS ranking
             result = await self.db.execute(search_query, params)
         else:
             # PATH B: FTS-based search (standard tsquery logic)
@@ -254,20 +322,35 @@ class SearchService:
                         ki.publication_date,
                         kc.knowledge_item_id,
                         kc.chunk_index,
-                        ts_rank(kc.search_vector, query, 32) AS rank,
-                        ts_headline(
-                            'italian',
-                            kc.chunk_text,
-                            query,
-                            'StartSel=<b>, StopSel=</b>, MaxWords=30, MinWords=15'
-                        ) AS highlight
+                        -- DEV-242: CASE for topic-only matches (no FTS rank)
+                        CASE
+                            WHEN kc.search_vector @@ query THEN ts_rank(kc.search_vector, query, 32)
+                            ELSE 0.8  -- Topic-match default rank (high priority)
+                        END AS rank,
+                        CASE
+                            WHEN kc.search_vector @@ query THEN ts_headline(
+                                'italian',
+                                kc.chunk_text,
+                                query,
+                                'StartSel=<b>, StopSel=</b>, MaxWords=30, MinWords=15'
+                            )
+                            ELSE LEFT(kc.chunk_text, 2000)  -- DEV-242 Phase 14A: 10x increase to preserve specific values  -- No highlight for topic-only
+                        END AS highlight
                     FROM
                         knowledge_chunks kc
                         JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id,
                         websearch_to_tsquery('italian', :search_term) query
                     WHERE
-                        kc.search_vector @@ query
-                        AND ts_rank(kc.search_vector, query, 32) >= :min_rank
+                        -- DEV-242: FTS OR topic match (topics as alternative path)
+                        (
+                            kc.search_vector @@ query
+                            OR (CARDINALITY(CAST(:topics_filter AS text[])) > 0 AND ki.topics && CAST(:topics_filter AS text[]))
+                        )
+                        -- Rank filter: apply only to FTS matches
+                        AND (
+                            NOT (kc.search_vector @@ query)
+                            OR ts_rank(kc.search_vector, query, 32) >= :min_rank
+                        )
                         AND kc.junk = FALSE
                         AND ki.category = COALESCE(:category, ki.category)
                         AND ki.source LIKE COALESCE(:source_pattern, '%')
@@ -291,6 +374,7 @@ class SearchService:
                     "category": category,
                     "source_pattern": source_pattern,
                     "publication_year": publication_year,
+                    "topics_filter": topics or [],  # Always pass array (empty if no topics)
                     "min_rank": min_rank,
                     "limit": limit,
                     "offset": offset,
@@ -343,6 +427,7 @@ class SearchService:
         source_pattern: str | None = None,
         publication_year: int | None = None,
         title_patterns: list[str] | None = None,
+        topics: list[str] | None = None,
     ) -> list[SearchResult]:
         """Perform full-text search with OR matching (more relaxed than AND).
         Uses plainto_tsquery which creates OR queries for better recall.
@@ -357,6 +442,7 @@ class SearchService:
             min_rank: Minimum rank score threshold
             source_pattern: Source filter pattern (for LIKE matching, e.g., "agenzia_entrate%")
             title_patterns: List of title filter patterns (for ILIKE matching on document numbers).
+            topics: List of topic tags to filter by (uses GIN index with && overlap operator).
 
         Returns:
             List of SearchResult objects ordered by relevance
@@ -373,14 +459,15 @@ class SearchService:
         # This prevents tsquery evaluation in FROM clause from blocking title ILIKE matching
 
         if title_patterns:
-            # PATH A: Title-based search (NO FTS, no tsquery in FROM clause)
-            # This path is triggered for document number queries like "Risoluzione n. 64"
-            # MULTI-PATTERN: Build dynamic OR conditions for multiple title patterns
+            # PATH A: Title-based search with FTS ranking (DEV-242 Phase 8)
+            # Filters by title ILIKE, but ALSO applies FTS ranking to prioritize
+            # query-relevant chunks instead of just returning from document start.
             logger.info(
-                "or_fallback_search_path_title_based",
+                "or_fallback_search_path_title_based_with_fts",
                 title_patterns=title_patterns,
                 patterns_count=len(title_patterns),
-                reason="bypassing_fts_for_document_number_search",
+                search_term=normalized_query[:100] if normalized_query else "",
+                reason="title_filter_with_fts_ranking",
             )
 
             # Build dynamic OR conditions for title patterns (max 7 patterns)
@@ -389,8 +476,10 @@ class SearchService:
                 [f"ki.title ILIKE '%' || :pattern_{i} || '%'" for i in range(len(patterns_to_use))]
             )
 
+            # DEV-242 Phase 8: Add FTS ranking within title-filtered results
+            # CRITICAL: Use OR logic (|) not AND (&) for ranking - document already filtered by title
             search_query = text(
-                f"""
+                rf"""
                 WITH search_results AS (
                     SELECT
                         kc.id,
@@ -404,8 +493,22 @@ class SearchService:
                         ki.publication_date,
                         kc.knowledge_item_id,
                         kc.chunk_index,
-                        1.0 AS rank,
-                        kc.chunk_text AS highlight
+                        -- DEV-242 Phase 8: FTS rank using OR logic for query-relevant chunks
+                        ts_rank(
+                            kc.search_vector,
+                            to_tsquery('italian', regexp_replace(:search_term, '\s+', ' | ', 'g')),
+                            32
+                        ) AS rank,
+                        CASE
+                            WHEN kc.search_vector @@ to_tsquery('italian', regexp_replace(:search_term, '\s+', ' | ', 'g'))
+                            THEN ts_headline(
+                                'italian',
+                                kc.chunk_text,
+                                to_tsquery('italian', regexp_replace(:search_term, '\s+', ' | ', 'g')),
+                                'StartSel=<b>, StopSel=</b>, MaxWords=30, MinWords=15'
+                            )
+                            ELSE LEFT(kc.chunk_text, 2000)  -- DEV-242 Phase 14A: 10x increase to preserve specific values
+                        END AS highlight
                     FROM
                         knowledge_chunks kc
                         JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id
@@ -417,7 +520,10 @@ class SearchService:
                         AND (CAST(:publication_year AS INTEGER) IS NULL
                              OR EXTRACT(YEAR FROM ki.publication_date) = CAST(:publication_year AS INTEGER)
                              OR ki.publication_date IS NULL)
+                        AND (CARDINALITY(CAST(:topics_filter AS text[])) = 0 OR ki.topics && CAST(:topics_filter AS text[]))
                     ORDER BY
+                        -- DEV-242 Phase 8: FTS rank first, then fallback to chunk_index
+                        rank DESC,
                         ki.relevance_score DESC,
                         kc.chunk_index ASC
                     LIMIT :limit
@@ -429,16 +535,18 @@ class SearchService:
 
             # Build params dict with pattern_0, pattern_1, etc.
             params = {
+                "search_term": normalized_query,  # DEV-242 Phase 8: Add search term for FTS ranking
                 "category": category,
                 "source_pattern": source_pattern,
                 "publication_year": publication_year,
+                "topics_filter": topics or [],  # Always pass array (empty if no topics)
                 "limit": limit,
                 "offset": offset,
             }
             for i, pattern in enumerate(patterns_to_use):
                 params[f"pattern_{i}"] = pattern
 
-            # Execute title-based query (no search_term or min_rank needed)
+            # Execute title-based query with FTS ranking
             result = await self.db.execute(search_query, params)
         else:
             # PATH B: FTS-based OR search (using plainto_tsquery for better recall)
@@ -464,20 +572,35 @@ class SearchService:
                         ki.publication_date,
                         kc.knowledge_item_id,
                         kc.chunk_index,
-                        ts_rank(kc.search_vector, query, 32) AS rank,
-                        ts_headline(
-                            'italian',
-                            kc.chunk_text,
-                            query,
-                            'StartSel=<b>, StopSel=</b>, MaxWords=30, MinWords=15'
-                        ) AS highlight
+                        -- DEV-242: CASE for topic-only matches (no FTS rank)
+                        CASE
+                            WHEN kc.search_vector @@ query THEN ts_rank(kc.search_vector, query, 32)
+                            ELSE 0.8  -- Topic-match default rank (high priority)
+                        END AS rank,
+                        CASE
+                            WHEN kc.search_vector @@ query THEN ts_headline(
+                                'italian',
+                                kc.chunk_text,
+                                query,
+                                'StartSel=<b>, StopSel=</b>, MaxWords=30, MinWords=15'
+                            )
+                            ELSE LEFT(kc.chunk_text, 2000)  -- DEV-242 Phase 14A: 10x increase to preserve specific values  -- No highlight for topic-only
+                        END AS highlight
                     FROM
                         knowledge_chunks kc
                         JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id,
                         plainto_tsquery('italian', :search_term) query
                     WHERE
-                        kc.search_vector @@ query
-                        AND ts_rank(kc.search_vector, query, 32) >= :min_rank
+                        -- DEV-242: FTS OR topic match (topics as alternative path)
+                        (
+                            kc.search_vector @@ query
+                            OR (CARDINALITY(CAST(:topics_filter AS text[])) > 0 AND ki.topics && CAST(:topics_filter AS text[]))
+                        )
+                        -- Rank filter: apply only to FTS matches
+                        AND (
+                            NOT (kc.search_vector @@ query)
+                            OR ts_rank(kc.search_vector, query, 32) >= :min_rank
+                        )
                         AND kc.junk = FALSE
                         AND ki.category = COALESCE(:category, ki.category)
                         AND ki.source LIKE COALESCE(:source_pattern, '%')
@@ -501,6 +624,7 @@ class SearchService:
                     "category": category,
                     "source_pattern": source_pattern,
                     "publication_year": publication_year,
+                    "topics_filter": topics or [],  # Always pass array (empty if no topics)
                     "min_rank": min_rank,
                     "limit": limit,
                     "offset": offset,
@@ -537,15 +661,54 @@ class SearchService:
 
         - Remove extra whitespace
         - Handle special characters
+        - DEV-242 Phase 6: Expand colloquial tax terms with legal synonyms for FTS
 
         Note: We use websearch_to_tsquery which handles natural language queries,
         so we don't add :* prefix matching syntax (that's for to_tsquery only).
         """
+        # DEV-242 DEBUG: Log input query to trace expansion
+        logger.info(
+            "normalize_italian_query_entry",
+            input_query=query[:200] if query else "EMPTY",
+            query_length=len(query) if query else 0,
+        )
+
         # Remove extra whitespace
         query = " ".join(query.split())
 
         # Handle dangerous SQL characters (though we use parameterized queries)
         query = re.sub(r"[;\'\"\\]", " ", query)
+
+        # DEV-242 Phase 6: Synonym expansion for FTS
+        # Critical fix: Italian laws use "definizione agevolata" instead of "rottamazione"
+        # Without this expansion, FTS returns 0 results for "rottamazione" queries
+        query_lower = query.lower()
+        synonyms_to_add = []
+
+        # Check longer phrases first (more specific), then shorter ones
+        for term, synonyms in sorted(TOPIC_SYNONYMS.items(), key=lambda x: -len(x[0])):
+            if term in query_lower:
+                # Add first 2 synonyms to avoid query explosion
+                synonyms_to_add.extend(synonyms[:2])
+                logger.info(
+                    "synonym_expansion_triggered",
+                    original_query=query[:100],
+                    matched_term=term,
+                    added_synonyms=synonyms[:2],
+                    reason="dev_242_phase6_fts_fix",
+                )
+                break  # Only expand first match to avoid bloated queries
+
+        if synonyms_to_add:
+            # Append synonyms to original query (websearch_to_tsquery will OR them)
+            expanded_query = f"{query} {' '.join(synonyms_to_add)}"
+            logger.info(
+                "query_expanded_with_synonyms",
+                original=query[:100],
+                expanded=expanded_query[:200],
+                synonyms_added=len(synonyms_to_add),
+            )
+            return expanded_query
 
         return query
 

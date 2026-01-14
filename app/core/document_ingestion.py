@@ -10,6 +10,7 @@ Used by:
 - scripts/ingest_rss.py (CLI tool)
 """
 
+import asyncio
 import hashlib
 import re
 import ssl
@@ -30,13 +31,16 @@ from typing import (
 from urllib.parse import urlparse
 
 import httpx
+from bs4 import BeautifulSoup
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.chunking import chunk_document
 from app.core.embed import generate_embedding
+from app.core.logging import logger
 from app.core.text.clean import (
     extract_text_from_url_content,
     is_valid_text,
+    validate_extracted_content,
 )
 from app.core.text.extract_pdf_plumber import extract_pdf_with_ocr_fallback_plumber
 from app.models.knowledge import KnowledgeItem
@@ -127,6 +131,136 @@ def normalize_document_text(content: str) -> str:
     return content
 
 
+def _is_gazzetta_ufficiale_url(url: str) -> bool:
+    """Check if URL is from Gazzetta Ufficiale.
+
+    Args:
+        url: URL to check
+
+    Returns:
+        True if URL is from gazzettaufficiale.it
+    """
+    parsed = urlparse(url)
+    return "gazzettaufficiale.it" in (parsed.hostname or "").lower()
+
+
+def _extract_gazzetta_pdf_url(html_content: str, base_url: str) -> str | None:
+    """Extract PDF download URL from Gazzetta Ufficiale HTML page.
+
+    Gazzetta Ufficiale pages use iframes and JavaScript to load content.
+    The PDF link provides the authoritative full document.
+
+    Args:
+        html_content: Raw HTML from the page
+        base_url: Original page URL for constructing absolute URLs
+
+    Returns:
+        PDF URL if found, None otherwise
+    """
+    try:
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # Look for PDF links in various forms
+        # 1. Direct PDF links with "/pdf" in path
+        for link in soup.find_all("a", href=True):
+            href = link.get("href", "")
+            if "/pdf" in href.lower() or href.endswith(".pdf"):
+                # Make absolute URL if relative
+                if href.startswith("/"):
+                    parsed = urlparse(base_url)
+                    return f"{parsed.scheme}://{parsed.netloc}{href}"
+                elif href.startswith("http"):
+                    return href
+
+        # 2. Look for "Formato Grafico PDF" or similar text
+        for link in soup.find_all("a", href=True):
+            link_text = link.get_text().lower()
+            if "pdf" in link_text or "formato grafico" in link_text:
+                href = link.get("href", "")
+                if href.startswith("/"):
+                    parsed = urlparse(base_url)
+                    return f"{parsed.scheme}://{parsed.netloc}{href}"
+                elif href.startswith("http"):
+                    return href
+
+        # 3. Try to construct PDF URL from page URL pattern
+        # Pattern: /eli/id/YYYY/MM/DD/CODE/SG -> /eli/gu/YYYY/MM/DD/NUM/so/SUPPL/sg/pdf
+        # This is complex and varies, so we'll rely on found links first
+
+        logger.warning(
+            "gazzetta_pdf_url_not_found",
+            base_url=base_url,
+            message="Could not find PDF link in Gazzetta Ufficiale page",
+        )
+        return None
+
+    except Exception as e:
+        logger.error(
+            "gazzetta_pdf_extraction_error",
+            base_url=base_url,
+            error=str(e),
+        )
+        return None
+
+
+async def _download_gazzetta_pdf(pdf_url: str) -> dict[str, Any] | None:
+    """Download and extract content from Gazzetta Ufficiale PDF.
+
+    Args:
+        pdf_url: URL to the PDF document
+
+    Returns:
+        Extraction result dict or None if failed
+    """
+    try:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            response = await client.get(pdf_url)
+            response.raise_for_status()
+
+            # Save PDF to temporary file
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                tmp.write(response.content)
+                tmp_path = tmp.name
+
+            try:
+                # DEV-242: Run CPU-bound PDF extraction in thread pool
+                result = await asyncio.to_thread(extract_pdf_with_ocr_fallback_plumber, tmp_path)
+                full_text = result.get("full_text", "")
+
+                if not is_valid_text(full_text):
+                    logger.warning(
+                        "gazzetta_pdf_invalid_text",
+                        pdf_url=pdf_url,
+                        text_length=len(full_text) if full_text else 0,
+                    )
+                    return None
+
+                logger.info(
+                    "gazzetta_pdf_extracted",
+                    pdf_url=pdf_url,
+                    text_length=len(full_text),
+                    extraction_method=result.get("extraction_method"),
+                )
+
+                return {
+                    "content": full_text,
+                    "extraction_method": f"gazzetta_pdf_{result.get('extraction_method', 'pdfplumber')}",
+                    "text_quality": result.get("text_quality"),
+                    "ocr_pages": result.get("ocr_pages", []),
+                }
+
+            finally:
+                Path(tmp_path).unlink(missing_ok=True)
+
+    except Exception as e:
+        logger.error(
+            "gazzetta_pdf_download_error",
+            pdf_url=pdf_url,
+            error=str(e),
+        )
+        return None
+
+
 async def download_and_extract_document(url: str) -> dict[str, Any] | None:
     """Download and extract content from URL (PDF or HTML).
 
@@ -162,8 +296,9 @@ async def download_and_extract_document(url: str) -> dict[str, Any] | None:
                     tmp_path = tmp.name
 
                 try:
-                    # Extract text using pdfplumber + Tesseract OCR
-                    result = extract_pdf_with_ocr_fallback_plumber(tmp_path)
+                    # DEV-242: Run CPU-bound PDF extraction in thread pool
+                    # This prevents blocking the event loop during OCR processing
+                    result = await asyncio.to_thread(extract_pdf_with_ocr_fallback_plumber, tmp_path)
                     full_text = result.get("full_text", "")
 
                     if not is_valid_text(full_text):
@@ -186,6 +321,39 @@ async def download_and_extract_document(url: str) -> dict[str, Any] | None:
 
                 # Extract clean text (pass URL for quality logging)
                 clean_text = extract_text_from_url_content(content, content_type, url=url)
+
+                # Validate extracted content quality
+                is_valid, validation_reason = validate_extracted_content(clean_text, url)
+
+                # Special handling for Gazzetta Ufficiale: if HTML extraction failed,
+                # try to get the PDF version instead
+                if _is_gazzetta_ufficiale_url(url) and not is_valid:
+                    logger.info(
+                        "gazzetta_html_extraction_failed_trying_pdf",
+                        url=url,
+                        validation_reason=validation_reason,
+                        html_content_length=len(clean_text) if clean_text else 0,
+                    )
+
+                    # Try to extract PDF URL from the page
+                    pdf_url = _extract_gazzetta_pdf_url(content, url)
+                    if pdf_url:
+                        pdf_result = await _download_gazzetta_pdf(pdf_url)
+                        if pdf_result:
+                            return pdf_result
+                        logger.warning(
+                            "gazzetta_pdf_fallback_failed",
+                            url=url,
+                            pdf_url=pdf_url,
+                        )
+                    else:
+                        logger.warning(
+                            "gazzetta_no_pdf_url_found",
+                            url=url,
+                        )
+
+                    # Return None if both HTML and PDF failed
+                    return None
 
                 if not is_valid_text(clean_text):
                     return None

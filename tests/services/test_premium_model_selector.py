@@ -108,8 +108,8 @@ class TestPremiumModelSelector:
         assert selection.provider == "openai"
         assert selection.is_fallback is False
 
-    def test_selects_claude_for_long_context(self, mock_config):
-        """Test that Claude is selected for context >8k tokens."""
+    def test_selects_gpt4o_for_long_context(self, mock_config):
+        """Test that GPT-4o is selected even for long context (>8k tokens)."""
         from app.services.premium_model_selector import (
             PremiumModelSelector,
             SynthesisContext,
@@ -120,8 +120,9 @@ class TestPremiumModelSelector:
 
         selection = selector.select(context)
 
-        assert selection.model == "claude-3-5-sonnet-20241022"
-        assert selection.provider == "anthropic"
+        # GPT-4o is always selected regardless of context size
+        assert selection.model == "gpt-4o"
+        assert selection.provider == "openai"
         assert selection.is_fallback is False
 
     def test_selects_gpt4o_at_exactly_8000_tokens(self, mock_config):
@@ -139,8 +140,8 @@ class TestPremiumModelSelector:
         assert selection.model == "gpt-4o"
         assert selection.provider == "openai"
 
-    def test_selects_claude_at_8001_tokens(self, mock_config):
-        """Test that Claude is selected at 8001 tokens (just over threshold)."""
+    def test_selects_gpt4o_at_8001_tokens(self, mock_config):
+        """Test that GPT-4o is selected at 8001 tokens (no context threshold switching)."""
         from app.services.premium_model_selector import (
             PremiumModelSelector,
             SynthesisContext,
@@ -151,7 +152,8 @@ class TestPremiumModelSelector:
 
         selection = selector.select(context)
 
-        assert selection.model == "claude-3-5-sonnet-20241022"
+        # GPT-4o is always primary regardless of context size
+        assert selection.model == "gpt-4o"
 
     def test_fallback_when_primary_unavailable(self, mock_config):
         """Test fallback to Claude when OpenAI is unavailable."""
@@ -171,22 +173,23 @@ class TestPremiumModelSelector:
         assert selection.provider == "anthropic"
         assert selection.is_fallback is True
 
-    def test_fallback_when_claude_unavailable_for_long_context(self, mock_config):
-        """Test fallback to GPT-4o when Claude is unavailable for long context."""
+    def test_fallback_when_openai_unavailable_for_long_context(self, mock_config):
+        """Test fallback to Claude when OpenAI is unavailable for long context."""
         from app.services.premium_model_selector import (
             PremiumModelSelector,
             SynthesisContext,
         )
 
         selector = PremiumModelSelector(config=mock_config)
-        # Mark Anthropic as unavailable
-        selector._provider_health["anthropic"] = False
+        # Mark OpenAI as unavailable
+        selector._provider_health["openai"] = False
 
-        context = SynthesisContext(total_tokens=10000)  # Would normally use Claude
+        context = SynthesisContext(total_tokens=10000)  # Long context
         selection = selector.select(context)
 
-        assert selection.model == "gpt-4o"
-        assert selection.provider == "openai"
+        # Should fall back to Claude when OpenAI is down
+        assert selection.model == "claude-3-5-sonnet-20241022"
+        assert selection.provider == "anthropic"
         assert selection.is_fallback is True
 
     def test_degraded_flag_when_both_unavailable(self, mock_config):
@@ -416,8 +419,8 @@ class TestPremiumModelSelectorExecute:
         mock_factory.create_provider.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_execute_uses_claude_for_long_context(self, mock_config, mock_messages):
-        """Test execute uses Claude for context >8k tokens."""
+    async def test_execute_uses_gpt4o_for_long_context(self, mock_config, mock_messages):
+        """Test execute uses GPT-4o even for context >8k tokens."""
         from app.core.llm.base import LLMResponse
         from app.services.premium_model_selector import (
             PremiumModelSelector,
@@ -427,16 +430,16 @@ class TestPremiumModelSelectorExecute:
         selector = PremiumModelSelector(config=mock_config)
         context = SynthesisContext(total_tokens=10000)  # >8000 tokens
 
-        # Mock response from Claude
-        claude_response = LLMResponse(
-            content="Response from Claude",
-            model="claude-3-5-sonnet-20241022",
-            provider="anthropic",
+        # Mock response from GPT-4o (always used regardless of context size)
+        gpt4o_response = LLMResponse(
+            content="Response from GPT-4o",
+            model="gpt-4o",
+            provider="openai",
             tokens_used=100,
         )
 
         mock_provider = AsyncMock()
-        mock_provider.chat_completion.return_value = claude_response
+        mock_provider.chat_completion.return_value = gpt4o_response
 
         mock_factory = MagicMock()
         mock_factory.create_provider.return_value = mock_provider
@@ -444,10 +447,10 @@ class TestPremiumModelSelectorExecute:
         with patch("app.core.llm.factory.get_llm_factory", return_value=mock_factory):
             response = await selector.execute(context, mock_messages)
 
-        assert response.model == "claude-3-5-sonnet-20241022"
-        # Verify Claude was selected
+        assert response.model == "gpt-4o"
+        # Verify GPT-4o was selected (no context-based switching)
         call_args = mock_factory.create_provider.call_args
-        assert call_args.kwargs["model"] == "claude-3-5-sonnet-20241022"
+        assert call_args.kwargs["model"] == "gpt-4o"
 
     @pytest.mark.asyncio
     async def test_execute_fallback_on_primary_failure(self, mock_config, mock_messages, mock_llm_response):

@@ -46,6 +46,7 @@ from app.observability.rag_logging import (
     rag_step_timer,
 )
 from app.services.query_normalizer import QueryNormalizer
+from app.services.ranking_utils import get_tier_multiplier
 from app.services.search_service import SearchResult as BaseSearchResult
 from app.services.search_service import SearchService
 
@@ -66,6 +67,80 @@ DOCUMENT_TYPE_MAPPING = {
     "sentenza": "sentenza",
     # INPS documents
     "messaggio": "messaggio",
+}
+
+# DEV-242 ADR-023: Topic keywords for automatic topic extraction from queries
+# These map keywords in user queries to topics in the knowledge_items.topics field
+# Topics are used to filter search results via GIN index for faster, more accurate retrieval
+#
+# DEV-242 Phase 14B: Split rottamazione by version to prevent quater/quinquies confusion
+TOPIC_KEYWORDS = {
+    # Version-specific rottamazione topics (check these FIRST in _extract_topics)
+    "rottamazione_quinquies": [
+        "rottamazione quinquies",
+        "quinquies",
+        "legge 199/2025",
+        "legge 199",
+        "comma 82",
+        "comma 83",
+        "54 rate",
+    ],
+    "rottamazione_quater": [
+        "rottamazione quater",
+        "quater",
+        "legge 197/2022",
+        "legge 197",
+        "18 rate",
+    ],
+    # Generic rottamazione fallback (only if no version specified)
+    "rottamazione": [
+        "rottamazione",
+        "definizione agevolata",
+        "stralcio",
+        "pace fiscale",
+    ],
+    "irpef": [
+        "irpef",
+        "imposta sul reddito",
+        "aliquote",
+        "scaglioni",
+        "detrazioni lavoro",
+        "no tax area",
+    ],
+    "iva": [
+        "iva",
+        "imposta sul valore aggiunto",
+        "aliquota iva",
+        "reverse charge",
+        "split payment",
+    ],
+    "contributi": [
+        "contributi",
+        "inps",
+        "previdenza",
+        "pensione",
+        "gestione separata",
+    ],
+    "bonus": [
+        "bonus",
+        "credito d'imposta",
+        "agevolazione",
+        "incentivo",
+        "superbonus",
+        "ecobonus",
+    ],
+    "fatturazione": [
+        "fattura elettronica",
+        "e-fattura",
+        "sdi",
+        "fatturazione",
+        "corrispettivi",
+    ],
+    "forfettario": [
+        "forfettario",
+        "regime forfetario",
+        "flat tax",
+    ],
 }
 
 
@@ -187,6 +262,75 @@ class KnowledgeSearchService:
         # Cache for performance optimization
         self._embedding_cache: dict[str, list[float]] = {}
         self._query_cache: dict[str, list[SearchResult]] = {}
+
+    @staticmethod
+    def _extract_topics_from_query(query: str) -> list[str] | None:
+        """Extract topic tags from user query for GIN-indexed filtering.
+
+        DEV-242 ADR-023: Implements topic-based search filtering.
+        Matches keywords in the user query against TOPIC_KEYWORDS mapping
+        to identify relevant topics. This enables faster, more accurate
+        retrieval by filtering on the indexed topics field.
+
+        DEV-242 Phase 14C: Prioritize version-specific topics (quinquies, quater)
+        over generic "rottamazione" to prevent version confusion.
+
+        Args:
+            query: User's search query
+
+        Returns:
+            List of topic tags (e.g., ["rottamazione_quinquies"]) or None if no topics detected
+        """
+        if not query:
+            return None
+
+        query_lower = query.lower()
+        detected_topics = []
+
+        # DEV-242 Phase 14C: Check version-specific rottamazione FIRST
+        # Priority order: specific version > generic fallback
+        version_specific_topics = ["rottamazione_quinquies", "rottamazione_quater"]
+        generic_topics = ["rottamazione"]
+
+        rottamazione_version_found = False
+
+        # First pass: check version-specific topics
+        for topic in version_specific_topics:
+            if topic in TOPIC_KEYWORDS:
+                for keyword in TOPIC_KEYWORDS[topic]:
+                    if keyword.lower() in query_lower:
+                        detected_topics.append(topic)
+                        rottamazione_version_found = True
+                        break
+
+        # If no version-specific match, check generic rottamazione
+        if not rottamazione_version_found:
+            for topic in generic_topics:
+                if topic in TOPIC_KEYWORDS:
+                    for keyword in TOPIC_KEYWORDS[topic]:
+                        if keyword.lower() in query_lower:
+                            detected_topics.append(topic)
+                            break
+
+        # Check all other (non-rottamazione) topics
+        for topic, keywords in TOPIC_KEYWORDS.items():
+            if topic.startswith("rottamazione"):
+                continue  # Already handled above
+            for keyword in keywords:
+                if keyword.lower() in query_lower:
+                    detected_topics.append(topic)
+                    break  # Only add topic once even if multiple keywords match
+
+        if detected_topics:
+            logger.info(
+                "topics_extracted_from_query",
+                query=query[:100],
+                detected_topics=detected_topics,
+                reason="adr_023_topic_based_search_with_version_priority",
+            )
+            return detected_topics
+
+        return None
 
     async def retrieve_topk(self, query_data: dict[str, Any]) -> list[SearchResult]:
         """Retrieve top-k knowledge items using hybrid search.
@@ -624,6 +768,35 @@ class KnowledgeSearchService:
         # Extract filters
         category = filters.get("category")
         min_rank = filters.get("min_rank", 0.01)
+        topics = filters.get("topics")  # DEV-242: Topic-based search filter (ADR-023)
+
+        # DEV-242 ADR-023: Auto-extract topics from query if not provided in filters
+        # This enables topic-based GIN index filtering for queries like "rottamazione quinquies"
+        if not topics:
+            topics = self._extract_topics_from_query(query)
+
+        # DEV-242 ADR-023: Expand search query with topic synonyms for better recall
+        # When user searches for "rottamazione quinquies", expand to also find
+        # "definizione agevolata" content which is semantically equivalent
+        if topics:
+            expanded_terms = []
+            for topic in topics:
+                if topic in TOPIC_KEYWORDS:
+                    # Add main topic synonyms (first 3 to avoid query explosion)
+                    expanded_terms.extend(TOPIC_KEYWORDS[topic][:3])
+            if expanded_terms:
+                # Create OR search query with original terms plus synonyms
+                original_terms = search_query.split()
+                unique_terms = list(dict.fromkeys(original_terms + expanded_terms))
+                search_query = " ".join(unique_terms)
+                logger.info(
+                    "topic_synonym_expansion",
+                    original_query=query[:100],
+                    detected_topics=topics,
+                    expanded_terms=expanded_terms,
+                    new_search_query=search_query[:100],
+                    reason="adr_023_semantic_search_expansion",
+                )
 
         # TDD INTEGRATION: LLM-BASED QUERY NORMALIZATION
         # Layer 1: Check if canonical_facts already has document reference (skip LLM)
@@ -904,6 +1077,25 @@ class KnowledgeSearchService:
                     reason="no_document_number_but_keywords_present",
                 )
 
+                # DEV-242 ADR-023: Re-apply topic synonym expansion after LLM keyword processing
+                # Since LLM keywords override the earlier synonym expansion
+                if topics:
+                    expanded_terms = []
+                    for topic in topics:
+                        if topic in TOPIC_KEYWORDS:
+                            expanded_terms.extend(TOPIC_KEYWORDS[topic][:3])
+                    if expanded_terms:
+                        search_terms = search_query.split()
+                        unique_terms = list(dict.fromkeys(search_terms + expanded_terms))
+                        search_query = " ".join(unique_terms)
+                        logger.info(
+                            "topic_synonym_expansion_post_llm",
+                            topics=topics,
+                            expanded_terms=expanded_terms,
+                            final_search_query=search_query[:100],
+                            reason="adr_023_semantic_expansion_after_llm",
+                        )
+
         # For aggregation queries with multiple months, try single-month searches FIRST
         # This avoids strict AND failures when documents only match one month
         months_in_query = []
@@ -961,6 +1153,7 @@ class KnowledgeSearchService:
                     source_pattern=filters.get("source_pattern"),
                     publication_year=publication_year,
                     title_patterns=filters.get("title_patterns"),
+                    topics=topics,  # DEV-242: Topic-based filter (ADR-023)
                 )
 
                 if month_results:
@@ -996,6 +1189,7 @@ class KnowledgeSearchService:
                 source_pattern=filters.get("source_pattern"),
                 publication_year=publication_year,
                 title_patterns=filters.get("title_patterns"),
+                topics=topics,  # DEV-242: Topic-based filter (ADR-023)
             )
 
             # Fallback: if no results with strict AND, try relaxed OR search
@@ -1017,6 +1211,7 @@ class KnowledgeSearchService:
                     source_pattern=filters.get("source_pattern"),
                     publication_year=publication_year,
                     title_patterns=filters.get("title_patterns"),
+                    topics=topics,  # DEV-242: Topic-based filter (ADR-023)
                 )
 
                 if search_results:
@@ -1048,6 +1243,7 @@ class KnowledgeSearchService:
                     source_pattern=None,  # Remove source filter too
                     publication_year=publication_year,
                     title_patterns=filters.get("title_patterns"),
+                    topics=topics,  # DEV-242: Topic-based filter (ADR-023)
                 )
 
                 if search_results:
@@ -1084,6 +1280,7 @@ class KnowledgeSearchService:
                         category=category,
                         source_pattern=None,  # Remove restrictive filters
                         publication_year=publication_year,
+                        topics=topics,  # DEV-242: Topic-based filter (ADR-023)
                     )
 
                     if fallback_results:
@@ -1285,6 +1482,12 @@ class KnowledgeSearchService:
                 + quality_w * quality_score
                 + source_w * source_boost
             )
+
+            # DEV-242 Phase 11: Apply tier-based multiplier
+            # Laws (tier 1) get 1.25x boost, news (tier 3) get 0.80x penalty
+            tier = result.metadata.get("tier")
+            tier_multiplier = get_tier_multiplier(tier)
+            combined_score *= tier_multiplier
 
             result.score = combined_score
 

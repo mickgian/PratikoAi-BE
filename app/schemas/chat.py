@@ -20,7 +20,7 @@ from pydantic import (
     field_validator,
 )
 
-from app.schemas.proactivity import Action, InteractiveQuestion
+from app.schemas.proactivity import Action, ActionContext, InteractiveQuestion
 
 
 class AttachmentInfo(BaseModel):
@@ -31,6 +31,34 @@ class AttachmentInfo(BaseModel):
     type: str | None = Field(None, description="MIME type")
 
 
+class StructuredSource(BaseModel):
+    """Structured source citation for frontend rendering (DEV-242 Phase 12B).
+
+    Parsed from INDICE DELLE FONTI table in LLM responses by VerdettResponseFormatter.
+    Rendered by SourcesIndex component in frontend.
+    """
+
+    numero: int = Field(..., description="Source number in the citation index")
+    data: str | None = Field(None, description="Publication date of the source")
+    ente: str | None = Field(None, description="Issuing entity (e.g., Agenzia Entrate, INPS)")
+    tipo: str | None = Field(None, description="Document type (e.g., Circolare, Risoluzione, Legge)")
+    riferimento: str = Field(..., description="Full reference text")
+    url: str | None = Field(None, description="URL link to the source document")
+
+
+class ReasoningTrace(BaseModel):
+    """Chain of Thought reasoning trace for assistant messages.
+
+    DEV-241: Structured reasoning data extracted from LLM response.
+    This is displayed in the frontend via the ReasoningTrace component.
+    """
+
+    tema_identificato: str | None = Field(None, description="Main topic identified from the query")
+    fonti_utilizzate: list[str] | None = Field(None, description="Sources used for the response")
+    elementi_chiave: list[str] | None = Field(None, description="Key elements extracted")
+    conclusione: str | None = Field(None, description="Reasoning conclusion")
+
+
 class Message(BaseModel):
     """Message model for chat endpoint.
 
@@ -38,14 +66,29 @@ class Message(BaseModel):
         role: The role of the message sender (user or assistant).
         content: The content of the message.
         attachments: Optional list of attachment metadata (for user messages with files).
+        reasoning: Optional Chain of Thought reasoning trace (DEV-241).
     """
 
     model_config = {"extra": "ignore"}
 
     role: Literal["user", "assistant", "system"] = Field(..., description="The role of the message sender")
-    content: str = Field(..., description="The content of the message", min_length=1, max_length=50000)
+    content: str = Field(
+        ..., description="The content of the message", min_length=1, max_length=80000
+    )  # DEV-242 Phase 32: Increased from 50000 to accommodate 18 chunks + grounding rules
     attachments: list[AttachmentInfo] | None = Field(
         default=None, description="Attachment metadata for messages with uploaded files"
+    )
+    # DEV-241: Chain of Thought reasoning for assistant messages
+    reasoning: ReasoningTrace | None = Field(
+        default=None, description="Chain of Thought reasoning trace (for assistant messages)"
+    )
+    # DEV-242 Phase 12B: Structured sources for proper frontend rendering
+    structured_sources: list[StructuredSource] | None = Field(
+        default=None, description="Structured source citations parsed from LLM response"
+    )
+    # DEV-242 Phase 12A: Action context for traceability (user messages from suggested actions)
+    action_context: ActionContext | None = Field(
+        default=None, description="Context when message originated from a suggested action click"
     )
 
     @field_validator("content")
@@ -170,30 +213,47 @@ class ChatResponse(BaseModel):
 class StreamResponse(BaseModel):
     """Response model for streaming chat endpoint.
 
-    Supports different event types for proactivity (DEV-159, DEV-201):
+    Supports different event types for proactivity (DEV-159, DEV-201, DEV-242):
     - content: Text content chunks (default)
     - content_cleaned: Final cleaned content with XML tags stripped (DEV-201)
     - suggested_actions: Suggested actions for the user
     - interactive_question: Interactive question for clarification
+    - reasoning: Chain of Thought reasoning trace (DEV-242)
+    - structured_sources: Parsed source citations for frontend rendering (DEV-242 Phase 12B)
 
     Attributes:
         content: The content of the current chunk.
         done: Whether the stream is complete.
-        event_type: Type of SSE event (content, suggested_actions, interactive_question, content_cleaned).
+        event_type: Type of SSE event.
         suggested_actions: Actions suggested based on query context.
         interactive_question: Question for parameter clarification.
         extracted_params: Parameters extracted from user query.
+        reasoning: Chain of Thought reasoning trace (DEV-242).
+        structured_sources: Structured source citations (DEV-242 Phase 12B).
     """
 
     content: str = Field(default="", description="The content of the current chunk")
     done: bool = Field(default=False, description="Whether the stream is complete")
 
-    # Proactivity fields (DEV-159, DEV-201) - Optional for backward compatibility
-    event_type: Literal["content", "content_cleaned", "suggested_actions", "interactive_question"] | None = Field(
-        default=None, description="Type of SSE event for proactivity"
-    )
+    # Proactivity and reasoning fields (DEV-159, DEV-201, DEV-242) - Optional for backward compatibility
+    event_type: (
+        Literal[
+            "content",
+            "content_cleaned",
+            "suggested_actions",
+            "interactive_question",
+            "reasoning",
+            "structured_sources",
+        ]
+        | None
+    ) = Field(default=None, description="Type of SSE event for proactivity or reasoning")
     suggested_actions: list[dict[str, Any]] | None = Field(default=None, description="Suggested actions for the user")
     interactive_question: dict[str, Any] | None = Field(
         default=None, description="Interactive question for parameter clarification"
     )
     extracted_params: dict[str, Any] | None = Field(default=None, description="Parameters extracted from user query")
+    reasoning: dict[str, Any] | None = Field(default=None, description="Chain of Thought reasoning trace (DEV-242)")
+    # DEV-242 Phase 12B: Structured sources for proper frontend rendering
+    structured_sources: list[dict[str, Any]] | None = Field(
+        default=None, description="Structured source citations parsed from LLM response"
+    )

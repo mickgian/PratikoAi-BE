@@ -98,13 +98,14 @@ class TestNodeStep39aMultiQuery:
             original_query="Come apro P.IVA forfettaria?",
         )
 
+        # FIX: Patch at the location where the import happens (lazy import inside function)
         with (
             patch(
                 "app.core.llm.model_config.get_model_config",
                 return_value=MagicMock(),
             ),
             patch(
-                "app.services.multi_query_generator.MultiQueryGeneratorService",
+                "app.core.langgraph.nodes.step_039a__multi_query.MultiQueryGeneratorService",
                 return_value=mock_service,
             ),
         ):
@@ -145,23 +146,48 @@ class TestNodeStep39aMultiQuery:
         assert result["query_variants"]["skip_reason"] == "chitchat"
 
     @pytest.mark.asyncio
-    async def test_skip_for_theoretical_definition_route(self):
-        """Test that multi-query is skipped for theoretical definition queries."""
+    async def test_theoretical_definition_route_uses_multi_query(self):
+        """Test that multi-query IS used for theoretical definition queries.
+
+        ADR-022: theoretical_definition was removed from SKIP_EXPANSION_ROUTES
+        because queries like "Parlami della rottamazione quinquies" need
+        document_references extraction for proper document retrieval.
+        """
         from app.core.langgraph.nodes.step_039a__multi_query import node_step_39a
 
-        state = {
-            "request_id": "test-003",
-            "user_query": "Cos'e l'IRPEF?",
-            "routing_decision": {
-                "route": "theoretical_definition",
-                "needs_retrieval": True,
-            },
-        }
+        mock_service = AsyncMock()
+        mock_service.generate.return_value = QueryVariants(
+            bm25_query="IRPEF definizione imposta",
+            vector_query="Cos'è l'IRPEF e come funziona?",
+            entity_query="IRPEF imposta reddito persone fisiche",
+            original_query="Cos'e l'IRPEF?",
+        )
 
-        result = await node_step_39a(state)
+        with (
+            patch(
+                "app.core.llm.model_config.get_model_config",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "app.core.langgraph.nodes.step_039a__multi_query.MultiQueryGeneratorService",
+                return_value=mock_service,
+            ),
+        ):
+            state = {
+                "request_id": "test-003",
+                "user_query": "Cos'e l'IRPEF?",
+                "routing_decision": {
+                    "route": "theoretical_definition",
+                    "needs_retrieval": True,
+                    "entities": [],
+                },
+            }
 
-        assert result["query_variants"]["skipped"] is True
-        assert result["query_variants"]["skip_reason"] == "theoretical_definition"
+            result = await node_step_39a(state)
+
+            # ADR-022: theoretical_definition now uses multi-query expansion
+            assert result["query_variants"]["skipped"] is False
+            assert "bm25_query" in result["query_variants"]
 
     @pytest.mark.asyncio
     async def test_fallback_on_service_error(self):
@@ -171,13 +197,14 @@ class TestNodeStep39aMultiQuery:
         mock_service = AsyncMock()
         mock_service.generate.side_effect = Exception("LLM service unavailable")
 
+        # FIX: Patch at the location where the import happens (lazy import inside function)
         with (
             patch(
                 "app.core.llm.model_config.get_model_config",
                 return_value=MagicMock(),
             ),
             patch(
-                "app.services.multi_query_generator.MultiQueryGeneratorService",
+                "app.core.langgraph.nodes.step_039a__multi_query.MultiQueryGeneratorService",
                 return_value=mock_service,
             ),
         ):

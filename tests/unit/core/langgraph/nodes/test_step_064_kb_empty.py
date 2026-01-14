@@ -262,7 +262,12 @@ class TestSynonymExpansion:
     """
 
     def test_rottamazione_quinquies_expanded_with_synonyms(self):
-        """Rottamazione quinquies queries should be expanded with legal synonyms (DEV-242 Phase 7)."""
+        """Rottamazione quinquies queries should be expanded with legal synonyms.
+
+        DEV-242 Phase 15: Prioritizes "pace fiscale" and "pacificazione" which
+        match doc 2080 (MEF summary) better for FTS ranking.
+        The function only adds the first 2 synonyms from TOPIC_SYNONYMS.
+        """
         from app.services.search_service import SearchService
 
         # Create a mock service to test normalization
@@ -270,9 +275,9 @@ class TestSynonymExpansion:
 
         result = service._normalize_italian_query("rottamazione quinquies")
 
-        # Query should be expanded with synonyms that ACTUALLY match law text
-        assert "definizione" in result  # Law uses "definizione di cui al comma 82"
-        assert "comma 82" in result  # Specific to quinquies (Legge 199/2025)
+        # DEV-242 Phase 15: First 2 synonyms are "pace fiscale" and "pacificazione"
+        assert "pace fiscale" in result
+        assert "pacificazione" in result
         # Original query preserved
         assert "rottamazione quinquies" in result
 
@@ -311,7 +316,10 @@ class TestSynonymExpansion:
         assert result == "calcolo IVA fattura"
 
     def test_extra_whitespace_normalized(self):
-        """Extra whitespace should be normalized."""
+        """Extra whitespace should be normalized.
+
+        DEV-242 Phase 15: Synonyms changed to "pace fiscale" and "pacificazione".
+        """
         from app.services.search_service import SearchService
 
         service = SearchService.__new__(SearchService)
@@ -320,8 +328,8 @@ class TestSynonymExpansion:
 
         # Extra whitespace normalized + synonyms added
         assert "rottamazione quinquies scadenze" in result
-        assert "definizione" in result
-        assert "comma 82" in result
+        assert "pace fiscale" in result
+        assert "pacificazione" in result
 
     def test_generic_rottamazione_expanded(self):
         """Generic rottamazione queries should be expanded with synonyms (DEV-242 Phase 7)."""

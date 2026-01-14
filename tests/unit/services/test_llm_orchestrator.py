@@ -152,32 +152,32 @@ class TestModelConfig:
     def test_simple_config_exists(self):
         """SIMPLE complexity should have model config.
 
-        DEV-242 Phase 13A: Upgraded to gpt-4o with 3000 max_tokens.
+        DEV-242 Phase 44: Upgraded to gpt-4o with 4500 max_tokens for complete responses.
         """
         config = ModelConfig.for_complexity(QueryComplexity.SIMPLE)
         assert config.model == "gpt-4o"  # DEV-242: Upgraded from gpt-4o-mini
         assert config.temperature == 0.3
-        assert config.max_tokens == 3000  # DEV-242: Doubled from 1500
+        assert config.max_tokens == 4500  # DEV-242 Phase 44: Increased from 3000
 
     def test_complex_config_exists(self):
         """COMPLEX complexity should have model config.
 
-        DEV-242 Phase 13A: Doubled max_tokens from 2500 to 5000.
+        DEV-242 Phase 44: Increased max_tokens to 6500 for complete responses.
         """
         config = ModelConfig.for_complexity(QueryComplexity.COMPLEX)
         assert config.model == "gpt-4o"
         assert config.temperature == 0.4
-        assert config.max_tokens == 5000  # DEV-242: Doubled from 2500
+        assert config.max_tokens == 6500  # DEV-242 Phase 44: Increased from 5000
 
     def test_multi_domain_config_exists(self):
         """MULTI_DOMAIN complexity should have model config.
 
-        DEV-242 Phase 13A: Doubled max_tokens from 3500 to 7000.
+        DEV-242 Phase 44: Increased max_tokens to 9000 for complete responses.
         """
         config = ModelConfig.for_complexity(QueryComplexity.MULTI_DOMAIN)
         assert config.model == "gpt-4o"
         assert config.temperature == 0.5
-        assert config.max_tokens == 7000  # DEV-242: Doubled from 3500
+        assert config.max_tokens == 9000  # DEV-242 Phase 44: Increased from 7000
 
     def test_config_has_cost_info(self):
         """Model config should have cost information."""

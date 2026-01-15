@@ -51,14 +51,19 @@ class TestStep40RetrievalResultIntegration:
         assert kb_results[0].get("id") == "doc1"
 
     @pytest.mark.asyncio
-    async def test_step40_prefers_knowledge_items_over_retrieval_result(self):
-        """knowledge_items should take priority over retrieval_result if both exist."""
+    async def test_step40_prefers_retrieval_result_over_knowledge_items(self):
+        """DEV-244: retrieval_result now takes priority over knowledge_items.
+
+        This is because only retrieval_result (after transformation) has source_url
+        for proper citation links in the Fonti section. knowledge_items from
+        legacy Step 39 lacks source_url.
+        """
         ctx = {
             "knowledge_items": [
                 {
                     "id": "ki1",
                     "content": "Knowledge item content",
-                    "title": "Priority doc",
+                    "title": "Legacy doc (no source_url)",
                 }
             ],
             "retrieval_result": {
@@ -66,6 +71,7 @@ class TestStep40RetrievalResultIntegration:
                     {
                         "document_id": "doc1",
                         "content": "Retrieval result content",
+                        "source_url": "https://example.com/doc1",  # Has source_url!
                         "score": 0.9,
                     }
                 ],
@@ -78,11 +84,11 @@ class TestStep40RetrievalResultIntegration:
 
         result = await step_40__build_context(ctx=ctx)
 
-        # Should use knowledge_items since it has priority
+        # DEV-244: Should use retrieval_result since it has source_url for Fonti
         kb_results = result.get("kb_results", [])
         assert len(kb_results) == 1
-        # Knowledge items have 'id' field, retrieval_result has 'document_id'
-        assert kb_results[0].get("id") == "ki1" or kb_results[0].get("content") == "Knowledge item content"
+        # retrieval_result has 'document_id' which becomes 'id' after transformation
+        assert kb_results[0].get("id") == "doc1" or kb_results[0].get("content") == "Retrieval result content"
 
     @pytest.mark.asyncio
     async def test_step40_handles_empty_retrieval_result(self):

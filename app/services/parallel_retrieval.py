@@ -52,6 +52,7 @@ GERARCHIA_FONTI = {
 SOURCE_AUTHORITY = {
     "gazzetta_ufficiale": 1.3,  # Official law source gets 30% boost
     "agenzia_entrate": 1.2,
+    "agenzia_entrate_riscossione": 1.2,  # DEV-244: ADeR official source
     "inps": 1.2,
     "corte_cassazione": 1.15,
     "ministero_economia_documenti": 0.9,  # Summaries penalized

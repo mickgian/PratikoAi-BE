@@ -1,4 +1,4 @@
-"""Step 100: Post-Response Proactivity Node (DEV-200, DEV-201, DEV-218).
+"""Step 100: Post-Response Proactivity Node (DEV-200, DEV-201, DEV-218, DEV-244).
 
 LangGraph node that adds suggested actions AFTER LLM response. It uses template
 actions for recognized document types, extracts from VERDETTO for technical_research,
@@ -6,15 +6,18 @@ or parses LLM response for contextual actions.
 
 DEV-201d: Integrates forbidden action filtering to prevent inappropriate suggestions.
 DEV-218: Integrates ActionValidator and Golden Loop regeneration.
+DEV-244: Topic-anchored action generation with zero actions support.
 
 The node:
 1. Checks if pre-proactivity already triggered (skip if so)
 2. Checks if chitchat route (skip if so)
 3. Gets actions from Step 64 unified output or falls back to legacy sources
-4. Validates actions using ActionValidator (DEV-215)
-5. Triggers ActionRegenerator if <2 valid actions (DEV-217 Golden Loop)
-6. Stores validation results in state
-7. Returns proactivity state update
+4. Builds topic context from user query and conversation
+5. Validates actions using ActionValidator with topic filtering (DEV-244)
+6. Triggers ActionRegenerator if <2 valid actions AND rejections aren't topic-based
+7. Allows zero actions when none are relevant (DEV-244)
+8. Stores validation results in state
+9. Returns proactivity state update
 
 Usage in graph:
     graph.add_node("PostProactivity", node_step_100)
@@ -44,6 +47,78 @@ NODE_LABEL = "step_100_post_proactivity"
 
 # DEV-200: Routes that use SYNTHESIS_SYSTEM_PROMPT (VERDETTO format)
 SYNTHESIS_ROUTES = {"technical_research"}
+
+# DEV-244: Italian verb/preposition prefixes to strip when extracting topic
+# These patterns at the start of a query are not the topic itself
+ITALIAN_QUERY_PREFIXES = [
+    "parlami della ",
+    "parlami del ",
+    "parlami di ",
+    "dimmi della ",
+    "dimmi del ",
+    "dimmi di ",
+    "spiegami la ",
+    "spiegami il ",
+    "spiegami ",
+    "cosa è la ",
+    "cosa è il ",
+    "cos'è la ",
+    "cos'è il ",
+    "cos'è ",
+    "che cos'è la ",
+    "che cos'è il ",
+    "che cos'è ",
+    "informazioni sulla ",
+    "informazioni sul ",
+    "informazioni su ",
+    "dettagli sulla ",
+    "dettagli sul ",
+    "dettagli su ",
+    "vorrei sapere della ",
+    "vorrei sapere del ",
+    "vorrei sapere di ",
+    "puoi spiegarmi la ",
+    "puoi spiegarmi il ",
+    "puoi spiegarmi ",
+    "mi parli della ",
+    "mi parli del ",
+    "mi parli di ",
+]
+
+
+def _extract_topic_from_query(query: str) -> str:
+    """DEV-244: Extract the actual topic from a user query.
+
+    Strips common Italian verb phrases and prepositions from the start of the query
+    to get the actual subject/topic the user is asking about.
+
+    Examples:
+        "Parlami della rottamazione quinquies" -> "rottamazione quinquies"
+        "Cosa è la pensione anticipata" -> "pensione anticipata"
+        "Informazioni sulla NASpI" -> "NASpI"
+
+    Args:
+        query: The user's query string
+
+    Returns:
+        The extracted topic, or the original query if no prefix matched
+    """
+    if not query:
+        return "argomento fiscale"
+
+    query_lower = query.lower().strip()
+
+    # Try to match and remove prefixes
+    for prefix in ITALIAN_QUERY_PREFIXES:
+        if query_lower.startswith(prefix):
+            # Return the remaining part with original casing
+            topic = query.strip()[len(prefix) :]
+            if topic:
+                return topic[:50]  # Limit length
+            break
+
+    # No prefix matched, return original (truncated)
+    return query[:50] if query else "argomento fiscale"
 
 
 def _build_proactivity_update(
@@ -148,9 +223,9 @@ def _build_response_context(state: RAGState) -> ResponseContext:
             "relevant_paragraph": first_source.get("relevant_paragraph", "")[:500],
         }
 
-    # Extract topic from query
+    # Extract topic from query (DEV-244: strip Italian verb prefixes)
     user_query = state.get("user_query", "")
-    main_topic = user_query[:50] if user_query else "argomento fiscale"
+    main_topic = _extract_topic_from_query(user_query)
 
     return ResponseContext(
         answer=response_content[:1000],
@@ -159,6 +234,188 @@ def _build_response_context(state: RAGState) -> ResponseContext:
         main_topic=main_topic,
         kb_sources=kb_sources,
     )
+
+
+def _build_topic_context(state: RAGState) -> dict | None:
+    """DEV-244: Build topic context for action validation.
+
+    Extracts topic keywords from user query and conversation history
+    to filter off-topic suggested actions.
+
+    Args:
+        state: Current RAG state
+
+    Returns:
+        Dict with current_topic and topic_keywords, or None if not available
+    """
+    user_query = state.get("user_query", "")
+    if not user_query:
+        return None
+
+    # Extract significant words from user query as keywords
+    # Filter out common Italian stop words and short words
+    stop_words = {
+        "il",
+        "lo",
+        "la",
+        "i",
+        "gli",
+        "le",
+        "un",
+        "una",
+        "uno",
+        "del",
+        "della",
+        "dello",
+        "dei",
+        "delle",
+        "degli",
+        "al",
+        "alla",
+        "allo",
+        "ai",
+        "alle",
+        "agli",
+        "da",
+        "dal",
+        "dalla",
+        "dallo",
+        "dai",
+        "dalle",
+        "dagli",
+        "in",
+        "nel",
+        "nella",
+        "nello",
+        "nei",
+        "nelle",
+        "negli",
+        "su",
+        "sul",
+        "sulla",
+        "sullo",
+        "sui",
+        "sulle",
+        "sugli",
+        "con",
+        "per",
+        "tra",
+        "fra",
+        "di",
+        "a",
+        "e",
+        "o",
+        "che",
+        "come",
+        "cosa",
+        "quale",
+        "quali",
+        "quanto",
+        "questo",
+        "questa",
+        "questi",
+        "queste",
+        "quello",
+        "quella",
+        "quelli",
+        "quelle",
+        "sono",
+        "è",
+        "hai",
+        "ho",
+        "ha",
+        "hanno",
+        "essere",
+        "avere",
+        "fare",
+        "dire",
+        "parlami",
+        "dimmi",
+        "spiegami",
+        "raccontami",
+        "vorrei",
+        "sapere",
+        "conoscere",
+        "capire",
+    }
+
+    # Extract keywords from query
+    import re
+
+    words = re.findall(r"\b\w+\b", user_query.lower())
+    keywords = [w for w in words if len(w) > 2 and w not in stop_words]
+
+    # Also add KB source topics as keywords
+    kb_sources = state.get("kb_sources_metadata", [])
+    for source in kb_sources:
+        source_topics = source.get("key_topics", [])
+        for topic in source_topics:
+            if topic.lower() not in keywords:
+                keywords.append(topic.lower())
+
+    # Add keywords from conversation history (last 2 turns)
+    conversation_history = state.get("conversation_history", [])
+    for msg in conversation_history[-4:]:  # Last 2 exchanges
+        if msg.get("role") == "user":
+            msg_words = re.findall(r"\b\w+\b", msg.get("content", "").lower())
+            for w in msg_words:
+                if len(w) > 3 and w not in stop_words and w not in keywords:
+                    keywords.append(w)
+
+    if not keywords:
+        return None
+
+    return {
+        "current_topic": user_query[:100],
+        "topic_keywords": keywords[:20],  # Limit to 20 keywords
+        "user_query": user_query,
+    }
+
+
+def _extract_previous_action_labels(state: RAGState) -> list[str]:
+    """DEV-244: Extract labels of previously clicked actions from conversation history.
+
+    When a user clicks a suggested action, the message includes ActionContext
+    with selected_action_label. This function extracts all such labels to prevent
+    suggesting the same action again.
+
+    Args:
+        state: Current RAG state with messages
+
+    Returns:
+        List of previously clicked action labels (empty if none)
+    """
+    previous_labels: list[str] = []
+    messages = state.get("messages", [])
+
+    for msg in messages:
+        # Messages can be dicts or LangChain message objects
+        if isinstance(msg, dict):
+            action_context = msg.get("action_context")
+        else:
+            # LangChain message object
+            action_context = getattr(msg, "action_context", None)
+
+        if action_context:
+            # action_context can be dict or ActionContext object
+            if isinstance(action_context, dict):
+                label = action_context.get("selected_action_label")
+            else:
+                label = getattr(action_context, "selected_action_label", None)
+
+            if label and label not in previous_labels:
+                previous_labels.append(label)
+
+    if previous_labels:
+        logger.debug(
+            "extracted_previous_action_labels",
+            extra={
+                "count": len(previous_labels),
+                "labels": previous_labels,
+            },
+        )
+
+    return previous_labels
 
 
 def _build_validation_result_state(
@@ -367,14 +624,23 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
                     )
 
         # =====================================================================
-        # Phase 2: Validate actions using ActionValidator (DEV-218)
+        # Phase 2: Validate actions using ActionValidator (DEV-218, DEV-244)
         # =====================================================================
         response_text = _get_response_content(state)
 
-        validation_result = action_validator.validate_batch(
+        # DEV-244: Build topic context for filtering off-topic actions
+        topic_context = _build_topic_context(state)
+
+        # DEV-244: Extract previously clicked action labels to avoid repetition
+        previous_action_labels = _extract_previous_action_labels(state)
+
+        # DEV-244: Use topic-aware validation with previous action filtering
+        validation_result = action_validator.validate_batch_with_topic_context(
             actions=actions,
             response_text=response_text,
             kb_sources=kb_sources,
+            topic_context=topic_context,
+            previous_actions_used=previous_action_labels,  # DEV-244: Filter repeated actions
         )
 
         logger.debug(
@@ -385,15 +651,39 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
                 "validated_count": len(validation_result.validated_actions),
                 "rejected_count": validation_result.rejected_count,
                 "quality_score": validation_result.quality_score,
+                "topic_context_available": topic_context is not None,
+                "previous_actions_filtered": len(previous_action_labels),  # DEV-244
             },
         )
 
         # =====================================================================
         # Phase 3: Trigger regeneration if needed (DEV-218 Golden Loop)
+        # DEV-244: Skip regeneration if all rejections are topic-based
         # =====================================================================
         final_actions = validation_result.validated_actions
 
-        if len(validation_result.validated_actions) < MIN_VALID_ACTIONS:
+        # DEV-244: Check if all rejections were topic-based
+        # If so, skip regeneration (regenerating would produce more off-topic actions)
+        all_topic_rejections = action_validator.all_rejections_topic_based(validation_result.rejection_log)
+
+        should_regenerate = (
+            len(validation_result.validated_actions) < MIN_VALID_ACTIONS
+            and not all_topic_rejections  # DEV-244: Don't regenerate for topic-filtered
+        )
+
+        # DEV-244: Log when skipping regeneration due to topic filtering
+        if all_topic_rejections and len(validation_result.validated_actions) < MIN_VALID_ACTIONS:
+            logger.info(
+                "step_100_regeneration_skipped_topic_filtered",
+                extra={
+                    "request_id": request_id,
+                    "valid_count": len(validation_result.validated_actions),
+                    "rejected_count": validation_result.rejected_count,
+                    "reason": "All rejections were topic-based, regeneration would produce more off-topic actions",
+                },
+            )
+
+        if should_regenerate:
             logger.info(
                 "step_100_regeneration_triggered",
                 extra={

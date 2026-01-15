@@ -3358,6 +3358,38 @@ class LangGraphAgent:
                         sources_count=len(structured_sources),
                     )
 
+                # DEV-244: Yield KB source URLs (deterministic, independent of LLM output)
+                # This guarantees all KB sources appear in Fonti, regardless of what LLM outputs
+                kb_sources = state.get("kb_sources_metadata", [])
+                if kb_sources:
+                    import json as _json_kb
+
+                    # Deduplicate by URL
+                    seen_urls: set[str] = set()
+                    sources_with_urls: list[dict[str, Any]] = []
+                    for s in kb_sources:
+                        url = s.get("url")
+                        if url and url not in seen_urls:
+                            seen_urls.add(url)
+                            sources_with_urls.append(
+                                {
+                                    "title": s.get("title", ""),
+                                    "url": url,
+                                    "type": s.get("type", ""),
+                                    "date": s.get("date", ""),
+                                }
+                            )
+
+                    if sources_with_urls:
+                        kb_urls_json = _json_kb.dumps(sources_with_urls)
+                        yield f"__KB_SOURCE_URLS__:{kb_urls_json}"
+                        logger.info(
+                            "kb_source_urls_yielded",
+                            session_id=session_id,
+                            sources_count=len(sources_with_urls),
+                            urls=[s["url"][:50] for s in sources_with_urls],
+                        )
+
                 return  # Exit without making second LLM call
 
             # DIAGNOSTIC: We reached the fallback streaming path (content was not found)

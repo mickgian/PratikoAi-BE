@@ -3358,6 +3358,46 @@ class LangGraphAgent:
                         sources_count=len(structured_sources),
                     )
 
+                # DEV-244: Yield KB source URLs (deterministic, independent of LLM output)
+                # This guarantees all KB sources appear in Fonti, regardless of what LLM outputs
+                kb_sources = state.get("kb_sources_metadata", [])
+                if kb_sources:
+                    import json as _json_kb
+
+                    # DEV-244 FIX: Deduplicate by URL but keep the LONGEST title per URL
+                    # Multiple knowledge_items may exist for same URL with different titles
+                    # (e.g., "Legge n. 199/2025" vs "LEGGE 30 dicembre 2025, n. 199 - Art. 1")
+                    # Keeping longest ensures consistent, more descriptive display
+                    url_to_source: dict[str, dict[str, Any]] = {}
+                    for s in kb_sources:
+                        url = s.get("url")
+                        if not url:
+                            continue
+                        title = s.get("title", "")
+                        if url not in url_to_source:
+                            url_to_source[url] = {
+                                "title": title,
+                                "url": url,
+                                "type": s.get("type", ""),
+                                "date": s.get("date", ""),
+                            }
+                        else:
+                            # Keep longest title (more descriptive)
+                            existing_title = url_to_source[url].get("title", "")
+                            if len(title) > len(existing_title):
+                                url_to_source[url]["title"] = title
+                    sources_with_urls = list(url_to_source.values())
+
+                    if sources_with_urls:
+                        kb_urls_json = _json_kb.dumps(sources_with_urls)
+                        yield f"__KB_SOURCE_URLS__:{kb_urls_json}"
+                        logger.info(
+                            "kb_source_urls_yielded",
+                            session_id=session_id,
+                            sources_count=len(sources_with_urls),
+                            urls=[s["url"][:50] for s in sources_with_urls],
+                        )
+
                 return  # Exit without making second LLM call
 
             # DIAGNOSTIC: We reached the fallback streaming path (content was not found)

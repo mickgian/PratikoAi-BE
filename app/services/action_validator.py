@@ -8,6 +8,11 @@ DEV-215: Comprehensive validation layer for suggested actions including:
 - Source grounding validation
 - Icon normalization
 - Quality scoring
+
+DEV-244: Enhanced with topic relevance validation:
+- Topic drift prevention
+- Label truncation detection
+- Zero actions graceful handling
 """
 
 import re
@@ -17,8 +22,68 @@ from app.core.logging import logger
 
 # Label length constraints
 MIN_LABEL_LENGTH = 8
-MAX_LABEL_LENGTH = 40
+MAX_LABEL_LENGTH = 50  # DEV-244: Increased to allow complete phrases like "Rottamazione Quinquies"
 MIN_PROMPT_LENGTH = 25
+
+# DEV-244: Italian words that indicate truncated/incomplete labels
+TRAILING_PREPOSITIONS: frozenset[str] = frozenset(
+    {
+        "su",
+        "di",
+        "per",
+        "a",
+        "in",
+        "con",
+        "da",
+        "tra",
+        "fra",
+        "del",
+        "della",
+        "dello",
+        "dei",
+        "delle",
+        "degli",
+        "al",
+        "alla",
+        "allo",
+        "ai",
+        "alle",
+        "agli",
+        "dal",
+        "dalla",
+        "dallo",
+        "dai",
+        "dalle",
+        "dagli",
+        "nel",
+        "nella",
+        "nello",
+        "nei",
+        "nelle",
+        "negli",
+        "sul",
+        "sulla",
+        "sullo",
+        "sui",
+        "sulle",
+        "sugli",
+    }
+)
+
+TRAILING_ARTICLES: frozenset[str] = frozenset(
+    {
+        "il",
+        "lo",
+        "la",
+        "i",
+        "gli",
+        "le",
+        "un",
+        "uno",
+        "una",
+        "l",  # For "l'" contractions
+    }
+)
 
 # Generic labels that are too vague (Italian)
 GENERIC_LABELS: frozenset[str] = frozenset(
@@ -213,10 +278,15 @@ class ActionValidator:
         if not label_result.is_valid:
             return label_result
 
-        # Check for label truncation (too long)
+        # DEV-244: Check for truncated/incomplete labels BEFORE truncating long ones
+        truncation_result = self._check_label_truncation(label)
+        if not truncation_result.is_valid:
+            return truncation_result
+
+        # Check for label truncation (too long) - use word-boundary truncation
         if len(label) > MAX_LABEL_LENGTH:
             modified_action = dict(action)
-            modified_action["label"] = label[:MAX_LABEL_LENGTH]
+            modified_action["label"] = self._truncate_label_at_word_boundary(label, MAX_LABEL_LENGTH)
             label = modified_action["label"]
 
         # Check prompt length
@@ -329,6 +399,91 @@ class ActionValidator:
             return ValidationResult(
                 is_valid=False,
                 rejection_reason=f"Label too short: {len(label)} chars (minimum {MIN_LABEL_LENGTH})",
+                warnings=[],
+                modified_action=None,
+            )
+
+        return ValidationResult(
+            is_valid=True,
+            rejection_reason=None,
+            warnings=[],
+            modified_action=None,
+        )
+
+    def _truncate_label_at_word_boundary(self, label: str, max_length: int = 50) -> str:
+        """DEV-244: Truncate label at word boundary, not mid-word.
+
+        Prevents ugly truncations like "Rottamazione Quinq" by finding the
+        last space before max_length and cutting there.
+
+        Args:
+            label: The label text to truncate
+            max_length: Maximum allowed length
+
+        Returns:
+            Truncated label at word boundary, or hard truncate if no good space found
+        """
+        if len(label) <= max_length:
+            return label
+
+        # Find last space before max_length
+        truncated = label[:max_length]
+        last_space = truncated.rfind(" ")
+
+        # Only use word boundary if it's reasonable (not cutting too much)
+        if last_space > max_length // 2:
+            return truncated[:last_space].rstrip()
+
+        # Fallback to hard truncate if no good space found
+        return truncated
+
+    def _check_label_truncation(self, label: str) -> ValidationResult:
+        """DEV-244: Check if label appears truncated or incomplete.
+
+        Detects labels that end with prepositions, articles, or look
+        like they were cut off mid-phrase.
+
+        Args:
+            label: Action label text
+
+        Returns:
+            ValidationResult - invalid if label appears truncated
+        """
+        label_stripped = label.strip()
+        if not label_stripped:
+            return ValidationResult(
+                is_valid=False,
+                rejection_reason="Label is empty or whitespace only",
+                warnings=[],
+                modified_action=None,
+            )
+
+        # Get last word
+        words = label_stripped.split()
+        if not words:
+            return ValidationResult(
+                is_valid=False,
+                rejection_reason="Label contains no words",
+                warnings=[],
+                modified_action=None,
+            )
+
+        last_word = words[-1].lower().rstrip("'")  # Handle "l'" -> "l"
+
+        # Check for trailing prepositions
+        if last_word in TRAILING_PREPOSITIONS:
+            return ValidationResult(
+                is_valid=False,
+                rejection_reason=f"Label appears truncated: ends with preposition '{last_word}'",
+                warnings=[],
+                modified_action=None,
+            )
+
+        # Check for trailing articles
+        if last_word in TRAILING_ARTICLES:
+            return ValidationResult(
+                is_valid=False,
+                rejection_reason=f"Label appears truncated: ends with article '{last_word}'",
                 warnings=[],
                 modified_action=None,
             )
@@ -767,6 +922,194 @@ class ActionValidator:
                 filtered.append(action)
 
         return filtered
+
+    # =========================================================================
+    # DEV-244: Topic Relevance Validation
+    # =========================================================================
+
+    def validate_topic_relevance(
+        self,
+        action: dict,
+        topic_context: dict | None,
+    ) -> ValidationResult:
+        """DEV-244: Validate that action is relevant to current topic.
+
+        Prevents topic drift by checking if action relates to conversation topic.
+
+        Args:
+            action: Action dict with label and prompt
+            topic_context: Dict with current_topic and topic_keywords
+
+        Returns:
+            ValidationResult - invalid if action is off-topic
+        """
+        # If no topic context, allow all actions (fallback behavior)
+        if not topic_context:
+            return ValidationResult(
+                is_valid=True,
+                rejection_reason=None,
+                warnings=[],
+                modified_action=None,
+            )
+
+        topic_keywords = topic_context.get("topic_keywords", [])
+        current_topic = topic_context.get("current_topic", "")
+
+        # If no keywords defined, allow all
+        if not topic_keywords and not current_topic:
+            return ValidationResult(
+                is_valid=True,
+                rejection_reason=None,
+                warnings=[],
+                modified_action=None,
+            )
+
+        # Extract action text for matching
+        label = action.get("label", "").lower()
+        prompt = action.get("prompt", "").lower()
+        action_text = f"{label} {prompt}"
+
+        # Check if any topic keyword appears in action
+        keywords_to_check = [k.lower() for k in topic_keywords]
+        if current_topic:
+            # Add current topic words as keywords too
+            keywords_to_check.extend(current_topic.lower().split())
+
+        for keyword in keywords_to_check:
+            if len(keyword) >= 3 and keyword in action_text:
+                return ValidationResult(
+                    is_valid=True,
+                    rejection_reason=None,
+                    warnings=[],
+                    modified_action=None,
+                )
+
+        # No topic keyword found - action is off-topic
+        return ValidationResult(
+            is_valid=False,
+            rejection_reason=f"Off-topic: action not related to '{current_topic or 'current topic'}'",
+            warnings=[],
+            modified_action=None,
+        )
+
+    def validate_batch_with_topic_context(
+        self,
+        actions: list[dict],
+        response_text: str,
+        kb_sources: list[dict],
+        topic_context: dict | None = None,
+        previous_actions_used: list[str] | None = None,
+    ) -> BatchValidationResult:
+        """DEV-244: Validate actions with topic context filtering.
+
+        Enhanced validation that:
+        - Filters off-topic actions
+        - Allows returning zero actions when none are relevant
+        - Prevents topic drift in multi-turn conversations
+
+        Args:
+            actions: List of action dicts to validate
+            response_text: LLM response text (for context)
+            kb_sources: KB source metadata for grounding checks
+            topic_context: Dict with current_topic and topic_keywords
+            previous_actions_used: Labels of actions user already clicked
+
+        Returns:
+            BatchValidationResult with topic-filtered actions
+        """
+        if not actions:
+            return BatchValidationResult(
+                validated_actions=[],
+                rejected_count=0,
+                rejection_log=[],
+                quality_score=0.0,
+            )
+
+        validated_actions: list[dict] = []
+        rejection_log: list[tuple[dict, str]] = []
+
+        for action in actions:
+            # First, standard validation
+            result = self.validate(action, kb_sources)
+
+            if not result.is_valid:
+                rejection_log.append((action, result.rejection_reason or "Unknown"))
+                logger.info(
+                    "action_rejected",
+                    reason=result.rejection_reason,
+                    action_label=action.get("label", "")[:50],
+                )
+                continue
+
+            # Use modified action if available
+            final_action = result.modified_action if result.modified_action else action
+
+            # Second, topic relevance check
+            topic_result = self.validate_topic_relevance(final_action, topic_context)
+
+            if not topic_result.is_valid:
+                rejection_log.append((action, topic_result.rejection_reason or "Off-topic"))
+                logger.info(
+                    "action_rejected_off_topic",
+                    reason=topic_result.rejection_reason,
+                    action_label=action.get("label", "")[:50],
+                    topic=topic_context.get("current_topic", "") if topic_context else "",
+                )
+                continue
+
+            validated_actions.append(final_action)
+
+            # Log warnings from standard validation
+            for warning in result.warnings:
+                logger.warning(
+                    "action_validation_warning",
+                    warning=warning,
+                    action_label=action.get("label", "")[:50],
+                )
+
+        # Remove previously used actions
+        if previous_actions_used:
+            validated_actions = self._filter_previously_used(
+                validated_actions,
+                previous_actions_used,
+            )
+
+        # Deduplicate similar actions
+        validated_actions = self._deduplicate_actions(validated_actions)
+
+        # Calculate quality score
+        total = len(actions)
+        valid_count = len(validated_actions)
+        quality_score = valid_count / total if total > 0 else 0.0
+
+        return BatchValidationResult(
+            validated_actions=validated_actions,
+            rejected_count=len(rejection_log),
+            rejection_log=rejection_log,
+            quality_score=quality_score,
+        )
+
+    def all_rejections_topic_based(self, rejection_log: list[tuple[dict, str]]) -> bool:
+        """DEV-244: Check if all rejections were due to topic filtering.
+
+        Used to determine if regeneration should be skipped (regenerating
+        would just produce more off-topic actions).
+
+        Args:
+            rejection_log: List of (action, reason) tuples
+
+        Returns:
+            True if all rejections contain "off-topic" or "topic" in reason
+        """
+        if not rejection_log:
+            return False
+
+        for _, reason in rejection_log:
+            reason_lower = reason.lower()
+            if "off-topic" not in reason_lower and "topic" not in reason_lower:
+                return False
+
+        return True
 
 
 # Singleton instance for convenience

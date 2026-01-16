@@ -235,7 +235,7 @@ class StreamResponse(BaseModel):
     content: str = Field(default="", description="The content of the current chunk")
     done: bool = Field(default=False, description="Whether the stream is complete")
 
-    # Proactivity and reasoning fields (DEV-159, DEV-201, DEV-242) - Optional for backward compatibility
+    # Proactivity and reasoning fields (DEV-159, DEV-201, DEV-242, DEV-244) - Optional for backward compatibility
     event_type: (
         Literal[
             "content",
@@ -244,6 +244,7 @@ class StreamResponse(BaseModel):
             "interactive_question",
             "reasoning",
             "structured_sources",
+            "kb_source_urls",  # DEV-244: Deterministic KB source URLs
         ]
         | None
     ) = Field(default=None, description="Type of SSE event for proactivity or reasoning")
@@ -256,4 +257,8 @@ class StreamResponse(BaseModel):
     # DEV-242 Phase 12B: Structured sources for proper frontend rendering
     structured_sources: list[dict[str, Any]] | None = Field(
         default=None, description="Structured source citations parsed from LLM response"
+    )
+    # DEV-244: Deterministic KB source URLs (independent of LLM output)
+    kb_source_urls: list[dict[str, Any]] | None = Field(
+        default=None, description="Source URLs from KB retrieval (deterministic, always complete)"
     )

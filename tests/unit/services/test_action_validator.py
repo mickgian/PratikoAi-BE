@@ -130,17 +130,21 @@ class TestLabelLengthValidation:
             assert "too short" not in result.rejection_reason.lower()
 
     def test_truncates_long_label(self, validator):
-        """Labels >40 chars should be truncated, not rejected."""
+        """DEV-244: Labels >50 chars should be truncated at word boundary, not rejected."""
         long_label = "Calcola i contributi previdenziali INPS per il regime forfettario 2024"
-        assert len(long_label) > 40
+        assert len(long_label) > 50  # 70 chars
         action = {"label": long_label, "prompt": "Calcola i contributi previdenziali"}
         result = validator.validate(action, kb_sources=[])
         # Should be valid (truncated, not rejected)
         if result.is_valid and result.modified_action:
-            assert len(result.modified_action["label"]) <= 40
+            truncated_label = result.modified_action["label"]
+            assert len(truncated_label) <= 50
+            # Word-boundary truncation: should NOT end mid-word
+            assert not truncated_label.endswith("forfet")  # Would be mid-word cut
+            assert " " not in truncated_label[-1:]  # Should not end with space
 
     def test_accepts_valid_length_label(self, validator):
-        """Labels 8-40 chars should be accepted as-is."""
+        """Labels 8-50 chars should be accepted as-is."""
         action = {"label": "Calcola contributi INPS", "prompt": "Calcola i contributi dovuti all'INPS"}
         result = validator.validate(action, kb_sources=[])
         # Should pass label length check (may fail other checks)
@@ -942,3 +946,300 @@ class TestDEV242IntegrationScenarios:
         # Action 1 should be filtered (exact match to previously used)
         assert len(result.validated_actions) == 1
         assert result.validated_actions[0]["id"] == "2"
+
+
+class TestDEV244TopicRelevanceValidation:
+    """DEV-244: Topic relevance validation to prevent topic drift."""
+
+    @pytest.fixture
+    def validator(self):
+        return ActionValidator()
+
+    @pytest.fixture
+    def rottamazione_context(self):
+        """Context about rottamazione quinquies."""
+        return {
+            "current_topic": "rottamazione quinquies",
+            "topic_keywords": ["rottamazione", "quinquies", "definizione agevolata", "rate", "scadenze"],
+            "user_query": "Parlami della rottamazione quinquies",
+        }
+
+    @pytest.fixture
+    def kb_sources_rottamazione(self):
+        return [
+            {
+                "title": "Rottamazione quinquies 2026",
+                "key_topics": ["rottamazione", "quinquies", "definizione agevolata", "rate"],
+            },
+        ]
+
+    def test_rejects_off_topic_action(self, validator, rottamazione_context):
+        """Actions unrelated to current topic should be rejected."""
+        action = {
+            "label": "Calcola IRPEF dovuta",
+            "prompt": "Calcola l'IRPEF dovuta per l'anno 2024 con aliquote progressive",
+        }
+        result = validator.validate_topic_relevance(action, rottamazione_context)
+
+        assert result.is_valid is False
+        assert "topic" in result.rejection_reason.lower() or "rilevante" in result.rejection_reason.lower()
+
+    def test_accepts_on_topic_action(self, validator, rottamazione_context):
+        """Actions related to current topic should pass."""
+        action = {
+            "label": "Scadenze rottamazione quinquies",
+            "prompt": "Quali sono le scadenze per la rottamazione quinquies?",
+        }
+        result = validator.validate_topic_relevance(action, rottamazione_context)
+
+        assert result.is_valid is True
+
+    def test_accepts_action_with_keyword_in_label(self, validator, rottamazione_context):
+        """Actions with topic keywords in label should pass."""
+        action = {
+            "label": "Rate rottamazione 2026",
+            "prompt": "Quante rate sono previste per il pagamento?",
+        }
+        result = validator.validate_topic_relevance(action, rottamazione_context)
+
+        assert result.is_valid is True
+
+    def test_accepts_action_with_keyword_in_prompt(self, validator, rottamazione_context):
+        """Actions with topic keywords in prompt should pass."""
+        action = {
+            "label": "Calcola importo totale",
+            "prompt": "Calcola l'importo totale dovuto per la rottamazione quinquies",
+        }
+        result = validator.validate_topic_relevance(action, rottamazione_context)
+
+        assert result.is_valid is True
+
+    def test_rejects_generic_tax_action_off_topic(self, validator, rottamazione_context):
+        """Generic tax actions unrelated to current topic should be rejected."""
+        action = {
+            "label": "Aliquote IVA vigenti",
+            "prompt": "Quali sono le aliquote IVA attualmente vigenti in Italia?",
+        }
+        result = validator.validate_topic_relevance(action, rottamazione_context)
+
+        assert result.is_valid is False
+
+    def test_handles_empty_context(self, validator):
+        """Empty context should not reject actions (fallback behavior)."""
+        action = {
+            "label": "Calcola contributi INPS",
+            "prompt": "Calcola i contributi INPS per regime forfettario",
+        }
+        empty_context = {}
+        result = validator.validate_topic_relevance(action, empty_context)
+
+        # With empty context, should not reject based on topic
+        assert result.is_valid is True
+
+    def test_handles_none_context(self, validator):
+        """None context should not reject actions (fallback behavior)."""
+        action = {
+            "label": "Calcola contributi INPS",
+            "prompt": "Calcola i contributi INPS per regime forfettario",
+        }
+        result = validator.validate_topic_relevance(action, None)
+
+        assert result.is_valid is True
+
+
+class TestDEV244LabelTruncationPrevention:
+    """DEV-244: Prevent truncated labels - labels must be complete phrases."""
+
+    @pytest.fixture
+    def validator(self):
+        return ActionValidator()
+
+    def test_rejects_truncated_label_ending_mid_word(self, validator):
+        """Labels ending mid-word (truncated) should be rejected."""
+        action = {
+            "label": "Dettagli su Parlami della",  # Clearly truncated/nonsensical
+            "prompt": "Mostra dettagli sulla rottamazione quinquies",
+        }
+        result = validator.validate(action, kb_sources=[])
+
+        assert result.is_valid is False
+        assert "truncat" in result.rejection_reason.lower() or "incomplete" in result.rejection_reason.lower()
+
+    def test_rejects_label_ending_with_preposition(self, validator):
+        """Labels ending with hanging prepositions are likely truncated."""
+        action = {
+            "label": "Informazioni su",  # Ends with preposition - incomplete
+            "prompt": "Mostra informazioni dettagliate sulla normativa",
+        }
+        result = validator.validate(action, kb_sources=[])
+
+        assert result.is_valid is False
+
+    def test_rejects_label_ending_with_article(self, validator):
+        """Labels ending with articles are likely truncated."""
+        action = {
+            "label": "Calcola il",  # Ends with article - incomplete
+            "prompt": "Calcola l'importo dovuto per il pagamento",
+        }
+        result = validator.validate(action, kb_sources=[])
+
+        assert result.is_valid is False
+
+    def test_accepts_complete_label(self, validator):
+        """Complete, meaningful labels should be accepted."""
+        action = {
+            "label": "Calcola contributi INPS",
+            "prompt": "Calcola i contributi INPS per il regime forfettario 2024",
+        }
+        result = validator.validate(action, kb_sources=[])
+
+        # Should not be rejected for truncation
+        if not result.is_valid:
+            assert "truncat" not in result.rejection_reason.lower()
+            assert "incomplete" not in result.rejection_reason.lower()
+
+    def test_accepts_label_ending_with_noun(self, validator):
+        """Labels ending with nouns (complete phrases) should be accepted."""
+        action = {
+            "label": "Scadenze fiscali 2026",
+            "prompt": "Mostra le scadenze fiscali per l'anno 2026",
+        }
+        result = validator.validate(action, kb_sources=[])
+
+        if not result.is_valid:
+            assert "truncat" not in result.rejection_reason.lower()
+
+    def test_accepts_label_ending_with_number(self, validator):
+        """Labels ending with numbers (often valid) should be accepted."""
+        action = {
+            "label": "Aliquota IVA 22%",
+            "prompt": "Calcola l'IVA con aliquota ordinaria al 22%",
+        }
+        result = validator.validate(action, kb_sources=[])
+
+        if not result.is_valid:
+            assert "truncat" not in result.rejection_reason.lower()
+
+
+class TestDEV244ZeroActionsGraceful:
+    """DEV-244: System should accept zero actions gracefully when none are relevant."""
+
+    @pytest.fixture
+    def validator(self):
+        return ActionValidator()
+
+    def test_empty_validated_actions_is_valid(self, validator):
+        """Returning 0 validated actions should be valid (not an error)."""
+        result = validator.validate_batch([], response_text="", kb_sources=[])
+
+        # Empty is valid - just means no actions
+        assert result.validated_actions == []
+        assert result.rejected_count == 0
+
+    def test_all_rejected_returns_empty_list(self, validator):
+        """When all actions are rejected, should return empty list gracefully."""
+        actions = [
+            {"label": "Bad", "prompt": "x"},  # Too short
+            {"label": "No", "prompt": "y"},  # Too short
+        ]
+        result = validator.validate_batch(actions, response_text="", kb_sources=[])
+
+        assert result.validated_actions == []
+        assert result.rejected_count == 2
+        # This is valid behavior, not an error
+
+    def test_validate_batch_with_topic_filter_can_return_zero(self, validator):
+        """When topic filter removes all actions, should return empty gracefully."""
+        actions = [
+            {"label": "Calcola IRPEF 2024", "prompt": "Calcola l'IRPEF con aliquote progressive"},
+            {"label": "Aliquote IVA vigenti", "prompt": "Quali sono le aliquote IVA in Italia?"},
+        ]
+        topic_context = {
+            "current_topic": "rottamazione quinquies",
+            "topic_keywords": ["rottamazione", "quinquies", "rate"],
+        }
+
+        result = validator.validate_batch_with_topic_context(
+            actions=actions,
+            response_text="Info sulla rottamazione quinquies",
+            kb_sources=[],
+            topic_context=topic_context,
+        )
+
+        # All off-topic actions filtered = empty list is valid
+        assert result.validated_actions == []
+
+
+class TestDEV244BatchValidationWithTopic:
+    """DEV-244: Batch validation with topic context integration."""
+
+    @pytest.fixture
+    def validator(self):
+        return ActionValidator()
+
+    @pytest.fixture
+    def topic_context(self):
+        return {
+            "current_topic": "rottamazione quinquies",
+            "topic_keywords": ["rottamazione", "quinquies", "definizione agevolata", "rate", "scadenze"],
+        }
+
+    @pytest.fixture
+    def kb_sources(self):
+        return [{"title": "Rottamazione", "key_topics": ["rottamazione", "quinquies"]}]
+
+    def test_filters_off_topic_actions_in_batch(self, validator, topic_context, kb_sources):
+        """Off-topic actions are filtered in batch validation."""
+        actions = [
+            {
+                "id": "1",
+                "label": "Scadenze rottamazione quinquies",  # On topic
+                "prompt": "Quali sono le scadenze per la rottamazione quinquies?",
+            },
+            {
+                "id": "2",
+                "label": "Calcola IRPEF 2024",  # Off topic
+                "prompt": "Calcola l'IRPEF dovuta per l'anno fiscale 2024",
+            },
+            {
+                "id": "3",
+                "label": "Rate definizione agevolata",  # On topic
+                "prompt": "Quante rate sono previste per la definizione agevolata?",
+            },
+        ]
+
+        result = validator.validate_batch_with_topic_context(
+            actions=actions,
+            response_text="Test",
+            kb_sources=kb_sources,
+            topic_context=topic_context,
+        )
+
+        # Only on-topic actions should pass
+        assert len(result.validated_actions) == 2
+        action_ids = [a["id"] for a in result.validated_actions]
+        assert "1" in action_ids
+        assert "3" in action_ids
+        assert "2" not in action_ids
+
+    def test_logs_off_topic_rejections(self, validator, topic_context, kb_sources):
+        """Off-topic rejections are logged with clear reason."""
+        actions = [
+            {
+                "id": "1",
+                "label": "Calcola IRPEF 2024",
+                "prompt": "Calcola l'IRPEF per l'anno 2024 con le aliquote progressive",
+            },
+        ]
+
+        result = validator.validate_batch_with_topic_context(
+            actions=actions,
+            response_text="Test",
+            kb_sources=kb_sources,
+            topic_context=topic_context,
+        )
+
+        assert result.rejected_count == 1
+        assert len(result.rejection_log) == 1
+        _, reason = result.rejection_log[0]
+        assert "topic" in reason.lower() or "rilevante" in reason.lower()

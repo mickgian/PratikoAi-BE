@@ -26,6 +26,69 @@ def _get_msg_role(msg: Any) -> str | None:
     return getattr(msg, "role", None)
 
 
+def _extract_previous_action_labels(messages: list[Any] | None) -> list[str]:
+    """DEV-244: Extract labels of previously clicked actions from conversation history.
+
+    When a user clicks a suggested action, the message includes action_context
+    with the selected_action_label. This function extracts all such labels
+    so the LLM can avoid generating semantically similar actions.
+
+    Args:
+        messages: List of conversation messages
+
+    Returns:
+        List of unique previously clicked action labels
+    """
+    if not messages:
+        return []
+
+    previous_labels: list[str] = []
+
+    for msg in messages:
+        # Handle both dict and object formats
+        if isinstance(msg, dict):
+            action_context = msg.get("action_context")
+        else:
+            action_context = getattr(msg, "action_context", None)
+
+        if action_context:
+            # Extract the label from action_context
+            if isinstance(action_context, dict):
+                label = action_context.get("selected_action_label")
+            else:
+                label = getattr(action_context, "selected_action_label", None)
+
+            if label and label not in previous_labels:
+                previous_labels.append(label)
+
+    return previous_labels
+
+
+def _format_previous_actions_for_prompt(previous_labels: list[str]) -> str:
+    """Format previous action labels for injection into LLM prompt.
+
+    Args:
+        previous_labels: List of previously clicked action labels
+
+    Returns:
+        Formatted string for prompt injection, or empty guidance if no previous actions
+    """
+    if not previous_labels:
+        return "(Nessuna azione ancora selezionata dall'utente)"
+
+    # Format as bullet list with semantic similarity warning
+    actions_list = "\n".join(f"- {label}" for label in previous_labels)
+    return f"""{actions_list}
+
+⚠️ NON suggerire azioni semanticamente simili a quelle sopra.
+Esempi di varianti da EVITARE:
+- "Verifica X" ≈ "Controlla X" ≈ "Controlla le X"
+- "Calcola Y" ≈ "Calcola l'Y" ≈ "Computa Y"
+- "Dettagli su Z" ≈ "Approfondisci Z" ≈ "Maggiori info su Z"
+
+Suggerisci azioni che affrontano ASPETTI DIVERSI del tema."""
+
+
 try:
     from app.observability.rag_logging import (
         rag_step_log,
@@ -484,10 +547,18 @@ async def step_41__select_prompt(
                             if route not in SYNTHESIS_ROUTES:
                                 from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
 
+                                # DEV-244: Extract previous action labels to avoid semantic duplicates
+                                msg_list = messages or (ctx or {}).get("messages", [])
+                                previous_action_labels = _extract_previous_action_labels(msg_list)
+                                formatted_previous_actions = _format_previous_actions_for_prompt(
+                                    previous_action_labels
+                                )
+
                                 # DEV-201b: Format template with domain classification
                                 formatted_actions_prompt = SUGGESTED_ACTIONS_PROMPT.format(
                                     domain=domain.upper() if domain else "TAX",
                                     confidence=f"{conf:.2f}" if conf else "0.50",
+                                    previous_actions=formatted_previous_actions,
                                 )
                                 domain_prompt = domain_prompt + "\n\n" + formatted_actions_prompt
                                 logger.info(
@@ -497,6 +568,7 @@ async def step_41__select_prompt(
                                         "route": route,
                                         "domain": domain,
                                         "confidence": conf,
+                                        "previous_actions_count": len(previous_action_labels),
                                     },
                                 )
                         else:
@@ -764,9 +836,15 @@ def step_44__default_sys_prompt(
                 cls_domain = "TAX"  # Default domain
                 cls_conf = 0.5
 
+            # DEV-244: Extract previous action labels to avoid semantic duplicates
+            msg_list = messages or (ctx or {}).get("messages", [])
+            previous_action_labels = _extract_previous_action_labels(msg_list)
+            formatted_previous_actions = _format_previous_actions_for_prompt(previous_action_labels)
+
             formatted_actions_prompt = SUGGESTED_ACTIONS_PROMPT.format(
                 domain=cls_domain.upper() if cls_domain else "TAX",
                 confidence=f"{cls_conf:.2f}",
+                previous_actions=formatted_previous_actions,
             )
             prompt = prompt + "\n\n" + formatted_actions_prompt
             step44_logger.info(
@@ -777,6 +855,7 @@ def step_44__default_sys_prompt(
                     "prompt_length_after": len(prompt),
                     "domain_classification": cls_domain,
                     "confidence": cls_conf,
+                    "previous_actions_count": len(previous_action_labels),
                 },
             )
 

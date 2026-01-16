@@ -279,7 +279,8 @@ class SearchService:
                         -- DEV-242 Phase 8: FTS rank first, then fallback to chunk_index
                         rank DESC,
                         ki.relevance_score DESC,
-                        kc.chunk_index ASC
+                        kc.chunk_index ASC,
+                        kc.id ASC  -- DEV-244: Deterministic tie-breaker (primary key)
                     LIMIT :limit
                     OFFSET :offset
                 )
@@ -358,7 +359,8 @@ class SearchService:
                     ORDER BY
                         rank DESC,
                         ki.relevance_score DESC,
-                        kc.chunk_index ASC
+                        kc.chunk_index ASC,
+                        kc.id ASC  -- DEV-244: Deterministic tie-breaker (primary key)
                     LIMIT :limit
                     OFFSET :offset
                 )
@@ -525,7 +527,8 @@ class SearchService:
                         -- DEV-242 Phase 8: FTS rank first, then fallback to chunk_index
                         rank DESC,
                         ki.relevance_score DESC,
-                        kc.chunk_index ASC
+                        kc.chunk_index ASC,
+                        kc.id ASC  -- DEV-244: Deterministic tie-breaker (primary key)
                     LIMIT :limit
                     OFFSET :offset
                 )
@@ -608,7 +611,8 @@ class SearchService:
                     ORDER BY
                         rank DESC,
                         ki.relevance_score DESC,
-                        kc.chunk_index ASC
+                        kc.chunk_index ASC,
+                        kc.id ASC  -- DEV-244: Deterministic tie-breaker (primary key)
                     LIMIT :limit
                     OFFSET :offset
                 )

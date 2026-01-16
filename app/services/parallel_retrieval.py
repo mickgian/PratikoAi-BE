@@ -29,10 +29,12 @@ from app.services.multi_query_generator import QueryVariants
 RRF_K = 60
 
 # Search type weights per Section 13.7.2
+# DEV-244: Added authority search to ensure official sources are always considered
 SEARCH_WEIGHTS = {
     "bm25": 0.3,
     "vector": 0.4,
     "hyde": 0.3,
+    "authority": 0.1,  # DEV-244: Supplemental authority source search
 }
 
 # Source authority hierarchy per Section 13.7.4
@@ -52,6 +54,7 @@ GERARCHIA_FONTI = {
 SOURCE_AUTHORITY = {
     "gazzetta_ufficiale": 1.3,  # Official law source gets 30% boost
     "agenzia_entrate": 1.2,
+    "agenzia_entrate_riscossione": 1.2,  # DEV-244: ADeR official source
     "inps": 1.2,
     "corte_cassazione": 1.15,
     "ministero_economia_documenti": 0.9,  # Summaries penalized
@@ -64,6 +67,19 @@ RECENCY_BOOST = 1.5  # +50%
 
 # Default top-K results
 DEFAULT_TOP_K = 10
+
+# DEV-244: High-authority sources that get reserved slots in top-K results
+# These official sources should never be pushed out by news articles
+HIGH_AUTHORITY_SOURCES = {
+    "gazzetta_ufficiale",
+    "agenzia_entrate",
+    "agenzia_entrate_riscossione",
+    "inps",
+    "corte_cassazione",
+}
+
+# Maximum reserved slots for high-authority sources
+MAX_RESERVED_SLOTS = 3
 
 
 def _normalize_document_patterns(refs: list[str] | None) -> list[str]:
@@ -274,13 +290,14 @@ class ParallelRetrievalService:
             hyde: HyDE result
 
         Returns:
-            List of search results [bm25_results, vector_results, hyde_results]
+            List of search results [bm25, vector, hyde, authority]
         """
-        # Create search tasks
+        # Create search tasks - DEV-244: Added authority source search
         tasks = [
             self._search_bm25(queries),
             self._search_vector(queries),
             self._search_hyde(hyde),
+            self._search_authority_sources(queries),  # DEV-244: Supplemental authority search
         ]
 
         # Execute in parallel
@@ -465,6 +482,80 @@ class ParallelRetrievalService:
         # For now, return empty list (mocked in tests)
         return []
 
+    async def _search_authority_sources(
+        self,
+        queries: QueryVariants,
+        limit_per_source: int = 2,
+    ) -> list[dict[str, Any]]:
+        """Fetch top chunks from each high-authority source.
+
+        DEV-244: Ensures official sources (Gazzetta, ADeR, etc.) are ALWAYS
+        considered in RRF fusion, even if they don't rank high in pure FTS.
+
+        Args:
+            queries: Query variants
+            limit_per_source: Max results per authority source
+
+        Returns:
+            List of search results from authority sources
+        """
+        if not self._search_service:
+            return []
+
+        search_query = queries.bm25_query or queries.original_query
+
+        # Execute searches for each authority source in parallel
+        tasks = []
+        source_list = list(HIGH_AUTHORITY_SOURCES)
+        for source in source_list:
+            tasks.append(
+                self._search_service.search(
+                    query=search_query,
+                    limit=limit_per_source,
+                    source_pattern=source,  # Exact match filter
+                )
+            )
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Flatten results, handling exceptions
+        all_docs: list[dict[str, Any]] = []
+        for i, result in enumerate(results):
+            if isinstance(result, BaseException):
+                logger.warning(
+                    "authority_search_failed",
+                    source=source_list[i],
+                    error=str(result),
+                )
+            else:
+                # Convert SearchResult to dict format
+                for doc in result:
+                    all_docs.append(
+                        {
+                            "document_id": str(doc.id),
+                            "content": doc.content,
+                            "source": doc.source,
+                            "source_url": doc.source_url,
+                            "source_name": doc.title,
+                            "source_type": doc.category,
+                            "published_date": doc.publication_date,
+                            "score": doc.rank,
+                            "highlight": doc.highlight,
+                            "metadata": {
+                                "knowledge_item_id": str(doc.knowledge_item_id),
+                                "source_url": doc.source_url,
+                            },
+                        }
+                    )
+
+        logger.info(
+            "authority_search_complete",
+            total_results=len(all_docs),
+            sources_found=list({d["source"] for d in all_docs}),
+        )
+
+        return all_docs
+
     def _rrf_fusion(
         self,
         search_results: list[list[dict[str, Any]]],
@@ -480,7 +571,7 @@ class ParallelRetrievalService:
         Returns:
             Fused and ranked documents
         """
-        search_types = ["bm25", "vector", "hyde"]
+        search_types = ["bm25", "vector", "hyde", "authority"]  # DEV-244: Added authority
         doc_scores: dict[str, dict[str, Any]] = {}
 
         for search_type, results in zip(search_types, search_results, strict=False):
@@ -505,9 +596,10 @@ class ParallelRetrievalService:
                         "rrf_score": rrf_contribution,
                     }
 
-        # Sort by RRF score descending
+        # Sort by RRF score descending with document_id tiebreaker for determinism
+        # DEV-244 FIX: Stable sort ensures consistent results across identical queries
         fused = list(doc_scores.values())
-        fused.sort(key=lambda x: x.get("rrf_score", 0), reverse=True)
+        fused.sort(key=lambda x: (-x.get("rrf_score", 0), x.get("document_id", "")))
 
         return fused
 
@@ -547,8 +639,9 @@ class ParallelRetrievalService:
             }
             boosted.append(boosted_doc)
 
-        # Re-sort by boosted score
-        boosted.sort(key=lambda x: x.get("rrf_score", 0), reverse=True)
+        # Re-sort by boosted score with document_id tiebreaker for determinism
+        # DEV-244 FIX: Stable sort ensures consistent results across identical queries
+        boosted.sort(key=lambda x: (-x.get("rrf_score", 0), x.get("document_id", "")))
 
         return boosted
 
@@ -615,7 +708,7 @@ class ParallelRetrievalService:
             docs: List of documents (may contain duplicates)
 
         Returns:
-            Deduplicated list with highest-scoring versions
+            Deduplicated list with highest-scoring versions, sorted deterministically
         """
         seen: dict[str, dict[str, Any]] = {}
 
@@ -630,14 +723,24 @@ class ParallelRetrievalService:
                 # Keep version with higher original score
                 seen[doc_id] = doc
 
-        return list(seen.values())
+        # DEV-244 FIX: Sort by RRF score descending with document_id tiebreaker
+        # This ensures deterministic ordering after deduplication
+        # Without this, dict.values() order could vary, causing inconsistent results
+        return sorted(
+            seen.values(),
+            key=lambda x: (-x.get("rrf_score", 0), x.get("document_id", "")),
+        )
 
     def _get_top_k(
         self,
         docs: list[dict[str, Any]],
         k: int = DEFAULT_TOP_K,
     ) -> list[dict[str, Any]]:
-        """Get top-K documents by RRF score.
+        """Get top-K documents, guaranteeing DIVERSE official source slots.
+
+        DEV-244 FIX: Reserve slots for high-authority sources with DIVERSITY.
+        Ensures at most 1 chunk per official source type gets a reserved slot,
+        so ADeR doesn't get pushed out by multiple Gazzetta chunks.
 
         Args:
             docs: List of documents
@@ -646,14 +749,40 @@ class ParallelRetrievalService:
         Returns:
             Top-K documents sorted by score descending
         """
-        # Sort by RRF score descending
-        sorted_docs = sorted(
-            docs,
-            key=lambda x: x.get("rrf_score", 0),
-            reverse=True,
-        )
 
-        return sorted_docs[:k]
+        def sort_key(x: dict[str, Any]) -> tuple[float, str]:
+            return (-x.get("rrf_score", 0), x.get("document_id", ""))
+
+        # Step 1: Find BEST chunk per official source type (ensures diversity)
+        source_best: dict[str, dict[str, Any]] = {}
+        other: list[dict[str, Any]] = []
+
+        for doc in docs:
+            source = doc.get("source", "").lower()
+            if source in HIGH_AUTHORITY_SOURCES:
+                # Keep only the highest-scoring chunk per source type
+                if source not in source_best or doc.get("rrf_score", 0) > source_best[source].get("rrf_score", 0):
+                    source_best[source] = doc
+            else:
+                other.append(doc)
+
+        # Step 2: Get diverse official sources sorted by score
+        official_diverse = sorted(source_best.values(), key=sort_key)
+
+        # Step 3: Reserve up to MAX_RESERVED_SLOTS for diverse official sources
+        reserved_slots = min(MAX_RESERVED_SLOTS, len(official_diverse), k)
+        top_official = official_diverse[:reserved_slots]
+
+        # Step 4: Fill remaining slots with other sources
+        other.sort(key=sort_key)
+        remaining_slots = k - len(top_official)
+        top_other = other[:remaining_slots]
+
+        # Step 5: Combine and re-sort for final ordering
+        combined = top_official + top_other
+        combined.sort(key=sort_key)
+
+        return combined
 
     def _to_ranked_documents(
         self,

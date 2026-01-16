@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "db": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropics/mcp-server-postgres",
+        "postgresql://aifinance:devpass@localhost:5433/aifinance"
+      ]
+    }
+  }
+}

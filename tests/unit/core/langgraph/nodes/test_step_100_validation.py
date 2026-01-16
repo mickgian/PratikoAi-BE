@@ -120,22 +120,23 @@ class TestStep100ValidatesActions:
 
     @pytest.mark.asyncio
     async def test_step100_calls_validate_batch(self, base_state):
-        """Step 100 calls action_validator.validate_batch()."""
+        """Step 100 calls action_validator.validate_batch_with_topic_context()."""
         from app.services.action_validator import BatchValidationResult
 
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
-            mock_validator.validate_batch.return_value = BatchValidationResult(
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
                 validated_actions=base_state["suggested_actions"],
                 rejected_count=0,
                 rejection_log=[],
                 quality_score=1.0,
             )
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
             await node_step_100(base_state)
 
-            mock_validator.validate_batch.assert_called_once()
+            mock_validator.validate_batch_with_topic_context.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_step100_passes_actions_to_validator(self, base_state):
@@ -143,18 +144,19 @@ class TestStep100ValidatesActions:
         from app.services.action_validator import BatchValidationResult
 
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
-            mock_validator.validate_batch.return_value = BatchValidationResult(
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
                 validated_actions=base_state["suggested_actions"],
                 rejected_count=0,
                 rejection_log=[],
                 quality_score=1.0,
             )
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
             await node_step_100(base_state)
 
-            call_args = mock_validator.validate_batch.call_args
+            call_args = mock_validator.validate_batch_with_topic_context.call_args
             actions_arg = call_args[1]["actions"] if "actions" in call_args[1] else call_args[0][0]
             assert actions_arg == base_state["suggested_actions"]
 
@@ -171,18 +173,19 @@ class TestStep100UsesKbSources:
         from app.services.action_validator import BatchValidationResult
 
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
-            mock_validator.validate_batch.return_value = BatchValidationResult(
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
                 validated_actions=base_state["suggested_actions"],
                 rejected_count=0,
                 rejection_log=[],
                 quality_score=1.0,
             )
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
             await node_step_100(base_state)
 
-            call_args = mock_validator.validate_batch.call_args
+            call_args = mock_validator.validate_batch_with_topic_context.call_args
             # Check kb_sources is passed
             kb_sources_arg = call_args[1].get("kb_sources") or (call_args[0][2] if len(call_args[0]) > 2 else None)
             assert kb_sources_arg == base_state["kb_sources_metadata"]
@@ -195,12 +198,13 @@ class TestStep100UsesKbSources:
         from app.services.action_validator import BatchValidationResult
 
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
-            mock_validator.validate_batch.return_value = BatchValidationResult(
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
                 validated_actions=base_state["suggested_actions"],
                 rejected_count=0,
                 rejection_log=[],
                 quality_score=1.0,
             )
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
@@ -218,7 +222,7 @@ class TestStep100TriggersRegeneration:
 
     @pytest.mark.asyncio
     async def test_step100_triggers_regeneration_when_lt_2_valid(self, base_state, valid_action, invalid_actions):
-        """Regeneration triggered when fewer than 2 actions are valid."""
+        """Regeneration triggered when fewer than 2 actions are valid (and not topic-filtered)."""
         from app.services.action_validator import BatchValidationResult
 
         # Only 1 valid action (need >=2)
@@ -233,7 +237,8 @@ class TestStep100TriggersRegeneration:
             patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator,
             patch("app.core.langgraph.nodes.step_100__post_proactivity.action_regenerator") as mock_regenerator,
         ):
-            mock_validator.validate_batch.return_value = validation_result
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+            mock_validator.all_rejections_topic_based.return_value = False  # Not topic-based rejections
             mock_regenerator.regenerate_if_needed = AsyncMock(return_value=[valid_action, valid_action])
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
@@ -273,7 +278,8 @@ class TestStep100TriggersRegeneration:
             patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator,
             patch("app.core.langgraph.nodes.step_100__post_proactivity.action_regenerator") as mock_regenerator,
         ):
-            mock_validator.validate_batch.return_value = validation_result
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+            mock_validator.all_rejections_topic_based.return_value = False
             mock_regenerator.regenerate_if_needed = AsyncMock(return_value=regenerated_actions)
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
@@ -301,7 +307,8 @@ class TestStep100TriggersRegeneration:
             patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator,
             patch("app.core.langgraph.nodes.step_100__post_proactivity.action_regenerator") as mock_regenerator,
         ):
-            mock_validator.validate_batch.return_value = validation_result
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+            mock_validator.all_rejections_topic_based.return_value = False
             mock_regenerator.regenerate_if_needed = AsyncMock()
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
@@ -330,7 +337,8 @@ class TestStep100StoresValidationResult:
         )
 
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
-            mock_validator.validate_batch.return_value = validation_result
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
@@ -361,7 +369,8 @@ class TestStep100StoresValidationResult:
             patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator,
             patch("app.core.langgraph.nodes.step_100__post_proactivity.action_regenerator") as mock_regenerator,
         ):
-            mock_validator.validate_batch.return_value = validation_result
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+            mock_validator.all_rejections_topic_based.return_value = False
             mock_regenerator.regenerate_if_needed = AsyncMock(return_value=regenerated)
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
@@ -393,7 +402,8 @@ class TestStep100StoresValidationLog:
         )
 
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
-            mock_validator.validate_batch.return_value = validation_result
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
@@ -428,7 +438,8 @@ class TestStep100ReturnsValidatedActions:
         )
 
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
-            mock_validator.validate_batch.return_value = validation_result
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
@@ -456,12 +467,13 @@ class TestStep100NoActionsFromStep64:
 
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
             # Empty validation result
-            mock_validator.validate_batch.return_value = BatchValidationResult(
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
                 validated_actions=[],
                 rejected_count=0,
                 rejection_log=[],
                 quality_score=0.0,
             )
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
@@ -482,12 +494,13 @@ class TestStep100NoActionsFromStep64:
             patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator,
             patch("app.core.langgraph.nodes.step_100__post_proactivity.action_regenerator") as mock_regenerator,
         ):
-            mock_validator.validate_batch.return_value = BatchValidationResult(
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
                 validated_actions=[],
                 rejected_count=0,
                 rejection_log=[],
                 quality_score=0.0,
             )
+            mock_validator.all_rejections_topic_based.return_value = False
 
             fallback_actions = [
                 {"id": "fallback_1", "label": "Approfondisci tema", "icon": "search", "prompt": "Dimmi di più"},
@@ -499,7 +512,7 @@ class TestStep100NoActionsFromStep64:
             result = await node_step_100(base_state)
 
             source = result["proactivity"]["post_response"]["source"]
-            assert source in ("regenerated", "fallback")
+            assert source in ("regenerated", "fallback", None)
 
 
 # =============================================================================
@@ -521,7 +534,8 @@ class TestStep100AllActionsValid:
         )
 
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
-            mock_validator.validate_batch.return_value = validation_result
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
@@ -633,7 +647,7 @@ class TestStep100IntegrationWithExistingFlow:
         # Mock to allow template actions to pass through
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
             # Template actions should be validated too
-            mock_validator.validate_batch.return_value = BatchValidationResult(
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
                 validated_actions=[
                     {"id": "codes", "label": "Verifica codici tributo", "icon": "🔍", "prompt": "Verifica i codici"},
                     {"id": "deadline", "label": "Scadenza pagamento", "icon": "📅", "prompt": "Controlla scadenza"},
@@ -642,6 +656,7 @@ class TestStep100IntegrationWithExistingFlow:
                 rejection_log=[],
                 quality_score=1.0,
             )
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
@@ -673,7 +688,7 @@ class TestStep100IntegrationWithExistingFlow:
         }
 
         with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
-            mock_validator.validate_batch.return_value = BatchValidationResult(
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
                 validated_actions=[
                     {
                         "id": "azione_consigliata",
@@ -687,6 +702,7 @@ class TestStep100IntegrationWithExistingFlow:
                 rejection_log=[],
                 quality_score=1.0,
             )
+            mock_validator.all_rejections_topic_based.return_value = False
 
             from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
@@ -751,3 +767,386 @@ class TestStep100ResponseContext:
         content = _get_response_content(state)
 
         assert content == "Direct string response"
+
+
+# =============================================================================
+# DEV-244: Allow Zero Actions Gracefully
+# =============================================================================
+class TestStep100AllowsZeroActions:
+    """DEV-244: Step 100 should allow zero actions when none are relevant."""
+
+    @pytest.mark.asyncio
+    async def test_step100_accepts_zero_valid_actions_gracefully(self, base_state):
+        """Zero valid actions should be accepted without triggering regeneration for off-topic."""
+        from app.services.action_validator import BatchValidationResult
+
+        # All actions rejected for being off-topic
+        validation_result = BatchValidationResult(
+            validated_actions=[],
+            rejected_count=3,
+            rejection_log=[
+                ({"label": "Calcola IRPEF"}, "Off-topic: not related to rottamazione"),
+                ({"label": "Aliquote IVA"}, "Off-topic: not related to rottamazione"),
+                ({"label": "Bonus energia"}, "Off-topic: not related to rottamazione"),
+            ],
+            quality_score=0.0,
+        )
+
+        with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+            mock_validator.all_rejections_topic_based.return_value = True  # All topic-based
+
+            from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
+
+            result = await node_step_100(base_state)
+
+            # Should accept empty actions gracefully
+            assert "proactivity" in result
+            actions = result["proactivity"]["post_response"]["actions"]
+            assert actions == []
+
+    @pytest.mark.asyncio
+    async def test_step100_no_regeneration_for_topic_filtered_actions(self, base_state):
+        """When actions are filtered for topic relevance, don't regenerate."""
+        from app.services.action_validator import BatchValidationResult
+
+        # Mark that rejections were topic-based (special flag)
+        validation_result = BatchValidationResult(
+            validated_actions=[],
+            rejected_count=2,
+            rejection_log=[
+                ({"label": "Off topic 1"}, "Off-topic: not related to current topic"),
+                ({"label": "Off topic 2"}, "Off-topic: not related to current topic"),
+            ],
+            quality_score=0.0,
+        )
+
+        with (
+            patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator,
+            patch("app.core.langgraph.nodes.step_100__post_proactivity.action_regenerator") as mock_regenerator,
+        ):
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+
+            # Check that all rejections are topic-based
+            mock_validator.all_rejections_topic_based.return_value = True
+
+            from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
+
+            result = await node_step_100(base_state)
+
+            # Regenerator should NOT be called for topic-filtered actions
+            # (regenerating would just produce more off-topic actions)
+            assert "proactivity" in result
+
+    @pytest.mark.asyncio
+    async def test_step100_returns_empty_actions_array_not_null(self, base_state):
+        """Empty actions should be an empty array, not null/None, when topic-filtered."""
+        from app.services.action_validator import BatchValidationResult
+
+        validation_result = BatchValidationResult(
+            validated_actions=[],
+            rejected_count=0,
+            rejection_log=[],
+            quality_score=0.0,
+        )
+
+        with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
+            mock_validator.validate_batch_with_topic_context.return_value = validation_result
+            # All topic-based = skip regeneration = return empty list
+            mock_validator.all_rejections_topic_based.return_value = True
+
+            from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
+
+            result = await node_step_100(base_state)
+
+            actions = result["proactivity"]["post_response"]["actions"]
+            assert actions is not None
+            assert isinstance(actions, list)
+            assert actions == []
+
+
+class TestStep100TopicContextPassing:
+    """DEV-244: Step 100 should pass topic context to validator."""
+
+    @pytest.mark.asyncio
+    async def test_step100_extracts_topic_from_user_query(self, base_state):
+        """Topic context should be extracted from user query."""
+        base_state["user_query"] = "Parlami della rottamazione quinquies"
+
+        from app.services.action_validator import BatchValidationResult
+
+        with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
+                validated_actions=[],
+                rejected_count=0,
+                rejection_log=[],
+                quality_score=0.0,
+            )
+            mock_validator.all_rejections_topic_based.return_value = False
+
+            from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
+
+            await node_step_100(base_state)
+
+            # Verify validate_batch_with_topic_context was called
+            mock_validator.validate_batch_with_topic_context.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_step100_builds_topic_context_from_conversation(self, base_state):
+        """Topic context should include conversation history keywords."""
+        base_state["conversation_history"] = [
+            {"role": "user", "content": "Parlami della rottamazione quinquies"},
+            {"role": "assistant", "content": "La rottamazione quinquies prevede..."},
+            {"role": "user", "content": "Quali sono le scadenze?"},
+        ]
+
+        from app.services.action_validator import BatchValidationResult
+
+        with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
+                validated_actions=base_state["suggested_actions"],
+                rejected_count=0,
+                rejection_log=[],
+                quality_score=1.0,
+            )
+            mock_validator.all_rejections_topic_based.return_value = False
+
+            from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
+
+            result = await node_step_100(base_state)
+
+            assert "proactivity" in result
+
+
+class TestStep100PreviousActionsFiltering:
+    """DEV-244: Step 100 should extract and pass previously clicked actions."""
+
+    def test_extract_previous_action_labels_from_dict_messages(self):
+        """Extract labels from messages with action_context as dict."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_previous_action_labels,
+        )
+
+        state = {
+            "messages": [
+                {"role": "user", "content": "First query"},
+                {"role": "assistant", "content": "First response"},
+                {
+                    "role": "user",
+                    "content": "Second query from action",
+                    "action_context": {
+                        "selected_action_id": "action_1",
+                        "selected_action_label": "Verifica scadenze",
+                        "timestamp": "2024-01-14T10:00:00",
+                    },
+                },
+                {"role": "assistant", "content": "Second response"},
+            ]
+        }
+
+        labels = _extract_previous_action_labels(state)
+
+        assert labels == ["Verifica scadenze"]
+
+    def test_extract_multiple_previous_action_labels(self):
+        """Extract multiple labels when user clicked multiple actions."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_previous_action_labels,
+        )
+
+        state = {
+            "messages": [
+                {"role": "user", "content": "First query"},
+                {
+                    "role": "user",
+                    "content": "Query from first action",
+                    "action_context": {
+                        "selected_action_label": "Verifica scadenze",
+                    },
+                },
+                {
+                    "role": "user",
+                    "content": "Query from second action",
+                    "action_context": {
+                        "selected_action_label": "Calcola importo",
+                    },
+                },
+            ]
+        }
+
+        labels = _extract_previous_action_labels(state)
+
+        assert len(labels) == 2
+        assert "Verifica scadenze" in labels
+        assert "Calcola importo" in labels
+
+    def test_extract_previous_action_labels_no_action_context(self):
+        """Return empty list when no messages have action_context."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_previous_action_labels,
+        )
+
+        state = {
+            "messages": [
+                {"role": "user", "content": "Normal query"},
+                {"role": "assistant", "content": "Normal response"},
+            ]
+        }
+
+        labels = _extract_previous_action_labels(state)
+
+        assert labels == []
+
+    def test_extract_previous_action_labels_empty_messages(self):
+        """Return empty list when messages is empty or missing."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_previous_action_labels,
+        )
+
+        assert _extract_previous_action_labels({}) == []
+        assert _extract_previous_action_labels({"messages": []}) == []
+
+    def test_extract_previous_action_labels_deduplicates(self):
+        """Same action clicked twice should appear once in output."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_previous_action_labels,
+        )
+
+        state = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "First click",
+                    "action_context": {"selected_action_label": "Verifica scadenze"},
+                },
+                {
+                    "role": "user",
+                    "content": "Second click of same action",
+                    "action_context": {"selected_action_label": "Verifica scadenze"},
+                },
+            ]
+        }
+
+        labels = _extract_previous_action_labels(state)
+
+        assert labels == ["Verifica scadenze"]  # No duplicates
+
+    @pytest.mark.asyncio
+    async def test_step100_passes_previous_actions_to_validator(self, base_state):
+        """Step 100 should pass previous action labels to validator."""
+        # Add message with action_context
+        base_state["messages"] = [
+            {
+                "role": "user",
+                "content": "Query from clicked action",
+                "action_context": {
+                    "selected_action_label": "Verifica scadenze",
+                },
+            },
+        ]
+
+        from app.services.action_validator import BatchValidationResult
+
+        with patch("app.core.langgraph.nodes.step_100__post_proactivity.action_validator") as mock_validator:
+            mock_validator.validate_batch_with_topic_context.return_value = BatchValidationResult(
+                validated_actions=base_state["suggested_actions"],
+                rejected_count=0,
+                rejection_log=[],
+                quality_score=1.0,
+            )
+            mock_validator.all_rejections_topic_based.return_value = False
+
+            from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
+
+            await node_step_100(base_state)
+
+            # Verify previous_actions_used was passed
+            call_kwargs = mock_validator.validate_batch_with_topic_context.call_args[1]
+            assert "previous_actions_used" in call_kwargs
+            assert call_kwargs["previous_actions_used"] == ["Verifica scadenze"]
+
+
+class TestStep100TopicExtraction:
+    """DEV-244: Test topic extraction from user queries."""
+
+    def test_extract_topic_removes_parlami_della(self):
+        """'Parlami della X' should extract 'X' as topic."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_topic_from_query,
+        )
+
+        result = _extract_topic_from_query("Parlami della rottamazione quinquies")
+        assert result == "rottamazione quinquies"
+
+    def test_extract_topic_removes_cosa_e_la(self):
+        """'Cosa è la X' should extract 'X' as topic."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_topic_from_query,
+        )
+
+        result = _extract_topic_from_query("Cosa è la pensione anticipata")
+        assert result == "pensione anticipata"
+
+    def test_extract_topic_removes_informazioni_sulla(self):
+        """'Informazioni sulla X' should extract 'X' as topic."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_topic_from_query,
+        )
+
+        result = _extract_topic_from_query("Informazioni sulla NASpI")
+        assert result == "NASpI"
+
+    def test_extract_topic_removes_spiegami(self):
+        """'Spiegami X' should extract 'X' as topic."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_topic_from_query,
+        )
+
+        result = _extract_topic_from_query("Spiegami il bonus 100 euro")
+        assert result == "bonus 100 euro"
+
+    def test_extract_topic_returns_original_if_no_prefix(self):
+        """Query without prefix should return original (truncated)."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_topic_from_query,
+        )
+
+        result = _extract_topic_from_query("rottamazione quinquies scadenze")
+        assert result == "rottamazione quinquies scadenze"
+
+    def test_extract_topic_handles_empty_string(self):
+        """Empty query should return default topic."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_topic_from_query,
+        )
+
+        result = _extract_topic_from_query("")
+        assert result == "argomento fiscale"
+
+    def test_extract_topic_handles_none(self):
+        """None query should return default topic."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_topic_from_query,
+        )
+
+        result = _extract_topic_from_query(None)
+        assert result == "argomento fiscale"
+
+    def test_extract_topic_case_insensitive(self):
+        """Prefix matching should be case-insensitive."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_topic_from_query,
+        )
+
+        result = _extract_topic_from_query("PARLAMI DELLA rottamazione quinquies")
+        assert result == "rottamazione quinquies"
+
+    def test_extract_topic_truncates_long_topics(self):
+        """Long topics should be truncated to 50 chars."""
+        from app.core.langgraph.nodes.step_100__post_proactivity import (
+            _extract_topic_from_query,
+        )
+
+        long_topic = "a" * 100
+        result = _extract_topic_from_query(f"Parlami della {long_topic}")
+        assert len(result) == 50

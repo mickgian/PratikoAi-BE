@@ -21,6 +21,9 @@ Usa il dominio come guida principale, ma:
 - Se la query menziona esplicitamente più ambiti: includi azioni per ciascuno
 - Non limitare mai artificialmente le azioni al solo dominio classificato
 
+## Azioni Già Utilizzate dall'Utente
+{previous_actions}
+
 ## Strategia di Generazione Azioni
 
 ### STEP 1: Identifica il Tema della Conversazione

@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2026-01-13 13:32:55
+**Auto-generated:** 2026-01-16 09:08:29
 
-> 💡 This directory contains 23 technical documentation files plus 167 architecture documents.
+> 💡 This directory contains 24 technical documentation files plus 167 architecture documents.
 
 ---
 
@@ -66,10 +66,12 @@
 
 - **[Chat History Storage Architecture](CHAT_STORAGE_ARCHITECTURE.md)** ✅ Current
   - **Status:** Implemented **Version:** 1.0
+- **[DEV-244: KB Source URLs Display Fix - Summary](DEV-244-kb-source-urls-summary.md)** ✅ Current
+  - **Issue:** GitHub #TBD **Status:** 🔄 IN PROGRESS - New regression identified
 - **[Database Backup System](DATABASE_BACKUP_SYSTEM.md)** ✅ Current
   - **Purpose**: Prevent data loss by maintaining automated daily backups of the PostgreSQL database.
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2026-01-13 13:32:47
+  - **Auto-generated:** 2026-01-16 09:08:20
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
 - **[Pinecone Guardrails Implementation](pinecone-guardrails.md)** ✅ Current
@@ -85,8 +87,8 @@
 - **Database/Search:** 6
 - **Operations:** 3
 - **Architecture:** 167
-- **Total:** 190
+- **Total:** 191
 
 ---
 
-**Last Updated:** 2026-01-13 13:32:55
+**Last Updated:** 2026-01-16 09:08:29

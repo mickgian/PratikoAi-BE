@@ -125,14 +125,19 @@ class TestStep100PostProactivity:
 
     @pytest.mark.asyncio
     async def test_llm_parsed_actions(self):
-        """LLM response with <suggested_actions> should be parsed."""
+        """LLM response with <suggested_actions> should be parsed.
+
+        DEV-244: Topic filtering may reduce action count. Actions must contain
+        topic keywords to pass validation.
+        """
         from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
+        # DEV-244: Actions must be topic-relevant (contain "forfettario" keywords)
         llm_response = """<answer>Ecco le informazioni sul forfettario.</answer>
 <suggested_actions>
 [
-  {"id": "calc_taxes", "label": "Calcola tasse", "icon": "💰", "prompt": "Calcola le tasse per il forfettario"},
-  {"id": "deadlines", "label": "Scadenze", "icon": "📅", "prompt": "Mostra le scadenze fiscali"}
+  {"id": "calc_taxes", "label": "Calcola tasse forfettario", "icon": "💰", "prompt": "Calcola le tasse per il regime forfettario"},
+  {"id": "requirements", "label": "Requisiti forfettario", "icon": "📋", "prompt": "Verifica i requisiti per accedere al regime forfettario"}
 ]
 </suggested_actions>"""
 
@@ -149,10 +154,11 @@ class TestStep100PostProactivity:
         post_response = proactivity.get("post_response", {})
         actions = post_response.get("actions", [])
 
+        # DEV-244: Both actions contain "forfettario" so both should pass topic filter
         assert len(actions) == 2
         assert post_response.get("source") == "llm_parsed"
         assert actions[0]["id"] == "calc_taxes"
-        assert actions[1]["id"] == "deadlines"
+        assert actions[1]["id"] == "requirements"
 
     @pytest.mark.asyncio
     async def test_empty_response_fallback_actions(self):
@@ -468,21 +474,25 @@ class TestStep100VerdettoExtraction:
 
     @pytest.mark.asyncio
     async def test_verdetto_fallback_to_llm_parsed_when_no_azione(self):
-        """technical_research without azione_consigliata falls back to llm_parsed."""
+        """technical_research without azione_consigliata falls back to llm_parsed.
+
+        DEV-244: Actions must be topic-relevant to pass validation.
+        """
         from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
-        # Need 2+ actions to avoid regeneration triggering
-        llm_response = """<answer>Risposta</answer>
+        # DEV-244: Need 2+ topic-relevant actions to avoid regeneration
+        # Query is about "rottamazione" so actions must contain that keyword
+        llm_response = """<answer>Risposta sulla rottamazione</answer>
 <suggested_actions>
 [
-  {"id": "fallback", "label": "Fallback action item", "icon": "🔄", "prompt": "Fallback action with full prompt text"},
-  {"id": "fallback2", "label": "Second fallback item", "icon": "📖", "prompt": "Second fallback action prompt text"}
+  {"id": "verify_rottamazione", "label": "Verifica rottamazione", "icon": "🔄", "prompt": "Verifica i requisiti per la rottamazione delle cartelle"},
+  {"id": "calc_rottamazione", "label": "Calcola rottamazione", "icon": "💰", "prompt": "Calcola l'importo della rottamazione quinquies"}
 ]
 </suggested_actions>"""
 
         state = {
             "request_id": "test-verdetto-005",
-            "user_query": "Query",
+            "user_query": "Rottamazione cartelle",  # DEV-244: Topic-relevant query
             "routing_decision": {"route": "technical_research", "confidence": 0.9},
             "parsed_synthesis": {
                 "verdetto": {
@@ -507,15 +517,18 @@ class TestStep100VerdettoExtraction:
 
     @pytest.mark.asyncio
     async def test_non_synthesis_route_uses_llm_parsed(self):
-        """Non-synthesis routes (theoretical_definition) use llm_parsed."""
+        """Non-synthesis routes (theoretical_definition) use llm_parsed.
+
+        DEV-244: Actions must be topic-relevant to pass validation.
+        """
         from app.core.langgraph.nodes.step_100__post_proactivity import node_step_100
 
-        # Need 2+ actions to avoid regeneration
-        llm_response = """<answer>Definizione</answer>
+        # DEV-244: Need 2+ topic-relevant actions (must contain "forfettario")
+        llm_response = """<answer>Definizione del forfettario</answer>
 <suggested_actions>
 [
-  {"id": "definition_action", "label": "Approfondisci ora", "icon": "📖", "prompt": "Maggiori dettagli sulla definizione"},
-  {"id": "calc_action", "label": "Calcola importo base", "icon": "💰", "prompt": "Calcola l'importo secondo la definizione"}
+  {"id": "definition_action", "label": "Approfondisci forfettario", "icon": "📖", "prompt": "Maggiori dettagli sul regime forfettario e i suoi requisiti"},
+  {"id": "calc_action", "label": "Calcola tasse forfettario", "icon": "💰", "prompt": "Calcola l'imposta sostitutiva del regime forfettario"}
 ]
 </suggested_actions>"""
 

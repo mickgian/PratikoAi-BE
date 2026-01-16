@@ -356,6 +356,109 @@ class TestTopKResults:
         scores = [d["rrf_score"] for d in top_docs]
         assert scores == sorted(scores, reverse=True)
 
+    def test_top_k_reserves_slots_for_official_sources(self):
+        """DEV-244: Test that official sources get reserved slots in top-K."""
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService.__new__(ParallelRetrievalService)
+
+        # Create docs: 7 news articles with high scores, 3 official with lower scores
+        docs = [
+            # News articles with higher scores (should normally fill top-10)
+            {"document_id": "news_1", "rrf_score": 0.95, "source": "ministero_lavoro_news"},
+            {"document_id": "news_2", "rrf_score": 0.90, "source": "ministero_lavoro_news"},
+            {"document_id": "news_3", "rrf_score": 0.85, "source": "ministero_lavoro_news"},
+            {"document_id": "news_4", "rrf_score": 0.80, "source": "ministero_lavoro_news"},
+            {"document_id": "news_5", "rrf_score": 0.75, "source": "ministero_lavoro_news"},
+            {"document_id": "news_6", "rrf_score": 0.70, "source": "ministero_lavoro_news"},
+            {"document_id": "news_7", "rrf_score": 0.65, "source": "ministero_lavoro_news"},
+            # Official sources with lower scores
+            {"document_id": "gazzetta_1", "rrf_score": 0.50, "source": "gazzetta_ufficiale"},
+            {"document_id": "ade_1", "rrf_score": 0.45, "source": "agenzia_entrate"},
+            {"document_id": "inps_1", "rrf_score": 0.40, "source": "inps"},
+        ]
+
+        top_docs = service._get_top_k(docs, k=10)
+
+        # All 3 official sources should be in results despite lower scores
+        official_ids = {
+            d["document_id"] for d in top_docs if d["source"] in {"gazzetta_ufficiale", "agenzia_entrate", "inps"}
+        }
+        assert "gazzetta_1" in official_ids
+        assert "ade_1" in official_ids
+        assert "inps_1" in official_ids
+        assert len(top_docs) == 10
+
+    def test_top_k_official_sources_respect_max_slots(self):
+        """DEV-244: Test that no more than MAX_RESERVED_SLOTS are reserved for official sources."""
+        from app.services.parallel_retrieval import (
+            MAX_RESERVED_SLOTS,
+            ParallelRetrievalService,
+        )
+
+        service = ParallelRetrievalService.__new__(ParallelRetrievalService)
+
+        # Create 4 different official source TYPES (more than MAX_RESERVED_SLOTS=3)
+        # and 5 news sources
+        docs = [
+            {"document_id": "gazzetta_1", "rrf_score": 0.50, "source": "gazzetta_ufficiale"},
+            {"document_id": "ade_1", "rrf_score": 0.45, "source": "agenzia_entrate"},
+            {"document_id": "inps_1", "rrf_score": 0.40, "source": "inps"},
+            {"document_id": "cass_1", "rrf_score": 0.35, "source": "corte_cassazione"},
+            # News with higher scores
+            {"document_id": "news_1", "rrf_score": 0.90, "source": "ministero_lavoro_news"},
+            {"document_id": "news_2", "rrf_score": 0.85, "source": "ministero_lavoro_news"},
+            {"document_id": "news_3", "rrf_score": 0.80, "source": "ministero_lavoro_news"},
+            {"document_id": "news_4", "rrf_score": 0.75, "source": "ministero_lavoro_news"},
+            {"document_id": "news_5", "rrf_score": 0.70, "source": "ministero_lavoro_news"},
+        ]
+
+        top_docs = service._get_top_k(docs, k=5)
+
+        # Only top 3 official source TYPES should get reserved slots
+        official_in_results = [
+            d
+            for d in top_docs
+            if d["source"]
+            in {"gazzetta_ufficiale", "agenzia_entrate", "inps", "corte_cassazione", "agenzia_entrate_riscossione"}
+        ]
+        assert len(official_in_results) == MAX_RESERVED_SLOTS  # 3
+        # Remaining slots go to highest-scoring news
+        news_in_results = [d for d in top_docs if d["source"] == "ministero_lavoro_news"]
+        assert len(news_in_results) == 2
+
+    def test_top_k_ensures_source_diversity(self):
+        """DEV-244: Ensure diverse official sources, not multiple from same source type."""
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService.__new__(ParallelRetrievalService)
+
+        # Multiple Gazzetta chunks with HIGH scores that would normally crowd out ADeR
+        docs = [
+            {"document_id": "gaz_1", "rrf_score": 0.50, "source": "gazzetta_ufficiale"},
+            {"document_id": "gaz_2", "rrf_score": 0.48, "source": "gazzetta_ufficiale"},
+            {"document_id": "gaz_3", "rrf_score": 0.46, "source": "gazzetta_ufficiale"},
+            # Single ADeR chunk with LOWER score
+            {"document_id": "ader_1", "rrf_score": 0.40, "source": "agenzia_entrate_riscossione"},
+            # News with highest score
+            {"document_id": "news_1", "rrf_score": 0.90, "source": "ministero_lavoro_news"},
+        ]
+
+        top_docs = service._get_top_k(docs, k=5)
+
+        # ADeR MUST be included (diversity) - this was the bug we fixed!
+        sources_in_results = {d["source"] for d in top_docs}
+        assert "agenzia_entrate_riscossione" in sources_in_results, "ADeR must be included to ensure source diversity"
+        assert "gazzetta_ufficiale" in sources_in_results
+
+        # Only 1 Gazzetta chunk (best one, gaz_1), not all 3
+        gaz_count = sum(1 for d in top_docs if d["source"] == "gazzetta_ufficiale")
+        assert gaz_count == 1, f"Expected 1 Gazzetta chunk (best one), got {gaz_count}"
+
+        # The best Gazzetta should be gaz_1 (score 0.50)
+        gaz_docs = [d for d in top_docs if d["source"] == "gazzetta_ufficiale"]
+        assert gaz_docs[0]["document_id"] == "gaz_1"
+
 
 class TestMetadataPreservation:
     """Tests for metadata preservation through retrieval."""
@@ -619,7 +722,7 @@ class TestDocumentReferenceFiltering:
         )
 
         # Execute search
-        result = await service._search_bm25(queries)
+        await service._search_bm25(queries)
 
         # Verify search was called with title_patterns
         mock_search_service.search.assert_called()

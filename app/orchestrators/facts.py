@@ -619,6 +619,8 @@ def _transform_retrieval_documents(documents: list[dict]) -> list[dict]:
             "source": doc.get("source_type") or doc.get("source", ""),
             # DEV-242 Phase 42: Map source_url to url for citation links
             "url": source_url,
+            # DEV-244: Also preserve source_url at top level for context_builder compatibility
+            "source_url": source_url,
             # Preserve metadata with source_url included
             "metadata": {
                 **doc.get("metadata", {}),
@@ -660,19 +662,20 @@ async def step_40__build_context(
         # Extract context parameters
         request_id = kwargs.get("request_id") or (ctx or {}).get("request_id", "unknown")
         canonical_facts = kwargs.get("canonical_facts") or (ctx or {}).get("canonical_facts", [])
-        # Try multiple locations for KB results: kb_results kwarg, knowledge_items, kb_docs, or retrieval_result
-        # DEV-242: Added retrieval_result.documents fallback for Step 39c parallel retrieval integration
-        # Also transform field names from Step 39c format to context builder format
+        # Try multiple locations for KB results: kb_results kwarg, retrieval_result (preferred), knowledge_items, kb_docs
+        # DEV-242: Added retrieval_result.documents for Step 39c parallel retrieval integration
+        # DEV-244: CRITICAL FIX - Prefer retrieval_docs because ONLY it has source_url after transformation
+        # knowledge_items and kb_docs (from old Step 39) do NOT have source_url, causing missing Fonti links
         retrieval_docs = (ctx or {}).get("retrieval_result", {}).get("documents", [])
         if retrieval_docs:
             retrieval_docs = _transform_retrieval_documents(retrieval_docs)
 
         kb_results = (
             kwargs.get("kb_results")
-            or (ctx or {}).get("knowledge_items", [])
-            or (ctx or {}).get("kb_docs", [])
-            or retrieval_docs
-        )  # From Step 39 or Step 39c (transformed)
+            or retrieval_docs  # DEV-244: Prefer transformed retrieval_docs (has source_url)
+            or (ctx or {}).get("knowledge_items", [])  # Legacy fallback - lacks source_url
+            or (ctx or {}).get("kb_docs", [])  # Legacy fallback - lacks source_url
+        )  # From Step 39c (preferred) or Step 39 (legacy)
         document_facts = kwargs.get("document_facts") or (ctx or {}).get("document_facts", [])
 
         # DEV-007: Convert chat attachments to document_facts if present

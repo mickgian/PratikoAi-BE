@@ -1325,6 +1325,32 @@ async def chat_stream(
                                             session_id=session.id,
                                             error=str(parse_err),
                                         )
+                                elif chunk.startswith("__KB_SOURCE_URLS__:"):
+                                    # DEV-244: KB source URLs (deterministic, independent of LLM output)
+                                    # Format: __KB_SOURCE_URLS__:<json_array>
+                                    try:
+                                        import json as _json_kb
+
+                                        urls_json = chunk.replace("__KB_SOURCE_URLS__:", "")
+                                        kb_urls_data = _json_kb.loads(urls_json)
+                                        logger.info(
+                                            "kb_source_urls_received_from_graph",
+                                            session_id=session.id,
+                                            sources_count=len(kb_urls_data),
+                                        )
+                                        # Send KB source URLs as SSE event immediately
+                                        urls_event = StreamResponse(
+                                            content="",
+                                            event_type="kb_source_urls",
+                                            kb_source_urls=kb_urls_data,
+                                        )
+                                        yield write_sse(None, format_sse_event(urls_event), request_id=request_id)
+                                    except Exception as parse_err:
+                                        logger.warning(
+                                            "kb_source_urls_parse_failed",
+                                            session_id=session.id,
+                                            error=str(parse_err),
+                                        )
                                 else:
                                     # This is regular content (plain text string from graph)
                                     # Collect chunk for chat history

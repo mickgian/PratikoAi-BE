@@ -900,6 +900,103 @@ La risposta DEVE essere avvolta in tag XML:
 - [ ] Format reminders placed at END of grounding rules (closest to generation)
 - [ ] Test with real queries to verify all format elements appear
 
+### SSE Streaming State Management (DEV-244 Lesson)
+
+**Critical Learning (January 2026):** SSE events sent during streaming can be lost if the reducer updates the wrong state location.
+
+**Problem Pattern:**
+```
+1. Content chunks → UPDATE_STREAMING_CONTENT (message in activeStreaming)
+2. Custom event → CUSTOM_ACTION (tries to update sessionMessages - FAILS!)
+3. Done → COMPLETE_STREAMING (moves message WITHOUT custom data)
+```
+
+**Solution Pattern:**
+When custom SSE events need to attach data to streaming messages:
+1. Check if the target message is in `activeStreaming`
+2. If yes, store data in `activeStreaming` as pending (e.g., `pendingKbSources`)
+3. In `COMPLETE_STREAMING`, apply pending data to the final message
+
+```typescript
+case 'SET_MESSAGE_KB_SOURCES': {
+  const s = (state as any).activeStreaming;
+  if (s && s.messageId === messageId) {
+    // Store in streaming state for later
+    return {
+      ...state,
+      activeStreaming: { ...s, pendingKbSources: kb_source_urls },
+    };
+  }
+  // Otherwise update sessionMessages
+  return { ...state, sessionMessages: /* update */ };
+}
+
+case 'COMPLETE_STREAMING': {
+  const aiMessage = {
+    // ... other fields
+    ...(s.pendingKbSources && { kb_source_urls: s.pendingKbSources }),
+  };
+}
+```
+
+**Prevention Checklist:**
+- [ ] Identify if SSE event can arrive during streaming
+- [ ] If yes, reducer must check `activeStreaming` first
+- [ ] Pending data must be applied in `COMPLETE_STREAMING`
+
+### Source Authority Configuration (DEV-244 Lesson)
+
+**Critical Learning (January 2026):** Missing sources from `SOURCE_AUTHORITY` dict causes documents to rank lower than expected, often falling below retrieval threshold.
+
+**Problem Pattern:**
+- New document source ingested (e.g., `agenzia_entrate_riscossione`)
+- Source NOT added to `SOURCE_AUTHORITY` dict
+- Documents from that source get NO authority boost (1.0x)
+- Authoritative documents rank lower than expected
+
+**Solution Pattern:**
+When onboarding new document sources:
+1. Add source to `SOURCE_AUTHORITY` dict immediately
+2. Use appropriate boost (1.2-1.3 for official sources)
+
+```python
+SOURCE_AUTHORITY = {
+    "gazzetta_ufficiale": 1.3,    # Official laws
+    "agenzia_entrate": 1.2,       # Tax authority
+    "agenzia_entrate_riscossione": 1.2,  # DEV-244: ADeR
+    # ... etc
+}
+```
+
+**Prevention Checklist:**
+- [ ] When adding new RSS feed or document source, add to SOURCE_AUTHORITY
+- [ ] Review SOURCE_AUTHORITY quarterly for completeness
+- [ ] Test retrieval ranking for new sources
+
+### URL Verification Best Practices (DEV-244 Lesson - CORRECTED)
+
+**Critical Learning (January 2026):** Before implementing URL transformations, verify the actual cause of broken links.
+
+**Initial (Wrong) Assumption:**
+- Thought `eli/id` URL format was broken
+- Implemented URL transformation to `atto/serie_generale` format
+- **This was wrong** - the `eli/id` format works fine
+
+**Actual Problem:**
+- RSS feed stored **wrong document code** (25G00217 instead of 25G00212)
+- The URL format was correct, the document reference was wrong
+
+**Correct Solution Pattern:**
+1. **Test both formats manually** before implementing transformations
+2. **Verify document codes** - the content may be at a different URL
+3. **Fix data quality issues** rather than transforming formats
+
+**Prevention Checklist:**
+- [ ] Test external URLs manually before assuming format is wrong
+- [ ] Verify document codes by checking actual content
+- [ ] Don't transform URLs without evidence the format is broken
+- [ ] Consider RSS feed data quality issues as root cause
+
 ---
 
 ## Chat History Storage Architecture (⚠️ ADR-015 - NEW)
@@ -1261,10 +1358,13 @@ PratikoAI targets Italian tax/fiscal professionals with expected scale:
 | 2025-12-18 | Added Regression Prevention Protocol (Section 7) | Prevent breaking existing code with Change Classification, Impact Analysis, and Pre-Implementation Verification |
 | 2025-12-22 | Added Code Completeness Standards | Prevent incomplete features: no TODO comments for required features, no hardcoded placeholders, all integrations must be complete (ProactivityContext bug lesson) |
 | 2026-01-13 | Added Prompt Layer Conflict Prevention | DEV-242 lesson: LLMs follow LAST format instruction, so later layers must reinforce earlier format requirements |
+| 2026-01-15 | Added SSE Streaming State Management lesson | DEV-244: pendingKbSources pattern for streaming events |
+| 2026-01-15 | Added Source Authority Configuration lesson | DEV-244: Always add new sources to SOURCE_AUTHORITY dict |
+| 2026-01-15 | Added URL Verification Best Practices (CORRECTED) | DEV-244: Verify before transforming - issue was wrong document code, not URL format |
 
 ---
 
 **Configuration Status:** 🟢 ACTIVE
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-15
 **Next Monthly Report Due:** 2025-12-15
 **Maintained By:** PratikoAI System Administrator

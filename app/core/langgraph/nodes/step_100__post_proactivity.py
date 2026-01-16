@@ -628,20 +628,39 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
         # =====================================================================
         response_text = _get_response_content(state)
 
-        # DEV-244: Build topic context for filtering off-topic actions
-        topic_context = _build_topic_context(state)
+        # DEV-244: For template actions, skip topic filtering since they're
+        # already curated for specific document types. Only apply topic
+        # filtering to LLM-parsed actions which may drift off-topic.
+        if actions_source == "template":
+            # Template actions are document-type specific, use standard validation
+            validation_result = action_validator.validate_batch(
+                actions=actions,
+                response_text=response_text,
+                kb_sources=kb_sources,
+            )
+            logger.debug(
+                "step_100_template_validation_no_topic_filter",
+                extra={
+                    "request_id": request_id,
+                    "action_count": len(actions),
+                    "reason": "Template actions skip topic filtering",
+                },
+            )
+        else:
+            # DEV-244: Build topic context for filtering off-topic actions
+            topic_context = _build_topic_context(state)
 
-        # DEV-244: Extract previously clicked action labels to avoid repetition
-        previous_action_labels = _extract_previous_action_labels(state)
+            # DEV-244: Extract previously clicked action labels to avoid repetition
+            previous_action_labels = _extract_previous_action_labels(state)
 
-        # DEV-244: Use topic-aware validation with previous action filtering
-        validation_result = action_validator.validate_batch_with_topic_context(
-            actions=actions,
-            response_text=response_text,
-            kb_sources=kb_sources,
-            topic_context=topic_context,
-            previous_actions_used=previous_action_labels,  # DEV-244: Filter repeated actions
-        )
+            # DEV-244: Use topic-aware validation with previous action filtering
+            validation_result = action_validator.validate_batch_with_topic_context(
+                actions=actions,
+                response_text=response_text,
+                kb_sources=kb_sources,
+                topic_context=topic_context,
+                previous_actions_used=previous_action_labels,  # DEV-244: Filter repeated actions
+            )
 
         logger.debug(
             "step_100_validation_complete",
@@ -651,8 +670,8 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
                 "validated_count": len(validation_result.validated_actions),
                 "rejected_count": validation_result.rejected_count,
                 "quality_score": validation_result.quality_score,
-                "topic_context_available": topic_context is not None,
-                "previous_actions_filtered": len(previous_action_labels),  # DEV-244
+                "actions_source": actions_source,
+                "topic_filtering_applied": actions_source != "template",
             },
         )
 
@@ -662,9 +681,11 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
         # =====================================================================
         final_actions = validation_result.validated_actions
 
-        # DEV-244: Check if all rejections were topic-based
+        # DEV-244: Check if all rejections were topic-based (only relevant when topic filtering was applied)
         # If so, skip regeneration (regenerating would produce more off-topic actions)
-        all_topic_rejections = action_validator.all_rejections_topic_based(validation_result.rejection_log)
+        all_topic_rejections = False
+        if actions_source != "template":
+            all_topic_rejections = action_validator.all_rejections_topic_based(validation_result.rejection_log)
 
         should_regenerate = (
             len(validation_result.validated_actions) < MIN_VALID_ACTIONS

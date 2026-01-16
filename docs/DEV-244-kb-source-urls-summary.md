@@ -1,9 +1,9 @@
 # DEV-244: KB Source URLs Display Fix - Summary
 
 **Issue:** GitHub #TBD
-**Status:** ✅ COMPLETE
+**Status:** 🔄 IN PROGRESS - New regression identified
 **Started:** January 14, 2026
-**Last Updated:** January 15, 2026
+**Last Updated:** January 15, 2026 (15:35)
 
 ---
 
@@ -254,6 +254,117 @@ Response to "Parlami della rottamazione quinquies" must show:
 - Spot-check high-value documents
 - Consider fetching actual content to verify URLs work
 - Log and alert on unexpected HTTP responses
+
+---
+
+## Issue 5: Slot Reservation Regression (NEW - January 15, 2026)
+
+### Symptoms
+
+After implementing slot reservation for official sources:
+
+1. **ADeR link missing in ALL 4 responses** - `https://www.agenziaentrateriscossione.gov.it/...` no longer appears
+2. **Response quality regression** - Detailed operational info missing
+
+**Before (detailed response):**
+- Specific dates: "30 aprile 2026", "31 luglio 2026"
+- Rate details: "54 rate bimestrali", "100 euro minimum"
+- 5-day tolerance note: "non sono previsti i 5 giorni di tolleranza"
+
+**After (vaguer response):**
+- Generic: "entro il termine stabilito"
+- Missing: specific euro amounts, tolerance note
+- Less actionable information
+
+### Root Cause Analysis (Hypothesis)
+
+The slot reservation fix in `_get_top_k()` reserves 3 slots for HIGH_AUTHORITY_SOURCES. But the implementation has a flaw:
+
+**Current Logic:**
+```python
+official.sort(key=sort_key)  # Sort by score
+top_official = official[:3]  # Take top 3 by score
+```
+
+**Problem:** If there are 5 chunks from `gazzetta_ufficiale` with higher scores than the 1 chunk from `agenzia_entrate_riscossione`, all 3 reserved slots go to Gazzetta chunks!
+
+```
+Example retrieval:
+1. gazzetta_ufficiale chunk A (score 0.08) → RESERVED SLOT
+2. gazzetta_ufficiale chunk B (score 0.07) → RESERVED SLOT
+3. gazzetta_ufficiale chunk C (score 0.06) → RESERVED SLOT
+4. agenzia_entrate_riscossione chunk (score 0.05) → NO SLOT (pushed out!)
+5. ministero_lavoro_news chunk (score 0.09) → Gets remaining slot
+```
+
+**Why ADeR content is critical:**
+The ADeR document contains operational details (dates, amounts, procedures) that the formal law text in Gazzetta doesn't have. Losing this document = losing detailed response quality.
+
+### Fix Applied ✅
+
+Reserved slots **per source type**, not just for highest-scoring official chunks:
+
+**File:** `app/services/parallel_retrieval.py` (Lines 657-708)
+
+```python
+def _get_top_k(self, docs, k=10):
+    # Step 1: Find BEST chunk per official source type (ensures diversity)
+    source_best: dict[str, dict] = {}
+    other: list[dict] = []
+
+    for doc in docs:
+        source = doc.get("source", "").lower()
+        if source in HIGH_AUTHORITY_SOURCES:
+            # Keep only the highest-scoring chunk per source type
+            if source not in source_best:
+                source_best[source] = doc
+            elif doc.get("rrf_score", 0) > source_best[source].get("rrf_score", 0):
+                source_best[source] = doc
+        else:
+            other.append(doc)
+
+    # Step 2: Get diverse official sources sorted by score
+    official_diverse = sorted(source_best.values(), key=sort_key)
+
+    # Step 3: Reserve up to MAX_RESERVED_SLOTS for diverse official sources
+    reserved_slots = min(MAX_RESERVED_SLOTS, len(official_diverse), k)
+    top_official = official_diverse[:reserved_slots]
+
+    # ... fill remaining with other sources
+```
+
+This ensures diversity: 1 Gazzetta + 1 ADeR + 1 INPS (if exists) instead of 3 Gazzetta chunks.
+
+**Tests Added:**
+- `test_top_k_ensures_source_diversity` - verifies ADeR is included even when multiple Gazzetta chunks have higher scores
+
+### Fix 6: Supplemental Authority Search ✅
+
+**File:** `app/services/parallel_retrieval.py`
+
+**Problem:** Issue 5 fix (source diversity in `_get_top_k()`) only worked if documents reached that point. ADeR documents were being filtered out earlier in the BM25 search (didn't rank high enough in pure FTS).
+
+**Solution:** Added a 4th parallel search that explicitly fetches from HIGH_AUTHORITY_SOURCES:
+
+```python
+# New search type weight
+SEARCH_WEIGHTS = {
+    "bm25": 0.3,
+    "vector": 0.4,
+    "hyde": 0.3,
+    "authority": 0.1,  # DEV-244: Supplemental authority source search
+}
+
+# New method: _search_authority_sources()
+# Runs parallel FTS queries filtered by each HIGH_AUTHORITY_SOURCE
+# Returns top 2 results per source (Gazzetta, ADeR, INPS, etc.)
+# Results enter RRF fusion alongside BM25/vector/HyDE
+
+# Modified _execute_parallel_searches() to include 4th task
+# Modified _rrf_fusion() to handle 4 search types
+```
+
+**Result:** Official sources like ADeR are now ALWAYS retrieved and considered, regardless of pure FTS ranking
 
 ---
 

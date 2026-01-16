@@ -3364,21 +3364,29 @@ class LangGraphAgent:
                 if kb_sources:
                     import json as _json_kb
 
-                    # Deduplicate by URL
-                    seen_urls: set[str] = set()
-                    sources_with_urls: list[dict[str, Any]] = []
+                    # DEV-244 FIX: Deduplicate by URL but keep the LONGEST title per URL
+                    # Multiple knowledge_items may exist for same URL with different titles
+                    # (e.g., "Legge n. 199/2025" vs "LEGGE 30 dicembre 2025, n. 199 - Art. 1")
+                    # Keeping longest ensures consistent, more descriptive display
+                    url_to_source: dict[str, dict[str, Any]] = {}
                     for s in kb_sources:
                         url = s.get("url")
-                        if url and url not in seen_urls:
-                            seen_urls.add(url)
-                            sources_with_urls.append(
-                                {
-                                    "title": s.get("title", ""),
-                                    "url": url,
-                                    "type": s.get("type", ""),
-                                    "date": s.get("date", ""),
-                                }
-                            )
+                        if not url:
+                            continue
+                        title = s.get("title", "")
+                        if url not in url_to_source:
+                            url_to_source[url] = {
+                                "title": title,
+                                "url": url,
+                                "type": s.get("type", ""),
+                                "date": s.get("date", ""),
+                            }
+                        else:
+                            # Keep longest title (more descriptive)
+                            existing_title = url_to_source[url].get("title", "")
+                            if len(title) > len(existing_title):
+                                url_to_source[url]["title"] = title
+                    sources_with_urls = list(url_to_source.values())
 
                     if sources_with_urls:
                         kb_urls_json = _json_kb.dumps(sources_with_urls)

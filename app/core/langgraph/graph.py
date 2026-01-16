@@ -3444,6 +3444,9 @@ class LangGraphAgent:
                     placeholder_count=len(deanonymization_map),
                 )
 
+            # DEV-245: Track if anything was yielded to avoid empty responses
+            fallback_chunks_yielded = 0
+
             async for chunk in provider.stream_completion(
                 messages=processed_messages,
                 tools=None,
@@ -3467,9 +3470,24 @@ class LangGraphAgent:
                         ):
                             chunk_content = chunk_content.replace(placeholder, original)
                     yield chunk_content
+                    fallback_chunks_yielded += 1
 
                 if hasattr(chunk, "done") and chunk.done:
                     break
+
+            # DEV-245: Error visibility - never return empty response
+            # If provider streaming completed without yielding anything, show fallback message
+            if fallback_chunks_yielded == 0:
+                fallback_message = (
+                    "Non ho trovato informazioni specifiche sulla tua richiesta. "
+                    "Prova a riformulare la domanda con termini diversi o più dettagli."
+                )
+                logger.warning(
+                    "empty_response_fallback_yielded",
+                    session_id=session_id,
+                    reason="provider_streaming_yielded_nothing",
+                )
+                yield fallback_message
 
         except Exception as stream_error:
             # Step 8: InitAgent - Failure logging
@@ -3488,7 +3506,18 @@ class LangGraphAgent:
             logger.error(
                 "unified_graph_streaming_failed", error=str(stream_error), session_id=session_id, user_id=user_id
             )
-            raise stream_error
+
+            # DEV-245: Error visibility - yield user-friendly error message instead of raising
+            # This ensures the user always sees something instead of a blank response
+            error_fallback = (
+                "Si è verificato un errore durante l'elaborazione della risposta. " "Riprova tra qualche istante."
+            )
+            yield error_fallback
+            logger.warning(
+                "error_fallback_yielded",
+                session_id=session_id,
+                original_error=str(stream_error),
+            )
         finally:
             # Clean up tracking info
             self._current_user_id = None

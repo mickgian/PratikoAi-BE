@@ -258,6 +258,37 @@ class ParallelRetrievalService:
                 search_time_ms=elapsed_ms,
             )
 
+            # DEV-245: Enhanced retrieval logging for debugging hallucinations
+            # Log details of retrieved documents so we can compare against cited docs
+            if ranked_docs:
+                retrieved_doc_details = []
+                for doc in ranked_docs:
+                    retrieved_doc_details.append(
+                        {
+                            "id": doc.document_id[:20] if doc.document_id else "?",
+                            "source": doc.metadata.get("source", "?")[:30],
+                            "title": (doc.source_name or "?")[:50],
+                            "score": round(doc.rrf_score, 4),
+                            "type": doc.source_type[:20] if doc.source_type else "?",
+                        }
+                    )
+
+                # Log summary for easy debugging
+                sources_retrieved = list({d["source"] for d in retrieved_doc_details})
+                logger.info(
+                    "DEV245_retrieval_docs_summary",
+                    query=str(queries.original_query)[:100] if hasattr(queries, "original_query") else "?",
+                    retrieved_count=len(ranked_docs),
+                    sources=sources_retrieved,
+                    top_3_titles=[d["title"] for d in retrieved_doc_details[:3]],
+                )
+
+                # Log full details at debug level for deep investigation
+                logger.debug(
+                    "DEV245_retrieval_docs_detail",
+                    documents=retrieved_doc_details,
+                )
+
             return RetrievalResult(
                 documents=ranked_docs,
                 total_found=total_found,

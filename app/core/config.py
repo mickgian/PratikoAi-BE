@@ -340,6 +340,19 @@ class Settings:
         )
         self.SECURITY_SCAN_TIMEOUT = int(os.getenv("SECURITY_SCAN_TIMEOUT", "30"))
 
+        # Web Verification Settings (DEV-245)
+        self.BRAVE_SEARCH_API_KEY: str | None = os.getenv("BRAVE_SEARCH_API_KEY") or None
+        self.WEB_VERIFICATION_ENABLED = os.getenv("WEB_VERIFICATION_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+        # DEV-245: Configurable Brave search weight for Parallel Hybrid RAG
+        # Equal to BM25 (0.3) for balanced KB + web influence
+        # Range: 0.0 (disabled) to 0.4 (max recommended)
+        self.BRAVE_SEARCH_WEIGHT: float = float(os.getenv("BRAVE_SEARCH_WEIGHT", "0.30"))
+
         # Document Security Settings
         self.MAX_DOCUMENT_ENTROPY = float(os.getenv("MAX_DOCUMENT_ENTROPY", "7.5"))
         self.ALLOW_MACROS_IN_DOCUMENTS = os.getenv("ALLOW_MACROS_IN_DOCUMENTS", "false").lower() in (
@@ -478,8 +491,20 @@ SOURCE_AUTHORITY_WEIGHTS = {
 # DEV-242 Phase 21: Increased limits for more comprehensive context
 
 # CONTEXT_TOP_K: Number of chunks to include in LLM context
-# DEV-242 Phase 36: Increased from 18 to 22 to capture AdER chunks (5-day grace period info)
-CONTEXT_TOP_K = int(os.getenv("CONTEXT_TOP_K", "22"))
+# DEV-242 Phase 36: Was 22 to capture AdER chunks (5-day grace period info)
+# DEV-244: Reduced to 18 - hard char limit in context_builder_merge.py now prevents overflow
+# DEV-245: Increased from 18 to 25 for more complete responses
+CONTEXT_TOP_K = int(os.getenv("CONTEXT_TOP_K", "25"))
+
+# USE_GENERIC_EXTRACTION: Use generic extraction principles instead of topic-specific rules
+# DEV-XXX: When True, replaces ~17KB of rottamazione-specific rules with ~4KB of generic patterns
+# This enables scalability to hundreds of topics without per-topic configuration
+USE_GENERIC_EXTRACTION = os.getenv("USE_GENERIC_EXTRACTION", "true").lower() == "true"
+
+# USE_DYNAMIC_TOPIC_DETECTION: Use LLM-based semantic expansions instead of hardcoded TOPIC_KEYWORDS
+# DEV-245: When True, relies on MultiQueryGeneratorService's semantic_expansions for topic detection
+# This enables scalability to unlimited topics without manual keyword maintenance
+USE_DYNAMIC_TOPIC_DETECTION = os.getenv("USE_DYNAMIC_TOPIC_DETECTION", "true").lower() == "true"
 
 # HYBRID_K_FTS: Number of candidates from BM25/FTS search
 HYBRID_K_FTS = int(os.getenv("HYBRID_K_FTS", "30"))

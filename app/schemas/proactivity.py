@@ -23,6 +23,9 @@ from pydantic import BaseModel, Field, field_validator
 class ActionCategory(str, Enum):
     """Category of suggested action.
 
+    DEPRECATED (DEV-245 Phase 5.15): Suggested actions feature removed per user feedback.
+    This class is kept for backwards compatibility with existing data.
+
     Enum values:
     - CALCULATE: Mathematical calculations (IRPEF, IVA, INPS)
     - SEARCH: Search operations (normative, jurisprudence)
@@ -40,6 +43,9 @@ class ActionCategory(str, Enum):
 
 class Action(BaseModel):
     """Suggested action model.
+
+    DEPRECATED (DEV-245 Phase 5.15): Suggested actions feature removed per user feedback.
+    This class is kept for backwards compatibility with existing data.
 
     Represents an action button that can be shown to the user
     after an AI response. Actions have a prompt template that
@@ -74,6 +80,9 @@ class Action(BaseModel):
 class ActionSummary(BaseModel):
     """Minimal action summary for ActionContext (DEV-242 Phase 12A).
 
+    DEPRECATED (DEV-245 Phase 5.15): Suggested actions feature removed per user feedback.
+    This class is kept for backwards compatibility with existing data.
+
     Used to record available actions without full details.
     """
 
@@ -83,6 +92,9 @@ class ActionSummary(BaseModel):
 
 class ActionContext(BaseModel):
     """Context for messages originated from suggested actions (DEV-242 Phase 12A).
+
+    DEPRECATED (DEV-245 Phase 5.15): Suggested actions feature removed per user feedback.
+    This class is kept for backwards compatibility with existing data.
 
     Tracks which suggested action was selected and what alternatives were available.
     This enables historical traceability - users can see, even months later, what

@@ -29,25 +29,10 @@ def load_document_analysis_override():
         return f.read()
 
 
-def load_suggested_actions_prompt() -> str:
-    """Load suggested actions prompt for LLM-First proactivity.
-
-    This prompt instructs the LLM to output responses with <answer> and
-    <suggested_actions> XML-like tags. It should be APPENDED to the system
-    prompt (after document context) to preserve KB context allocation.
-
-    Returns:
-        str: The suggested actions prompt content.
-
-    Raises:
-        FileNotFoundError: If suggested_actions.md is missing.
-    """
-    path = os.path.join(os.path.dirname(__file__), "suggested_actions.md")
-    with open(path, encoding="utf-8") as f:
-        return f.read()
-
+# DEV-245 Phase 5.15: load_suggested_actions_prompt removed per user feedback
+# The suggested_actions feature has been completely removed.
 
 SYSTEM_PROMPT = load_system_prompt()
 DOCUMENT_ANALYSIS_PROMPT = load_document_analysis_prompt()
 DOCUMENT_ANALYSIS_OVERRIDE = load_document_analysis_override()
-SUGGESTED_ACTIONS_PROMPT = load_suggested_actions_prompt()
+# DEV-245 Phase 5.15: SUGGESTED_ACTIONS_PROMPT removed per user feedback

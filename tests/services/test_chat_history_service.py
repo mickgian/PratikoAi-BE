@@ -198,6 +198,8 @@ class TestGetSessionHistory:
                 5,
                 False,
                 1200,
+                None,  # kb_sources_metadata (DEV-244)
+                None,  # web_verification_metadata (DEV-245)
             ),
             (
                 str(uuid.uuid4()),
@@ -209,6 +211,8 @@ class TestGetSessionHistory:
                 6,
                 True,
                 800,
+                '[{"title": "Test Source", "url": "https://example.com"}]',  # kb_sources_metadata
+                '{"has_caveats": true, "caveats": ["test"]}',  # web_verification_metadata (DEV-245)
             ),
         ]
 

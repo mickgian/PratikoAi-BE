@@ -70,6 +70,7 @@ class RouterDecision(BaseModel):
     - Reasoning explanation (for debugging/audit)
     - Extracted entities
     - Additional metadata for downstream processing
+    - DEV-245: Follow-up detection for concise mode
     """
 
     route: RoutingCategory = Field(..., description="Selected routing category")
@@ -95,16 +96,30 @@ class RouterDecision(BaseModel):
         default_factory=list,
         description="Suggested data sources for retrieval",
     )
+    is_followup: bool = Field(
+        default=False,
+        description="DEV-245: Whether this is a follow-up question to previous conversation",
+    )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def needs_retrieval(self) -> bool:
         """Determine if this route requires RAG retrieval.
 
+        DEV-245 Phase 3.7: Follow-up queries ALWAYS need retrieval
+        to find documents relevant to the conversation context.
+
         Returns:
             True for routes that need document retrieval,
             False for routes that can be answered directly.
         """
+        # DEV-245 Phase 3.7: Follow-up queries always need retrieval
+        # Even if routed to "calculator", a follow-up like "e l'irap?"
+        # after "rottamazione quinquies" needs KB/web search to find
+        # relevant documents about IRAP + rottamazione context
+        if self.is_followup:
+            return True
+
         retrieval_routes = {
             RoutingCategory.TECHNICAL_RESEARCH,
             RoutingCategory.THEORETICAL_DEFINITION,

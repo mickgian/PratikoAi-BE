@@ -997,6 +997,502 @@ SOURCE_AUTHORITY = {
 - [ ] Don't transform URLs without evidence the format is broken
 - [ ] Consider RSS feed data quality issues as root cause
 
+### Web Search Query Construction (DEV-245 Lesson)
+
+**Critical Learning (January 2026):** Don't mix KB source metadata with user queries for web searches.
+
+**Problem Pattern:**
+- User query: "si possono rottamare i debiti imu"
+- Code extracts words from KB source titles (e.g., "Misure urgenti per la determinazione...")
+- Builds polluted query: "misure cento determinazione cessione abitazione 2026"
+- Web search returns irrelevant results
+
+**Solution Pattern:**
+Use the user's original query directly for web searches:
+
+```python
+def _build_verification_query(self, user_query: str, kb_sources: list[dict]) -> str:
+    """Build search query from user query directly."""
+    # Use user query directly - don't pollute with KB titles
+    query = user_query.strip()
+
+    # Add year for recency if not present
+    if "2026" not in query.lower() and "2025" not in query.lower():
+        query = f"{query} 2026"
+
+    return query
+```
+
+**Prevention Checklist:**
+- [ ] Web search queries should use original user query, not derived metadata
+- [ ] KB source titles are for context, not for search query construction
+- [ ] Test web search relevance with real user queries
+
+### Web Search Keyword Ordering for Follow-ups (DEV-245 Phase 3.9 Lesson)
+
+**Critical Learning (January 2026):** For follow-up queries, keyword order matters for web search quality. Context keywords should come FIRST, then new keywords.
+
+**Problem Pattern:**
+- First query: "parlami della rottamazione quinquies" → context: `rottamazione quinquies`
+- Follow-up: "e l'irap?" → reformulated: "L'IRAP può essere inclusa nella rottamazione quinquies?"
+- Keywords extracted in sentence order: `["irap", "rottamazione", "quinquies"]` ❌
+- Wrong Brave search: `"irap rottamazione quinquies 2026"` (new topic first - suboptimal!)
+
+**Industry Standard:**
+[BruceClay SEO Guide](https://www.bruceclay.com/seo/combining-keywords/): "It is best to use the most relevant keyword first, followed by any relevant words"
+
+**Solution Pattern - Context-First Keyword Ordering:**
+```python
+def _extract_search_keywords_with_context(
+    self,
+    query: str,
+    messages: list[dict] | None = None,
+) -> list[str]:
+    """DEV-245 Phase 3.9: Extract keywords with context-first ordering.
+
+    CRITICAL: Do NOT remove this method - it ensures Brave search uses
+    optimal keyword ordering for follow-up queries.
+
+    Industry standard: "Most relevant keyword first"
+    """
+    all_keywords = self._extract_search_keywords(query)
+
+    if not messages or len(all_keywords) <= 2:
+        return all_keywords
+
+    # Extract context keywords from conversation history
+    context_keywords = set()
+    for msg in reversed(messages[-4:]):
+        content = msg.get("content", "")[:500]
+        msg_keywords = self._extract_search_keywords(content)
+        context_keywords.update(msg_keywords[:5])
+
+    # Reorder: context first, then new keywords
+    context_first = [kw for kw in all_keywords if kw in context_keywords]
+    new_keywords = [kw for kw in all_keywords if kw not in context_keywords]
+
+    return context_first + new_keywords  # ["rottamazione", "quinquies", "irap"] ✅
+```
+
+**Why Keep LLM Reformulation:**
+- Handles typos (e.g., "rottamzaione" → "rottamazione")
+- Understands synonyms and context
+- Provides natural language for BM25/vector search
+
+**Decision:** Keep LLM reformulation for BM25/vector search, add context-aware keyword ordering specifically for Brave web search.
+
+**Prevention Checklist:**
+- [ ] Do NOT remove `_extract_search_keywords_with_context()` - it's critical for web search quality
+- [ ] For follow-up queries, always order keywords: context first, then new
+- [ ] Test with multi-turn conversations to verify keyword ordering
+- [ ] Compare search results with Brave browser using different keyword orders
+
+### Topic Summary State for Long Conversations (DEV-245 Phase 5.3 - ✅ IMPLEMENTED)
+
+**Critical Learning (January 2026):** The `messages[-4:]` window pattern loses topic context at Q4+ in multi-turn conversations. Use Topic Summary State instead.
+
+**Problem Pattern:**
+```
+Q1: "parlami della rottamazione quinquies"   ← Topic: rottamazione quinquies
+Q2: "e l'irap?"                              ← Still on topic
+Q3: "e l'imu?"                               ← Still on topic
+Q4: "accordo con le regioni?"                ← PROBLEM: messages[-4:] loses Q1!
+Q5: "la regione sicilia?"                    ← Off-topic response about generic IRAP
+```
+
+With 8+ messages, `messages[-4:]` only sees messages[4:8], missing the original topic from Q1.
+
+**Industry Best Practice (JetBrains Research, Zoice AI):**
+> "Add a small, cumulative 'conversation state summary' at the top of each message. Keep it short (1-3 sentences) and updated."
+
+**Solution Pattern - Topic Summary State:**
+```python
+# In RAGState (types.py):
+conversation_topic: str | None     # "rottamazione quinquies"
+topic_keywords: list[str] | None   # ["rottamazione", "quinquies"]
+
+# In step_034a (first query only):
+if not is_followup and not topic_keywords:
+    topic_keywords = _extract_topic_keywords(user_query)
+
+# In parallel_retrieval.py and web_verification.py:
+if topic_keywords and isinstance(topic_keywords, list):
+    # Use topic_keywords instead of scanning messages
+    context_keywords = set(topic_keywords)
+```
+
+**Benefits:**
+- ✅ Topic never lost (even 20+ turns)
+- ✅ Constant time (no message scanning)
+- ✅ Lower tokens (no history processing)
+- ✅ Type-safe with `isinstance()` check
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `types.py` | Added `conversation_topic`, `topic_keywords` fields |
+| `step_034a__llm_router.py` | Extract topic on first query |
+| `parallel_retrieval.py` | Use `topic_keywords` from state |
+| `web_verification.py` | Use `topic_keywords` from state |
+
+**Prevention Checklist:**
+- [ ] Don't rely on `messages[-N:]` for topic context in long conversations
+- [ ] Extract and persist topic keywords on first query
+- [ ] Always validate `isinstance(topic_keywords, list)` before use
+- [ ] Test with 5+ turn conversations to verify topic preservation
+
+### topic_keywords vs search_keywords Distinction (DEV-245 - ✅ IMPLEMENTED)
+
+**Critical Learning (January 2026):** These are two DIFFERENT concepts used for different purposes.
+
+| Field | Example | Purpose | Set When | Used For |
+|-------|---------|---------|----------|----------|
+| **topic_keywords** | `['rottamazione', 'quinquies']` | Core conversation topic (from Q1) | First query | **Filtering** - Require ALL to match in web results |
+| **search_keywords** | `['rottamazione', 'quinquies', 'regione', 'sicilia']` | Brave search query | Each query | **Searching** - Find relevant results |
+
+**Key Differences:**
+- `topic_keywords` is extracted ONCE from Q1 and persists across all turns
+- `search_keywords` is extracted for EACH query and may include follow-up terms
+- `topic_keywords` uses ALL() matching (strict) for web filtering
+- `search_keywords` uses ANY() matching (permissive) for general filtering
+
+**Why Both Are Needed:**
+```
+Q1: "parlami della rottamazione quinquies"
+    topic_keywords = ["rottamazione", "quinquies"]  ← PERSISTS
+    search_keywords = ["rottamazione", "quinquies"]
+
+Q5: "la regione sicilia recepira' la rottamazione dell'irap?"
+    topic_keywords = ["rottamazione", "quinquies"]  ← STILL SAME
+    search_keywords = ["rottamazione", "quinquies", "sicilia", "irap"]  ← DIFFERENT
+
+Web result: "Rottamazione Ter - Sicilia 2024"
+    - search_keywords match: ✅ (has "rottamazione", "sicilia")
+    - topic_keywords match: ❌ (missing "quinquies")
+    - Final verdict: FILTERED (topic_keywords takes precedence)
+```
+
+### YAKE Keyword Extraction Pattern (DEV-245 Phase 5.12 - ✅ IMPLEMENTED)
+
+**Critical Learning (January 2026):** Manual stop word lists don't scale. Use statistical keyword extraction instead.
+
+**Anti-Pattern (Stop Word Lists):**
+```python
+# ~80 manually curated stop words
+stop_words = {"il", "lo", "la", "di", "a", "da", "in", "con", ...}
+
+# Problems:
+# - Missing words: 'quanto', 'riguarda', 'recepira' (verbs!)
+# - Requires constant maintenance
+# - Duplicated in multiple files
+# - Doesn't handle conjugations: "recepira" vs "recepire" vs "recepito"
+```
+
+**Best Practice (YAKE Statistical Extraction):**
+```python
+from app.services.keyword_extractor import extract_keywords, extract_keywords_with_scores
+
+# YAKE uses text features to identify important keywords WITHOUT dictionaries
+keywords = extract_keywords("parlami della rottamazione quinquies", top_k=5)
+# Result: ["rottamazione", "quinquies"]  (filters "parlami", "della" automatically)
+
+# Get scores for evaluation (lower score = more important)
+keywords_with_scores = extract_keywords_with_scores(query, top_k=5)
+# [("rottamazione", 0.02), ("quinquies", 0.03), ("irap", 0.08)]
+```
+
+**YAKE Features Used:**
+- **Casing** - Proper nouns score higher
+- **Word Position** - Early words often more important
+- **Word Frequency** - Mid-frequency words preferred (not too common, not rare)
+- **Context Relatedness** - Co-occurrence patterns
+
+**Benefits:**
+- ✅ No stop word maintenance
+- ✅ Works for any Italian verb conjugation
+- ✅ Handles any domain (not just fiscal)
+- ✅ Scores available for debugging/evaluation
+- ✅ Single implementation in `keyword_extractor.py`
+
+**Implementation:**
+```python
+# app/services/keyword_extractor.py
+import yake
+
+def extract_keywords_with_scores(text: str, top_k: int = 5) -> list[tuple[str, float]]:
+    """Extract keywords using YAKE statistical scoring."""
+    extractor = yake.KeywordExtractor(lan="it", n=1, top=20)
+    keywords = extractor.extract_keywords(text)
+    return [(kw.lower(), score) for kw, score in keywords[:top_k]]
+```
+
+**Prevention Checklist:**
+- [ ] Never add new stop words - use YAKE instead
+- [ ] Always use `keyword_extractor.py` for keyword extraction
+- [ ] Log scores for debugging: `DEV245_yake_keyword_scores`
+- [ ] Test with conjugated verbs to verify automatic filtering
+
+### Centralized Italian Stop Words (DEV-245 Phase 5.14 - ✅ IMPLEMENTED)
+
+**Critical Learning (January 2026):** 5 separate stop word lists (~40-150 words each) existed across the codebase, each evolved independently. Missing verb conjugations caused issues.
+
+**Problem:** Query "la regione sicilia recepira' la rottamazione dell'irap?" extracted "recepira" as keyword because future tense verbs were missing from stop word lists.
+
+**Solution:** Create single `app/services/italian_stop_words.py` module with:
+- `STOP_WORDS` (372 words) - for search keyword extraction
+- `STOP_WORDS_MINIMAL` (51 words) - for topic extraction
+
+**Usage:**
+```python
+from app.services.italian_stop_words import STOP_WORDS, STOP_WORDS_MINIMAL
+
+# For search keyword extraction (filter more aggressively)
+keywords = [w for w in words if w.lower() not in STOP_WORDS]
+
+# For topic extraction (keep some domain words)
+topics = [w for w in words if w.lower() not in STOP_WORDS_MINIMAL]
+```
+
+**Prevention Checklist:**
+- [ ] Never add stop words inline - always import from italian_stop_words.py
+- [ ] When adding new verb forms, add all conjugations (present, future, conditional)
+- [ ] Include non-accented variants (recepira, includera, etc.)
+
+### Comprehensive Feature Removal Checklist (DEV-245 Phase 5.15.1 - ✅ IMPLEMENTED)
+
+**Critical Learning (January 2026):** When removing a feature, missed references cause runtime errors that may not surface until specific code paths are executed.
+
+**Problem Pattern:**
+- Removed `suggested_actions` feature across ~15 files
+- Missed `step_064__llm_call.py` (8 references) and `monitoring.py` (1 import + 4 endpoints)
+- App crashed with "Errore nel caricamento delle sessioni" when hitting the missed code path
+
+**Prevention Checklist - Feature Removal:**
+```bash
+# 1. Search for ALL references in code
+grep -r "feature_name" app/ --include="*.py"
+grep -r "FeatureName" app/ --include="*.py"
+
+# 2. Search for ALL references in tests
+grep -r "feature_name" tests/ --include="*.py"
+
+# 3. Search for imports
+grep -r "from.*feature" app/ --include="*.py"
+grep -r "import.*feature" app/ --include="*.py"
+
+# 4. Search in prompts/templates
+grep -r "feature_name" app/prompts/ app/core/prompts/
+
+# 5. Verify app starts without errors
+docker-compose restart app && docker-compose logs app --tail=50
+```
+
+**Files Commonly Missed:**
+- LangGraph nodes (state field access)
+- Monitoring/metrics endpoints (dashboard APIs)
+- SSE event handlers (chatbot streaming)
+- Schema definitions (Pydantic models)
+- Type hints in orchestrators
+
+---
+
+### Conditional Response Format Based on Content (DEV-245 Phase 5.14 - ✅ IMPLEMENTED)
+
+**Critical Learning (January 2026):** LLM prompts with "use X format IF relevant" get ignored - LLMs often use the format anyway.
+
+**Problem:** The ✅/❌ format ("Incluso/Escluso") was applied to EVERY response, even general questions like "Cos'è la rottamazione?" where it felt forced.
+
+**Anti-Pattern (Prompt-Based Conditional):**
+```markdown
+## Se la domanda riguarda esclusioni, usa questo formato:
+✅ Incluso: [cosa è incluso]
+❌ Escluso: [cosa è escluso]
+
+## Altrimenti usa formato narrativo
+```
+LLMs ignore the "IF" condition and use the format anyway.
+
+**Solution Pattern - Code-Based Detection:**
+```python
+def _web_has_genuine_exclusions(web_results: list[dict]) -> tuple[bool, list[str]]:
+    """Scan web results for exclusion keywords."""
+    EXCLUSION_KEYWORDS = {"esclus", "non inclu", "non ammess", ...}
+    matched = []
+    for result in web_results:
+        text = (result.get("snippet", "") + result.get("title", "")).lower()
+        for keyword in EXCLUSION_KEYWORDS:
+            if keyword in text:
+                matched.append(keyword)
+    return len(matched) > 0, matched
+
+# In web_verification.py:
+has_exclusions, keywords = _web_has_genuine_exclusions(web_results)
+if has_exclusions:
+    instruction = f"ESCLUSIONI TROVATE ({keywords}). Usa formato ✅/❌"
+else:
+    instruction = "NON usare ✅/❌. Usa formato narrativo."
+```
+
+**Benefits:**
+- Deterministic (same input → same behavior)
+- Testable (unit tests for detection logic)
+- Debuggable (logs show exactly WHY format was used)
+
+**Prevention Checklist:**
+- [ ] Don't rely on LLM to conditionally apply formats
+- [ ] Use code to detect when specific formats are appropriate
+- [ ] Make format selection explicit in prompts, not conditional
+
+### Parallel Hybrid RAG Architecture (DEV-245 - ✅ IMPLEMENTED)
+
+**Critical Learning (January 2026):** Industry best practice for Web + KB RAG uses parallel retrieval with single LLM synthesis.
+
+**Previous Anti-Pattern (2 LLM calls):**
+```
+User Query → KB Retrieval → LLM #1 (KB answer) → Web Search → LLM #2 (synthesis)
+Total: ~6-10s, 2 LLM calls, higher cost
+```
+
+**Current Architecture (1 LLM call) - ✅ IMPLEMENTED January 17, 2026:**
+```
+User Query
+    ↓
+Step 39c: PARALLEL Retrieval
+  ├─ KB: bm25 (0.3), vector (0.35), hyde (0.25), authority (0.1)
+  └─ Web: brave (0.3) ← balanced with BM25
+    ↓
+Step 40: Merge & Rank with RRF
+    ↓
+Single LLM Call (Step 64)
+    ↓
+Final Response
+```
+**Total: ~3-5s, 1 LLM call, lower cost**
+
+**Benefits Achieved:**
+- **50% fewer LLM calls** (2 → 1)
+- **40-50% faster response** (~3-5s vs ~6-10s)
+- **Lower API costs**
+- **Industry standard** approach (Azure AI Search, hybrid RAG systems)
+
+**Implementation Summary:**
+
+| File | Change |
+|------|--------|
+| `parallel_retrieval.py` | Added `_search_brave()` as 5th parallel search |
+| `types.py` | Added `web_documents`, `web_sources_metadata` to RAGState |
+| `step_040__build_context.py` | Separates web results from KB docs |
+| `prompting.py` | Injects web sources in step_41/step_44 |
+| `web_verification.py` | Uses existing web sources (no redundant search) |
+
+**Key Design Decisions:**
+1. Web results get `brave` weight (0.3) - balanced with BM25, configurable via `BRAVE_SEARCH_WEIGHT`
+2. Source attribution distinguishes KB vs web via `is_web_result` metadata flag
+3. Web sources injected via dedicated prompt section "Fonti Web Recenti"
+4. Step 100 (post-proactivity) reuses existing sources instead of re-searching
+
+**Sources:**
+- [RAG 2025 Definitive Guide](https://www.chitika.com/retrieval-augmented-generation-rag-the-definitive-guide-2025/)
+- [Azure AI Search RAG](https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview)
+- [Hybrid RAG Architecture](https://www.ai21.com/glossary/foundational-llm/hybrid-rag/)
+
+### Generic vs Topic-Specific Prompt Rules (DEV-XXX Lesson - ✅ IMPLEMENTED)
+
+**Critical Learning (January 2026):** Topic-specific extraction rules don't scale. A scalable AI assistant must use generic extraction principles.
+
+**Anti-Pattern (Topic-Specific Rules):**
+```
+# ~17KB of hardcoded topic-specific rules
+if topic == "rottamazione quinquies":
+    extract(scadenza_domanda, numero_rate, interessi, ...)  # 8 specific fields
+elif topic == "bonus ristrutturazione":
+    extract(percentuale, massimale, ...)  # Different fields
+elif topic == "CCNL":
+    extract(salario_minimo, ferie, ...)  # Yet different fields
+# ... 100+ topics = unmaintainable
+```
+
+**Best Practice (Generic Extraction Principles):**
+```markdown
+## REGOLE UNIVERSALI DI ESTRAZIONE
+
+| Pattern | Esempio | Azione |
+|---------|---------|--------|
+| Date/Scadenze | "30 aprile 2026" | COPIA nella risposta |
+| Percentuali | "3 per cento" | COPIA nella risposta |
+| Importi | "€ 5.000" | COPIA nella risposta |
+| Quantità | "54 rate" | COPIA nella risposta |
+| Articoli/Leggi | "Art. 1, comma 231" | CITA nella risposta |
+| Condizioni | "possono accedere" | ELENCA |
+| Esclusioni | "esclusi", "non possono" | ELENCA |
+| Conseguenze | "decadenza" | DETTAGLIA |
+
+**Se un dato è nel KB, DEVE essere nella risposta.**
+```
+
+**Why This Works:**
+1. LLMs excel at pattern recognition - they can identify dates, amounts, conditions without explicit field names
+2. Universal patterns cover 95%+ of domain-specific data extraction needs
+3. No code changes required when adding new topics
+4. Prompt size reduced from ~17KB to ~4KB (68% reduction)
+
+**Implementation:**
+```python
+# app/core/config.py
+USE_GENERIC_EXTRACTION = os.getenv("USE_GENERIC_EXTRACTION", "true").lower() == "true"
+
+# app/orchestrators/prompting.py
+if USE_GENERIC_EXTRACTION:
+    grounding_rules = GENERIC_EXTRACTION_PRINCIPLES  # ~4KB
+else:
+    grounding_rules = LEGACY_TOPIC_SPECIFIC_RULES    # ~17KB (rollback)
+```
+
+**Prevention Checklist:**
+- [ ] Never add topic-specific extraction rules to prompts
+- [ ] Use universal pattern types (dates, amounts, conditions, references)
+- [ ] If a topic needs "special" extraction, question whether generic patterns already cover it
+- [ ] Test generic extraction on new topics before considering topic-specific rules
+
+### Chat History Storage Best Practice (January 2026 Fix)
+
+**Critical Learning:** LangGraph checkpoints are for workflow state, NOT for persistent chat history.
+
+**Anti-Pattern (Caused Page Refresh Bug):**
+```
+User asks question → Response streamed
+    ↓
+LangGraph checkpoint saves state (unreliable persistence)
+    ↓
+PostgreSQL saves Q&A (reliable but unused!)
+    ↓
+Page refresh → Frontend loads from LangGraph checkpoint → DATA LOST
+```
+
+**Best Practice (Industry Standard):**
+```
+User asks question → Response streamed
+    ↓
+PostgreSQL saves Q&A (source of truth)
+    ↓
+LangGraph checkpoint saves workflow state only
+    ↓
+Page refresh → Frontend loads from PostgreSQL → DATA PERSISTS
+```
+
+**Fix Applied:**
+- `/api/v1/chatbot/messages` GET endpoint now reads from PostgreSQL
+- `/api/v1/chatbot/messages` DELETE endpoint now clears from PostgreSQL
+- LangGraph checkpoint only used for workflow resumption during active sessions
+
+**Industry Examples:**
+- ChatGPT: PostgreSQL for chat history
+- Claude: Database for chat history
+- Perplexity: Database for chat history
+
+**Files Modified:**
+- `app/api/v1/chatbot.py` - `get_session_messages()` and `clear_chat_history()` endpoints
+
 ---
 
 ## Chat History Storage Architecture (⚠️ ADR-015 - NEW)
@@ -1361,10 +1857,22 @@ PratikoAI targets Italian tax/fiscal professionals with expected scale:
 | 2026-01-15 | Added SSE Streaming State Management lesson | DEV-244: pendingKbSources pattern for streaming events |
 | 2026-01-15 | Added Source Authority Configuration lesson | DEV-244: Always add new sources to SOURCE_AUTHORITY dict |
 | 2026-01-15 | Added URL Verification Best Practices (CORRECTED) | DEV-244: Verify before transforming - issue was wrong document code, not URL format |
+| 2026-01-17 | Added Web Search Query Construction lesson | DEV-245: Use user query directly for web searches, don't mix with KB source metadata |
+| 2026-01-17 | Added Parallel Hybrid RAG Architecture lesson | DEV-245: Industry best practice - parallel retrieval with single LLM synthesis (50% fewer LLM calls) |
+| 2026-01-17 | Fixed chat history persistence bug | Page refresh now loads from PostgreSQL (industry standard) instead of LangGraph checkpoint |
+| 2026-01-19 | Added Generic vs Topic-Specific Prompt Rules lesson | Scalability: ~17KB topic-specific rules replaced with ~4KB generic extraction principles |
+| 2026-01-21 | Added Web Search Keyword Ordering for Follow-ups lesson | DEV-245 Phase 3.9: Context keywords first, then new keywords for optimal Brave search results |
+| 2026-01-22 | Added Topic Summary State for Long Conversations lesson | DEV-245 Phase 5.3: Use topic_keywords state instead of messages[-4:] window for long conversations |
+| 2026-01-23 | Added topic_keywords vs search_keywords distinction | DEV-245: Document two distinct keyword concepts for search vs filtering |
+| 2026-01-23 | Added YAKE Keyword Extraction Pattern | DEV-245 Phase 5.12: Statistical keyword extraction replaces manual stop word lists |
+| 2026-01-23 | Added Centralized Italian Stop Words lesson | DEV-245 Phase 5.14: Single source of truth for stop word lists |
+| 2026-01-23 | Added Conditional Response Format lesson | DEV-245 Phase 5.14: Use code to detect when format is appropriate |
+| 2026-01-23 | Removed Suggested Actions feature | DEV-245 Phase 5.15: User feedback - actions were generic/unhelpful |
+| 2026-01-23 | Added Comprehensive Feature Removal lesson | DEV-245 Phase 5.15.1: Always grep entire codebase when removing features |
 
 ---
 
 **Configuration Status:** 🟢 ACTIVE
-**Last Updated:** 2026-01-15
+**Last Updated:** 2026-01-23
 **Next Monthly Report Due:** 2025-12-15
 **Maintained By:** PratikoAI System Administrator

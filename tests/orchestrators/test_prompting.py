@@ -301,9 +301,7 @@ class TestStep44DocumentAnalysisInjection:
         # Verify DOCUMENT_ANALYSIS_OVERRIDE is injected at TOP
         assert DOCUMENT_ANALYSIS_OVERRIDE in result, "DOCUMENT_ANALYSIS_OVERRIDE should be in result for pure_doc"
         # Verify override is at TOP (starts with it)
-        assert result.startswith(
-            "[System context"
-        ), "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
+        assert result.startswith("[System context"), "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
 
     @patch("app.orchestrators.prompting.rag_step_log")
     @patch("app.orchestrators.prompting.rag_step_timer")
@@ -332,9 +330,7 @@ class TestStep44DocumentAnalysisInjection:
         # Verify DOCUMENT_ANALYSIS_OVERRIDE is injected at TOP
         assert DOCUMENT_ANALYSIS_OVERRIDE in result, "DOCUMENT_ANALYSIS_OVERRIDE should be in result for hybrid"
         # Verify override is at TOP (starts with it)
-        assert result.startswith(
-            "[System context"
-        ), "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
+        assert result.startswith("[System context"), "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
 
     @patch("app.orchestrators.prompting.rag_step_log")
     @patch("app.orchestrators.prompting.rag_step_timer")
@@ -364,3 +360,183 @@ class TestStep44DocumentAnalysisInjection:
         assert (
             DOCUMENT_ANALYSIS_OVERRIDE not in result
         ), "DOCUMENT_ANALYSIS_OVERRIDE should NOT be in result for pure_kb"
+
+
+class TestDEV245ConciseMode:
+    """DEV-245: Tests for concise mode when is_followup is True"""
+
+    @patch("app.orchestrators.prompting.rag_step_log")
+    @patch("app.orchestrators.prompting.rag_step_timer")
+    def test_step_44_injects_concise_mode_for_followup(
+        self,
+        mock_timer,
+        mock_rag_log,
+    ):
+        """DEV-245: Test Step 44 injects concise mode prefix when is_followup=True"""
+        from app.orchestrators.prompting import step_44__default_sys_prompt
+
+        # Mock timer context manager
+        mock_timer.return_value.__enter__ = MagicMock()
+        mock_timer.return_value.__exit__ = MagicMock()
+
+        # Context with is_followup=True and KB context
+        ctx = {
+            "user_query": "e l'IRAP?",
+            "trigger_reason": "no_classification",
+            "query_composition": "pure_kb",
+            "routing_decision": {
+                "route": "theoretical_definition",
+                "is_followup": True,
+                "confidence": 0.85,
+            },
+            "context": "IRAP è l'Imposta Regionale sulle Attività Produttive...",
+        }
+
+        result = step_44__default_sys_prompt(ctx=ctx)
+
+        # Verify concise mode prefix is injected
+        assert "MODALITÀ CONCISA" in result, "Concise mode prefix should be in prompt for follow-up"
+        assert "NON RIPETERE" in result, "Concise mode should instruct not to repeat"
+
+    @patch("app.orchestrators.prompting.rag_step_log")
+    @patch("app.orchestrators.prompting.rag_step_timer")
+    def test_step_44_no_concise_mode_when_not_followup(
+        self,
+        mock_timer,
+        mock_rag_log,
+    ):
+        """DEV-245: Test Step 44 does NOT inject concise mode when is_followup=False"""
+        from app.orchestrators.prompting import step_44__default_sys_prompt
+
+        # Mock timer context manager
+        mock_timer.return_value.__enter__ = MagicMock()
+        mock_timer.return_value.__exit__ = MagicMock()
+
+        # Context with is_followup=False and KB context
+        ctx = {
+            "user_query": "Cos'è l'IRAP?",
+            "trigger_reason": "no_classification",
+            "query_composition": "pure_kb",
+            "routing_decision": {
+                "route": "theoretical_definition",
+                "is_followup": False,
+                "confidence": 0.85,
+            },
+            "context": "IRAP è l'Imposta Regionale sulle Attività Produttive...",
+        }
+
+        result = step_44__default_sys_prompt(ctx=ctx)
+
+        # Verify concise mode prefix is NOT injected
+        assert "MODALITÀ CONCISA" not in result, "Concise mode should NOT be in prompt when not follow-up"
+
+    @patch("app.orchestrators.prompting.rag_step_log")
+    @patch("app.orchestrators.prompting.rag_step_timer")
+    def test_step_44_no_concise_mode_without_routing_decision(
+        self,
+        mock_timer,
+        mock_rag_log,
+    ):
+        """DEV-245: Test Step 44 does NOT inject concise mode when routing_decision is missing"""
+        from app.orchestrators.prompting import step_44__default_sys_prompt
+
+        # Mock timer context manager
+        mock_timer.return_value.__enter__ = MagicMock()
+        mock_timer.return_value.__exit__ = MagicMock()
+
+        # Context without routing_decision
+        ctx = {
+            "user_query": "Cos'è l'IRAP?",
+            "trigger_reason": "no_classification",
+            "query_composition": "pure_kb",
+            "context": "IRAP è l'Imposta Regionale sulle Attività Produttive...",
+        }
+
+        result = step_44__default_sys_prompt(ctx=ctx)
+
+        # Verify concise mode prefix is NOT injected
+        assert "MODALITÀ CONCISA" not in result, "Concise mode should NOT be in prompt without routing_decision"
+
+    @patch("app.orchestrators.prompting.rag_step_log")
+    @patch("app.orchestrators.prompting.rag_step_timer")
+    def test_step_44_no_concise_mode_without_context(
+        self,
+        mock_timer,
+        mock_rag_log,
+    ):
+        """DEV-245: Test Step 44 does NOT inject concise mode when no KB context (concise mode only with context)"""
+        from app.orchestrators.prompting import step_44__default_sys_prompt
+
+        # Mock timer context manager
+        mock_timer.return_value.__enter__ = MagicMock()
+        mock_timer.return_value.__exit__ = MagicMock()
+
+        # Context with is_followup=True but NO KB context
+        ctx = {
+            "user_query": "e l'IRAP?",
+            "trigger_reason": "no_classification",
+            "query_composition": "pure_kb",
+            "routing_decision": {
+                "route": "theoretical_definition",
+                "is_followup": True,
+                "confidence": 0.85,
+            },
+            # No "context" key - no KB content
+        }
+
+        result = step_44__default_sys_prompt(ctx=ctx)
+
+        # Concise mode should NOT be injected because there's no KB context
+        # The concise mode prefix is only added when has_actual_context is True
+        assert "MODALITÀ CONCISA" not in result, "Concise mode should NOT be in prompt without KB context"
+
+    @pytest.mark.asyncio
+    @patch("app.orchestrators.prompting.rag_step_log")
+    @patch("app.orchestrators.prompting.rag_step_timer")
+    @patch("app.orchestrators.classify.step_43__domain_prompt")
+    async def test_step_41_domain_prompt_concise_mode_for_followup(
+        self,
+        mock_step_43,
+        mock_timer,
+        mock_rag_log,
+    ):
+        """DEV-245: Test Step 41 domain prompt path injects concise mode for follow-up"""
+        from app.orchestrators.prompting import step_41__select_prompt
+
+        # Mock timer context manager
+        mock_timer.return_value.__enter__ = MagicMock()
+        mock_timer.return_value.__exit__ = MagicMock()
+
+        # Mock step 43 to return a domain prompt
+        mock_step_43.return_value = {
+            "prompt_generated": True,
+            "domain_prompt": "You are an Italian tax expert.",
+        }
+
+        # Mock user message
+        msg = MagicMock()
+        msg.role = "user"
+        msg.content = "e l'IRAP?"
+        messages = [msg]
+
+        # Context with is_followup=True
+        ctx = {
+            "classification": {
+                "domain": "italian_tax",
+                "action": "explain",
+                "confidence": 0.85,
+            },
+            "request_id": "test_concise_001",
+            "routing_decision": {
+                "route": "theoretical_definition",
+                "is_followup": True,
+                "confidence": 0.85,
+            },
+            "context": "IRAP è l'Imposta Regionale sulle Attività Produttive...",
+        }
+
+        result = await step_41__select_prompt(messages=messages, ctx=ctx)
+
+        # Verify concise mode prefix is in the selected prompt
+        selected_prompt = result.get("selected_prompt", "")
+        assert "MODALITÀ CONCISA" in selected_prompt, "Concise mode should be in domain prompt for follow-up"

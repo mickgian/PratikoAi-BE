@@ -16,7 +16,6 @@ Usage in graph:
 """
 
 import logging
-import re
 from typing import TYPE_CHECKING, Any
 
 from app.core.langgraph.types import RAGState
@@ -38,162 +37,108 @@ NODE_LABEL = "step_039a_multi_query"
 # "Parlami della rottamazione quinquies" need document_references extraction
 SKIP_EXPANSION_ROUTES = {"chitchat"}
 
-# DEV-245: Threshold for short query expansion
-# Queries with fewer words than this will be expanded with conversation context
+# DEV-245: Threshold for short query reformulation
+# Queries with fewer words than this will be reformulated using LLM
 SHORT_QUERY_THRESHOLD = 5
 
-# DEV-245: Italian stop words to filter out when extracting topics
-ITALIAN_STOP_WORDS = {
-    "il",
-    "la",
-    "lo",
-    "i",
-    "gli",
-    "le",
-    "un",
-    "una",
-    "uno",
-    "di",
-    "a",
-    "da",
-    "in",
-    "con",
-    "su",
-    "per",
-    "tra",
-    "fra",
-    "e",
-    "ed",
-    "o",
-    "ma",
-    "che",
-    "chi",
-    "cui",
-    "non",
-    "più",
-    "come",
-    "dove",
-    "quando",
-    "perché",
-    "se",
-    "anche",
-    "solo",
-    "sempre",
-    "mai",
-    "già",
-    "ancora",
-    "proprio",
-    "questo",
-    "quello",
-    "cosa",
-    "fatto",
-    "essere",
-    "avere",
-    "fare",
-    "dire",
-    "vedere",
-    "sapere",
-    "potere",
-    "volere",
-    "dovere",
-    "andare",
-    "stare",
-    "venire",
-    "dare",
-    "bene",
-    "male",
-    "molto",
-    "poco",
-    "tanto",
-    "tutto",
-    "niente",
-    "nulla",
-    "qualcosa",
-}
 
+async def _reformulate_short_query_llm(query: str, messages: list[dict] | None) -> str:
+    """DEV-245: Use LLM to reformulate short follow-up queries into complete questions.
 
-def _expand_short_query(query: str, messages: list[dict] | None) -> str:
-    """DEV-245: Expand short queries using conversation context.
-
-    When a user asks a short follow-up question like "e l'IRAP?", we need to
-    prepend the conversation topic to make retrieval effective.
+    Industry-standard approach used by Google, Perplexity, and ChatGPT.
+    Semantic reformulation is more effective than keyword prepending.
 
     Example:
-        - Previous messages: discussion about "rottamazione quinquies"
-        - Short query: "e l'irap"
-        - Expanded: "rottamazione quinquies IRAP imposta regionale"
+        - Previous response: discussion about "rottamazione quinquies"
+        - Short query: "e l'irap?"
+        - Reformulated: "L'IRAP può essere inclusa nella rottamazione quinquies?"
 
     Args:
-        query: The user's query (potentially short)
+        query: The user's query (potentially short/incomplete)
         messages: Conversation history from state["messages"]
 
     Returns:
-        The original query if >= 5 words, or expanded query with context
+        The reformulated query if short, or original query if >= 5 words
     """
-    # Count words in query
     words = query.strip().split()
     word_count = len(words)
 
-    # If query is long enough, no expansion needed
+    # If query is long enough, no reformulation needed
     if word_count >= SHORT_QUERY_THRESHOLD:
         return query
 
-    # No messages, can't expand
+    # No messages, can't reformulate
     if not messages:
-        logger.info(
-            "short_query_no_expansion",
-            reason="no_conversation_history",
-            word_count=word_count,
-        )
+        logger.info(f"short_query_no_reformulation: reason=no_conversation_history, word_count={word_count}")
         return query
 
-    # Extract topics from recent conversation history (last 4 messages = 2 exchanges)
-    topics: list[str] = []
-    recent_messages = messages[-4:] if len(messages) > 4 else messages
-
-    for msg in recent_messages:
-        content = ""
-        role = ""
-
-        # Handle both dict and LangChain message objects
+    # Get last assistant message as context (more relevant than user messages)
+    last_assistant_content: str | None = None
+    for msg in reversed(messages):
         if isinstance(msg, dict):
-            content = msg.get("content", "")
             role = msg.get("role", "")
+            if role in ("assistant", "ai"):
+                last_assistant_content = (msg.get("content") or "")[:500]
+                break
         else:
-            content = getattr(msg, "content", "") or ""
-            role = getattr(msg, "type", "") or getattr(msg, "role", "")
+            msg_type = getattr(msg, "type", "") or getattr(msg, "role", "")
+            if msg_type in ("assistant", "ai"):
+                last_assistant_content = (getattr(msg, "content", "") or "")[:500]
+                break
 
-        # Focus on user messages for topic extraction
-        if role in ("user", "human"):
-            # Extract meaningful words (3+ chars, not stop words)
-            msg_words = re.findall(r"\b\w{3,}\b", content.lower())
-            for word in msg_words:
-                if word not in ITALIAN_STOP_WORDS and word not in topics:
-                    topics.append(word)
-
-    # Limit to top 5 most recent topics
-    topics = topics[:5]
-
-    if not topics:
-        logger.info(
-            "short_query_no_expansion",
-            reason="no_topics_found",
-            word_count=word_count,
-        )
+    if not last_assistant_content:
+        logger.info(f"short_query_no_reformulation: reason=no_assistant_context, word_count={word_count}")
         return query
 
-    # Build expanded query: topics + original query
-    expanded = f"{' '.join(topics)} {query}"
+    # Build reformulation prompt
+    prompt = f"""Reformula questa domanda breve in una domanda completa e autonoma.
 
-    logger.info(
-        "short_query_expanded",
-        original_query=query,
-        word_count=word_count,
-        topics_added=topics,
-        expanded_query=expanded[:100],
-    )
+Contesto della risposta precedente:
+{last_assistant_content}
 
-    return expanded
+Domanda breve dell'utente: "{query}"
+
+REGOLE:
+- Rispondi SOLO con la domanda riformulata
+- Nessuna spiegazione o preambolo
+- La domanda deve essere comprensibile senza contesto
+
+Esempio: "e l'imu?" dopo discussione su rottamazione → "L'IMU può essere inclusa nella rottamazione quinquies?"
+"""
+
+    try:
+        from openai import AsyncOpenAI
+
+        from app.core.llm.model_config import ModelTier, get_model_config
+
+        config = get_model_config()  # Get singleton (no args)
+        model = config.get_model(ModelTier.BASIC)  # gpt-4o-mini for fast reformulation
+        client = AsyncOpenAI()
+
+        response = await client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            max_tokens=100,
+        )
+
+        reformulated = (response.choices[0].message.content or "").strip()
+
+        # Clean up common LLM artifacts
+        reformulated = reformulated.strip('"').strip("'")
+
+        # Validate we got something meaningful
+        if not reformulated or len(reformulated) < 5:
+            logger.warning(f"short_query_reformulation_invalid: original={query!r}, result={reformulated!r}")
+            return query
+
+        logger.info(f"short_query_reformulated_llm: original={query!r}, reformulated={reformulated!r}")
+
+        return reformulated
+
+    except Exception as e:
+        logger.warning(f"short_query_reformulation_failed: error={e}, query={query!r}")
+        return query  # Fallback to original
 
 
 def _variants_to_dict(variants: Any) -> dict[str, Any]:
@@ -259,9 +204,10 @@ async def node_step_39a(state: RAGState) -> RAGState:
     route = routing_decision.get("route", "technical_research")
     messages = state.get("messages", [])  # DEV-245: Get conversation history
 
-    # DEV-245: Expand short queries using conversation context
-    # This helps queries like "e l'IRAP?" get proper retrieval context
-    expanded_query = _expand_short_query(user_query, messages)
+    # DEV-245: Reformulate short follow-up queries into complete questions
+    # Uses LLM (gpt-4o-mini) for semantic reformulation, ~100ms latency
+    # e.g., "e l'irap?" → "L'IRAP può essere inclusa nella rottamazione quinquies?"
+    expanded_query = await _reformulate_short_query_llm(user_query, messages)
     query_was_expanded = expanded_query != user_query
 
     rag_step_log(
@@ -313,7 +259,9 @@ async def node_step_39a(state: RAGState) -> RAGState:
 
             except Exception as e:
                 logger.warning(f"Step {NODE_LABEL}: Multi-query error, using fallback: {e}")
-                query_variants = _create_fallback_result(user_query)
+                # DEV-245 Phase 3.3: Use expanded_query (reformulated) instead of user_query
+                # This preserves conversation context even when multi-query generation fails
+                query_variants = _create_fallback_result(expanded_query)
 
     rag_step_log(
         STEP_NUM,

@@ -23,6 +23,7 @@ from typing import Any, Optional
 from app.core.config import HYBRID_K_FTS
 from app.core.logging import logger
 from app.services.hyde_generator import HyDEResult
+from app.services.italian_stop_words import STOP_WORDS
 from app.services.multi_query_generator import QueryVariants
 
 # RRF constant (k=60 per Section 13.7.2)
@@ -30,12 +31,28 @@ RRF_K = 60
 
 # Search type weights per Section 13.7.2
 # DEV-244: Added authority search to ensure official sources are always considered
+# DEV-245: Added brave (web search) for Parallel Hybrid RAG
+# Note: brave weight is loaded from settings.BRAVE_SEARCH_WEIGHT at runtime
 SEARCH_WEIGHTS = {
     "bm25": 0.3,
-    "vector": 0.4,
-    "hyde": 0.3,
-    "authority": 0.1,  # DEV-244: Supplemental authority source search
+    "vector": 0.35,
+    "hyde": 0.25,
+    "authority": 0.2,  # DEV-244: Increased from 0.1 to boost official sources
+    "brave": 0.3,  # DEV-245: Default, overridden by BRAVE_SEARCH_WEIGHT env var
 }
+
+
+def _get_search_weights() -> dict[str, float]:
+    """Get search weights with runtime-configurable brave weight.
+
+    DEV-245: Allows tuning brave weight via BRAVE_SEARCH_WEIGHT env var.
+    """
+    from app.core.config import settings
+
+    weights = SEARCH_WEIGHTS.copy()
+    weights["brave"] = settings.BRAVE_SEARCH_WEIGHT
+    return weights
+
 
 # Source authority hierarchy per Section 13.7.4
 # DEV-242 Phase 17: Increased boosts to prioritize full laws over summaries
@@ -80,6 +97,10 @@ HIGH_AUTHORITY_SOURCES = {
 
 # Maximum reserved slots for high-authority sources
 MAX_RESERVED_SLOTS = 3
+
+# DEV-245 Phase 3.8: Reserve slots for web results to ensure they appear in Fonti
+# Web results from Brave search need guaranteed inclusion regardless of RRF score
+WEB_RESERVED_SLOTS = 2
 
 
 def _normalize_document_patterns(refs: list[str] | None) -> list[str]:
@@ -165,11 +186,15 @@ class RetrievalResult:
         documents: List of ranked documents
         total_found: Total number of documents found across all searches
         search_time_ms: Total search time in milliseconds
+        search_keywords: DEV-245 Phase 4.2.1 - Keywords used for Brave search (for downstream filtering)
+        search_keywords_with_scores: DEV-245 Phase 5.12 - Keywords with YAKE scores for evaluation
     """
 
     documents: list[RankedDocument]
     total_found: int
     search_time_ms: float
+    search_keywords: list[str] | None = None  # DEV-245 Phase 4.2.1: For consistent web filtering
+    search_keywords_with_scores: list[dict] | None = None  # DEV-245 Phase 5.12: YAKE scores
 
 
 class ParallelRetrievalService:
@@ -212,25 +237,59 @@ class ParallelRetrievalService:
         queries: QueryVariants,
         hyde: HyDEResult,
         top_k: int = DEFAULT_TOP_K,
+        messages: list[dict] | None = None,
+        topic_keywords: list[str] | None = None,
     ) -> RetrievalResult:
         """Execute parallel retrieval and fuse results.
 
         Runs BM25, vector, and HyDE searches in parallel, combines
         using RRF, applies boosts, and returns top-K documents.
 
+        DEV-245 Phase 3.9: Accepts messages for context-aware keyword ordering
+        in Brave web search. This ensures follow-up queries use correct
+        keyword order (context first, then new keywords).
+
+        DEV-245 Phase 5.3: Accepts topic_keywords for long conversation support.
+        When provided, uses these as context keywords instead of extracting from
+        messages[-4:], ensuring the main topic is never lost at Q4+.
+
         Args:
             queries: Query variants from MultiQueryGenerator
             hyde: HyDE result from HyDEGenerator
             top_k: Number of top documents to return
+            messages: Conversation history for context-aware keyword ordering
+            topic_keywords: Pre-extracted topic keywords from state (Phase 5.3)
 
         Returns:
             RetrievalResult with ranked documents
         """
         start_time = time.perf_counter()
 
+        # DEV-245 Phase 4.2.1: Extract search keywords upfront for downstream filtering
+        # This ensures Step 040 uses the SAME keywords as Brave search for web filtering
+        # DEV-245 Phase 5.3: Use topic_keywords from state if provided (for long conversations)
+        # DEV-245 Phase 5.12: Also extract scores for evaluation
+        search_keywords: list[str] | None = None
+        search_keywords_with_scores: list[dict] | None = None
+        if queries.original_query:
+            search_keywords = self._extract_search_keywords_with_context(
+                queries.original_query, messages, topic_keywords
+            )
+            # DEV-245 Phase 5.12: Extract scores from raw query (before context reordering)
+            _, search_keywords_with_scores = self._extract_search_keywords(queries.original_query)
+            logger.debug(
+                "search_keywords_extracted_for_downstream",
+                keywords=search_keywords,
+                keywords_with_scores=search_keywords_with_scores,
+                query_preview=queries.original_query[:50],
+                using_topic_keywords=topic_keywords is not None,
+            )
+
         try:
             # Execute all searches in parallel
-            search_results = await self._execute_parallel_searches(queries, hyde)
+            # DEV-245 Phase 3.9: Pass messages for context-aware keyword ordering
+            # DEV-245 Phase 5.3: Pass topic_keywords for long conversation support
+            search_results = await self._execute_parallel_searches(queries, hyde, messages, topic_keywords)
 
             # Combine using RRF
             fused = self._rrf_fusion(search_results)
@@ -275,12 +334,25 @@ class ParallelRetrievalService:
 
                 # Log summary for easy debugging
                 sources_retrieved = list({d["source"] for d in retrieved_doc_details})
+
+                # DEV-245: Calculate web result contribution metrics
+                web_result_count = sum(
+                    1
+                    for doc in ranked_docs
+                    if doc.metadata.get("is_web_result", False) or doc.metadata.get("source", "").startswith("brave_")
+                )
+                has_ai_summary = any(doc.metadata.get("is_ai_synthesis", False) for doc in ranked_docs)
+
                 logger.info(
                     "DEV245_retrieval_docs_summary",
                     query=str(queries.original_query)[:100] if hasattr(queries, "original_query") else "?",
                     retrieved_count=len(ranked_docs),
                     sources=sources_retrieved,
                     top_3_titles=[d["title"] for d in retrieved_doc_details[:3]],
+                    # DEV-245: Web result contribution metrics
+                    web_results_in_final=web_result_count,
+                    web_contribution_pct=round(web_result_count / len(ranked_docs) * 100, 1) if ranked_docs else 0,
+                    has_brave_ai_summary=has_ai_summary,
                 )
 
                 # Log full details at debug level for deep investigation
@@ -293,6 +365,8 @@ class ParallelRetrievalService:
                 documents=ranked_docs,
                 total_found=total_found,
                 search_time_ms=elapsed_ms,
+                search_keywords=search_keywords,  # DEV-245 Phase 4.2.1
+                search_keywords_with_scores=search_keywords_with_scores,  # DEV-245 Phase 5.12
             )
 
         except Exception as e:
@@ -307,45 +381,117 @@ class ParallelRetrievalService:
                 documents=[],
                 total_found=0,
                 search_time_ms=elapsed_ms,
+                search_keywords=search_keywords,  # DEV-245 Phase 4.2.1: Still pass keywords if extracted
+                search_keywords_with_scores=search_keywords_with_scores,  # DEV-245 Phase 5.12
             )
 
     async def _execute_parallel_searches(
         self,
         queries: QueryVariants,
         hyde: HyDEResult,
+        messages: list[dict] | None = None,
+        topic_keywords: list[str] | None = None,
     ) -> list[list[dict[str, Any]]]:
-        """Execute all searches in parallel.
+        """Execute searches with KB sequential, Brave parallel.
+
+        DEV-245: Now includes Brave web search for Parallel Hybrid RAG.
+        This enables single-LLM architecture by moving web search to retrieval phase.
+
+        DEV-244 FIX: KB searches (bm25, vector, hyde, authority) MUST run sequentially
+        because they share the same SQLAlchemy AsyncSession which doesn't support
+        concurrent operations. Brave search runs in parallel since it uses HTTP only.
+
+        DEV-245 Phase 3.9: Passes messages to Brave search for context-aware keyword ordering.
+        DEV-245 Phase 5.3: Passes topic_keywords for long conversation support.
 
         Args:
             queries: Query variants
             hyde: HyDE result
+            messages: Conversation history for context-aware keyword ordering
+            topic_keywords: Pre-extracted topic keywords from state (Phase 5.3)
 
         Returns:
-            List of search results [bm25, vector, hyde, authority]
+            List of search results [bm25, vector, hyde, authority, brave]
         """
-        # Create search tasks - DEV-244: Added authority source search
-        tasks = [
-            self._search_bm25(queries),
-            self._search_vector(queries),
-            self._search_hyde(hyde),
-            self._search_authority_sources(queries),  # DEV-244: Supplemental authority search
-        ]
+        # DEV-245: Log start of search execution for Docker debugging
+        logger.info(
+            "parallel_searches_starting",
+            query_preview=queries.original_query[:80] if queries.original_query else "N/A",
+            has_hyde=hyde is not None and hyde.hypothetical_document is not None,
+            search_types=["bm25", "vector", "hyde", "authority", "brave"],
+        )
 
-        # Execute in parallel
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        # DEV-244 FIX: Run KB searches SEQUENTIALLY to avoid SQLAlchemy session concurrency error
+        # The AsyncSession doesn't support concurrent operations from the same session.
+        # Brave search can run in parallel since it only uses HTTP (no DB session).
 
-        # Handle any exceptions
+        # Start Brave search in background (doesn't use DB session)
+        # DEV-245 Phase 3.9: Pass messages for context-aware keyword ordering
+        # DEV-245 Phase 5.3: Pass topic_keywords for long conversation support
+        brave_task = asyncio.create_task(self._search_brave(queries, messages=messages, topic_keywords=topic_keywords))
+
+        # Run KB searches sequentially
+        source_counts: dict[str, int] = {}
         processed: list[list[dict[str, Any]]] = []
-        for i, result in enumerate(results):
-            if isinstance(result, BaseException):
-                logger.warning(
-                    "search_task_failed",
-                    task_index=i,
-                    error=str(result),
-                )
-                processed.append([])
-            else:
-                processed.append(result)
+
+        # 1. BM25 search
+        try:
+            bm25_results = await self._search_bm25(queries)
+            processed.append(bm25_results)
+            source_counts["bm25"] = len(bm25_results)
+        except Exception as e:
+            logger.warning("search_task_failed", search_type="bm25", error=str(e))
+            processed.append([])
+            source_counts["bm25"] = 0
+
+        # 2. Vector search
+        try:
+            vector_results = await self._search_vector(queries)
+            processed.append(vector_results)
+            source_counts["vector"] = len(vector_results)
+        except Exception as e:
+            logger.warning("search_task_failed", search_type="vector", error=str(e))
+            processed.append([])
+            source_counts["vector"] = 0
+
+        # 3. HyDE search
+        try:
+            hyde_results = await self._search_hyde(hyde)
+            processed.append(hyde_results)
+            source_counts["hyde"] = len(hyde_results)
+        except Exception as e:
+            logger.warning("search_task_failed", search_type="hyde", error=str(e))
+            processed.append([])
+            source_counts["hyde"] = 0
+
+        # 4. Authority search (already runs sequentially internally)
+        try:
+            authority_results = await self._search_authority_sources(queries)
+            processed.append(authority_results)
+            source_counts["authority"] = len(authority_results)
+        except Exception as e:
+            logger.warning("search_task_failed", search_type="authority", error=str(e))
+            processed.append([])
+            source_counts["authority"] = 0
+
+        # 5. Wait for Brave search (was running in parallel)
+        try:
+            brave_results = await brave_task
+            processed.append(brave_results)
+            source_counts["brave"] = len(brave_results)
+        except Exception as e:
+            logger.warning("search_task_failed", search_type="brave", error=str(e))
+            processed.append([])
+            source_counts["brave"] = 0
+
+        # DEV-245: Log source distribution for Docker debugging
+        logger.info(
+            "parallel_searches_complete",
+            source_counts=source_counts,
+            total_raw_results=sum(source_counts.values()),
+            brave_results=source_counts.get("brave", 0),
+            kb_results=source_counts.get("bm25", 0) + source_counts.get("vector", 0) + source_counts.get("hyde", 0),
+        )
 
         return processed
 
@@ -436,6 +582,19 @@ class ParallelRetrievalService:
             # DEV-242 Phase 30: Use HYBRID_K_FTS config instead of hardcoded 20
             if not results:
                 results = await self._search_service.search(
+                    query=search_query,
+                    limit=HYBRID_K_FTS,
+                )
+
+            # DEV-244 FIX: If strict AND search returns 0 results, try OR fallback
+            # websearch_to_tsquery requires ALL terms to match, which is too strict
+            # for long queries with semantic expansions. plainto_tsquery uses OR logic.
+            if not results:
+                logger.info(
+                    "bm25_and_search_zero_results_trying_or_fallback",
+                    query=search_query[:100] if search_query else "",
+                )
+                results = await self._search_service.search_with_or_fallback(
                     query=search_query,
                     limit=HYBRID_K_FTS,
                 )
@@ -535,30 +694,19 @@ class ParallelRetrievalService:
 
         search_query = queries.bm25_query or queries.original_query
 
-        # Execute searches for each authority source in parallel
-        tasks = []
+        # DEV-244 FIX: Execute searches SEQUENTIALLY to avoid SQLAlchemy session concurrency error
+        # The AsyncSession doesn't support concurrent operations from the same session.
+        # Running sequentially adds ~100-200ms but avoids "concurrent operations not permitted" error.
+        all_docs: list[dict[str, Any]] = []
         source_list = list(HIGH_AUTHORITY_SOURCES)
+
         for source in source_list:
-            tasks.append(
-                self._search_service.search(
+            try:
+                result = await self._search_service.search(
                     query=search_query,
                     limit=limit_per_source,
                     source_pattern=source,  # Exact match filter
                 )
-            )
-
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Flatten results, handling exceptions
-        all_docs: list[dict[str, Any]] = []
-        for i, result in enumerate(results):
-            if isinstance(result, BaseException):
-                logger.warning(
-                    "authority_search_failed",
-                    source=source_list[i],
-                    error=str(result),
-                )
-            else:
                 # Convert SearchResult to dict format
                 for doc in result:
                     all_docs.append(
@@ -578,6 +726,12 @@ class ParallelRetrievalService:
                             },
                         }
                     )
+            except Exception as e:
+                logger.warning(
+                    "authority_search_failed",
+                    source=source,
+                    error=str(e),
+                )
 
         logger.info(
             "authority_search_complete",
@@ -586,6 +740,350 @@ class ParallelRetrievalService:
         )
 
         return all_docs
+
+    def _extract_search_keywords(self, query: str) -> tuple[list[str], list[dict]]:
+        """DEV-245 Phase 5.13: Extract keywords using stop word list filtering.
+
+        Natural language questions don't search well. Converting to keywords:
+        "L'IRAP può essere inclusa nella rottamazione quinquies?"
+        → ["irap", "rottamazione", "quinquies"]
+
+        DEV-245 Phase 5.13: Reverted from YAKE to stop word lists.
+        YAKE didn't work well for short Italian fiscal queries - it prioritized
+        verbs like "recepira" over domain terms like "rottamazione".
+
+        DEV-245 Phase 5.14: Uses centralized STOP_WORDS from italian_stop_words module.
+        This includes comprehensive verb conjugations (future, conditional, imperative)
+        to fix the "recepira" problem where future tense verbs slipped through.
+
+        Args:
+            query: The reformulated user query (natural language)
+
+        Returns:
+            Tuple of (keywords, keywords_with_scores) for logging/evaluation.
+            - keywords: List of significant keywords (lowercase), max 5
+            - keywords_with_scores: Empty list (no scores with stop word approach)
+        """
+        # DEV-245 Phase 5.14: Use centralized stop words module
+        # Includes comprehensive verb conjugations to fix "recepira" problem
+
+        if not query:
+            return [], []
+
+        # Normalize and tokenize
+        query_lower = query.lower()
+        # Handle Italian contractions: "dell'irap" → "dell irap"
+        query_lower = re.sub(r"[''`]", " ", query_lower)
+        # Split on non-alphanumeric (keep accented chars)
+        words = re.findall(r"[a-zàèéìòùáéíóú]+", query_lower)
+
+        # Filter stop words and short words
+        keywords = []
+        for word in words:
+            if word not in STOP_WORDS and len(word) > 2:
+                keywords.append(word)
+
+        # Deduplicate while preserving order
+        seen = set()
+        unique_keywords = []
+        for kw in keywords:
+            if kw not in seen:
+                seen.add(kw)
+                unique_keywords.append(kw)
+
+        # Limit to top 5
+        result = unique_keywords[:5]
+
+        logger.info(
+            "DEV245_stop_word_keyword_extraction",
+            query_preview=query[:50] if query else "N/A",
+            keywords=result,
+        )
+
+        # Return empty scores list (no scoring with stop word approach)
+        return result, []
+
+    def _extract_search_keywords_with_context(
+        self,
+        query: str,
+        messages: list[dict] | None = None,
+        topic_keywords: list[str] | None = None,
+    ) -> list[str]:
+        """DEV-245 Phase 3.9: Extract keywords with context-first ordering.
+
+        CRITICAL: Do NOT remove this method - it ensures Brave search uses
+        optimal keyword ordering for follow-up queries.
+
+        Industry standard (BruceClay): "Most relevant keyword first"
+
+        For follow-up queries, orders keywords so conversation context comes first,
+        then new keywords from the follow-up.
+
+        Example:
+            - Context: "parlami della rottamazione quinquies"
+            - Follow-up: "L'IRAP può essere inclusa nella rottamazione quinquies?"
+            - Result: ["rottamazione", "quinquies", "irap"] (context first!)
+            - Brave search: "rottamazione quinquies irap 2026" ✅
+            - NOT: "irap rottamazione quinquies 2026" ❌
+
+        DEV-245 Phase 5.3: Added topic_keywords parameter.
+            If topic_keywords is provided, use those as context keywords (from state).
+            This ensures the main topic is NEVER lost, even at Q4+ where messages[-4:]
+            would exclude the first query/response.
+
+        Args:
+            query: The reformulated user query
+            messages: Conversation history for context extraction
+            topic_keywords: Pre-extracted topic keywords from state (Phase 5.3)
+
+        Returns:
+            List of keywords ordered: context keywords first, then new keywords
+        """
+        # Extract all keywords from reformulated query
+        # DEV-245 Phase 5.12: _extract_search_keywords now returns (keywords, scores)
+        all_keywords, _ = self._extract_search_keywords(query)
+
+        # DEV-245 Phase 5.3: Check for topic_keywords FIRST before early return
+        # If we have topic_keywords, we need to add them even if query has few keywords
+        # DEV-245 Phase 5.4: Type safety - validate topic_keywords is actually a list
+        if topic_keywords and isinstance(topic_keywords, list):
+            # Use pre-extracted topic keywords from state (industry standard approach)
+            # IMPORTANT: We ADD topic_keywords to the result, not just use them for ordering
+            # This ensures the main topic is always in the search, even if not mentioned in query
+            context_keywords = set(topic_keywords)
+            logger.debug(
+                "phase53_using_topic_keywords",
+                topic_keywords=topic_keywords,
+            )
+
+            # Combine: topic keywords first (context), then new query keywords
+            new_keywords = [kw for kw in all_keywords if kw not in context_keywords]
+            result = list(topic_keywords) + new_keywords
+            result = result[:5]  # Cap at 5 keywords
+
+            # Log for debugging
+            if new_keywords:
+                logger.debug(
+                    "phase53_keyword_ordering",
+                    topic_keywords=topic_keywords,
+                    query_keywords=all_keywords,
+                    combined=result,
+                )
+
+            return result
+
+        if len(all_keywords) <= 2:
+            return all_keywords  # No reordering needed
+
+        # DEV-245 Phase 5.3: Fallback path (no topic_keywords provided)
+        # Extract context from messages for reordering
+        fallback_context_keywords: set[str] = set()
+
+        if messages:
+            # Fallback: extract from messages (legacy behavior for backwards compat)
+            # Find context keywords from conversation history (last 4 messages)
+            for msg in reversed(messages[-4:]):
+                # Handle both dict and LangChain message objects
+                if isinstance(msg, dict):
+                    # DEV-245 Phase 3.9.2: Check BOTH keys - dicts may use "role" (OpenAI)
+                    # or "type" (LangChain serialization format)
+                    role = msg.get("role") or msg.get("type", "")
+                    content = msg.get("content", "")
+                else:
+                    role = getattr(msg, "role", "") or getattr(msg, "type", "")
+                    content = getattr(msg, "content", "") or ""
+
+                # DEV-245 Phase 3.9.1: Only extract context from ASSISTANT messages
+                # User messages include the current follow-up query which would
+                # incorrectly add new keywords to context, breaking the ordering
+                if role in ("assistant", "ai") and content:
+                    # Extract keywords from context message (first 500 chars)
+                    # DEV-245 Phase 5.12: _extract_search_keywords now returns (keywords, scores)
+                    msg_keywords, _ = self._extract_search_keywords(content[:500])
+                    fallback_context_keywords.update(msg_keywords[:5])
+
+        # Separate: context keywords vs new keywords
+        # Preserve order from all_keywords but reorder based on context
+        context_first = [kw for kw in all_keywords if kw in fallback_context_keywords]
+        new_keywords = [kw for kw in all_keywords if kw not in fallback_context_keywords]
+
+        result = context_first + new_keywords
+
+        # Log for debugging keyword ordering
+        if context_first and new_keywords:
+            logger.debug(
+                "keyword_context_ordering",
+                original_order=all_keywords,
+                context_keywords=list(fallback_context_keywords)[:5],
+                reordered=result,
+            )
+
+        return result
+
+    async def _search_brave(
+        self,
+        queries: QueryVariants,
+        max_results: int = 5,
+        messages: list[dict] | None = None,
+        topic_keywords: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Search the web using Brave Search API for Parallel Hybrid RAG.
+
+        DEV-245: Moved web search from post-LLM (Step 100) to retrieval phase.
+        This enables single-LLM architecture with ~50% faster responses.
+
+        Web results are weighted lower than KB sources (0.15 vs 0.3-0.4) to ensure
+        KB remains authoritative while web provides recent/practical context.
+
+        DEV-245 Phase 5.3: Added topic_keywords for long conversation support.
+
+        Args:
+            queries: Query variants containing original_query
+            max_results: Maximum number of web results to return
+            topic_keywords: Pre-extracted topic keywords from state (Phase 5.3)
+
+        Returns:
+            List of web search results in standard document format
+        """
+        try:
+            from app.core.config import settings
+
+            if not settings.BRAVE_SEARCH_API_KEY:
+                logger.debug("brave_search_skipped", reason="no_api_key")
+                return []
+
+            original_query = queries.original_query
+            if not original_query:
+                # DEV-245 Phase 3.3: Log when query is empty for easier debugging
+                logger.warning("brave_search_skipped", reason="empty_original_query")
+                return []
+
+            # DEV-245 Phase 3.9: Use context-aware keyword extraction for follow-up queries
+            # Orders keywords: context first, then new keywords from follow-up
+            # "e l'irap?" after "rottamazione quinquies" → "rottamazione quinquies irap"
+            # DEV-245 Phase 5.3: Pass topic_keywords for long conversation support
+            search_keywords = self._extract_search_keywords_with_context(original_query, messages, topic_keywords)
+            query = " ".join(search_keywords)
+
+            # DEV-245 Phase 3.9.1: Removed automatic year suffix per user feedback
+            # Let Brave search naturally without forcing a year
+
+            logger.info(
+                "brave_parallel_search_starting",
+                original_query=original_query[:80],
+                search_query=query,
+                keywords=search_keywords,
+            )
+
+            import httpx
+
+            headers = {
+                "X-Subscription-Token": settings.BRAVE_SEARCH_API_KEY,
+                "Accept": "application/json",
+            }
+
+            # DEV-245: Track API latency for monitoring
+            api_start_time = time.perf_counter()
+            docs: list[dict[str, Any]] = []
+
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://api.search.brave.com/res/v1/web/search",
+                    params={
+                        "q": query,
+                        "summary": 1,  # Request AI summary
+                        "count": max_results,
+                    },
+                    headers=headers,
+                    timeout=10.0,
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                # Parse web results into document format
+                web_results = data.get("web", {}).get("results", [])
+
+                for i, result in enumerate(web_results[:max_results]):
+                    url = result.get("url", "")
+                    title = result.get("title", "")
+                    snippet = result.get("description", "")
+
+                    # Create document in same format as KB results
+                    doc = {
+                        "document_id": f"web_{i}_{hash(url) % 100000}",
+                        "content": f"{title}\n\n{snippet}",
+                        "score": 1.0 - (i * 0.1),  # Descending score by rank
+                        "source_type": "web",
+                        "source": "brave_web_search",
+                        "source_name": title,
+                        "source_url": url,
+                        "published_date": None,  # Web results don't have reliable dates
+                        "metadata": {
+                            "title": title,
+                            "source": "brave_web_search",
+                            "source_url": url,
+                            "is_web_result": True,
+                        },
+                    }
+                    docs.append(doc)
+
+                # Also check for AI summary (within same client context)
+                summarizer_key = data.get("summarizer", {}).get("key")
+                if summarizer_key:
+                    try:
+                        summary_response = await client.get(
+                            "https://api.search.brave.com/res/v1/summarizer/search",
+                            params={"key": summarizer_key},
+                            headers=headers,
+                            timeout=10.0,
+                        )
+                        if summary_response.status_code == 200:
+                            summary_data = summary_response.json()
+                            if summary_data.get("status") == "complete":
+                                summary_text = summary_data.get("summary", {}).get("text", "")
+                                if summary_text:
+                                    # Add AI summary as a high-priority web result
+                                    docs.insert(
+                                        0,
+                                        {
+                                            "document_id": f"web_ai_summary_{hash(query) % 100000}",
+                                            "content": f"[Sintesi AI dal Web]\n\n{summary_text}",
+                                            "score": 1.5,  # Higher score for AI synthesis
+                                            "source_type": "web_ai_summary",
+                                            "source": "brave_ai_summary",
+                                            "source_name": "Brave AI Sintesi",
+                                            "source_url": None,
+                                            "published_date": None,
+                                            "metadata": {
+                                                "title": "Brave AI Sintesi",
+                                                "source": "brave_ai_summary",
+                                                "is_web_result": True,
+                                                "is_ai_synthesis": True,
+                                            },
+                                        },
+                                    )
+                    except Exception as summary_err:
+                        logger.debug("brave_summary_skipped", error=str(summary_err))
+
+            # DEV-245: Log API latency and results for monitoring
+            api_latency_ms = (time.perf_counter() - api_start_time) * 1000
+            logger.info(
+                "brave_parallel_search_complete",
+                query=query[:50],
+                results_count=len(docs),
+                has_ai_summary=any(d.get("metadata", {}).get("is_ai_synthesis") for d in docs),
+                latency_ms=round(api_latency_ms, 2),
+            )
+
+            return docs
+
+        except Exception as e:
+            logger.warning(
+                "brave_parallel_search_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            return []
 
     def _rrf_fusion(
         self,
@@ -596,17 +1094,22 @@ class ParallelRetrievalService:
         RRF formula: score = sum(weight / (k + rank))
         where k=60 and weight depends on search type.
 
+        DEV-245: Now includes brave (web) results for Parallel Hybrid RAG.
+
         Args:
-            search_results: List of [bm25, vector, hyde] results
+            search_results: List of [bm25, vector, hyde, authority, brave] results
 
         Returns:
             Fused and ranked documents
         """
-        search_types = ["bm25", "vector", "hyde", "authority"]  # DEV-244: Added authority
+        # DEV-244: Added authority, DEV-245: Added brave
+        search_types = ["bm25", "vector", "hyde", "authority", "brave"]
         doc_scores: dict[str, dict[str, Any]] = {}
 
+        # DEV-245: Use dynamic weights (brave weight from config)
+        weights = _get_search_weights()
         for search_type, results in zip(search_types, search_results, strict=False):
-            weight = SEARCH_WEIGHTS.get(search_type, 0.3)
+            weight = weights.get(search_type, 0.3)
 
             for rank, doc in enumerate(results, start=1):
                 doc_id = doc.get("document_id")
@@ -767,11 +1270,15 @@ class ParallelRetrievalService:
         docs: list[dict[str, Any]],
         k: int = DEFAULT_TOP_K,
     ) -> list[dict[str, Any]]:
-        """Get top-K documents, guaranteeing DIVERSE official source slots.
+        """Get top-K documents with reserved slots for official AND web sources.
 
-        DEV-244 FIX: Reserve slots for high-authority sources with DIVERSITY.
-        Ensures at most 1 chunk per official source type gets a reserved slot,
-        so ADeR doesn't get pushed out by multiple Gazzetta chunks.
+        DEV-244: Reserved slots for HIGH_AUTHORITY_SOURCES (official KB)
+        DEV-245 Phase 3.8: Reserved slots for web results (Brave)
+
+        This ensures:
+        1. Official sources (ADeR, Gazzetta) always appear in Fonti
+        2. Web sources from Brave search always appear in Fonti
+        3. Quality ordering is preserved within each category
 
         Args:
             docs: List of documents
@@ -784,34 +1291,61 @@ class ParallelRetrievalService:
         def sort_key(x: dict[str, Any]) -> tuple[float, str]:
             return (-x.get("rrf_score", 0), x.get("document_id", ""))
 
-        # Step 1: Find BEST chunk per official source type (ensures diversity)
+        # Step 1: Separate into official KB, web, and other
         source_best: dict[str, dict[str, Any]] = {}
+        web_results: list[dict[str, Any]] = []
         other: list[dict[str, Any]] = []
 
         for doc in docs:
             source = doc.get("source", "").lower()
+            metadata = doc.get("metadata", {}) or {}
+
+            # DEV-245 Phase 3.8: Detect web results using multiple markers
+            is_web = (
+                metadata.get("is_web_result", False)
+                or source.startswith("brave_")
+                or doc.get("source_type", "") in ("web", "web_ai_summary")
+            )
+
             if source in HIGH_AUTHORITY_SOURCES:
-                # Keep only the highest-scoring chunk per source type
+                # Keep only the highest-scoring chunk per official source type
                 if source not in source_best or doc.get("rrf_score", 0) > source_best[source].get("rrf_score", 0):
                     source_best[source] = doc
+            elif is_web:
+                # DEV-245 Phase 3.8: Separate web results for reserved slots
+                web_results.append(doc)
             else:
                 other.append(doc)
 
-        # Step 2: Get diverse official sources sorted by score
+        # Step 2: Reserve slots for official sources (up to MAX_RESERVED_SLOTS=3)
         official_diverse = sorted(source_best.values(), key=sort_key)
+        reserved_official = min(MAX_RESERVED_SLOTS, len(official_diverse), k)
+        top_official = official_diverse[:reserved_official]
 
-        # Step 3: Reserve up to MAX_RESERVED_SLOTS for diverse official sources
-        reserved_slots = min(MAX_RESERVED_SLOTS, len(official_diverse), k)
-        top_official = official_diverse[:reserved_slots]
+        # Step 3: DEV-245 Phase 3.8: Reserve slots for web results (up to WEB_RESERVED_SLOTS=2)
+        web_results.sort(key=sort_key)
+        remaining_after_official = k - len(top_official)
+        reserved_web = min(WEB_RESERVED_SLOTS, len(web_results), remaining_after_official)
+        top_web = web_results[:reserved_web]
 
         # Step 4: Fill remaining slots with other sources
         other.sort(key=sort_key)
-        remaining_slots = k - len(top_official)
+        remaining_slots = k - len(top_official) - len(top_web)
         top_other = other[:remaining_slots]
 
         # Step 5: Combine and re-sort for final ordering
-        combined = top_official + top_other
+        combined = top_official + top_web + top_other
         combined.sort(key=sort_key)
+
+        # DEV-245 Phase 3.8: Log web reservation results for debugging
+        if web_results:
+            logger.debug(
+                "top_k_web_reservation",
+                total_web_available=len(web_results),
+                web_reserved=len(top_web),
+                official_reserved=len(top_official),
+                other_included=len(top_other),
+            )
 
         return combined
 

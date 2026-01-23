@@ -35,7 +35,8 @@ from app.core.privacy.gdpr import (
     ProcessingPurpose,
     gdpr_compliance,
 )
-from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
+
+# DEV-245 Phase 5.15: SUGGESTED_ACTIONS_PROMPT import removed per user feedback
 from app.core.sse_formatter import (
     format_sse_done,
     format_sse_event,
@@ -132,57 +133,13 @@ def get_simplified_proactivity_engine() -> SimplifiedProactivityEngine:
     return _simplified_proactivity_engine
 
 
-def inject_proactivity_prompt(base_prompt: str) -> str:
-    """Inject suggested_actions prompt into base system prompt.
-
-    DEV-179: Appends the suggested_actions output format prompt to the
-    system prompt. This instructs the LLM to output responses with
-    <answer> and <suggested_actions> XML-like tags.
-
-    Args:
-        base_prompt: The base system prompt
-
-    Returns:
-        str: Combined prompt with suggested_actions instructions appended
-    """
-    return f"{base_prompt}\n\n{SUGGESTED_ACTIONS_PROMPT}"
-
-
-def apply_action_override(
-    llm_actions: list[dict] | None,
-    template_actions: list[dict] | None,
-) -> list[dict]:
-    """Apply action override logic for LLM-First proactivity.
-
-    DEV-179: Template actions take priority over LLM-generated actions.
-    This ensures consistent, high-quality actions for known document types.
-
-    Priority:
-    1. Template actions (if present) - from DOCUMENT_ACTION_TEMPLATES
-    2. LLM actions (if template not applicable)
-    3. Empty list (if neither available)
-
-    Args:
-        llm_actions: Actions parsed from LLM response
-        template_actions: Actions from DOCUMENT_ACTION_TEMPLATES
-
-    Returns:
-        list[dict]: Final list of actions to return
-    """
-    # Template actions take priority
-    if template_actions:
-        return template_actions
-
-    # Use LLM actions if no template
-    if llm_actions:
-        return llm_actions
-
-    # Return empty list if neither
-    return []
+# DEV-245 Phase 5.15: inject_proactivity_prompt and apply_action_override removed
+# Suggested actions feature has been completely removed per user feedback
 
 
 # =============================================================================
 # DEV-180: Streaming Tag Stripping and Buffering Helpers
+# DEV-245 Phase 5.15: inject_proactivity_prompt and apply_action_override removed
 # =============================================================================
 
 # Compiled regex patterns for XML tag stripping (uses 're' imported at top)
@@ -732,11 +689,10 @@ async def chat(
                     exc_info=True,
                 )
 
-            # DEV-179: Process proactivity using simplified engine
-            # Only generates interactive_question for explicit calculation requests
+            # DEV-179: Process proactivity using simplified engine (interactive questions only)
+            # DEV-245 Phase 5.15: suggested_actions/template_actions feature removed
             simplified_proactivity_result: SimplifiedProactivityResult | None = None
             interactive_question = None
-            template_actions = None
             try:
                 simplified_engine = get_simplified_proactivity_engine()
                 query_text = user_query if user_query else ""
@@ -749,11 +705,9 @@ async def chat(
                     "proactivity_processed",
                     session_id=session.id,
                     has_question=simplified_proactivity_result.interactive_question is not None,
-                    has_template_actions=simplified_proactivity_result.template_actions is not None,
-                    use_llm_actions=simplified_proactivity_result.use_llm_actions,
                 )
 
-                # Convert to schema types if present
+                # Convert to schema types if present (interactive questions only)
                 if simplified_proactivity_result.interactive_question:
                     from app.schemas.proactivity import InputField, InteractiveQuestion
 
@@ -767,15 +721,6 @@ async def chat(
                         prefilled_params=question_dict.get("prefilled"),
                     )
 
-                if simplified_proactivity_result.template_actions:
-                    # Convert template actions to Action schema
-                    from app.schemas.proactivity import Action
-
-                    template_actions = [
-                        Action(**a) if isinstance(a, dict) else a
-                        for a in simplified_proactivity_result.template_actions
-                    ]
-
             except Exception as proactivity_error:
                 # Graceful degradation: log warning but continue without proactivity
                 logger.warning(
@@ -784,9 +729,9 @@ async def chat(
                     error=str(proactivity_error),
                 )
 
+            # DEV-245 Phase 5.15: suggested_actions removed from response
             return ChatResponse(
                 messages=result,
-                suggested_actions=template_actions,  # Only from document templates
                 interactive_question=interactive_question,
                 extracted_params=None,  # Not available in simplified engine
             )
@@ -1187,8 +1132,11 @@ async def chat_stream(
                     collected_response_chunks = []
                     # Track if response came from golden set (for model_used in chat history)
                     golden_hit = False
-                    # DEV-200: Track proactivity actions from graph Step 100
-                    graph_proactivity_actions: list[dict] = []
+                    # DEV-245 Phase 5.15: Removed graph_proactivity_actions tracking (feature removed)
+                    # DEV-244: Collect KB sources metadata for persistence in chat history
+                    collected_kb_sources_metadata: list[dict] | None = None
+                    # DEV-245: Collect web verification metadata for persistence in chat history
+                    collected_web_verification_data: dict | None = None
 
                     # Send progress event for attachment analysis (DEV-007)
                     if resolved_attachments:
@@ -1253,26 +1201,9 @@ async def chat_stream(
                                         golden_hit = True
                                     # Don't yield or collect - this is internal metadata
                                 elif chunk.startswith("__PROACTIVITY_ACTIONS__:"):
-                                    # DEV-200: Proactivity actions from graph Step 100
-                                    # Format: __PROACTIVITY_ACTIONS__:<json_array>
-                                    try:
-                                        import json as _json
-
-                                        actions_json = chunk.replace("__PROACTIVITY_ACTIONS__:", "")
-                                        graph_proactivity_actions = _json.loads(actions_json)
-                                        logger.info(
-                                            "proactivity_actions_received_from_graph",
-                                            session_id=session.id,
-                                            action_count=len(graph_proactivity_actions),
-                                        )
-                                    except Exception as parse_err:
-                                        logger.warning(
-                                            "proactivity_actions_parse_failed",
-                                            session_id=session.id,
-                                            error=str(parse_err),
-                                        )
-                                        graph_proactivity_actions = []
-                                    # Don't yield - will be sent as SSE event below
+                                    # DEV-245 Phase 5.15: Suggested actions feature removed
+                                    # Ignore any legacy action markers from graph
+                                    pass
                                 elif chunk.startswith("__REASONING_TRACE__:"):
                                     # DEV-242: Reasoning trace for Chain of Thought display
                                     # Format: __REASONING_TRACE__:<json_object>
@@ -1333,6 +1264,8 @@ async def chat_stream(
 
                                         urls_json = chunk.replace("__KB_SOURCE_URLS__:", "")
                                         kb_urls_data = _json_kb.loads(urls_json)
+                                        # DEV-244: Store for persistence in chat history
+                                        collected_kb_sources_metadata = kb_urls_data
                                         logger.info(
                                             "kb_source_urls_received_from_graph",
                                             session_id=session.id,
@@ -1348,6 +1281,35 @@ async def chat_stream(
                                     except Exception as parse_err:
                                         logger.warning(
                                             "kb_source_urls_parse_failed",
+                                            session_id=session.id,
+                                            error=str(parse_err),
+                                        )
+                                elif chunk.startswith("__WEB_VERIFICATION__:"):
+                                    # DEV-245: Web verification results from Brave Search
+                                    # Format: __WEB_VERIFICATION__:<json_object>
+                                    try:
+                                        import json as _json_web
+
+                                        web_json = chunk.replace("__WEB_VERIFICATION__:", "")
+                                        web_verification_data = _json_web.loads(web_json)
+                                        # DEV-245: Store for persistence in chat history
+                                        collected_web_verification_data = web_verification_data
+                                        logger.info(
+                                            "web_verification_received_from_graph",
+                                            session_id=session.id,
+                                            web_sources_checked=web_verification_data.get("web_sources_checked", 0),
+                                            has_caveats=web_verification_data.get("has_caveats", False),
+                                            has_synthesized=web_verification_data.get(
+                                                "has_synthesized_response", False
+                                            ),
+                                        )
+                                        # DEV-245: Don't send web_verification SSE event - caveats are already
+                                        # included inline in the LLM response, so showing them again in a
+                                        # separate "Verifica Web" section would be redundant.
+                                        # Data is still collected for persistence in chat history.
+                                    except Exception as parse_err:
+                                        logger.warning(
+                                            "web_verification_parse_failed",
                                             session_id=session.id,
                                             error=str(parse_err),
                                         )
@@ -1382,34 +1344,9 @@ async def chat_stream(
                             )
                             yield write_sse(None, format_sse_event(cleaned_event), request_id=request_id)
 
-                    # DEV-200: Yield proactivity events from graph Step 100
-                    # The actions are now set by PostProactivity node in the graph
-                    # Skip if skip_proactivity flag is set (follow-up queries from answered questions)
-                    if chat_request.skip_proactivity:
-                        logger.debug(
-                            "post_response_proactivity_skipped",
-                            session_id=session.id,
-                            reason="skip_proactivity flag set (follow-up query)",
-                        )
-                    elif graph_proactivity_actions:
-                        # DEV-200: Use actions from graph Step 100 (PostProactivity node)
-                        logger.info(
-                            "yielding_graph_proactivity_actions_sse",
-                            session_id=session.id,
-                            action_count=len(graph_proactivity_actions),
-                            action_ids=[a.get("id") for a in graph_proactivity_actions],
-                        )
-                        actions_event = StreamResponse(
-                            content="",
-                            event_type="suggested_actions",
-                            suggested_actions=graph_proactivity_actions,
-                            extracted_params=None,
-                        )
-                        yield write_sse(None, format_sse_event(actions_event), request_id=request_id)
-
-                        # NOTE: Post-response proactivity should NOT yield interactive questions.
-                        # Questions are for PRE-response proactivity (gathering info before LLM call).
-                        # After the LLM has already answered, only suggested_actions make sense.
+                    # DEV-245 Phase 5.15: Suggested actions feature removed per user feedback
+                    # The SSE event emission for suggested_actions has been removed.
+                    # Interactive questions (pre-response) are still supported.
 
                     # Send final done frame using validated formatter
                     sse_done = format_sse_done()
@@ -1434,6 +1371,8 @@ async def chat_stream(
                                     ai_response=ai_response.strip(),
                                     model_used=model_used,
                                     italian_content=True,  # TODO: Detect from query content
+                                    kb_sources_metadata=collected_kb_sources_metadata,  # DEV-244
+                                    web_verification_metadata=collected_web_verification_data,  # DEV-245
                                 )
                         except Exception as save_error:
                             # Log error but don't fail the stream (degraded functionality)
@@ -1482,6 +1421,13 @@ async def get_session_messages(
 ):
     """Get all messages for a session.
 
+    FIXED: Now reads from PostgreSQL (industry standard) instead of LangGraph checkpoint.
+    LangGraph checkpoints are for workflow state, not persistent chat history.
+    PostgreSQL ensures:
+    - GDPR compliance (export/deletion)
+    - Multi-device sync
+    - Reliable persistence across server restarts
+
     Args:
         request: The FastAPI request object for rate limiting.
         session: The current session from the auth token.
@@ -1493,7 +1439,41 @@ async def get_session_messages(
         HTTPException: If there's an error retrieving the messages.
     """
     try:
-        messages = await agent.get_chat_history(session.id)
+        # Read from PostgreSQL (source of truth for chat history)
+        # Each record contains a Q&A pair: {query, response}
+        history_records = await chat_history_service.get_session_history(
+            user_id=session.user_id,
+            session_id=session.id,
+        )
+
+        # Transform PostgreSQL records to Message format
+        # Each record becomes TWO messages: user (query) + assistant (response)
+        messages: list[Message] = []
+        for record in history_records:
+            # User message from 'query' field
+            if record.get("query"):
+                messages.append(Message(role="user", content=record["query"]))
+            # Assistant message from 'response' field
+            if record.get("response"):
+                messages.append(
+                    Message(
+                        role="assistant",
+                        content=record["response"],
+                        # DEV-244: Include KB sources for Fonti section on page refresh
+                        kb_source_urls=record.get("kb_sources_metadata"),
+                    )
+                )
+
+        # DEV-244: Debug logging for kb_source_urls persistence
+        kb_sources_count = sum(1 for r in history_records if r.get("kb_sources_metadata"))
+        logger.info(
+            "chat_history_loaded_from_postgresql",
+            session_id=session.id,
+            record_count=len(history_records),
+            message_count=len(messages),
+            records_with_kb_sources=kb_sources_count,
+        )
+
         return ChatResponse(messages=messages)
     except Exception as e:
         logger.error("get_messages_failed", session_id=session.id, error=str(e), exc_info=True)
@@ -1508,6 +1488,8 @@ async def clear_chat_history(
 ):
     """Clear all messages for a session.
 
+    FIXED: Now clears from PostgreSQL (source of truth) instead of LangGraph checkpoint.
+
     Args:
         request: The FastAPI request object for rate limiting.
         session: The current session from the auth token.
@@ -1516,8 +1498,20 @@ async def clear_chat_history(
         dict: A message indicating the chat history was cleared.
     """
     try:
+        # Clear from PostgreSQL (source of truth)
+        deleted_count = await chat_history_service.delete_session(
+            user_id=session.user_id,
+            session_id=session.id,
+        )
+        # Also clear LangGraph checkpoint for consistency during active sessions
         await agent.clear_chat_history(session.id)
-        return {"message": "Chat history cleared successfully"}
+
+        logger.info(
+            "chat_history_cleared",
+            session_id=session.id,
+            deleted_count=deleted_count,
+        )
+        return {"message": "Chat history cleared successfully", "deleted_count": deleted_count}
     except Exception as e:
         logger.error("clear_chat_history_failed", session_id=session.id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -1757,9 +1751,9 @@ async def execute_action(
         # Convert response to messages for return
         messages = [Message(role="assistant", content=str(response))]
 
-        # DEV-179: Process proactivity using simplified engine
+        # DEV-179: Process proactivity using simplified engine (interactive questions only)
+        # DEV-245 Phase 5.15: suggested_actions feature removed per user feedback
         simplified_proactivity_result: SimplifiedProactivityResult | None = None
-        suggested_actions = None
         interactive_question = None
         try:
             simplified_engine = get_simplified_proactivity_engine()
@@ -1768,7 +1762,7 @@ async def execute_action(
                 document=None,
             )
 
-            # Convert to schema types if present
+            # Convert to schema types if present (interactive questions only)
             if simplified_proactivity_result.interactive_question:
                 from app.schemas.proactivity import InputField, InteractiveQuestion
 
@@ -1782,13 +1776,6 @@ async def execute_action(
                     prefilled_params=question_dict.get("prefilled"),
                 )
 
-            if simplified_proactivity_result.template_actions:
-                from app.schemas.proactivity import Action
-
-                suggested_actions = [
-                    Action(**a) if isinstance(a, dict) else a for a in simplified_proactivity_result.template_actions
-                ]
-
         except Exception as proactivity_error:
             logger.warning(
                 "action_proactivity_processing_failed",
@@ -1801,7 +1788,6 @@ async def execute_action(
             "action_execution_completed",
             action_id=action_request.action_id,
             session_id=action_request.session_id,
-            new_actions_count=len(suggested_actions) if suggested_actions else 0,
         )
 
         # DEV-162: Fire-and-forget analytics tracking
@@ -1813,9 +1799,9 @@ async def execute_action(
             context_hash=None,
         )
 
+        # DEV-245 Phase 5.15: suggested_actions removed from response
         return ChatResponse(
             messages=messages,
-            suggested_actions=suggested_actions,
             interactive_question=interactive_question,
             extracted_params=None,  # DEV-179: Not available in simplified engine
         )
@@ -2069,36 +2055,13 @@ async def answer_question(
             user_id=session.user_id,
         )
 
-        # DEV-179: Process proactivity using simplified engine
-        suggested_actions = None
-        try:
-            simplified_engine = get_simplified_proactivity_engine()
-            simplified_proactivity_result = simplified_engine.process_query(
-                query=prompt,
-                document=None,
-            )
-
-            # Only get template actions (not interactive questions for follow-ups)
-            if simplified_proactivity_result.template_actions:
-                from app.schemas.proactivity import Action
-
-                suggested_actions = [
-                    Action(**a) if isinstance(a, dict) else a for a in simplified_proactivity_result.template_actions
-                ]
-
-        except Exception as proactivity_error:
-            logger.warning(
-                "question_proactivity_processing_failed",
-                question_id=answer_request.question_id,
-                session_id=answer_request.session_id,
-                error=str(proactivity_error),
-            )
+        # DEV-245 Phase 5.15: suggested_actions feature removed per user feedback
+        # No longer processing proactivity for template actions
 
         logger.info(
             "question_answer_completed",
             question_id=answer_request.question_id,
             session_id=answer_request.session_id,
-            has_actions=suggested_actions is not None,
             is_multifield=is_multifield,
         )
 
@@ -2113,9 +2076,9 @@ async def answer_question(
                 custom_input=answer_request.custom_input,
             )
 
+        # DEV-245 Phase 5.15: suggested_actions removed from response
         return QuestionAnswerResponse(
             answer=str(response),
-            suggested_actions=suggested_actions,
         )
 
     except HTTPException:

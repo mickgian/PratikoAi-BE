@@ -26,10 +26,15 @@ class TestGetPriorState:
         agent = LangGraphAgent()
         agent._graph = None
 
-        prior_messages, prior_attachments = await agent._get_prior_state("session-123")
+        # DEV-245 Phase 5.6: Now returns 4 values (messages, attachments, topic, keywords)
+        prior_messages, prior_attachments, conversation_topic, topic_keywords = await agent._get_prior_state(
+            "session-123"
+        )
 
         assert prior_messages == []
         assert prior_attachments == []
+        assert conversation_topic is None
+        assert topic_keywords is None
 
     @pytest.mark.asyncio
     async def test_returns_empty_when_no_prior_state(self):
@@ -38,10 +43,15 @@ class TestGetPriorState:
         agent._graph = MagicMock()
         agent._graph.aget_state = AsyncMock(return_value=None)
 
-        prior_messages, prior_attachments = await agent._get_prior_state("new-session")
+        # DEV-245 Phase 5.6: Now returns 4 values
+        prior_messages, prior_attachments, conversation_topic, topic_keywords = await agent._get_prior_state(
+            "new-session"
+        )
 
         assert prior_messages == []
         assert prior_attachments == []
+        assert conversation_topic is None
+        assert topic_keywords is None
         agent._graph.aget_state.assert_called_once_with({"configurable": {"thread_id": "new-session"}})
 
     @pytest.mark.asyncio
@@ -60,12 +70,63 @@ class TestGetPriorState:
         }
         agent._graph.aget_state = AsyncMock(return_value=mock_state)
 
-        prior_messages, prior_attachments = await agent._get_prior_state("existing-session")
+        # DEV-245 Phase 5.6: Now returns 4 values
+        prior_messages, prior_attachments, conversation_topic, topic_keywords = await agent._get_prior_state(
+            "existing-session"
+        )
 
         assert len(prior_messages) == 2
         assert prior_messages[0]["content"] == "What is INPS message 3585?"
         assert len(prior_attachments) == 1
         assert prior_attachments[0]["filename"] == "test.xlsx"
+        assert conversation_topic is None  # Not set in this test state
+        assert topic_keywords is None
+
+    @pytest.mark.asyncio
+    async def test_returns_topic_fields_from_checkpoint(self):
+        """DEV-245 Phase 5.6: Should return topic fields from checkpoint state."""
+        agent = LangGraphAgent()
+        agent._graph = MagicMock()
+
+        mock_state = MagicMock()
+        mock_state.values = {
+            "messages": [
+                {"role": "user", "content": "parlami della rottamazione quinquies"},
+                {"role": "assistant", "content": "La rottamazione quinquies è..."},
+            ],
+            "attachments": [],
+            "conversation_topic": "rottamazione quinquies",
+            "topic_keywords": ["rottamazione", "quinquies"],
+        }
+        agent._graph.aget_state = AsyncMock(return_value=mock_state)
+
+        prior_messages, prior_attachments, conversation_topic, topic_keywords = await agent._get_prior_state(
+            "topic-session"
+        )
+
+        assert len(prior_messages) == 2
+        assert conversation_topic == "rottamazione quinquies"
+        assert topic_keywords == ["rottamazione", "quinquies"]
+
+    @pytest.mark.asyncio
+    async def test_validates_topic_keywords_type(self):
+        """DEV-245 Phase 5.6: Should reject invalid topic_keywords types."""
+        agent = LangGraphAgent()
+        agent._graph = MagicMock()
+
+        mock_state = MagicMock()
+        mock_state.values = {
+            "messages": [],
+            "attachments": [],
+            "conversation_topic": "rottamazione quinquies",
+            "topic_keywords": "rottamazione",  # Invalid: string instead of list
+        }
+        agent._graph.aget_state = AsyncMock(return_value=mock_state)
+
+        _, _, conversation_topic, topic_keywords = await agent._get_prior_state("invalid-type-session")
+
+        assert conversation_topic == "rottamazione quinquies"
+        assert topic_keywords is None  # Should be None due to type validation
 
     @pytest.mark.asyncio
     async def test_handles_exception_gracefully(self):
@@ -75,10 +136,15 @@ class TestGetPriorState:
         agent._graph.aget_state = AsyncMock(side_effect=Exception("Database error"))
 
         with patch("app.core.langgraph.graph.logger") as mock_logger:
-            prior_messages, prior_attachments = await agent._get_prior_state("error-session")
+            # DEV-245 Phase 5.6: Now returns 4 values
+            prior_messages, prior_attachments, conversation_topic, topic_keywords = await agent._get_prior_state(
+                "error-session"
+            )
 
         assert prior_messages == []
         assert prior_attachments == []
+        assert conversation_topic is None
+        assert topic_keywords is None
         mock_logger.warning.assert_called_once()
 
 
@@ -213,7 +279,8 @@ class TestSystemMessageFiltering:
         }
         agent._graph.aget_state = AsyncMock(return_value=mock_state)
 
-        prior_messages, _ = await agent._get_prior_state("session-123")
+        # DEV-245 Phase 5.6: Now returns 4 values
+        prior_messages, _, _, _ = await agent._get_prior_state("session-123")
 
         # System message should now be INCLUDED for graph processing
         assert len(prior_messages) == 3
@@ -241,7 +308,8 @@ class TestSystemMessageFiltering:
         }
         agent._graph.aget_state = AsyncMock(return_value=mock_state)
 
-        prior_messages, _ = await agent._get_prior_state("session-456")
+        # DEV-245 Phase 5.6: Now returns 4 values
+        prior_messages, _, _, _ = await agent._get_prior_state("session-456")
 
         # System message should be INCLUDED
         assert len(prior_messages) == 3

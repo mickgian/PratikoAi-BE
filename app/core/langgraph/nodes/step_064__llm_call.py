@@ -1,10 +1,7 @@
 """Node wrapper for Step 64: LLM Call.
 
-DEV-196: Integrates PremiumModelSelector, SynthesisPromptBuilder, and
-VerdettoOperativoParser for TECHNICAL_RESEARCH route queries.
-
-DEV-214: Enhanced with unified JSON output parsing for reasoning traces,
-sources with hierarchy, and suggested actions.
+DEV-214: Enhanced with unified JSON output parsing for reasoning traces
+and sources with hierarchy.
 
 DEV-222: Integrates LLMOrchestrator for complexity-based model routing
 and cost tracking.
@@ -13,6 +10,8 @@ DEV-226: Integrates TreeOfThoughtsReasoner for complex/multi_domain queries.
 Uses ToT for multi-hypothesis reasoning with source-weighted scoring.
 
 DEV-238: Integrates detailed reasoning trace logging with mandatory context fields.
+
+DEV-244: Removed VERDETTO format support - using unified clean format.
 """
 
 import json
@@ -35,19 +34,14 @@ from app.services.reasoning_trace_logger import (
     log_reasoning_trace_recorded,
     log_tot_hypothesis_evaluated,
 )
-from app.services.verdetto_response_formatter import verdetto_response_formatter
 
 # DEV-196: Lazy imports to avoid database connection during module load
 if TYPE_CHECKING:
     from app.services.llm_orchestrator import LLMOrchestrator
     from app.services.premium_model_selector import PremiumModelSelector
-    from app.services.synthesis_prompt_builder import SynthesisPromptBuilder
     from app.services.tree_of_thoughts_reasoner import ToTResult, TreeOfThoughtsReasoner
 
 STEP = 64
-
-# Routes that should use premium model and verdetto parsing
-SYNTHESIS_ROUTES = {"technical_research"}
 
 # DEV-222: Cached orchestrator instance
 _orchestrator_instance: "LLMOrchestrator | None" = None
@@ -292,14 +286,14 @@ def _extract_json_from_content(content: str) -> dict | None:
 def _parse_unified_response(content: str) -> dict | None:
     """Parse unified JSON response from LLM.
 
-    DEV-214: Extracts structured response with reasoning, answer, sources, actions.
+    DEV-214: Extracts structured response with reasoning, answer, and sources.
 
     Args:
         content: LLM response content
 
     Returns:
-        Parsed dict with reasoning, answer, sources, actions
-        None if parsing fails
+        Parsed dict with reasoning, answer, sources.
+        None if parsing fails.
     """
     if not content:
         return None
@@ -310,7 +304,7 @@ def _parse_unified_response(content: str) -> dict | None:
         return None
 
     # Validate that it has at least one expected field
-    expected_fields = {"reasoning", "answer", "sources_cited", "suggested_actions"}
+    expected_fields = {"reasoning", "answer", "sources_cited"}
     if not any(field in parsed for field in expected_fields):
         return None
 
@@ -339,7 +333,6 @@ def _fallback_to_text(content: str, state: RAGState) -> dict:
         "reasoning": None,
         "answer": content or "",
         "sources_cited": [],
-        "suggested_actions": [],
     }
 
 
@@ -428,7 +421,7 @@ def _merge(d: dict[str, Any], patch: dict[str, Any]) -> None:
 def _process_unified_response(content: str, state: RAGState) -> str:
     """Process LLM response with unified JSON parsing.
 
-    DEV-214: Extracts and stores reasoning, sources, and actions from JSON response.
+    DEV-214: Extracts and stores reasoning and sources from JSON response.
     Falls back to text extraction if JSON parsing fails.
 
     DEV-226: Preserves ToT reasoning_type if already set (from TreeOfThoughtsReasoner).
@@ -450,10 +443,6 @@ def _process_unified_response(content: str, state: RAGState) -> str:
             state["reasoning_trace"] = parsed.get("reasoning")
         # If ToT, reasoning_trace is already set by _use_tree_of_thoughts
 
-        # Store suggested actions for Step 100 validation
-        state["suggested_actions"] = parsed.get("suggested_actions", [])
-        state["actions_source"] = "unified_llm"
-
         # Store and validate sources with hierarchy
         sources = parsed.get("sources_cited", [])
         state["sources_cited"] = _apply_source_hierarchy(sources)
@@ -461,24 +450,34 @@ def _process_unified_response(content: str, state: RAGState) -> str:
         # Use answer for display
         answer = parsed.get("answer", content)
 
+        # DEV-245 Phase 5.1: Filter out unauthorized disclaimers
+        # LLM sometimes ignores prompt instructions and includes "consulta un esperto"
+        # This is a safety net to catch those cases and remove them
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        answer, removed_disclaimers = DisclaimerFilter.filter_response(answer)
+        if removed_disclaimers:
+            logger.info(
+                "step64_disclaimers_filtered",
+                removed_count=len(removed_disclaimers),
+                request_id=state.get("request_id"),
+            )
+
         logger.info(
             "step64_unified_response_parsed",
             has_reasoning=parsed.get("reasoning") is not None,
             sources_count=len(sources),
-            actions_count=len(parsed.get("suggested_actions", [])),
             request_id=state.get("request_id"),
         )
 
         return answer
     else:
-        # Fallback: mark for action regeneration
-        state["actions_source"] = "fallback_needed"
+        # Fallback: JSON parsing failed
         # DEV-226: Preserve ToT reasoning_type if already set
         if state.get("reasoning_type") != "tot":
             state["reasoning_type"] = None
             state["reasoning_trace"] = None
         state["sources_cited"] = []
-        state["suggested_actions"] = []
 
         logger.warning(
             "step64_json_parse_failed",
@@ -495,7 +494,18 @@ def _process_unified_response(content: str, state: RAGState) -> str:
             content_sample=content[:500] if content else "",
         )
 
-        return content
+        # DEV-245 Phase 5.1: Filter out unauthorized disclaimers (fallback branch)
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        filtered_content, removed_disclaimers = DisclaimerFilter.filter_response(content)
+        if removed_disclaimers:
+            logger.info(
+                "step64_disclaimers_filtered_fallback",
+                removed_count=len(removed_disclaimers),
+                request_id=state.get("request_id"),
+            )
+
+        return filtered_content
 
 
 def _check_kb_empty_and_inject_warning(state: RAGState) -> bool:
@@ -663,12 +673,87 @@ async def node_step_64(state: RAGState) -> RAGState:
                 state["tot_fallback"] = True
                 state["tot_error"] = str(e)
 
-        # Call orchestrator with business inputs only
-        # DEV-222: Include complexity in context for model routing
-        ctx = dict(state)
-        ctx["query_complexity"] = complexity
-        ctx["tot_used"] = tot_used
-        res = await step_64__llmcall(messages=state.get("messages"), ctx=ctx)
+        # DEV-245: Use LLMOrchestrator.generate_response() for proper model routing
+        # This ensures gpt-4o is used instead of gpt-4o-mini from env default
+        from app.services.llm_orchestrator import QueryComplexity as QC
+
+        # Extract user query from messages
+        user_message = state.get("user_message", "")
+        if not user_message:
+            messages_list = state.get("messages", [])
+            for msg in reversed(messages_list):
+                if isinstance(msg, dict) and msg.get("role") == "user":
+                    user_message = msg.get("content", "")
+                    break
+
+        # Get KB context and metadata
+        kb_context = state.get("context", "") or state.get("kb_context", "")
+        kb_sources_metadata = state.get("kb_sources_metadata", [])
+
+        # Convert complexity string to enum
+        complexity_map = {
+            "simple": QC.SIMPLE,
+            "complex": QC.COMPLEX,
+            "multi_domain": QC.MULTI_DOMAIN,
+        }
+        complexity_enum = complexity_map.get(complexity, QC.SIMPLE)
+
+        try:
+            # Use LLMOrchestrator for response generation with proper model
+            # DEV-245 FIX: Pass web_sources_metadata for Parallel Hybrid RAG
+            orchestrator = get_llm_orchestrator()
+            unified_response = await orchestrator.generate_response(
+                query=user_message,
+                kb_context=kb_context,
+                kb_sources_metadata=kb_sources_metadata,
+                complexity=complexity_enum,
+                conversation_history=state.get("messages", []),
+                web_sources_metadata=state.get("web_sources_metadata", []),
+            )
+
+            # Map UnifiedResponse to expected result format
+            res = {
+                "llm_call_successful": True,
+                "response": {"content": unified_response.answer},
+                "llm_response": {"content": unified_response.answer},
+                "model": unified_response.model_used,
+                "provider": "openai",
+                "tokens_used": {
+                    "input": unified_response.tokens_input,
+                    "output": unified_response.tokens_output,
+                },
+                "cost_estimate": unified_response.cost_euros,
+                "response_time_ms": unified_response.latency_ms,
+            }
+
+            # Store sources from orchestrator
+            if unified_response.sources_cited:
+                state["sources_cited"] = unified_response.sources_cited
+
+            logger.info(
+                "step64_orchestrator_response",
+                model=unified_response.model_used,
+                complexity=complexity,
+                tokens_input=unified_response.tokens_input,
+                tokens_output=unified_response.tokens_output,
+                cost_euros=unified_response.cost_euros,
+                latency_ms=unified_response.latency_ms,
+                request_id=state.get("request_id"),
+            )
+
+        except Exception as orchestrator_error:
+            # DEV-245: Fallback to old path if orchestrator fails
+            logger.warning(
+                "step64_orchestrator_fallback",
+                error=str(orchestrator_error),
+                error_type=type(orchestrator_error).__name__,
+                request_id=state.get("request_id"),
+            )
+            # Fall back to old orchestrator call
+            ctx = dict(state)
+            ctx["query_complexity"] = complexity
+            ctx["tot_used"] = tot_used
+            res = await step_64__llmcall(messages=state.get("messages"), ctx=ctx)
 
         # Map orchestrator outputs to canonical state keys (additive)
         llm = ns(state, "llm")
@@ -734,17 +819,6 @@ async def node_step_64(state: RAGState) -> RAGState:
                     # DEV-214: Process unified JSON response
                     display_content = _process_unified_response(content, state)
 
-                    # DEV-242 Phase 12B: Extract structured sources for frontend rendering
-                    parsed_response = verdetto_response_formatter.parse_response(display_content)
-                    if parsed_response.has_sources_table:
-                        state["structured_sources"] = parsed_response.structured_sources
-                        display_content = parsed_response.content  # Use cleaned content
-                        logger.info(
-                            "step64_structured_sources_extracted",
-                            sources_count=len(parsed_response.structured_sources),
-                            request_id=state.get("request_id"),
-                        )
-
                     # FIX: Update llm["response"] for streaming to use processed content
                     if isinstance(response, dict):
                         response["content"] = display_content
@@ -789,17 +863,6 @@ async def node_step_64(state: RAGState) -> RAGState:
 
                 # DEV-214: Process unified JSON response
                 display_content = _process_unified_response(content, state)
-
-                # DEV-242 Phase 12B: Extract structured sources for frontend rendering
-                parsed_response = verdetto_response_formatter.parse_response(display_content)
-                if parsed_response.has_sources_table:
-                    state["structured_sources"] = parsed_response.structured_sources
-                    display_content = parsed_response.content  # Use cleaned content
-                    logger.info(
-                        "step64_structured_sources_extracted",
-                        sources_count=len(parsed_response.structured_sources),
-                        request_id=state.get("request_id"),
-                    )
 
                 # FIX: Update llm["response"] for streaming to use processed content
                 if isinstance(response, dict):
@@ -858,7 +921,6 @@ async def node_step_64(state: RAGState) -> RAGState:
         STEP,
         "exit",
         llm_success=llm.get("success"),
-        actions_source=state.get("actions_source"),
         reasoning_type=state.get("reasoning_type"),
         query_complexity=state.get("query_complexity"),
         model_used=state.get("model_used"),

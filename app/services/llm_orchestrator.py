@@ -277,6 +277,7 @@ class LLMOrchestrator:
         kb_sources_metadata: list[dict],
         complexity: QueryComplexity,
         conversation_history: list[dict] | None = None,
+        web_sources_metadata: list[dict] | None = None,
     ) -> UnifiedResponse:
         """Generate response with appropriate model and reasoning strategy.
 
@@ -289,6 +290,7 @@ class LLMOrchestrator:
             kb_sources_metadata: Metadata for KB sources
             complexity: Pre-determined complexity level
             conversation_history: Optional conversation history
+            web_sources_metadata: DEV-245: Web sources from Brave Search (Parallel Hybrid RAG)
 
         Returns:
             UnifiedResponse with answer, reasoning, sources, actions, and metrics
@@ -298,12 +300,14 @@ class LLMOrchestrator:
 
         try:
             # Build prompt based on complexity/reasoning type
+            # DEV-245: Pass web_sources_metadata for Parallel Hybrid RAG
             prompt = self._build_response_prompt(
                 query=query,
                 kb_context=kb_context,
                 kb_sources_metadata=kb_sources_metadata,
                 config=config,
                 conversation_history=conversation_history,
+                web_sources_metadata=web_sources_metadata,
             )
 
             # Call LLM
@@ -442,6 +446,7 @@ class LLMOrchestrator:
         kb_sources_metadata: list[dict],
         config: ModelConfig,
         conversation_history: list[dict] | None = None,
+        web_sources_metadata: list[dict] | None = None,
     ) -> str:
         """Build the response prompt based on configuration.
 
@@ -451,6 +456,7 @@ class LLMOrchestrator:
             kb_sources_metadata: Source metadata for grounding
             config: Model configuration with template name
             conversation_history: Optional conversation history
+            web_sources_metadata: DEV-245: Web sources from Brave Search (Parallel Hybrid RAG)
 
         Returns:
             Formatted prompt string
@@ -464,6 +470,8 @@ class LLMOrchestrator:
                 query=query,
                 kb_context=kb_context or "Nessun contesto disponibile.",
                 kb_sources_metadata=json.dumps(kb_sources_metadata, ensure_ascii=False),
+                # DEV-245: Pass web sources metadata for Parallel Hybrid RAG
+                web_sources_metadata=json.dumps(web_sources_metadata or [], ensure_ascii=False),
                 conversation_context=self._format_conversation(conversation_history),
                 current_date=datetime.date.today().isoformat(),
             )

@@ -555,3 +555,181 @@ class TestLLMRouterServiceFallbackDecision:
         result = service._fallback_decision("Test query", error_msg)
 
         assert "fallback" in result.reasoning.lower() or "error" in result.reasoning.lower()
+
+    def test_fallback_decision_is_not_followup(self, mock_config):
+        """DEV-245: Test fallback decision has is_followup=False."""
+        from app.services.llm_router_service import LLMRouterService
+
+        service = LLMRouterService(config=mock_config)
+
+        result = service._fallback_decision("Test query", "Some error")
+
+        assert result.is_followup is False
+
+
+class TestLLMRouterServiceFollowupDetection:
+    """DEV-245: Tests for follow-up question detection in LLMRouterService."""
+
+    @pytest.fixture
+    def mock_config(self):
+        """Create a mock LLMModelConfig."""
+        from app.core.llm.model_config import LLMModelConfig
+
+        config = MagicMock(spec=LLMModelConfig)
+        config.get_model.return_value = "gpt-4o-mini"
+        config.get_provider.return_value = "openai"
+        config.get_timeout.return_value = 10000
+        config.get_temperature.return_value = 0.2
+        return config
+
+    @pytest.mark.asyncio
+    async def test_followup_query_detected(self, mock_config):
+        """DEV-245: Test that follow-up queries are detected."""
+        from app.services.llm_router_service import LLMRouterService
+
+        service = LLMRouterService(config=mock_config)
+
+        # Mock response indicating a follow-up
+        mock_response = RouterDecision(
+            route=RoutingCategory.TECHNICAL_RESEARCH,
+            confidence=0.85,
+            reasoning="Follow-up question about IRAP in context of rottamazione",
+            entities=[],
+            requires_freshness=False,
+            suggested_sources=[],
+            is_followup=True,
+        )
+
+        with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = mock_response
+
+            # Short follow-up query with prior context
+            result = await service.route(
+                "e l'IRAP?",
+                [
+                    {"role": "user", "content": "Parlami della rottamazione quinquies"},
+                    {"role": "assistant", "content": "La rottamazione quinquies è..."},
+                ],
+            )
+
+        assert result.is_followup is True
+
+    @pytest.mark.asyncio
+    async def test_non_followup_query_not_flagged(self, mock_config):
+        """DEV-245: Test that new-topic queries are not flagged as follow-up."""
+        from app.services.llm_router_service import LLMRouterService
+
+        service = LLMRouterService(config=mock_config)
+
+        mock_response = RouterDecision(
+            route=RoutingCategory.TECHNICAL_RESEARCH,
+            confidence=0.92,
+            reasoning="New topic about P.IVA forfettaria",
+            entities=[],
+            requires_freshness=False,
+            suggested_sources=[],
+            is_followup=False,
+        )
+
+        with patch.object(service, "_call_llm", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = mock_response
+
+            # Self-contained question
+            result = await service.route("Come si apre una P.IVA forfettaria?", [])
+
+        assert result.is_followup is False
+
+    @pytest.mark.asyncio
+    async def test_empty_query_is_not_followup(self, mock_config):
+        """DEV-245: Test that empty queries are not flagged as follow-up."""
+        from app.services.llm_router_service import LLMRouterService
+
+        service = LLMRouterService(config=mock_config)
+
+        result = await service.route("", [])
+
+        assert result.is_followup is False
+
+    @pytest.mark.asyncio
+    async def test_whitespace_query_is_not_followup(self, mock_config):
+        """DEV-245: Test that whitespace queries are not flagged as follow-up."""
+        from app.services.llm_router_service import LLMRouterService
+
+        service = LLMRouterService(config=mock_config)
+
+        result = await service.route("   ", [])
+
+        assert result.is_followup is False
+
+    def test_parse_response_extracts_is_followup_true(self, mock_config):
+        """DEV-245: Test parsing response with is_followup=true."""
+        from app.services.llm_router_service import LLMRouterService
+
+        service = LLMRouterService(config=mock_config)
+
+        json_response = json.dumps(
+            {
+                "route": "technical_research",
+                "confidence": 0.85,
+                "reasoning": "Follow-up about rates",
+                "entities": [],
+                "requires_freshness": False,
+                "suggested_sources": [],
+                "is_followup": True,
+            }
+        )
+
+        result = service._parse_response(json_response)
+
+        assert result.is_followup is True
+
+    def test_parse_response_extracts_is_followup_false(self, mock_config):
+        """DEV-245: Test parsing response with is_followup=false."""
+        from app.services.llm_router_service import LLMRouterService
+
+        service = LLMRouterService(config=mock_config)
+
+        json_response = json.dumps(
+            {
+                "route": "technical_research",
+                "confidence": 0.92,
+                "reasoning": "New topic query",
+                "entities": [],
+                "requires_freshness": False,
+                "suggested_sources": [],
+                "is_followup": False,
+            }
+        )
+
+        result = service._parse_response(json_response)
+
+        assert result.is_followup is False
+
+    def test_parse_response_defaults_is_followup_to_false(self, mock_config):
+        """DEV-245: Test is_followup defaults to False when not in response."""
+        from app.services.llm_router_service import LLMRouterService
+
+        service = LLMRouterService(config=mock_config)
+
+        # Response without is_followup field (backward compatibility)
+        json_response = json.dumps(
+            {
+                "route": "technical_research",
+                "confidence": 0.9,
+                "reasoning": "Technical query",
+                "entities": [],
+                "requires_freshness": False,
+                "suggested_sources": [],
+            }
+        )
+
+        result = service._parse_response(json_response)
+
+        assert result.is_followup is False
+
+    def test_system_prompt_includes_followup_detection(self, mock_config):
+        """DEV-245: Test system prompt includes follow-up detection instructions."""
+        from app.services.llm_router_service import ROUTER_SYSTEM_PROMPT
+
+        assert "is_followup" in ROUTER_SYSTEM_PROMPT
+        assert "follow-up" in ROUTER_SYSTEM_PROMPT.lower() or "followup" in ROUTER_SYSTEM_PROMPT.lower()

@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2026-01-16 09:08:29
+**Auto-generated:** 2026-01-23 16:54:06
 
-> 💡 This directory contains 24 technical documentation files plus 167 architecture documents.
+> 💡 This directory contains 26 technical documentation files plus 169 architecture documents.
 
 ---
 
@@ -13,7 +13,7 @@
 - **[Architecture Overview](architecture/INDEX.md)** - Main architecture index
   - RAG flow implementation documents
   - Policy gated autonomy
-  - 167 total architecture documents including 135 detailed steps
+  - 169 total architecture documents including 135 detailed steps
 
 ---
 
@@ -44,6 +44,8 @@
   - **Last Updated:** 2025-11-14 **Status:** Production
 - **[DEV-242: Response Quality & Completeness Improvement - Summary](DEV-242-response-quality-summary.md)** ✅ Current
   - **Issue:** GitHub #975 **Status:** Phase 22-32, 45, 54 ✅ | Phase 29A 🔴 Pending
+- **[DEV-245 Response Quality Improvement Plan](DEV-245-response-quality-improvement-plan.md)** ✅ Current
+  - **Created:** January 16, 2026 **Status:** PHASE 1 + PHASE 2 + PHASE 3 + PHASE 4 + PHASE 5 FULLY IMPLEMENTED
 - **[PostgreSQL Full-Text Search Implementation](PostgreSQL_Full_Text_Search.md)** ✅ Current
   - This document provides comprehensive information about the PostgreSQL Full-Text Search (FTS) implementation for PratikoAI knowledge base.
 - **[PostgreSQL RAG Schema Report](schema_report.md)** ⚠️ Deprecated
@@ -67,13 +69,15 @@
 - **[Chat History Storage Architecture](CHAT_STORAGE_ARCHITECTURE.md)** ✅ Current
   - **Status:** Implemented **Version:** 1.0
 - **[DEV-244: KB Source URLs Display Fix - Summary](DEV-244-kb-source-urls-summary.md)** ✅ Current
-  - **Issue:** GitHub #TBD **Status:** 🔄 IN PROGRESS - New regression identified
+  - **Issue:** GitHub #TBD **Status:** ✅ FIXED - Field mapping bug resolved
 - **[Database Backup System](DATABASE_BACKUP_SYSTEM.md)** ✅ Current
   - **Purpose**: Prevent data loss by maintaining automated daily backups of the PostgreSQL database.
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2026-01-16 09:08:20
+  - **Auto-generated:** 2026-01-23 16:51:30
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
+- **[Hugging Face Models for PratikoAI - Analysis Report](HUGGINGFACE_MODELS_ANALYSIS.md)** ✅ Current
+  - This report analyzes small, CPU-efficient Hugging Face models suitable for PratikoAI's Italian legal/labor domain. Focus areas: embeddings, reranki...
 - **[Pinecone Guardrails Implementation](pinecone-guardrails.md)** ✅ Current
   - This document describes the implemented Pinecone environment guardrails, provider selection logic, fallback behavior, and smoke test verification f...
 - **[Regional Tax Variations for PratikoAI](REGIONAL_TAX_VARIATIONS.md)** ✅ Current
@@ -84,11 +88,11 @@
 ## 📊 Statistics
 
 - **Feature Docs:** 9
-- **Database/Search:** 6
+- **Database/Search:** 7
 - **Operations:** 3
-- **Architecture:** 167
-- **Total:** 191
+- **Architecture:** 169
+- **Total:** 195
 
 ---
 
-**Last Updated:** 2026-01-16 09:08:29
+**Last Updated:** 2026-01-23 16:54:06

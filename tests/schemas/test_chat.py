@@ -42,8 +42,8 @@ class TestMessage:
     def test_message_content_max_length(self):
         """Test content respects max length.
 
-        DEV-242 Phase 32: max_length increased from 50000 to 80000 to accommodate
-        18 chunks + grounding rules in responses.
+        DEV-244: max_length kept at 80000 - KB context now hard-capped at 35000 chars
+        in context_builder_merge.py to prevent overflow.
         """
         # 80000 chars should be valid
         long_content = "a" * 80000

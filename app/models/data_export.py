@@ -164,7 +164,7 @@ class DataExportRequest(SQLModel, table=True):
         """Check if export can be retried"""
         return self.status == ExportStatus.FAILED.value and self.retry_count < self.max_retries
 
-    def increment_download(self, ip_address: Optional[str] = None) -> bool:
+    def increment_download(self, ip_address: str | None = None) -> bool:
         """Increment download count and track IP"""
         if not self.is_downloadable():
             return False
@@ -307,6 +307,13 @@ class QueryHistory(SQLModel, table=True):
     # Context
     session_id: str | None = Field(default=None, max_length=255)
     conversation_id: UUID | None = Field(default=None)
+
+    # DEV-244: KB sources metadata for Fonti display (persisted for chat history)
+    kb_sources_metadata: list[dict] | None = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+        description="KB source URLs and metadata for Fonti display",
+    )
 
     # Italian specific
     query_type: str | None = Field(default=None, max_length=50)  # tax_calculation, document_analysis, general

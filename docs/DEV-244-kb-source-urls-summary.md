@@ -1,9 +1,9 @@
 # DEV-244: KB Source URLs Display Fix - Summary
 
 **Issue:** GitHub #TBD
-**Status:** 🔄 IN PROGRESS - New regression identified
+**Status:** ✅ FIXED - Field mapping bug resolved
 **Started:** January 14, 2026
-**Last Updated:** January 15, 2026 (15:35)
+**Last Updated:** January 19, 2026 (09:30)
 
 ---
 
@@ -372,3 +372,60 @@ SEARCH_WEIGHTS = {
 
 - **DEV-242**: Response Quality & Completeness (added SOURCE_AUTHORITY, context building fixes)
 - **Phase 54**: Source URL loss during document grouping (fixed in context_builder_merge.py)
+
+---
+
+## Fix 7: Field Mapping Bug (January 19, 2026)
+
+**File:** `app/core/langgraph/nodes/step_040__build_context.py` (Line 234)
+
+**Problem:** `_build_kb_sources_metadata()` was looking for `doc.get("url")`, but `parallel_retrieval.py` stores URLs in the `source_url` field.
+
+**Root Cause:**
+```python
+# parallel_retrieval.py stores:
+{
+    "source_url": result.source_url,  # ← Correct field name
+    "metadata": {"source_url": result.source_url},
+}
+
+# step_040__build_context.py was reading:
+"url": doc.get("url"),  # ← Wrong field name (always None!)
+```
+
+**Fix Applied:**
+```python
+# Now checks multiple fields for backwards compatibility
+"url": doc.get("source_url") or doc.get("url") or doc.get("metadata", {}).get("source_url"),
+```
+
+**Effect:** KB source URLs (Gazzetta Ufficiale, ADeR, etc.) now correctly appear in the `kb_source_urls` SSE event and display in the frontend Fonti section.
+
+---
+
+## Fix 8: Frontend Citation Badge Styling (January 19, 2026)
+
+**File:** `src/components/chat/KBSourceUrls.tsx`
+
+**Problem:** KB source URLs in the "Fonti" section rendered as plain links, not with the styled `SourceCitation` badge format used elsewhere in the app.
+
+**Fix Applied:**
+```tsx
+// Import citation utilities
+import { SourceCitation } from '@/components/ui/source-citation';
+import { isCitationUrl } from '@/config/citation-sources';
+
+// In render loop:
+const isInstitutional = isCitationUrl(source.url);
+
+{isInstitutional ? (
+  <SourceCitation citation={source.title} href={source.url} size="sm" />
+) : (
+  <a href={source.url}>...</a>
+)}
+```
+
+**Effect:**
+- Institutional sources (Gazzetta Ufficiale, ADeR, INPS, etc.) display with styled badge format
+- Non-institutional sources (web articles) display as regular links
+- Consistent UI across AI responses and Fonti section

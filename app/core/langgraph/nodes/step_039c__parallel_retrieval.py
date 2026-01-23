@@ -45,6 +45,9 @@ def _retrieval_result_to_dict(result: Any) -> dict[str, Any]:
             "source_type": doc.source_type,
             "source_name": doc.source_name,
             "published_date": doc.published_date.isoformat() if doc.published_date else None,
+            # DEV-244 FIX: Extract source_url from metadata for kb_sources_metadata
+            # Without this, the Fonti dropdown won't have URLs and won't display
+            "source_url": doc.metadata.get("source_url"),
             "metadata": doc.metadata,
         }
         documents.append(doc_dict)
@@ -53,6 +56,8 @@ def _retrieval_result_to_dict(result: Any) -> dict[str, Any]:
         "documents": documents,
         "total_found": result.total_found,
         "search_time_ms": result.search_time_ms,
+        "search_keywords": result.search_keywords,  # DEV-245 Phase 4.2.1
+        "search_keywords_with_scores": result.search_keywords_with_scores,  # DEV-245 Phase 5.12
         "skipped": False,
         "error": False,
     }
@@ -156,10 +161,30 @@ async def node_step_39c(state: RAGState) -> RAGState:
                         search_service=search_service,
                         embedding_service=None,  # Vector search still uses placeholder
                     )
+                    # DEV-245 Phase 3.9: Pass messages for context-aware keyword ordering
+                    # in Brave web search (context keywords first, then new keywords)
+                    messages = state.get("messages", [])
+                    # DEV-245 Phase 5.3: Pass topic_keywords for long conversation support
+                    # These keywords persist across all turns, preventing context loss at Q4+
+                    topic_keywords = state.get("topic_keywords")
+
+                    # DEV-245 Phase 5.10: Debug log at step_039c before Brave search
+                    # Use structlog for debug logging (supports kwargs)
+                    from app.core.logging import logger as structlog_logger
+
+                    structlog_logger.info(
+                        "DEV245_step039c_topic_keywords",
+                        topic_keywords=topic_keywords,
+                        will_be_passed_to_brave=topic_keywords is not None,
+                        user_query_preview=user_query[:50] if user_query else "N/A",
+                    )
+
                     result = await service.retrieve(
                         queries=query_variants,
                         hyde=hyde_result,
                         top_k=CONTEXT_TOP_K,  # DEV-242 Phase 26: Use config value (20) instead of default (10)
+                        messages=messages,
+                        topic_keywords=topic_keywords,
                     )
 
                     retrieval_result = _retrieval_result_to_dict(result)
@@ -189,7 +214,15 @@ async def node_step_39c(state: RAGState) -> RAGState:
         skipped=retrieval_result.get("skipped", False),
     )
 
+    # DEV-245 Phase 4.2.1: Store search keywords in state for downstream filtering
+    # This ensures Step 040 uses the SAME keywords as Brave search for web filtering
+    search_keywords = retrieval_result.get("search_keywords")
+    # DEV-245 Phase 5.12: Store keyword scores for evaluation
+    search_keywords_with_scores = retrieval_result.get("search_keywords_with_scores")
+
     return {
         **state,
         "retrieval_result": retrieval_result,
+        "search_keywords": search_keywords,  # DEV-245 Phase 4.2.1
+        "search_keywords_with_scores": search_keywords_with_scores,  # DEV-245 Phase 5.12
     }

@@ -1,24 +1,22 @@
 """TDD Tests for Chatbot Streaming Proactivity Integration - DEV-159.
 
 Tests for integrating ProactivityEngine with /chat/stream endpoint:
-- SSE event types: content, suggested_actions, interactive_question
-- Correct event sequence: content → actions → question → done
+- SSE event types: content, interactive_question
+- Correct event sequence: content → question → done
 - Graceful degradation on ProactivityEngine failure
 - Event format validation
+
+DEV-245 Phase 5.15: Suggested actions tests removed per user feedback.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from app.schemas.chat import StreamResponse
 from app.schemas.proactivity import (
-    Action,
-    ActionCategory,
-    ExtractedParameter,
     InteractiveOption,
     InteractiveQuestion,
-    ParameterExtractionResult,
     ProactivityResult,
 )
 
@@ -39,25 +37,6 @@ class TestStreamResponseWithEventType:
         response = StreamResponse(content="Hello", event_type="content")
         assert response.event_type == "content"
         assert response.content == "Hello"
-
-    def test_stream_response_with_suggested_actions_type(self):
-        """Test StreamResponse with suggested_actions event type."""
-        actions = [
-            {
-                "id": "tax_calculate_irpef",
-                "label": "Calcola IRPEF",
-                "icon": "calculator",
-                "category": "calculate",
-            }
-        ]
-        response = StreamResponse(
-            content="",
-            event_type="suggested_actions",
-            suggested_actions=actions,
-        )
-        assert response.event_type == "suggested_actions"
-        assert response.suggested_actions is not None
-        assert len(response.suggested_actions) == 1
 
     def test_stream_response_with_interactive_question_type(self):
         """Test StreamResponse with interactive_question event type."""
@@ -83,7 +62,7 @@ class TestStreamResponseWithEventType:
         params = {"reddito": "50000", "anno": "2024"}
         response = StreamResponse(
             content="",
-            event_type="suggested_actions",
+            event_type="content",
             extracted_params=params,
         )
         assert response.extracted_params is not None
@@ -92,30 +71,6 @@ class TestStreamResponseWithEventType:
 
 class TestSSEProactivityEventFormat:
     """Test SSE event formatting for proactivity events."""
-
-    def test_format_suggested_actions_sse_event(self):
-        """Test formatting suggested_actions as SSE event."""
-        from app.core.sse_formatter import format_sse_event
-
-        actions = [
-            {
-                "id": "tax_calculate_irpef",
-                "label": "Calcola IRPEF",
-                "icon": "calculator",
-                "category": "calculate",
-            }
-        ]
-        response = StreamResponse(
-            content="",
-            event_type="suggested_actions",
-            suggested_actions=actions,
-        )
-        sse_event = format_sse_event(response)
-
-        assert sse_event.startswith("data: ")
-        assert sse_event.endswith("\n\n")
-        assert "suggested_actions" in sse_event
-        assert "tax_calculate_irpef" in sse_event
 
     def test_format_interactive_question_sse_event(self):
         """Test formatting interactive_question as SSE event."""
@@ -145,31 +100,6 @@ class TestSSEProactivityEventFormat:
 class TestStreamingProactivityEventSequence:
     """Test correct sequence of SSE events with proactivity."""
 
-    def test_event_sequence_content_then_actions_then_done(self):
-        """Test events are sent in order: content → actions → done."""
-        # This simulates the expected event sequence
-        events = [
-            StreamResponse(content="Hello", event_type="content"),
-            StreamResponse(content=" world", event_type="content"),
-            StreamResponse(
-                content="",
-                event_type="suggested_actions",
-                suggested_actions=[{"id": "action1", "label": "Action 1"}],
-            ),
-            StreamResponse(content="", done=True),
-        ]
-
-        # Verify sequence
-        content_events = [e for e in events if e.event_type == "content"]
-        action_events = [e for e in events if e.event_type == "suggested_actions"]
-        done_events = [e for e in events if e.done]
-
-        assert len(content_events) == 2
-        assert len(action_events) == 1
-        assert len(done_events) == 1
-        # Done should be last
-        assert events[-1].done is True
-
     def test_event_sequence_content_then_question_then_done(self):
         """Test events are sent in order: content → question → done."""
         events = [
@@ -186,32 +116,21 @@ class TestStreamingProactivityEventSequence:
         assert len(question_events) == 1
         assert events[-1].done is True
 
-    def test_no_actions_when_proactivity_disabled(self):
-        """Test no action events when proactivity is not triggered."""
+    def test_no_extra_events_when_proactivity_disabled(self):
+        """Test no extra events when proactivity is not triggered."""
         events = [
             StreamResponse(content="Hello", event_type="content"),
             StreamResponse(content="", done=True),
         ]
 
-        action_events = [e for e in events if getattr(e, "event_type", None) == "suggested_actions"]
-        assert len(action_events) == 0
+        question_events = [
+            e for e in events if getattr(e, "event_type", None) == "interactive_question"
+        ]
+        assert len(question_events) == 0
 
 
 class TestProactivityEngineStreamingIntegration:
     """Test ProactivityEngine integration with streaming endpoint."""
-
-    @pytest.fixture
-    def sample_actions(self):
-        """Create sample actions for testing."""
-        return [
-            Action(
-                id="tax_calculate_irpef",
-                label="Calcola IRPEF",
-                icon="calculator",
-                category=ActionCategory.CALCULATE,
-                prompt_template="Calcola l'IRPEF per {reddito}",
-            ),
-        ]
 
     @pytest.fixture
     def sample_question(self):
@@ -227,30 +146,14 @@ class TestProactivityEngineStreamingIntegration:
             ],
         )
 
-    @pytest.fixture
-    def sample_proactivity_result(self, sample_actions, sample_question):
-        """Create sample ProactivityResult."""
-        return ProactivityResult(
-            actions=sample_actions,
+    def test_proactivity_result_converted_to_sse_events(self, sample_question):
+        """Test that ProactivityResult is converted to SSE events correctly."""
+        result = ProactivityResult(
+            actions=[],
             question=sample_question,
             extraction_result=None,
             processing_time_ms=50.0,
         )
-
-    def test_proactivity_result_converted_to_sse_events(self, sample_proactivity_result):
-        """Test that ProactivityResult is converted to SSE events correctly."""
-        result = sample_proactivity_result
-
-        # Convert actions to SSE event
-        if result.actions:
-            actions_data = [a.model_dump() for a in result.actions]
-            action_event = StreamResponse(
-                content="",
-                event_type="suggested_actions",
-                suggested_actions=actions_data,
-            )
-            assert action_event.event_type == "suggested_actions"
-            assert len(action_event.suggested_actions) == 1
 
         # Convert question to SSE event
         if result.question:
@@ -271,7 +174,7 @@ class TestProactivityEngineStreamingIntegration:
             processing_time_ms=0.0,
         )
 
-        # Should not generate action events
+        # Should not generate question events
         assert len(result.actions) == 0
         assert result.question is None
 
@@ -286,7 +189,7 @@ class TestStreamingProactivityGracefulDegradation:
             StreamResponse(content="Response", event_type="content"),
         ]
 
-        # Simulate proactivity timeout - should just skip action events
+        # Simulate proactivity timeout - should just skip proactivity events
         # and send done event
         done_event = StreamResponse(content="", done=True)
 

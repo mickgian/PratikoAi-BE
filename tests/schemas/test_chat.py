@@ -1,4 +1,7 @@
-"""Tests for chat schemas."""
+"""Tests for chat schemas.
+
+DEV-245 Phase 5.15: Suggested actions tests removed per user feedback.
+"""
 
 import pytest
 from pydantic import ValidationError
@@ -172,43 +175,13 @@ class TestChatResponse:
         response = ChatResponse(messages=messages)
 
         # New optional fields should default to None
-        assert response.suggested_actions is None
         assert response.interactive_question is None
         assert response.extracted_params is None
 
         # Serialization should not include None fields (backward compatible)
         response_dict = response.model_dump(exclude_none=True)
-        assert "suggested_actions" not in response_dict
         assert "interactive_question" not in response_dict
         assert "extracted_params" not in response_dict
-
-    def test_chat_response_with_suggested_actions(self):
-        """Test ChatResponse with suggested_actions."""
-        from app.schemas.proactivity import Action, ActionCategory
-
-        messages = [Message(role="assistant", content="Ecco le informazioni IRPEF")]
-        actions = [
-            Action(
-                id="tax_calculate_irpef",
-                label="Calcola IRPEF",
-                icon="calculator",
-                category=ActionCategory.CALCULATE,
-                prompt_template="Calcola l'IRPEF per {reddito}",
-            ),
-            Action(
-                id="tax_search_deductions",
-                label="Cerca detrazioni",
-                icon="search",
-                category=ActionCategory.SEARCH,
-                prompt_template="Cerca detrazioni fiscali per {categoria}",
-            ),
-        ]
-        response = ChatResponse(messages=messages, suggested_actions=actions)
-
-        assert response.suggested_actions is not None
-        assert len(response.suggested_actions) == 2
-        assert response.suggested_actions[0].id == "tax_calculate_irpef"
-        assert response.suggested_actions[1].category == ActionCategory.SEARCH
 
     def test_chat_response_with_interactive_question(self):
         """Test ChatResponse with interactive_question."""
@@ -241,46 +214,6 @@ class TestChatResponse:
         assert response.extracted_params["reddito"] == "50000"
         assert response.extracted_params["anno"] == "2024"
 
-    def test_chat_response_with_actions_and_question(self):
-        """Test ChatResponse with both actions and question (valid state)."""
-        from app.schemas.proactivity import (
-            Action,
-            ActionCategory,
-            InteractiveOption,
-            InteractiveQuestion,
-        )
-
-        messages = [Message(role="assistant", content="Risposta completa")]
-        actions = [
-            Action(
-                id="tax_calculate",
-                label="Calcola",
-                icon="calculator",
-                category=ActionCategory.CALCULATE,
-                prompt_template="Calcola {tipo}",
-            )
-        ]
-        question = InteractiveQuestion(
-            id="clarification",
-            trigger_query="calcola",
-            text="Quale calcolo?",
-            question_type="single_choice",
-            options=[
-                InteractiveOption(id="irpef", label="IRPEF"),
-                InteractiveOption(id="iva", label="IVA"),
-            ],
-        )
-        response = ChatResponse(
-            messages=messages,
-            suggested_actions=actions,
-            interactive_question=question,
-            extracted_params={"tipo": "fiscale"},
-        )
-
-        assert response.suggested_actions is not None
-        assert response.interactive_question is not None
-        assert response.extracted_params is not None
-
     def test_chat_response_serialization_excludes_none(self):
         """Test that None values are excluded from serialization."""
         messages = [Message(role="assistant", content="Hello")]
@@ -288,7 +221,6 @@ class TestChatResponse:
 
         # Using exclude_none should not include None fields
         response_dict = response.model_dump(exclude_none=True)
-        assert "suggested_actions" not in response_dict
         assert "interactive_question" not in response_dict
         assert "extracted_params" not in response_dict
         assert "metadata" not in response_dict
@@ -298,24 +230,24 @@ class TestChatResponse:
 
     def test_chat_response_json_serialization(self):
         """Test ChatResponse JSON serialization with proactivity fields."""
-        from app.schemas.proactivity import Action, ActionCategory
+        from app.schemas.proactivity import InteractiveOption, InteractiveQuestion
 
         messages = [Message(role="assistant", content="Hello")]
-        actions = [
-            Action(
-                id="test_action",
-                label="Test",
-                icon="test",
-                category=ActionCategory.SEARCH,
-                prompt_template="Search for {query}",
-            )
-        ]
-        response = ChatResponse(messages=messages, suggested_actions=actions)
+        question = InteractiveQuestion(
+            id="test_question",
+            trigger_query="test",
+            text="Test question?",
+            question_type="single_choice",
+            options=[
+                InteractiveOption(id="opt1", label="Option 1"),
+            ],
+        )
+        response = ChatResponse(messages=messages, interactive_question=question)
 
         # Should serialize to JSON without errors
         json_str = response.model_dump_json()
-        assert "test_action" in json_str
-        assert "suggested_actions" in json_str
+        assert "test_question" in json_str
+        assert "interactive_question" in json_str
 
 
 class TestQueryClassificationMetadata:

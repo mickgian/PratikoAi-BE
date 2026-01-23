@@ -38,6 +38,7 @@ class TestPromptLoadsViaLoader:
             query="Test query",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         assert content is not None
         assert len(content) > 0
@@ -65,6 +66,7 @@ class TestPromptContainsJsonSchema:
             query="Test query",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         assert "```json" in content, "Prompt should contain JSON code block"
 
@@ -77,6 +79,7 @@ class TestPromptContainsJsonSchema:
             query="Test query",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         # Extract JSON from code block
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
@@ -99,6 +102,7 @@ class TestPromptContainsJsonSchema:
             query="Test query",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
         assert json_match is not None
@@ -120,6 +124,7 @@ class TestPromptContainsJsonSchema:
             query="Test query",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
         parsed = json.loads(json_match.group(1))
@@ -144,6 +149,7 @@ class TestPromptVariablesSubstitute:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         assert test_context in content
 
@@ -157,6 +163,7 @@ class TestPromptVariablesSubstitute:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         assert test_metadata in content
 
@@ -170,6 +177,7 @@ class TestPromptVariablesSubstitute:
             query=test_query,
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         assert test_query in content
 
@@ -183,6 +191,7 @@ class TestPromptVariablesSubstitute:
             query="Test",
             conversation_context=test_conv,
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         assert test_conv in content
 
@@ -196,6 +205,7 @@ class TestPromptVariablesSubstitute:
             query="Test",
             conversation_context="",
             current_date=test_date,
+            web_sources_metadata="[]",
         )
         assert test_date in content
 
@@ -221,6 +231,7 @@ class TestPromptReasoningStructure:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         # Check for CoT keywords in Italian
         assert "ragionamento" in content.lower() or "chain of thought" in content.lower()
@@ -234,6 +245,7 @@ class TestPromptReasoningStructure:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         # Should have numbered steps or clear structure
         assert "TEMA" in content or "tema" in content.lower()
@@ -254,6 +266,7 @@ class TestPromptActionRulesPresent:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         # Should mention action rules
         assert "azioni" in content.lower() or "actions" in content.lower()
@@ -267,6 +280,7 @@ class TestPromptActionRulesPresent:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         # Should mention character limits or constraints
         assert "caratteri" in content.lower() or "characters" in content.lower()
@@ -280,6 +294,7 @@ class TestPromptActionRulesPresent:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         # Should explicitly forbid generic actions
         assert "vietat" in content.lower() or "mai" in content.lower() or "non" in content.lower()
@@ -293,6 +308,7 @@ class TestPromptActionRulesPresent:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         # Should mention source basis
         assert "fonte" in content.lower() or "source" in content.lower()
@@ -310,6 +326,7 @@ class TestPromptCitationRules:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         # Should mention citations
         assert "citazion" in content.lower() or "citation" in content.lower()
@@ -323,6 +340,7 @@ class TestPromptCitationRules:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         # Should mention Italian legal format
         assert "Art." in content or "D.Lgs." in content or "DPR" in content
@@ -340,6 +358,7 @@ class TestPromptItalianLanguage:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         # Check for common Italian words
         italian_keywords = ["risposta", "domanda", "contesto", "fonti", "italiano"]
@@ -355,6 +374,7 @@ class TestPromptItalianLanguage:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         assert "PratikoAI" in content
 
@@ -371,6 +391,7 @@ class TestPromptActionSchema:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
         parsed = json.loads(json_match.group(1))
@@ -399,6 +420,7 @@ class TestPromptActionSchema:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
         parsed = json.loads(json_match.group(1))
@@ -421,6 +443,7 @@ class TestPromptSourceSchema:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
         parsed = json.loads(json_match.group(1))
@@ -443,6 +466,7 @@ class TestPromptSourceSchema:
             query="Test",
             conversation_context="",
             current_date="2024-12-31",
+            web_sources_metadata="[]",
         )
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
         parsed = json.loads(json_match.group(1))

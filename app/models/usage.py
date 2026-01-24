@@ -47,6 +47,14 @@ class UsageEvent(SQLModel, table=True):  # type: ignore[call-arg]
     event_type: UsageType = Field(description="Type of usage event")
     timestamp: datetime = Field(default_factory=datetime.utcnow, index=True)
 
+    # DEV-246: Environment tracking for cost reporting
+    environment: str | None = Field(
+        default=None, index=True, description="Environment where cost occurred (development, qa, production)"
+    )
+
+    # DEV-246: API type for third-party cost breakdown (e.g., brave_search)
+    api_type: str | None = Field(default=None, description="API type for third-party costs (brave_search, etc.)")
+
     # LLM specific fields
     provider: str | None = Field(default=None, description="LLM provider (openai, anthropic)")
     model: str | None = Field(default=None, description="Model used")

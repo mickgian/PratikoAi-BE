@@ -2,6 +2,9 @@
 
 Fetches documents from the Normativa/Prassi RSS feed, processes them,
 chunks them, generates embeddings, and stores in knowledge_items + knowledge_chunks.
+
+DEV-247: Includes topic filtering for Gazzetta Ufficiale feeds to exclude
+irrelevant content (concorsi, nomine, graduatorie, etc.).
 """
 
 import ssl
@@ -28,6 +31,108 @@ from app.core.document_ingestion import (
     download_and_extract_document,
     ingest_document_with_chunks,
 )
+from app.core.logging import logger
+
+# DEV-247: Topic filtering keywords for Gazzetta Ufficiale
+# Blacklist keywords - documents with these are EXCLUDED (unless whitelist matches)
+BLACKLIST_KEYWORDS = [
+    "concors",  # concorso, concorsi, concorsuale
+    "nomin",  # nomina, nomine, nominato
+    "graduatoria",  # graduatoria, graduatorie
+    "bando",  # bando, bandi (job/tender notices)
+    "avviso",  # avviso, avvisi (public notices)
+    "estratt",  # estratto, estratti (extracts)
+]
+
+# Whitelist keywords - documents with these are INCLUDED (takes precedence over blacklist)
+# Same keywords used in gazzetta_scraper.py for consistency
+# Note: Use word stems to match variations (e.g., "impost" matches imposta, imposte, imposti)
+# IMPORTANT: Avoid short keywords that might match unintended words (e.g., "iva" in "definitiva")
+WHITELIST_KEYWORDS = [
+    # Tax-related
+    "tribut",  # tributario, tributi, tributaria
+    "fiscal",  # fiscale, fiscali
+    "impost",  # imposta, imposte, imposti (stem, not full word)
+    " iva",  # IVA with leading space to avoid matching "definitiva", "amministrativa"
+    "irpef",
+    "ires",
+    "tasse",
+    "contribut",  # contributi, contributivo
+    "agevolazion",  # agevolazione, agevolazioni
+    "detrazion",  # detrazione, detrazioni
+    "deduzion",  # deduzione, deduzioni
+    # Labor-related (excluding "assunzion" to avoid matching job hiring notices)
+    "lavoro",
+    "occupazion",  # occupazione, occupazionale
+    "licenziament",  # licenziamento, licenziamenti
+    "retribuzion",  # retribuzione, retribuzioni
+    "pensione",
+    "previdenza",
+    "inps",
+    "inail",
+    "tfr",  # TFR (Trattamento Fine Rapporto) - specific acronym, unlikely false matches
+    "ccnl",
+    # Legal document types (excluding generic "decreto" to avoid matching nomination decrees)
+    "legge",
+    "circolare",
+    "risoluzione",
+    # Specific decree types that are relevant
+    "decreto-legge",
+    "decreto legislativo",
+    "d.lgs",
+    # Legal-specific terms
+    "aliquot",  # aliquota, aliquote (tax rate terms)
+]
+
+
+def is_relevant_for_pratikoai(title: str | None, summary: str | None) -> bool:
+    """Check if a document is relevant to PratikoAI's scope.
+
+    DEV-247: Filters out irrelevant Gazzetta Ufficiale content like concorsi,
+    nomine, graduatorie while keeping tax, labor, and legal documents.
+
+    Logic:
+    1. Empty/None title and summary -> PASS (benefit of doubt)
+    2. Whitelist keyword found -> PASS (takes precedence)
+    3. Blacklist keyword found (without whitelist) -> REJECT
+    4. No keywords found -> REJECT (conservative approach)
+
+    Args:
+        title: Document title
+        summary: Document summary/description
+
+    Returns:
+        True if document is relevant, False if should be filtered out
+    """
+    # Handle None/empty values - pass them through (benefit of doubt)
+    title = title or ""
+    summary = summary or ""
+
+    # Empty content passes through
+    if not title.strip() and not summary.strip():
+        return True
+
+    # Combine and lowercase for matching
+    combined_text = f"{title} {summary}".lower()
+
+    # Check whitelist FIRST (takes precedence over blacklist)
+    has_whitelist_match = any(kw in combined_text for kw in WHITELIST_KEYWORDS)
+
+    if has_whitelist_match:
+        # Document contains relevant tax/labor/legal keywords - KEEP
+        return True
+
+    # Check blacklist (only if no whitelist match)
+    has_blacklist_match = any(kw in combined_text for kw in BLACKLIST_KEYWORDS)
+
+    if has_blacklist_match:
+        # Document has blacklist keyword and no whitelist match - REJECT
+        return False
+
+    # No whitelist match and no blacklist match
+    # Conservative: reject documents without any relevant keywords
+    return False
+
 
 # Domains that require relaxed SSL settings (older TLS ciphers)
 RELAXED_SSL_DOMAINS = {"www.inail.it", "inail.it"}
@@ -189,10 +294,43 @@ async def run_rss_ingestion(
     if max_items:
         feed_items = feed_items[:max_items]
 
+    # DEV-247: Apply topic filtering for Gazzetta Ufficiale feeds
+    filtered_count = 0
+    filtered_samples: list[str] = []  # Sample titles of filtered items
+    if source_name == "gazzetta_ufficiale":
+        original_count = len(feed_items)
+        relevant_items = []
+        for item in feed_items:
+            if is_relevant_for_pratikoai(item.get("title"), item.get("summary")):
+                relevant_items.append(item)
+            else:
+                # Collect sample of filtered titles (max 5 for daily report)
+                if len(filtered_samples) < 5:
+                    title = item.get("title", "")
+                    # Truncate long titles
+                    if len(title) > 80:
+                        title = title[:77] + "..."
+                    filtered_samples.append(title)
+
+        feed_items = relevant_items
+        filtered_count = original_count - len(feed_items)
+        if filtered_count > 0:
+            logger.info(
+                "gazzetta_rss_items_filtered",
+                original_count=original_count,
+                filtered_count=filtered_count,
+                remaining_count=len(feed_items),
+                feed_url=url,
+                filtered_samples=filtered_samples,
+            )
+            print(f"🔍 Filtered {filtered_count} irrelevant items (concorsi, nomine, etc.)")
+
     stats: dict[str, Any] = {
         "total_items": len(feed_items),
         "new_documents": 0,
         "skipped_existing": 0,
+        "skipped_filtered": filtered_count,  # DEV-247: Track filtered items
+        "filtered_samples": filtered_samples,  # DEV-247: Sample titles for daily report
         "failed": 0,
         "processing_time": 0,
     }

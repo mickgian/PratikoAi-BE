@@ -145,6 +145,12 @@ class FeedStatus(SQLModel, table=True):  # type: ignore[call-arg]
     response_time_ms: float | None = Field(default=None, description="Last response time in milliseconds")
     items_found: int | None = Field(default=None, description="Number of items in last successful fetch")
 
+    # DEV-247: Filtered content tracking for Gazzetta topic filtering
+    items_filtered: int | None = Field(default=None, description="Number of items filtered out (irrelevant)")
+    filtered_samples: dict[str, Any] | None = Field(
+        default=None, sa_column=Column(JSON), description="Sample titles of filtered items for review"
+    )
+
     # Error tracking
     consecutive_errors: int = Field(default=0, description="Count of consecutive errors")
     errors: int = Field(default=0, description="Total error count")

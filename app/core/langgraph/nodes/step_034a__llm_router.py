@@ -23,6 +23,7 @@ from app.observability.rag_logging import (
     rag_step_timer,
 )
 from app.schemas.router import RouterDecision, RoutingCategory
+from app.services.italian_stop_words import STOP_WORDS_MINIMAL
 
 # Lazy import to avoid database connection during module load
 if TYPE_CHECKING:
@@ -34,6 +35,50 @@ logger = logging.getLogger(__name__)
 STEP_NUM = 34
 STEP_ID = "RAG.routing.llm_router"
 NODE_LABEL = "step_034a_llm_router"
+
+# DEV-245 Phase 5.14: _TOPIC_STOP_WORDS replaced by centralized STOP_WORDS_MINIMAL
+# from app.services.italian_stop_words (imported at top of file)
+
+
+def _extract_topic_keywords(query: str) -> list[str]:
+    """DEV-245 Phase 5.3: Extract topic keywords from first query.
+
+    Extracts significant keywords that represent the conversation topic.
+    These keywords persist across all turns to prevent context loss.
+
+    DEV-245 Phase 5.14: Uses centralized STOP_WORDS_MINIMAL from italian_stop_words module.
+
+    Example:
+        "parlami della rottamazione quinquies"
+        → ["rottamazione", "quinquies"]
+
+    Args:
+        query: The first user query (natural language)
+
+    Returns:
+        List of significant keywords (lowercase), max 5 keywords
+    """
+    import re
+
+    # Normalize: lowercase, remove punctuation
+    text = query.lower()
+    text = re.sub(r"[^\w\s]", " ", text)
+
+    # Tokenize and filter using centralized stop words
+    # DEV-245 Phase 5.14: Use STOP_WORDS_MINIMAL for topic extraction
+    words = text.split()
+    keywords = [w for w in words if len(w) >= 3 and w not in STOP_WORDS_MINIMAL]
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_keywords = []
+    for kw in keywords:
+        if kw not in seen:
+            seen.add(kw)
+            unique_keywords.append(kw)
+
+    # Cap at 5 keywords
+    return unique_keywords[:5]
 
 
 def _decision_to_dict(decision: RouterDecision) -> dict[str, Any]:
@@ -60,6 +105,7 @@ def _decision_to_dict(decision: RouterDecision) -> dict[str, Any]:
         "requires_freshness": decision.requires_freshness,
         "suggested_sources": decision.suggested_sources,
         "needs_retrieval": decision.needs_retrieval,
+        "is_followup": decision.is_followup,  # DEV-245: Follow-up detection
     }
 
 
@@ -79,6 +125,7 @@ def _create_fallback_decision() -> dict[str, Any]:
         "requires_freshness": False,
         "suggested_sources": [],
         "needs_retrieval": True,
+        "is_followup": False,  # DEV-245: Default to not follow-up
     }
 
 
@@ -150,8 +197,46 @@ async def node_step_34a(state: RAGState) -> RAGState:
         needs_retrieval=routing_decision["needs_retrieval"],
     )
 
-    # Return updated state with routing_decision
+    # DEV-245 Phase 5.3: Extract and persist conversation topic on first query
+    # Topic keywords are preserved across all turns to prevent context loss at Q4+
+    conversation_topic = state.get("conversation_topic")
+    topic_keywords = state.get("topic_keywords")
+
+    # DEV-245 Phase 5.4: Type safety - validate topic_keywords is a valid list
+    # If corrupted (e.g., string or dict), reset to None and re-extract
+    if topic_keywords and not isinstance(topic_keywords, list):
+        logger.warning(
+            f"Step {NODE_LABEL}: topic_keywords has invalid type {type(topic_keywords).__name__}, resetting"
+        )
+        topic_keywords = None
+
+    # DEV-245 Phase 5.10: Debug log at step_034a before topic extraction decision
+    # Use structlog for debug logging (supports kwargs)
+    from app.core.logging import logger as structlog_logger
+
+    structlog_logger.info(
+        "DEV245_step034a_topic_keywords",
+        topic_keywords_from_state=topic_keywords,
+        is_followup=routing_decision.get("is_followup", False),
+        will_extract_new=not topic_keywords,  # Phase 5.11: Extract whenever missing
+    )
+
+    # DEV-245 Phase 5.11: Extract topic_keywords whenever missing
+    # Don't rely solely on is_followup - it can be incorrectly True for first queries
+    # The LLM Router may misclassify the first query as a follow-up, which would
+    # prevent topic extraction and cause all downstream steps to have topic_keywords=None
+    if not topic_keywords:
+        # No topic keywords yet: extract from current query
+        topic_keywords = _extract_topic_keywords(user_query)
+        conversation_topic = user_query  # Store original query as topic reference
+
+        if topic_keywords:
+            logger.info(f"Step {NODE_LABEL}: Extracted topic keywords: {topic_keywords}")
+
+    # Return updated state with routing_decision and topic tracking
     return {
         **state,
         "routing_decision": routing_decision,
+        "conversation_topic": conversation_topic,
+        "topic_keywords": topic_keywords,
     }

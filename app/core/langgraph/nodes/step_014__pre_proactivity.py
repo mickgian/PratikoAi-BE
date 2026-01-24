@@ -81,13 +81,29 @@ async def node_step_14(state: RAGState) -> dict[str, Any]:
         },
     )
 
+    # DEV-245 Phase 5.10: Debug log at step_014 entry
+    # Use structlog for debug logging (supports kwargs)
+    from app.core.logging import logger as structlog_logger
+
+    structlog_logger.info(
+        "DEV245_step014_topic_keywords",
+        request_id=request_id,
+        topic_keywords=state.get("topic_keywords"),
+        conversation_topic=state.get("conversation_topic"),
+    )
+
     # Empty query - skip proactivity
     if not user_query or not user_query.strip():
         logger.debug(
             "step_14_empty_query_skip",
             extra={"request_id": request_id},
         )
-        return _build_proactivity_state(question=None, skip_rag=False)
+        # DEV-245 Phase 5.9: Preserve topic fields across nodes
+        return {
+            **_build_proactivity_state(question=None, skip_rag=False),
+            "topic_keywords": state.get("topic_keywords"),
+            "conversation_topic": state.get("conversation_topic"),
+        }
 
     try:
         # Lazy import to avoid database connection during module load
@@ -112,6 +128,9 @@ async def node_step_14(state: RAGState) -> dict[str, Any]:
             )
             result = _build_proactivity_state(question=question, skip_rag=True)
             result["skip_rag_for_proactivity"] = True
+            # DEV-245 Phase 5.9: Preserve topic fields across nodes
+            result["topic_keywords"] = state.get("topic_keywords")
+            result["conversation_topic"] = state.get("conversation_topic")
             return result
 
         # No question needed - continue to RAG
@@ -122,7 +141,12 @@ async def node_step_14(state: RAGState) -> dict[str, Any]:
                 "needs_question": needs_question,
             },
         )
-        return _build_proactivity_state(question=None, skip_rag=False)
+        # DEV-245 Phase 5.9: Preserve topic fields across nodes
+        return {
+            **_build_proactivity_state(question=None, skip_rag=False),
+            "topic_keywords": state.get("topic_keywords"),
+            "conversation_topic": state.get("conversation_topic"),
+        }
 
     except Exception as e:
         # Graceful degradation: log warning and continue without proactivity
@@ -133,7 +157,12 @@ async def node_step_14(state: RAGState) -> dict[str, Any]:
                 "error": str(e),
             },
         )
-        return _build_proactivity_state(question=None, skip_rag=False)
+        # DEV-245 Phase 5.9: Preserve topic fields across nodes
+        return {
+            **_build_proactivity_state(question=None, skip_rag=False),
+            "topic_keywords": state.get("topic_keywords"),
+            "conversation_topic": state.get("conversation_topic"),
+        }
 
 
 def route_pre_proactivity(state: RAGState) -> str:

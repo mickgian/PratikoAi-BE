@@ -1,20 +1,19 @@
 """TDD Tests for Chatbot Proactivity Integration - DEV-158.
 
 Tests for integrating ProactivityEngine with /chat endpoint:
-- Actions returned in response
-- Questions returned when coverage is low
+- Interactive questions returned when coverage is low
 - Graceful degradation on ProactivityEngine failure
 - Extracted params included in response
+
+DEV-245 Phase 5.15: Suggested actions tests removed per user feedback.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from app.schemas.chat import ChatResponse, Message
 from app.schemas.proactivity import (
-    Action,
-    ActionCategory,
     ExtractedParameter,
     InteractiveOption,
     InteractiveQuestion,
@@ -26,25 +25,6 @@ from app.schemas.proactivity import (
 
 class TestChatResponseWithProactivity:
     """Test ChatResponse includes proactivity fields."""
-
-    def test_chat_response_includes_actions(self):
-        """Test that ChatResponse can include suggested_actions."""
-        actions = [
-            Action(
-                id="tax_calculate_irpef",
-                label="Calcola IRPEF",
-                icon="calculator",
-                category=ActionCategory.CALCULATE,
-                prompt_template="Calcola l'IRPEF per {reddito}",
-            )
-        ]
-        messages = [Message(role="assistant", content="Ecco le informazioni")]
-
-        response = ChatResponse(messages=messages, suggested_actions=actions)
-
-        assert response.suggested_actions is not None
-        assert len(response.suggested_actions) == 1
-        assert response.suggested_actions[0].id == "tax_calculate_irpef"
 
     def test_chat_response_includes_question(self):
         """Test that ChatResponse can include interactive_question."""
@@ -87,26 +67,6 @@ class TestProactivityEngineIntegration:
         return engine
 
     @pytest.fixture
-    def sample_actions(self):
-        """Create sample actions for testing."""
-        return [
-            Action(
-                id="tax_calculate_irpef",
-                label="Calcola IRPEF",
-                icon="calculator",
-                category=ActionCategory.CALCULATE,
-                prompt_template="Calcola l'IRPEF per {reddito}",
-            ),
-            Action(
-                id="tax_search_deductions",
-                label="Cerca detrazioni",
-                icon="search",
-                category=ActionCategory.SEARCH,
-                prompt_template="Cerca detrazioni per {categoria}",
-            ),
-        ]
-
-    @pytest.fixture
     def sample_question(self):
         """Create sample interactive question for testing."""
         return InteractiveQuestion(
@@ -137,19 +97,6 @@ class TestProactivityEngineIntegration:
             coverage=0.5,
             can_proceed=False,
         )
-
-    def test_proactivity_result_with_actions(self, mock_proactivity_engine, sample_actions):
-        """Test ProactivityResult returns actions correctly."""
-        result = ProactivityResult(
-            actions=sample_actions,
-            question=None,
-            extraction_result=None,
-            processing_time_ms=50.0,
-        )
-
-        assert len(result.actions) == 2
-        assert result.actions[0].id == "tax_calculate_irpef"
-        assert result.question is None
 
     def test_proactivity_result_with_question(
         self, mock_proactivity_engine, sample_question, sample_extraction_result
@@ -230,21 +177,19 @@ class TestProactivityContext:
 class TestGracefulDegradation:
     """Test graceful degradation scenarios."""
 
-    def test_chat_response_without_actions_on_timeout(self):
-        """Test ChatResponse works without actions (timeout scenario)."""
+    def test_chat_response_without_proactivity_on_timeout(self):
+        """Test ChatResponse works without proactivity fields (timeout scenario)."""
         messages = [Message(role="assistant", content="Risposta normale")]
 
         # When proactivity times out, response should still work
         response = ChatResponse(
             messages=messages,
-            suggested_actions=None,
             interactive_question=None,
             extracted_params=None,
         )
 
         assert response.messages is not None
         assert len(response.messages) == 1
-        assert response.suggested_actions is None
 
     def test_chat_response_serialization_without_proactivity(self):
         """Test ChatResponse serializes correctly without proactivity fields."""
@@ -255,6 +200,5 @@ class TestGracefulDegradation:
         response_dict = response.model_dump(exclude_none=True)
 
         assert "messages" in response_dict
-        assert "suggested_actions" not in response_dict
         assert "interactive_question" not in response_dict
         assert "extracted_params" not in response_dict

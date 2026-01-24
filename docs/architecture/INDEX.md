@@ -1,6 +1,6 @@
 # RAG Architecture Documentation
 
-**Auto-generated:** 2026-01-16 09:08:29
+**Auto-generated:** 2026-01-23 16:54:06
 
 > 💡 Complete documentation of the RAG (Retrieval-Augmented Generation) system architecture.
 
@@ -40,6 +40,10 @@ This directory contains comprehensive documentation of the RAG system, including
   - **Purpose:** Domain expertise for reviewing and designing AI/LLM applications **Audience:** Egidio (Architect Agent) and human architects
 - **[Architectural Decision Records (ADRs)](decisions.md)** ✅ Current
   - | ADR | Date | Status | Title | |-----|------|--------|-------|
+- **[Archived: Suggested Actions Feature (Azioni Suggerite)](ARCHIVED_SUGGESTED_ACTIONS.md)** ✅ Current
+  - **Status:** REMOVED (January 23, 2026) **Removal Reason:** User feedback - actions were generic, not contextually relevant, felt like filler content
+- **[Parallel Hybrid RAG Architecture](PARALLEL_HYBRID_RAG.md)** ✅ Current
+  - **Status:** ✅ IMPLEMENTED **Date:** January 17, 2026
 - **[PratikoAI Conversation Context Architecture](PRATIKOAI_CONTEXT_ARCHITECTURE.md)** ✅ Current
   - **Purpose:** Document how conversation context flows through PratikoAI's RAG pipeline **Audience:** Developers and architects working on PratikoAI
 - **[PratikoAI RAG — Multi-Sprint Plan](rag_sprints.md)** ✅ Current
@@ -47,7 +51,7 @@ This directory contains comprehensive documentation of the RAG system, including
 - **[Prompt Engineering Knowledge Base](PROMPT_ENGINEERING_KNOWLEDGE_BASE.md)** ✅ Current
   - **Purpose:** Senior-level prompt engineering patterns for PratikoAI **Audience:** Developers, architects, and agents working on prompts
 - **[RAG Architecture Documentation](INDEX.md)** 📚 Historical
-  - **Auto-generated:** 2026-01-16 09:08:20
+  - **Auto-generated:** 2026-01-23 16:51:30
 - **[RAG Conformance Dashboard](rag_conformance.md)** ✅ Current
   - This dashboard tracks the implementation status of each step in the PratikoAI RAG blueprint. It is automatically generated from the Mermaid diagram...
 - **[RAG Implementation Sprint Plan](rag_sprint_plan.md)** ✅ Current
@@ -75,10 +79,10 @@ The steps directory contains detailed documentation for every step in the RAG pi
 
 ## 📊 Statistics
 
-- **Overview Docs:** 18
+- **Overview Docs:** 20
 - **Detailed Steps:** 138
-- **Total Architecture Docs:** 156
+- **Total Architecture Docs:** 158
 
 ---
 
-**Last Updated:** 2026-01-16 09:08:29
+**Last Updated:** 2026-01-23 16:54:06

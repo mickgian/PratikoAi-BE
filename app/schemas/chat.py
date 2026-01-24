@@ -20,7 +20,8 @@ from pydantic import (
     field_validator,
 )
 
-from app.schemas.proactivity import Action, ActionContext, InteractiveQuestion
+# DEV-245 Phase 5.15: Action and ActionContext removed per user feedback
+from app.schemas.proactivity import InteractiveQuestion
 
 
 class AttachmentInfo(BaseModel):
@@ -74,7 +75,7 @@ class Message(BaseModel):
     role: Literal["user", "assistant", "system"] = Field(..., description="The role of the message sender")
     content: str = Field(
         ..., description="The content of the message", min_length=1, max_length=80000
-    )  # DEV-242 Phase 32: Increased from 50000 to accommodate 18 chunks + grounding rules
+    )  # DEV-244: Kept at 80000 - KB context now hard-capped at 35000 chars in context_builder_merge.py
     attachments: list[AttachmentInfo] | None = Field(
         default=None, description="Attachment metadata for messages with uploaded files"
     )
@@ -86,9 +87,10 @@ class Message(BaseModel):
     structured_sources: list[StructuredSource] | None = Field(
         default=None, description="Structured source citations parsed from LLM response"
     )
-    # DEV-242 Phase 12A: Action context for traceability (user messages from suggested actions)
-    action_context: ActionContext | None = Field(
-        default=None, description="Context when message originated from a suggested action click"
+    # DEV-245 Phase 5.15: action_context removed (suggested actions feature removed)
+    # DEV-244: Deterministic KB source URLs for Fonti section (persisted in query_history)
+    kb_source_urls: list[dict] | None = Field(
+        default=None, description="Source URLs from KB retrieval for Fonti display"
     )
 
     @field_validator("content")
@@ -192,7 +194,6 @@ class ChatResponse(BaseModel):
     Attributes:
         messages: List of messages in the conversation.
         metadata: Optional response metadata for debugging and monitoring.
-        suggested_actions: Optional list of suggested actions for the user.
         interactive_question: Optional interactive question for clarification.
         extracted_params: Optional extracted parameters from the query.
     """
@@ -201,7 +202,7 @@ class ChatResponse(BaseModel):
     metadata: ResponseMetadata | None = Field(None, description="Response metadata for debugging and monitoring")
 
     # Proactivity fields (DEV-157) - Optional for backward compatibility
-    suggested_actions: list[Action] | None = Field(None, description="Suggested actions for the user based on context")
+    # DEV-245 Phase 5.15: suggested_actions removed per user feedback
     interactive_question: InteractiveQuestion | None = Field(
         None, description="Interactive question for parameter clarification"
     )
@@ -216,16 +217,16 @@ class StreamResponse(BaseModel):
     Supports different event types for proactivity (DEV-159, DEV-201, DEV-242):
     - content: Text content chunks (default)
     - content_cleaned: Final cleaned content with XML tags stripped (DEV-201)
-    - suggested_actions: Suggested actions for the user
     - interactive_question: Interactive question for clarification
     - reasoning: Chain of Thought reasoning trace (DEV-242)
     - structured_sources: Parsed source citations for frontend rendering (DEV-242 Phase 12B)
+    - kb_source_urls: Deterministic KB source URLs (DEV-244)
+    - web_verification: Web verification results from Brave Search (DEV-245)
 
     Attributes:
         content: The content of the current chunk.
         done: Whether the stream is complete.
         event_type: Type of SSE event.
-        suggested_actions: Actions suggested based on query context.
         interactive_question: Question for parameter clarification.
         extracted_params: Parameters extracted from user query.
         reasoning: Chain of Thought reasoning trace (DEV-242).
@@ -236,19 +237,19 @@ class StreamResponse(BaseModel):
     done: bool = Field(default=False, description="Whether the stream is complete")
 
     # Proactivity and reasoning fields (DEV-159, DEV-201, DEV-242, DEV-244) - Optional for backward compatibility
+    # DEV-245 Phase 5.15: suggested_actions event type removed per user feedback
     event_type: (
         Literal[
             "content",
             "content_cleaned",
-            "suggested_actions",
             "interactive_question",
             "reasoning",
             "structured_sources",
             "kb_source_urls",  # DEV-244: Deterministic KB source URLs
+            "web_verification",  # DEV-245: Web verification results (Brave Search)
         ]
         | None
     ) = Field(default=None, description="Type of SSE event for proactivity or reasoning")
-    suggested_actions: list[dict[str, Any]] | None = Field(default=None, description="Suggested actions for the user")
     interactive_question: dict[str, Any] | None = Field(
         default=None, description="Interactive question for parameter clarification"
     )
@@ -261,4 +262,8 @@ class StreamResponse(BaseModel):
     # DEV-244: Deterministic KB source URLs (independent of LLM output)
     kb_source_urls: list[dict[str, Any]] | None = Field(
         default=None, description="Source URLs from KB retrieval (deterministic, always complete)"
+    )
+    # DEV-245: Web verification results from Brave Search
+    web_verification: dict[str, Any] | None = Field(
+        default=None, description="Web verification results including caveats and web sources"
     )

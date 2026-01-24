@@ -83,6 +83,8 @@ class RetrievalResult:
     documents: list[RankedDocument]
     total_found: int
     search_time_ms: float
+    search_keywords: list[str] | None = None  # DEV-245 Phase 4.2.1
+    search_keywords_with_scores: list[dict] | None = None  # DEV-245 Phase 5.12
 
 
 # =============================================================================
@@ -453,6 +455,12 @@ class TestNodeStep39cParallelRetrieval:
             ],
             total_found=15,
             search_time_ms=125.5,
+            search_keywords=["permessi", "legge", "104"],  # DEV-245 Phase 4.2.1
+            search_keywords_with_scores=[  # DEV-245 Phase 5.12
+                {"keyword": "permessi", "score": 0.02},
+                {"keyword": "legge", "score": 0.03},
+                {"keyword": "104", "score": 0.05},
+            ],
         )
 
         with patch(

@@ -26,67 +26,8 @@ def _get_msg_role(msg: Any) -> str | None:
     return getattr(msg, "role", None)
 
 
-def _extract_previous_action_labels(messages: list[Any] | None) -> list[str]:
-    """DEV-244: Extract labels of previously clicked actions from conversation history.
-
-    When a user clicks a suggested action, the message includes action_context
-    with the selected_action_label. This function extracts all such labels
-    so the LLM can avoid generating semantically similar actions.
-
-    Args:
-        messages: List of conversation messages
-
-    Returns:
-        List of unique previously clicked action labels
-    """
-    if not messages:
-        return []
-
-    previous_labels: list[str] = []
-
-    for msg in messages:
-        # Handle both dict and object formats
-        if isinstance(msg, dict):
-            action_context = msg.get("action_context")
-        else:
-            action_context = getattr(msg, "action_context", None)
-
-        if action_context:
-            # Extract the label from action_context
-            if isinstance(action_context, dict):
-                label = action_context.get("selected_action_label")
-            else:
-                label = getattr(action_context, "selected_action_label", None)
-
-            if label and label not in previous_labels:
-                previous_labels.append(label)
-
-    return previous_labels
-
-
-def _format_previous_actions_for_prompt(previous_labels: list[str]) -> str:
-    """Format previous action labels for injection into LLM prompt.
-
-    Args:
-        previous_labels: List of previously clicked action labels
-
-    Returns:
-        Formatted string for prompt injection, or empty guidance if no previous actions
-    """
-    if not previous_labels:
-        return "(Nessuna azione ancora selezionata dall'utente)"
-
-    # Format as bullet list with semantic similarity warning
-    actions_list = "\n".join(f"- {label}" for label in previous_labels)
-    return f"""{actions_list}
-
-⚠️ NON suggerire azioni semanticamente simili a quelle sopra.
-Esempi di varianti da EVITARE:
-- "Verifica X" ≈ "Controlla X" ≈ "Controlla le X"
-- "Calcola Y" ≈ "Calcola l'Y" ≈ "Computa Y"
-- "Dettagli su Z" ≈ "Approfondisci Z" ≈ "Maggiori info su Z"
-
-Suggerisci azioni che affrontano ASPETTI DIVERSI del tema."""
+# DEV-245 Phase 5.15: Removed _extract_previous_action_labels and _format_previous_actions_for_prompt
+# Suggested actions feature removed per user feedback
 
 
 try:
@@ -101,6 +42,42 @@ except Exception:  # pragma: no cover
 
     def rag_step_timer(*args, **kwargs):
         return nullcontext()
+
+
+# DEV-245: Concise mode prefix for follow-up questions (extracted to avoid duplication)
+CONCISE_MODE_PREFIX = """
+## MODALITÀ CONCISA - FOLLOW-UP
+
+NON RIPETERE info già fornite. RISPONDI DIRETTAMENTE. Max 3-4 punti.
+Cita solo il riferimento normativo specifico pertinente.
+
+- Inizia SUBITO con la risposta (es: "Sì, è possibile..." o "No, perché...")
+- Cita SOLO l'articolo/comma specifico rilevante
+- NON elencare tutte le scadenze/rate/requisiti già menzionati
+
+SBAGLIATO: "La rottamazione quinquies, introdotta dalla Legge 199/2025, prevede..." [ripetizione]
+CORRETTO: "Sì, le cartelle per tasse auto rientrano (Art. 1, comma 231, L. 199/2025)."
+
+---
+
+"""
+
+
+# DEV-245: Scalable post-context instruction for critical info extraction
+# This is GENERIC - works for ANY topic, not just rottamazione
+POST_CONTEXT_INSTRUCTION = """
+### ISTRUZIONE FINALE - DIFFERENZIATORI CRITICI
+
+**PRIMA di generare la risposta, cerca nel KB sopra queste parole/frasi:**
+- "ATTENZIONE", "IMPORTANTE", "NON sono previsti", "NON previsti"
+- "a differenza di", "contrariamente a", "rispetto a"
+- "ESATTAMENTE", "senza alcun margine", "senza tolleranza"
+- Headers come "GIORNI DI TOLLERANZA", "DECADENZA", "ESCLUSIONI"
+
+**Se trovi queste parole/frasi → DEVI includerle nella risposta.**
+Queste indicano informazioni CRITICHE che differenziano questa procedura/normativa da altre simili.
+
+"""
 
 
 async def step_15__default_prompt(*, ctx: dict[str, Any] | None = None, **kwargs) -> Any:
@@ -529,8 +506,54 @@ async def step_41__select_prompt(
                                 and "No specific context available" not in merged_context
                             )
                             if has_actual_context:
-                                context_section = f"\n\n# Relevant Knowledge Base Context\n\n{merged_context}\n"
+                                # DEV-245: Add concise mode prefix for follow-up questions
+                                routing_decision_inner = (ctx or {}).get("routing_decision", {})
+                                is_followup_inner = (
+                                    routing_decision_inner.get("is_followup", False)
+                                    if isinstance(routing_decision_inner, dict)
+                                    else False
+                                )
+                                concise_prefix = CONCISE_MODE_PREFIX if is_followup_inner else ""
+                                if is_followup_inner:
+                                    logger.info(
+                                        "DEV245_concise_mode_domain_prompt",
+                                        extra={
+                                            "is_followup": True,
+                                            "domain": domain,
+                                            "action": action,
+                                        },
+                                    )
+                                context_section = (
+                                    f"\n\n{concise_prefix}# Relevant Knowledge Base Context\n\n{merged_context}\n"
+                                )
                                 domain_prompt = domain_prompt + context_section
+
+                                # DEV-245: Inject web sources metadata if available (from Parallel Hybrid RAG)
+                                web_sources_metadata_inner = (ctx or {}).get("web_sources_metadata", [])
+                                if web_sources_metadata_inner:
+                                    import json as json_inner
+
+                                    web_sources_section_inner = f"""
+## Fonti Web Recenti (DEV-245: Parallel Hybrid RAG)
+
+Le seguenti fonti web sono state recuperate tramite Brave Search per fornire contesto pratico e aggiornamenti recenti:
+
+{json_inner.dumps(web_sources_metadata_inner, ensure_ascii=False, indent=2)}
+
+**NOTA IMPORTANTE:** Quando citi informazioni dalle fonti web, indica chiaramente "[Fonte web]" nella citazione per distinguerle dalle fonti normative ufficiali del KB.
+
+"""
+                                    domain_prompt = domain_prompt + web_sources_section_inner
+                                    logger.info(
+                                        "DEV245_web_sources_injected_domain_prompt",
+                                        extra={
+                                            "request_id": request_id,
+                                            "web_sources_count": len(web_sources_metadata_inner),
+                                            "domain": domain,
+                                            "action": action,
+                                        },
+                                    )
+
                                 logger.info(
                                     "context_injected_to_domain_prompt",
                                     extra={
@@ -538,39 +561,11 @@ async def step_41__select_prompt(
                                         "context_length": len(merged_context),
                                         "domain": domain,
                                         "action": action,
+                                        "web_sources_count": len(web_sources_metadata_inner),  # DEV-245
                                     },
                                 )
 
-                            # DEV-200: Append SUGGESTED_ACTIONS_PROMPT for non-synthesis routes
-                            routing_decision = (ctx or {}).get("routing_decision", {})
-                            route = routing_decision.get("route", "") if isinstance(routing_decision, dict) else ""
-                            if route not in SYNTHESIS_ROUTES:
-                                from app.core.prompts import SUGGESTED_ACTIONS_PROMPT
-
-                                # DEV-244: Extract previous action labels to avoid semantic duplicates
-                                msg_list = messages or (ctx or {}).get("messages", [])
-                                previous_action_labels = _extract_previous_action_labels(msg_list)
-                                formatted_previous_actions = _format_previous_actions_for_prompt(
-                                    previous_action_labels
-                                )
-
-                                # DEV-201b: Format template with domain classification
-                                formatted_actions_prompt = SUGGESTED_ACTIONS_PROMPT.format(
-                                    domain=domain.upper() if domain else "TAX",
-                                    confidence=f"{conf:.2f}" if conf else "0.50",
-                                    previous_actions=formatted_previous_actions,
-                                )
-                                domain_prompt = domain_prompt + "\n\n" + formatted_actions_prompt
-                                logger.info(
-                                    "suggested_actions_appended_to_domain_prompt",
-                                    extra={
-                                        "request_id": request_id,
-                                        "route": route,
-                                        "domain": domain,
-                                        "confidence": conf,
-                                        "previous_actions_count": len(previous_action_labels),
-                                    },
-                                )
+                            # DEV-245 Phase 5.15: SUGGESTED_ACTIONS_PROMPT removed per user feedback
                         else:
                             # Step 43 failed to generate prompt
                             raise Exception(
@@ -680,8 +675,7 @@ async def step_41__select_prompt(
         return result
 
 
-# DEV-200: Routes that use SYNTHESIS_SYSTEM_PROMPT (VERDETTO format)
-SYNTHESIS_ROUTES = {"technical_research"}
+# DEV-244: Removed VERDETTO format - using unified clean format for all queries
 
 
 def step_44__default_sys_prompt(
@@ -698,15 +692,14 @@ def step_44__default_sys_prompt(
     DEV-007 Issue 11: Conditionally injects document analysis guidelines when
     query_composition is 'pure_doc' or 'hybrid' (ADR-016).
 
-    DEV-200: Route-based prompt selection:
-    - technical_research routes -> SYNTHESIS_SYSTEM_PROMPT (VERDETTO format)
-    - Other routes -> SYSTEM_PROMPT + SUGGESTED_ACTIONS_PROMPT
+    DEV-244: Simplified - removed VERDETTO format, using unified SYSTEM_PROMPT for all queries.
 
     This is the orchestrator that coordinates returning the default system prompt.
     """
     from app.core.config import settings
-    from app.core.prompts import DOCUMENT_ANALYSIS_PROMPT, SUGGESTED_ACTIONS_PROMPT, SYSTEM_PROMPT
-    from app.core.prompts.synthesis_critical import SYNTHESIS_SYSTEM_PROMPT
+
+    # DEV-245 Phase 5.15: SUGGESTED_ACTIONS_PROMPT removed per user feedback
+    from app.core.prompts import DOCUMENT_ANALYSIS_PROMPT, SYSTEM_PROMPT
 
     # Extract parameters from context
     classification = kwargs.get("classification") or (ctx or {}).get("classification")
@@ -780,22 +773,13 @@ def step_44__default_sys_prompt(
             },
         )
 
-        # DEV-200: Route-based prompt selection
+        # DEV-244: Simplified prompt selection (removed VERDETTO route)
         routing_decision = (ctx or {}).get("routing_decision", {})
         route = routing_decision.get("route", "") if isinstance(routing_decision, dict) else ""
+        # DEV-245: Follow-up detection for concise mode
+        is_followup = routing_decision.get("is_followup", False) if isinstance(routing_decision, dict) else False
 
-        if route in SYNTHESIS_ROUTES:
-            # Use SYNTHESIS_SYSTEM_PROMPT for technical_research queries (VERDETTO format)
-            prompt = SYNTHESIS_SYSTEM_PROMPT
-            step44_logger.info(
-                "synthesis_prompt_selected_for_route",
-                extra={
-                    "route": route,
-                    "trigger_reason": trigger_reason,
-                    "prompt_type": "synthesis_verdetto",
-                },
-            )
-        elif query_composition in ("pure_doc", "hybrid"):
+        if query_composition in ("pure_doc", "hybrid"):
             # DEV-007 FIX: Override at TOP, not end - LLM gives priority to first instructions
             prompt = DOCUMENT_ANALYSIS_OVERRIDE + "\n\n---\n\n" + SYSTEM_PROMPT
             step44_logger.info(
@@ -810,54 +794,8 @@ def step_44__default_sys_prompt(
             # Default prompt with suggested actions for non-synthesis routes
             prompt = SYSTEM_PROMPT
 
-        # DEV-200: Append SUGGESTED_ACTIONS_PROMPT for non-synthesis routes
-        # This instructs the LLM to output <answer> and <suggested_actions> XML tags
-        # DEV-201: Enhanced logging for debugging proactivity flow
-        is_synthesis_route = route in SYNTHESIS_ROUTES
-        step44_logger.info(
-            "DEV201_prompt_injection_decision",
-            extra={
-                "route": route,
-                "is_synthesis_route": is_synthesis_route,
-                "prompt_type": "SYNTHESIS_VERDETTO" if is_synthesis_route else "SUGGESTED_ACTIONS",
-                "will_append_suggested_actions_prompt": not is_synthesis_route,
-            },
-        )
-        if not is_synthesis_route:
-            # DEV-201b: Format SUGGESTED_ACTIONS_PROMPT with domain classification
-            # Extract domain and confidence from classification in ctx
-            classification = (ctx or {}).get("classification")
-            if classification:
-                cls_domain = getattr(classification, "domain", None)
-                if hasattr(cls_domain, "value"):
-                    cls_domain = cls_domain.value
-                cls_conf = getattr(classification, "confidence", 0.5)
-            else:
-                cls_domain = "TAX"  # Default domain
-                cls_conf = 0.5
-
-            # DEV-244: Extract previous action labels to avoid semantic duplicates
-            msg_list = messages or (ctx or {}).get("messages", [])
-            previous_action_labels = _extract_previous_action_labels(msg_list)
-            formatted_previous_actions = _format_previous_actions_for_prompt(previous_action_labels)
-
-            formatted_actions_prompt = SUGGESTED_ACTIONS_PROMPT.format(
-                domain=cls_domain.upper() if cls_domain else "TAX",
-                confidence=f"{cls_conf:.2f}",
-                previous_actions=formatted_previous_actions,
-            )
-            prompt = prompt + "\n\n" + formatted_actions_prompt
-            step44_logger.info(
-                "suggested_actions_prompt_appended",
-                extra={
-                    "route": route,
-                    "trigger_reason": trigger_reason,
-                    "prompt_length_after": len(prompt),
-                    "domain_classification": cls_domain,
-                    "confidence": cls_conf,
-                    "previous_actions_count": len(previous_action_labels),
-                },
-            )
+        # DEV-245 Phase 5.15: SUGGESTED_ACTIONS_PROMPT removed per user feedback
+        # The LLM no longer needs to output <suggested_actions> XML tags
 
         # Inject KB context if available (from step 40)
         # Step 40 stores in 'context' key, but state may have kb_docs from step 39
@@ -890,214 +828,136 @@ def step_44__default_sys_prompt(
         if has_actual_context:
             # DEV-242 Phase 14D: Add grounding rules BEFORE KB context to prevent hallucinations
             # DEV-242 Phase 28: Add completeness enforcement
-            grounding_rules = """
-## REGOLE CRITICHE PER LA RISPOSTA (DEV-242)
+            # DEV-245: Concise mode prefix for follow-up questions (uses module constant)
+            concise_mode_prefix = CONCISE_MODE_PREFIX if is_followup else ""
+            if is_followup:
+                step44_logger.info(
+                    "DEV245_concise_mode_enabled",
+                    extra={
+                        "is_followup": True,
+                        "trigger_reason": trigger_reason,
+                        "route": route,
+                    },
+                )
+            # DEV-XXX: Select extraction rules based on feature flag
+            from app.core.config import USE_GENERIC_EXTRACTION
 
-### FORMATO RISPOSTA (DEV-242 Phase 39/43)
-⛔ **NON USARE MAI**:
-   - Markdown headers (#, ##, ###)
-   - Etichette di sezione standalone come "Definizione:", "Interessi:", "Decadenza:", "Riferimento normativo:"
-   - Qualsiasi testo che appare da solo su una riga seguito da ":"
+            if USE_GENERIC_EXTRACTION:
+                # Generic extraction principles - scalable to any topic
+                grounding_rules = (
+                    concise_mode_prefix
+                    + """
+## REGOLE UNIVERSALI DI ESTRAZIONE (DEV-XXX)
 
+### PRINCIPIO FONDAMENTALE
+Estrai TUTTO. Non riassumere. Non generalizzare.
+Il KB contiene le informazioni corrette - la tua risposta deve rispecchiarle fedelmente.
+
+### FORMATO RISPOSTA
 ✅ **USA SEMPRE** lista numerata con etichetta inline:
    - Formato: `1. **Etichetta**: Contenuto della sezione...`
-   - Esempio: `1. **Definizione**: La rottamazione quinquies è una misura...`
-   - Esempio: `2. **Requisiti**: Possono aderire i contribuenti con...`
-   - Esempio: `3. **Scadenze**: La domanda va presentata entro...`
+   - Esempio: `1. **Definizione**: La procedura è disciplinata dalla Legge n. X/YYYY...`
+   - Esempio: `2. **Requisiti**: Possono accedere i soggetti che...`
 
-❌ SBAGLIATO:
-```
-Definizione:
-La rottamazione quinquies è...
-```
+⛔ **NON USARE MAI**: Markdown headers (#, ##) o etichette standalone ("Definizione:" su riga separata)
 
-✅ CORRETTO:
-```
-1. **Definizione**: La rottamazione quinquies è...
-```
+### SCANSIONE OBBLIGATORIA DEL KB
+
+PRIMA di rispondere, scansiona il contesto KB cercando OGNI occorrenza di:
+
+| Pattern | Esempio | Azione |
+|---------|---------|--------|
+| **Date/Scadenze** | "entro il 30 aprile", "dal X al Y" | COPIA esattamente nella risposta |
+| **Percentuali** | "3 per cento", "22%", "aliquota del X%" | COPIA esattamente nella risposta |
+| **Importi** | "€ 5.000", "50.000 euro", "massimale di X" | COPIA esattamente nella risposta |
+| **Quantità** | "54 rate", "5 anni", "30 giorni" | COPIA esattamente nella risposta |
+| **Articoli/Leggi** | "Art. 1, comma 231", "Legge n. X/YYYY" | CITA nella risposta |
+| **Condizioni** | "possono accedere", "requisiti", "se" | ELENCA nella risposta |
+| **Esclusioni** | "esclusi", "non possono", "tranne" | ELENCA nella risposta |
+| **Conseguenze** | "decadenza", "sanzione", "perdita" | DETTAGLIA nella risposta |
+
+### REGOLA FONDAMENTALE
+**Se un dato è nel KB, DEVE essere nella risposta.**
+
+### DIFFERENZIATORI CRITICI
+Se il KB contiene frasi come:
+- "a differenza di", "contrariamente a", "rispetto a"
+- "NON previsti", "ESATTAMENTE", "senza alcun margine"
+
+→ Queste indicano DIFFERENZIATORI CRITICI che DEVONO essere nella risposta.
+
+### ACCURATEZZA E ANTI-ALLUCINAZIONE
+1. **USA SOLO DATI DAL KB** - Non inventare date, numeri, o percentuali non presenti
+2. **COPIA ESATTAMENTE** i valori: se il KB dice "54 rate" → scrivi "54 rate" (MAI altri numeri)
+3. **SE UN DATO NON È NEL KB** → scrivi "informazione non disponibile nel database PratikoAI"
+4. CITA SOLO leggi/articoli che appaiono nel KB
+
+### CITAZIONI INLINE (NON SEZIONI SEPARATE)
+✅ "I contribuenti possono presentare domanda entro il 30 aprile 2026 (Legge 199/2025, Art. 1)."
+❌ NON creare sezioni "Fonti:", "Riferimenti:", "Base legale:" - le fonti sono mostrate automaticamente
+
+### COMPLETEZZA CONTENUTI
+INCLUDI TUTTE le informazioni rilevanti dal KB. La lunghezza deve corrispondere alla quantità di dati nel KB.
+
+"""
+                )
+            else:
+                # Legacy topic-specific rules (kept for rollback if needed)
+                grounding_rules = (
+                    concise_mode_prefix
+                    + """
+## REGOLE CRITICHE PER LA RISPOSTA (DEV-242 - LEGACY)
+
+### FORMATO RISPOSTA
+✅ **USA SEMPRE** lista numerata con etichetta inline:
+   - Formato: `1. **Etichetta**: Contenuto della sezione...`
+
+⛔ **NON USARE MAI**: Markdown headers (#, ##) o etichette standalone
 
 ### ACCURATEZZA
 1. **USA SOLO DATI DAL CONTESTO KB** - Non inventare date, numeri, o percentuali non presenti
-2. **COPIA ESATTAMENTE** i valori: "54 rate" → "54 rate" (MAI altri numeri)
+2. **COPIA ESATTAMENTE** i valori
 3. **CITA SEMPRE LA FONTE** - Ogni dato numerico deve avere riferimento normativo
 4. **SE UN DATO NON È NEL KB** → scrivi "informazione non disponibile nel database PratikoAI"
-5. **ATTENZIONE VERSIONI** - Distingui tra quinquies (Legge 199/2025) e quater (Legge 197/2022)
 
-### COMPLETEZZA OBBLIGATORIA
-🔴 SEQUENZA OBBLIGATORIA: PRIMA completa TUTTI questi elementi, POI aggiungi le Fonti alla fine.
-NON sacrificare contenuto per le fonti - servono ENTRAMBI.
-
-Per procedure fiscali (rottamazione, sanatoria, definizione agevolata), DEVI estrarre TUTTI questi elementi dal KB:
-
-| Elemento | Esempio | OBBLIGATORIO |
-|----------|---------|--------------|
-| **Scadenza domanda** | "entro il 30 aprile 2026" | ✓ |
-| **Prima rata** | "31 luglio 2026" | ✓ |
-| **Tasso interessi** | "3 per cento annuo" | ✓ |
-| **Numero rate** | "54 rate bimestrali" | ✓ |
-| **Periodo carichi** | "fino al 31 dicembre 2023" | ✓ |
-| **Decadenza** | "due rate mancate = decadenza" | ✓ |
-| **Esclusioni** | "esclusi piani quater in regola" | ✓ |
-| **5 giorni tolleranza** | "NON previsti (a differenza di ter/quater)" | ✓ |
-
-⚠️ Se un elemento è nel KB ma manca dalla risposta, la risposta è INCOMPLETA.
-
-### ESTRAZIONE DATI NUMERICI (DEV-242 Phase 33)
-PRIMA di scrivere la risposta, SCANSIONA il contesto KB cercando questi pattern:
-
-1. **TASSI/PERCENTUALI** - Cerca: "X per cento", "X%", "tasso del X"
-   → Se trovi "3 per cento annuo" o simile → DEVE apparire nella risposta
-   → Esempio: "interessi al tasso del 3 per cento annuo" = **3% annuo di interessi**
-
-2. **DECADENZA/PERDITA BENEFICI** - Cerca: "decadenza", "mancato versamento", "rate mancate"
-   → Se trovi "due rate, anche non consecutive" → DEVE apparire nella risposta
-   → Esempio: mancato pagamento di 2 rate = **perdita totale del beneficio**
-
-3. **PERIODI TEMPORALI** - Cerca: "dal X al Y", "a decorrere dal", "entro il"
-   → Se trovi "dal 1° gennaio 2000 al 31 dicembre 2023" → DEVE apparire nella risposta
-
-4. **SANZIONI SPECIFICHE** - Cerca: "sanzione", "maggiorazione", "penalità"
-   → Estrai SEMPRE la percentuale esatta, non solo "sono previste sanzioni"
-
-🔴 VERIFICA FINALE: Prima di completare, rileggi il KB e conferma di aver incluso OGNI valore numerico rilevante.
-
-### 🚨 ESTRAZIONE OBBLIGATORIA ROTTAMAZIONE (DEV-242 Phase 34/37)
-Se la domanda riguarda "rottamazione" (quinquies, quater, ter), questi dati sono OBBLIGATORI se presenti nel KB:
-
-| Dato | Pattern da cercare | DEVE essere nella risposta |
-|------|-------------------|---------------------------|
-| **Tasso interessi** | "3 per cento annuo", "3%" | "interessi al 3% annuo" |
-| **Giorni tolleranza** | "senza alcun margine di tolleranza", "ESATTAMENTE entro le scadenze" | Vedi ⛔ sotto |
-| **Decadenza** | "due rate", "non consecutive" | "mancato pagamento di 2 rate = decadenza" |
-| **Conseguenza decadenza** | "rivive", "acconto", "debito residuo" | "In caso di decadenza, il debito rivive per intero con sanzioni e interessi" |
-| **Periodo debiti** | "dal 1° gennaio 2000", "31 dicembre 2023" | "debiti dal 2000 al 2023" |
-
-⛔ ATTENZIONE CRITICA - 5 GIORNI DI TOLLERANZA (DEV-242 Phase 37):
-Se nel KB trovi QUALSIASI di questi pattern:
-- "senza alcun margine di tolleranza"
-- "ESATTAMENTE entro le scadenze"
-- "margine di tolleranza"
-
-DEVI OBBLIGATORIAMENTE includere nella risposta questa frase (o equivalente):
-**"A differenza delle precedenti rottamazioni (ter e quater), per la rottamazione quinquies NON sono previsti i 5 giorni di tolleranza. I pagamenti devono essere effettuati ESATTAMENTE entro le scadenze indicate."**
-
-Questo è il PRINCIPALE DIFFERENZIATORE della quinquies rispetto alle versioni precedenti e i contribuenti DEVONO saperlo per evitare la decadenza.
-
-### ECCELLENZA PROFESSIONALE (DEV-242 Phase 31/39)
-Per essere una risposta ECCELLENTE (non solo completa), DEVI:
-
-1. **QUANTIFICA I RISCHI** - Mai dire solo "sanzione":
-   - ❌ "Sono previste sanzioni" (generico)
-   - ✅ "Sanzione dal 30% al 100% dell'importo omesso, più interessi al 3% annuo" (specifico)
-
-2. **CONFRONTA OPZIONI** - Se esistono alternative nel KB:
-   - Presenta pro/contro di ciascuna
-   - Indica quale è preferibile e perché
-   - Esempio: "Rispetto alla rottamazione quater, la quinquies..."
-
-3. **SUGGERISCI IL PASSO SUCCESSIVO** - Concludi con azione concreta:
-   - "Per procedere, il primo passo è..."
-   - "Prima della scadenza del [data], verificare..."
-
-4. **GERARCHIA DELLE FONTI** - Evidenzia la fonte più autorevole:
-   - Legge > Decreto > Circolare > Guida
-   - "Fonte primaria: Legge 199/2025, Art. 1"
-
-### FONTI (DEV-242 Phase 42/43/52/53) - OBBLIGATORIO
-DOPO aver completato TUTTI i contenuti obbligatori sopra, ESEGUI questa procedura:
-
-📋 PROCEDURA ESTRAZIONE FONTI (SEGUI OGNI STEP):
-
-**STEP 1** - CERCA: Scorri tutto il contesto KB e trova OGNI riga che inizia con "Source URL:".
-
-**STEP 2** - CONTA: Quanti Source URL hai trovato? Se hai trovato N URL, devi avere N righe in Fonti.
-
-**STEP 3** - ELENCA: Per CIASCUN Source URL trovato, crea una riga nel formato:
-   - [Nome descrittivo](URL completo)
-
-Regole:
-- Se l'URL contiene "gazzettaufficiale.it" → nome: "Gazzetta Ufficiale"
-- Se l'URL contiene "agenziaentrateriscossione" → nome: "AdER"
-- Se l'URL contiene "inps.it" → nome: "INPS"
-- Altrimenti → usa il dominio o il titolo del documento
-
-**STEP 4** - VERIFICA: Il numero di righe in Fonti deve corrispondere al numero di Source URL unici nel KB.
-
-Formato finale:
-**Fonti:**
-- [Nome 1](URL 1)
-- [Nome 2](URL 2)
-- ... (una riga per OGNI Source URL unico)
-
-⛔ Se nel KB ci sono 2 Source URL diversi e tu ne includi solo 1, la risposta è INCOMPLETA.
-
-### ⚠️ PROMEMORIA FINALE FORMATO (DEV-242 Phase 43)
-🔴 PRIMA DI RISPONDERE, VERIFICA IL TUO FORMATO:
-
-❌ SBAGLIATO (NON fare così):
-```
-Definizione:
-La rottamazione quinquies è...
-
-Requisiti:
-Possono aderire...
-```
-
-✅ CORRETTO (USA questo formato):
-```
-1. **Definizione**: La rottamazione quinquies è...
-
-2. **Requisiti**: Possono aderire...
-
-3. **Scadenze**: La domanda va presentata entro...
-```
-
-OGNI sezione DEVE iniziare con un NUMERO seguito da **etichetta in grassetto** e due punti.
-
-### ⛔ EVITA SEZIONI RIDONDANTI (DEV-242 Phase 48/49/51)
-NON creare MAI una sezione separata chiamata "Riferimento normativo" o "Base legale".
-
-Il riferimento normativo (es. "Legge n. 199/2025") DEVE apparire integrato nella Definizione
-(es. "introdotta dalla Legge n. 199/2025"), NON come punto separato.
-
-### 🔴 FORMATO OUTPUT FINALE (DEV-242 Phase 45) - CRITICO
-La risposta DEVE essere avvolta in tag XML:
-
-```
-<answer>
-[Tutta la tua risposta qui: lista numerata + fonti]
-</answer>
-
-<suggested_actions>
-[
-  {"id": "1", "label": "Azione 1", "icon": "calculator", "prompt": "Prompt completo 1"},
-  {"id": "2", "label": "Azione 2", "icon": "search", "prompt": "Prompt completo 2"},
-  {"id": "3", "label": "Azione 3", "icon": "calendar", "prompt": "Prompt completo 3"}
-]
-</suggested_actions>
-```
-
-⛔ OBBLIGATORIO: Se NON includi i tag <answer> e <suggested_actions>, la risposta sarà RIFIUTATA.
-
-### 🚨 VERIFICA FINALE FORMATO (DEV-242 Phase 50/52) - ULTIMO CHECK
-PRIMA di generare la risposta, VERIFICA che OGNI sezione usi questo formato:
-
-✅ CORRETTO: `N. **Etichetta**: Contenuto...` (numero + grassetto + contenuto)
-❌ SBAGLIATO: `Etichetta:` poi `Contenuto` su righe separate
-
-Il NUMERO di sezioni dipende dal contenuto nel KB - NON limitarti a 4 sezioni.
-INCLUDI TUTTE le informazioni rilevanti dal KB, organizzate in sezioni numerate.
-
-Se la tua risposta ha sezioni senza numero e grassetto, RIFORMATTALA prima di inviarla.
-
-### 📊 COMPLETEZZA CONTENUTI (DEV-242 Phase 52)
-NON limitare la risposta a un numero fisso di sezioni.
-Se il KB contiene informazioni su Decadenza, Interessi, Sanzioni, Tolleranza, ecc. → INCLUDI TUTTO.
-La lunghezza della risposta deve corrispondere alla quantità di informazioni rilevanti nel KB.
+### CITAZIONI INLINE
+✅ Integra le citazioni nel testo: "...entro il 30 aprile 2026 (Legge 199/2025, Art. 1)."
+❌ NON creare sezioni "Fonti:", "Riferimenti:" - le fonti sono mostrate automaticamente
 
 """
+                )
             context_section = f"\n\n{grounding_rules}# Relevant Knowledge Base Context\n\n{merged_context}\n"
             prompt = prompt + context_section
+
+            # DEV-245: Add scalable post-context instruction AFTER KB context
+            # LLMs pay more attention to instructions at the end ("recency bias")
+            # This is GENERIC - detects critical patterns in ANY topic
+            prompt = prompt + "\n" + POST_CONTEXT_INSTRUCTION
+
+            # DEV-245: Inject web sources metadata if available (from Parallel Hybrid RAG)
+            web_sources_metadata = (ctx or {}).get("web_sources_metadata", [])
+            if web_sources_metadata:
+                import json
+
+                web_sources_section = f"""
+## Fonti Web Recenti (DEV-245: Parallel Hybrid RAG)
+
+Le seguenti fonti web sono state recuperate tramite Brave Search per fornire contesto pratico e aggiornamenti recenti:
+
+{json.dumps(web_sources_metadata, ensure_ascii=False, indent=2)}
+
+**NOTA IMPORTANTE:** Quando citi informazioni dalle fonti web, indica chiaramente "[Fonte web]" nella citazione per distinguerle dalle fonti normative ufficiali del KB.
+
+"""
+                prompt = prompt + web_sources_section
+                step44_logger.info(
+                    "DEV245_web_sources_injected",
+                    extra={
+                        "web_sources_count": len(web_sources_metadata),
+                        "web_sources_titles": [s.get("title", "")[:50] for s in web_sources_metadata[:5]],
+                    },
+                )
+
             # DEV-007 DIAGNOSTIC: Log context injection
             step44_logger.info(
                 "DEV007_step44_context_injected",
@@ -1105,6 +965,7 @@ La lunghezza della risposta deve corrispondere alla quantità di informazioni ri
                     "context_length": len(merged_context),
                     "context_preview": merged_context[:500] if len(merged_context) > 500 else merged_context,
                     "prompt_final_length": len(prompt),
+                    "web_sources_count": len(web_sources_metadata),  # DEV-245
                 },
             )
         else:

@@ -13,6 +13,7 @@ import pytest
 
 
 # Sample KB documents with paragraph content for testing
+# DEV-244: Include rrf_score >= 0.008 (MIN_FONTI_RELEVANCE_SCORE) to pass filter
 SAMPLE_KB_DOCS_WITH_PARAGRAPHS = [
     {
         "id": "doc_001",
@@ -20,6 +21,7 @@ SAMPLE_KB_DOCS_WITH_PARAGRAPHS = [
         "type": "dpr",
         "date": "1972-10-26",
         "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:dpr:1972;633",
+        "rrf_score": 0.05,  # Above MIN_FONTI_RELEVANCE_SCORE (0.008)
         "content": """1. L'aliquota IVA ordinaria è del 22% per la maggior parte dei beni e servizi.
 
 2. Aliquote ridotte sono previste per specifiche categorie:
@@ -35,6 +37,7 @@ SAMPLE_KB_DOCS_WITH_PARAGRAPHS = [
         "type": "circolare",
         "date": "2024-03-15",
         "url": None,
+        "rrf_score": 0.03,  # Above MIN_FONTI_RELEVANCE_SCORE (0.008)
         "content": "Chiarimenti sulle aliquote IVA per servizi digitali. La presente circolare fornisce indicazioni operative.",
     },
 ]
@@ -322,7 +325,8 @@ class TestStep40EmptyContentHandling:
             "context_merged": True,
             "merged_context": "...",
             "kb_results": [
-                {"id": "doc_empty", "title": "Empty Doc", "type": "legge", "content": ""}
+                # DEV-244: Include rrf_score to pass MIN_FONTI_RELEVANCE_SCORE filter
+                {"id": "doc_empty", "title": "Empty Doc", "type": "legge", "content": "", "rrf_score": 0.05}
             ],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
@@ -345,7 +349,8 @@ class TestStep40EmptyContentHandling:
             "context_merged": True,
             "merged_context": "...",
             "kb_results": [
-                {"id": "doc_empty", "title": "Empty Doc", "type": "legge", "content": ""}
+                # DEV-244: Include rrf_score to pass MIN_FONTI_RELEVANCE_SCORE filter
+                {"id": "doc_empty", "title": "Empty Doc", "type": "legge", "content": "", "rrf_score": 0.05}
             ],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
@@ -367,7 +372,8 @@ class TestStep40EmptyContentHandling:
             "context_merged": True,
             "merged_context": "...",
             "kb_results": [
-                {"id": "doc_no_content", "title": "No Content", "type": "dpr"}  # No content key
+                # DEV-244: Include rrf_score to pass MIN_FONTI_RELEVANCE_SCORE filter
+                {"id": "doc_no_content", "title": "No Content", "type": "dpr", "rrf_score": 0.05}  # No content key
             ],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }

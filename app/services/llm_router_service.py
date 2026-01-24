@@ -39,6 +39,20 @@ ISTRUZIONI:
 2. Identifica la categoria più appropriata
 3. Estrai eventuali entità legali/fiscali menzionate
 4. Fornisci un ragionamento breve ma chiaro
+5. **DEV-245 FOLLOW-UP DETECTION**: Determina se è una domanda di follow-up
+
+RILEVAMENTO FOLLOW-UP (is_followup):
+Imposta "is_followup": true SE la domanda:
+- Inizia con congiunzioni di continuazione: "e", "ma", "però", "anche", "invece"
+- Usa riferimenti anaforici: "questo", "quello", "lo stesso", "anche per"
+- È una domanda breve (<5 parole) che assume contesto precedente
+- Chiede chiarimenti o approfondimenti su un argomento già discusso
+- Esempi di follow-up: "e l'IRAP?", "si può pagare a rate?", "quali sono i requisiti?"
+
+Imposta "is_followup": false SE la domanda:
+- Introduce un argomento completamente nuovo
+- È autosufficiente senza contesto precedente
+- È la prima domanda della conversazione (nessun contesto)
 
 RISPOSTA in formato JSON:
 {
@@ -49,7 +63,8 @@ RISPOSTA in formato JSON:
         {"text": "<testo>", "type": "<legge|articolo|ente|data>", "confidence": <0.0-1.0>}
     ],
     "requires_freshness": <true|false>,
-    "suggested_sources": ["<fonte1>", "<fonte2>"]
+    "suggested_sources": ["<fonte1>", "<fonte2>"],
+    "is_followup": <true|false>
 }
 
 Rispondi SOLO con il JSON, senza testo aggiuntivo."""
@@ -118,6 +133,7 @@ class LLMRouterService:
                 entities=[],
                 requires_freshness=False,
                 suggested_sources=[],
+                is_followup=False,  # DEV-245: Empty queries are not follow-ups
             )
 
         try:
@@ -137,6 +153,7 @@ class LLMRouterService:
                 confidence=decision.confidence,
                 entity_count=len(decision.entities),
                 query_length=len(query),
+                is_followup=decision.is_followup,  # DEV-245
             )
 
             return decision
@@ -303,6 +320,7 @@ class LLMRouterService:
                 entities=entities,
                 requires_freshness=data.get("requires_freshness", False),
                 suggested_sources=data.get("suggested_sources", []),
+                is_followup=data.get("is_followup", False),  # DEV-245: Follow-up detection
             )
 
             return decision
@@ -339,4 +357,5 @@ class LLMRouterService:
             entities=[],
             requires_freshness=False,
             suggested_sources=[],
+            is_followup=False,  # DEV-245: Default to not follow-up on error
         )

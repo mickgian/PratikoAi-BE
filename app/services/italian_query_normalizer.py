@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set
 from unicodedata import normalize
 
+from app.services.italian_stop_words import STOP_WORDS_MINIMAL
+
 
 @dataclass
 class NormalizationResult:
@@ -230,64 +232,9 @@ class ItalianQueryNormalizer:
             (r"(T\d+)", r"\1"),  # Office codes
         ]
 
-        # Italian stop words to remove
-        self.stop_words = {
-            "sui",
-            "per",
-            "del",
-            "della",
-            "dei",
-            "delle",
-            "da",
-            "in",
-            "a",
-            "di",
-            "con",
-            "su",
-            "tra",
-            "fra",
-            "il",
-            "la",
-            "lo",
-            "gli",
-            "le",
-            "un",
-            "una",
-            "uno",
-            "al",
-            "alla",
-            "allo",
-            "agli",
-            "alle",
-            "dal",
-            "dalla",
-            "dallo",
-            "dagli",
-            "dalle",
-            "nel",
-            "nella",
-            "nello",
-            "negli",
-            "nelle",
-            "sul",
-            "sulla",
-            "sullo",
-            "sugli",
-            "sulle",
-            "che",
-            "e",
-            "ma",
-            "o",
-            "se",
-            "anche",
-            "i",
-            "si",
-            "ai",
-            "come",
-            "fare",
-            "è",
-            "l",
-        }
+        # DEV-245 Phase 5.14: Use centralized stop words module
+        # Italian stop words to remove - imported from app.services.italian_stop_words
+        self.stop_words = STOP_WORDS_MINIMAL
 
     def normalize(self, query: str) -> NormalizationResult:
         """Normalize an Italian tax/legal query for improved cache hits.

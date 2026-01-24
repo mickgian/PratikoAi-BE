@@ -30,22 +30,13 @@ from app.services.cache import cache_service
 # DEV-242 Phase 7: Topic-based synonym expansion for FTS
 # Maps colloquial tax terms to their ACTUAL legal equivalents found in law text
 # IMPORTANT: Use single words, not phrases - FTS matches on individual terms
+# DEV-XXX: Simplified to broad categories for scalability
 TOPIC_SYNONYMS = {
-    "rottamazione quinquies": [
-        # DEV-242 Phase 15: Prioritize terms from doc 2080 which has "54 rate bimestrali"
-        "pace fiscale",  # Doc 2080 uses "Pace fiscale" heading - HIGHEST PRIORITY
-        "pacificazione",  # Doc 2080 uses "pacificazione fiscale"
-        "definizione",  # Law uses "definizione di cui al comma 82"
-        "comma 82",  # Specific to quinquies (Legge 199/2025)
-        "54 rate",  # Specific number for quinquies
-    ],
-    "rottamazione quater": [
-        "definizione",
-        "comma 1 articolo 3",  # Specific to quater (Legge 197/2022)
-    ],
+    # Broad category for fiscal amnesty procedures
     "rottamazione": [
-        "definizione",  # Generic term used in all rottamazione laws
+        "definizione",  # Generic term used in all rottamazione/sanatoria laws
         "pace fiscale",
+        "pacificazione",
         "stralcio",
     ],
     "saldo e stralcio": [
@@ -431,8 +422,10 @@ class SearchService:
         title_patterns: list[str] | None = None,
         topics: list[str] | None = None,
     ) -> list[SearchResult]:
-        """Perform full-text search with OR matching (more relaxed than AND).
-        Uses plainto_tsquery which creates OR queries for better recall.
+        """Perform full-text search with true OR matching (more relaxed than AND).
+
+        DEV-244 FIX: Uses to_tsquery with | operator for TRUE OR matching.
+        Previous implementation incorrectly used plainto_tsquery which still uses AND logic.
 
         This is typically used as fallback when strict AND search returns no results.
 
@@ -552,8 +545,10 @@ class SearchService:
             # Execute title-based query with FTS ranking
             result = await self.db.execute(search_query, params)
         else:
-            # PATH B: FTS-based OR search (using plainto_tsquery for better recall)
+            # PATH B: FTS-based OR search (using to_tsquery with | for true OR matching)
             # This path is triggered for natural language queries like "contratti locazione"
+            # DEV-244 FIX: plainto_tsquery uses AND logic, not OR! We must use to_tsquery
+            # with regexp_replace to convert "term1 term2" to "term1 | term2" for OR matching.
             logger.info(
                 "or_fallback_search_path_fts_based",
                 query=normalized_query,
@@ -561,7 +556,7 @@ class SearchService:
             )
 
             search_query = text(
-                """
+                r"""
                 WITH search_results AS (
                     SELECT
                         kc.id,
@@ -575,7 +570,7 @@ class SearchService:
                         ki.publication_date,
                         kc.knowledge_item_id,
                         kc.chunk_index,
-                        -- DEV-242: CASE for topic-only matches (no FTS rank)
+                        -- DEV-244 FIX: Use OR tsquery for ranking
                         CASE
                             WHEN kc.search_vector @@ query THEN ts_rank(kc.search_vector, query, 32)
                             ELSE 0.8  -- Topic-match default rank (high priority)
@@ -587,14 +582,16 @@ class SearchService:
                                 query,
                                 'StartSel=<b>, StopSel=</b>, MaxWords=30, MinWords=15'
                             )
-                            ELSE LEFT(kc.chunk_text, 2000)  -- DEV-242 Phase 14A: 10x increase to preserve specific values  -- No highlight for topic-only
+                            ELSE LEFT(kc.chunk_text, 2000)
                         END AS highlight
                     FROM
                         knowledge_chunks kc
                         JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id,
-                        plainto_tsquery('italian', :search_term) query
+                        -- DEV-244 FIX: Use to_tsquery with | (OR) instead of plainto_tsquery (AND)
+                        -- regexp_replace converts "term1 term2 term3" to "term1 | term2 | term3"
+                        to_tsquery('italian', regexp_replace(:search_term, '\s+', ' | ', 'g')) query
                     WHERE
-                        -- DEV-242: FTS OR topic match (topics as alternative path)
+                        -- DEV-244 FIX: OR matching - document matches if ANY term is present
                         (
                             kc.search_vector @@ query
                             OR (CARDINALITY(CAST(:topics_filter AS text[])) > 0 AND ki.topics && CAST(:topics_filter AS text[]))

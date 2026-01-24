@@ -235,6 +235,11 @@ class WebVerificationService:
     web articles to improve response quality.
     """
 
+    # DEV-246: Brave Search API cost estimation
+    # Free tier: 2,000 queries/month, then $3/1000 queries
+    # We track all calls for cost reporting
+    BRAVE_COST_PER_QUERY_EUR = 0.003  # ~€0.003 per query (~$3/1000)
+
     def __init__(self, timeout_seconds: float = 15.0, max_web_results: int = 5):
         """Initialize the web verification service.
 
@@ -254,6 +259,8 @@ class WebVerificationService:
         existing_web_sources: list[dict] | None = None,
         messages: list[dict] | None = None,
         topic_keywords: list[str] | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
     ) -> WebVerificationResult:
         """Verify a KB answer against web search results.
 
@@ -267,6 +274,8 @@ class WebVerificationService:
 
         DEV-245 Phase 5.3: Accepts topic_keywords for long conversation support.
 
+        DEV-246: Accepts user_id and session_id for Brave API cost tracking.
+
         Args:
             user_query: The user's original question
             kb_answer: The answer generated from KB
@@ -275,6 +284,8 @@ class WebVerificationService:
             existing_web_sources: DEV-245: Pre-fetched web sources from Parallel Hybrid RAG
             messages: DEV-245 Phase 3.9: Conversation history for context-aware keyword ordering
             topic_keywords: DEV-245 Phase 5.3: Pre-extracted topic keywords from state
+            user_id: DEV-246: User ID for cost tracking
+            session_id: DEV-246: Session ID for cost tracking
 
         Returns:
             WebVerificationResult with caveats if contradictions found
@@ -299,8 +310,11 @@ class WebVerificationService:
             # Run verification with timeout (traditional path - new web search)
             # DEV-245 Phase 3.9: Pass messages for context-aware keyword ordering
             # DEV-245 Phase 5.3: Pass topic_keywords for long conversation support
+            # DEV-246: Pass user_id/session_id for Brave API cost tracking
             result = await asyncio.wait_for(
-                self._do_verification(user_query, kb_answer, kb_sources, messages, topic_keywords),
+                self._do_verification(
+                    user_query, kb_answer, kb_sources, messages, topic_keywords, user_id, session_id
+                ),
                 timeout=self._timeout_seconds,
             )
             return result
@@ -392,11 +406,14 @@ class WebVerificationService:
         kb_sources: list[dict],
         messages: list[dict] | None = None,
         topic_keywords: list[str] | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
     ) -> WebVerificationResult:
         """Perform the actual verification logic.
 
         DEV-245 Phase 3.9: Accepts messages for context-aware keyword ordering.
         DEV-245 Phase 5.3: Accepts topic_keywords for long conversation support.
+        DEV-246: Accepts user_id and session_id for Brave API cost tracking.
 
         Args:
             user_query: User's query
@@ -404,6 +421,8 @@ class WebVerificationService:
             kb_sources: KB source metadata
             topic_keywords: Pre-extracted topic keywords from state (Phase 5.3)
             messages: Conversation history for context-aware keyword ordering
+            user_id: DEV-246: User ID for cost tracking
+            session_id: DEV-246: Session ID for cost tracking
 
         Returns:
             WebVerificationResult
@@ -414,7 +433,8 @@ class WebVerificationService:
         search_query = self._build_verification_query(user_query, kb_sources, messages, topic_keywords)
 
         # Search the web
-        web_results = await self._search_web(search_query)
+        # DEV-246: Pass user_id/session_id for Brave API cost tracking
+        web_results = await self._search_web(search_query, user_id, session_id)
 
         if not web_results:
             logger.debug(
@@ -797,17 +817,28 @@ class WebVerificationService:
 
         return query
 
-    async def _search_web(self, query: str) -> list[dict]:
+    async def _search_web(
+        self,
+        query: str,
+        user_id: str | None = None,
+        session_id: str | None = None,
+    ) -> list[dict]:
         """Search the web using Brave Search API with AI summarization.
 
         Falls back to DuckDuckGo if Brave API key is not configured.
 
+        DEV-246: Tracks Brave API costs for daily cost reporting.
+
         Args:
             query: Search query
+            user_id: DEV-246: User ID for cost tracking
+            session_id: DEV-246: Session ID for cost tracking
 
         Returns:
             List of search result dicts with title, snippet, link, is_ai_synthesis
         """
+        import time
+
         try:
             from app.core.config import settings
 
@@ -824,9 +855,25 @@ class WebVerificationService:
                 "Accept": "application/json",
             }
 
+            start_time = time.time()
+            api_calls = 0
+
             async with httpx.AsyncClient() as client:
                 search_data = await self._call_brave_search(client, query, headers)
+                api_calls += 1
                 ai_summary = await self._get_brave_summary(client, search_data, headers)
+                if ai_summary:
+                    api_calls += 1  # Summarizer is a separate API call
+
+            response_time_ms = int((time.time() - start_time) * 1000)
+
+            # DEV-246: Track Brave API cost
+            await self._track_brave_api_usage(
+                user_id=user_id,
+                session_id=session_id,
+                api_calls=api_calls,
+                response_time_ms=response_time_ms,
+            )
 
             results = self._parse_brave_results(search_data, ai_summary)
 
@@ -849,6 +896,60 @@ class WebVerificationService:
                 fallback="duckduckgo",
             )
             return await self._search_web_duckduckgo(query)
+
+    async def _track_brave_api_usage(
+        self,
+        user_id: str | None,
+        session_id: str | None,
+        api_calls: int,
+        response_time_ms: int,
+        error_occurred: bool = False,
+    ) -> None:
+        """Track Brave Search API usage for cost reporting.
+
+        DEV-246: Tracks API calls to usage_events table for daily cost reporting.
+
+        Args:
+            user_id: User ID (uses "system" if None)
+            session_id: Session ID (uses "web_verification" if None)
+            api_calls: Number of API calls made
+            response_time_ms: Total response time in milliseconds
+            error_occurred: Whether an error occurred
+        """
+        try:
+            from app.services.usage_tracker import usage_tracker
+
+            # Use defaults if user context not available
+            effective_user_id = user_id or "system"
+            effective_session_id = session_id or "web_verification"
+
+            # Calculate cost (Brave free tier is 2000/month, then $3/1000)
+            cost_eur = api_calls * self.BRAVE_COST_PER_QUERY_EUR
+
+            await usage_tracker.track_third_party_api(
+                user_id=effective_user_id,
+                session_id=effective_session_id,
+                api_type="brave_search",
+                cost_eur=cost_eur,
+                response_time_ms=response_time_ms,
+                request_count=api_calls,
+                error_occurred=error_occurred,
+            )
+
+            logger.debug(
+                "BRAVE_usage_tracked",
+                user_id=effective_user_id,
+                api_calls=api_calls,
+                cost_eur=cost_eur,
+            )
+
+        except Exception as e:
+            # Don't fail the main flow if tracking fails
+            logger.warning(
+                "BRAVE_usage_tracking_failed",
+                error=str(e),
+                user_id=user_id,
+            )
 
     async def _call_brave_search(self, client: "httpx.AsyncClient", query: str, headers: dict) -> dict:
         """Call Brave Search API with summary flag.

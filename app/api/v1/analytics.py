@@ -628,3 +628,107 @@ async def get_system_metrics(
     except Exception as e:
         logger.error("system_metrics_retrieval_failed", session_id=session.id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve system metrics")
+
+
+@router.get("/daily-cost-report")
+@limiter.limit("5 per minute")
+async def get_daily_cost_report(
+    request: Request,
+    report_date: str | None = Query(None, description="Date for report (YYYY-MM-DD), defaults to yesterday"),
+    session: Session = Depends(get_current_session),
+):
+    """Get daily cost report with environment and user breakdown.
+
+    DEV-246: Daily Cost Spending Report by Environment and User.
+
+    Args:
+        request: FastAPI request object
+        report_date: Date for the report (defaults to yesterday)
+        session: Current user session
+
+    Returns:
+        Daily cost report with environment, user, and third-party API breakdown
+    """
+    from datetime import date
+
+    from app.services.daily_cost_report_service import DailyCostReportService
+    from app.services.database import database_service
+
+    try:
+        # Parse report date
+        if report_date:
+            try:
+                parsed_date = date.fromisoformat(report_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        else:
+            parsed_date = (datetime.utcnow() - timedelta(days=1)).date()
+
+        async with database_service.get_db() as db:
+            service = DailyCostReportService(db)
+            report = await service.generate_report(parsed_date)
+
+        return JSONResponse(
+            {
+                "report_date": str(report.report_date),
+                "totals": {
+                    "total_cost_eur": report.total_cost_eur,
+                    "llm_cost_eur": report.llm_cost_eur,
+                    "third_party_cost_eur": report.third_party_cost_eur,
+                    "total_requests": report.total_requests,
+                    "total_tokens": report.total_tokens,
+                    "unique_users": report.unique_users,
+                },
+                "environment_breakdown": [
+                    {
+                        "environment": env.environment,
+                        "total_cost_eur": env.total_cost_eur,
+                        "llm_cost_eur": env.llm_cost_eur,
+                        "third_party_cost_eur": env.third_party_cost_eur,
+                        "request_count": env.request_count,
+                        "total_tokens": env.total_tokens,
+                        "unique_users": env.unique_users,
+                    }
+                    for env in report.environment_breakdown
+                ],
+                "user_breakdown": [
+                    {
+                        "user_id": user.user_id,
+                        "total_cost_eur": user.total_cost_eur,
+                        "llm_cost_eur": user.llm_cost_eur,
+                        "third_party_cost_eur": user.third_party_cost_eur,
+                        "request_count": user.request_count,
+                        "total_tokens": user.total_tokens,
+                        "percentage_of_total": user.percentage_of_total(report.total_cost_eur),
+                    }
+                    for user in report.user_breakdown
+                ],
+                "third_party_breakdown": [
+                    {
+                        "api_type": tp.api_type,
+                        "total_cost_eur": tp.total_cost_eur,
+                        "request_count": tp.request_count,
+                        "avg_cost_per_request": tp.avg_cost_per_request,
+                    }
+                    for tp in report.third_party_breakdown
+                ],
+                "alerts": [
+                    {
+                        "alert_type": alert.alert_type,
+                        "severity": alert.severity,
+                        "message": alert.message,
+                        "environment": alert.environment,
+                        "current_cost": alert.current_cost,
+                        "threshold": alert.threshold,
+                        "user_id": alert.user_id,
+                    }
+                    for alert in report.alerts
+                ],
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("daily_cost_report_retrieval_failed", session_id=session.id, error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve daily cost report")

@@ -177,6 +177,7 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
         )
 
         if should_verify:
+            # DEV-246: Pass user_id and session_id for Brave API cost tracking
             web_verification_result = await web_verification_service.verify_answer(
                 user_query=user_query,
                 kb_answer=response_content,
@@ -185,6 +186,8 @@ async def node_step_100(state: RAGState) -> dict[str, Any]:
                 existing_web_sources=existing_web_sources,
                 messages=state.get("messages", []),
                 topic_keywords=state.get("topic_keywords"),
+                user_id=state.get("user_id"),
+                session_id=state.get("session_id"),
             )
 
             if web_verification_result and web_verification_result.has_caveats:

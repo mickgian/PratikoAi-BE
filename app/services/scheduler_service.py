@@ -548,6 +548,11 @@ async def collect_rss_feeds_task() -> None:
                     feed.last_success = datetime.now(UTC)
                     feed.consecutive_errors = 0
                     feed.status = "healthy"
+                    # DEV-247: Track filtered items for daily report
+                    feed.items_filtered = stats.get("skipped_filtered", 0)
+                    filtered_samples = stats.get("filtered_samples", [])
+                    if filtered_samples:
+                        feed.filtered_samples = {"titles": filtered_samples}
                     session.add(feed)
                     await session.commit()
 

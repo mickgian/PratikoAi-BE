@@ -17,6 +17,7 @@ from app.services.ingestion_report_service import (
     DailyIngestionReport,
     DocumentPreview,
     ErrorSample,
+    FilteredContentSample,
     IngestionAlert,
     IngestionReportService,
     SourceStats,
@@ -675,3 +676,184 @@ class TestSchedulerTaskRegistration:
         setup_default_tasks()
 
         assert "daily_ingestion_report" in scheduler_service.tasks
+
+
+# =============================================================================
+# DEV-247: Tests for Filtered Content Feature
+# =============================================================================
+
+
+class TestFilteredContentSample:
+    """Tests for FilteredContentSample dataclass."""
+
+    def test_filtered_content_sample_creation(self):
+        """Test filtered content sample creation with all fields."""
+        sample = FilteredContentSample(
+            source_name="gazzetta_ufficiale_SG",
+            items_filtered=15,
+            sample_titles=[
+                "Concorso pubblico per 100 posti",
+                "Nomina del direttore generale",
+                "Graduatoria finale concorso",
+            ],
+        )
+
+        assert sample.source_name == "gazzetta_ufficiale_SG"
+        assert sample.items_filtered == 15
+        assert len(sample.sample_titles) == 3
+        assert "Concorso pubblico" in sample.sample_titles[0]
+
+    def test_filtered_content_sample_empty_titles(self):
+        """Test filtered content sample with no sample titles."""
+        sample = FilteredContentSample(
+            source_name="test_feed",
+            items_filtered=5,
+        )
+
+        assert sample.items_filtered == 5
+        assert sample.sample_titles == []
+
+    def test_filtered_content_sample_zero_filtered(self):
+        """Test filtered content sample with zero filtered items."""
+        sample = FilteredContentSample(
+            source_name="test_feed",
+            items_filtered=0,
+        )
+
+        assert sample.items_filtered == 0
+
+
+class TestDailyIngestionReportFilteredContent:
+    """Tests for DailyIngestionReport with filtered content."""
+
+    def test_report_has_filtered_content_samples(self):
+        """Test that report includes filtered_content_samples field."""
+        report = DailyIngestionReport(report_date=date.today())
+
+        assert hasattr(report, "filtered_content_samples")
+        assert report.filtered_content_samples == []
+
+    def test_report_with_filtered_samples(self):
+        """Test report with filtered content samples populated."""
+        report = DailyIngestionReport(
+            report_date=date.today(),
+            filtered_content_samples=[
+                FilteredContentSample(
+                    source_name="gazzetta_SG",
+                    items_filtered=10,
+                    sample_titles=["Concorso pubblico"],
+                ),
+                FilteredContentSample(
+                    source_name="gazzetta_S1",
+                    items_filtered=5,
+                    sample_titles=["Nomina dirigente"],
+                ),
+            ],
+        )
+
+        assert len(report.filtered_content_samples) == 2
+        total_filtered = sum(s.items_filtered for s in report.filtered_content_samples)
+        assert total_filtered == 15
+
+
+class TestHTMLReportWithFilteredContent:
+    """Tests for HTML report with filtered content section."""
+
+    @pytest.fixture
+    def mock_db_session(self):
+        """Create mock database session."""
+        return MagicMock()
+
+    def test_html_report_with_filtered_content(self, mock_db_session):
+        """Test HTML report includes filtered content section."""
+        service = IngestionReportService(mock_db_session)
+
+        report = DailyIngestionReport(
+            report_date=date.today(),
+            filtered_content_samples=[
+                FilteredContentSample(
+                    source_name="gazzetta_ufficiale_SG",
+                    items_filtered=12,
+                    sample_titles=[
+                        "Concorso pubblico per funzionari",
+                        "Nomina del direttore",
+                    ],
+                ),
+            ],
+        )
+
+        html = service._generate_html_report(report)
+
+        # Check filtered content section is present
+        assert "Filtered Content" in html
+        assert "12" in html  # items_filtered count
+        assert "Concorso pubblico per funzionari" in html
+        assert "Nomina del direttore" in html
+        assert "gazzetta_ufficiale_SG" in html
+
+    def test_html_report_no_filtered_content(self, mock_db_session):
+        """Test HTML report when no filtered content."""
+        service = IngestionReportService(mock_db_session)
+
+        report = DailyIngestionReport(
+            report_date=date.today(),
+            filtered_content_samples=[],
+        )
+
+        html = service._generate_html_report(report)
+
+        # Should NOT have filtered content section when empty
+        # (filtered_html is empty string when no samples)
+        # The section title should not appear
+        assert "Filtered Content (0 items)" not in html
+
+    def test_html_report_filtered_content_explanation(self, mock_db_session):
+        """Test that filtered content section includes explanation."""
+        service = IngestionReportService(mock_db_session)
+
+        report = DailyIngestionReport(
+            report_date=date.today(),
+            filtered_content_samples=[
+                FilteredContentSample(
+                    source_name="test",
+                    items_filtered=5,
+                    sample_titles=["Test title"],
+                ),
+            ],
+        )
+
+        html = service._generate_html_report(report)
+
+        # Check explanation text is present
+        assert "irrelevant to PratikoAI scope" in html
+        assert "concorsi, nomine, graduatorie" in html
+
+    def test_html_report_multiple_filtered_sources(self, mock_db_session):
+        """Test HTML report with multiple filtered sources."""
+        service = IngestionReportService(mock_db_session)
+
+        report = DailyIngestionReport(
+            report_date=date.today(),
+            filtered_content_samples=[
+                FilteredContentSample(
+                    source_name="source_a",
+                    items_filtered=8,
+                    sample_titles=["Title A1", "Title A2"],
+                ),
+                FilteredContentSample(
+                    source_name="source_b",
+                    items_filtered=4,
+                    sample_titles=["Title B1"],
+                ),
+            ],
+        )
+
+        html = service._generate_html_report(report)
+
+        # Check total count in header
+        assert "12 items" in html
+        # Check both sources are present
+        assert "source_a" in html
+        assert "source_b" in html
+        assert "8" in html  # source_a count
+        assert "4" in html  # source_b count

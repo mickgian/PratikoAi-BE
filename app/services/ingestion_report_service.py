@@ -155,6 +155,19 @@ class ErrorSample:
 
 
 @dataclass
+class FilteredContentSample:
+    """DEV-247: Sample of filtered content for daily report.
+
+    Tracks items filtered out by topic filtering (e.g., concorsi, nomine)
+    so users can review and adjust filtering rules if needed.
+    """
+
+    source_name: str
+    items_filtered: int
+    sample_titles: list[str] = field(default_factory=list)
+
+
+@dataclass
 class SourceStats:
     """Statistics for a single source (RSS feed or scraper)."""
 
@@ -213,6 +226,9 @@ class DailyIngestionReport:
 
     # Error samples for debugging
     error_samples: list[ErrorSample] = field(default_factory=list)
+
+    # DEV-247: Filtered content samples for review
+    filtered_content_samples: list[FilteredContentSample] = field(default_factory=list)
 
     @property
     def total_documents_processed(self) -> int:
@@ -329,6 +345,9 @@ class IngestionReportService:
 
         # Get error samples for debugging
         report.error_samples = await self._get_error_samples(report_date)
+
+        # DEV-247: Get filtered content samples for review
+        report.filtered_content_samples = await self._get_filtered_content_samples()
 
         self.logger.info(
             f"Report generated: {report.total_documents_processed} processed, "
@@ -881,6 +900,43 @@ class IngestionReportService:
 
         return samples
 
+    async def _get_filtered_content_samples(self) -> list[FilteredContentSample]:
+        """DEV-247: Get filtered content samples from FeedStatus table.
+
+        Returns samples of filtered items (concorsi, nomine, etc.) so users
+        can review and adjust filtering rules if needed.
+
+        Returns:
+            List of FilteredContentSample objects with source, count, and sample titles
+        """
+        # Query all feeds that have filtered items
+        query = select(FeedStatus).where(
+            FeedStatus.items_filtered > 0  # type: ignore[operator]
+        )
+        result = await self.db.execute(query)
+        feeds = result.scalars().all()
+
+        samples = []
+        for feed in feeds:
+            source_name = (
+                f"{feed.source}_{feed.feed_type}" if feed.source and feed.feed_type else feed.source or "unknown"
+            )
+
+            # Extract sample titles from filtered_samples JSON
+            sample_titles = []
+            if feed.filtered_samples and isinstance(feed.filtered_samples, dict):
+                sample_titles = feed.filtered_samples.get("titles", [])
+
+            samples.append(
+                FilteredContentSample(
+                    source_name=source_name,
+                    items_filtered=feed.items_filtered or 0,
+                    sample_titles=sample_titles[:5],  # Max 5 samples per source
+                )
+            )
+
+        return samples
+
     async def send_daily_report_email(self, recipients: list[str], max_retries: int = 3) -> bool:
         """Send daily ingestion report via email with retry logic.
 
@@ -1092,6 +1148,44 @@ class IngestionReportService:
             </div>
             """
 
+        # DEV-247: Generate filtered content section
+        filtered_html = ""
+        if report.filtered_content_samples:
+            total_filtered = sum(s.items_filtered for s in report.filtered_content_samples)
+            filtered_rows = ""
+            for sample in report.filtered_content_samples:
+                titles = "<br>".join([f"&bull; {title}" for title in sample.sample_titles])
+                if not titles:
+                    titles = "<em style='color: #999;'>No samples available</em>"
+                filtered_rows += f"""
+                <tr>
+                    <td>{sample.source_name}</td>
+                    <td style="color: #6c757d; font-weight: 500;">{sample.items_filtered}</td>
+                    <td style="font-size: 12px;">{titles}</td>
+                </tr>
+                """
+            filtered_html = f"""
+            <div class="section">
+                <h2>Filtered Content ({total_filtered} items)</h2>
+                <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+                    Items below were filtered out as irrelevant to PratikoAI scope (concorsi, nomine, graduatorie, etc.).
+                    Review these samples to verify filtering rules are working correctly.
+                </p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Filtered</th>
+                            <th>Sample Titles</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filtered_rows}
+                    </tbody>
+                </table>
+            </div>
+            """
+
         # Overall status color
         overall_color = (
             "#28a745"
@@ -1217,6 +1311,8 @@ class IngestionReportService:
                 {docs_preview_html}
 
                 {errors_html}
+
+                {filtered_html}
 
                 <div class="footer">
                     <p>This is an automated report from PratikoAI Ingestion Monitoring System.</p>

@@ -26,16 +26,16 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import (
+from sqlalchemy import select  # noqa: E402
+from sqlalchemy.ext.asyncio import (  # noqa: E402
     AsyncSession,
     create_async_engine,
 )
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker  # noqa: E402
 
-from app.core.config import settings
-from app.ingest.rss_normativa import run_rss_ingestion
-from app.models.regulatory_documents import FeedStatus
+from app.core.config import settings  # noqa: E402
+from app.ingest.rss_normativa import run_rss_ingestion  # noqa: E402
+from app.models.regulatory_documents import FeedStatus  # noqa: E402
 
 
 async def main():
@@ -174,6 +174,11 @@ Examples:
                     feed.last_success = datetime.now(UTC)
                     feed.consecutive_errors = 0
                     feed.status = "healthy"
+                    # DEV-247: Track filtered items for daily report
+                    feed.items_filtered = stats.get("skipped_filtered", 0)
+                    filtered_samples = stats.get("filtered_samples", [])
+                    if filtered_samples:
+                        feed.filtered_samples = {"titles": filtered_samples}
                     session.add(feed)
                     await session.commit()
 

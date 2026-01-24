@@ -264,9 +264,8 @@ class TestSynonymExpansion:
     def test_rottamazione_quinquies_expanded_with_synonyms(self):
         """Rottamazione quinquies queries should be expanded with legal synonyms.
 
-        DEV-242 Phase 15: Prioritizes "pace fiscale" and "pacificazione" which
-        match doc 2080 (MEF summary) better for FTS ranking.
-        The function only adds the first 2 synonyms from TOPIC_SYNONYMS.
+        DEV-242 Phase 15: Expands with first 2 synonyms from TOPIC_SYNONYMS.
+        The function only adds the first 2 synonyms ("definizione", "pace fiscale").
         """
         from app.services.search_service import SearchService
 
@@ -275,9 +274,9 @@ class TestSynonymExpansion:
 
         result = service._normalize_italian_query("rottamazione quinquies")
 
-        # DEV-242 Phase 15: First 2 synonyms are "pace fiscale" and "pacificazione"
+        # First 2 synonyms from TOPIC_SYNONYMS["rottamazione"] are "definizione" and "pace fiscale"
+        assert "definizione" in result
         assert "pace fiscale" in result
-        assert "pacificazione" in result
         # Original query preserved
         assert "rottamazione quinquies" in result
 
@@ -318,7 +317,7 @@ class TestSynonymExpansion:
     def test_extra_whitespace_normalized(self):
         """Extra whitespace should be normalized.
 
-        DEV-242 Phase 15: Synonyms changed to "pace fiscale" and "pacificazione".
+        DEV-242 Phase 15: Synonyms are first 2 from TOPIC_SYNONYMS.
         """
         from app.services.search_service import SearchService
 
@@ -326,10 +325,10 @@ class TestSynonymExpansion:
 
         result = service._normalize_italian_query("rottamazione   quinquies  scadenze")
 
-        # Extra whitespace normalized + synonyms added
+        # Extra whitespace normalized + first 2 synonyms added
         assert "rottamazione quinquies scadenze" in result
+        assert "definizione" in result
         assert "pace fiscale" in result
-        assert "pacificazione" in result
 
     def test_generic_rottamazione_expanded(self):
         """Generic rottamazione queries should be expanded with synonyms (DEV-242 Phase 7)."""

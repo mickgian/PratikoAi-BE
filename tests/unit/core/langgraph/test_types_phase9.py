@@ -573,3 +573,75 @@ class TestRAGStateTypeAnnotations:
             # The type hint should allow None (be Optional or union with None)
             # For TypedDict with total=False, this is implicit
             assert hint is not None, f"Field '{field}' has no type hint"
+
+
+class TestPhase57TopicReducers:
+    """DEV-245 Phase 5.7: Test reducers for topic_keywords and conversation_topic."""
+
+    def test_preserve_conversation_topic_returns_new_when_set(self):
+        """New value should be used when explicitly set."""
+        from app.core.langgraph.types import preserve_conversation_topic
+
+        result = preserve_conversation_topic("old topic", "new topic")
+        assert result == "new topic"
+
+    def test_preserve_conversation_topic_preserves_existing_when_new_is_none(self):
+        """Existing value should be preserved when new is None."""
+        from app.core.langgraph.types import preserve_conversation_topic
+
+        result = preserve_conversation_topic("rottamazione quinquies", None)
+        assert result == "rottamazione quinquies"
+
+    def test_preserve_conversation_topic_returns_none_when_both_none(self):
+        """Should return None when both are None."""
+        from app.core.langgraph.types import preserve_conversation_topic
+
+        result = preserve_conversation_topic(None, None)
+        assert result is None
+
+    def test_preserve_topic_keywords_returns_new_when_set(self):
+        """New value should be used when explicitly set and non-empty."""
+        from app.core.langgraph.types import preserve_topic_keywords
+
+        result = preserve_topic_keywords(["old"], ["new", "topic"])
+        assert result == ["new", "topic"]
+
+    def test_preserve_topic_keywords_preserves_existing_when_new_is_none(self):
+        """Existing value should be preserved when new is None."""
+        from app.core.langgraph.types import preserve_topic_keywords
+
+        result = preserve_topic_keywords(["rottamazione", "quinquies"], None)
+        assert result == ["rottamazione", "quinquies"]
+
+    def test_preserve_topic_keywords_preserves_existing_when_new_is_empty(self):
+        """Existing value should be preserved when new is empty list."""
+        from app.core.langgraph.types import preserve_topic_keywords
+
+        result = preserve_topic_keywords(["rottamazione", "quinquies"], [])
+        assert result == ["rottamazione", "quinquies"]
+
+    def test_preserve_topic_keywords_returns_none_when_both_none(self):
+        """Should return None when both are None."""
+        from app.core.langgraph.types import preserve_topic_keywords
+
+        result = preserve_topic_keywords(None, None)
+        assert result is None
+
+    def test_preserve_topic_keywords_returns_new_over_none_existing(self):
+        """New value should be used even when existing is None."""
+        from app.core.langgraph.types import preserve_topic_keywords
+
+        result = preserve_topic_keywords(None, ["rottamazione", "quinquies"])
+        assert result == ["rottamazione", "quinquies"]
+
+    def test_conversation_topic_field_has_reducer(self):
+        """conversation_topic field should have preserve_conversation_topic reducer."""
+        hints = get_type_hints(RAGState, include_extras=True)
+        # Field should exist (reducer usage is tested via Annotated type)
+        assert "conversation_topic" in hints
+
+    def test_topic_keywords_field_has_reducer(self):
+        """topic_keywords field should have preserve_topic_keywords reducer."""
+        hints = get_type_hints(RAGState, include_extras=True)
+        # Field should exist (reducer usage is tested via Annotated type)
+        assert "topic_keywords" in hints

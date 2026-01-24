@@ -45,6 +45,7 @@ from app.core.text.clean import (
 from app.core.text.extract_pdf_plumber import extract_pdf_with_ocr_fallback_plumber
 from app.models.knowledge import KnowledgeItem
 from app.models.knowledge_chunk import KnowledgeChunk
+from app.services.article_extractor import article_extractor
 
 # Domains that require relaxed SSL settings (older TLS ciphers)
 RELAXED_SSL_DOMAINS = {"www.inail.it", "inail.it"}
@@ -439,6 +440,23 @@ async def ingest_document_with_chunks(
         # Prepare OCR pages JSON
         ocr_pages_json = ocr_pages if ocr_pages else None
 
+        # DEV-245: Extract article metadata for legal documents
+        # This enables accurate citation of articolo/comma/lettera in responses
+        article_metadata = article_extractor.extract_chunk_metadata(content)
+        parsing_metadata_dict = {
+            "article_references": article_metadata.get("article_references", []),
+            "primary_article": article_metadata.get("primary_article"),
+            "has_definitions": article_metadata.get("has_definitions", False),
+            "comma_count": article_metadata.get("comma_count", 0),
+        }
+
+        logger.debug(
+            "DEV245_article_metadata_extracted",
+            title=title,
+            primary_article=parsing_metadata_dict.get("primary_article"),
+            reference_count=len(parsing_metadata_dict.get("article_references", [])),
+        )
+
         knowledge_item = KnowledgeItem(
             title=title,
             content=content,
@@ -456,6 +474,8 @@ async def ingest_document_with_chunks(
             ocr_pages=ocr_pages_json,
             # Publication metadata
             publication_date=publication_date,
+            # DEV-245: Article metadata for legal documents
+            parsing_metadata=parsing_metadata_dict,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )

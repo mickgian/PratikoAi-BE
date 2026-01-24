@@ -16,6 +16,14 @@ This file provides guidelines for Claude Code when working on the PratikoAI code
 
 ---
 
+## Environment
+
+**Status:** DEVELOPMENT ONLY
+
+This project has never been deployed to QA or Production environments. All development and testing is local.
+
+---
+
 ## Project Paths
 
 | Project | Path |

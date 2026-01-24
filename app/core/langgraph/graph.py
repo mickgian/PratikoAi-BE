@@ -73,6 +73,8 @@ except ImportError:
         pass
 
 
+import re
+
 from psycopg_pool import AsyncConnectionPool
 
 from app.core.config import (
@@ -112,6 +114,39 @@ from app.services.golden_fast_path import (
 )
 from app.services.usage_tracker import usage_tracker
 from app.utils import dump_messages
+
+# DEV-244: Patterns to strip from LLM response (source references shown in Fonti dropdown)
+_SOURCE_PATTERNS_TO_STRIP = [
+    r"\n*\*{0,2}Riferimento normativo:?\*{0,2}[^\n]*(\n|$)",  # "Riferimento normativo:"
+    r"\n*Per ulteriori dettagli[^\n]*(\n|$)",  # "Per ulteriori dettagli..."
+    r"\n*Puoi (consultare|trovare)[^\n]*(\n|$)",  # "Puoi consultare..."
+    r"\n*\*{0,2}Fonti?:?\*{0,2}\s*\n[^\n]*$",  # Trailing "Fonti:" section
+    r"\n*Fonte:?\s*[^\n]*$",  # "Fonte: ..."
+    r"\s*\(fonte ufficiale\)[^\n]*",  # "(fonte ufficiale)"
+    r"\n+\d+\.\s*$",  # DEV-244: Trailing empty numbered list item (e.g., "3. ")
+]
+
+
+def _clean_llm_response(text: str) -> str:
+    """Remove LLM-generated source references (DEV-244).
+
+    The Fonti dropdown shows sources automatically - LLM should not
+    duplicate this with inline source sections.
+
+    Args:
+        text: The LLM response text
+
+    Returns:
+        Cleaned text with trailing source references removed
+    """
+    if not text:
+        return text
+
+    cleaned = text
+    for pattern in _SOURCE_PATTERNS_TO_STRIP:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE | re.MULTILINE)
+    return cleaned.rstrip()
+
 
 # Canonical observability imports (unified across repo)
 try:
@@ -626,22 +661,26 @@ class LangGraphAgent:
         # Last resort
         return {"role": "user", "content": str(msg)}
 
-    async def _get_prior_state(self, session_id: str) -> tuple[list[dict], list]:
-        """Load prior conversation messages and attachments from checkpointer.
+    async def _get_prior_state(self, session_id: str) -> tuple[list[dict], list, str | None, list[str] | None]:
+        """Load prior conversation state including topic tracking from checkpointer.
 
         DEV-007 Issue 11e: This method enables conversation context continuity
         by loading prior state from the LangGraph checkpoint. Without this,
         each turn is treated as independent and follow-up questions fail.
 
+        DEV-245 Phase 5.6: Also loads topic tracking fields (conversation_topic,
+        topic_keywords) to preserve the main conversation topic across API calls.
+        This fixes the bug where Q4+ queries lost topic context.
+
         Args:
             session_id: The thread/session ID for checkpoint lookup
 
         Returns:
-            Tuple of (prior_messages, prior_attachments) from checkpoint.
-            Returns ([], []) if no prior state exists or on error.
+            Tuple of (prior_messages, prior_attachments, conversation_topic, topic_keywords).
+            Returns ([], [], None, None) if no prior state exists or on error.
         """
         if self._graph is None:
-            return [], []
+            return [], [], None, None
 
         try:
             config = {"configurable": {"thread_id": session_id}}
@@ -650,6 +689,27 @@ class LangGraphAgent:
             if state and state.values:
                 raw_messages = state.values.get("messages", [])
                 prior_attachments = state.values.get("attachments", [])
+
+                # DEV-245 Phase 5.6: Load topic tracking fields for long conversations
+                conversation_topic = state.values.get("conversation_topic")
+                topic_keywords = state.values.get("topic_keywords")
+
+                # DEV-245 Phase 5.6: Type validation for topic_keywords
+                if topic_keywords and not isinstance(topic_keywords, list):
+                    logger.warning(
+                        "invalid_topic_keywords_type_in_checkpoint",
+                        session_id=session_id,
+                        actual_type=type(topic_keywords).__name__,
+                    )
+                    topic_keywords = None
+
+                # DEV-245 Phase 5.10: Debug log topic_keywords from checkpoint
+                logger.info(
+                    "DEV245_checkpoint_topic_keywords",
+                    session_id=session_id,
+                    topic_keywords=topic_keywords,
+                    conversation_topic=conversation_topic,
+                )
 
                 # DEV-007 Issue 11e FIX: Convert LangChain message objects to dicts
                 # The checkpointer stores AIMessage/HumanMessage objects, not plain dicts
@@ -669,8 +729,10 @@ class LangGraphAgent:
                     message_count=len(prior_messages),
                     filtered_system_messages=filtered_count,
                     attachment_count=len(prior_attachments),
+                    conversation_topic=conversation_topic,
+                    has_topic_keywords=topic_keywords is not None,
                 )
-                return prior_messages, prior_attachments
+                return prior_messages, prior_attachments, conversation_topic, topic_keywords
         except Exception as e:
             logger.warning(
                 "failed_to_load_prior_state",
@@ -678,7 +740,7 @@ class LangGraphAgent:
                 error=str(e),
             )
 
-        return [], []
+        return [], [], None, None
 
     async def _get_system_prompt(
         self, messages: list[Message], classification: Optional["DomainActionClassification"]
@@ -2662,7 +2724,10 @@ class LangGraphAgent:
 
             # DEV-007 Issue 11e: Load prior conversation state for context continuity
             # This fixes follow-up questions failing for both regular queries AND document-based queries
-            prior_messages, prior_attachments = await self._get_prior_state(session_id)
+            # DEV-245 Phase 5.6: Also load topic tracking fields for long conversations
+            prior_messages, prior_attachments, conversation_topic, topic_keywords = await self._get_prior_state(
+                session_id
+            )
 
             # Build initial state for unified graph
             # Convert Message objects to dicts for graph compatibility
@@ -2811,6 +2876,41 @@ class LangGraphAgent:
             # This is the count of prior user messages (0-indexed: first user msg = 0)
             current_message_index = sum(1 for m in prior_messages if m.get("role") == "user")
 
+            # DEV-245 Phase 4.2: Get previously shown KB source URLs for Fonti deduplication
+            # Follow-up responses should not repeat sources already shown to the user
+            prior_shown_source_urls: set[str] = set()
+            if user_id is not None:
+                try:
+                    from app.services.chat_history_service import chat_history_service
+
+                    # user_id may be int or str depending on caller - convert to int
+                    numeric_user_id = int(user_id) if isinstance(user_id, str) else user_id
+                    prior_shown_source_urls = await chat_history_service.get_prior_kb_source_urls(
+                        user_id=numeric_user_id,
+                        session_id=session_id,
+                    )
+                    if prior_shown_source_urls:
+                        logger.info(
+                            "prior_source_urls_loaded_for_dedup",
+                            session_id=session_id,
+                            prior_url_count=len(prior_shown_source_urls),
+                        )
+                except Exception as e:
+                    logger.warning(
+                        "prior_source_urls_load_failed_non_critical",
+                        session_id=session_id,
+                        error=str(e),
+                    )
+                    prior_shown_source_urls = set()
+
+            # DEV-245 Phase 5.10: Debug log before initial_state creation
+            logger.info(
+                "DEV245_initial_state_topic_keywords",
+                session_id=session_id,
+                topic_keywords=topic_keywords,
+                conversation_topic=conversation_topic,
+            )
+
             initial_state = {
                 "request_id": session_id,  # RAGState requires request_id
                 "messages": merged_messages,  # DEV-007: Now includes full conversation history
@@ -2820,6 +2920,10 @@ class LangGraphAgent:
                 "streaming": {"requested": True},  # Nested structure for StreamCheck routing
                 "attachments": resolved_attachments,  # DEV-007: File attachments (current or restored)
                 "current_message_index": current_message_index,  # DEV-007 FIX: For marking current vs prior attachments
+                "prior_shown_source_urls": prior_shown_source_urls,  # DEV-245 Phase 4.2: For Fonti deduplication
+                # DEV-245 Phase 5.6: Persist topic across API calls for long conversations
+                "conversation_topic": conversation_topic,
+                "topic_keywords": topic_keywords,
             }
 
             logger.info(
@@ -3130,6 +3234,19 @@ class LangGraphAgent:
                     )
                     if content:
                         yield content
+
+                    # DEV-245 Phase 3.1: Yield web verification caveats for non-streaming
+                    web_verification = state.get("web_verification", {})
+                    if web_verification.get("has_caveats"):
+                        caveats = web_verification.get("caveats", [])
+                        for caveat in caveats:
+                            yield f"\n\n{caveat}"
+                        logger.info(
+                            "BRAVE_caveats_yielded_nonstreaming",
+                            session_id=session_id,
+                            caveat_count=len(caveats),
+                        )
+
                     logger.info(
                         "unified_graph_streaming_completed_from_graph",
                         session_id=session_id,
@@ -3210,7 +3327,58 @@ class LangGraphAgent:
                 will_fallback_to_provider_stream=not bool(content),
             )
 
+            # DEV-245: Check for synthesized response from Brave AI
+            # If available, use the synthesized response instead of original content
+            web_verification = state.get("web_verification", {})
+            synthesized_response = web_verification.get("synthesized_response")
+            if synthesized_response and content:
+                logger.info(
+                    "BRAVE_using_synthesized_response",
+                    session_id=session_id,
+                    original_length=len(content),
+                    synthesized_length=len(synthesized_response),
+                )
+                content = synthesized_response
+                # When using synthesized response, skip caveats (they're already integrated)
+                # We mark this in state so caveats section knows to skip
+
             if content:
+                # DEV-245: Strip generic closings from content when caveats will be added
+                # These closings feel redundant/useless in context
+                web_verification = state.get("web_verification", {})
+                if web_verification.get("has_caveats") and not web_verification.get("has_synthesized_response"):
+                    # Common generic closings to strip (in Italian)
+                    generic_closings = [
+                        "Se hai ulteriori domande o necessiti di chiarimenti su altri aspetti della normativa fiscale o della definizione agevolata, non esitare a chiedere!",
+                        "Se hai ulteriori domande o necessiti di chiarimenti, non esitare a chiedere!",
+                        "Se hai altre domande, non esitare a chiedere!",
+                        "Non esitare a chiedere se hai bisogno di ulteriori chiarimenti!",
+                        "Non esitare a chiedere per ulteriori chiarimenti!",
+                        "Se hai bisogno di ulteriori chiarimenti, non esitare a chiedere!",
+                    ]
+                    original_content = content
+                    for closing in generic_closings:
+                        if content.strip().endswith(closing):
+                            content = content.strip()[: -len(closing)].strip()
+                            logger.info(
+                                "BRAVE_stripped_generic_closing",
+                                session_id=session_id,
+                                closing_length=len(closing),
+                            )
+                            break
+
+                # DEV-244: Strip LLM-generated source references (shown in Fonti dropdown)
+                original_content_length = len(content)
+                content = _clean_llm_response(content)
+                if len(content) != original_content_length:
+                    logger.info(
+                        "DEV244_source_references_stripped",
+                        session_id=session_id,
+                        original_length=original_content_length,
+                        cleaned_length=len(content),
+                        bytes_removed=original_content_length - len(content),
+                    )
+
                 # DEV-007 FIX: De-anonymize PII placeholders in buffered content
                 # Previously only the fallback streaming path de-anonymized.
                 # The buffered path was saving PII placeholders to chat history.
@@ -3309,6 +3477,35 @@ class LangGraphAgent:
                     total_content_length=len(content),
                 )
 
+                # DEV-245 Phase 3.1: Yield web verification caveats if any
+                # Caveats are added at the end of the response to highlight nuances/contradictions
+                # NOTE: web_verification is at TOP LEVEL of state (sibling to proactivity, not nested inside)
+                # Skip caveats if we used a synthesized response (nuances already integrated)
+                web_verification = state.get("web_verification", {})
+                used_synthesis = web_verification.get("has_synthesized_response", False)
+                print(
+                    f"BRAVE_state_check has_web_verification={bool(web_verification)} has_caveats={web_verification.get('has_caveats')} used_synthesis={used_synthesis}"
+                )
+
+                if web_verification.get("has_caveats") and not used_synthesis:
+                    # Only show caveats if we didn't use synthesis (synthesis already includes the nuances)
+                    caveats = web_verification.get("caveats", [])
+                    print(f"BRAVE_yielding_caveats count={len(caveats)}")
+                    for caveat in caveats:
+                        yield f"\n\n{caveat}"
+                    logger.info(
+                        "BRAVE_caveats_yielded",
+                        session_id=session_id,
+                        caveat_count=len(caveats),
+                        web_sources_checked=web_verification.get("web_sources_checked", 0),
+                    )
+                elif used_synthesis:
+                    logger.info(
+                        "BRAVE_caveats_skipped_synthesis_used",
+                        session_id=session_id,
+                        caveat_count=len(web_verification.get("caveats", [])),
+                    )
+
                 # Yield metadata marker for chat history save
                 # This tells chatbot.py whether to use "golden_set" or "llm" as model_used
                 golden_hit = state.get("golden_hit", False)
@@ -3361,6 +3558,14 @@ class LangGraphAgent:
                 # DEV-244: Yield KB source URLs (deterministic, independent of LLM output)
                 # This guarantees all KB sources appear in Fonti, regardless of what LLM outputs
                 kb_sources = state.get("kb_sources_metadata", [])
+                # DEBUG: Log kb_sources to diagnose missing Fonti
+                logger.info(
+                    "DEBUG_kb_sources_metadata",
+                    session_id=session_id,
+                    count=len(kb_sources) if kb_sources else 0,
+                    has_urls=[bool(s.get("url")) for s in (kb_sources or [])[:5]],
+                    sample=kb_sources[0] if kb_sources else None,
+                )
                 if kb_sources:
                     import json as _json_kb
 
@@ -3368,18 +3573,25 @@ class LangGraphAgent:
                     # Multiple knowledge_items may exist for same URL with different titles
                     # (e.g., "Legge n. 199/2025" vs "LEGGE 30 dicembre 2025, n. 199 - Art. 1")
                     # Keeping longest ensures consistent, more descriptive display
+                    # DEV-245: Apply simplify_title and get_category_label_it for clean display
+                    from app.core.langgraph.nodes.step_040__build_context import (
+                        get_category_label_it,
+                        simplify_title,
+                    )
+
                     url_to_source: dict[str, dict[str, Any]] = {}
                     for s in kb_sources:
                         url = s.get("url")
                         if not url:
                             continue
-                        title = s.get("title", "")
+                        raw_title = s.get("title", "")
+                        title = simplify_title(raw_title)
                         if url not in url_to_source:
                             url_to_source[url] = {
                                 "title": title,
                                 "url": url,
-                                "type": s.get("type", ""),
-                                "date": s.get("date", ""),
+                                "type": get_category_label_it(s.get("type", "")),
+                                "date": s.get("date") or "",  # DEV-245: empty if not available
                             }
                         else:
                             # Keep longest title (more descriptive)
@@ -3387,6 +3599,21 @@ class LangGraphAgent:
                             if len(title) > len(existing_title):
                                 url_to_source[url]["title"] = title
                     sources_with_urls = list(url_to_source.values())
+
+                    # DEV-245 Phase 4.2: Deduplicate across conversation turns
+                    # Remove sources already shown in prior responses (Fonti deduplication)
+                    prior_shown_urls = state.get("prior_shown_source_urls") or set()
+                    if prior_shown_urls and sources_with_urls:
+                        original_count = len(sources_with_urls)
+                        sources_with_urls = [s for s in sources_with_urls if s["url"] not in prior_shown_urls]
+                        deduped_count = original_count - len(sources_with_urls)
+                        if deduped_count > 0:
+                            logger.info(
+                                "kb_sources_cross_turn_deduped",
+                                session_id=session_id,
+                                removed_count=deduped_count,
+                                remaining_count=len(sources_with_urls),
+                            )
 
                     if sources_with_urls:
                         kb_urls_json = _json_kb.dumps(sources_with_urls)
@@ -3397,6 +3624,21 @@ class LangGraphAgent:
                             sources_count=len(sources_with_urls),
                             urls=[s["url"][:50] for s in sources_with_urls],
                         )
+
+                # DEV-245: Yield web verification results (Brave Search sources)
+                web_verification = state.get("web_verification", {})
+                if web_verification.get("verification_performed"):
+                    import json as _json_web
+
+                    web_verification_json = _json_web.dumps(web_verification)
+                    yield f"__WEB_VERIFICATION__:{web_verification_json}"
+                    logger.info(
+                        "web_verification_yielded",
+                        session_id=session_id,
+                        web_sources_checked=web_verification.get("web_sources_checked", 0),
+                        has_caveats=web_verification.get("has_caveats", False),
+                        has_synthesized=web_verification.get("has_synthesized_response", False),
+                    )
 
                 return  # Exit without making second LLM call
 
@@ -3444,6 +3686,9 @@ class LangGraphAgent:
                     placeholder_count=len(deanonymization_map),
                 )
 
+            # DEV-245: Track if anything was yielded to avoid empty responses
+            fallback_chunks_yielded = 0
+
             async for chunk in provider.stream_completion(
                 messages=processed_messages,
                 tools=None,
@@ -3467,9 +3712,24 @@ class LangGraphAgent:
                         ):
                             chunk_content = chunk_content.replace(placeholder, original)
                     yield chunk_content
+                    fallback_chunks_yielded += 1
 
                 if hasattr(chunk, "done") and chunk.done:
                     break
+
+            # DEV-245: Error visibility - never return empty response
+            # If provider streaming completed without yielding anything, show fallback message
+            if fallback_chunks_yielded == 0:
+                fallback_message = (
+                    "Non ho trovato informazioni specifiche sulla tua richiesta. "
+                    "Prova a riformulare la domanda con termini diversi o più dettagli."
+                )
+                logger.warning(
+                    "empty_response_fallback_yielded",
+                    session_id=session_id,
+                    reason="provider_streaming_yielded_nothing",
+                )
+                yield fallback_message
 
         except Exception as stream_error:
             # Step 8: InitAgent - Failure logging
@@ -3488,7 +3748,18 @@ class LangGraphAgent:
             logger.error(
                 "unified_graph_streaming_failed", error=str(stream_error), session_id=session_id, user_id=user_id
             )
-            raise stream_error
+
+            # DEV-245: Error visibility - yield user-friendly error message instead of raising
+            # This ensures the user always sees something instead of a blank response
+            error_fallback = (
+                "Si è verificato un errore durante l'elaborazione della risposta. Riprova tra qualche istante."
+            )
+            yield error_fallback
+            logger.warning(
+                "error_fallback_yielded",
+                session_id=session_id,
+                original_error=str(stream_error),
+            )
         finally:
             # Clean up tracking info
             self._current_user_id = None

@@ -4,6 +4,7 @@ This service manages persistent storage of chat messages in PostgreSQL,
 enabling multi-device sync and GDPR-compliant data management.
 """
 
+import json
 import uuid
 from datetime import datetime
 
@@ -34,6 +35,8 @@ class ChatHistoryService:
         conversation_id: str | None = None,
         query_type: str | None = None,
         italian_content: bool = True,
+        kb_sources_metadata: list[dict] | None = None,  # DEV-244: Persist Fonti metadata
+        web_verification_metadata: dict | None = None,  # DEV-245: Persist Verifica Web
     ) -> str:
         """Save a chat interaction (user query + AI response) to query_history table.
 
@@ -51,6 +54,8 @@ class ChatHistoryService:
             conversation_id: UUID linking related queries in a conversation
             query_type: Type of query (e.g., 'tax_question', 'legal_question')
             italian_content: Whether query/response contains Italian text
+            kb_sources_metadata: DEV-244 - KB source URLs for Fonti display
+            web_verification_metadata: DEV-245 - Web verification results for Verifica Web
 
         Returns:
             str: The UUID of the created query_history record
@@ -67,12 +72,12 @@ class ChatHistoryService:
                     id, user_id, query, response, response_cached,
                     response_time_ms, tokens_used, cost_cents, model_used,
                     session_id, conversation_id, query_type, italian_content,
-                    timestamp, created_at
+                    kb_sources_metadata, web_verification_metadata, timestamp, created_at
                 ) VALUES (
                     :id, :user_id, :query, :response, :response_cached,
                     :response_time_ms, :tokens_used, :cost_cents, :model_used,
                     :session_id, :conversation_id, :query_type, :italian_content,
-                    :timestamp, :created_at
+                    :kb_sources_metadata, :web_verification_metadata, :timestamp, :created_at
                 )
             """)
 
@@ -90,6 +95,12 @@ class ChatHistoryService:
                 "conversation_id": conversation_id,
                 "query_type": query_type,
                 "italian_content": italian_content,
+                # DEV-244: Serialize to JSON for JSONB column (asyncpg requires string)
+                "kb_sources_metadata": json.dumps(kb_sources_metadata) if kb_sources_metadata else None,
+                # DEV-245: Serialize web verification metadata for Verifica Web persistence
+                "web_verification_metadata": json.dumps(web_verification_metadata)
+                if web_verification_metadata
+                else None,
                 "timestamp": timestamp,
                 "created_at": timestamp,
             }
@@ -165,7 +176,8 @@ class ChatHistoryService:
                 SELECT
                     id, query, response, timestamp,
                     model_used, tokens_used, cost_cents,
-                    response_cached, response_time_ms
+                    response_cached, response_time_ms,
+                    kb_sources_metadata, web_verification_metadata
                 FROM query_history
                 WHERE user_id = :user_id AND session_id = :session_id
                 ORDER BY timestamp ASC
@@ -200,6 +212,8 @@ class ChatHistoryService:
                     "cost_cents": row[6],
                     "response_cached": row[7],
                     "response_time_ms": row[8],
+                    "kb_sources_metadata": row[9],  # DEV-244: Fonti metadata
+                    "web_verification_metadata": row[10],  # DEV-245: Verifica Web
                 }
                 for row in rows
             ]
@@ -437,6 +451,71 @@ class ChatHistoryService:
                 exc_info=True,
             )
             raise
+
+    @staticmethod
+    async def get_prior_kb_source_urls(
+        user_id: int,
+        session_id: str,
+        *,
+        db: AsyncSession | None = None,
+    ) -> set[str]:
+        """Retrieve all KB source URLs previously shown in this session (DEV-245 Phase 4.2).
+
+        Used for deduplication: follow-up responses should not repeat sources already
+        shown to the user in earlier turns.
+
+        Args:
+            user_id: ID of the user (for authorization)
+            session_id: ID of the chat session
+            db: Optional database session (for testing/dependency injection)
+
+        Returns:
+            set[str]: Set of source URLs already shown in this session
+        """
+        try:
+            # Query only kb_sources_metadata column for efficiency
+            query = text("""
+                SELECT kb_sources_metadata
+                FROM query_history
+                WHERE user_id = :user_id AND session_id = :session_id
+                  AND kb_sources_metadata IS NOT NULL
+                ORDER BY timestamp ASC
+            """)
+
+            params = {"user_id": user_id, "session_id": session_id}
+
+            if db is not None:
+                result = await db.execute(query, params)
+                rows = result.fetchall()
+            else:
+                async for db_session in get_db():
+                    result = await db_session.execute(query, params)
+                    rows = result.fetchall()
+
+            # Extract unique URLs from all prior kb_sources_metadata
+            prior_urls: set[str] = set()
+            for row in rows:
+                kb_metadata = row[0]  # JSONB column
+                if kb_metadata:
+                    # Handle both string (JSON) and dict/list (already parsed) formats
+                    if isinstance(kb_metadata, str):
+                        kb_metadata = json.loads(kb_metadata)
+                    for source in kb_metadata:
+                        url = source.get("url")
+                        if url:
+                            prior_urls.add(url)
+
+            return prior_urls
+
+        except Exception as e:
+            logger.error(
+                "get_prior_kb_source_urls_failed",
+                error=str(e),
+                session_id=session_id,
+                exc_info=True,
+            )
+            # Return empty set on error - deduplication fails gracefully
+            return set()
 
 
 # Singleton instance

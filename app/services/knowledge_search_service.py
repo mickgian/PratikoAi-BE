@@ -73,31 +73,19 @@ DOCUMENT_TYPE_MAPPING = {
 # These map keywords in user queries to topics in the knowledge_items.topics field
 # Topics are used to filter search results via GIN index for faster, more accurate retrieval
 #
-# DEV-242 Phase 14B: Split rottamazione by version to prevent quater/quinquies confusion
+# DEV-XXX: Simplified to broad categories for scalability (no version-specific topics)
 TOPIC_KEYWORDS = {
-    # Version-specific rottamazione topics (check these FIRST in _extract_topics)
-    "rottamazione_quinquies": [
-        "rottamazione quinquies",
-        "quinquies",
-        "legge 199/2025",
-        "legge 199",
-        "comma 82",
-        "comma 83",
-        "54 rate",
-    ],
-    "rottamazione_quater": [
-        "rottamazione quater",
-        "quater",
-        "legge 197/2022",
-        "legge 197",
-        "18 rate",
-    ],
-    # Generic rottamazione fallback (only if no version specified)
-    "rottamazione": [
+    # Broad category for fiscal amnesty procedures (rottamazione, sanatoria, etc.)
+    "fiscal_amnesty": [
         "rottamazione",
+        "rottamazione quinquies",
+        "rottamazione quater",
+        "quinquies",
+        "quater",
         "definizione agevolata",
         "stralcio",
         "pace fiscale",
+        "sanatoria",
     ],
     "irpef": [
         "irpef",
@@ -272,50 +260,36 @@ class KnowledgeSearchService:
         to identify relevant topics. This enables faster, more accurate
         retrieval by filtering on the indexed topics field.
 
-        DEV-242 Phase 14C: Prioritize version-specific topics (quinquies, quater)
-        over generic "rottamazione" to prevent version confusion.
+        DEV-245: When USE_DYNAMIC_TOPIC_DETECTION is enabled, returns None
+        to let LLM-generated semantic_expansions handle topic detection.
+        This enables unlimited scalability without manual keyword maintenance.
 
         Args:
             query: User's search query
 
         Returns:
-            List of topic tags (e.g., ["rottamazione_quinquies"]) or None if no topics detected
+            List of topic tags (e.g., ["fiscal_amnesty", "irpef"]) or None if no topics detected
         """
+        from app.core.config import USE_DYNAMIC_TOPIC_DETECTION
+
+        # DEV-245: When dynamic detection is enabled, skip hardcoded topics
+        # and rely on LLM-generated semantic_expansions instead
+        if USE_DYNAMIC_TOPIC_DETECTION:
+            logger.debug(
+                "dynamic_topic_detection_enabled",
+                query=query[:100] if query else "",
+                reason="dev_245_scalable_topic_detection",
+            )
+            return None
+
         if not query:
             return None
 
         query_lower = query.lower()
         detected_topics = []
 
-        # DEV-242 Phase 14C: Check version-specific rottamazione FIRST
-        # Priority order: specific version > generic fallback
-        version_specific_topics = ["rottamazione_quinquies", "rottamazione_quater"]
-        generic_topics = ["rottamazione"]
-
-        rottamazione_version_found = False
-
-        # First pass: check version-specific topics
-        for topic in version_specific_topics:
-            if topic in TOPIC_KEYWORDS:
-                for keyword in TOPIC_KEYWORDS[topic]:
-                    if keyword.lower() in query_lower:
-                        detected_topics.append(topic)
-                        rottamazione_version_found = True
-                        break
-
-        # If no version-specific match, check generic rottamazione
-        if not rottamazione_version_found:
-            for topic in generic_topics:
-                if topic in TOPIC_KEYWORDS:
-                    for keyword in TOPIC_KEYWORDS[topic]:
-                        if keyword.lower() in query_lower:
-                            detected_topics.append(topic)
-                            break
-
-        # Check all other (non-rottamazione) topics
+        # Simple iteration through all topic categories (legacy fallback)
         for topic, keywords in TOPIC_KEYWORDS.items():
-            if topic.startswith("rottamazione"):
-                continue  # Already handled above
             for keyword in keywords:
                 if keyword.lower() in query_lower:
                     detected_topics.append(topic)
@@ -326,7 +300,7 @@ class KnowledgeSearchService:
                 "topics_extracted_from_query",
                 query=query[:100],
                 detected_topics=detected_topics,
-                reason="adr_023_topic_based_search_with_version_priority",
+                reason="adr_023_topic_based_search_legacy_fallback",
             )
             return detected_topics
 

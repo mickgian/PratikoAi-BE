@@ -165,6 +165,56 @@ def merge_attachments(existing: list[dict] | None, new: list[dict] | None) -> li
     return list(merged_by_id.values())
 
 
+def preserve_conversation_topic(
+    existing: str | None,
+    new: str | None,
+) -> str | None:
+    """DEV-245 Phase 5.7: Preserve conversation_topic across node transitions.
+
+    LangGraph uses REPLACE semantics by default for fields without reducers.
+    This means any node that doesn't explicitly return conversation_topic
+    will replace it with None, losing the topic context.
+
+    This reducer ensures the topic persists across all node transitions
+    by only updating if a new value is explicitly set (not None).
+
+    Args:
+        existing: Current topic in state (may be None)
+        new: New topic being set (may be None)
+
+    Returns:
+        The new value if set, otherwise preserves existing value.
+    """
+    if new is not None:
+        return new
+    return existing
+
+
+def preserve_topic_keywords(
+    existing: list[str] | None,
+    new: list[str] | None,
+) -> list[str] | None:
+    """DEV-245 Phase 5.7: Preserve topic_keywords across node transitions.
+
+    LangGraph uses REPLACE semantics by default for fields without reducers.
+    This means any node that doesn't explicitly return topic_keywords
+    will replace it with None, losing the topic filtering capability.
+
+    This reducer ensures topic_keywords persists across all node transitions
+    by only updating if a new non-empty value is explicitly set.
+
+    Args:
+        existing: Current keywords in state (may be None)
+        new: New keywords being set (may be None or empty)
+
+    Returns:
+        The new value if set and non-empty, otherwise preserves existing value.
+    """
+    if new is not None and len(new) > 0:
+        return new
+    return existing
+
+
 class RAGState(TypedDict, total=False):
     """Complete state definition for RAG workflow.
 
@@ -307,6 +357,10 @@ class RAGState(TypedDict, total=False):
     proactivity: dict | None
     skip_rag_for_proactivity: bool | None  # Step 14: If True, skip RAG and return question
 
+    # DEV-245: Web verification results from Step 100
+    # Structure: {caveats: list[str], has_caveats: bool, web_sources_checked: int, verification_performed: bool}
+    web_verification: dict | None
+
     # ==========================================================================
     # Phase 9: LLM Excellence Fields (DEV-210)
     # ==========================================================================
@@ -317,6 +371,33 @@ class RAGState(TypedDict, total=False):
     # Source metadata for action grounding with hierarchy weights
     # Structure: [{id, title, type, date, url, key_topics, key_values, hierarchy_weight}]
     kb_sources_metadata: list[dict] | None
+
+    # DEV-245: Parallel Hybrid RAG - Web sources from Brave Search
+    # Separated from KB documents for proper attribution
+    web_documents: list[dict] | None
+    # Web source metadata for citation
+    # Structure: [{id, title, url, type, is_ai_synthesis}]
+    web_sources_metadata: list[dict] | None
+
+    # DEV-245 Phase 4.2: Previously shown sources for Fonti deduplication
+    # Set of URLs already shown in prior conversation turns (used to avoid repetition in Fonti)
+    prior_shown_source_urls: set[str] | None
+
+    # DEV-245 Phase 4.2.1: Search keywords used for Brave search
+    # Passed to Step 040 for consistent web source filtering (same keywords as search)
+    search_keywords: list[str] | None
+    # DEV-245 Phase 5.12: Keyword scores for evaluation (YAKE statistical scoring)
+    # Structure: [{"keyword": "rottamazione", "score": 0.02}, ...]
+    # Lower score = more important keyword
+    search_keywords_with_scores: list[dict] | None
+
+    # DEV-245 Phase 5.3: Conversation topic tracking for long conversations
+    # Preserves main topic across many turns (industry best practice - JetBrains, Zoice AI)
+    # Without this, messages[-4:] window loses topic context at Q4+
+    # DEV-245 Phase 5.7: Use reducers to persist across node transitions
+    # Without reducers, LangGraph REPLACES these with None on any node that doesn't return them
+    conversation_topic: Annotated[str | None, preserve_conversation_topic]  # "rottamazione quinquies"
+    topic_keywords: Annotated[list[str] | None, preserve_topic_keywords]  # ["rottamazione", "quinquies"]
 
     # Phase 9: LLM Excellence - Complexity & Routing (DEV-220, DEV-221)
     # Query complexity level: "simple" | "complex" | "multi_domain"

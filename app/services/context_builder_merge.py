@@ -30,6 +30,11 @@ from app.observability.rag_logging import (
 )
 from app.services.knowledge_search_service import SearchResult
 
+# DEV-244: Hard character limit for KB context to prevent prompt overflow
+# 35,000 chars ≈ 8,750 tokens, leaves room for system prompt (~25,000 chars)
+# Total: ~60,000 chars, well under the 80,000 Message limit
+MAX_KB_CONTEXT_CHARS = 35000
+
 # DEV-007 Issue 9: Import QueryComposition for type hints (lazy import to avoid circular)
 # Actual enum imported in get_composition_priority_weights() to avoid import cycles
 
@@ -83,6 +88,74 @@ def get_composition_priority_weights(query_composition: str | None) -> dict[str,
 
     # Default: PURE_KB behavior (backward compatible)
     return COMPOSITION_PRIORITY_WEIGHTS["pure_kb"]
+
+
+# DEV-245: Scalable critical info detection patterns
+# These patterns indicate DIFFERENTIATING information that MUST be included
+# Works for ANY topic - detects linguistic markers used across all legal/fiscal docs
+CRITICAL_INFO_PATTERNS = [
+    # Attention markers (case-insensitive)
+    r"(?i)\bATTENZIONE\b",
+    r"(?i)\bIMPORTANTE\b",
+    r"(?i)\bNOTA BENE\b",
+    # Negation/exclusion patterns (differentiators)
+    r"(?i)\bNON sono previsti\b",
+    r"(?i)\bNON previsti\b",
+    r"(?i)\bNON è previsto\b",
+    r"(?i)\bsenza alcun margine\b",
+    r"(?i)\bsenza tolleranza\b",
+    # Comparison patterns (differentiators)
+    r"(?i)\ba differenza di\b",
+    r"(?i)\bcontrariamente a\b",
+    r"(?i)\brispetto a\b",
+    r"(?i)\ba differenza delle\b",
+    # Exactness markers
+    r"(?i)\bESATTAMENTE\b",
+    r"(?i)\btassativamente\b",
+    r"(?i)\bperentorio\b",
+    # Section headers indicating critical info
+    r"(?i)GIORNI DI TOLLERANZA",
+    r"(?i)DECADENZA",
+    r"(?i)ESCLUSIONI",
+    r"(?i)LIMITAZIONI",
+]
+
+# Compiled patterns for performance
+_CRITICAL_PATTERNS_COMPILED = [re.compile(p) for p in CRITICAL_INFO_PATTERNS]
+
+
+def annotate_critical_chunk(content: str) -> str:
+    """Annotate chunk content if it contains critical differentiating information.
+
+    DEV-245: Scalable solution - detects critical patterns in ANY topic
+    and prepends a prominent marker so the LLM cannot miss it.
+
+    Args:
+        content: The chunk text content
+
+    Returns:
+        Original content, or annotated content if critical patterns found
+    """
+    # Check each pattern
+    found_patterns = []
+    for pattern in _CRITICAL_PATTERNS_COMPILED:
+        if pattern.search(content):
+            # Extract the matched pattern for logging
+            match = pattern.search(content)
+            if match:
+                found_patterns.append(match.group(0))
+
+    if found_patterns:
+        # Prepend prominent marker - this makes it IMPOSSIBLE for LLM to miss
+        marker = ">>> INFORMAZIONE CRITICA - INCLUDERE NELLA RISPOSTA <<<"
+        logger.debug(
+            "critical_chunk_annotated",
+            patterns_found=found_patterns[:3],  # Log first 3
+            content_preview=content[:100],
+        )
+        return f"{marker}\n{content}"
+
+    return content
 
 
 @dataclass
@@ -305,6 +378,18 @@ class ContextBuilderMerge:
 
                 # Generate final merged context text
                 merged_text = self._generate_merged_context_text(selected_parts, query)
+
+                # DEV-244: Apply hard character limit to prevent prompt overflow
+                if len(merged_text) > MAX_KB_CONTEXT_CHARS:
+                    original_len = len(merged_text)
+                    merged_text = merged_text[:MAX_KB_CONTEXT_CHARS] + "\n\n[Contesto troncato per lunghezza]"
+                    content_truncated = True
+                    logger.warning(
+                        "kb_context_truncated",
+                        original_chars=original_len,
+                        truncated_chars=MAX_KB_CONTEXT_CHARS,
+                        chars_removed=original_len - MAX_KB_CONTEXT_CHARS,
+                    )
 
                 # Calculate metrics
                 total_tokens = sum(part.tokens for part in selected_parts)
@@ -789,12 +874,15 @@ class ContextBuilderMerge:
                     kb_item += f"Publication Date: {publication_date}\n"
 
                 # Concatenate all chunk texts, removing redundant title prefixes
+                # DEV-245: Annotate chunks with critical differentiating info
                 chunk_texts = []
                 for chunk in chunks:
                     # Remove "Title: " prefix added by context builder (line 304)
                     chunk_content = chunk.content
                     if chunk_content.startswith(f"{doc_title}: "):
                         chunk_content = chunk_content[len(doc_title) + 2 :]
+                    # DEV-245: Annotate critical info so LLM cannot miss it
+                    chunk_content = annotate_critical_chunk(chunk_content)
                     chunk_texts.append(chunk_content)
 
                 kb_item += "\n".join(chunk_texts)

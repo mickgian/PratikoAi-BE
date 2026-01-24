@@ -123,10 +123,13 @@ class TestRRFFusion:
         """Test that search type weights are applied correctly."""
         from app.services.parallel_retrieval import SEARCH_WEIGHTS
 
-        # Weights per Section 13.7.2
+        # DEV-245: Weights updated to include brave and authority
+        # DEV-244: Authority increased from 0.1 to 0.2 to boost official sources
         assert SEARCH_WEIGHTS["bm25"] == 0.3
-        assert SEARCH_WEIGHTS["vector"] == 0.4
-        assert SEARCH_WEIGHTS["hyde"] == 0.3
+        assert SEARCH_WEIGHTS["vector"] == 0.35
+        assert SEARCH_WEIGHTS["hyde"] == 0.25
+        assert SEARCH_WEIGHTS["authority"] == 0.2  # DEV-244: Increased to boost official sources
+        assert SEARCH_WEIGHTS["brave"] == 0.3  # DEV-245: Web search (balanced with BM25)
 
 
 class TestRecencyBoost:
@@ -1119,3 +1122,102 @@ class TestSemanticExpansionsInBM25:
         assert "title_patterns" in call_kwargs
         patterns = call_kwargs["title_patterns"]
         assert "n. 199" in patterns or "Legge di Bilancio 2026" in patterns
+
+
+class TestBM25OrFallback:
+    """DEV-244: Tests for OR fallback when AND search returns 0 results."""
+
+    @pytest.mark.asyncio
+    async def test_bm25_uses_or_fallback_when_and_returns_zero(self):
+        """DEV-244: BM25 should try OR fallback when AND search returns 0 results."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        mock_search_service = AsyncMock()
+
+        # Mock result for OR fallback
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "doc_from_or_fallback"
+        mock_result.knowledge_item_id = 999
+        mock_result.content = "Content found via OR fallback"
+        mock_result.rank_score = 0.7
+        mock_result.category = "legge"
+        mock_result.title = "LEGGE 30 dicembre 2025, n. 199"
+        mock_result.source = "gazzetta_ufficiale"
+        mock_result.publication_date = None
+        mock_result.source_url = "https://gazzettaufficiale.it/example"
+
+        # AND search returns empty, OR fallback returns results
+        mock_search_service.search.return_value = []
+        mock_search_service.search_with_or_fallback.return_value = [mock_result]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        # Long query that strict AND matching won't find
+        queries = QueryVariants(
+            bm25_query="scadenza presentare domanda definizione agevolata 2026 pace fiscale pacificazione",
+            vector_query="test",
+            entity_query="test",
+            original_query="Qual è la scadenza per presentare la domanda per la definizione agevolata 2026?",
+            document_references=None,
+        )
+
+        result = await service._search_bm25(queries)
+
+        # Both search methods should be called
+        mock_search_service.search.assert_called_once()
+        mock_search_service.search_with_or_fallback.assert_called_once()
+
+        # Should return results from OR fallback
+        assert len(result) == 1
+        assert result[0]["document_id"] == "doc_from_or_fallback"
+
+    @pytest.mark.asyncio
+    async def test_bm25_skips_or_fallback_when_and_returns_results(self):
+        """DEV-244: BM25 should NOT call OR fallback when AND search returns results."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        mock_search_service = AsyncMock()
+
+        # Mock result for AND search
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "doc_from_and"
+        mock_result.knowledge_item_id = 100
+        mock_result.content = "Content found via AND search"
+        mock_result.rank_score = 0.9
+        mock_result.category = "legge"
+        mock_result.title = "Test Document"
+        mock_result.source = "gazzetta_ufficiale"
+        mock_result.publication_date = None
+        mock_result.source_url = None
+
+        # AND search returns results
+        mock_search_service.search.return_value = [mock_result]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="short query",
+            vector_query="test",
+            entity_query="test",
+            original_query="short query",
+        )
+
+        result = await service._search_bm25(queries)
+
+        # Only AND search should be called
+        mock_search_service.search.assert_called_once()
+        mock_search_service.search_with_or_fallback.assert_not_called()
+
+        # Should return results from AND search
+        assert len(result) == 1
+        assert result[0]["document_id"] == "doc_from_and"

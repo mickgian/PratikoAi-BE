@@ -260,8 +260,11 @@ class AtomicFacts:
 
         # Geographic information (cities, regions for location-specific queries)
         for geo in self.geographic_info:
-            if geo.location_type in ["city", "region"]:
-                canonical_strings.append(geo.canonical_form.lower())
+            if geo.geo_type in ["city", "region"]:
+                # Use city/region name if available, otherwise original_text
+                canonical_form = geo.city or geo.region or geo.original_text
+                if canonical_form:
+                    canonical_strings.append(canonical_form.lower())
 
         return canonical_strings
 

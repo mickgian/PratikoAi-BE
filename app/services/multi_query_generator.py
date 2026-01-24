@@ -91,29 +91,54 @@ Il tuo compito è generare 3 varianti ottimizzate della query dell'utente PIÙ i
    - "flat tax" → ["n. 145", "Legge di Bilancio 2019"]
    - "Come funziona l'IVA?" → [] (domanda generica, nessun documento specifico)
 
-5. **semantic_expansions**: Termini semanticamente equivalenti per colmare il gap terminologico (DEV-242)
+5. **semantic_expansions**: Termini semanticamente equivalenti per colmare il gap terminologico (DEV-245)
    - CRITICO: I documenti legali usano terminologia DIVERSA da quella usata dagli utenti
-   - Mappa i termini colloquiali → terminologia legale ufficiale e viceversa
-   - Includi ENTRAMBE le direzioni: colloquiale ↔ ufficiale
-   - Questi termini verranno usati per espandere la ricerca FTS
+   - NON memorizzare liste fisse - ANALIZZA semanticamente ogni query
    - Se non ci sono equivalenze semantiche rilevanti, lascia array vuoto []
 
-   IMPORTANTE - Esempi di gap terminologico:
-   - "rottamazione quinquies" → ["pace fiscale", "pacificazione fiscale", "definizione agevolata", "pagamento", "rata", "dichiarazione", "versamento", "decadenza", "scadenza", "carichi affidati", "debiti risultanti", "periodo", "interessi", "tolleranza", "giorni tolleranza", "margine"]
-     (La legge NON usa mai "rottamazione", usa "definizione agevolata" e "pace fiscale". Includi "tolleranza" per trovare info su 5 giorni di tolleranza - DEV-242 Phase 35B)
-   - "flat tax" → ["imposta sostitutiva", "regime forfettario", "tassazione fissa", "aliquota fissa"]
-   - "bonus 110" → ["detrazione 110%", "superbonus", "ecobonus", "sismabonus"]
-   - "cedolare secca" → ["imposta sostitutiva affitti", "tassazione locazioni"]
-   - "tasse sullo stipendio" → ["IRPEF", "imposta reddito lavoro dipendente", "ritenute"]
-   - "Come funziona l'IVA?" → [] (termine già tecnico, nessuna espansione necessaria)
+   ## METODO DI ANALISI SEMANTICA (applica a QUALSIASI topic):
 
-   REGOLA AGGIUNTIVA (DEV-242 Phase 23/32): Per domande su normative/procedure fiscali, INCLUDI SEMPRE:
-   - "pagamento", "rata", "versamento" (per trovare modalità di pagamento)
-   - "dichiarazione", "scadenza", "termine" (per trovare tempistiche)
-   - "decadenza", "sanzione" (per trovare conseguenze)
-   - "carichi affidati", "debiti risultanti", "periodo" (per trovare i debiti ammessi e il periodo di riferimento - DEV-242 Phase 32)
-   - "interessi", "tasso" (per trovare tassi di interesse applicati)
-   Questi termini aiutano a recuperare i chunks con dettagli specifici come date, importi e periodo dei debiti.
+   Per ogni query, identifica e includi:
+
+   1. **TERMINOLOGIA UFFICIALE**: Come appare nelle leggi italiane
+      - Es: "rottamazione" → "definizione agevolata" (termine legale)
+      - Es: "bonus 110" → "detrazione fiscale" (termine tecnico)
+
+   2. **PROCEDURE ASSOCIATE**: Cosa succede durante il processo
+      - Pagamento, versamento, rata, scadenza, domanda, adesione
+      - Sospensione, proroga, decadenza, sanzione
+      - Comunicazione, notifica, accoglimento
+
+   3. **ASPETTI CRITICI**: Elementi che differenziano questa procedura
+      - Tolleranza, margine, termine perentorio
+      - Esclusione, requisito, condizione
+      - Interessi, tasso, maggiorazione
+
+   4. **ENTI COINVOLTI**: Chi gestisce la procedura
+      - AdER, Agenzia Entrate, INPS, INAIL, Comuni
+
+   5. **CONSEGUENZE**: Cosa succede in caso di inadempimento
+      - Decadenza, revoca, perdita beneficio
+      - Sanzione, interessi di mora
+      - Debito residuo, riscossione coattiva
+
+   ## ESEMPI DI ANALISI (diversi ambiti):
+
+   Query: "rottamazione quinquies"
+   → semantic_expansions: ["definizione agevolata", "pace fiscale", "sospensione riscossione",
+      "decadenza", "tolleranza", "rate bimestrali", "scadenza domanda", "AdER"]
+   (Nota: include "sospensione" e "tolleranza" per trovare info su aspetti critici)
+
+   Query: "patent box"
+   → semantic_expansions: ["agevolazione IP", "beni immateriali", "royalties",
+      "proprietà intellettuale", "tassazione agevolata", "marchi", "brevetti"]
+
+   Query: "modello 770"
+   → semantic_expansions: ["dichiarazione sostituti", "ritenute", "CU",
+      "certificazione unica", "versamenti fiscali", "scadenza trasmissione"]
+
+   Query: "Come funziona l'IVA?"
+   → semantic_expansions: [] (termine già tecnico, domanda generica)
 
 RISPOSTA in formato JSON:
 {

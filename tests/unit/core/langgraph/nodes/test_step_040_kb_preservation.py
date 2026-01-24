@@ -13,7 +13,7 @@ import pytest
 
 from app.core.langgraph.nodes.step_040__build_context import node_step_40
 
-# Sample KB documents for testing
+# Sample KB documents for testing (includes rrf_score for MIN_FONTI_RELEVANCE_SCORE filter)
 SAMPLE_KB_DOCS = [
     {
         "id": "doc_001",
@@ -22,6 +22,7 @@ SAMPLE_KB_DOCS = [
         "date": "1972-10-26",
         "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:dpr:1972;633",
         "content": "L'aliquota IVA ordinaria è del 22%. Aliquote ridotte: 10%, 5%, 4%.",
+        "rrf_score": 0.05,  # Above MIN_FONTI_RELEVANCE_SCORE (0.008)
     },
     {
         "id": "doc_002",
@@ -30,6 +31,7 @@ SAMPLE_KB_DOCS = [
         "date": "2024-03-15",
         "url": None,
         "content": "Chiarimenti sulle aliquote IVA per servizi digitali.",
+        "rrf_score": 0.04,
     },
     {
         "id": "doc_003",
@@ -38,6 +40,7 @@ SAMPLE_KB_DOCS = [
         "date": "2008-04-09",
         "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:dlgs:2008;81",
         "content": "Definizioni per la sicurezza sul lavoro. Il datore di lavoro deve...",
+        "rrf_score": 0.03,
     },
 ]
 
@@ -175,7 +178,7 @@ class TestStep40HierarchyWeight:
         response = {
             "context_merged": True,
             "merged_context": "...",
-            "kb_results": [{"id": "1", "title": "Test", "type": "legge", "content": "Test"}],
+            "kb_results": [{"id": "1", "title": "Test", "type": "legge", "content": "Test", "rrf_score": 0.05}],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
         with patch(
@@ -192,7 +195,7 @@ class TestStep40HierarchyWeight:
         response = {
             "context_merged": True,
             "merged_context": "...",
-            "kb_results": [{"id": "1", "title": "Test", "type": "dpr", "content": "Test"}],
+            "kb_results": [{"id": "1", "title": "Test", "type": "dpr", "content": "Test", "rrf_score": 0.05}],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
         with patch(
@@ -209,7 +212,7 @@ class TestStep40HierarchyWeight:
         response = {
             "context_merged": True,
             "merged_context": "...",
-            "kb_results": [{"id": "1", "title": "Test", "type": "circolare", "content": "Test"}],
+            "kb_results": [{"id": "1", "title": "Test", "type": "circolare", "content": "Test", "rrf_score": 0.05}],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
         with patch(
@@ -226,7 +229,7 @@ class TestStep40HierarchyWeight:
         response = {
             "context_merged": True,
             "merged_context": "...",
-            "kb_results": [{"id": "1", "title": "Test", "type": "interpello", "content": "Test"}],
+            "kb_results": [{"id": "1", "title": "Test", "type": "interpello", "content": "Test", "rrf_score": 0.05}],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
         with patch(
@@ -243,7 +246,7 @@ class TestStep40HierarchyWeight:
         response = {
             "context_merged": True,
             "merged_context": "...",
-            "kb_results": [{"id": "1", "title": "Test", "type": "unknown_type", "content": "Test"}],
+            "kb_results": [{"id": "1", "title": "Test", "type": "unknown_type", "content": "Test", "rrf_score": 0.05}],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
         with patch(
@@ -265,7 +268,13 @@ class TestStep40ExtractTopics:
             "context_merged": True,
             "merged_context": "...",
             "kb_results": [
-                {"id": "1", "title": "Aliquote IVA - Art. 16 DPR 633/72", "type": "dpr", "content": "Test"}
+                {
+                    "id": "1",
+                    "title": "Aliquote IVA - Art. 16 DPR 633/72",
+                    "type": "dpr",
+                    "content": "Test",
+                    "rrf_score": 0.05,
+                }
             ],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
@@ -306,6 +315,7 @@ class TestStep40ExtractValues:
                     "title": "Test",
                     "type": "dpr",
                     "content": "L'aliquota IVA è del 22% per beni ordinari.",
+                    "rrf_score": 0.05,
                 }
             ],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
@@ -332,6 +342,7 @@ class TestStep40ExtractValues:
                     "title": "Test",
                     "type": "circolare",
                     "content": "Il limite è di 5.000 euro o €10.000.",
+                    "rrf_score": 0.05,
                 }
             ],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
@@ -458,9 +469,9 @@ class TestStep40MalformedDocSkipped:
     async def test_step40_malformed_doc_skipped(self, base_state):
         """Malformed documents should be skipped with warning."""
         docs_with_malformed = [
-            {"id": "good_1", "title": "Good Doc", "type": "legge", "content": "Good content"},
+            {"id": "good_1", "title": "Good Doc", "type": "legge", "content": "Good content", "rrf_score": 0.05},
             None,  # Malformed: None instead of dict
-            {"id": "good_2", "title": "Another Good", "type": "dpr", "content": "More content"},
+            {"id": "good_2", "title": "Another Good", "type": "dpr", "content": "More content", "rrf_score": 0.04},
         ]
         response = {
             "context_merged": True,
@@ -489,7 +500,7 @@ class TestStep40MissingFieldsDefaults:
         response = {
             "context_merged": True,
             "merged_context": "...",
-            "kb_results": [{"id": "1", "type": "legge", "content": "Content"}],  # No title
+            "kb_results": [{"id": "1", "type": "legge", "content": "Content", "rrf_score": 0.05}],  # No title
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
         with patch(
@@ -506,7 +517,7 @@ class TestStep40MissingFieldsDefaults:
         response = {
             "context_merged": True,
             "merged_context": "...",
-            "kb_results": [{"id": "1", "title": "Test", "content": "Content"}],  # No type
+            "kb_results": [{"id": "1", "title": "Test", "content": "Content", "rrf_score": 0.05}],  # No type
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
         with patch(
@@ -518,12 +529,13 @@ class TestStep40MissingFieldsDefaults:
             assert result["kb_sources_metadata"][0]["type"] == ""
 
     @pytest.mark.asyncio
-    async def test_step40_missing_date_defaults(self, base_state):
-        """Missing date should default to 'data non disponibile'."""
+    async def test_step40_missing_date_defaults_to_empty(self, base_state):
+        """Missing date should default to empty string (DEV-245: no 'data non disponibile')."""
         response = {
             "context_merged": True,
             "merged_context": "...",
-            "kb_results": [{"id": "1", "title": "Test", "type": "legge", "content": "Content"}],  # No date
+            # Include rrf_score to pass MIN_FONTI_RELEVANCE_SCORE filter
+            "kb_results": [{"id": "1", "title": "Test", "type": "legge", "content": "Content", "rrf_score": 0.05}],
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
         with patch(
@@ -532,7 +544,7 @@ class TestStep40MissingFieldsDefaults:
             return_value=response,
         ):
             result = await node_step_40(base_state)
-            assert result["kb_sources_metadata"][0]["date"] == "data non disponibile"
+            assert result["kb_sources_metadata"][0]["date"] == ""
 
     @pytest.mark.asyncio
     async def test_step40_missing_url_defaults_to_none(self, base_state):
@@ -540,7 +552,9 @@ class TestStep40MissingFieldsDefaults:
         response = {
             "context_merged": True,
             "merged_context": "...",
-            "kb_results": [{"id": "1", "title": "Test", "type": "legge", "content": "Content"}],  # No URL
+            "kb_results": [
+                {"id": "1", "title": "Test", "type": "legge", "content": "Content", "rrf_score": 0.05}
+            ],  # No URL
             "source_distribution": {"facts": 0, "kb_docs": 1, "document_facts": 0},
         }
         with patch(
@@ -580,3 +594,66 @@ class TestStep40ExistingBehaviorUnchanged:
 
             assert "context_metadata" in result
             assert result["context_metadata"]["kb_docs_count"] == 3
+
+
+class TestDEV245FontiImprovements:
+    """Tests for DEV-245: Fonti section display improvements."""
+
+    def test_simplify_title_removes_article_reference(self):
+        """simplify_title should remove ' - Art. X' and everything after."""
+        from app.core.langgraph.nodes.step_040__build_context import simplify_title
+
+        title = "LEGGE 30 dicembre 2025, n. 199 - Art. 1 - guenti: «33 per c…"
+        result = simplify_title(title)
+        assert result == "LEGGE 30 dicembre 2025, n. 199"
+
+    def test_simplify_title_handles_articolo_spelled_out(self):
+        """simplify_title should handle 'Articolo' spelled out."""
+        from app.core.langgraph.nodes.step_040__build_context import simplify_title
+
+        title = "D.Lgs. 81/2008 - Articolo 2 - Definizioni"
+        result = simplify_title(title)
+        assert result == "D.Lgs. 81/2008"
+
+    def test_simplify_title_preserves_clean_title(self):
+        """simplify_title should not modify titles without article references."""
+        from app.core.langgraph.nodes.step_040__build_context import simplify_title
+
+        title = "Circolare AdE n. 12/E del 2024"
+        result = simplify_title(title)
+        assert result == "Circolare AdE n. 12/E del 2024"
+
+    def test_simplify_title_handles_empty_string(self):
+        """simplify_title should return empty string for empty input."""
+        from app.core.langgraph.nodes.step_040__build_context import simplify_title
+
+        assert simplify_title("") == ""
+        assert simplify_title(None) == ""
+
+    def test_get_category_label_it_maps_regulatory_documents(self):
+        """get_category_label_it should map 'regulatory_documents' to 'normativa'."""
+        from app.core.langgraph.nodes.step_040__build_context import get_category_label_it
+
+        assert get_category_label_it("regulatory_documents") == "normativa"
+
+    def test_get_category_label_it_maps_known_types(self):
+        """get_category_label_it should map all known document types."""
+        from app.core.langgraph.nodes.step_040__build_context import get_category_label_it
+
+        assert get_category_label_it("legge") == "legge"
+        assert get_category_label_it("circolare") == "circolare"
+        assert get_category_label_it("dpr") == "DPR"
+        assert get_category_label_it("cassazione") == "Cassazione"
+
+    def test_get_category_label_it_handles_unknown_type(self):
+        """get_category_label_it should replace underscores for unknown types."""
+        from app.core.langgraph.nodes.step_040__build_context import get_category_label_it
+
+        assert get_category_label_it("some_unknown_type") == "some unknown type"
+
+    def test_get_category_label_it_handles_empty_string(self):
+        """get_category_label_it should return empty string for empty input."""
+        from app.core.langgraph.nodes.step_040__build_context import get_category_label_it
+
+        assert get_category_label_it("") == ""
+        assert get_category_label_it(None) == ""

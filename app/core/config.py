@@ -154,6 +154,10 @@ class Settings:
         self.LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
         self.LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
         self.LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+        # Sampling rate for production (0.0-1.0). DEV/QA always sample 100%.
+        # Set via env var to override the default 10% for production.
+        _sampling_rate_str = os.getenv("LANGFUSE_SAMPLING_RATE")
+        self.LANGFUSE_SAMPLING_RATE: float | None = float(_sampling_rate_str) if _sampling_rate_str else None
 
         # LLM Configuration - Multi-Provider Support
         # Legacy OpenAI config (for backward compatibility)

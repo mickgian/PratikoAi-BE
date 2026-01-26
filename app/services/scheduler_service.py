@@ -719,6 +719,67 @@ async def scrape_ader_task() -> None:
         logger.error("ader_scraping_task_failed", error=str(e), exc_info=True)
 
 
+async def send_daily_cost_report_task() -> None:
+    """Scheduled task to send daily cost report email.
+
+    DEV-246: Daily Cost Spending Report by Environment and User.
+    This task sends an email report with cost breakdown by environment, user,
+    and third-party API usage.
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.services.daily_cost_report_service import DailyCostReportService
+
+    # Check if report is enabled
+    if not getattr(settings, "DAILY_COST_REPORT_ENABLED", True):
+        logger.info("Daily cost report is disabled via DAILY_COST_REPORT_ENABLED")
+        return
+
+    # Get recipients from settings
+    recipients_str = getattr(settings, "DAILY_COST_REPORT_RECIPIENTS", "")
+    if not recipients_str:
+        logger.warning("DAILY_COST_REPORT_RECIPIENTS not configured, skipping daily cost report")
+        return
+
+    recipients = [email.strip() for email in recipients_str.split(",") if email.strip()]
+    if not recipients:
+        logger.warning("No valid recipients configured for daily cost report")
+        return
+
+    try:
+        logger.info(f"Sending daily cost report to {len(recipients)} recipients")
+
+        # Create async database session
+        postgres_url = settings.POSTGRES_URL
+        if postgres_url.startswith("postgresql://"):
+            postgres_url = postgres_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        engine = create_async_engine(postgres_url, echo=False, pool_pre_ping=True)
+        async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session_maker() as session:
+            service = DailyCostReportService(session)
+            report = await service.generate_report()
+            success = await service.send_report(report, recipients)
+
+            if success:
+                logger.info(
+                    "daily_cost_report_sent",
+                    total_cost=report.total_cost_eur,
+                    environments=len(report.environment_breakdown),
+                    users=len(report.user_breakdown),
+                    alerts=len(report.alerts),
+                )
+            else:
+                logger.error("Failed to send daily cost report")
+
+        await engine.dispose()
+
+    except Exception as e:
+        logger.error(f"Error in daily cost report task: {e}", exc_info=True)
+
+
 def setup_default_tasks() -> None:
     """Setup default scheduled tasks."""
     # Add 12-hour metrics report task
@@ -795,8 +856,22 @@ def setup_default_tasks() -> None:
     )
     scheduler_service.add_task(ingestion_report_task)
 
+    # DEV-246: Add daily cost report task
+    # Sends daily email with cost breakdown by environment, user, and third-party APIs
+    # Default time: 07:00 Europe/Rome (configured via DAILY_COST_REPORT_TIME)
+    cost_report_enabled = getattr(settings, "DAILY_COST_REPORT_ENABLED", True)
+    cost_report_time = getattr(settings, "DAILY_COST_REPORT_TIME", "07:00")
+    cost_report_task = ScheduledTask(
+        name="daily_cost_report",
+        interval=ScheduleInterval.DAILY,
+        function=send_daily_cost_report_task,
+        enabled=cost_report_enabled,
+        target_time=cost_report_time,  # Run daily at configured time
+    )
+    scheduler_service.add_task(cost_report_task)
+
     logger.info(
-        f"Default scheduled tasks configured (metrics reports + RSS feeds + Gazzetta scraper + Cassazione scraper + AdER scraper + daily ingestion report [enabled={ingestion_report_enabled}])"
+        f"Default scheduled tasks configured (metrics reports + RSS feeds + Gazzetta scraper + Cassazione scraper + AdER scraper + daily ingestion report [enabled={ingestion_report_enabled}] + daily cost report [enabled={cost_report_enabled}])"
     )
 
 

@@ -126,6 +126,7 @@ class UsageTracker:
                 user_id=user_id,
                 session_id=session_id,
                 event_type=UsageType.LLM_QUERY,
+                environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
                 provider=provider,
                 model=model,
                 input_tokens=input_tokens if not cache_hit else 0,
@@ -177,6 +178,7 @@ class UsageTracker:
                 user_id=user_id,
                 session_id=session_id,
                 event_type=UsageType.LLM_QUERY,
+                environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
                 error_occurred=True,
                 error_type=str(e),
             )
@@ -213,6 +215,7 @@ class UsageTracker:
             user_id=user_id,
             session_id=session_id,
             event_type=UsageType.API_REQUEST,
+            environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
             response_time_ms=response_time_ms,
             request_size=request_size,
             response_size=response_size,
@@ -226,6 +229,73 @@ class UsageTracker:
             await db.commit()
 
         return usage_event
+
+    async def track_third_party_api(
+        self,
+        user_id: str,
+        session_id: str,
+        api_type: str,
+        cost_eur: float,
+        response_time_ms: int,
+        request_count: int = 1,
+        error_occurred: bool = False,
+        error_type: str | None = None,
+    ) -> UsageEvent:
+        """Track third-party API usage (e.g., Brave Search API).
+
+        DEV-246: Track third-party API costs separately for daily cost reporting.
+
+        Args:
+            user_id: User identifier
+            session_id: Session identifier
+            api_type: Type of API (e.g., "brave_search", "web_scraper")
+            cost_eur: Cost in EUR for this API call
+            response_time_ms: Response time in milliseconds
+            request_count: Number of API requests (default: 1)
+            error_occurred: Whether an error occurred
+            error_type: Type of error if any
+
+        Returns:
+            UsageEvent: The created usage event
+        """
+        usage_event = UsageEvent(
+            user_id=user_id,
+            session_id=session_id,
+            event_type=UsageType.API_REQUEST,
+            environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
+            api_type=api_type,  # DEV-246: Track API type for third-party breakdown
+            cost_eur=cost_eur,
+            cost_category=CostCategory.THIRD_PARTY,
+            response_time_ms=response_time_ms,
+            error_occurred=error_occurred,
+            error_type=error_type,
+        )
+
+        try:
+            async with database_service.get_db() as db:  # type: ignore[attr-defined]
+                db.add(usage_event)
+                await db.commit()
+                await db.refresh(usage_event)
+
+            logger.info(
+                "third_party_api_tracked",
+                user_id=user_id,
+                api_type=api_type,
+                cost_eur=cost_eur,
+                environment=settings.ENVIRONMENT.value,
+            )
+
+            return usage_event
+
+        except Exception as e:
+            logger.error(
+                "third_party_api_tracking_failed",
+                user_id=user_id,
+                api_type=api_type,
+                error=str(e),
+            )
+            # Return event even on error (not persisted)
+            return usage_event
 
     async def get_user_metrics(
         self, user_id: str, start_date: datetime | None = None, end_date: datetime | None = None

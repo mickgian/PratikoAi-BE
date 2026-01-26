@@ -2,12 +2,15 @@
 
 Tests cover:
 - Handler creation with valid/missing credentials
-- Session ID and user ID propagation
+- Session ID and user ID propagation via metadata
 - Environment-aware sampling rates
 - Metadata enrichment
 - Graceful degradation
 
-Following TDD: These tests are written BEFORE the implementation.
+Updated for Langfuse SDK v3 API:
+- CallbackHandler accepts no constructor arguments
+- Session ID, user ID, tags passed via config["metadata"] with langfuse_ prefix
+- create_langfuse_handler returns tuple[CallbackHandler | None, dict[str, Any]]
 """
 
 import uuid
@@ -35,16 +38,17 @@ class TestCreateLangfuseHandler:
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
             mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
 
-            handler = create_langfuse_handler(
+            handler, metadata = create_langfuse_handler(
                 session_id="session-123",
                 user_id="user-456",
             )
 
         assert handler is not None
+        assert isinstance(metadata, dict)
 
     @patch("app.observability.langfuse_config.CallbackHandler")
     def test_returns_none_when_credentials_missing(self, mock_handler_class: MagicMock) -> None:
-        """Should return None when Langfuse credentials are missing."""
+        """Should return (None, {}) when Langfuse credentials are missing."""
         from app.observability.langfuse_config import create_langfuse_handler
 
         with patch("app.observability.langfuse_config.settings") as mock_settings:
@@ -53,36 +57,18 @@ class TestCreateLangfuseHandler:
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
             mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
 
-            handler = create_langfuse_handler(
+            handler, metadata = create_langfuse_handler(
                 session_id="session-123",
                 user_id="user-456",
             )
 
         assert handler is None
+        assert metadata == {}
         mock_handler_class.assert_not_called()
 
     @patch("app.observability.langfuse_config.CallbackHandler")
-    def test_session_id_propagated_to_handler(self, mock_handler_class: MagicMock) -> None:
-        """Session ID should be passed to the handler."""
-        from app.observability.langfuse_config import create_langfuse_handler
-
-        with patch("app.observability.langfuse_config.settings") as mock_settings:
-            mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
-            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret  # pragma: allowlist secret
-            mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
-            mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
-
-            create_langfuse_handler(
-                session_id="my-session-id",
-                user_id="user-456",
-            )
-
-        call_kwargs = mock_handler_class.call_args[1]
-        assert call_kwargs["session_id"] == "my-session-id"
-
-    @patch("app.observability.langfuse_config.CallbackHandler")
-    def test_user_id_propagated_to_handler(self, mock_handler_class: MagicMock) -> None:
-        """User ID should be passed to the handler."""
+    def test_session_id_propagated_to_metadata(self, mock_handler_class: MagicMock) -> None:
+        """Session ID should be included in metadata with langfuse_ prefix."""
         from app.observability.langfuse_config import create_langfuse_handler
 
         with patch("app.observability.langfuse_config.settings") as mock_settings:
@@ -91,13 +77,30 @@ class TestCreateLangfuseHandler:
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
             mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
 
-            create_langfuse_handler(
+            handler, metadata = create_langfuse_handler(
+                session_id="my-session-id",
+                user_id="user-456",
+            )
+
+        assert metadata["langfuse_session_id"] == "my-session-id"
+
+    @patch("app.observability.langfuse_config.CallbackHandler")
+    def test_user_id_propagated_to_metadata(self, mock_handler_class: MagicMock) -> None:
+        """User ID should be included in metadata with langfuse_ prefix."""
+        from app.observability.langfuse_config import create_langfuse_handler
+
+        with patch("app.observability.langfuse_config.settings") as mock_settings:
+            mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
+            mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
+            mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
+
+            handler, metadata = create_langfuse_handler(
                 session_id="session-123",
                 user_id="my-user-id",
             )
 
-        call_kwargs = mock_handler_class.call_args[1]
-        assert call_kwargs["user_id"] == "my-user-id"
+        assert metadata["langfuse_user_id"] == "my-user-id"
 
     @patch("app.observability.langfuse_config.CallbackHandler")
     def test_anonymous_user_id_when_not_provided(self, mock_handler_class: MagicMock) -> None:
@@ -110,10 +113,9 @@ class TestCreateLangfuseHandler:
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
             mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
 
-            create_langfuse_handler(session_id="session-123")
+            handler, metadata = create_langfuse_handler(session_id="session-123")
 
-        call_kwargs = mock_handler_class.call_args[1]
-        assert call_kwargs["user_id"] == "anonymous"
+        assert metadata["langfuse_user_id"] == "anonymous"
 
     @patch("app.observability.langfuse_config.CallbackHandler")
     def test_generates_session_id_when_missing(self, mock_handler_class: MagicMock) -> None:
@@ -126,11 +128,10 @@ class TestCreateLangfuseHandler:
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
             mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
 
-            create_langfuse_handler()
+            handler, metadata = create_langfuse_handler()
 
-        call_kwargs = mock_handler_class.call_args[1]
         # Verify it's a valid UUID format
-        session_id = call_kwargs["session_id"]
+        session_id = metadata["langfuse_session_id"]
         uuid.UUID(session_id)  # Raises ValueError if invalid
 
 
@@ -235,14 +236,13 @@ class TestMetadataEnrichment:
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
             mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
 
-            create_langfuse_handler(
+            handler, metadata = create_langfuse_handler(
                 session_id="session-123",
                 user_id="user-456",
             )
 
-        call_kwargs = mock_handler_class.call_args[1]
-        assert "metadata" in call_kwargs
-        assert call_kwargs["metadata"]["environment"] == "development"
+        assert "environment" in metadata
+        assert metadata["environment"] == "development"
 
     @patch("app.observability.langfuse_config.CallbackHandler")
     def test_metadata_includes_request_id(self, mock_handler_class: MagicMock) -> None:
@@ -255,18 +255,17 @@ class TestMetadataEnrichment:
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
             mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
 
-            create_langfuse_handler(
+            handler, metadata = create_langfuse_handler(
                 session_id="session-123",
                 user_id="user-456",
                 request_id="req-789",
             )
 
-        call_kwargs = mock_handler_class.call_args[1]
-        assert call_kwargs["metadata"]["request_id"] == "req-789"
+        assert metadata["request_id"] == "req-789"
 
     @patch("app.observability.langfuse_config.CallbackHandler")
     def test_metadata_includes_custom_tags(self, mock_handler_class: MagicMock) -> None:
-        """Metadata should include custom tags when provided."""
+        """Metadata should include custom tags with langfuse_ prefix."""
         from app.observability.langfuse_config import create_langfuse_handler
 
         with patch("app.observability.langfuse_config.settings") as mock_settings:
@@ -275,14 +274,13 @@ class TestMetadataEnrichment:
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
             mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
 
-            create_langfuse_handler(
+            handler, metadata = create_langfuse_handler(
                 session_id="session-123",
                 user_id="user-456",
                 tags=["rag", "debug"],
             )
 
-        call_kwargs = mock_handler_class.call_args[1]
-        assert call_kwargs["tags"] == ["rag", "debug"]
+        assert metadata["langfuse_tags"] == ["rag", "debug"]
 
     @patch("app.observability.langfuse_config.CallbackHandler")
     def test_metadata_includes_stage(self, mock_handler_class: MagicMock) -> None:
@@ -295,13 +293,12 @@ class TestMetadataEnrichment:
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
             mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
 
-            create_langfuse_handler(
+            handler, metadata = create_langfuse_handler(
                 session_id="session-123",
                 stage="retrieval",
             )
 
-        call_kwargs = mock_handler_class.call_args[1]
-        assert call_kwargs["metadata"]["stage"] == "retrieval"
+        assert metadata["stage"] == "retrieval"
 
 
 class TestGracefulDegradation:
@@ -309,7 +306,7 @@ class TestGracefulDegradation:
 
     @patch("app.observability.langfuse_config.CallbackHandler")
     def test_returns_none_on_handler_creation_error(self, mock_handler_class: MagicMock) -> None:
-        """Should return None if handler creation fails."""
+        """Should return (None, {}) if handler creation fails."""
         from app.observability.langfuse_config import create_langfuse_handler
 
         mock_handler_class.side_effect = Exception("Connection failed")
@@ -320,9 +317,10 @@ class TestGracefulDegradation:
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
             mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
 
-            handler = create_langfuse_handler(session_id="session-123")
+            handler, metadata = create_langfuse_handler(session_id="session-123")
 
         assert handler is None
+        assert metadata == {}
 
     @patch("app.observability.langfuse_config.CallbackHandler")
     def test_logs_warning_on_handler_creation_error(

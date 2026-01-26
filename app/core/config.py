@@ -313,6 +313,19 @@ class Settings:
             "yes",
         )
 
+        # Daily Cost Report Configuration (DEV-246)
+        # Recipients (comma-separated) for cost spending reports
+        self.DAILY_COST_REPORT_RECIPIENTS = os.getenv("DAILY_COST_REPORT_RECIPIENTS", "")
+        # Time to send report in HH:MM format (Europe/Rome timezone)
+        self.DAILY_COST_REPORT_TIME = os.getenv("DAILY_COST_REPORT_TIME", "07:00")
+        # Enable/disable the daily cost report
+        self.DAILY_COST_REPORT_ENABLED = os.getenv("DAILY_COST_REPORT_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+
         # RSS Collection Configuration
         # Time to run daily RSS collection in HH:MM format (Europe/Rome timezone)
         self.RSS_COLLECTION_TIME = os.getenv("RSS_COLLECTION_TIME", "01:00")

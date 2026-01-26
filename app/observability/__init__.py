@@ -8,6 +8,7 @@ This package provides:
 
 from app.observability.langfuse_config import (
     create_langfuse_handler,
+    flush_langfuse_handler,
     get_sampling_rate,
     should_sample,
 )
@@ -19,6 +20,7 @@ from app.observability.langfuse_spans import (
 
 __all__ = [
     "create_langfuse_handler",
+    "flush_langfuse_handler",
     "get_sampling_rate",
     "should_sample",
     "node_span",

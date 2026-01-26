@@ -514,11 +514,14 @@ Fornisci la risposta in formato JSON:
 }}
 """
 
-    def _format_conversation(self, history: list[dict] | None) -> str:
+    def _format_conversation(self, history: list | None) -> str:
         """Format conversation history for prompt inclusion.
 
+        Handles both dict messages and LangChain BaseMessage objects
+        (AIMessage, HumanMessage, etc.) which have .type and .content attributes.
+
         Args:
-            history: List of conversation turns
+            history: List of conversation turns (dicts or BaseMessage objects)
 
         Returns:
             Formatted string or "Nessuna conversazione precedente"
@@ -528,8 +531,21 @@ Fornisci la risposta in formato JSON:
 
         formatted = []
         for turn in history[-3:]:  # Last 3 turns
-            role = "Utente" if turn.get("role") == "user" else "Assistente"
-            content = turn.get("content", "")[:200]  # Truncate
+            # Handle both dict and LangChain Message objects
+            if isinstance(turn, dict):
+                role_raw = turn.get("role")
+                content = turn.get("content", "")
+            else:
+                # LangChain messages have .type (ai, human) and .content attributes
+                role_raw = getattr(turn, "type", None) or getattr(turn, "role", None)
+                content = getattr(turn, "content", "") or ""
+
+            # Map LangChain types to semantic roles
+            role_map = {"ai": "assistant", "human": "user", "assistant": "assistant"}
+            role_str = str(role_raw) if role_raw else "user"
+            role_raw = role_map.get(role_str, role_str)
+            role = "Utente" if role_raw == "user" else "Assistente"
+            content = content[:200] if content else ""  # Truncate
             formatted.append(f"{role}: {content}")
 
         return "\n".join(formatted)

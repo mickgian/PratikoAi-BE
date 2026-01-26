@@ -24,7 +24,11 @@ from langchain_core.messages import (
     convert_to_openai_messages,
 )
 
-from app.observability.langfuse_config import create_langfuse_handler, should_sample
+from app.observability.langfuse_config import (
+    create_langfuse_handler,
+    flush_langfuse_handler,
+    should_sample,
+)
 
 try:
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -1674,10 +1678,15 @@ class LangGraphAgent:
             error_type = llm.get("error_type")
             error_msg = str(llm.get("error", "")).lower()
 
-            # Check if error is non-retryable
+            # Check if error is non-retryable (code bugs or permanent API errors)
+            # Permanent API errors: insufficient_quota, invalid_api_key, etc.
             is_non_retryable = (
                 error_type in ("TypeError", "ValueError", "AttributeError")
                 or "multiple values for keyword argument" in error_msg
+                or "insufficient_quota" in error_msg
+                or "invalid_api_key" in error_msg
+                or "exceeded your current quota" in error_msg
+                or "billing" in error_msg
             )
 
             if is_non_retryable:
@@ -2592,10 +2601,11 @@ class LangGraphAgent:
         if self._graph is None:
             self._graph = await self.create_graph()
 
-        # Build callbacks list with enhanced Langfuse handler (DEV-243)
+        # Build callbacks list with enhanced Langfuse handler (DEV-243, updated for v3)
         callbacks = []
+        langfuse_metadata: dict[str, Any] = {}
         if should_sample():
-            handler = create_langfuse_handler(
+            handler, langfuse_metadata = create_langfuse_handler(
                 session_id=session_id,
                 user_id=user_id,
                 tags=["rag", "ainvoke"],
@@ -2604,10 +2614,12 @@ class LangGraphAgent:
                 callbacks.append(handler)
 
         # Type cast: LangGraph accepts dicts for config
+        # Langfuse v3: metadata with langfuse_ prefix is required for session/user tracking
         config: Any = {
             "configurable": {"thread_id": session_id},
             "callbacks": callbacks,
             "metadata": {
+                **langfuse_metadata,  # Langfuse v3 metadata (langfuse_session_id, etc.)
                 "user_id": user_id,
                 "session_id": session_id,
                 "environment": settings.ENVIRONMENT.value,
@@ -2629,6 +2641,9 @@ class LangGraphAgent:
             logger.error(f"Error getting response: {str(e)}")
             raise e
         finally:
+            # Flush Langfuse traces to ensure they are sent
+            for cb in callbacks:
+                flush_langfuse_handler(cb)
             # Clean up tracking info
             self._current_user_id = None
             self._current_session_id = None
@@ -2970,9 +2985,24 @@ class LangGraphAgent:
                 next_step=11,  # First step in Lane 2 (message processing)
             )
 
+            # Build Langfuse callbacks for tracing (DEV-243, Langfuse v3)
+            callbacks_for_stream: list[Any] = []
+            langfuse_metadata_stream: dict[str, Any] = {}
+            if should_sample():
+                handler_stream, langfuse_metadata_stream = create_langfuse_handler(
+                    session_id=session_id,
+                    user_id=user_id,
+                    tags=["rag", "stream", "get_stream_response"],
+                )
+                if handler_stream:
+                    callbacks_for_stream.append(handler_stream)
+                    logger.info("langfuse_handler_added_to_stream_config", session_id=session_id)
+
             # Debug: Log config and graph state
-            config_to_use = {
+            config_to_use: dict[str, Any] = {
                 "configurable": {"thread_id": session_id},
+                "callbacks": callbacks_for_stream,
+                "metadata": langfuse_metadata_stream,
                 "recursion_limit": 50,  # Increased from default 25 to prevent infinite loops
             }
             logger.debug(
@@ -3774,6 +3804,9 @@ class LangGraphAgent:
                 original_error=str(stream_error),
             )
         finally:
+            # Flush Langfuse traces to ensure they are sent
+            for cb in callbacks_for_stream:
+                flush_langfuse_handler(cb)
             # Clean up tracking info
             self._current_user_id = None
             self._current_session_id = None
@@ -3860,10 +3893,11 @@ class LangGraphAgent:
             if self._graph is None:
                 self._graph = await self.create_graph()
 
-            # Build callbacks list with enhanced Langfuse handler (DEV-243)
+            # Build callbacks list with enhanced Langfuse handler (DEV-243, updated for v3)
             callbacks = []
+            langfuse_metadata: dict[str, Any] = {}
             if should_sample():
-                handler = create_langfuse_handler(
+                handler, langfuse_metadata = create_langfuse_handler(
                     session_id=session_id,
                     user_id=self._current_user_id,
                     tags=["rag", "stream"],
@@ -3872,9 +3906,11 @@ class LangGraphAgent:
                     callbacks.append(handler)
 
             # Type cast: LangGraph accepts dicts for config
+            # Langfuse v3: metadata with langfuse_ prefix is required for session/user tracking
             config: Any = {
                 "configurable": {"thread_id": session_id},
                 "callbacks": callbacks,
+                "metadata": langfuse_metadata,  # Langfuse v3 metadata
                 "recursion_limit": 50,  # Increased from default 25 to prevent infinite loops
             }
 
@@ -3920,6 +3956,10 @@ class LangGraphAgent:
                 session_id=session_id,
             )
             raise
+        finally:
+            # Flush Langfuse traces after streaming completes
+            for cb in callbacks:
+                flush_langfuse_handler(cb)
 
     async def get_chat_history(self, session_id: str) -> list[Message]:
         """Get the chat history for a given thread ID.

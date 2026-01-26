@@ -422,21 +422,21 @@ class TestDailyCostReportService:
             total_cost_eur=15.50,
         )
 
-        # Mock SMTP
-        with patch("smtplib.SMTP_SSL") as mock_smtp:
+        # Mock SMTP (using SMTP with STARTTLS, not SMTP_SSL)
+        with patch("smtplib.SMTP") as mock_smtp:
             mock_server = MagicMock()
             mock_smtp.return_value.__enter__ = MagicMock(return_value=mock_server)
             mock_smtp.return_value.__exit__ = MagicMock(return_value=False)
 
             # Mock settings
             with patch("app.services.daily_cost_report_service.settings") as mock_settings:
-                mock_settings.SMTP_HOST = "smtp.test.com"
-                mock_settings.SMTP_PORT = 465
-                mock_settings.SMTP_USER = "test@test.com"
+                mock_settings.SMTP_SERVER = "smtp.test.com"
+                mock_settings.SMTP_PORT = 587
+                mock_settings.SMTP_USERNAME = "test@test.com"
                 mock_settings.SMTP_PASSWORD = "password"  # pragma: allowlist secret
                 mock_settings.DAILY_COST_REPORT_RECIPIENTS = ["admin@test.com"]
 
-                success = await service.send_report(report)
+                success = await service.send_report(report, recipients=["admin@test.com"])
 
         # Email should attempt to send (may fail without real SMTP)
         # This test verifies the method runs without exceptions

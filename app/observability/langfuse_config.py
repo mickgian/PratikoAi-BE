@@ -1,8 +1,12 @@
 """Langfuse configuration and handler creation for LangGraph observability.
 
+Updated for Langfuse SDK v3.x which uses a different API:
+- CallbackHandler accepts no constructor arguments
+- Session ID, user ID, tags passed via config["metadata"] with langfuse_ prefix
+
 This module provides:
 - Environment-aware sampling rates (100% DEV/QA, 10% PROD)
-- Session ID and user ID propagation
+- Session ID and user ID propagation via metadata
 - Searchable metadata enrichment
 - Graceful degradation when Langfuse is unavailable
 
@@ -14,7 +18,7 @@ Performance constraints:
 import logging
 import random
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from langfuse.langchain import CallbackHandler
 
@@ -85,14 +89,12 @@ def create_langfuse_handler(
     request_id: str | None = None,
     stage: str | None = None,
     tags: list[str] | None = None,
-) -> CallbackHandler | None:
-    """Create a Langfuse CallbackHandler with enhanced tracking.
+) -> tuple[CallbackHandler | None, dict[str, Any]]:
+    """Create a Langfuse CallbackHandler with enhanced tracking (v3 API).
 
-    Creates a handler configured with:
-    - Session ID for conversation tracking
-    - User ID for user-level filtering
-    - Environment-aware metadata
-    - Searchable tags and metadata
+    In Langfuse SDK v3, the CallbackHandler accepts no constructor arguments.
+    Session ID, user ID, and tags are passed via config["metadata"] with
+    the langfuse_ prefix when invoking the chain.
 
     Args:
         session_id: Unique session/conversation identifier. If not provided, generates UUID.
@@ -102,53 +104,64 @@ def create_langfuse_handler(
         tags: Optional list of tags for filtering in Langfuse UI.
 
     Returns:
-        CallbackHandler instance, or None if credentials are missing or creation fails.
+        Tuple of (CallbackHandler, metadata_dict) where metadata_dict should be
+        merged into config["metadata"] when invoking the chain.
+        Returns (None, {}) if credentials are missing or creation fails.
 
     Example:
         ```python
-        handler = create_langfuse_handler(
+        handler, langfuse_metadata = create_langfuse_handler(
             session_id="conv-123",
             user_id="user-456",
             tags=["rag", "debug"],
         )
         if handler:
-            config = {"callbacks": [handler]}
+            config = {
+                "callbacks": [handler],
+                "metadata": {**langfuse_metadata, "other_key": "value"},
+            }
             await graph.ainvoke(state, config)
         ```
     """
     # Check for credentials
     if not settings.LANGFUSE_PUBLIC_KEY or not settings.LANGFUSE_SECRET_KEY:
         logger.debug("Langfuse credentials not configured, skipping handler creation")
-        return None
+        return None, {}
 
     # Generate session ID if not provided
     effective_session_id = session_id or str(uuid.uuid4())
 
     # Default to anonymous user
-    effective_user_id = user_id or "anonymous"
+    effective_user_id = str(user_id) if user_id else "anonymous"
 
-    # Build metadata
-    metadata: dict[str, Any] = {
-        "environment": settings.ENVIRONMENT.value,
+    # Build Langfuse v3 metadata (prefixed with langfuse_)
+    langfuse_metadata: dict[str, Any] = {
+        "langfuse_session_id": effective_session_id,
+        "langfuse_user_id": effective_user_id,
+        "langfuse_tags": tags or ["rag"],
     }
 
+    # Add custom metadata (non-prefixed for general use)
     if request_id:
-        metadata["request_id"] = request_id
-
+        langfuse_metadata["request_id"] = request_id
     if stage:
-        metadata["stage"] = stage
+        langfuse_metadata["stage"] = stage
+    langfuse_metadata["environment"] = settings.ENVIRONMENT.value
 
     try:
-        handler = CallbackHandler(
-            public_key=settings.LANGFUSE_PUBLIC_KEY,
-            secret_key=settings.LANGFUSE_SECRET_KEY,
-            host=settings.LANGFUSE_HOST,
-            session_id=effective_session_id,
-            user_id=effective_user_id,
-            metadata=metadata,
-            tags=tags or [],
+        logger.info(
+            "Creating Langfuse v3 handler",
+            extra={
+                "session_id": effective_session_id,
+                "user_id": effective_user_id,
+                "has_public_key": bool(settings.LANGFUSE_PUBLIC_KEY),
+                "has_secret_key": bool(settings.LANGFUSE_SECRET_KEY),
+            },
         )
-        return handler
+        # Langfuse v3: CallbackHandler takes no constructor arguments
+        handler = CallbackHandler()
+        logger.info("Langfuse v3 handler created successfully")
+        return handler, langfuse_metadata
     except Exception as e:
         logger.warning(
             "Failed to create Langfuse handler",
@@ -157,4 +170,43 @@ def create_langfuse_handler(
                 "error_type": type(e).__name__,
             },
         )
-        return None
+        return None, {}
+
+
+def flush_langfuse_handler(handler: CallbackHandler | None) -> None:
+    """Flush pending traces to Langfuse.
+
+    The CallbackHandler queues traces asynchronously. Call this after the
+    LangGraph invocation completes to ensure traces are sent to Langfuse.
+
+    Args:
+        handler: The CallbackHandler to flush, or None (no-op).
+
+    Example:
+        ```python
+        handler, metadata = create_langfuse_handler(session_id="conv-123")
+        try:
+            result = await graph.ainvoke(state, {"callbacks": [handler], "metadata": metadata})
+        finally:
+            flush_langfuse_handler(handler)
+        ```
+    """
+    if handler is None:
+        logger.debug("flush_langfuse_handler: handler is None, skipping")
+        return
+
+    try:
+        # Langfuse v3: Use global client to flush
+        from langfuse import get_client
+
+        client = get_client()
+        client.flush()
+        logger.debug("flush_langfuse_handler: flushed via get_client()")
+    except Exception as e:
+        logger.warning(
+            "Failed to flush Langfuse handler",
+            extra={
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+        )

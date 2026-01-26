@@ -23,7 +23,8 @@ from langchain_core.messages import (
     ToolMessage,
     convert_to_openai_messages,
 )
-from langfuse.langchain import CallbackHandler
+
+from app.observability.langfuse_config import create_langfuse_handler, should_sample
 
 try:
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -2590,10 +2591,22 @@ class LangGraphAgent:
 
         if self._graph is None:
             self._graph = await self.create_graph()
+
+        # Build callbacks list with enhanced Langfuse handler (DEV-243)
+        callbacks = []
+        if should_sample():
+            handler = create_langfuse_handler(
+                session_id=session_id,
+                user_id=user_id,
+                tags=["rag", "ainvoke"],
+            )
+            if handler:
+                callbacks.append(handler)
+
         # Type cast: LangGraph accepts dicts for config
         config: Any = {
             "configurable": {"thread_id": session_id},
-            "callbacks": [CallbackHandler()],
+            "callbacks": callbacks,
             "metadata": {
                 "user_id": user_id,
                 "session_id": session_id,
@@ -3847,10 +3860,21 @@ class LangGraphAgent:
             if self._graph is None:
                 self._graph = await self.create_graph()
 
+            # Build callbacks list with enhanced Langfuse handler (DEV-243)
+            callbacks = []
+            if should_sample():
+                handler = create_langfuse_handler(
+                    session_id=session_id,
+                    user_id=self._current_user_id,
+                    tags=["rag", "stream"],
+                )
+                if handler:
+                    callbacks.append(handler)
+
             # Type cast: LangGraph accepts dicts for config
             config: Any = {
                 "configurable": {"thread_id": session_id},
-                "callbacks": [CallbackHandler()],
+                "callbacks": callbacks,
                 "recursion_limit": 50,  # Increased from default 25 to prevent infinite loops
             }
 

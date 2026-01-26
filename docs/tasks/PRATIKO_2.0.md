@@ -1,9 +1,9 @@
 # PratikoAI 2.0 - Professional Engagement Platform
 
-**Last Updated:** 2025-12-19
+**Last Updated:** 2026-01-26
 **Status:** Active Development
-**Task ID Range:** DEV-200 to DEV-294
-**Timeline:** 10-12 weeks (~95 tasks, accelerated with Claude Code)
+**Task ID Range:** DEV-300 to DEV-395
+**Timeline:** 10-12 weeks (~96 tasks, accelerated with Claude Code)
 **Target:** MVP Launch
 
 ---
@@ -129,7 +129,62 @@ tests/
 | ADR-017 | Multi-Tenancy Architecture | PROPOSED | Row-level with `studio_id` + PostgreSQL RLS |
 | ADR-018 | Normative Matching Engine | PROPOSED | Hybrid: LangGraph node + background service |
 | ADR-019 | Communication Generation | PROPOSED | LangGraph tool following existing patterns |
-| ADR-020 | GDPR Client Data Architecture | PROPOSED | DPA, breach notification, processing register |
+| ADR-020 | Suggested Actions | SUPERSEDED | Feature removed per user feedback (see Deprecated Features) |
+| ADR-024 | GDPR Client Data Architecture | PROPOSED | DPA, breach notification, processing register |
+
+---
+
+## Deprecated Features (Do Not Implement)
+
+### Suggested Actions (Azioni Suggerite) - REMOVED
+**Removed in:** DEV-245 Phase 5.15 (January 2026)
+**Reason:** User feedback - actions were generic, not contextually relevant
+
+**What was removed:**
+- `<suggested_actions>` XML tag parsing
+- `SuggestedActionsBar.tsx` frontend component
+- `ActionValidator`, `ActionRegenerator` services
+- `suggested_actions` SSE event
+
+**What was kept:**
+- Interactive Questions (pre-response clarification)
+- Web Verification caveats
+
+**Important:** If any PRATIKO 2.0 task mentions "suggested actions", verify whether it refers to the removed feature or a new design.
+
+---
+
+## Architectural Patterns from PRATIKO 1.5 (DEV-242/244/245)
+
+The following patterns were established during Response Quality improvements and should be reused:
+
+### 1. Parallel Hybrid RAG Architecture (DEV-245 Phase 3.2)
+- **Pattern:** Execute KB retrieval and web search in parallel, merge with RRF
+- **Benefit:** 50% fewer LLM calls, 40-50% faster responses
+- **Files:** `app/services/parallel_retrieval.py`, `app/services/web_verification.py`
+- **Use for:** Any feature requiring external data verification
+
+### 2. Topic Summary State for Long Conversations (DEV-245 Phase 5.3)
+- **Pattern:** Store `conversation_topic` + `topic_keywords` in RAGState with reducers
+- **Benefit:** Maintains context across 4+ conversation turns
+- **Files:** `app/core/langgraph/types.py`
+- **Use for:** Phase 4 (Guides) context persistence
+
+### 3. Generic Extraction Principles (DEV-245 Phase 4)
+- **Pattern:** Universal extraction rules instead of topic-specific rules
+- **Benefit:** Works for any topic without code changes
+- **Files:** `app/orchestrators/prompting.py`
+- **Use for:** All LLM prompting in PRATIKO 2.0
+
+### 4. Source Authority Hierarchy (DEV-242/244)
+- **Pattern:** `SOURCE_AUTHORITY` dict with official source boosts
+- **Files:** `app/services/parallel_retrieval.py`
+- **Use for:** Phase 2 (Matching Engine) source prioritization
+
+### 5. Hallucination Guard (DEV-245 Phase 2.3)
+- **Status:** Created but not yet integrated into pipeline
+- **Files:** `app/services/hallucination_guard.py`
+- **Opportunity:** Integrate in Phase 11 (Infrastructure) - see DEV-389
 
 ---
 
@@ -137,18 +192,18 @@ tests/
 
 | Old ID | New ID | Phase |
 |--------|--------|-------|
-| DEV-2.0-001 to DEV-2.0-008 | DEV-200 to DEV-207 | Phase 0: Foundation |
-| DEV-2.0-009 to DEV-2.0-020 | DEV-208 to DEV-219 | Phase 1: Service Layer |
-| DEV-2.0-021 to DEV-2.0-030 | DEV-220 to DEV-229 | Phase 2: Matching Engine |
-| DEV-2.0-031 to DEV-2.0-040 | DEV-230 to DEV-239 | Phase 3: Communications |
-| DEV-2.0-041 to DEV-2.0-048 | DEV-240 to DEV-247 | Phase 4: Guides |
-| DEV-2.0-049 to DEV-2.0-054 | DEV-248 to DEV-253 | Phase 5: Tax Calculations |
-| DEV-2.0-055 to DEV-2.0-060 | DEV-254 to DEV-259 | Phase 6: Dashboard |
-| DEV-2.0-061 to DEV-2.0-066 | DEV-260 to DEV-265 | Phase 7: Documents |
-| DEV-2.0-067 to DEV-2.0-072 | DEV-266 to DEV-271 | Phase 8: Frontend Integration |
-| DEV-2.0-073 to DEV-2.0-080 | DEV-272 to DEV-279 | Phase 9: GDPR Compliance |
-| NEW | DEV-280 to DEV-287 | Phase 10: Deadline System |
-| NEW | DEV-288 to DEV-294 | Phase 11: Infrastructure & Quality |
+| DEV-2.0-001 to DEV-2.0-008 | DEV-300 to DEV-307 | Phase 0: Foundation |
+| DEV-2.0-009 to DEV-2.0-020 | DEV-308 to DEV-319 | Phase 1: Service Layer |
+| DEV-2.0-021 to DEV-2.0-030 | DEV-320 to DEV-329 | Phase 2: Matching Engine |
+| DEV-2.0-031 to DEV-2.0-040 | DEV-330 to DEV-339 | Phase 3: Communications |
+| DEV-2.0-041 to DEV-2.0-048 | DEV-340 to DEV-347 | Phase 4: Guides |
+| DEV-2.0-049 to DEV-2.0-054 | DEV-348 to DEV-353 | Phase 5: Tax Calculations |
+| DEV-2.0-055 to DEV-2.0-060 | DEV-354 to DEV-359 | Phase 6: Dashboard |
+| DEV-2.0-061 to DEV-2.0-066 | DEV-360 to DEV-365 | Phase 7: Documents |
+| DEV-2.0-067 to DEV-2.0-072 | DEV-366 to DEV-371 | Phase 8: Frontend Integration |
+| DEV-2.0-073 to DEV-2.0-080 | DEV-372 to DEV-379 | Phase 9: GDPR Compliance |
+| NEW | DEV-380 to DEV-387 | Phase 10: Deadline System |
+| NEW | DEV-388 to DEV-395 | Phase 11: Infrastructure & Quality |
 
 ---
 
@@ -156,13 +211,13 @@ tests/
 
 | Task ID | Risk Level | Risk Type | Mitigation |
 |---------|------------|-----------|------------|
-| DEV-207 | CRITICAL | DB Migration | Backup before deploy, reversible migration |
-| DEV-215 | HIGH | User Table Modification | Existing users affected, nullable FK |
-| DEV-222 | HIGH | LangGraph Pipeline | Modifies 134-step pipeline |
-| DEV-227 | CRITICAL | Security | Multi-tenant isolation must be 95%+ |
-| DEV-237 | HIGH | LangGraph Modification | Response formatter changes |
-| DEV-272 | CRITICAL | Legal/Compliance | DPA required before client data |
-| DEV-274 | CRITICAL | Legal/Compliance | 72h breach notification requirement |
+| DEV-307 | CRITICAL | DB Migration | Backup before deploy, reversible migration |
+| DEV-315 | HIGH | User Table Modification | Existing users affected, nullable FK |
+| DEV-322 | HIGH | LangGraph Pipeline | Modifies 134-step pipeline |
+| DEV-327 | CRITICAL | Security | Multi-tenant isolation must be 95%+ |
+| DEV-337 | HIGH | LangGraph Modification | Response formatter changes |
+| DEV-372 | CRITICAL | Legal/Compliance | DPA required before client data |
+| DEV-374 | CRITICAL | Legal/Compliance | 72h breach notification requirement |
 
 ---
 
@@ -173,72 +228,72 @@ tests/
 ### Phase 0 → Phase 1 Dependencies
 
 ```
-DEV-200 (Studio Model)
-    ├── DEV-208 (StudioService) ─── DEV-211 (Studio API)
-    └── DEV-215 (User-Studio Association)
+DEV-300 (Studio Model)
+    ├── DEV-308 (StudioService) ─── DEV-311 (Studio API)
+    └── DEV-315 (User-Studio Association)
 
-DEV-201 (Client Model)
-    ├── DEV-202 (ClientProfile) ─── DEV-222 (Vector Generation)
-    └── DEV-209 (ClientService) ─── DEV-212 (Client API)
-                                └── DEV-213 (Import)
-                                └── DEV-214 (Export)
+DEV-301 (Client Model)
+    ├── DEV-302 (ClientProfile) ─── DEV-322 (Vector Generation)
+    └── DEV-309 (ClientService) ─── DEV-312 (Client API)
+                                └── DEV-313 (Import)
+                                └── DEV-314 (Export)
 
-DEV-203 (MatchingRule) ─── DEV-221 (Pre-configured Rules)
-DEV-204 (ClientMatch) ─── DEV-220 (MatchingService)
-DEV-205 (Communication) ─── DEV-230 (CommunicationService)
-DEV-206 (ProceduralGuide) ─── DEV-240 (GuideService)
+DEV-303 (MatchingRule) ─── DEV-321 (Pre-configured Rules)
+DEV-304 (ClientMatch) ─── DEV-320 (MatchingService)
+DEV-305 (Communication) ─── DEV-330 (CommunicationService)
+DEV-306 (ProceduralGuide) ─── DEV-340 (GuideService)
 
-DEV-207 (Alembic Migration) ← BLOCKS ALL Phase 1
+DEV-307 (Alembic Migration) ← BLOCKS ALL Phase 1
 ```
 
 ### Phase 2 (Matching Engine) Dependencies
 
 ```
-DEV-220 (NormativeMatchingService)
-    ← DEV-202 (ClientProfile)
-    ← DEV-203 (MatchingRule)
-    ← DEV-204 (ClientMatch)
-    └── DEV-223 (LangGraph Node) ← DEV-222 (Vector Generation)
-    └── DEV-224 (ProactiveSuggestion)
-    └── DEV-225-229 (Background Jobs, API, Tests)
+DEV-320 (NormativeMatchingService)
+    ← DEV-302 (ClientProfile)
+    ← DEV-303 (MatchingRule)
+    ← DEV-304 (ClientMatch)
+    └── DEV-323 (LangGraph Node) ← DEV-322 (Vector Generation)
+    └── DEV-324 (ProactiveSuggestion)
+    └── DEV-325-229 (Background Jobs, API, Tests)
 ```
 
 ### Phase 3 (Communications) Dependencies
 
 ```
-DEV-230 (CommunicationService)
-    ← DEV-205 (Communication Model)
-    ← DEV-224 (ProactiveSuggestion) [for suggestion-to-communication]
-    └── DEV-231 (LLM Generation)
-    └── DEV-232 (Approval Workflow)
-    └── DEV-233 (Email) + DEV-234 (WhatsApp)
+DEV-330 (CommunicationService)
+    ← DEV-305 (Communication Model)
+    ← DEV-324 (ProactiveSuggestion) [for suggestion-to-communication]
+    └── DEV-331 (LLM Generation)
+    └── DEV-332 (Approval Workflow)
+    └── DEV-333 (Email) + DEV-334 (WhatsApp)
 ```
 
 ### Phase 10 (Deadline System) Dependencies
 
 ```
-DEV-280 (Deadline Model)
-    └── DEV-281 (DeadlineService) ─── DEV-285 (API)
-    └── DEV-282 (KB Extraction) ← Knowledge Base ingestion
-    └── DEV-283 (Client Matching) ← DEV-209, DEV-202
-    └── DEV-284 (Notifications) ← DEV-233 (Email)
+DEV-380 (Deadline Model)
+    └── DEV-381 (DeadlineService) ─── DEV-385 (API)
+    └── DEV-382 (KB Extraction) ← Knowledge Base ingestion
+    └── DEV-383 (Client Matching) ← DEV-309, DEV-302
+    └── DEV-384 (Notifications) ← DEV-333 (Email)
 ```
 
 ### Cross-Phase Critical Dependencies
 
 | Downstream Task | Blocking Tasks |
 |-----------------|----------------|
-| DEV-223 (LangGraph Node) | DEV-220, DEV-222 |
-| DEV-237 (Response Formatter) | DEV-223, DEV-230 |
-| DEV-263 (Document Context) | DEV-260 (Document Parser) |
-| DEV-271 (E2E Tests) | All Phase 0-8 tasks |
-| DEV-287 (Deadline E2E) | All Phase 10 tasks |
+| DEV-323 (LangGraph Node) | DEV-320, DEV-322 |
+| DEV-337 (Response Formatter) | DEV-323, DEV-330 |
+| DEV-363 (Document Context) | DEV-360 (Document Parser) |
+| DEV-371 (E2E Tests) | All Phase 0-8 tasks |
+| DEV-387 (Deadline E2E) | All Phase 10 tasks |
 
 ---
 
 ## Phase 0: Foundation (Week 1-2) - 8 Tasks
 
-### DEV-200: Create Studio SQLModel
+### DEV-300: Create Studio SQLModel
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -254,7 +309,7 @@ Create a `Studio` SQLModel as the tenant root entity. All client data will be is
 
 **Dependencies:**
 - **Blocking:** None (foundation task)
-- **Unlocks:** DEV-208 (StudioService), DEV-215 (User-Studio), DEV-207 (Migration)
+- **Unlocks:** DEV-308 (StudioService), DEV-315 (User-Studio), DEV-307 (Migration)
 
 **Change Classification:** ADDITIVE
 
@@ -322,7 +377,7 @@ Create a `Studio` SQLModel as the tenant root entity. All client data will be is
 
 ---
 
-### DEV-201: Create Client SQLModel
+### DEV-301: Create Client SQLModel
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -337,8 +392,8 @@ Create `Client` SQLModel with encrypted PII fields using existing `EncryptedTaxI
 **Agent Assignment:** @Primo (primary), @Severino (security review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-200 (Studio model for studio_id FK)
-- **Unlocks:** DEV-202 (ClientProfile), DEV-209 (ClientService), DEV-207 (Migration)
+- **Blocking:** DEV-300 (Studio model for studio_id FK)
+- **Unlocks:** DEV-302 (ClientProfile), DEV-309 (ClientService), DEV-307 (Migration)
 
 **Change Classification:** ADDITIVE
 
@@ -419,7 +474,7 @@ Create `Client` SQLModel with encrypted PII fields using existing `EncryptedTaxI
 
 ---
 
-### DEV-202: Create ClientProfile SQLModel
+### DEV-302: Create ClientProfile SQLModel
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -434,8 +489,8 @@ Create `ClientProfile` as a 1:1 extension of `Client` containing business/fiscal
 **Agent Assignment:** @Primo (primary), @Ezio (vector support), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-201 (Client model for client_id FK)
-- **Unlocks:** DEV-220 (MatchingService), DEV-222 (Vector Generation), DEV-207 (Migration)
+- **Blocking:** DEV-301 (Client model for client_id FK)
+- **Unlocks:** DEV-320 (MatchingService), DEV-322 (Vector Generation), DEV-307 (Migration)
 
 **Change Classification:** ADDITIVE
 
@@ -521,7 +576,7 @@ Create `ClientProfile` as a 1:1 extension of `Client` containing business/fiscal
 
 ---
 
-### DEV-203: Create MatchingRule SQLModel
+### DEV-303: Create MatchingRule SQLModel
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -537,7 +592,7 @@ Create `MatchingRule` model with JSONB conditions supporting AND/OR operators an
 
 **Dependencies:**
 - **Blocking:** None (standalone model)
-- **Unlocks:** DEV-220 (MatchingService), DEV-221 (Pre-configured Rules), DEV-207 (Migration)
+- **Unlocks:** DEV-320 (MatchingService), DEV-321 (Pre-configured Rules), DEV-307 (Migration)
 
 **Change Classification:** ADDITIVE
 
@@ -612,7 +667,7 @@ Create `MatchingRule` model with JSONB conditions supporting AND/OR operators an
 
 ---
 
-### DEV-204: Create Communication SQLModel
+### DEV-304: Create Communication SQLModel
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -627,8 +682,8 @@ Create `Communication` model with status workflow (DRAFT → PENDING_REVIEW → 
 **Agent Assignment:** @Primo (primary), @Severino (workflow security), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-200 (Studio), DEV-201 (Client for client_id FK)
-- **Unlocks:** DEV-230 (CommunicationService), DEV-207 (Migration)
+- **Blocking:** DEV-300 (Studio), DEV-301 (Client for client_id FK)
+- **Unlocks:** DEV-330 (CommunicationService), DEV-307 (Migration)
 
 **Change Classification:** ADDITIVE
 
@@ -704,7 +759,7 @@ Create `Communication` model with status workflow (DRAFT → PENDING_REVIEW → 
 
 ---
 
-### DEV-205: Create ProceduralGuide SQLModel
+### DEV-305: Create ProceduralGuide SQLModel
 
 **Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
 
@@ -720,7 +775,7 @@ Create `ProceduralGuide` model with JSONB steps array containing checklists, doc
 
 **Dependencies:**
 - **Blocking:** None (standalone model)
-- **Unlocks:** DEV-206 (GuideProgress), DEV-240 (GuideService), DEV-207 (Migration)
+- **Unlocks:** DEV-306 (GuideProgress), DEV-340 (GuideService), DEV-307 (Migration)
 
 **Change Classification:** ADDITIVE
 
@@ -792,7 +847,7 @@ Create `ProceduralGuide` model with JSONB steps array containing checklists, doc
 
 ---
 
-### DEV-206: Create GuideProgress SQLModel
+### DEV-306: Create GuideProgress SQLModel
 
 **Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
 
@@ -807,8 +862,8 @@ Create `GuideProgress` model linking user, studio, guide, and optionally client.
 **Agent Assignment:** @Primo (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-200 (Studio), DEV-201 (Client), DEV-205 (ProceduralGuide)
-- **Unlocks:** DEV-240 (GuideService), DEV-207 (Migration)
+- **Blocking:** DEV-300 (Studio), DEV-301 (Client), DEV-305 (ProceduralGuide)
+- **Unlocks:** DEV-340 (GuideService), DEV-307 (Migration)
 
 **Change Classification:** ADDITIVE
 
@@ -881,7 +936,7 @@ Create `GuideProgress` model linking user, studio, guide, and optionally client.
 
 ---
 
-### DEV-207: Alembic Migration for Phase 0
+### DEV-307: Alembic Migration for Phase 0
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -896,8 +951,8 @@ Create single Alembic migration creating all Phase 0 tables with HNSW vector ind
 **Agent Assignment:** @Primo (primary), @Ezio (review), @Severino (security review)
 
 **Dependencies:**
-- **Blocking:** DEV-200, DEV-201, DEV-202, DEV-203, DEV-204, DEV-205, DEV-206 (all models)
-- **Unlocks:** ALL Phase 1 tasks (DEV-208-219)
+- **Blocking:** DEV-300, DEV-301, DEV-302, DEV-303, DEV-304, DEV-305, DEV-306 (all models)
+- **Unlocks:** ALL Phase 1 tasks (DEV-308-219)
 
 **Change Classification:** RESTRUCTURING
 
@@ -1002,7 +1057,7 @@ Create single Alembic migration creating all Phase 0 tables with HNSW vector ind
 
 ## Phase 1: Studio-Client Service Layer (Week 3-4) - 12 Tasks
 
-### DEV-208: StudioService with CRUD
+### DEV-308: StudioService with CRUD
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -1017,8 +1072,8 @@ Create `StudioService` with async CRUD methods following existing service patter
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-200 (Studio model), DEV-207 (Migration)
-- **Unlocks:** DEV-211 (Studio API), DEV-215 (User-Studio)
+- **Blocking:** DEV-300 (Studio model), DEV-307 (Migration)
+- **Unlocks:** DEV-311 (Studio API), DEV-315 (User-Studio)
 
 **Change Classification:** ADDITIVE
 
@@ -1106,7 +1161,7 @@ Create `StudioService` with async CRUD methods following existing service patter
 
 ---
 
-### DEV-209: ClientService with CRUD
+### DEV-309: ClientService with CRUD
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -1121,8 +1176,8 @@ Create `ClientService` with CRUD methods that enforce business rules. Reuse exis
 **Agent Assignment:** @Ezio (primary), @Severino (security review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-201 (Client model), DEV-207 (Migration)
-- **Unlocks:** DEV-212 (Client API), DEV-213 (Import), DEV-214 (Export), DEV-220 (Matching)
+- **Blocking:** DEV-301 (Client model), DEV-307 (Migration)
+- **Unlocks:** DEV-312 (Client API), DEV-313 (Import), DEV-314 (Export), DEV-320 (Matching)
 
 **Change Classification:** ADDITIVE
 
@@ -1192,7 +1247,7 @@ Create `ClientService` with CRUD methods that enforce business rules. Reuse exis
 - **Integration Tests:** `tests/services/test_client_service_integration.py`
   - Database with encryption
   - Tenant isolation verification
-- **E2E Tests:** (covered in DEV-219)
+- **E2E Tests:** (covered in DEV-319)
 - **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:**
   - Run `pytest tests/services/`
@@ -1225,7 +1280,7 @@ Create `ClientService` with CRUD methods that enforce business rules. Reuse exis
 
 ---
 
-### DEV-210: ClientProfileService
+### DEV-310: ClientProfileService
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -1240,8 +1295,8 @@ Create `ClientProfileService` for profile CRUD with automatic profile vector gen
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-202 (ClientProfile model), DEV-209 (ClientService), DEV-207 (Migration)
-- **Unlocks:** DEV-211 (combined in API), DEV-222 (Vector Generation)
+- **Blocking:** DEV-302 (ClientProfile model), DEV-309 (ClientService), DEV-307 (Migration)
+- **Unlocks:** DEV-311 (combined in API), DEV-322 (Vector Generation)
 
 **Change Classification:** ADDITIVE
 
@@ -1312,7 +1367,7 @@ Create `ClientProfileService` for profile CRUD with automatic profile vector gen
 
 ---
 
-### DEV-211: Studio API Endpoints
+### DEV-311: Studio API Endpoints
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -1327,8 +1382,8 @@ Create Studio router with CRUD endpoints following FastAPI patterns.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-208 (StudioService)
-- **Unlocks:** DEV-215 (User-Studio), Frontend integration
+- **Blocking:** DEV-308 (StudioService)
+- **Unlocks:** DEV-315 (User-Studio), Frontend integration
 
 **Change Classification:** ADDITIVE
 
@@ -1414,7 +1469,7 @@ Create Studio router with CRUD endpoints following FastAPI patterns.
 
 ---
 
-### DEV-212: Client API Endpoints
+### DEV-312: Client API Endpoints
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -1429,8 +1484,8 @@ Create Client router with CRUD endpoints and list with pagination.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-209 (ClientService), DEV-210 (ClientProfileService)
-- **Unlocks:** DEV-213 (Import), DEV-214 (Export), Frontend integration
+- **Blocking:** DEV-309 (ClientService), DEV-310 (ClientProfileService)
+- **Unlocks:** DEV-313 (Import), DEV-314 (Export), Frontend integration
 
 **Change Classification:** ADDITIVE
 
@@ -1520,7 +1575,7 @@ Create Client router with CRUD endpoints and list with pagination.
 
 ---
 
-### DEV-213: Client Import from Excel/PDF
+### DEV-313: Client Import from Excel/PDF
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -1535,7 +1590,7 @@ Create import service supporting both Excel (openpyxl) and PDF (using existing d
 **Agent Assignment:** @Ezio (primary), @Mario (template design), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-209 (ClientService), DEV-212 (Client API)
+- **Blocking:** DEV-309 (ClientService), DEV-312 (Client API)
 - **Unlocks:** None (leaf task)
 
 **Change Classification:** ADDITIVE
@@ -1650,7 +1705,7 @@ Create import service supporting both Excel (openpyxl) and PDF (using existing d
 
 ---
 
-### DEV-214: Client Export to Excel
+### DEV-314: Client Export to Excel
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -1665,8 +1720,8 @@ Create export service generating Excel file with all client data (decrypted for 
 **Agent Assignment:** @Ezio (primary), @Severino (GDPR review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-209 (ClientService)
-- **Unlocks:** DEV-217 (GDPR Deletion - uses export for portability)
+- **Blocking:** DEV-309 (ClientService)
+- **Unlocks:** DEV-317 (GDPR Deletion - uses export for portability)
 
 **Change Classification:** ADDITIVE
 
@@ -1743,7 +1798,7 @@ Create export service generating Excel file with all client data (decrypted for 
 
 ---
 
-### DEV-215: User-Studio Association
+### DEV-315: User-Studio Association
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -1758,8 +1813,8 @@ Add nullable `studio_id` FK to User model. Migration creates column as nullable.
 **Agent Assignment:** @Primo (primary), @Ezio (migration), @Severino (security)
 
 **Dependencies:**
-- **Blocking:** DEV-200 (Studio model), DEV-207 (Migration), DEV-208 (StudioService)
-- **Unlocks:** DEV-216 (Tenant Middleware), All multi-tenant features
+- **Blocking:** DEV-300 (Studio model), DEV-307 (Migration), DEV-308 (StudioService)
+- **Unlocks:** DEV-316 (Tenant Middleware), All multi-tenant features
 
 **Change Classification:** MODIFYING
 
@@ -1845,7 +1900,7 @@ Add nullable `studio_id` FK to User model. Migration creates column as nullable.
 
 ---
 
-### DEV-216: Tenant Context Middleware
+### DEV-316: Tenant Context Middleware
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -1860,7 +1915,7 @@ Create middleware that extracts `studio_id` from JWT and sets it in request stat
 **Agent Assignment:** @Ezio (primary), @Severino (security review)
 
 **Dependencies:**
-- **Blocking:** DEV-215 (User-Studio Association)
+- **Blocking:** DEV-315 (User-Studio Association)
 - **Unlocks:** All multi-tenant service operations
 
 **Change Classification:** ADDITIVE
@@ -1933,7 +1988,7 @@ Create middleware that extracts `studio_id` from JWT and sets it in request stat
 
 ---
 
-### DEV-217: Client GDPR Deletion
+### DEV-317: Client GDPR Deletion
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -1948,7 +2003,7 @@ Create GDPR deletion service using existing patterns from `app/services/gdpr_del
 **Agent Assignment:** @Ezio (primary), @Severino (GDPR review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-209 (ClientService), DEV-214 (Client Export - for data portability before deletion)
+- **Blocking:** DEV-309 (ClientService), DEV-314 (Client Export - for data portability before deletion)
 - **Unlocks:** None (end of GDPR chain)
 
 **Change Classification:** ADDITIVE
@@ -2035,7 +2090,7 @@ Create GDPR deletion service using existing patterns from `app/services/gdpr_del
 
 ---
 
-### DEV-218: Unit Tests for Phase 1 Services
+### DEV-318: Unit Tests for Phase 1 Services
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -2050,8 +2105,8 @@ Create unit tests for all Phase 1 services with 80%+ coverage target.
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-208 (StudioService), DEV-209 (ClientService), DEV-210 (ClientProfileService), DEV-213 (Import), DEV-214 (Export), DEV-217 (GDPR) - all Phase 1 services
-- **Unlocks:** DEV-219 (Integration Tests), Phase 2 start
+- **Blocking:** DEV-308 (StudioService), DEV-309 (ClientService), DEV-310 (ClientProfileService), DEV-313 (Import), DEV-314 (Export), DEV-317 (GDPR) - all Phase 1 services
+- **Unlocks:** DEV-319 (Integration Tests), Phase 2 start
 
 **Change Classification:** ADDITIVE
 
@@ -2142,7 +2197,7 @@ Create unit tests for all Phase 1 services with 80%+ coverage target.
 
 ---
 
-### DEV-219: Integration Tests for Client APIs
+### DEV-319: Integration Tests for Client APIs
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
@@ -2157,7 +2212,7 @@ Create integration tests using pytest-asyncio and httpx test client.
 **Agent Assignment:** @Clelia (primary), @Ezio (support)
 
 **Dependencies:**
-- **Blocking:** DEV-211 (Studio API), DEV-212 (Client API), DEV-218 (Unit Tests)
+- **Blocking:** DEV-311 (Studio API), DEV-312 (Client API), DEV-318 (Unit Tests)
 - **Unlocks:** Phase 2 start (all Phase 1 complete)
 
 **Change Classification:** ADDITIVE
@@ -2250,7 +2305,7 @@ Create integration tests using pytest-asyncio and httpx test client.
 
 ## Phase 2: Matching Engine (Week 5-6) - 10 Tasks
 
-### DEV-220: NormativeMatchingService
+### DEV-320: NormativeMatchingService
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -2265,8 +2320,8 @@ Create `NormativeMatchingService` with hybrid matching: first structured (fast, 
 **Agent Assignment:** @Ezio (primary), @Mario (rule logic), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-202 (ClientProfile), DEV-209 (ClientService), DEV-221 (Matching Rules), DEV-222 (Vector Generation)
-- **Unlocks:** DEV-223 (LangGraph Node), DEV-225 (Background Job), DEV-228 (Tests)
+- **Blocking:** DEV-302 (ClientProfile), DEV-309 (ClientService), DEV-321 (Matching Rules), DEV-322 (Vector Generation)
+- **Unlocks:** DEV-323 (LangGraph Node), DEV-325 (Background Job), DEV-328 (Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -2359,7 +2414,7 @@ Create `NormativeMatchingService` with hybrid matching: first structured (fast, 
 
 ---
 
-### DEV-221: Pre-configured Matching Rules (15 rules)
+### DEV-321: Pre-configured Matching Rules (15 rules)
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -2374,8 +2429,8 @@ Define 15 matching rules covering common scenarios and seed via migration.
 **Agent Assignment:** @Mario (primary), @Primo (migration)
 
 **Dependencies:**
-- **Blocking:** DEV-204 (MatchingRule model), DEV-207 (Migration)
-- **Unlocks:** DEV-220 (NormativeMatchingService)
+- **Blocking:** DEV-304 (MatchingRule model), DEV-307 (Migration)
+- **Unlocks:** DEV-320 (NormativeMatchingService)
 
 **Change Classification:** ADDITIVE
 
@@ -2461,7 +2516,7 @@ Define 15 matching rules covering common scenarios and seed via migration.
 
 ---
 
-### DEV-222: Client Profile Vector Generation
+### DEV-322: Client Profile Vector Generation
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -2476,8 +2531,8 @@ Create embedding service using existing LLM infrastructure. Generate vector when
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-202 (ClientProfile with profile_vector column), DEV-207 (HNSW index migration)
-- **Unlocks:** DEV-220 (NormativeMatchingService - semantic fallback)
+- **Blocking:** DEV-302 (ClientProfile with profile_vector column), DEV-307 (HNSW index migration)
+- **Unlocks:** DEV-320 (NormativeMatchingService - semantic fallback)
 
 **Change Classification:** ADDITIVE
 
@@ -2559,7 +2614,7 @@ Create embedding service using existing LLM infrastructure. Generate vector when
 
 ---
 
-### DEV-223: LangGraph Matching Node
+### DEV-323: LangGraph Matching Node
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -2574,8 +2629,8 @@ Create LangGraph node inserted after domain classification (step 35). Query clie
 **Agent Assignment:** @Ezio (primary), @Severino (review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-220 (NormativeMatchingService), DEV-216 (Tenant Middleware - for studio_id)
-- **Unlocks:** DEV-227 (Response Enrichment), DEV-228 (Tests)
+- **Blocking:** DEV-320 (NormativeMatchingService), DEV-316 (Tenant Middleware - for studio_id)
+- **Unlocks:** DEV-327 (Response Enrichment), DEV-328 (Tests)
 
 **Change Classification:** MODIFYING
 
@@ -2676,7 +2731,7 @@ Create LangGraph node inserted after domain classification (step 35). Query clie
 
 ---
 
-### DEV-224: Proactive Suggestion Model
+### DEV-324: Proactive Suggestion Model
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -2691,8 +2746,8 @@ Create `ProactiveSuggestion` model to store matches found by background job.
 **Agent Assignment:** @Primo (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-200 (Studio model - FK), DEV-207 (Migration)
-- **Unlocks:** DEV-225 (Background Matching Job), DEV-226 (Matching API)
+- **Blocking:** DEV-300 (Studio model - FK), DEV-307 (Migration)
+- **Unlocks:** DEV-325 (Background Matching Job), DEV-326 (Matching API)
 
 **Change Classification:** ADDITIVE
 
@@ -2761,7 +2816,7 @@ Create `ProactiveSuggestion` model to store matches found by background job.
 
 ---
 
-### DEV-225: Background Matching Job
+### DEV-325: Background Matching Job
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -2776,8 +2831,8 @@ Create background job using FastAPI BackgroundTasks. Run after RSS ingestion com
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-220 (NormativeMatchingService), DEV-224 (ProactiveSuggestion model)
-- **Unlocks:** DEV-226 (Matching API - trigger endpoint), DEV-228 (Performance Tests)
+- **Blocking:** DEV-320 (NormativeMatchingService), DEV-324 (ProactiveSuggestion model)
+- **Unlocks:** DEV-326 (Matching API - trigger endpoint), DEV-328 (Performance Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -2849,7 +2904,7 @@ Create background job using FastAPI BackgroundTasks. Run after RSS ingestion com
 
 ---
 
-### DEV-226: Matching API Endpoints
+### DEV-326: Matching API Endpoints
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -2864,8 +2919,8 @@ Create Matching router with endpoints for suggestions management.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-220 (NormativeMatchingService), DEV-224 (ProactiveSuggestion model), DEV-225 (Background Job)
-- **Unlocks:** DEV-229 (Unit Tests), Frontend integration
+- **Blocking:** DEV-320 (NormativeMatchingService), DEV-324 (ProactiveSuggestion model), DEV-325 (Background Job)
+- **Unlocks:** DEV-329 (Unit Tests), Frontend integration
 **Error Handling:**
 - No suggestions: HTTP 200, empty array (not 404)
 - Suggestion not found: HTTP 404, `"Suggerimento non trovato"`
@@ -2941,7 +2996,7 @@ Create Matching router with endpoints for suggestions management.
 
 ---
 
-### DEV-227: Multi-Tenant Isolation Tests
+### DEV-327: Multi-Tenant Isolation Tests
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -2956,7 +3011,7 @@ Create comprehensive security tests covering all access patterns. Target 95%+ co
 **Agent Assignment:** @Severino (primary), @Clelia (support)
 
 **Dependencies:**
-- **Blocking:** DEV-209 (ClientService), DEV-216 (Tenant Middleware), DEV-220 (MatchingService)
+- **Blocking:** DEV-309 (ClientService), DEV-316 (Tenant Middleware), DEV-320 (MatchingService)
 - **Unlocks:** Production deployment (security gate)
 
 **Change Classification:** ADDITIVE
@@ -3042,7 +3097,7 @@ Create comprehensive security tests covering all access patterns. Target 95%+ co
 
 ---
 
-### DEV-228: Matching Performance Tests
+### DEV-328: Matching Performance Tests
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -3057,7 +3112,7 @@ Create performance tests with realistic data volumes.
 **Agent Assignment:** @Clelia (primary), @Ezio (optimization)
 
 **Dependencies:**
-- **Blocking:** DEV-220 (NormativeMatchingService), DEV-223 (LangGraph Node), DEV-225 (Background Job)
+- **Blocking:** DEV-320 (NormativeMatchingService), DEV-323 (LangGraph Node), DEV-325 (Background Job)
 - **Unlocks:** Production deployment (performance gate)
 
 **Change Classification:** ADDITIVE
@@ -3140,7 +3195,7 @@ Create performance tests with realistic data volumes.
 
 ---
 
-### DEV-229: Unit Tests for Matching Services
+### DEV-329: Unit Tests for Matching Services
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
@@ -3155,7 +3210,7 @@ Create unit tests for NormativeMatchingService, ProfileEmbeddingService, and rel
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-220 (NormativeMatchingService), DEV-221 (Matching Rules), DEV-222 (Vector Generation), DEV-223 (LangGraph Node)
+- **Blocking:** DEV-320 (NormativeMatchingService), DEV-321 (Matching Rules), DEV-322 (Vector Generation), DEV-323 (LangGraph Node)
 - **Unlocks:** Phase 3 start (all Phase 2 complete)
 
 **Change Classification:** ADDITIVE
@@ -3241,7 +3296,7 @@ Create unit tests for NormativeMatchingService, ProfileEmbeddingService, and rel
 
 ## Phase 3: Communications (Week 7-8) - 10 Tasks
 
-### DEV-230: CommunicationService with Draft/Approve Workflow
+### DEV-330: CommunicationService with Draft/Approve Workflow
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -3256,8 +3311,8 @@ Create `CommunicationService` with draft/review/approve/send workflow state mach
 **Agent Assignment:** @Ezio (primary), @Severino (workflow review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-205 (Communication model), DEV-209 (ClientService), DEV-207 (Migration)
-- **Unlocks:** DEV-231 (LLM Generation), DEV-232 (Communication API), DEV-233 (Email), DEV-234 (WhatsApp)
+- **Blocking:** DEV-305 (Communication model), DEV-309 (ClientService), DEV-307 (Migration)
+- **Unlocks:** DEV-331 (LLM Generation), DEV-332 (Communication API), DEV-333 (Email), DEV-334 (WhatsApp)
 
 **Change Classification:** ADDITIVE
 
@@ -3308,7 +3363,7 @@ Create `CommunicationService` with draft/review/approve/send workflow state mach
   - `test_state_machine_valid_transitions` - all valid transitions
   - `test_state_machine_invalid_transitions` - invalid transitions blocked
 - **Integration Tests:** `tests/services/test_communication_service_integration.py`
-- **E2E Tests:** Part of DEV-239
+- **E2E Tests:** Part of DEV-339
 - **Edge Case Tests:**
   - `test_concurrent_approval_race` - second approver gets 409
   - `test_reject_after_approve_fails` - state machine enforced
@@ -3344,7 +3399,7 @@ Create `CommunicationService` with draft/review/approve/send workflow state mach
 
 ---
 
-### DEV-231: LLM Communication Generation Tool
+### DEV-331: LLM Communication Generation Tool
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -3354,13 +3409,13 @@ Create `CommunicationService` with draft/review/approve/send workflow state mach
 Professionals need AI-generated communication drafts based on regulations and client context.
 
 **Solution:**
-Create LangGraph tool for generating communication content using LLM.
+Create LangGraph tool for generating communication content using LLM. Consider using existing `WebVerificationService` to verify regulatory claims before generating client communications.
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-230 (CommunicationService), DEV-220 (NormativeMatchingService - for context)
-- **Unlocks:** DEV-232 (Communication API), DEV-239 (E2E Tests)
+- **Blocking:** DEV-330 (CommunicationService), DEV-320 (NormativeMatchingService - for context)
+- **Unlocks:** DEV-332 (Communication API), DEV-339 (E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -3405,8 +3460,9 @@ Create LangGraph tool for generating communication content using LLM.
   - `test_include_regulation_reference` - cites regulation
   - `test_italian_language` - generates in Italian
   - `test_professional_tone` - appropriate tone
+  - `test_communication_no_contradicted_info` - Verify generated communications don't contain web-contradicted information
 - **Integration Tests:** Test with real LLM
-- **E2E Tests:** Part of DEV-239
+- **E2E Tests:** Part of DEV-339
 - **Regression Tests:** Run `pytest tests/langgraph/`
 - **Coverage Target:** 80%+ for tool code
 
@@ -3431,7 +3487,7 @@ Create LangGraph tool for generating communication content using LLM.
 
 ---
 
-### DEV-232: Communication API Endpoints
+### DEV-332: Communication API Endpoints
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -3446,8 +3502,8 @@ Create Communication API router with all workflow endpoints.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-230 (CommunicationService), DEV-231 (LLM Generation Tool)
-- **Unlocks:** DEV-233 (Email Sending), DEV-234 (WhatsApp), DEV-239 (E2E Tests)
+- **Blocking:** DEV-330 (CommunicationService), DEV-331 (LLM Generation Tool)
+- **Unlocks:** DEV-333 (Email Sending), DEV-334 (WhatsApp), DEV-339 (E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -3459,7 +3515,7 @@ Create Communication API router with all workflow endpoints.
 - Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 
 **Error Handling:**
-- See DEV-230 for state transition errors
+- See DEV-330 for state transition errors
 - Validation errors: HTTP 422, detailed field-level errors
 - Rate limiting: HTTP 429, `"Troppe richieste, riprova tra {seconds} secondi"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
@@ -3500,7 +3556,7 @@ Create Communication API router with all workflow endpoints.
   - `test_send_200` - approved communication sent
   - `test_send_unapproved_400` - cannot send unapproved
   - `test_list_filtered_by_status` - status filtering
-- **E2E Tests:** Part of DEV-239
+- **E2E Tests:** Part of DEV-339
 - **Edge Case Tests:**
   - `test_concurrent_submit_409` - second submit gets conflict
   - `test_approve_own_draft_403` - API level self-approval block
@@ -3530,7 +3586,7 @@ Create Communication API router with all workflow endpoints.
 - Max function: 50 lines, extract helpers if larger
 - Max class: 200 lines, split into focused services
 - Max file: 400 lines, create submodules
-### DEV-233: Email Sending Integration
+### DEV-333: Email Sending Integration
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -3585,7 +3641,7 @@ Create email sending service using existing patterns. Handle retries, failures, 
   - `test_send_bulk_partial_failure` - handles partial failures
   - `test_track_delivery` - delivery tracking
 - **Integration Tests:** Test with mock SMTP
-- **E2E Tests:** Part of DEV-239
+- **E2E Tests:** Part of DEV-339
 - **Edge Case Tests:**
   - `test_smtp_down_queued_202` - connection timeout queued
   - `test_invalid_email_rejected` - malformed email fails
@@ -3613,7 +3669,7 @@ Create email sending service using existing patterns. Handle retries, failures, 
 
 ---
 
-### DEV-234: WhatsApp wa.me Link Integration
+### DEV-334: WhatsApp wa.me Link Integration
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -3628,8 +3684,8 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-230 (CommunicationService), DEV-209 (ClientService - for phone numbers)
-- **Unlocks:** DEV-239 (Integration Tests)
+- **Blocking:** DEV-330 (CommunicationService), DEV-309 (ClientService - for phone numbers)
+- **Unlocks:** DEV-339 (Integration Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -3721,7 +3777,7 @@ WhatsApp Business API integration is deferred to post-MVP. The wa.me approach pr
 
 ---
 
-### DEV-235: Bulk Communication Creation
+### DEV-335: Bulk Communication Creation
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -3736,8 +3792,8 @@ Add bulk creation endpoint that creates draft communications for multiple client
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-230 (CommunicationService), DEV-220 (Matching - for matched client IDs)
-- **Unlocks:** DEV-239 (E2E Tests)
+- **Blocking:** DEV-330 (CommunicationService), DEV-320 (Matching - for matched client IDs)
+- **Unlocks:** DEV-339 (E2E Tests)
 
 **Change Classification:** MODIFYING
 
@@ -3823,7 +3879,7 @@ Add bulk creation endpoint that creates draft communications for multiple client
 
 ---
 
-### DEV-236: Communication Templates
+### DEV-336: Communication Templates
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -3838,8 +3894,8 @@ Create template model and service for managing communication templates.
 **Agent Assignment:** @Ezio (primary), @Mario (template content), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-205 (Communication model), DEV-207 (Migration)
-- **Unlocks:** DEV-231 (Generation Tool can use templates)
+- **Blocking:** DEV-305 (Communication model), DEV-307 (Migration)
+- **Unlocks:** DEV-331 (Generation Tool can use templates)
 
 **Change Classification:** ADDITIVE
 
@@ -3921,7 +3977,7 @@ Create template model and service for managing communication templates.
 
 ---
 
-### DEV-237: Response Formatter with Suggestions
+### DEV-337: Response Formatter with Suggestions
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -3936,8 +3992,8 @@ Modify `response_formatter_node.py` to append suggestions when matched_clients e
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-223 (LangGraph Matching Node - provides matched_clients)
-- **Unlocks:** DEV-239 (E2E Tests)
+- **Blocking:** DEV-323 (LangGraph Matching Node - provides matched_clients)
+- **Unlocks:** DEV-339 (E2E Tests)
 
 **Change Classification:** MODIFYING
 
@@ -4015,7 +4071,7 @@ Modify `response_formatter_node.py` to append suggestions when matched_clients e
 
 ---
 
-### DEV-238: Communication Audit Logging
+### DEV-338: Communication Audit Logging
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -4030,8 +4086,8 @@ Use existing `SecurityAuditLogger` to log all communication actions.
 **Agent Assignment:** @Ezio (primary), @Severino (audit review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-230 (CommunicationService), Existing SecurityAuditLogger
-- **Unlocks:** DEV-239 (E2E Tests), GDPR compliance verification
+- **Blocking:** DEV-330 (CommunicationService), Existing SecurityAuditLogger
+- **Unlocks:** DEV-339 (E2E Tests), GDPR compliance verification
 
 **Change Classification:** MODIFYING
 
@@ -4106,7 +4162,7 @@ Use existing `SecurityAuditLogger` to log all communication actions.
 
 ---
 
-### DEV-239: E2E Tests for Communication Flow
+### DEV-339: E2E Tests for Communication Flow
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
@@ -4121,7 +4177,7 @@ Create comprehensive E2E tests for communication flow.
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-230 (CommunicationService), DEV-232 (API), DEV-233 (Email), DEV-234 (WhatsApp), DEV-237 (Response Formatter), DEV-238 (Audit)
+- **Blocking:** DEV-330 (CommunicationService), DEV-332 (API), DEV-333 (Email), DEV-334 (WhatsApp), DEV-337 (Response Formatter), DEV-338 (Audit)
 - **Unlocks:** Phase 4 start (all Phase 3 complete)
 
 **Change Classification:** ADDITIVE
@@ -4189,7 +4245,7 @@ Create comprehensive E2E tests for communication flow.
 
 ## Phase 4: Procedural Guides (Week 9-10) - 8 Tasks
 
-### DEV-240: GuideService with Progress Tracking
+### DEV-340: GuideService with Progress Tracking
 
 **Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
 
@@ -4204,8 +4260,8 @@ Create `GuideService` for guide management and progress tracking.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-206 (ProceduralGuide model), DEV-207 (GuideProgress model), DEV-207 (Migration)
-- **Unlocks:** DEV-242 (Guide API), DEV-243 (Checklist), DEV-245 (Chat Context), DEV-246 (Analytics)
+- **Blocking:** DEV-306 (ProceduralGuide model), DEV-307 (GuideProgress model), DEV-307 (Migration)
+- **Unlocks:** DEV-342 (Guide API), DEV-343 (Checklist), DEV-345 (Chat Context), DEV-346 (Analytics)
 **Error Handling:**
 - Guide not found: HTTP 404, `"Guida non trovata"`
 - Progress not found: HTTP 404, `"Progresso non trovato"`
@@ -4248,7 +4304,7 @@ Create `GuideService` for guide management and progress tracking.
   - `test_resume_guide` - returns current state
   - `test_complete_guide` - marks completed_at
 - **Integration Tests:** `tests/services/test_guide_service_integration.py`
-- **E2E Tests:** Part of DEV-247
+- **E2E Tests:** Part of DEV-347
 - **Edge Case Tests:**
   - `test_start_guide_already_started_idempotent` - returns existing
   - `test_complete_step_skip_rejected` - skip steps blocked
@@ -4287,7 +4343,7 @@ Create `GuideService` for guide management and progress tracking.
 
 ---
 
-### DEV-241: 10-15 Pre-configured Guides
+### DEV-341: 10-15 Pre-configured Guides
 
 **Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
 
@@ -4302,8 +4358,8 @@ Define 10-15 guides and seed via migration.
 **Agent Assignment:** @Mario (primary), @Primo (migration)
 
 **Dependencies:**
-- **Blocking:** DEV-206 (ProceduralGuide model), DEV-207 (Migration)
-- **Unlocks:** DEV-240 (GuideService - needs guides to operate on)
+- **Blocking:** DEV-306 (ProceduralGuide model), DEV-307 (Migration)
+- **Unlocks:** DEV-340 (GuideService - needs guides to operate on)
 
 **Change Classification:** ADDITIVE
 
@@ -4378,7 +4434,7 @@ Define 10-15 guides and seed via migration.
 
 ---
 
-### DEV-242: Guide API Endpoints
+### DEV-342: Guide API Endpoints
 
 **Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
 
@@ -4393,8 +4449,8 @@ Create Guides router with endpoints.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-240 (GuideService), DEV-241 (Pre-configured Guides)
-- **Unlocks:** DEV-247 (E2E Tests), Frontend integration
+- **Blocking:** DEV-340 (GuideService), DEV-341 (Pre-configured Guides)
+- **Unlocks:** DEV-347 (E2E Tests), Frontend integration
 
 **Change Classification:** ADDITIVE
 
@@ -4405,7 +4461,7 @@ Create Guides router with endpoints.
 **Error Handling:**
 - Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 **Error Handling:**
-- See DEV-240 for service-level errors
+- See DEV-340 for service-level errors
 - Validation errors: HTTP 422, detailed field-level errors
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
@@ -4438,7 +4494,7 @@ Create Guides router with endpoints.
   - `test_start_guide_201` - creates progress
   - `test_complete_step_200` - updates progress
   - `test_list_progress_200` - returns user's progress
-- **E2E Tests:** Part of DEV-247
+- **E2E Tests:** Part of DEV-347
 - **Edge Case Tests:**
   - `test_invalid_step_number_400` - step beyond total rejected
   - `test_progress_not_found_404` - non-existent progress
@@ -4470,7 +4526,7 @@ Create Guides router with endpoints.
 
 ---
 
-### DEV-243: Guide Step Checklist Tracking
+### DEV-343: Guide Step Checklist Tracking
 
 **Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
 
@@ -4485,8 +4541,8 @@ Extend progress tracking to include checklist item completion.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-240 (GuideService), DEV-207 (GuideProgress model)
-- **Unlocks:** DEV-247 (E2E Tests)
+- **Blocking:** DEV-340 (GuideService), DEV-307 (GuideProgress model)
+- **Unlocks:** DEV-347 (E2E Tests)
 
 **Change Classification:** MODIFYING
 
@@ -4561,7 +4617,7 @@ Extend progress tracking to include checklist item completion.
 
 ---
 
-### DEV-244: Guide Notes and Attachments
+### DEV-344: Guide Notes and Attachments
 
 **Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
 
@@ -4576,8 +4632,8 @@ Add notes field to GuideProgress and document attachment support.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-240 (GuideService), DEV-207 (GuideProgress model)
-- **Unlocks:** DEV-247 (E2E Tests)
+- **Blocking:** DEV-340 (GuideService), DEV-307 (GuideProgress model)
+- **Unlocks:** DEV-347 (E2E Tests)
 
 **Change Classification:** MODIFYING
 
@@ -4653,7 +4709,7 @@ Add notes field to GuideProgress and document attachment support.
 
 ---
 
-### DEV-245: Guide Context in Chat
+### DEV-345: Guide Context in Chat
 
 **Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
 
@@ -4668,8 +4724,8 @@ Add guide context to RAGState when user has active guide progress.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-240 (GuideService), Existing context_builder_node
-- **Unlocks:** DEV-247 (E2E Tests)
+- **Blocking:** DEV-340 (GuideService), Existing context_builder_node
+- **Unlocks:** DEV-347 (E2E Tests)
 
 **Change Classification:** MODIFYING
 
@@ -4746,7 +4802,7 @@ Add guide context to RAGState when user has active guide progress.
 
 ---
 
-### DEV-246: Guide Completion Analytics
+### DEV-346: Guide Completion Analytics
 
 **Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
 
@@ -4761,7 +4817,7 @@ Add analytics methods to GuideService.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-240 (GuideService), DEV-207 (GuideProgress model)
+- **Blocking:** DEV-340 (GuideService), DEV-307 (GuideProgress model)
 - **Unlocks:** Dashboard analytics (post-MVP)
 
 **Change Classification:** MODIFYING
@@ -4837,7 +4893,7 @@ Add analytics methods to GuideService.
 
 ---
 
-### DEV-247: E2E Tests for Guide Flow
+### DEV-347: E2E Tests for Guide Flow
 
 **Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
 
@@ -4852,7 +4908,7 @@ Create comprehensive E2E tests for guide flow.
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-240 (GuideService), DEV-241 (Guides), DEV-242 (API), DEV-243 (Checklist), DEV-244 (Notes), DEV-245 (Chat Context)
+- **Blocking:** DEV-340 (GuideService), DEV-341 (Guides), DEV-342 (API), DEV-343 (Checklist), DEV-344 (Notes), DEV-345 (Chat Context)
 - **Unlocks:** Phase 5 start (all Phase 4 complete)
 
 **Change Classification:** ADDITIVE
@@ -4930,7 +4986,7 @@ Create comprehensive E2E tests for guide flow.
 
 ## Phase 5: Fiscal Calculations Enhancement (Week 11) - 6 Tasks
 
-### DEV-248: Client Context Injection for Calculations
+### DEV-348: Client Context Injection for Calculations
 
 **Reference:** [FR-007: Calcoli Fiscali](./PRATIKO_2.0_REFERENCE.md#fr-007-calcoli-fiscali)
 
@@ -4945,8 +5001,8 @@ Modify calculation tools to accept optional client_id and use profile data.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-202 (ClientProfile), DEV-209 (ClientService), Existing calculation tools
-- **Unlocks:** DEV-249 (IRPEF), DEV-250 (INPS), DEV-251 (IMU)
+- **Blocking:** DEV-302 (ClientProfile), DEV-309 (ClientService), Existing calculation tools
+- **Unlocks:** DEV-349 (IRPEF), DEV-350 (INPS), DEV-351 (IMU)
 
 **Change Classification:** MODIFYING
 
@@ -5023,7 +5079,7 @@ Modify calculation tools to accept optional client_id and use profile data.
 
 ---
 
-### DEV-249: IRPEF Calculator Enhancement
+### DEV-349: IRPEF Calculator Enhancement
 
 **Reference:** [FR-007: Calcoli Fiscali](./PRATIKO_2.0_REFERENCE.md#fr-007-calcoli-fiscali)
 
@@ -5038,8 +5094,8 @@ Enhance IRPEF calculator with regime-aware calculations.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-248 (Client Context Injection), Existing IRPEF calculator
-- **Unlocks:** DEV-252 (Calculation History), DEV-253 (Accuracy Tests)
+- **Blocking:** DEV-348 (Client Context Injection), Existing IRPEF calculator
+- **Unlocks:** DEV-352 (Calculation History), DEV-353 (Accuracy Tests)
 
 **Change Classification:** MODIFYING
 
@@ -5114,7 +5170,7 @@ Enhance IRPEF calculator with regime-aware calculations.
 
 ---
 
-### DEV-250: INPS Calculator Enhancement
+### DEV-350: INPS Calculator Enhancement
 
 **Reference:** [FR-007: Calcoli Fiscali](./PRATIKO_2.0_REFERENCE.md#fr-007-calcoli-fiscali)
 
@@ -5129,8 +5185,8 @@ Enhance INPS calculator with ATECO-based rates.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-248 (Client Context Injection), Existing INPS calculator
-- **Unlocks:** DEV-252 (Calculation History), DEV-253 (Accuracy Tests)
+- **Blocking:** DEV-348 (Client Context Injection), Existing INPS calculator
+- **Unlocks:** DEV-352 (Calculation History), DEV-353 (Accuracy Tests)
 
 **Change Classification:** MODIFYING
 
@@ -5204,7 +5260,7 @@ Enhance INPS calculator with ATECO-based rates.
 
 ---
 
-### DEV-251: IMU Calculator with Client Property
+### DEV-351: IMU Calculator with Client Property
 
 **Reference:** [FR-007: Calcoli Fiscali](./PRATIKO_2.0_REFERENCE.md#fr-007-calcoli-fiscali)
 
@@ -5219,8 +5275,8 @@ Create IMU calculator that can use client property data.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-248 (Client Context Injection)
-- **Unlocks:** DEV-252 (Calculation History), DEV-253 (Accuracy Tests)
+- **Blocking:** DEV-348 (Client Context Injection)
+- **Unlocks:** DEV-352 (Calculation History), DEV-353 (Accuracy Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -5288,7 +5344,7 @@ Create IMU calculator that can use client property data.
 
 ---
 
-### DEV-252: Calculation History Storage
+### DEV-352: Calculation History Storage
 
 **Reference:** [FR-007: Calcoli Fiscali](./PRATIKO_2.0_REFERENCE.md#fr-007-calcoli-fiscali)
 
@@ -5303,8 +5359,8 @@ Create CalculationHistory model to store calculations.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-249 (IRPEF), DEV-250 (INPS), DEV-251 (IMU), DEV-207 (Migration)
-- **Unlocks:** DEV-253 (Accuracy Tests), DEV-255 (Dashboard)
+- **Blocking:** DEV-349 (IRPEF), DEV-350 (INPS), DEV-351 (IMU), DEV-307 (Migration)
+- **Unlocks:** DEV-353 (Accuracy Tests), DEV-355 (Dashboard)
 
 **Change Classification:** ADDITIVE
 
@@ -5384,7 +5440,7 @@ Create CalculationHistory model to store calculations.
 
 ---
 
-### DEV-253: Unit Tests for Calculation Accuracy
+### DEV-353: Unit Tests for Calculation Accuracy
 
 **Reference:** [FR-007: Calcoli Fiscali](./PRATIKO_2.0_REFERENCE.md#fr-007-calcoli-fiscali)
 
@@ -5399,7 +5455,7 @@ Create exhaustive test suite for all calculation scenarios.
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-249 (IRPEF), DEV-250 (INPS), DEV-251 (IMU), DEV-252 (History)
+- **Blocking:** DEV-349 (IRPEF), DEV-350 (INPS), DEV-351 (IMU), DEV-352 (History)
 - **Unlocks:** Phase 6 start (all Phase 5 complete)
 
 **Change Classification:** ADDITIVE
@@ -5479,7 +5535,7 @@ Create exhaustive test suite for all calculation scenarios.
 
 ## Phase 6: Dashboard & Analytics (Week 12) - 6 Tasks
 
-### DEV-254: ROI Metrics Service
+### DEV-354: ROI Metrics Service
 
 **Reference:** [FR-005: Dashboard ROI e Analytics](./PRATIKO_2.0_REFERENCE.md#fr-005-dashboard-roi-e-analytics)
 
@@ -5494,8 +5550,8 @@ Create metrics service calculating ROI and usage statistics.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-209 (ClientService), DEV-230 (CommunicationService), DEV-240 (GuideService)
-- **Unlocks:** DEV-255 (Dashboard Aggregation), DEV-256 (Dashboard API)
+- **Blocking:** DEV-309 (ClientService), DEV-330 (CommunicationService), DEV-340 (GuideService)
+- **Unlocks:** DEV-355 (Dashboard Aggregation), DEV-356 (Dashboard API)
 
 **Change Classification:** ADDITIVE
 
@@ -5573,7 +5629,7 @@ Create metrics service calculating ROI and usage statistics.
 
 ---
 
-### DEV-255: Dashboard Data Aggregation
+### DEV-355: Dashboard Data Aggregation
 
 **Reference:** [FR-005: Dashboard ROI e Analytics](./PRATIKO_2.0_REFERENCE.md#fr-005-dashboard-roi-e-analytics)
 
@@ -5588,8 +5644,8 @@ Create dashboard service aggregating data from multiple sources.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-254 (ROI Metrics), DEV-220 (Matching - for match stats)
-- **Unlocks:** DEV-256 (Dashboard API), DEV-258 (Caching)
+- **Blocking:** DEV-354 (ROI Metrics), DEV-320 (Matching - for match stats)
+- **Unlocks:** DEV-356 (Dashboard API), DEV-358 (Caching)
 
 **Change Classification:** ADDITIVE
 
@@ -5669,7 +5725,7 @@ Create dashboard service aggregating data from multiple sources.
 
 ---
 
-### DEV-256: Dashboard API Endpoint
+### DEV-356: Dashboard API Endpoint
 
 **Reference:** [FR-005: Dashboard ROI e Analytics](./PRATIKO_2.0_REFERENCE.md#fr-005-dashboard-roi-e-analytics)
 
@@ -5684,8 +5740,8 @@ Create dashboard endpoint returning aggregated data.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-254 (ROI Metrics), DEV-255 (Dashboard Aggregation)
-- **Unlocks:** DEV-259 (E2E Tests), Frontend integration
+- **Blocking:** DEV-354 (ROI Metrics), DEV-355 (Dashboard Aggregation)
+- **Unlocks:** DEV-359 (E2E Tests), Frontend integration
 
 **Change Classification:** ADDITIVE
 
@@ -5735,7 +5791,7 @@ Create dashboard endpoint returning aggregated data.
   - `test_period_over_year_400` - max period enforced
   - `test_no_permission_403` - non-member rejected
   - `test_timeout_504_partial` - graceful timeout
-- **E2E Tests:** Part of DEV-259
+- **E2E Tests:** Part of DEV-359
 - **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:** Run `pytest tests/api/`
 - **Coverage Target:** 80%+ for API code
@@ -5760,7 +5816,7 @@ Create dashboard endpoint returning aggregated data.
 
 ---
 
-### DEV-257: Activity Timeline Model
+### DEV-357: Activity Timeline Model
 
 **Reference:** [FR-005: Dashboard ROI e Analytics](./PRATIKO_2.0_REFERENCE.md#fr-005-dashboard-roi-e-analytics)
 
@@ -5775,8 +5831,8 @@ Create activity model or view aggregating actions.
 **Agent Assignment:** @Primo (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-207 (Migration)
-- **Unlocks:** DEV-255 (Dashboard Aggregation)
+- **Blocking:** DEV-307 (Migration)
+- **Unlocks:** DEV-355 (Dashboard Aggregation)
 
 **Change Classification:** ADDITIVE
 
@@ -5859,7 +5915,7 @@ Create activity model or view aggregating actions.
 
 ---
 
-### DEV-258: Dashboard Caching
+### DEV-358: Dashboard Caching
 
 **Reference:** [FR-005: Dashboard ROI e Analytics](./PRATIKO_2.0_REFERENCE.md#fr-005-dashboard-roi-e-analytics)
 
@@ -5874,8 +5930,8 @@ Add Redis caching to dashboard service.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-255 (Dashboard Aggregation), Existing Redis cache infrastructure
-- **Unlocks:** DEV-259 (E2E Tests)
+- **Blocking:** DEV-355 (Dashboard Aggregation), Existing Redis cache infrastructure
+- **Unlocks:** DEV-359 (E2E Tests)
 
 **Change Classification:** MODIFYING
 
@@ -5962,7 +6018,7 @@ Add Redis caching to dashboard service.
 
 ---
 
-### DEV-259: E2E Tests for Dashboard
+### DEV-359: E2E Tests for Dashboard
 
 **Reference:** [FR-005: Dashboard ROI e Analytics](./PRATIKO_2.0_REFERENCE.md#fr-005-dashboard-roi-e-analytics)
 
@@ -5977,7 +6033,7 @@ Create E2E tests for dashboard flow.
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-254 (ROI Metrics), DEV-255 (Aggregation), DEV-256 (API), DEV-257 (Activity), DEV-258 (Caching)
+- **Blocking:** DEV-354 (ROI Metrics), DEV-355 (Aggregation), DEV-356 (API), DEV-357 (Activity), DEV-358 (Caching)
 - **Unlocks:** Phase 7 start (all Phase 6 complete)
 
 **Change Classification:** ADDITIVE
@@ -6054,7 +6110,7 @@ Create E2E tests for dashboard flow.
 
 ## Phase 7: Document Enhancement (Week 13) - 6 Tasks
 
-### DEV-260: Bilancio Document Parser
+### DEV-360: Bilancio Document Parser
 
 **Reference:** [FR-008: Upload e Analisi Documenti](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti)
 
@@ -6070,7 +6126,7 @@ Create bilancio parser using existing document parsing infrastructure.
 
 **Dependencies:**
 - **Blocking:** Existing document parsing infrastructure
-- **Unlocks:** DEV-262 (Client Document Association), DEV-263 (Chat Context), DEV-265 (Integration Tests)
+- **Unlocks:** DEV-362 (Client Document Association), DEV-363 (Chat Context), DEV-365 (Integration Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -6153,7 +6209,7 @@ Create bilancio parser using existing document parsing infrastructure.
 
 ---
 
-### DEV-261: CU Document Parser
+### DEV-361: CU Document Parser
 
 **Reference:** [FR-008: Upload e Analisi Documenti](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti)
 
@@ -6169,7 +6225,7 @@ Create CU parser for extracting income and withholding data.
 
 **Dependencies:**
 - **Blocking:** Existing document parsing infrastructure
-- **Unlocks:** DEV-262 (Client Document Association), DEV-265 (Integration Tests)
+- **Unlocks:** DEV-362 (Client Document Association), DEV-365 (Integration Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -6252,7 +6308,7 @@ Create CU parser for extracting income and withholding data.
 
 ---
 
-### DEV-262: Client Document Association
+### DEV-362: Client Document Association
 
 **Reference:** [FR-008: Upload e Analisi Documenti](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti)
 
@@ -6267,8 +6323,8 @@ Create client-document linking with automatic CF matching.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-209 (ClientService), DEV-260 (Bilancio Parser), DEV-261 (CU Parser)
-- **Unlocks:** DEV-263 (Chat Context), DEV-264 (API), DEV-265 (Integration Tests)
+- **Blocking:** DEV-309 (ClientService), DEV-360 (Bilancio Parser), DEV-361 (CU Parser)
+- **Unlocks:** DEV-363 (Chat Context), DEV-364 (API), DEV-365 (Integration Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -6348,7 +6404,7 @@ Create client-document linking with automatic CF matching.
 
 ---
 
-### DEV-263: Document Context in Chat
+### DEV-363: Document Context in Chat
 
 **Reference:** [FR-008: Upload e Analisi Documenti](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti)
 
@@ -6363,8 +6419,8 @@ Include client documents in RAGState context.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-262 (Client Document Association), Existing context_builder_node
-- **Unlocks:** DEV-265 (Integration Tests)
+- **Blocking:** DEV-362 (Client Document Association), Existing context_builder_node
+- **Unlocks:** DEV-365 (Integration Tests)
 
 **Change Classification:** MODIFYING
 
@@ -6443,7 +6499,7 @@ Include client documents in RAGState context.
 
 ---
 
-### DEV-264: Document API Endpoints
+### DEV-364: Document API Endpoints
 
 **Reference:** [FR-008: Upload e Analisi Documenti](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti)
 
@@ -6458,8 +6514,8 @@ Create document router with endpoints.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-262 (Client Document Association)
-- **Unlocks:** DEV-265 (Integration Tests), Frontend integration
+- **Blocking:** DEV-362 (Client Document Association)
+- **Unlocks:** DEV-365 (Integration Tests), Frontend integration
 
 **Change Classification:** ADDITIVE
 
@@ -6539,7 +6595,7 @@ Create document router with endpoints.
 
 ---
 
-### DEV-265: Document Parser Integration Tests
+### DEV-365: Document Parser Integration Tests
 
 **Reference:** [FR-008: Upload e Analisi Documenti](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti)
 
@@ -6554,7 +6610,7 @@ Create integration tests with sample PDFs.
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-260 (Bilancio Parser), DEV-261 (CU Parser), DEV-262 (Association), DEV-263 (Chat Context), DEV-264 (API)
+- **Blocking:** DEV-360 (Bilancio Parser), DEV-361 (CU Parser), DEV-362 (Association), DEV-363 (Chat Context), DEV-364 (API)
 - **Unlocks:** Phase 8 start (all Phase 7 complete)
 
 **Change Classification:** ADDITIVE
@@ -6633,7 +6689,7 @@ Create integration tests with sample PDFs.
 
 ## Phase 8: Frontend Integration Points (Week 14) - 6 Tasks
 
-### DEV-266: OpenAPI Schema Validation
+### DEV-366: OpenAPI Schema Validation
 
 **Reference:** [Non-Functional Requirements](./PRATIKO_2.0_REFERENCE.md#4-requisiti-non-funzionali)
 
@@ -6648,8 +6704,8 @@ Add schema validation and generate TypeScript types.
 **Agent Assignment:** @Ezio (primary), @Livia (frontend)
 
 **Dependencies:**
-- **Blocking:** All API endpoints (DEV-211, DEV-212, DEV-226, DEV-232, DEV-242, DEV-256, DEV-264)
-- **Unlocks:** DEV-270 (Frontend SDK Types)
+- **Blocking:** All API endpoints (DEV-311, DEV-312, DEV-326, DEV-332, DEV-342, DEV-356, DEV-364)
+- **Unlocks:** DEV-370 (Frontend SDK Types)
 
 **Change Classification:** ADDITIVE
 
@@ -6718,7 +6774,7 @@ Add schema validation and generate TypeScript types.
 
 ---
 
-### DEV-267: API Error Response Standardization
+### DEV-367: API Error Response Standardization
 
 **Reference:** [Non-Functional Requirements](./PRATIKO_2.0_REFERENCE.md#4-requisiti-non-funzionali)
 
@@ -6734,7 +6790,7 @@ Standardize error response format across all endpoints.
 
 **Dependencies:**
 - **Blocking:** All existing API endpoints (foundation must exist)
-- **Unlocks:** DEV-270 (Frontend SDK Types), all future API development
+- **Unlocks:** DEV-370 (Frontend SDK Types), all future API development
 
 **Change Classification:** MODIFYING
 
@@ -6811,7 +6867,7 @@ Standardize error response format across all endpoints.
 
 ---
 
-### DEV-268: Pagination Standardization
+### DEV-368: Pagination Standardization
 
 **Reference:** [Non-Functional Requirements](./PRATIKO_2.0_REFERENCE.md#4-requisiti-non-funzionali)
 
@@ -6826,7 +6882,7 @@ Standardize pagination across all list endpoints.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-212 (Client API), DEV-226 (Matching API), DEV-232 (Communication API) - any list endpoint
+- **Blocking:** DEV-312 (Client API), DEV-326 (Matching API), DEV-332 (Communication API) - any list endpoint
 - **Unlocks:** All list endpoints use consistent pagination
 
 **Change Classification:** ADDITIVE
@@ -6892,7 +6948,7 @@ Standardize pagination across all list endpoints.
 
 ---
 
-### DEV-269: WebSocket Events for Real-time Updates
+### DEV-369: WebSocket Events for Real-time Updates
 
 **Reference:** [Non-Functional Requirements](./PRATIKO_2.0_REFERENCE.md#4-requisiti-non-funzionali)
 
@@ -6907,8 +6963,8 @@ Create WebSocket endpoint for real-time events.
 **Agent Assignment:** @Ezio (primary), @Livia (frontend), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-220 (NormativeMatchingService), DEV-230 (CommunicationService) - event sources
-- **Unlocks:** Real-time frontend updates, DEV-286 (Calendar Widget live updates)
+- **Blocking:** DEV-320 (NormativeMatchingService), DEV-330 (CommunicationService) - event sources
+- **Unlocks:** Real-time frontend updates, DEV-386 (Calendar Widget live updates)
 
 **Change Classification:** ADDITIVE
 
@@ -6980,7 +7036,7 @@ Create WebSocket endpoint for real-time events.
 
 ---
 
-### DEV-270: Frontend SDK Types Generation
+### DEV-370: Frontend SDK Types Generation
 
 **Reference:** [Non-Functional Requirements](./PRATIKO_2.0_REFERENCE.md#4-requisiti-non-funzionali)
 
@@ -6995,7 +7051,7 @@ Set up automatic type generation from OpenAPI.
 **Agent Assignment:** @Livia (primary), @Ezio (backend)
 
 **Dependencies:**
-- **Blocking:** DEV-266 (OpenAPI Schema Validation), DEV-267 (Error Response Standardization)
+- **Blocking:** DEV-366 (OpenAPI Schema Validation), DEV-367 (Error Response Standardization)
 - **Unlocks:** Type-safe frontend development, reduces integration bugs
 
 **Change Classification:** ADDITIVE
@@ -7067,7 +7123,7 @@ Set up automatic type generation from OpenAPI.
 
 ---
 
-### DEV-271: Full User Journey E2E Test
+### DEV-371: Full User Journey E2E Test
 
 **Reference:** [Non-Functional Requirements](./PRATIKO_2.0_REFERENCE.md#4-requisiti-non-funzionali)
 
@@ -7083,9 +7139,9 @@ Create complete E2E test from registration to dashboard.
 
 **Dependencies:**
 - **Blocking:** All Phase 0-8 tasks (this tests the complete system)
-  - DEV-200-207 (Models), DEV-208-219 (Services), DEV-220-229 (Matching)
-  - DEV-230-239 (Communications), DEV-240-253 (Guides/Calculations)
-  - DEV-254-265 (Document Analysis), DEV-266-270 (API Quality)
+  - DEV-300-207 (Models), DEV-308-219 (Services), DEV-320-229 (Matching)
+  - DEV-330-239 (Communications), DEV-340-253 (Guides/Calculations)
+  - DEV-354-265 (Document Analysis), DEV-366-270 (API Quality)
 - **Unlocks:** Production deployment gate (must pass)
 
 **Change Classification:** ADDITIVE
@@ -7168,7 +7224,7 @@ Create complete E2E test from registration to dashboard.
 
 ## Phase 9: GDPR Compliance Enhancement (Week 15) - 8 Tasks
 
-### DEV-272: Data Processing Agreement (DPA) Model
+### DEV-372: Data Processing Agreement (DPA) Model
 
 **Reference:** [GDPR e Gestione Dati Clienti](./PRATIKO_2.0_REFERENCE.md#11-gdpr-e-gestione-dati-clienti)
 
@@ -7183,8 +7239,8 @@ Create DPA model with version tracking and acceptance records.
 **Agent Assignment:** @Primo (primary), @Severino (legal review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-200 (Studio model), DEV-207 (Migration infrastructure)
-- **Unlocks:** DEV-273 (DPA Acceptance Workflow), DEV-278 (GDPR Dashboard)
+- **Blocking:** DEV-300 (Studio model), DEV-307 (Migration infrastructure)
+- **Unlocks:** DEV-373 (DPA Acceptance Workflow), DEV-378 (GDPR Dashboard)
 
 **Change Classification:** ADDITIVE
 
@@ -7269,7 +7325,7 @@ Create DPA model with version tracking and acceptance records.
 
 ---
 
-### DEV-273: DPA Acceptance Workflow
+### DEV-373: DPA Acceptance Workflow
 
 **Reference:** [GDPR e Gestione Dati Clienti](./PRATIKO_2.0_REFERENCE.md#11-gdpr-e-gestione-dati-clienti)
 
@@ -7284,8 +7340,8 @@ Create DPA service with acceptance workflow and API enforcement.
 **Agent Assignment:** @Ezio (primary), @Severino (legal review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-272 (DPA Model)
-- **Unlocks:** DEV-209 (ClientService) - cannot create clients without DPA, DEV-278 (Dashboard)
+- **Blocking:** DEV-372 (DPA Model)
+- **Unlocks:** DEV-309 (ClientService) - cannot create clients without DPA, DEV-378 (Dashboard)
 
 **Change Classification:** ADDITIVE
 
@@ -7336,7 +7392,7 @@ Create DPA service with acceptance workflow and API enforcement.
   - `test_major_version_requires_accept` - v1→v2 blocked
   - `test_partial_dpa_tracked` - per-DPA tracking works
   - `test_version_rollback_rejected` - downgrade fails
-- **E2E Tests:** Part of DEV-279
+- **E2E Tests:** Part of DEV-379
 - **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:** Run `pytest tests/services/`
 - **Coverage Target:** 95%+ for DPA code
@@ -7361,7 +7417,7 @@ Create DPA service with acceptance workflow and API enforcement.
 
 ---
 
-### DEV-274: Data Breach Notification Model
+### DEV-374: Data Breach Notification Model
 
 **Reference:** [GDPR e Gestione Dati Clienti](./PRATIKO_2.0_REFERENCE.md#11-gdpr-e-gestione-dati-clienti)
 
@@ -7376,8 +7432,8 @@ Create breach notification model with status tracking.
 **Agent Assignment:** @Primo (primary), @Severino (compliance), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-207 (Migration infrastructure)
-- **Unlocks:** DEV-275 (Breach Notification Service), DEV-278 (GDPR Dashboard)
+- **Blocking:** DEV-307 (Migration infrastructure)
+- **Unlocks:** DEV-375 (Breach Notification Service), DEV-378 (GDPR Dashboard)
 
 **Change Classification:** ADDITIVE
 
@@ -7463,7 +7519,7 @@ Create breach notification model with status tracking.
 
 ---
 
-### DEV-275: Breach Notification Service
+### DEV-375: Breach Notification Service
 
 **Reference:** [GDPR e Gestione Dati Clienti](./PRATIKO_2.0_REFERENCE.md#11-gdpr-e-gestione-dati-clienti)
 
@@ -7478,8 +7534,8 @@ Create breach service with workflow and deadline tracking.
 **Agent Assignment:** @Ezio (primary), @Severino (compliance), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-274 (Breach Model), DEV-233 (Email sending for notifications)
-- **Unlocks:** DEV-278 (GDPR Dashboard), DEV-279 (GDPR E2E Tests)
+- **Blocking:** DEV-374 (Breach Model), DEV-333 (Email sending for notifications)
+- **Unlocks:** DEV-378 (GDPR Dashboard), DEV-379 (GDPR E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -7541,7 +7597,7 @@ Create breach service with workflow and deadline tracking.
   - `test_late_discovery_logged` - post-72h violation logged
   - `test_incomplete_assessment_blocked` - premature report fails
   - `test_concurrent_assessment_merged` - conflict resolved
-- **E2E Tests:** Part of DEV-279
+- **E2E Tests:** Part of DEV-379
 - **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:** Run `pytest tests/services/`
 - **Coverage Target:** 95%+ for breach code
@@ -7560,7 +7616,7 @@ Create breach service with workflow and deadline tracking.
 
 ---
 
-### DEV-276: Processing Register
+### DEV-376: Processing Register
 
 **Reference:** [GDPR e Gestione Dati Clienti](./PRATIKO_2.0_REFERENCE.md#11-gdpr-e-gestione-dati-clienti)
 
@@ -7575,8 +7631,8 @@ Create processing register model and service.
 **Agent Assignment:** @Ezio (primary), @Severino (compliance), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-200 (Studio model), DEV-207 (Migration infrastructure)
-- **Unlocks:** DEV-278 (GDPR Dashboard), DEV-279 (GDPR E2E Tests)
+- **Blocking:** DEV-300 (Studio model), DEV-307 (Migration infrastructure)
+- **Unlocks:** DEV-378 (GDPR Dashboard), DEV-379 (GDPR E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -7662,7 +7718,7 @@ Create processing register model and service.
 
 ---
 
-### DEV-277: Enhanced Client Data Rights
+### DEV-377: Enhanced Client Data Rights
 
 **Reference:** [GDPR e Gestione Dati Clienti](./PRATIKO_2.0_REFERENCE.md#11-gdpr-e-gestione-dati-clienti)
 
@@ -7677,8 +7733,8 @@ Create data rights API for client self-service.
 **Agent Assignment:** @Ezio (primary), @Severino (compliance), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-209 (ClientService), existing GDPR deletion service
-- **Unlocks:** DEV-278 (GDPR Dashboard), DEV-279 (GDPR E2E Tests)
+- **Blocking:** DEV-309 (ClientService), existing GDPR deletion service
+- **Unlocks:** DEV-378 (GDPR Dashboard), DEV-379 (GDPR E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -7758,7 +7814,7 @@ Create data rights API for client self-service.
 
 ---
 
-### DEV-278: GDPR Compliance Dashboard
+### DEV-378: GDPR Compliance Dashboard
 
 **Reference:** [GDPR e Gestione Dati Clienti](./PRATIKO_2.0_REFERENCE.md#11-gdpr-e-gestione-dati-clienti)
 
@@ -7773,8 +7829,8 @@ Create compliance dashboard endpoint.
 **Agent Assignment:** @Ezio (primary), @Severino (compliance), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-272 (DPA), DEV-273 (DPA Workflow), DEV-274-275 (Breach), DEV-276 (Register), DEV-277 (Data Rights)
-- **Unlocks:** DEV-279 (GDPR E2E Tests)
+- **Blocking:** DEV-372 (DPA), DEV-373 (DPA Workflow), DEV-374-275 (Breach), DEV-376 (Register), DEV-377 (Data Rights)
+- **Unlocks:** DEV-379 (GDPR E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -7845,7 +7901,7 @@ Create compliance dashboard endpoint.
 
 ---
 
-### DEV-279: GDPR E2E Tests
+### DEV-379: GDPR E2E Tests
 
 **Reference:** [GDPR e Gestione Dati Clienti](./PRATIKO_2.0_REFERENCE.md#11-gdpr-e-gestione-dati-clienti)
 
@@ -7860,7 +7916,7 @@ Create comprehensive GDPR E2E test suite.
 **Agent Assignment:** @Clelia (primary), @Severino (review)
 
 **Dependencies:**
-- **Blocking:** DEV-272-278 (All Phase 9 GDPR tasks)
+- **Blocking:** DEV-372-278 (All Phase 9 GDPR tasks)
 - **Unlocks:** Production deployment gate (GDPR compliance required)
 
 **Change Classification:** ADDITIVE
@@ -7951,7 +8007,7 @@ Create comprehensive GDPR E2E test suite.
 
 This phase implements FR-006 - the proactive deadline system that tracks tax deadlines, regulatory deadlines, and client-specific obligations. The system automatically matches deadlines to clients based on their profile and sends proactive notifications.
 
-### DEV-280: Deadline SQLModel & Migration
+### DEV-380: Deadline SQLModel & Migration
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
@@ -7966,8 +8022,8 @@ Create `Deadline` SQLModel to store deadline metadata and `ClientDeadline` for t
 **Agent Assignment:** @Primo (primary), @Severino (security review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-200 (Studio model), DEV-201 (Client model), DEV-207 (Migration infrastructure)
-- **Unlocks:** DEV-281 (DeadlineService), DEV-282 (Extraction), DEV-283 (Matching), DEV-284 (Notifications), DEV-285 (API)
+- **Blocking:** DEV-300 (Studio model), DEV-301 (Client model), DEV-307 (Migration infrastructure)
+- **Unlocks:** DEV-381 (DeadlineService), DEV-382 (Extraction), DEV-383 (Matching), DEV-384 (Notifications), DEV-385 (API)
 
 **Change Classification:** ADDITIVE
 
@@ -8065,7 +8121,7 @@ Create `Deadline` SQLModel to store deadline metadata and `ClientDeadline` for t
 
 ---
 
-### DEV-281: DeadlineService CRUD
+### DEV-381: DeadlineService CRUD
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
@@ -8080,8 +8136,8 @@ Create DeadlineService with full CRUD and status management.
 **Agent Assignment:** @Ezio (primary), @Primo (DB support), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-280 (Deadline model)
-- **Unlocks:** DEV-282 (Extraction), DEV-283 (Matching), DEV-284 (Notifications), DEV-285 (API), DEV-287 (E2E Tests)
+- **Blocking:** DEV-380 (Deadline model)
+- **Unlocks:** DEV-382 (Extraction), DEV-383 (Matching), DEV-384 (Notifications), DEV-385 (API), DEV-387 (E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -8171,7 +8227,7 @@ Create DeadlineService with full CRUD and status management.
 
 ---
 
-### DEV-282: Automatic Deadline Extraction from KB
+### DEV-382: Automatic Deadline Extraction from KB
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
@@ -8186,8 +8242,8 @@ Create DeadlineExtractionService that processes KB items and extracts deadline m
 **Agent Assignment:** @Ezio (primary), @Mario (extraction rules), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-281 (DeadlineService), existing KB/RSS ingestion system
-- **Unlocks:** DEV-283 (Client matching for extracted deadlines), DEV-287 (E2E Tests)
+- **Blocking:** DEV-381 (DeadlineService), existing KB/RSS ingestion system
+- **Unlocks:** DEV-383 (Client matching for extracted deadlines), DEV-387 (E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -8276,7 +8332,7 @@ Create DeadlineExtractionService that processes KB items and extracts deadline m
 
 ---
 
-### DEV-283: Client-Deadline Matching Logic
+### DEV-383: Client-Deadline Matching Logic
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
@@ -8291,8 +8347,8 @@ Create DeadlineMatchingService that matches deadlines to clients using the same 
 **Agent Assignment:** @Ezio (primary), @Primo (query optimization), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-281 (DeadlineService), DEV-202 (ClientProfile), DEV-220 (NormativeMatchingService criteria engine)
-- **Unlocks:** DEV-284 (Notifications use matched clients), DEV-287 (E2E Tests)
+- **Blocking:** DEV-381 (DeadlineService), DEV-302 (ClientProfile), DEV-320 (NormativeMatchingService criteria engine)
+- **Unlocks:** DEV-384 (Notifications use matched clients), DEV-387 (E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -8372,7 +8428,7 @@ Create DeadlineMatchingService that matches deadlines to clients using the same 
 
 ---
 
-### DEV-284: Deadline Notification Background Job
+### DEV-384: Deadline Notification Background Job
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
@@ -8387,8 +8443,8 @@ Create background job that runs daily and sends notifications for upcoming deadl
 **Agent Assignment:** @Ezio (primary), @Silvano (background jobs), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-281 (DeadlineService), DEV-283 (Client-Deadline Matching), DEV-233 (Email sending)
-- **Unlocks:** DEV-287 (E2E Tests)
+- **Blocking:** DEV-381 (DeadlineService), DEV-383 (Client-Deadline Matching), DEV-333 (Email sending)
+- **Unlocks:** DEV-387 (E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -8476,7 +8532,7 @@ Create background job that runs daily and sends notifications for upcoming deadl
 
 ---
 
-### DEV-285: Upcoming Deadlines API Endpoint
+### DEV-385: Upcoming Deadlines API Endpoint
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
@@ -8491,8 +8547,8 @@ Create REST endpoints for deadline management and queries.
 **Agent Assignment:** @Ezio (primary), @Livia (frontend contract), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-281 (DeadlineService)
-- **Unlocks:** DEV-286 (Calendar Widget), DEV-287 (E2E Tests)
+- **Blocking:** DEV-381 (DeadlineService)
+- **Unlocks:** DEV-386 (Calendar Widget), DEV-387 (E2E Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -8592,7 +8648,7 @@ class DeadlineResponse(BaseModel):
 
 ---
 
-### DEV-286: Deadline Calendar Widget (Frontend)
+### DEV-386: Deadline Calendar Widget (Frontend)
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
@@ -8607,8 +8663,8 @@ Create React calendar component showing deadlines with color-coding by type and 
 **Agent Assignment:** @Livia (primary), @Ezio (API contract), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-285 (Deadlines API), DEV-270 (Frontend SDK Types)
-- **Unlocks:** DEV-287 (E2E Tests - frontend integration)
+- **Blocking:** DEV-385 (Deadlines API), DEV-370 (Frontend SDK Types)
+- **Unlocks:** DEV-387 (E2E Tests - frontend integration)
 
 **Change Classification:** ADDITIVE
 
@@ -8629,7 +8685,7 @@ Create React calendar component showing deadlines with color-coding by type and 
 **Performance Requirements:**
 - Calendar render: <200ms
 - Month navigation: <100ms
-- Real-time updates via DEV-269 WebSocket
+- Real-time updates via DEV-369 WebSocket
 
 **Edge Cases:**
 - **Empty Month:** No deadlines in selected month -> show placeholder with next deadline info
@@ -8695,7 +8751,7 @@ Create React calendar component showing deadlines with color-coding by type and 
 
 ---
 
-### DEV-287: Deadline System E2E Tests
+### DEV-387: Deadline System E2E Tests
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
@@ -8710,7 +8766,7 @@ Create E2E test suite for deadline system.
 **Agent Assignment:** @Clelia (primary), @Severino (review)
 
 **Dependencies:**
-- **Blocking:** DEV-280-286 (All Phase 10 Deadline tasks)
+- **Blocking:** DEV-380-286 (All Phase 10 Deadline tasks)
 - **Unlocks:** Production deployment gate (deadline system must work)
 
 **Change Classification:** ADDITIVE
@@ -8809,7 +8865,7 @@ Create E2E test suite for deadline system.
 
 This phase adds missing infrastructure components identified in the gap analysis.
 
-### DEV-288: PDF Export Service
+### DEV-388: PDF Export Service
 
 **Reference:** [NFR-001: Performance Requirements](./PRATIKO_2.0_REFERENCE.md#7-requisiti-non-funzionali)
 
@@ -8903,7 +8959,75 @@ Create shared PDF generation service using WeasyPrint or ReportLab.
 
 ---
 
-### DEV-289: OCR Integration for Scanned Documents
+### DEV-389: Integrate Hallucination Guard into RAG Pipeline
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+HallucinationGuard service (`app/services/hallucination_guard.py`) validates law citations but is not called in production. Created in DEV-245 Phase 2.3. Currently, responses may contain incorrect legal citations that could mislead users.
+
+**Solution:**
+Add validation step in `step_064__llm_call.py` before yielding response. If hallucinations detected:
+1. Soft mode: Log warning, continue with flagged response
+2. Strict mode: Request LLM regeneration without hallucinated citations
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** None (service already exists)
+- **Unlocks:** Improved response accuracy for legal citations
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Modified Files:** `app/core/langgraph/nodes/step_064__llm_call.py`
+- **Integration Points:** RAG pipeline response generation
+
+**Error Handling:**
+- Validation failure: Log warning, continue with original response in soft mode
+- Service unavailable: Fallback to unvalidated response with warning log
+- **Logging:** All hallucination detections MUST be logged with citation details
+
+**Edge Cases:**
+- **Empty citations:** Skip validation if no legal citations in response
+- **Timeout:** Set 2s timeout for validation, fallback to unvalidated if exceeded
+- **Partial validation:** If some citations valid and some invalid, flag only invalid ones
+
+**File:** `app/core/langgraph/nodes/step_064__llm_call.py`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/langgraph/test_hallucination_guard_integration.py` FIRST
+- **Unit Tests:**
+  - `test_hallucination_guard_soft_mode` - warning logged but response continues
+  - `test_hallucination_guard_strict_mode` - regeneration triggered
+  - `test_hallucination_guard_timeout` - fallback on timeout
+  - `test_hallucination_guard_no_citations` - skip validation when no citations
+- **Integration Tests:** Test with real LLM responses containing citations
+- **Coverage Target:** 80%+ for integration code
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Response latency increase | MEDIUM | Set strict 2s timeout |
+| False positives | LOW | Start in soft mode, tune thresholds |
+| Service failure | LOW | Graceful fallback to unvalidated |
+
+**Code Structure:**
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] HallucinationGuard called in RAG pipeline
+- [ ] Soft/strict mode configurable via environment variable
+- [ ] All validations logged with structured context
+- [ ] Timeout handling implemented
+- [ ] 80%+ test coverage achieved
+
+---
+
+### DEV-390: OCR Integration for Scanned Documents
 
 **Reference:** [FR-008: Upload e Analisi Documenti Temporanei](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti-temporanei)
 
@@ -8919,7 +9043,7 @@ Integrate OCR service (Tesseract or cloud-based) into document processing pipeli
 
 **Dependencies:**
 - **Blocking:** None (independent utility service)
-- **Unlocks:** DEV-263 (Document Context) enhancement, DEV-291 (F24 Parser) scanned support
+- **Unlocks:** DEV-363 (Document Context) enhancement, DEV-392 (F24 Parser) scanned support
 
 **Change Classification:** ADDITIVE
 
@@ -8995,7 +9119,7 @@ Integrate OCR service (Tesseract or cloud-based) into document processing pipeli
 
 ---
 
-### DEV-290: Document Auto-Delete Background Job
+### DEV-391: Document Auto-Delete Background Job
 
 **Reference:** [FR-008: Upload e Analisi Documenti Temporanei](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti-temporanei)
 
@@ -9010,7 +9134,7 @@ Create background job that deletes documents older than 30 minutes.
 **Agent Assignment:** @Ezio (primary), @Severino (security review), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-263 (Document Context) or existing document storage
+- **Blocking:** DEV-363 (Document Context) or existing document storage
 - **Unlocks:** GDPR compliance (data minimization requirement)
 
 **Change Classification:** ADDITIVE
@@ -9087,7 +9211,7 @@ Create background job that deletes documents older than 30 minutes.
 
 ---
 
-### DEV-291: F24 Document Parser
+### DEV-392: F24 Document Parser
 
 **Reference:** [FR-008: Upload e Analisi Documenti Temporanei](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti-temporanei)
 
@@ -9102,7 +9226,7 @@ Create specialized parser for F24 documents.
 **Agent Assignment:** @Ezio (primary), @Mario (F24 structure), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-263 (Document Context) for PDF parsing, optionally DEV-289 (OCR) for scanned F24
+- **Blocking:** DEV-363 (Document Context) for PDF parsing, optionally DEV-390 (OCR) for scanned F24
 - **Unlocks:** Tax calculation validation, payment tracking features
 
 **Change Classification:** ADDITIVE
@@ -9128,7 +9252,7 @@ Create specialized parser for F24 documents.
 - **Empty F24:** No tributi sections filled → return empty list, `"sections_found": 0`
 - **Partial F24:** Only sezione I filled → parse available, skip missing sections
 - **F24 Semplificato:** Different layout → detect variant, use appropriate parser
-- **Handwritten Amounts:** OCR required → combine with DEV-289, flag confidence
+- **Handwritten Amounts:** OCR required → combine with DEV-390, flag confidence
 - **Zero Amounts:** All importi = 0 → valid F24, return parsed with totale 0
 - **Compensazione:** Crediti > Debiti → `"compensazione": true`, no totale versare
 - **Invalid CF:** Checksum fails → log warning, return with `"cf_valid": false`
@@ -9189,7 +9313,7 @@ Create specialized parser for F24 documents.
 
 ---
 
-### DEV-292: Regional Tax Configuration System
+### DEV-393: Regional Tax Configuration System
 
 **Reference:** [FR-007: Calcoli Fiscali](./PRATIKO_2.0_REFERENCE.md#fr-007-calcoli-fiscali)
 
@@ -9205,7 +9329,7 @@ Create configuration system for regional tax rates.
 
 **Dependencies:**
 - **Blocking:** None (independent configuration system)
-- **Unlocks:** DEV-260 (TaxCalculatorService) enhancement for regional accuracy
+- **Unlocks:** DEV-360 (TaxCalculatorService) enhancement for regional accuracy
 
 **Change Classification:** ADDITIVE
 
@@ -9287,7 +9411,7 @@ Create configuration system for regional tax rates.
 
 ---
 
-### DEV-293: Feature Flag Infrastructure
+### DEV-394: Feature Flag Infrastructure
 
 **Reference:** [NFR-003: Deployment Requirements](./PRATIKO_2.0_REFERENCE.md#7-requisiti-non-funzionali)
 
@@ -9302,7 +9426,7 @@ Create feature flag system with studio-level and global flags.
 **Agent Assignment:** @Ezio (primary), @Silvano (deployment), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-200 (Studio model) for per-studio flags
+- **Blocking:** DEV-300 (Studio model) for per-studio flags
 - **Unlocks:** Safe gradual rollout of all new features
 
 **Change Classification:** ADDITIVE
@@ -9386,7 +9510,7 @@ Create feature flag system with studio-level and global flags.
 
 ---
 
-### DEV-294: API Rate Limiting
+### DEV-395: API Rate Limiting
 
 **Reference:** [NFR-002: Security Requirements](./PRATIKO_2.0_REFERENCE.md#7-requisiti-non-funzionali)
 
@@ -9511,7 +9635,7 @@ tests/e2e/test_guide_flow.py
 1. Start Guide → 2. Complete Steps → 3. Resume → 4. Complete → 5. View History
 ```
 
-### Flow 5: Full User Journey (DEV-271)
+### Flow 5: Full User Journey (DEV-371)
 ```
 tests/e2e/test_pratikoai_2_0_flow.py
 1. Register → 2. Create Studio → 3. Import Clients → 4. Chat → 5. View Matches

@@ -1,6 +1,15 @@
 # ADR-020: Suggested Actions Architecture
 
 ## Status
+**SUPERSEDED** (January 2026)
+**Superseded By:** Feature removed per user feedback in DEV-245 Phase 5.15
+**Archive:** See `docs/architecture/ARCHIVED_SUGGESTED_ACTIONS.md`
+
+> **Note:** This ADR is preserved for historical reference. The Suggested Actions feature was removed because user feedback indicated the actions were generic and not contextually relevant. See PRATIKO_2.0.md "Deprecated Features" section for details.
+
+---
+
+### Original Status (Historical)
 **ACCEPTED** - Implemented in PRATIKO 1.5
 
 ## Context

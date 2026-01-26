@@ -417,6 +417,11 @@ class RAGState(TypedDict, total=False):
     # Structure: {hypotheses[], selected, selection_reasoning, confidence, alternative_note}
     tot_analysis: dict | None
 
+    # DEV-249: Hallucination Guard result
+    # Structure: {extracted_citations, valid_citations, hallucinated_citations,
+    #             context_citations, has_hallucinations, hallucination_rate}
+    hallucination_check_result: dict | None
+
     # Phase 9: LLM Excellence - Dual Reasoning (DEV-229, DEV-230)
     # Technical reasoning for debugging/logging (not shown to user)
     internal_reasoning: dict | None

@@ -740,16 +740,19 @@ class DailyCostReportService:
             html_content = self._generate_html_report(report)
             msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-            # Send email
-            with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+            # Send email using STARTTLS (port 587)
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()
                 server.login(self.smtp_user, self.smtp_password)
-                server.sendmail(self.smtp_user, recipients, msg.as_string())
+                server.send_message(msg, self.smtp_user, recipients)
 
             logger.info(
                 "daily_cost_report_sent",
-                report_date=str(report.report_date),
-                total_cost=report.total_cost_eur,
-                recipients=recipients,
+                extra={
+                    "report_date": str(report.report_date),
+                    "total_cost": report.total_cost_eur,
+                    "recipients": recipients,
+                },
             )
 
             return True
@@ -757,8 +760,10 @@ class DailyCostReportService:
         except Exception as e:
             logger.error(
                 "daily_cost_report_send_failed",
-                error=str(e),
-                report_date=str(report.report_date),
+                extra={
+                    "error": str(e),
+                    "report_date": str(report.report_date),
+                },
             )
             return False
 

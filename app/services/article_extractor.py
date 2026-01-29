@@ -217,7 +217,7 @@ class ArticleExtractor:
                 article=article or "N/A",
                 comma_range=(start, end),
             )
-            key = (ref.article, None, None, ref.comma_range)
+            key: tuple[Any, ...] = (ref.article, None, None, ref.comma_range)
             if key not in seen:
                 references.append(ref)
                 seen.add(key)

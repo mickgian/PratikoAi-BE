@@ -1,0 +1,52 @@
+[
+  {
+    "id": "RETRIEVAL-REG-001",
+    "category": "retrieval",
+    "query": "Quali sono le scadenze fiscali di marzo 2025?",
+    "expected_sources": ["ADE-SCADENZE-2025-03"],
+    "grader_type": "code",
+    "pass_threshold": 0.7,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "RETRIEVAL-REG-002",
+    "category": "retrieval",
+    "query": "Circolare INPS sulla rottamazione quinquies",
+    "expected_sources": ["INPS-CIRC-2025-001"],
+    "grader_type": "code",
+    "pass_threshold": 0.7,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "RETRIEVAL-REG-003",
+    "category": "retrieval",
+    "query": "Come richiedere i permessi Legge 104",
+    "expected_sources": ["INPS-PERMESSI-104", "LEGGE-104-1992"],
+    "grader_type": "code",
+    "pass_threshold": 0.7,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "RETRIEVAL-REG-004",
+    "category": "retrieval",
+    "query": "Bonus ristrutturazioni 2025 requisiti",
+    "expected_sources": ["ADE-BONUS-RISTRUTTURAZIONI-2025"],
+    "grader_type": "code",
+    "pass_threshold": 0.7,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "RETRIEVAL-REG-005",
+    "category": "retrieval",
+    "query": "Contributi INPS artigiani e commercianti 2025",
+    "expected_sources": ["INPS-CONTRIBUTI-2025"],
+    "grader_type": "code",
+    "pass_threshold": 0.7,
+    "is_regression": true,
+    "source": "manual"
+  }
+]

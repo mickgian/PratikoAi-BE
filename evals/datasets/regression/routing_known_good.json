@@ -1,0 +1,102 @@
+[
+  {
+    "id": "ROUTING-REG-001",
+    "category": "routing",
+    "query": "Ciao, come stai?",
+    "expected_route": "chitchat",
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-002",
+    "category": "routing",
+    "query": "Buongiorno, posso aiutarti?",
+    "expected_route": "chitchat",
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-003",
+    "category": "routing",
+    "query": "Qual è la scadenza per la rottamazione quinquies?",
+    "expected_route": "technical_research",
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-004",
+    "category": "routing",
+    "query": "Come funziona il bonus 110% per ristrutturazioni?",
+    "expected_route": "technical_research",
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-005",
+    "category": "routing",
+    "query": "Cosa prevede la Legge 104/1992?",
+    "expected_route": "golden_set",
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-006",
+    "category": "routing",
+    "query": "Art. 3 della Legge 104/1992 sui permessi lavorativi",
+    "expected_route": "golden_set",
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-007",
+    "category": "routing",
+    "query": "Cos'è il TFR?",
+    "expected_route": "theoretical_definition",
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-008",
+    "category": "routing",
+    "query": "Definizione di IRAP",
+    "expected_route": "theoretical_definition",
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-009",
+    "category": "routing",
+    "query": "Calcola l'IRPEF su 50.000 euro lordi",
+    "expected_route": "calculator",
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-010",
+    "category": "routing",
+    "query": "Quanto pago di contributi INPS con P.IVA forfettaria?",
+    "expected_route": "calculator",
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  }
+]

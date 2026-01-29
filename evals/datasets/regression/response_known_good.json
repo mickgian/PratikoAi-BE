@@ -1,0 +1,52 @@
+[
+  {
+    "id": "RESPONSE-REG-001",
+    "category": "response",
+    "query": "Quali sono i benefici della Legge 104/1992?",
+    "expected_citations": ["Legge 104/1992", "Art. 3"],
+    "grader_type": "code",
+    "pass_threshold": 0.7,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "RESPONSE-REG-002",
+    "category": "response",
+    "query": "Come funziona il regime forfettario?",
+    "expected_citations": ["L. 190/2014", "Art. 1 comma 54"],
+    "grader_type": "code",
+    "pass_threshold": 0.7,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "RESPONSE-REG-003",
+    "category": "response",
+    "query": "Quali sono gli obblighi del datore di lavoro per la sicurezza?",
+    "expected_citations": ["D.Lgs. 81/2008"],
+    "grader_type": "code",
+    "pass_threshold": 0.7,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "RESPONSE-REG-004",
+    "category": "response",
+    "query": "Come si calcola il TFR?",
+    "expected_citations": ["Art. 2120 c.c."],
+    "grader_type": "code",
+    "pass_threshold": 0.7,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "RESPONSE-REG-005",
+    "category": "response",
+    "query": "Deducibilità spese mediche dal reddito",
+    "expected_citations": ["Art. 15 TUIR", "D.P.R. 917/1986"],
+    "grader_type": "code",
+    "pass_threshold": 0.7,
+    "is_regression": true,
+    "source": "manual"
+  }
+]

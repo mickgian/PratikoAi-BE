@@ -93,7 +93,7 @@ class TestSimpleQueryUsesCoT:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("simple", {"complexity": "simple"}),
             ),
@@ -103,7 +103,7 @@ class TestSimpleQueryUsesCoT:
                 return_value=mock_orchestrator_response,
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
             ) as mock_tot,
         ):
@@ -123,7 +123,7 @@ class TestSimpleQueryUsesCoT:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("simple", {"complexity": "simple"}),
             ),
@@ -154,12 +154,12 @@ class TestComplexQueryUsesToT:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("complex", {"complexity": "complex"}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 return_value=mock_tot_result,
             ) as mock_tot,
@@ -183,12 +183,12 @@ class TestComplexQueryUsesToT:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("complex", {"complexity": "complex"}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 return_value=mock_tot_result,
             ),
@@ -222,12 +222,12 @@ class TestMultiDomainQueryUsesToT:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("multi_domain", {"complexity": "multi_domain", "domains": ["fiscale", "lavoro"]}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 return_value=mock_tot_result,
             ) as mock_tot,
@@ -251,12 +251,12 @@ class TestMultiDomainQueryUsesToT:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("multi_domain", {"complexity": "multi_domain"}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 return_value=mock_tot_result,
             ) as mock_tot,
@@ -289,12 +289,12 @@ class TestReasoningTraceStorage:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("complex", {"complexity": "complex"}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 return_value=mock_tot_result,
             ),
@@ -317,12 +317,12 @@ class TestReasoningTraceStorage:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("complex", {"complexity": "complex"}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 return_value=mock_tot_result,
             ),
@@ -353,12 +353,12 @@ class TestHypothesisUsedForResponse:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("complex", {"complexity": "complex"}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 return_value=mock_tot_result,
             ),
@@ -393,12 +393,12 @@ class TestToTFailureFallback:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("complex", {"complexity": "complex"}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 side_effect=Exception("ToT failed"),
             ),
@@ -421,12 +421,12 @@ class TestToTFailureFallback:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("complex", {"complexity": "complex"}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 side_effect=Exception("ToT failed"),
             ),
@@ -457,7 +457,7 @@ class TestRegressionExistingBehavior:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("simple", {"complexity": "simple"}),
             ),
@@ -479,7 +479,7 @@ class TestRegressionExistingBehavior:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("simple", {"complexity": "simple"}),
             ),
@@ -503,12 +503,12 @@ class TestRegressionExistingBehavior:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("complex", {"complexity": "complex"}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 return_value=MagicMock(
                     reasoning_trace={"test": True},
@@ -545,12 +545,12 @@ class TestPerformance:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._classify_query_complexity",
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
                 new_callable=AsyncMock,
                 return_value=("complex", {"complexity": "complex"}),
             ),
             patch(
-                "app.core.langgraph.nodes.step_064__llm_call._use_tree_of_thoughts",
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 return_value=mock_tot_result,
             ),

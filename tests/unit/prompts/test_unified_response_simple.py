@@ -54,6 +54,7 @@ class TestPromptLoadsViaLoader:
         assert prompt_path.suffix == ".md"
 
 
+@pytest.mark.skip(reason="DEV-250: Prompt refactored to prose format, JSON schema removed")
 class TestPromptContainsJsonSchema:
     """Test that the prompt contains a valid JSON schema example."""
 
@@ -254,6 +255,7 @@ class TestPromptReasoningStructure:
         assert "CONCLUSIONE" in content or "conclusione" in content.lower()
 
 
+@pytest.mark.skip(reason="DEV-250: Prompt refactored to prose format, JSON schema removed")
 class TestPromptActionRulesPresent:
     """Test that action generation rules are documented."""
 
@@ -379,6 +381,7 @@ class TestPromptItalianLanguage:
         assert "PratikoAI" in content
 
 
+@pytest.mark.skip(reason="DEV-250: Prompt refactored to prose format, JSON schema removed")
 class TestPromptActionSchema:
     """Test the action schema structure in JSON."""
 
@@ -409,8 +412,16 @@ class TestPromptActionSchema:
     def test_action_icon_is_valid(self, loader):
         """Action icon should be from allowed list."""
         valid_icons = {
-            "calculator", "search", "calendar", "file-text", "alert-triangle",
-            "check-circle", "edit", "refresh-cw", "book-open", "bar-chart"
+            "calculator",
+            "search",
+            "calendar",
+            "file-text",
+            "alert-triangle",
+            "check-circle",
+            "edit",
+            "refresh-cw",
+            "book-open",
+            "bar-chart",
         }
 
         content = loader.load(
@@ -431,6 +442,7 @@ class TestPromptActionSchema:
             assert icon in valid_icons, f"Icon '{icon}' is not in allowed list"
 
 
+@pytest.mark.skip(reason="DEV-250: Prompt refactored to prose format, JSON schema removed")
 class TestPromptSourceSchema:
     """Test the source citation schema structure."""
 

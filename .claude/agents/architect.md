@@ -1258,6 +1258,80 @@ topics = [w for w in words if w.lower() not in STOP_WORDS_MINIMAL]
 - [ ] When adding new verb forms, add all conjugations (present, future, conditional)
 - [ ] Include non-accented variants (recepira, includera, etc.)
 
+### Zero-Cost Daily Evaluations Pattern (DEV-252 - ✅ IMPLEMENTED)
+
+**Critical Learning (January 2026):** Scheduled AI evaluations should cost $0 by using golden datasets instead of invoking real LLM APIs.
+
+**Problem Pattern:**
+- Daily evaluation job runs at 6:00 AM
+- Original implementation called `SystemInvoker` → `LLMRouterService` → OpenAI API
+- Each run costs ~$0.003 (small but unnecessary for regression testing)
+- Risk of API failures breaking scheduled jobs
+
+**Solution Pattern - Golden Datasets with Integration Mode:**
+
+```python
+# evals/config.py
+@dataclass
+class EvalConfig:
+    integration_mode: bool = False  # Default: use golden data ($0)
+
+# evals/schemas/test_case.py
+class TestCase(BaseModel):
+    actual_output: dict[str, Any] | None = None  # Pre-recorded output
+
+# evals/runner.py
+async def _grade_routing(self, test_case: TestCase) -> GradeResult:
+    if self.config.integration_mode:
+        output = await self.invoker.invoke_router(test_case.query)  # Costs money
+    elif test_case.actual_output:
+        output = test_case.actual_output  # Free!
+    else:
+        return GradeResult(score=0.0, passed=False,
+            reasoning="No actual_output (run with --integration)")
+    return self.routing_grader.grade(test_case, output)
+```
+
+**Golden Dataset Format:**
+```json
+{
+  "id": "ROUTING-REG-001",
+  "query": "Ciao, come stai?",
+  "expected_route": "chitchat",
+  "actual_output": {
+    "route": "chitchat",
+    "confidence": 0.95,
+    "entities": []
+  }
+}
+```
+
+**Two Modes:**
+| Mode | Cost | When | Command |
+|------|------|------|---------|
+| Golden (default) | $0 | Nightly/Weekly scheduled | `--config nightly` |
+| Integration | ~$0.003 | Manual validation | `--config local --integration` |
+
+**Benefits:**
+- ✅ $0 daily evaluation cost
+- ✅ Instant execution (no API latency)
+- ✅ Deterministic (same input → same grade)
+- ✅ CI/CD safe (no external dependencies)
+- ✅ Captures "known good" behavior for regression detection
+
+**When to Refresh Golden Data:**
+- After RAG pipeline changes
+- Before major releases
+- When grader logic changes
+
+**Prevention Checklist:**
+- [ ] Scheduled evaluation jobs should use golden data by default
+- [ ] Add `actual_output` field to test case schemas
+- [ ] Provide opt-in `--integration` flag for live system testing
+- [ ] Document when to refresh golden datasets
+
+---
+
 ### Comprehensive Feature Removal Checklist (DEV-245 Phase 5.15.1 - ✅ IMPLEMENTED)
 
 **Critical Learning (January 2026):** When removing a feature, missed references cause runtime errors that may not surface until specific code paths are executed.
@@ -1869,6 +1943,7 @@ PratikoAI targets Italian tax/fiscal professionals with expected scale:
 | 2026-01-23 | Added Conditional Response Format lesson | DEV-245 Phase 5.14: Use code to detect when format is appropriate |
 | 2026-01-23 | Removed Suggested Actions feature | DEV-245 Phase 5.15: User feedback - actions were generic/unhelpful |
 | 2026-01-23 | Added Comprehensive Feature Removal lesson | DEV-245 Phase 5.15.1: Always grep entire codebase when removing features |
+| 2026-01-29 | Added Zero-Cost Daily Evaluations lesson | DEV-252: Golden datasets for scheduled evals, integration mode for manual tests |
 
 ---
 

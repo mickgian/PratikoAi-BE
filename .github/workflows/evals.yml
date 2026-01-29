@@ -1,0 +1,260 @@
+name: AI Agent Evaluation Suite
+
+on:
+  pull_request:
+    branches: [master, main, DEV-*]
+    paths:
+      - 'app/**'
+      - 'evals/**'
+      - 'tests/evals/**'
+  schedule:
+    # Nightly at 2am UTC
+    - cron: '0 2 * * *'
+    # Weekly on Sunday at 4am UTC
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      config:
+        description: 'Evaluation config preset'
+        required: true
+        default: 'local'
+        type: choice
+        options:
+          - pr
+          - local
+          - nightly
+          - weekly
+          - fast
+      use_ollama:
+        description: 'Use Ollama for model graders'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+  UV_CACHE_DIR: /tmp/.uv-cache
+
+jobs:
+  # Fast PR evaluation - code-based graders only
+  pr-evals:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run PR evaluation suite
+        id: eval
+        run: |
+          uv run python -m evals.runner \
+            --config pr \
+            --graders code \
+            --verbose
+        continue-on-error: true
+
+      - name: Check 100% pass rate
+        if: steps.eval.outcome == 'failure'
+        run: |
+          echo "::error::Regression tests failed. PR cannot be merged."
+          exit 1
+
+      - name: Post PR comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportDir = 'evals/reports';
+            let reportContent = 'No report generated';
+            try {
+              const files = fs.readdirSync(reportDir);
+              const latestReport = files.filter(f => f.endsWith('.json')).sort().pop();
+              if (latestReport) {
+                const report = JSON.parse(fs.readFileSync(`${reportDir}/${latestReport}`, 'utf8'));
+                const status = report.summary.pass_rate >= 1.0 ? '✅' : '❌';
+                const catRows = Object.entries(report.by_category || {})
+                  .map(([cat, m]) => `| ${cat} | ${m.passed} | ${m.total} | ${(m.pass_rate * 100).toFixed(0)}% |`)
+                  .join('\n');
+                reportContent = `## 🧪 Evaluation Results ${status}\n\n` +
+                  `| Category | Passed | Total | Rate |\n` +
+                  `|----------|--------|-------|------|\n` +
+                  `${catRows}\n` +
+                  `| **Total** | **${report.summary.passed}** | **${report.summary.total_cases}** | **${(report.summary.pass_rate * 100).toFixed(0)}%** |\n\n` +
+                  `⏱️ Duration: ${(report.summary.total_duration_ms / 1000).toFixed(1)}s`;
+              }
+            } catch (e) {
+              reportContent = `⚠️ Could not read evaluation report: ${e.message}`;
+            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: reportContent
+            });
+
+  # Nightly comprehensive evaluation
+  nightly-evals:
+    if: github.event.schedule == '0 2 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run nightly evaluation suite
+        id: eval
+        run: |
+          uv run python -m evals.runner \
+            --config nightly \
+            --graders code \
+            --verbose
+
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-eval-report-${{ github.run_id }}
+          path: evals/reports/
+          retention-days: 30
+
+      - name: Notify on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "⚠️ Nightly evaluation failed",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "⚠️ Nightly Evaluation Failed"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "View details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  # Weekly extended evaluation
+  weekly-evals:
+    if: github.event.schedule == '0 4 * * 0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run weekly evaluation suite
+        run: |
+          uv run python -m evals.runner \
+            --config weekly \
+            --graders code \
+            --verbose
+
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-eval-report-${{ github.run_id }}
+          path: evals/reports/
+          retention-days: 90
+
+      - name: Generate weekly summary
+        run: |
+          echo "## Weekly Evaluation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat evals/reports/*.json | head -50 >> $GITHUB_STEP_SUMMARY
+
+  # Manual evaluation run
+  manual-evals:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run manual evaluation
+        run: |
+          uv run python -m evals.runner \
+            --config ${{ inputs.config }} \
+            --graders code \
+            ${{ inputs.use_ollama && '--use-ollama' || '' }} \
+            --verbose
+
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: manual-eval-report-${{ github.run_id }}
+          path: evals/reports/
+          retention-days: 14

@@ -486,7 +486,8 @@ class TestDailyIngestionReportEnvironment:
         report = DailyIngestionReport(report_date=date.today())
 
         assert report.environment is not None
-        assert isinstance(report.environment, Environment)
+        # Check environment is valid (avoid isinstance due to module reload issues in tests)
+        assert report.environment.value in ["development", "qa", "production"]
 
     def test_report_environment_color(self):
         """Test environment_color property."""

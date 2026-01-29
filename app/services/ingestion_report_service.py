@@ -1153,14 +1153,14 @@ class IngestionReportService:
         if report.filtered_content_samples:
             total_filtered = sum(s.items_filtered for s in report.filtered_content_samples)
             filtered_rows = ""
-            for sample in report.filtered_content_samples:
-                titles = "<br>".join([f"&bull; {title}" for title in sample.sample_titles])
+            for filtered_sample in report.filtered_content_samples:
+                titles = "<br>".join([f"&bull; {title}" for title in filtered_sample.sample_titles])
                 if not titles:
                     titles = "<em style='color: #999;'>No samples available</em>"
                 filtered_rows += f"""
                 <tr>
-                    <td>{sample.source_name}</td>
-                    <td style="color: #6c757d; font-weight: 500;">{sample.items_filtered}</td>
+                    <td>{filtered_sample.source_name}</td>
+                    <td style="color: #6c757d; font-weight: 500;">{filtered_sample.items_filtered}</td>
                     <td style="font-size: 12px;">{titles}</td>
                 </tr>
                 """

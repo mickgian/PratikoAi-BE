@@ -780,6 +780,49 @@ async def send_daily_cost_report_task() -> None:
         logger.error(f"Error in daily cost report task: {e}", exc_info=True)
 
 
+async def send_daily_eval_report_task() -> None:
+    """Scheduled task to run daily evaluation and send email report.
+
+    DEV-252: Daily AI Agent Evaluation Report.
+    Runs nightly evaluation suite and sends results via email.
+    """
+    from pathlib import Path
+
+    logger.info("Starting daily evaluation report task")
+
+    # Check if enabled
+    if not getattr(settings, "EVAL_REPORT_ENABLED", True):
+        logger.info("Daily evaluation report is disabled, skipping")
+        return
+
+    try:
+        from evals.config import create_nightly_config
+        from evals.runner import EvalRunner, load_test_cases
+
+        # Run nightly evaluation
+        config = create_nightly_config()
+        runner = EvalRunner(config)
+
+        # Load test cases
+        test_dir = Path("evals/datasets/regression")
+        if not test_dir.exists():
+            logger.warning(f"Test directory {test_dir} not found, skipping eval report")
+            return
+
+        test_cases = load_test_cases(test_dir)
+        if not test_cases:
+            logger.info("No test cases found, skipping eval report")
+            return
+
+        # Run evaluation (this also sends the email via _send_email_report)
+        result = await runner.run(test_cases)
+
+        logger.info(f"Daily evaluation complete: {result.passed}/{result.total} passed ({result.pass_rate:.1%})")
+
+    except Exception as e:
+        logger.error(f"Error running daily evaluation report: {e}")
+
+
 def setup_default_tasks() -> None:
     """Setup default scheduled tasks."""
     # Add 12-hour metrics report task
@@ -870,8 +913,23 @@ def setup_default_tasks() -> None:
     )
     scheduler_service.add_task(cost_report_task)
 
+    # DEV-252: Add daily evaluation report task
+    # Runs nightly evaluation suite and sends results via email
+    # Default time: 06:00 Europe/Rome (configured via EVAL_REPORT_TIME)
+    eval_report_enabled = getattr(settings, "EVAL_REPORT_ENABLED", True)
+    eval_report_time = getattr(settings, "EVAL_REPORT_TIME", "06:00")
+    eval_report_task = ScheduledTask(
+        name="daily_eval_report",
+        interval=ScheduleInterval.DAILY,
+        function=send_daily_eval_report_task,
+        enabled=eval_report_enabled,
+        target_time=eval_report_time,  # Run daily at configured time
+    )
+    scheduler_service.add_task(eval_report_task)
+    logger.info(f"Registered daily_eval_report task at {eval_report_time} (enabled={eval_report_enabled})")
+
     logger.info(
-        f"Default scheduled tasks configured (metrics reports + RSS feeds + Gazzetta scraper + Cassazione scraper + AdER scraper + daily ingestion report [enabled={ingestion_report_enabled}] + daily cost report [enabled={cost_report_enabled}])"
+        f"Default scheduled tasks configured (metrics reports + RSS feeds + Gazzetta scraper + Cassazione scraper + AdER scraper + daily ingestion report [enabled={ingestion_report_enabled}] + daily cost report [enabled={cost_report_enabled}] + daily eval report [enabled={eval_report_enabled}])"
     )
 
 

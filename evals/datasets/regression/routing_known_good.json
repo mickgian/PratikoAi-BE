@@ -1,0 +1,152 @@
+[
+  {
+    "id": "ROUTING-REG-001",
+    "category": "routing",
+    "query": "Ciao, come stai?",
+    "expected_route": "chitchat",
+    "actual_output": {
+      "route": "chitchat",
+      "confidence": 0.95,
+      "entities": []
+    },
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-002",
+    "category": "routing",
+    "query": "Buongiorno, posso aiutarti?",
+    "expected_route": "chitchat",
+    "actual_output": {
+      "route": "chitchat",
+      "confidence": 0.92,
+      "entities": []
+    },
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-003",
+    "category": "routing",
+    "query": "Qual è la scadenza per la rottamazione quinquies?",
+    "expected_route": "technical_research",
+    "actual_output": {
+      "route": "technical_research",
+      "confidence": 0.89,
+      "entities": ["rottamazione quinquies", "scadenza"]
+    },
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-004",
+    "category": "routing",
+    "query": "Come funziona il bonus 110% per ristrutturazioni?",
+    "expected_route": "technical_research",
+    "actual_output": {
+      "route": "technical_research",
+      "confidence": 0.91,
+      "entities": ["bonus 110%", "ristrutturazioni"]
+    },
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-005",
+    "category": "routing",
+    "query": "Cosa prevede la Legge 104/1992?",
+    "expected_route": "golden_set",
+    "actual_output": {
+      "route": "golden_set",
+      "confidence": 0.94,
+      "entities": ["Legge 104/1992"]
+    },
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-006",
+    "category": "routing",
+    "query": "Art. 3 della Legge 104/1992 sui permessi lavorativi",
+    "expected_route": "golden_set",
+    "actual_output": {
+      "route": "golden_set",
+      "confidence": 0.96,
+      "entities": ["Art. 3", "Legge 104/1992", "permessi lavorativi"]
+    },
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-007",
+    "category": "routing",
+    "query": "Cos'è il TFR?",
+    "expected_route": "theoretical_definition",
+    "actual_output": {
+      "route": "theoretical_definition",
+      "confidence": 0.93,
+      "entities": ["TFR"]
+    },
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-008",
+    "category": "routing",
+    "query": "Definizione di IRAP",
+    "expected_route": "theoretical_definition",
+    "actual_output": {
+      "route": "theoretical_definition",
+      "confidence": 0.91,
+      "entities": ["IRAP"]
+    },
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-009",
+    "category": "routing",
+    "query": "Calcola l'IRPEF su 50.000 euro lordi",
+    "expected_route": "calculator",
+    "actual_output": {
+      "route": "calculator",
+      "confidence": 0.97,
+      "entities": ["IRPEF", "50.000 euro"]
+    },
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  },
+  {
+    "id": "ROUTING-REG-010",
+    "category": "routing",
+    "query": "Quanto pago di contributi INPS con P.IVA forfettaria?",
+    "expected_route": "calculator",
+    "actual_output": {
+      "route": "calculator",
+      "confidence": 0.88,
+      "entities": ["contributi INPS", "P.IVA forfettaria"]
+    },
+    "grader_type": "code",
+    "pass_threshold": 0.9,
+    "is_regression": true,
+    "source": "manual"
+  }
+]

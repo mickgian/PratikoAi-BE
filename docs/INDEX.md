@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2026-01-29 09:32:50
+**Auto-generated:** 2026-01-29 17:15:07
 
-> 💡 This directory contains 27 technical documentation files plus 169 architecture documents.
+> 💡 This directory contains 28 technical documentation files plus 169 architecture documents.
 
 ---
 
@@ -72,10 +72,12 @@
   - **Status:** Implemented **Version:** 1.0
 - **[DEV-244: KB Source URLs Display Fix - Summary](DEV-244-kb-source-urls-summary.md)** ✅ Current
   - **Issue:** GitHub #TBD **Status:** ✅ FIXED - Field mapping bug resolved
+- **[DEV-252: AI Agent Evaluation Framework](DEV-252-AI-Agent-Evaluation-Framework.md)** ✅ Current
+  - This ticket implements a comprehensive evaluation framework for the PratikoAI RAG system, following Anthropic's best practices for AI agent evaluat...
 - **[Database Backup System](DATABASE_BACKUP_SYSTEM.md)** ✅ Current
   - **Purpose**: Prevent data loss by maintaining automated daily backups of the PostgreSQL database.
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2026-01-29 09:32:27
+  - **Auto-generated:** 2026-01-29 16:55:59
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
 - **[Hugging Face Models for PratikoAI - Analysis Report](HUGGINGFACE_MODELS_ANALYSIS.md)** ✅ Current
@@ -93,8 +95,8 @@
 - **Database/Search:** 8
 - **Operations:** 3
 - **Architecture:** 169
-- **Total:** 196
+- **Total:** 197
 
 ---
 
-**Last Updated:** 2026-01-29 09:32:50
+**Last Updated:** 2026-01-29 17:15:07

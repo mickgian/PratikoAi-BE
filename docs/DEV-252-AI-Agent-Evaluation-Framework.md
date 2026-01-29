@@ -34,11 +34,11 @@ Installed Ollama for LLM-as-judge evaluation:
 - Running as persistent service via `brew services start ollama`
 - API endpoint: `http://localhost:11434`
 
-### Phase 4: System Integration 🔄
+### Phase 4: System Integration ✅
 
-**Status**: IN PROGRESS
+**Status**: COMPLETE
 
-Implementing the connection between evaluation runner and RAG system:
+Implemented connection between evaluation runner and RAG system:
 
 #### Components
 
@@ -59,6 +59,70 @@ Implementing the connection between evaluation runner and RAG system:
 | `routing` | `LLMRouterService.route()` | `RoutingGrader` |
 | `retrieval` | `KnowledgeSearchService.search()` | `RetrievalGrader` |
 | `response` | `LangGraphAgent.get_response()` | `CitationGrader` + `OllamaJudge` |
+
+### Phase 5: Zero-Cost Daily Evaluations ✅
+
+**Status**: COMPLETE (2026-01-29)
+
+**Problem**: Original implementation invoked the real RAG system via `SystemInvoker`, which calls OpenAI API and costs ~$0.003/run. Daily scheduled evaluations should cost $0.
+
+**Solution**: Golden dataset approach with opt-in integration mode.
+
+#### Two Evaluation Modes
+
+| Mode | When | Cost | How |
+|------|------|------|-----|
+| **Golden** (default) | Nightly/Weekly evals | $0 | Uses pre-recorded `actual_output` in test cases |
+| **Integration** (opt-in) | Manual `--integration` flag | ~$0.003 | Invokes real system via SystemInvoker |
+
+#### Changes Made
+
+1. **`evals/config.py`**: Added `integration_mode: bool = False`
+2. **`evals/schemas/test_case.py`**: Added `actual_output: dict[str, Any] | None` field
+3. **`evals/runner.py`**: Updated grading methods to use golden data by default
+4. **`evals/runner.py`**: Added `--integration` CLI flag
+5. **Regression datasets**: Added realistic `actual_output` to all test cases
+
+#### Golden Dataset Structure
+
+```json
+{
+  "id": "ROUTING-REG-001",
+  "category": "routing",
+  "query": "Ciao, come stai?",
+  "expected_route": "chitchat",
+  "actual_output": {
+    "route": "chitchat",
+    "confidence": 0.95,
+    "entities": []
+  },
+  "grader_type": "code"
+}
+```
+
+#### Usage
+
+```bash
+# Daily eval (default) - $0 cost, uses golden data
+uv run python -m evals.runner --config nightly
+
+# Integration test (opt-in) - costs money, invokes real system
+uv run python -m evals.runner --config local --integration
+```
+
+#### Architectural Decision
+
+**Why Golden Datasets over Live System Calls:**
+- **Cost**: $0/day vs ~$0.003/run (~$1/year savings for daily runs)
+- **Speed**: Instant (no API latency) vs ~3-5s per test case
+- **Determinism**: Same inputs always produce same grades
+- **CI/CD Safe**: No external dependencies or API rate limits
+- **Regression Detection**: Golden data captures "known good" behavior
+
+**When to Use Integration Mode:**
+- After updating RAG pipeline (verify new outputs)
+- Before major releases (end-to-end validation)
+- When refreshing golden datasets with new expected outputs
 
 ## Evaluation Framework Architecture
 

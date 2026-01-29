@@ -2,11 +2,13 @@
 
 Tests the _check_kb_empty_and_inject_warning function that detects when the KB
 returns empty/irrelevant results and injects a warning to prevent hallucination.
+
+DEV-250: Updated imports to use app.services.llm_response module.
 """
 
 import pytest
 
-from app.core.langgraph.nodes.step_064__llm_call import _check_kb_empty_and_inject_warning
+from app.services.llm_response import check_kb_empty_and_inject_warning as _check_kb_empty_and_inject_warning
 
 
 class TestCheckKbEmptyAndInjectWarning:

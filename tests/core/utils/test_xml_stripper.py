@@ -9,6 +9,7 @@ import pytest
 from app.core.utils.xml_stripper import (
     clean_proactivity_content,
     strip_answer_tags,
+    strip_caveat_blocks,
     strip_suggested_actions_block,
 )
 
@@ -92,6 +93,94 @@ class TestStripSuggestedActionsBlock:
         content = "Text<suggested_actions></suggested_actions>"
         result = strip_suggested_actions_block(content)
         assert result == "Text"
+
+
+class TestStripCaveatBlocks:
+    """Tests for strip_caveat_blocks() function (DEV-250)."""
+
+    def test_strips_caveat_with_emoji(self) -> None:
+        """📌 Nota... patterns should be stripped."""
+        content = """La risposta normale.
+
+📌 **Nota sui tributi locali:** La definizione agevolata per tributi locali come imu potrebbe richiedere l'accordo dell'ente locale competente. Verifica con il tuo Comune/Regione. Fonti: [Rottamazione quinquies](https://example.com)
+
+Altra parte della risposta."""
+
+        result = strip_caveat_blocks(content)
+
+        assert "📌" not in result
+        assert "Nota sui tributi locali" not in result
+        assert "La risposta normale." in result
+        assert "Altra parte della risposta." in result
+
+    def test_strips_multiple_caveats(self) -> None:
+        """Multiple 📌 caveats should all be stripped."""
+        content = """Risposta iniziale.
+
+📌 **Nota sulla scadenza:** Info sulla scadenza importante.
+
+Testo intermedio.
+
+📌 **Nota sui tributi locali:** Info sui tributi."""
+
+        result = strip_caveat_blocks(content)
+
+        assert result.count("📌") == 0
+        assert "Nota sulla scadenza" not in result
+        assert "Nota sui tributi locali" not in result
+        assert "Risposta iniziale." in result
+        assert "Testo intermedio." in result
+
+    def test_preserves_content_without_caveats(self) -> None:
+        """Content without caveats should be unchanged."""
+        content = "Risposta normale senza note o avvertenze."
+        result = strip_caveat_blocks(content)
+        assert result == content
+
+    def test_strips_caveat_at_end_of_content(self) -> None:
+        """Caveat at the end of content should be stripped."""
+        content = """Ecco la risposta.
+
+📌 **Nota importante:** Questa è una nota finale."""
+
+        result = strip_caveat_blocks(content)
+
+        assert "📌" not in result
+        assert "Nota importante" not in result
+        assert "Ecco la risposta." in result
+
+    def test_strips_multiline_caveat(self) -> None:
+        """Multi-line caveats should be fully stripped."""
+        content = """Risposta.
+
+📌 **Nota sui tributi locali:** La definizione agevolata
+potrebbe richiedere l'accordo dell'ente locale competente.
+Verifica con il tuo Comune/Regione.
+Fonti: [link](url)
+
+Fine risposta."""
+
+        result = strip_caveat_blocks(content)
+
+        assert "📌" not in result
+        assert "tributi locali" not in result
+        assert "Verifica con il tuo" not in result
+        assert "Risposta." in result
+        assert "Fine risposta." in result
+
+    def test_handles_empty_string(self) -> None:
+        """Should handle empty string input."""
+        result = strip_caveat_blocks("")
+        assert result == ""
+
+    def test_preserves_other_emojis(self) -> None:
+        """Should not strip content with other emojis."""
+        content = "Risposta con emoji 👍 e 💰 e 📊 ma non 📌 Nota."
+        # The 📌 Nota should be stripped but other emojis preserved
+        result = strip_caveat_blocks(content)
+        assert "👍" in result
+        assert "💰" in result
+        assert "📊" in result
 
 
 class TestCleanProactivityContent:
@@ -186,3 +275,112 @@ code_block = True
         result = clean_proactivity_content(content)
         assert "<tag>" in result
         assert "</tag>" in result
+
+    def test_strips_caveat_blocks_from_content(self) -> None:
+        """Should strip 📌 caveat blocks (DEV-250)."""
+        content = """<answer>
+La risposta normale.
+
+📌 **Nota sui tributi locali:** La definizione agevolata per tributi locali potrebbe richiedere l'accordo dell'ente locale.
+
+Altra parte.
+</answer>"""
+        result = clean_proactivity_content(content)
+
+        assert "📌" not in result
+        assert "Nota sui tributi locali" not in result
+        assert "La risposta normale." in result
+        assert "Altra parte." in result
+
+    def test_strips_all_proactivity_content_types(self) -> None:
+        """Should strip answer tags, suggested_actions, AND caveats (DEV-250)."""
+        content = """<answer>
+Ecco la risposta completa.
+
+📌 **Nota importante:** Questa è una nota che dovrebbe essere rimossa.
+
+<suggested_actions>
+[{"id": "1", "label": "Action", "icon": "💰", "prompt": "Do it"}]
+</suggested_actions>
+</answer>"""
+        result = clean_proactivity_content(content)
+
+        # Should not contain any proactivity markers
+        assert "<answer>" not in result
+        assert "</answer>" not in result
+        assert "<suggested_actions>" not in result
+        assert "📌" not in result
+        assert "Nota importante" not in result
+
+        # Should contain the actual response
+        assert "Ecco la risposta completa." in result
+
+    def test_real_world_caveat_example(self) -> None:
+        """Test with real-world caveat from user bug report (DEV-250)."""
+        content = """Ecco le informazioni sulla rottamazione.
+
+📌 Nota sui tributi locali: La definizione agevolata per tributi locali come imu
+potrebbe richiedere l'accordo dell'ente locale competente. Verifica con il tuo
+Comune/Regione. Fonti: Rottamazione quinquies - FISCOeTASSE.com
+
+Per ulteriori dettagli, consulta le fonti."""
+
+        result = clean_proactivity_content(content)
+
+        assert "📌" not in result
+        assert "tributi locali" not in result
+        assert "FISCOeTASSE" not in result
+        assert "Ecco le informazioni" in result
+        assert "consulta le fonti" in result
+
+    def test_caveat_does_not_consume_numbered_list(self) -> None:
+        """Caveat followed by numbered list (no blank line) should preserve list.
+
+        Bug fix: CAVEAT_PATTERN was consuming numbered list content when there
+        was no blank line between the caveat and the list.
+        """
+        content = """Risposta iniziale.
+
+📌 Nota sui tributi locali: verifica importante.
+1. Primo punto
+1. Secondo punto
+
+Fine."""
+
+        result = strip_caveat_blocks(content)
+
+        assert "📌" not in result
+        assert "tributi locali" not in result
+        # Numbered list MUST be preserved!
+        assert "1. Primo punto" in result
+        assert "1. Secondo punto" in result
+        assert "Risposta iniziale." in result
+        assert "Fine." in result
+
+    def test_caveat_preserves_numbered_list_after_blank_line(self) -> None:
+        """Caveat with blank line before numbered list works correctly."""
+        content = """📌 Nota iniziale.
+
+1. Primo
+1. Secondo"""
+
+        result = strip_caveat_blocks(content)
+
+        assert "📌" not in result
+        assert "1. Primo" in result
+        assert "1. Secondo" in result
+
+    def test_caveat_preserves_list_with_various_numbers(self) -> None:
+        """Caveat should not consume lists starting with any digit."""
+        content = """📌 Nota importante.
+2. Secondo elemento
+3. Terzo elemento
+10. Decimo elemento"""
+
+        result = strip_caveat_blocks(content)
+
+        assert "📌" not in result
+        assert "Nota importante" not in result
+        assert "2. Secondo elemento" in result
+        assert "3. Terzo elemento" in result
+        assert "10. Decimo elemento" in result

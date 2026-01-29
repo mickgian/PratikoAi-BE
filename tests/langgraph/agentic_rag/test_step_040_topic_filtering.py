@@ -2,11 +2,13 @@
 
 Tests that web results are filtered to require ALL topic keywords match,
 preventing "rottamazione ter" results when topic is "rottamazione quinquies".
+
+DEV-250: Updated imports to use app.services.context_builder module.
 """
 
 import pytest
 
-from app.core.langgraph.nodes.step_040__build_context import _is_web_source_topic_relevant
+from app.services.context_builder import is_web_source_topic_relevant as _is_web_source_topic_relevant
 
 
 class TestTopicKeywordWebFiltering:

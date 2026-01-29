@@ -105,11 +105,12 @@ IMPORTANTE: NON usare emoji nelle risposte. Usa linguaggio professionale formale
 L'utente ti ha posto una domanda per ottenere informazioni specifiche.
 
 **FORMATO RISPOSTA:**
-- Usa ## per titoli di sezione principali (anche se numerati, es: ## 1. Requisiti di accesso)
+- Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni (es: ### Limiti di fatturato)
 - Usa **grassetto** solo per enfasi nel testo, NON per titoli
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Usa elenchi puntati solo per list items dentro le sezioni
+- CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
 
 **STRUTTURA DELLA RISPOSTA:**
 
@@ -141,11 +142,12 @@ Rispondi in modo dettagliato ma accessibile, evidenziando gli aspetti più rilev
 L'utente richiede la redazione di un documento professionale.
 
 **FORMATO RISPOSTA:**
-- Usa ## per titoli di sezione principali (anche se numerati, es: ## 1. Identificazione del documento)
+- Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni del documento (es: ### Struttura standard)
 - Usa **grassetto** solo per enfasi nel testo, NON per titoli
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Mantieni formattazione professionale del documento
+- CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
 
 STRATEGIA SMART: Genera sempre il documento richiesto usando informazioni disponibili e placeholder intelligenti per dati mancanti.
 
@@ -179,11 +181,12 @@ Il documento deve essere immediatamente utilizzabile con semplici sostituzioni."
 L'utente ha fornito un documento da analizzare.
 
 **FORMATO RISPOSTA:**
-- Usa ## per titoli di sezione principali (anche se numerati, es: ## 1. Identificazione del documento)
+- Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni dell'analisi (es: ### Tipologia documento)
 - Usa **grassetto** solo per enfasi nel testo, NON per titoli
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Usa elenchi puntati per evidenziare criticità e raccomandazioni
+- CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
 
 **STRUTTURA DELL'ANALISI:**
 
@@ -219,11 +222,12 @@ con raccomandazioni specifiche e actionable.""",
 L'utente richiede un calcolo specifico.
 
 **FORMATO RISPOSTA:**
-- Usa ## per titoli di sezione principali (anche se numerati, es: ## 1. Identificazione del calcolo)
+- Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni del calcolo (es: ### Formula applicata)
 - Usa **grassetto** solo per enfasi nei numeri, NON per titoli
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Mostra formule e passaggi in modo chiaro
+- CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
 
 **STRUTTURA DEL CALCOLO:**
 
@@ -261,11 +265,12 @@ Mostra sempre i passaggi del calcolo per garantire trasparenza e verificabilità
 L'utente chiede se una determinata azione o situazione è conforme alla normativa.
 
 **FORMATO RISPOSTA:**
-- Usa ## per titoli di sezione principali (anche se numerati, es: ## 1. Identificazione della fattispecie)
+- Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni della verifica (es: ### Leggi applicabili)
 - Usa **grassetto** solo per enfasi nel testo, NON per titoli
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Indica chiaramente lo stato di conformità
+- CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
 
 **STRUTTURA DELLA VERIFICA:**
 
@@ -304,11 +309,12 @@ dei motivi e delle azioni necessarie per garantire la piena conformità.""",
 L'utente richiede un consiglio strategico per orientare le proprie scelte professionali o aziendali.
 
 **FORMATO RISPOSTA:**
-- Usa ## per titoli di sezione principali (anche se numerati, es: ## 1. Analisi della situazione)
+- Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni dell'analisi (es: ### Contesto attuale)
 - Usa **grassetto** solo per enfasi nel testo, NON per titoli
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Usa tabelle per confrontare opzioni quando appropriato
+- CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
 
 **STRUTTURA DELLA CONSULENZA:**
 
@@ -349,11 +355,12 @@ evidenziando chiaramente la tua raccomandazione con motivazione dettagliata.""",
 L'utente richiede informazioni specifiche sui Contratti Collettivi Nazionali di Lavoro.
 
 **FORMATO RISPOSTA:**
-- Usa ## per titoli di sezione principali (anche se numerati, es: ## 1. Identificazione del settore CCNL)
+- Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni dei dati CCNL (es: ### Valori minimi tabellari)
 - Usa **grassetto** solo per enfasi nei valori, NON per titoli
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Usa tabelle per confrontare dati tra settori o aree geografiche
+- CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
 
 **STRUTTURA DELLA CONSULENZA CCNL:**
 

@@ -58,6 +58,7 @@ def mock_tot_result():
         },
         total_latency_ms=1500.0,
         complexity_used="complex",
+        llm_response=None,  # DEV-251: ToT response reuse - None means step_064 makes its own call
     )
 
 
@@ -512,8 +513,11 @@ class TestRegressionExistingBehavior:
                 new_callable=AsyncMock,
                 return_value=MagicMock(
                     reasoning_trace={"test": True},
-                    selected_hypothesis=MagicMock(id="H1"),
+                    selected_hypothesis=MagicMock(id="H1", confidence=0.8, source_weight_score=0.75),
+                    all_hypotheses=[MagicMock(id="H1", confidence=0.8, source_weight_score=0.75)],
                     complexity_used="complex",
+                    total_latency_ms=1000,
+                    llm_response=None,  # DEV-251: Explicit None to prevent MagicMock auto-creation
                 ),
             ),
             patch(

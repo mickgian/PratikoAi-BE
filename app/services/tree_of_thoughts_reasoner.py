@@ -138,6 +138,9 @@ class ToTResult:
 
     Contains the selected hypothesis, all considered hypotheses,
     and full reasoning trace for transparency.
+
+    DEV-251: Added llm_response field to carry the UnifiedResponse
+    so it can be reused by step_064 instead of making duplicate LLM calls.
     """
 
     selected_hypothesis: ToTHypothesis
@@ -145,6 +148,8 @@ class ToTResult:
     reasoning_trace: dict
     total_latency_ms: float
     complexity_used: str
+    # DEV-251: Carry the UnifiedResponse for reuse (avoids duplicate LLM call)
+    llm_response: "UnifiedResponse | None" = None
 
 
 # =============================================================================
@@ -227,7 +232,8 @@ class TreeOfThoughtsReasoner:
 
         try:
             # Generate hypotheses via LLM
-            hypotheses, tot_analysis = await self._generate_hypotheses(
+            # DEV-251: Now also returns the UnifiedResponse for reuse
+            hypotheses, tot_analysis, llm_response = await self._generate_hypotheses(
                 query=query,
                 kb_sources=kb_sources,
                 complexity=complexity,
@@ -265,12 +271,14 @@ class TreeOfThoughtsReasoner:
                 latency_ms=total_latency_ms,
             )
 
+            # DEV-251: Include llm_response for reuse by step_064
             return ToTResult(
                 selected_hypothesis=selected,
                 all_hypotheses=hypotheses,
                 reasoning_trace=reasoning_trace,
                 total_latency_ms=total_latency_ms,
                 complexity_used=complexity_used,
+                llm_response=llm_response,
             )
 
         except Exception as e:
@@ -293,7 +301,7 @@ class TreeOfThoughtsReasoner:
         complexity: str,
         count: int,
         domains: list[str] | None = None,
-    ) -> tuple[list[ToTHypothesis], dict]:
+    ) -> tuple[list[ToTHypothesis], dict, UnifiedResponse]:
         """Generate multiple reasoning hypotheses via LLM.
 
         Args:
@@ -304,7 +312,8 @@ class TreeOfThoughtsReasoner:
             domains: Optional domain list for multi-domain
 
         Returns:
-            Tuple of (hypotheses list, raw tot_analysis dict)
+            Tuple of (hypotheses list, raw tot_analysis dict, UnifiedResponse)
+            DEV-251: Now returns UnifiedResponse for reuse by step_064
         """
         # Map complexity string to enum
         complexity_enum = QueryComplexity(complexity)
@@ -326,7 +335,8 @@ class TreeOfThoughtsReasoner:
         # Get tot_analysis for trace
         tot_analysis = response.tot_analysis or {}
 
-        return hypotheses, tot_analysis
+        # DEV-251: Return response for reuse
+        return hypotheses, tot_analysis, response
 
     def _parse_hypotheses(self, response: UnifiedResponse) -> list[ToTHypothesis]:
         """Parse hypotheses from LLM response.

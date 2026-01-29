@@ -326,6 +326,19 @@ class Settings:
             "yes",
         )
 
+        # Evaluation Report Configuration (DEV-252)
+        # Recipients (comma-separated) for nightly/weekly evaluation reports
+        self.EVAL_REPORT_RECIPIENTS = os.getenv("EVAL_REPORT_RECIPIENTS", "")
+        # Time to run daily evaluation report in HH:MM format (Europe/Rome timezone)
+        self.EVAL_REPORT_TIME = os.getenv("EVAL_REPORT_TIME", "06:00")
+        # Enable/disable evaluation report emails
+        self.EVAL_REPORT_ENABLED = os.getenv("EVAL_REPORT_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+
         # RSS Collection Configuration
         # Time to run daily RSS collection in HH:MM format (Europe/Rome timezone)
         self.RSS_COLLECTION_TIME = os.getenv("RSS_COLLECTION_TIME", "01:00")

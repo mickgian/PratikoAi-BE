@@ -4,6 +4,18 @@
     "category": "response",
     "query": "Quali sono i benefici della Legge 104/1992?",
     "expected_citations": ["Legge 104/1992", "Art. 3"],
+    "actual_output": {
+      "response": {
+        "text": "La Legge 104/1992 prevede diversi benefici per le persone con disabilità e i loro familiari. Secondo l'Art. 3 della Legge 104/1992, i principali benefici includono: permessi lavorativi retribuiti, agevolazioni fiscali per l'acquisto di veicoli, detrazioni IRPEF per spese mediche e assistenza.",
+        "citations": [
+          {"text": "Legge 104/1992", "source_id": "LEGGE-104-1992"},
+          {"text": "Art. 3", "source_id": "LEGGE-104-1992-ART3"}
+        ]
+      },
+      "source_docs": [
+        {"id": "LEGGE-104-1992", "content": "Legge 5 febbraio 1992, n. 104 - Legge-quadro per l'assistenza, l'integrazione sociale e i diritti delle persone handicappate."}
+      ]
+    },
     "grader_type": "code",
     "pass_threshold": 0.7,
     "is_regression": true,
@@ -14,6 +26,18 @@
     "category": "response",
     "query": "Come funziona il regime forfettario?",
     "expected_citations": ["L. 190/2014", "Art. 1 comma 54"],
+    "actual_output": {
+      "response": {
+        "text": "Il regime forfettario, introdotto dalla L. 190/2014 all'Art. 1 comma 54, è un regime fiscale agevolato per le piccole partite IVA. Prevede un'imposta sostitutiva del 15% (ridotta al 5% per i primi 5 anni di attività) e coefficienti di redditività variabili in base all'attività svolta.",
+        "citations": [
+          {"text": "L. 190/2014", "source_id": "L-190-2014"},
+          {"text": "Art. 1 comma 54", "source_id": "L-190-2014-ART1"}
+        ]
+      },
+      "source_docs": [
+        {"id": "L-190-2014", "content": "Legge 23 dicembre 2014, n. 190 - Disposizioni per la formazione del bilancio annuale e pluriennale dello Stato."}
+      ]
+    },
     "grader_type": "code",
     "pass_threshold": 0.7,
     "is_regression": true,
@@ -24,6 +48,17 @@
     "category": "response",
     "query": "Quali sono gli obblighi del datore di lavoro per la sicurezza?",
     "expected_citations": ["D.Lgs. 81/2008"],
+    "actual_output": {
+      "response": {
+        "text": "Il D.Lgs. 81/2008 (Testo Unico sulla Sicurezza) stabilisce gli obblighi del datore di lavoro in materia di sicurezza sul lavoro. Tra i principali obblighi: valutazione dei rischi (DVR), nomina del RSPP, formazione dei lavoratori, sorveglianza sanitaria, fornitura di DPI adeguati.",
+        "citations": [
+          {"text": "D.Lgs. 81/2008", "source_id": "DLGS-81-2008"}
+        ]
+      },
+      "source_docs": [
+        {"id": "DLGS-81-2008", "content": "Decreto Legislativo 9 aprile 2008, n. 81 - Testo unico sulla salute e sicurezza sul lavoro."}
+      ]
+    },
     "grader_type": "code",
     "pass_threshold": 0.7,
     "is_regression": true,
@@ -34,6 +69,17 @@
     "category": "response",
     "query": "Come si calcola il TFR?",
     "expected_citations": ["Art. 2120 c.c."],
+    "actual_output": {
+      "response": {
+        "text": "Il TFR (Trattamento di Fine Rapporto) si calcola secondo l'Art. 2120 c.c.: la retribuzione annua viene divisa per 13,5. Il montante accantonato viene rivalutato annualmente con un tasso fisso dell'1,5% più il 75% dell'indice ISTAT dei prezzi al consumo.",
+        "citations": [
+          {"text": "Art. 2120 c.c.", "source_id": "CC-ART-2120"}
+        ]
+      },
+      "source_docs": [
+        {"id": "CC-ART-2120", "content": "Art. 2120 Codice Civile - Disciplina del trattamento di fine rapporto."}
+      ]
+    },
     "grader_type": "code",
     "pass_threshold": 0.7,
     "is_regression": true,
@@ -44,6 +90,18 @@
     "category": "response",
     "query": "Deducibilità spese mediche dal reddito",
     "expected_citations": ["Art. 15 TUIR", "D.P.R. 917/1986"],
+    "actual_output": {
+      "response": {
+        "text": "Le spese mediche sono detraibili secondo l'Art. 15 TUIR (D.P.R. 917/1986). La detrazione è del 19% sulla parte eccedente la franchigia di 129,11 euro. Sono detraibili: visite specialistiche, farmaci con scontrino parlante, dispositivi medici, esami diagnostici.",
+        "citations": [
+          {"text": "Art. 15 TUIR", "source_id": "TUIR-ART-15"},
+          {"text": "D.P.R. 917/1986", "source_id": "DPR-917-1986"}
+        ]
+      },
+      "source_docs": [
+        {"id": "TUIR-ART-15", "content": "Art. 15 D.P.R. 917/1986 - Detrazioni per oneri."}
+      ]
+    },
     "grader_type": "code",
     "pass_threshold": 0.7,
     "is_regression": true,

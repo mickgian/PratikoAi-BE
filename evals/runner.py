@@ -31,6 +31,7 @@ from evals.config import (
     create_weekly_config,
 )
 from evals.graders import CitationGrader, RetrievalGrader, RoutingGrader
+from evals.graders.model_graders import OllamaJudge
 from evals.metrics.aggregate import AggregateMetrics, aggregate_results
 from evals.schemas.test_case import (
     GradeResult,
@@ -39,6 +40,7 @@ from evals.schemas.test_case import (
     TestCaseCategory,
     TestCaseResult,
 )
+from evals.services.system_invoker import SystemInvoker
 
 
 @dataclass
@@ -120,10 +122,18 @@ class EvalRunner:
         self._init_graders()
 
     def _init_graders(self) -> None:
-        """Initialize graders based on configuration."""
+        """Initialize graders and system invoker based on configuration."""
         self.routing_grader = RoutingGrader()
         self.retrieval_grader = RetrievalGrader()
         self.citation_grader = CitationGrader()
+
+        # Initialize system invoker for running actual pipeline components
+        self.invoker = SystemInvoker()
+
+        # Initialize OllamaJudge for model-based grading if enabled
+        self.ollama_judge: OllamaJudge | None = None
+        if self.config.use_ollama:
+            self.ollama_judge = OllamaJudge()
 
     async def run(
         self,
@@ -172,13 +182,17 @@ class EvalRunner:
         failure_reason = ""
         if not success:
             failure_reason = (
-                f"Pass rate {metrics.overall_pass_rate:.1%} below " f"threshold {self.config.fail_threshold:.1%}"
+                f"Pass rate {metrics.overall_pass_rate:.1%} below threshold {self.config.fail_threshold:.1%}"
             )
 
         # Generate report
         report_path = None
         if self.config.report_dir:
             report_path = self._generate_report(metrics, results)
+
+        # Send email report for nightly/weekly runs
+        if self.config.mode in (RunMode.NIGHTLY, RunMode.WEEKLY):
+            await self._send_email_report(metrics)
 
         duration = time.time() - start_time
 
@@ -275,19 +289,155 @@ class EvalRunner:
     async def _grade_test_case(self, test_case: TestCase) -> GradeResult:
         """Grade a single test case.
 
+        Invokes the appropriate system component based on test category
+        and grades the output using the corresponding grader.
+
         Args:
             test_case: Test case to grade
 
         Returns:
             GradeResult from grading
         """
-        # For now, return a placeholder - actual implementation would
-        # run the system and grade the output
-        return GradeResult(
-            score=0.0,
-            passed=False,
-            reasoning="Not implemented - needs system integration",
+        try:
+            # Route to appropriate grading path based on category
+            if test_case.category == TestCaseCategory.ROUTING:
+                return await self._grade_routing(test_case)
+
+            elif test_case.category == TestCaseCategory.RETRIEVAL:
+                return await self._grade_retrieval(test_case)
+
+            elif test_case.category in (
+                TestCaseCategory.RESPONSE,
+                TestCaseCategory.CAPABILITY,
+                TestCaseCategory.REGRESSION,
+            ):
+                return await self._grade_response(test_case)
+
+            else:
+                return GradeResult(
+                    score=0.0,
+                    passed=False,
+                    reasoning=f"Unknown test category: {test_case.category}",
+                )
+
+        except Exception as e:
+            return GradeResult(
+                score=0.0,
+                passed=False,
+                reasoning=f"Grading error: {e}",
+            )
+
+    async def _grade_routing(self, test_case: TestCase) -> GradeResult:
+        """Grade a routing test case.
+
+        Args:
+            test_case: Routing test case with expected_route
+
+        Returns:
+            GradeResult from RoutingGrader
+        """
+        # Use golden data by default (free), or invoke system (costs money)
+        if self.config.integration_mode:
+            output = await self.invoker.invoke_router(test_case.query)
+        elif test_case.actual_output:
+            output = test_case.actual_output
+        else:
+            return GradeResult(
+                score=0.0,
+                passed=False,
+                reasoning="No actual_output in test case (run with --integration to invoke system)",
+            )
+        return self.routing_grader.grade(test_case=test_case, actual_output=output)
+
+    async def _grade_retrieval(self, test_case: TestCase) -> GradeResult:
+        """Grade a retrieval test case.
+
+        Args:
+            test_case: Retrieval test case with expected_sources
+
+        Returns:
+            GradeResult from RetrievalGrader
+        """
+        # Use golden data by default (free), or invoke system (costs money)
+        if self.config.integration_mode:
+            docs = await self.invoker.invoke_retrieval(test_case.query)
+        elif test_case.actual_output:
+            # Convert actual_output to list of docs format expected by grader
+            docs = test_case.actual_output.get("documents", [])
+        else:
+            return GradeResult(
+                score=0.0,
+                passed=False,
+                reasoning="No actual_output in test case (run with --integration to invoke system)",
+            )
+        return self.retrieval_grader.grade(test_case=test_case, retrieved_docs=docs)
+
+    async def _grade_response(self, test_case: TestCase) -> GradeResult:
+        """Grade a response test case.
+
+        Uses model grader (Ollama) for MODEL grader type if enabled,
+        otherwise uses code-based citation grader.
+
+        Args:
+            test_case: Response test case with expected_citations
+
+        Returns:
+            GradeResult from CitationGrader or OllamaJudge
+        """
+        # Use golden data by default (free), or invoke system (costs money)
+        if self.config.integration_mode:
+            response = await self.invoker.invoke_response(test_case.query)
+
+            # Check for invocation errors
+            if "error" in response:
+                return GradeResult(
+                    score=0.0,
+                    passed=False,
+                    reasoning=f"Response invocation error: {response['error']}",
+                )
+
+            # Get source documents for citation verification
+            source_docs = await self.invoker.invoke_retrieval(test_case.query)
+            source_docs_for_grader = [{"id": d.get("id", ""), "content": d.get("content", "")} for d in source_docs]
+        elif test_case.actual_output:
+            response = test_case.actual_output.get("response", {})
+            source_docs_for_grader = test_case.actual_output.get("source_docs", [])
+        else:
+            return GradeResult(
+                score=0.0,
+                passed=False,
+                reasoning="No actual_output in test case (run with --integration to invoke system)",
+            )
+
+        # Use model grader if enabled and test case requires MODEL grading
+        if self.config.use_ollama and self.ollama_judge and test_case.grader_type == GraderType.MODEL:
+            if await self.ollama_judge.is_available():
+                return await self.ollama_judge.grade(test_case, response)
+            # Fall back to code grader if Ollama not available
+
+        # Use code-based citation grader
+        return self.citation_grader.grade(
+            test_case=test_case,
+            response=response,
+            source_docs=source_docs_for_grader,
         )
+
+    async def _send_email_report(self, metrics: AggregateMetrics) -> None:
+        """Send evaluation report via email for nightly/weekly runs.
+
+        Args:
+            metrics: Aggregate metrics to include in the report
+        """
+        try:
+            from evals.services.email_delivery import eval_email_service
+
+            await eval_email_service.send_eval_report(
+                metrics=metrics,
+                run_mode=self.config.mode.value,
+            )
+        except Exception as e:
+            # Log but don't fail the run if email fails
+            print(f"Warning: Failed to send email report: {e}")
 
     def _generate_report(
         self,
@@ -383,6 +533,11 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Enable verbose output",
     )
+    parser.add_argument(
+        "--integration",
+        action="store_true",
+        help="Invoke real system (costs money) instead of using golden data",
+    )
     return parser
 
 
@@ -406,6 +561,8 @@ async def main() -> int:
         config.use_ollama = True
     if args.verbose:
         config.verbose = True
+    if args.integration:
+        config.integration_mode = True
 
     # Load test cases
     try:

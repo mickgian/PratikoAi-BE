@@ -38,6 +38,7 @@ class EvalConfig:
         report_dir: Directory for report output
         timeout_seconds: Timeout per test case
         verbose: Enable verbose output
+        integration_mode: Invoke real system (costs money) vs golden data ($0)
     """
 
     mode: RunMode = RunMode.LOCAL
@@ -52,6 +53,7 @@ class EvalConfig:
     report_dir: Path = field(default_factory=lambda: Path("evals/reports"))  # gitignored
     timeout_seconds: float = 60.0
     verbose: bool = False
+    integration_mode: bool = False  # Invoke real system (costs money) vs golden data ($0)
 
 
 def create_pr_config() -> EvalConfig:

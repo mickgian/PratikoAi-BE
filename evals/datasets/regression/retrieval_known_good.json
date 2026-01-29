@@ -4,6 +4,12 @@
     "category": "retrieval",
     "query": "Quali sono le scadenze fiscali di marzo 2025?",
     "expected_sources": ["ADE-SCADENZE-2025-03"],
+    "actual_output": {
+      "documents": [
+        {"id": "ADE-SCADENZE-2025-03", "score": 0.92, "content": "Scadenze fiscali marzo 2025..."},
+        {"id": "ADE-CALENDARIO-2025", "score": 0.78, "content": "Calendario fiscale 2025..."}
+      ]
+    },
     "grader_type": "code",
     "pass_threshold": 0.7,
     "is_regression": true,
@@ -14,6 +20,12 @@
     "category": "retrieval",
     "query": "Circolare INPS sulla rottamazione quinquies",
     "expected_sources": ["INPS-CIRC-2025-001"],
+    "actual_output": {
+      "documents": [
+        {"id": "INPS-CIRC-2025-001", "score": 0.95, "content": "Circolare INPS n. 1/2025 - Rottamazione quinquies..."},
+        {"id": "ADE-ROTTAMAZIONE-FAQ", "score": 0.72, "content": "FAQ rottamazione quinquies..."}
+      ]
+    },
     "grader_type": "code",
     "pass_threshold": 0.7,
     "is_regression": true,
@@ -24,6 +36,13 @@
     "category": "retrieval",
     "query": "Come richiedere i permessi Legge 104",
     "expected_sources": ["INPS-PERMESSI-104", "LEGGE-104-1992"],
+    "actual_output": {
+      "documents": [
+        {"id": "INPS-PERMESSI-104", "score": 0.94, "content": "Procedura richiesta permessi L. 104..."},
+        {"id": "LEGGE-104-1992", "score": 0.89, "content": "Legge 5 febbraio 1992, n. 104..."},
+        {"id": "INPS-CIRC-104-2024", "score": 0.76, "content": "Circolare INPS permessi 104..."}
+      ]
+    },
     "grader_type": "code",
     "pass_threshold": 0.7,
     "is_regression": true,
@@ -34,6 +53,12 @@
     "category": "retrieval",
     "query": "Bonus ristrutturazioni 2025 requisiti",
     "expected_sources": ["ADE-BONUS-RISTRUTTURAZIONI-2025"],
+    "actual_output": {
+      "documents": [
+        {"id": "ADE-BONUS-RISTRUTTURAZIONI-2025", "score": 0.93, "content": "Bonus ristrutturazioni 2025 - requisiti e modalità..."},
+        {"id": "ADE-GUIDE-DETRAZIONI", "score": 0.81, "content": "Guida alle detrazioni fiscali..."}
+      ]
+    },
     "grader_type": "code",
     "pass_threshold": 0.7,
     "is_regression": true,
@@ -44,6 +69,12 @@
     "category": "retrieval",
     "query": "Contributi INPS artigiani e commercianti 2025",
     "expected_sources": ["INPS-CONTRIBUTI-2025"],
+    "actual_output": {
+      "documents": [
+        {"id": "INPS-CONTRIBUTI-2025", "score": 0.96, "content": "Contributi INPS artigiani e commercianti anno 2025..."},
+        {"id": "INPS-ALIQUOTE-2025", "score": 0.84, "content": "Aliquote contributive 2025..."}
+      ]
+    },
     "grader_type": "code",
     "pass_threshold": 0.7,
     "is_regression": true,

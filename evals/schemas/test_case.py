@@ -38,6 +38,7 @@ class TestCase(BaseModel):
         expected_route: Expected routing decision (for routing tests)
         expected_sources: Expected source document IDs (for retrieval tests)
         expected_citations: Expected citations in response (for citation tests)
+        actual_output: Pre-recorded output for golden dataset tests ($0 cost)
         grader_type: Type of grader to use (code, model, human)
         pass_threshold: Minimum score to pass (0.0-1.0)
         k_attempts: Number of attempts for pass@k/pass^k
@@ -51,6 +52,10 @@ class TestCase(BaseModel):
     expected_route: str | None = Field(default=None, description="Expected routing decision")
     expected_sources: list[str] | None = Field(default=None, description="Expected source document IDs")
     expected_citations: list[str] | None = Field(default=None, description="Expected citations in response")
+    actual_output: dict[str, Any] | None = Field(
+        default=None,
+        description="Pre-recorded output for golden dataset tests",
+    )
     grader_type: GraderType = Field(default=GraderType.CODE, description="Type of grader to use")
     pass_threshold: float = Field(
         default=0.7,

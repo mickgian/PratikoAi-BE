@@ -217,10 +217,10 @@ class LLMOrchestrator:
         query: str,
         context: ComplexityContext,
     ) -> QueryComplexity:
-        """Classify query complexity using GPT-4o-mini.
+        """Classify query complexity using local classifier with GPT fallback.
 
-        Uses the complexity_classifier prompt to determine the appropriate
-        complexity level for model routing.
+        DEV-251 Phase 3: Uses fast, cost-free local rule-based classifier first.
+        Falls back to GPT-4o-mini only when local confidence is low.
 
         Args:
             query: The user's query to classify
@@ -232,6 +232,53 @@ class LLMOrchestrator:
         Note:
             Defaults to SIMPLE on any error for cost optimization.
         """
+        try:
+            # DEV-251: Try local classifier first (fast, free)
+            from app.services.local_classifier import get_local_classifier
+
+            local_classifier = get_local_classifier()
+            local_result = local_classifier.classify(
+                query=query,
+                domains=context.domains,
+                has_history=context.has_history,
+                has_documents=context.has_documents,
+            )
+
+            # If local confidence is high enough, use it
+            if not local_classifier.should_use_gpt_fallback(local_result):
+                # Map local complexity to QueryComplexity
+                complexity_map = {
+                    "simple": QueryComplexity.SIMPLE,
+                    "complex": QueryComplexity.COMPLEX,
+                    "multi_domain": QueryComplexity.MULTI_DOMAIN,
+                }
+                result = complexity_map.get(local_result.complexity.value, QueryComplexity.SIMPLE)
+
+                logger.info(
+                    "complexity_classified_local",
+                    query_length=len(query),
+                    complexity=result.value,
+                    confidence=local_result.confidence,
+                    domains=context.domains,
+                    reasons=local_result.reasons,
+                )
+                return result
+
+            # Fall back to GPT for low confidence
+            logger.info(
+                "complexity_classification_gpt_fallback",
+                local_confidence=local_result.confidence,
+                local_complexity=local_result.complexity.value,
+            )
+
+        except Exception as e:
+            logger.warning(
+                "local_classifier_failed_using_gpt",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+
+        # GPT fallback classification
         try:
             # Load classification prompt
             prompt = self.prompt_loader.load(
@@ -254,7 +301,7 @@ class LLMOrchestrator:
             result = self._parse_classification_response(response_text)
 
             logger.info(
-                "complexity_classified",
+                "complexity_classified_gpt",
                 query_length=len(query),
                 complexity=result.value,
                 domains=context.domains,

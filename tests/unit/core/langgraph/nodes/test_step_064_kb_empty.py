@@ -2,11 +2,13 @@
 
 Tests the _check_kb_empty_and_inject_warning function that detects when the KB
 returns empty/irrelevant results and injects a warning to prevent hallucination.
+
+DEV-250: Updated imports to use app.services.llm_response module.
 """
 
 import pytest
 
-from app.core.langgraph.nodes.step_064__llm_call import _check_kb_empty_and_inject_warning
+from app.services.llm_response import check_kb_empty_and_inject_warning as _check_kb_empty_and_inject_warning
 
 
 class TestCheckKbEmptyAndInjectWarning:
@@ -264,8 +266,7 @@ class TestSynonymExpansion:
     def test_rottamazione_quinquies_expanded_with_synonyms(self):
         """Rottamazione quinquies queries should be expanded with legal synonyms.
 
-        DEV-242 Phase 15: Expands with first 2 synonyms from TOPIC_SYNONYMS.
-        The function only adds the first 2 synonyms ("definizione", "pace fiscale").
+        DEV-250: First 2 synonyms are now "definizione agevolata" and "definizione".
         """
         from app.services.search_service import SearchService
 
@@ -274,9 +275,9 @@ class TestSynonymExpansion:
 
         result = service._normalize_italian_query("rottamazione quinquies")
 
-        # First 2 synonyms from TOPIC_SYNONYMS["rottamazione"] are "definizione" and "pace fiscale"
+        # DEV-250: First 2 synonyms from TOPIC_SYNONYMS["rottamazione"]
+        assert "definizione agevolata" in result
         assert "definizione" in result
-        assert "pace fiscale" in result
         # Original query preserved
         assert "rottamazione quinquies" in result
 
@@ -317,7 +318,7 @@ class TestSynonymExpansion:
     def test_extra_whitespace_normalized(self):
         """Extra whitespace should be normalized.
 
-        DEV-242 Phase 15: Synonyms are first 2 from TOPIC_SYNONYMS.
+        DEV-250: First 2 synonyms are now "definizione agevolata" and "definizione".
         """
         from app.services.search_service import SearchService
 
@@ -327,8 +328,8 @@ class TestSynonymExpansion:
 
         # Extra whitespace normalized + first 2 synonyms added
         assert "rottamazione quinquies scadenze" in result
+        assert "definizione agevolata" in result
         assert "definizione" in result
-        assert "pace fiscale" in result
 
     def test_generic_rottamazione_expanded(self):
         """Generic rottamazione queries should be expanded with synonyms (DEV-242 Phase 7)."""

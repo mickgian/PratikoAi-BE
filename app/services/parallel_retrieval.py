@@ -59,6 +59,7 @@ def _get_search_weights() -> dict[str, float]:
 GERARCHIA_FONTI = {
     "legge": 1.8,  # Was 1.3 - increased to ensure laws rank above summaries
     "decreto": 1.6,  # Was 1.25
+    "normativa": 1.4,  # DEV-250: Official regulatory documents (Regole AdER, etc.)
     "circolare": 1.3,  # Was 1.15
     "risoluzione": 1.2,  # Was 1.1
     "interpello": 1.1,  # Was 1.05
@@ -694,6 +695,20 @@ class ParallelRetrievalService:
 
         search_query = queries.bm25_query or queries.original_query
 
+        # DEV-250 FIX: Apply semantic expansion to authority search (same as _search_bm25)
+        # This ensures official law documents are found even when using colloquial terms
+        # E.g., "rottamazione quinquies" → expands to include "definizione agevolata"
+        # which matches the official LEGGE 199/2025 terminology
+        if queries.semantic_expansions:
+            semantic_terms = " ".join(queries.semantic_expansions)
+            search_query = f"{search_query} {semantic_terms}"
+            logger.info(
+                "authority_search_semantic_expansion",
+                original_query=queries.bm25_query or queries.original_query,
+                expanded_query=search_query[:200],
+                semantic_expansions=queries.semantic_expansions,
+            )
+
         # DEV-244 FIX: Execute searches SEQUENTIALLY to avoid SQLAlchemy session concurrency error
         # The AsyncSession doesn't support concurrent operations from the same session.
         # Running sequentially adds ~100-200ms but avoids "concurrent operations not permitted" error.
@@ -1165,11 +1180,18 @@ class ParallelRetrievalService:
             original_rrf = doc.get("rrf_score", 0)
             boosted_rrf = original_rrf * authority_boost * recency_boost
 
+            # DEV-250 FIX: Also store authority_boost in metadata so it survives
+            # RankedDocument transformation chain to kb_metadata_builder
+            existing_metadata = doc.get("metadata", {})
             boosted_doc = {
                 **doc,
                 "rrf_score": boosted_rrf,
                 "authority_boost": authority_boost,
                 "recency_boost": recency_boost,
+                "metadata": {
+                    **existing_metadata,
+                    "authority_boost": authority_boost,  # Survives transformation chain
+                },
             }
             boosted.append(boosted_doc)
 

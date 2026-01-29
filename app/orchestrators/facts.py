@@ -626,9 +626,21 @@ def _transform_retrieval_documents(documents: list[dict]) -> list[dict]:
                 **doc.get("metadata", {}),
                 "source_url": source_url,
             },
-            # Preserve rrf_score if present
-            "rrf_score": doc.get("rrf_score"),
+            # Preserve rrf_score if present (default to 0 to avoid None filtering issues)
+            "rrf_score": doc.get("rrf_score", 0),
+            # DEV-250 FIX: Preserve authority_boost from metadata for high-authority source exemption
+            # in kb_metadata_builder.py (official sources like legge, decreto bypass low-score filter)
+            "authority_boost": doc.get("authority_boost") or doc.get("metadata", {}).get("authority_boost", 1.0),
         }
+        # DEV-250 DIAGNOSTIC: Log authority_boost extraction to trace propagation issues
+        logger.debug(
+            "DEV250_transform_authority_boost",
+            source_name=doc.get("source_name", "")[:50] if doc.get("source_name") else "",
+            source_type=doc.get("source_type", ""),
+            metadata_authority=doc.get("metadata", {}).get("authority_boost"),
+            doc_authority=doc.get("authority_boost"),
+            extracted_authority=transformed_doc.get("authority_boost"),
+        )
         transformed.append(transformed_doc)
     return transformed
 

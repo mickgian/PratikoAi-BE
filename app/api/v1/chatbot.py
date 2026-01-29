@@ -1327,13 +1327,20 @@ async def chat_stream(
                     # The LLM outputs <answer> and <suggested_actions> tags, but users should
                     # never see raw XML. Clean the accumulated content and send replacement.
                     if collected_response_chunks:
-                        raw_content = "".join(collected_response_chunks)
-                        cleaned_content = clean_proactivity_content(raw_content)
-                        if cleaned_content != raw_content:
+                        original_content = "".join(collected_response_chunks)
+
+                        # DEV-201: Strip XML tags from user view
+                        # DEV-250 FIX: Section numbering is already fixed by step_064 via
+                        # process_unified_response() - do NOT call fixer again here!
+                        # Calling it twice corrupts correctly-numbered content.
+                        cleaned_content = clean_proactivity_content(original_content)
+
+                        # DEV-250 FIX: Compare against original to detect XML stripping
+                        if cleaned_content != original_content:
                             logger.info(
                                 "content_cleaned_xml_stripped",
                                 session_id=session.id,
-                                original_len=len(raw_content),
+                                original_len=len(original_content),
                                 cleaned_len=len(cleaned_content),
                             )
                             # Send content_cleaned event - frontend will replace displayed content
@@ -1356,9 +1363,12 @@ async def chat_stream(
                     log_sse_summary(request_id=request_id)
 
                     # Save chat history (non-blocking, after streaming completes)
+                    # DEV-250: Use cleaned_content (with fixed numbering) for database save
                     if collected_response_chunks:
                         try:
-                            ai_response = "".join(collected_response_chunks)
+                            # DEV-250 FIX: Use cleaned_content which has fixed numbering
+                            # (cleaned_content is always defined here - same condition as line 1329)
+                            ai_response = cleaned_content
                             # Validate both query and response are non-empty before saving
                             if user_query and user_query.strip() and ai_response and ai_response.strip():
                                 # Use "golden_set" if response came from Golden Set FAQ,

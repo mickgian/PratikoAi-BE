@@ -2,12 +2,14 @@
 
 Tests that conversation topics are extracted on first query and persisted
 for long conversation support (prevents context loss at Q4+).
+
+DEV-250: Updated imports to use app.services.topic_extraction module.
 """
 
 import pytest
 
-# Import the function we're testing
-from app.core.langgraph.nodes.step_034a__llm_router import _extract_topic_keywords
+# Import the function we're testing - DEV-250: moved to service module
+from app.services.topic_extraction import extract_topic_keywords as _extract_topic_keywords
 
 
 class TestExtractTopicKeywords:

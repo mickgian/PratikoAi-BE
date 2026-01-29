@@ -3399,7 +3399,6 @@ class LangGraphAgent:
                         "Non esitare a chiedere per ulteriori chiarimenti!",
                         "Se hai bisogno di ulteriori chiarimenti, non esitare a chiedere!",
                     ]
-                    original_content = content
                     for closing in generic_closings:
                         if content.strip().endswith(closing):
                             content = content.strip()[: -len(closing)].strip()
@@ -3617,7 +3616,8 @@ class LangGraphAgent:
                     # (e.g., "Legge n. 199/2025" vs "LEGGE 30 dicembre 2025, n. 199 - Art. 1")
                     # Keeping longest ensures consistent, more descriptive display
                     # DEV-245: Apply simplify_title and get_category_label_it for clean display
-                    from app.core.langgraph.nodes.step_040__build_context import (
+                    # DEV-250: Import from context_builder service module
+                    from app.services.context_builder import (
                         get_category_label_it,
                         simplify_title,
                     )

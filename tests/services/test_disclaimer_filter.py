@@ -186,3 +186,81 @@ class TestDisclaimerFilterRealWorldCases:
         cleaned, removed = DisclaimerFilter.filter_response(text)
 
         assert "rivolgiti" not in cleaned.lower() or "commercialista" not in cleaned.lower()
+
+
+class TestDisclaimerFilterFormattingPreservation:
+    """DEV-250: Test that filtering preserves markdown formatting."""
+
+    def test_filter_preserves_markdown_formatting(self):
+        """DEV-250: Ensure filtering doesn't destroy markdown line breaks."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        formatted_response = """1. **Definizione**: La rottamazione è...
+
+2. **Requisiti**: I contribuenti devono...
+
+- Primo punto
+- Secondo punto"""
+
+        filtered, removed = DisclaimerFilter.filter_response(formatted_response)
+
+        # Newlines should be preserved - no disclaimers to remove
+        assert "\n\n" in filtered
+        assert "1. **Definizione**" in filtered
+        assert "2. **Requisiti**" in filtered
+        assert removed == []
+
+    def test_filter_preserves_newlines_after_disclaimer_removal(self):
+        """DEV-250: Newlines should be preserved even after removing disclaimers."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = """1. **Primo punto**: Contenuto valido.
+
+2. **Secondo punto**: Altro contenuto. Consulta un esperto fiscale.
+
+3. **Terzo punto**: Ancora contenuto."""
+
+        filtered, removed = DisclaimerFilter.filter_response(text)
+
+        # Disclaimer should be removed
+        assert "consulta un esperto" not in filtered.lower()
+        assert len(removed) > 0
+
+        # But paragraph structure should be preserved
+        assert "1. **Primo punto**" in filtered
+        assert "3. **Terzo punto**" in filtered
+        # There should still be paragraph breaks (double newlines)
+        assert "\n" in filtered
+
+    def test_filter_preserves_bullet_list_structure(self):
+        """DEV-250: Bullet lists should maintain their line break structure."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = """Ecco i requisiti:
+
+- Requisito uno
+- Requisito due
+- Requisito tre
+
+Conclusione finale."""
+
+        filtered, removed = DisclaimerFilter.filter_response(text)
+
+        # No disclaimers, structure should be fully preserved
+        assert "- Requisito uno\n- Requisito due\n- Requisito tre" in filtered
+        assert removed == []
+
+    def test_only_collapses_multiple_spaces_not_newlines(self):
+        """DEV-250: Multiple spaces should collapse, but not newlines."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        # Text with multiple spaces (should collapse) and newlines (should preserve)
+        text = "Prima  riga   con   spazi.\n\nSeconda riga."
+
+        filtered, removed = DisclaimerFilter.filter_response(text)
+
+        # Multiple spaces collapsed to single space
+        assert "Prima riga con spazi." in filtered
+        # Double newline preserved
+        assert "\n\n" in filtered
+        assert "Seconda riga." in filtered

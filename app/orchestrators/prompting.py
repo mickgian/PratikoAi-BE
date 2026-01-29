@@ -854,12 +854,13 @@ Estrai TUTTO. Non riassumere. Non generalizzare.
 Il KB contiene le informazioni corrette - la tua risposta deve rispecchiarle fedelmente.
 
 ### FORMATO RISPOSTA
-✅ **USA SEMPRE** lista numerata con etichetta inline:
-   - Formato: `1. **Etichetta**: Contenuto della sezione...`
-   - Esempio: `1. **Definizione**: La procedura è disciplinata dalla Legge n. X/YYYY...`
-   - Esempio: `2. **Requisiti**: Possono accedere i soggetti che...`
+Scrivi come un **documento professionale** con:
+1. Paragrafo introduttivo che definisce l'argomento
+2. Sezioni con titoli (## 1. Titolo) per ogni aspetto rilevante
+3. Paragrafi discorsivi (NON liste) all'interno delle sezioni
+4. Citazioni inline nel testo (Art. X, comma Y, L. Z/YYYY)
 
-⛔ **NON USARE MAI**: Markdown headers (#, ##) o etichette standalone ("Definizione:" su riga separata)
+⚠️ **EVITA**: Strutture dominate da bullet point. Le liste sono SOLO per elenchi omogenei (4+ elementi simili), NON per organizzare l'intera risposta.
 
 ### SCANSIONE OBBLIGATORIA DEL KB
 
@@ -909,10 +910,13 @@ INCLUDI TUTTE le informazioni rilevanti dal KB. La lunghezza deve corrispondere 
 ## REGOLE CRITICHE PER LA RISPOSTA (DEV-242 - LEGACY)
 
 ### FORMATO RISPOSTA
-✅ **USA SEMPRE** lista numerata con etichetta inline:
-   - Formato: `1. **Etichetta**: Contenuto della sezione...`
+Scrivi come un **documento professionale** con:
+1. Paragrafo introduttivo che definisce l'argomento
+2. Sezioni con titoli (## 1. Titolo) per ogni aspetto
+3. Paragrafi discorsivi all'interno delle sezioni
+4. Citazioni inline nel testo
 
-⛔ **NON USARE MAI**: Markdown headers (#, ##) o etichette standalone
+⚠️ **EVITA**: Strutture dominate da bullet point.
 
 ### ACCURATEZZA
 1. **USA SOLO DATI DAL CONTESTO KB** - Non inventare date, numeri, o percentuali non presenti

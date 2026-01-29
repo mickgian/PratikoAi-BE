@@ -189,9 +189,9 @@ class DailyCostReportService:
         if report_date is None:
             report_date = (datetime.now(UTC) - timedelta(days=1)).date()
 
-        # Get date range for the report day
-        start_dt = datetime.combine(report_date, datetime.min.time()).replace(tzinfo=UTC)
-        end_dt = datetime.combine(report_date, datetime.max.time()).replace(tzinfo=UTC)
+        # Get date range for the report day (naive datetimes for DB compatibility)
+        start_dt = datetime.combine(report_date, datetime.min.time())
+        end_dt = datetime.combine(report_date, datetime.max.time())
 
         # Get totals
         totals = await self._get_totals(start_dt, end_dt)
@@ -289,8 +289,8 @@ class DailyCostReportService:
         Returns:
             List of EnvironmentCostBreakdown
         """
-        start_dt = datetime.combine(report_date, datetime.min.time()).replace(tzinfo=UTC)
-        end_dt = datetime.combine(report_date, datetime.max.time()).replace(tzinfo=UTC)
+        start_dt = datetime.combine(report_date, datetime.min.time())
+        end_dt = datetime.combine(report_date, datetime.max.time())
 
         query = (
             select(
@@ -358,8 +358,8 @@ class DailyCostReportService:
         Returns:
             List of UserCostBreakdown sorted by cost descending
         """
-        start_dt = datetime.combine(report_date, datetime.min.time()).replace(tzinfo=UTC)
-        end_dt = datetime.combine(report_date, datetime.max.time()).replace(tzinfo=UTC)
+        start_dt = datetime.combine(report_date, datetime.min.time())
+        end_dt = datetime.combine(report_date, datetime.max.time())
 
         query = (
             select(
@@ -424,8 +424,8 @@ class DailyCostReportService:
         Returns:
             List of ThirdPartyCostBreakdown
         """
-        start_dt = datetime.combine(report_date, datetime.min.time()).replace(tzinfo=UTC)
-        end_dt = datetime.combine(report_date, datetime.max.time()).replace(tzinfo=UTC)
+        start_dt = datetime.combine(report_date, datetime.min.time())
+        end_dt = datetime.combine(report_date, datetime.max.time())
 
         query = (
             select(

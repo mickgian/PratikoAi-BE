@@ -2,18 +2,20 @@
 
 DEV-007 PII: Tests that PII placeholders in LLM responses are correctly
 restored to original values before returning to user.
+
+DEV-250: Updated imports to use app.services.llm_response module.
 """
 
 import pytest
 
+from app.services.llm_response import deanonymize_response as _deanonymize_response
+
 
 class TestDeanonymizeResponse:
-    """Test suite for _deanonymize_response function."""
+    """Test suite for deanonymize_response function."""
 
     def test_deanonymize_simple_name(self):
         """Test de-anonymizing a simple name placeholder."""
-        from app.core.langgraph.nodes.step_064__llm_call import _deanonymize_response
-
         content = "Il documento appartiene a [NOME_ABC123]."
         deanonymization_map = {"[NOME_ABC123]": "Giancarlo Rossi"}
 
@@ -23,8 +25,6 @@ class TestDeanonymizeResponse:
 
     def test_deanonymize_multiple_pii_types(self):
         """Test de-anonymizing multiple PII types in same response."""
-        from app.core.langgraph.nodes.step_064__llm_call import _deanonymize_response
-
         content = (
             "Il contribuente [NOME_ABC123] con codice fiscale [CF_XYZ789] "
             "e IBAN [IBAN_DEF456] ha presentato la dichiarazione."
@@ -44,8 +44,6 @@ class TestDeanonymizeResponse:
 
     def test_deanonymize_repeated_placeholder(self):
         """Test that same placeholder is replaced multiple times."""
-        from app.core.langgraph.nodes.step_064__llm_call import _deanonymize_response
-
         content = (
             "[NOME_ABC123] ha richiesto informazioni. " "Pertanto, [NOME_ABC123] dovrà presentare la documentazione."
         )
@@ -58,8 +56,6 @@ class TestDeanonymizeResponse:
 
     def test_deanonymize_empty_map(self):
         """Test that empty map returns content unchanged."""
-        from app.core.langgraph.nodes.step_064__llm_call import _deanonymize_response
-
         content = "Nessun dato personale presente."
         deanonymization_map = {}
 
@@ -69,8 +65,6 @@ class TestDeanonymizeResponse:
 
     def test_deanonymize_empty_content(self):
         """Test that empty content returns empty."""
-        from app.core.langgraph.nodes.step_064__llm_call import _deanonymize_response
-
         deanonymization_map = {"[NOME_ABC123]": "Test"}
 
         result = _deanonymize_response("", deanonymization_map)
@@ -79,8 +73,6 @@ class TestDeanonymizeResponse:
 
     def test_deanonymize_none_content(self):
         """Test that None content returns None."""
-        from app.core.langgraph.nodes.step_064__llm_call import _deanonymize_response
-
         deanonymization_map = {"[NOME_ABC123]": "Test"}
 
         result = _deanonymize_response(None, deanonymization_map)
@@ -89,8 +81,6 @@ class TestDeanonymizeResponse:
 
     def test_deanonymize_preserves_unmatched_text(self):
         """Test that text without placeholders is preserved."""
-        from app.core.langgraph.nodes.step_064__llm_call import _deanonymize_response
-
         content = "Calcolo IVA: 22% su €1000 = €220"
         deanonymization_map = {"[NOME_ABC123]": "Test"}
 
@@ -100,8 +90,6 @@ class TestDeanonymizeResponse:
 
     def test_deanonymize_long_placeholder_first(self):
         """Test that longer placeholders are replaced first to avoid partial matches."""
-        from app.core.langgraph.nodes.step_064__llm_call import _deanonymize_response
-
         # This tests the sorting by length descending
         content = "[NOME_ABC] e [NOME_ABC123] sono clienti."
         deanonymization_map = {
@@ -116,8 +104,6 @@ class TestDeanonymizeResponse:
 
     def test_deanonymize_all_pii_types(self):
         """Test de-anonymizing all supported PII types."""
-        from app.core.langgraph.nodes.step_064__llm_call import _deanonymize_response
-
         content = (
             "Cliente: [NOME_001]\n"
             "Codice Fiscale: [CF_002]\n"

@@ -1221,3 +1221,130 @@ class TestBM25OrFallback:
         # Should return results from AND search
         assert len(result) == 1
         assert result[0]["document_id"] == "doc_from_and"
+
+
+class TestAuthoritySearchSemanticExpansion:
+    """DEV-250: Tests for semantic expansion in authority search.
+
+    Regression tests for LEGGE 199/2025 not appearing in Fonti when searching
+    for "rottamazione quinquies" - authority search wasn't applying semantic expansion.
+    """
+
+    @pytest.mark.asyncio
+    async def test_authority_search_applies_semantic_expansion(self):
+        """DEV-250: Authority search should expand query with semantic terms.
+
+        Regression test: LEGGE 199/2025 was not appearing for "rottamazione quinquies"
+        because authority search wasn't applying semantic expansion like BM25 does.
+        """
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+        from app.services.search_service import SearchResult
+
+        mock_search_service = AsyncMock()
+
+        # Mock result representing LEGGE 199/2025 found via expanded query
+        mock_result = MagicMock(spec=SearchResult)
+        mock_result.id = "legge_199_chunk"
+        mock_result.knowledge_item_id = 2080
+        mock_result.content = "definizione agevolata delle controversie tributarie"
+        mock_result.rank = 0.85
+        mock_result.category = "legge"
+        mock_result.title = "LEGGE 30 dicembre 2025, n. 199"
+        mock_result.source = "gazzetta_ufficiale"
+        mock_result.source_url = "https://www.gazzettaufficiale.it/eli/id/2025/12/31/25G00214/sg"
+        mock_result.publication_date = None
+        mock_result.highlight = None
+
+        mock_search_service.search.return_value = [mock_result]
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        # Query with semantic expansions - typical for "rottamazione quinquies"
+        queries = QueryVariants(
+            bm25_query="rottamazione quinquies",
+            vector_query="test",
+            entity_query="test",
+            original_query="Parlami della rottamazione quinquies",
+            semantic_expansions=["pace fiscale", "definizione agevolata", "pacificazione fiscale"],
+        )
+
+        await service._search_authority_sources(queries)
+
+        # Verify search was called (once per authority source)
+        assert mock_search_service.search.called
+
+        # Check that at least one call includes the expanded query with semantic terms
+        all_queries = [call.kwargs.get("query", "") for call in mock_search_service.search.call_args_list]
+
+        # At least one query should contain the semantic expansions
+        has_expansion = any("definizione agevolata" in q or "pace fiscale" in q for q in all_queries)
+        assert has_expansion, (
+            f"Authority search should expand query with semantic terms. " f"Queries used: {all_queries}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_authority_search_no_expansion_when_semantic_expansions_none(self):
+        """DEV-250: Authority search should not modify query when semantic_expansions is None."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        mock_search_service = AsyncMock()
+        mock_search_service.search.return_value = []
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="rottamazione quinquies",
+            vector_query="test",
+            entity_query="test",
+            original_query="test",
+            semantic_expansions=None,  # No semantic expansions
+        )
+
+        await service._search_authority_sources(queries)
+
+        # Verify queries don't contain expansion terms
+        if mock_search_service.search.called:
+            all_queries = [call.kwargs.get("query", "") for call in mock_search_service.search.call_args_list]
+            # All queries should just be the original bm25_query
+            for q in all_queries:
+                assert "pace fiscale" not in q
+                assert "definizione agevolata" not in q
+
+    @pytest.mark.asyncio
+    async def test_authority_search_no_expansion_when_semantic_expansions_empty(self):
+        """DEV-250: Authority search should not modify query when semantic_expansions is empty."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        mock_search_service = AsyncMock()
+        mock_search_service.search.return_value = []
+
+        service = ParallelRetrievalService(
+            search_service=mock_search_service,
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="rottamazione quinquies",
+            vector_query="test",
+            entity_query="test",
+            original_query="test",
+            semantic_expansions=[],  # Empty list
+        )
+
+        await service._search_authority_sources(queries)
+
+        # Verify queries don't contain expansion terms
+        if mock_search_service.search.called:
+            all_queries = [call.kwargs.get("query", "") for call in mock_search_service.search.call_args_list]
+            for q in all_queries:
+                # Query should just be the original (no extra terms appended)
+                assert q == "rottamazione quinquies"

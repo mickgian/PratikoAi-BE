@@ -77,7 +77,8 @@ class DisclaimerFilter:
                 cleaned = re.sub(sentence_pattern, "", cleaned, flags=re.IGNORECASE)
 
         # Clean up any double spaces or trailing whitespace
-        cleaned = re.sub(r"\s{2,}", " ", cleaned)
+        # DEV-250: Only collapse multiple spaces, preserve newlines for markdown formatting
+        cleaned = re.sub(r" {2,}", " ", cleaned)
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         cleaned = cleaned.strip()
 
@@ -105,10 +106,7 @@ class DisclaimerFilter:
         if not text:
             return False
 
-        for pattern in _COMPILED_PATTERNS:
-            if pattern.search(text):
-                return True
-        return False
+        return any(pattern.search(text) for pattern in _COMPILED_PATTERNS)
 
 
 # Singleton instance for convenience

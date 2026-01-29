@@ -196,3 +196,115 @@ class TestStep40FieldTransformation:
         assert doc.get("id") == "doc2"
         assert doc.get("title") == "Already Correct Title"
         assert doc.get("type") == "circolare"
+
+
+class TestStep40AuthorityBoostPreservation:
+    """DEV-250: Ensure authority_boost survives transformation chain for high-authority source exemption."""
+
+    @pytest.mark.asyncio
+    async def test_step40_preserves_authority_boost_from_metadata(self):
+        """DEV-250: authority_boost in metadata should survive transformation to kb_results.
+
+        High-authority sources (legge, decreto, circolare) should bypass the low-score
+        filter in kb_metadata_builder. This requires authority_boost to flow through:
+        parallel_retrieval -> facts._transform_retrieval_documents -> kb_metadata_builder
+        """
+        ctx = {
+            "retrieval_result": {
+                "documents": [
+                    {
+                        "document_id": "legge-199-2025",
+                        "content": "LEGGE 30 dicembre 2025, n. 199 - Rottamazione quinquies",
+                        "score": 0.003,  # Low score that would normally be filtered
+                        "rrf_score": 0.003,
+                        "source_name": "LEGGE 30 dicembre 2025, n. 199",
+                        "source_type": "legge",
+                        "published_date": "2025-12-30",
+                        "metadata": {
+                            "authority_boost": 1.8,  # High authority from GERARCHIA_FONTI
+                            "source_url": "https://gazzettaufficiale.it/eli/id/2025/12/31/199/sg",
+                        },
+                    }
+                ],
+                "total_found": 1,
+            },
+            "canonical_facts": [],
+            "user_message": "parlami della rottamazione quinquies",
+            "request_id": "test-authority-boost",
+        }
+
+        result = await step_40__build_context(ctx=ctx)
+
+        kb_results = result.get("kb_results", [])
+        assert len(kb_results) == 1, f"Expected 1 kb_result, got {len(kb_results)}"
+
+        doc = kb_results[0]
+        # Verify authority_boost is preserved for kb_metadata_builder exemption
+        assert (
+            doc.get("authority_boost") == 1.8
+        ), f"Expected authority_boost=1.8 to survive transformation, got {doc.get('authority_boost')}"
+
+    @pytest.mark.asyncio
+    async def test_step40_preserves_authority_boost_from_top_level(self):
+        """DEV-250: authority_boost at document top-level should also be preserved."""
+        ctx = {
+            "retrieval_result": {
+                "documents": [
+                    {
+                        "document_id": "decreto-123",
+                        "content": "DECRETO test content",
+                        "score": 0.002,
+                        "rrf_score": 0.002,
+                        "authority_boost": 1.6,  # At top level (from _apply_boosts)
+                        "source_name": "DECRETO 123",
+                        "source_type": "decreto",
+                        "metadata": {},
+                    }
+                ],
+                "total_found": 1,
+            },
+            "canonical_facts": [],
+            "user_message": "test query",
+            "request_id": "test-authority-boost-top-level",
+        }
+
+        result = await step_40__build_context(ctx=ctx)
+
+        kb_results = result.get("kb_results", [])
+        assert len(kb_results) == 1
+
+        doc = kb_results[0]
+        assert doc.get("authority_boost") == 1.6, f"Expected authority_boost=1.6, got {doc.get('authority_boost')}"
+
+    @pytest.mark.asyncio
+    async def test_step40_defaults_authority_boost_to_1_when_missing(self):
+        """DEV-250: Missing authority_boost should default to 1.0 (no exemption)."""
+        ctx = {
+            "retrieval_result": {
+                "documents": [
+                    {
+                        "document_id": "generic-doc",
+                        "content": "Generic content without authority boost",
+                        "score": 0.5,
+                        "source_name": "Generic Document",
+                        "source_type": "unknown",
+                        "metadata": {},  # No authority_boost
+                    }
+                ],
+                "total_found": 1,
+            },
+            "canonical_facts": [],
+            "user_message": "test query",
+            "request_id": "test-no-authority-boost",
+        }
+
+        result = await step_40__build_context(ctx=ctx)
+
+        kb_results = result.get("kb_results", [])
+        assert len(kb_results) == 1
+
+        doc = kb_results[0]
+        # Should default to 1.0 (no exemption from low-score filter)
+        assert (
+            doc.get("authority_boost") == 1.0
+        ), f"Expected authority_boost=1.0 as default, got {doc.get('authority_boost')}"

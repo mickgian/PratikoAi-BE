@@ -13,6 +13,7 @@ from .constants import (
     SENSITIVE_TOPICS,
 )
 from .exclusion_detector import _web_has_genuine_exclusions
+from .proactivity_utils import build_proactivity_update, get_response_content
 from .service import WebVerificationService, web_verification_service
 from .types import ContradictionInfo, WebVerificationResult
 
@@ -25,6 +26,9 @@ __all__ = [
     "web_verification_service",
     # Functions
     "_web_has_genuine_exclusions",
+    # Proactivity utilities
+    "build_proactivity_update",
+    "get_response_content",
     # Constants
     "EXCLUSION_KEYWORDS",
     "CONTRADICTION_KEYWORDS",

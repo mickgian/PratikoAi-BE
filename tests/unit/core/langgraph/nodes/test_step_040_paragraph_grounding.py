@@ -11,7 +11,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-
 # Sample KB documents with paragraph content for testing
 # DEV-244: Include rrf_score >= 0.008 (MIN_FONTI_RELEVANCE_SCORE) to pass filter
 SAMPLE_KB_DOCS_WITH_PARAGRAPHS = [
@@ -72,7 +71,7 @@ class TestParagraphIdGeneration:
 
     def test_generate_paragraph_id_creates_unique_id(self):
         """paragraph_id should be unique within a document."""
-        from app.core.langgraph.nodes.step_040__build_context import generate_paragraph_id
+        from app.services.context_builder import generate_paragraph_id
 
         doc_id = "doc_001"
         paragraph_index = 0
@@ -85,7 +84,7 @@ class TestParagraphIdGeneration:
 
     def test_generate_paragraph_id_different_for_different_paragraphs(self):
         """Different paragraphs should have different IDs."""
-        from app.core.langgraph.nodes.step_040__build_context import generate_paragraph_id
+        from app.services.context_builder import generate_paragraph_id
 
         doc_id = "doc_001"
 
@@ -96,7 +95,7 @@ class TestParagraphIdGeneration:
 
     def test_generate_paragraph_id_deterministic(self):
         """Same inputs should produce same paragraph_id."""
-        from app.core.langgraph.nodes.step_040__build_context import generate_paragraph_id
+        from app.services.context_builder import generate_paragraph_id
 
         doc_id = "doc_001"
         paragraph_index = 2
@@ -108,7 +107,7 @@ class TestParagraphIdGeneration:
 
     def test_generate_paragraph_id_handles_empty_doc_id(self):
         """Should handle empty doc_id gracefully."""
-        from app.core.langgraph.nodes.step_040__build_context import generate_paragraph_id
+        from app.services.context_builder import generate_paragraph_id
 
         paragraph_id = generate_paragraph_id("", 0)
 
@@ -121,7 +120,7 @@ class TestParagraphExcerptExtraction:
 
     def test_extract_paragraph_excerpt_first_paragraph(self):
         """Should extract first meaningful paragraph as excerpt."""
-        from app.core.langgraph.nodes.step_040__build_context import extract_paragraph_excerpt
+        from app.services.context_builder import extract_paragraph_excerpt
 
         content = """1. L'aliquota IVA ordinaria è del 22% per la maggior parte dei beni.
 
@@ -135,7 +134,7 @@ class TestParagraphExcerptExtraction:
 
     def test_extract_paragraph_excerpt_respects_max_length(self):
         """Excerpt should not exceed max_length."""
-        from app.core.langgraph.nodes.step_040__build_context import extract_paragraph_excerpt
+        from app.services.context_builder import extract_paragraph_excerpt
 
         long_content = "A" * 500
 
@@ -145,7 +144,7 @@ class TestParagraphExcerptExtraction:
 
     def test_extract_paragraph_excerpt_adds_ellipsis_when_truncated(self):
         """Should add ellipsis when content is truncated."""
-        from app.core.langgraph.nodes.step_040__build_context import extract_paragraph_excerpt
+        from app.services.context_builder import extract_paragraph_excerpt
 
         long_content = "Questo è un contenuto molto lungo che supera il limite. " * 10
 
@@ -155,7 +154,7 @@ class TestParagraphExcerptExtraction:
 
     def test_extract_paragraph_excerpt_empty_content(self):
         """Should handle empty content gracefully."""
-        from app.core.langgraph.nodes.step_040__build_context import extract_paragraph_excerpt
+        from app.services.context_builder import extract_paragraph_excerpt
 
         excerpt = extract_paragraph_excerpt("", max_length=100)
 
@@ -163,7 +162,7 @@ class TestParagraphExcerptExtraction:
 
     def test_extract_paragraph_excerpt_none_content(self):
         """Should handle None content gracefully."""
-        from app.core.langgraph.nodes.step_040__build_context import extract_paragraph_excerpt
+        from app.services.context_builder import extract_paragraph_excerpt
 
         excerpt = extract_paragraph_excerpt(None, max_length=100)
 
@@ -171,7 +170,7 @@ class TestParagraphExcerptExtraction:
 
     def test_extract_paragraph_excerpt_whitespace_only(self):
         """Should handle whitespace-only content."""
-        from app.core.langgraph.nodes.step_040__build_context import extract_paragraph_excerpt
+        from app.services.context_builder import extract_paragraph_excerpt
 
         excerpt = extract_paragraph_excerpt("   \n\n  \t  ", max_length=100)
 
@@ -182,9 +181,7 @@ class TestStep40ParagraphIdInMetadata:
     """Test that Step 40 includes paragraph_id in kb_sources_metadata."""
 
     @pytest.mark.asyncio
-    async def test_step40_metadata_has_paragraph_id(
-        self, base_state, mock_orchestrator_response_with_paragraphs
-    ):
+    async def test_step40_metadata_has_paragraph_id(self, base_state, mock_orchestrator_response_with_paragraphs):
         """kb_sources_metadata should include paragraph_id field."""
         from app.core.langgraph.nodes.step_040__build_context import node_step_40
 
@@ -200,9 +197,7 @@ class TestStep40ParagraphIdInMetadata:
                 assert "paragraph_id" in metadata
 
     @pytest.mark.asyncio
-    async def test_step40_paragraph_id_is_string(
-        self, base_state, mock_orchestrator_response_with_paragraphs
-    ):
+    async def test_step40_paragraph_id_is_string(self, base_state, mock_orchestrator_response_with_paragraphs):
         """paragraph_id should be a string."""
         from app.core.langgraph.nodes.step_040__build_context import node_step_40
 
@@ -217,9 +212,7 @@ class TestStep40ParagraphIdInMetadata:
                 assert isinstance(metadata["paragraph_id"], str)
 
     @pytest.mark.asyncio
-    async def test_step40_paragraph_id_contains_doc_id(
-        self, base_state, mock_orchestrator_response_with_paragraphs
-    ):
+    async def test_step40_paragraph_id_contains_doc_id(self, base_state, mock_orchestrator_response_with_paragraphs):
         """paragraph_id should contain the document ID for traceability."""
         from app.core.langgraph.nodes.step_040__build_context import node_step_40
 
@@ -239,9 +232,7 @@ class TestStep40ParagraphExcerptInMetadata:
     """Test that Step 40 includes paragraph_excerpt in kb_sources_metadata."""
 
     @pytest.mark.asyncio
-    async def test_step40_metadata_has_paragraph_excerpt(
-        self, base_state, mock_orchestrator_response_with_paragraphs
-    ):
+    async def test_step40_metadata_has_paragraph_excerpt(self, base_state, mock_orchestrator_response_with_paragraphs):
         """kb_sources_metadata should include paragraph_excerpt field."""
         from app.core.langgraph.nodes.step_040__build_context import node_step_40
 
@@ -257,9 +248,7 @@ class TestStep40ParagraphExcerptInMetadata:
                 assert "paragraph_excerpt" in metadata
 
     @pytest.mark.asyncio
-    async def test_step40_paragraph_excerpt_is_string(
-        self, base_state, mock_orchestrator_response_with_paragraphs
-    ):
+    async def test_step40_paragraph_excerpt_is_string(self, base_state, mock_orchestrator_response_with_paragraphs):
         """paragraph_excerpt should be a string."""
         from app.core.langgraph.nodes.step_040__build_context import node_step_40
 
@@ -291,9 +280,7 @@ class TestStep40ParagraphExcerptInMetadata:
                 assert len(metadata["paragraph_excerpt"]) <= 153  # 150 + "..."
 
     @pytest.mark.asyncio
-    async def test_step40_paragraph_excerpt_from_content(
-        self, base_state, mock_orchestrator_response_with_paragraphs
-    ):
+    async def test_step40_paragraph_excerpt_from_content(self, base_state, mock_orchestrator_response_with_paragraphs):
         """paragraph_excerpt should be extracted from document content."""
         from app.core.langgraph.nodes.step_040__build_context import node_step_40
 
@@ -391,9 +378,7 @@ class TestStep40BackwardCompatibility:
     """Test that existing kb_sources_metadata fields are preserved."""
 
     @pytest.mark.asyncio
-    async def test_step40_preserves_existing_fields(
-        self, base_state, mock_orchestrator_response_with_paragraphs
-    ):
+    async def test_step40_preserves_existing_fields(self, base_state, mock_orchestrator_response_with_paragraphs):
         """All existing metadata fields should still be present."""
         from app.core.langgraph.nodes.step_040__build_context import node_step_40
 

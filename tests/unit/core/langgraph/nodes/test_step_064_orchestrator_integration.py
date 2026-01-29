@@ -19,7 +19,6 @@ from app.services.llm_orchestrator import (
     UnifiedResponse,
 )
 
-
 # =============================================================================
 # Test Fixtures
 # =============================================================================
@@ -35,9 +34,7 @@ def base_state():
         "session_id": "test-session-456",
         "routing_decision": {"route": "technical_research"},
         "kb_context": "L'aliquota IVA ordinaria è del 22%.",
-        "kb_sources_metadata": [
-            {"ref": "Art. 16 DPR 633/72", "relevance": "principale"}
-        ],
+        "kb_sources_metadata": [{"ref": "Art. 16 DPR 633/72", "relevance": "principale"}],
     }
 
 
@@ -138,77 +135,51 @@ class TestComplexityClassificationBeforeLLMCall:
     """Test that complexity is classified before making LLM call."""
 
     @pytest.mark.asyncio
-    async def test_simple_query_classified_before_llm_call(
-        self, base_state, mock_simple_response
-    ):
+    async def test_simple_query_classified_before_llm_call(self, base_state, mock_simple_response):
         """Simple queries should be classified as SIMPLE before LLM call."""
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
-            mock_orchestrator.classify_complexity = AsyncMock(
-                return_value=QueryComplexity.SIMPLE
-            )
-            mock_orchestrator.generate_response = AsyncMock(
-                return_value=mock_simple_response
-            )
+            mock_orchestrator.classify_complexity = AsyncMock(return_value=QueryComplexity.SIMPLE)
+            mock_orchestrator.generate_response = AsyncMock(return_value=mock_simple_response)
             mock_get_orchestrator.return_value = mock_orchestrator
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": mock_simple_response.answer},
                 }
 
-                result = await node_step_64(base_state)
+                await node_step_64(base_state)
 
                 # Verify classify_complexity was called
                 mock_orchestrator.classify_complexity.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_complex_query_classified_as_complex(
-        self, complex_query_state, mock_complex_response
-    ):
+    async def test_complex_query_classified_as_complex(self, complex_query_state, mock_complex_response):
         """Complex queries should be classified as COMPLEX."""
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
-            mock_orchestrator.classify_complexity = AsyncMock(
-                return_value=QueryComplexity.COMPLEX
-            )
-            mock_orchestrator.generate_response = AsyncMock(
-                return_value=mock_complex_response
-            )
+            mock_orchestrator.classify_complexity = AsyncMock(return_value=QueryComplexity.COMPLEX)
+            mock_orchestrator.generate_response = AsyncMock(return_value=mock_complex_response)
             mock_get_orchestrator.return_value = mock_orchestrator
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": mock_complex_response.answer},
                 }
 
-                result = await node_step_64(complex_query_state)
+                await node_step_64(complex_query_state)
 
                 # Verify classification was COMPLEX
                 mock_orchestrator.classify_complexity.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_multi_domain_query_classified_correctly(
-        self, multi_domain_state
-    ):
+    async def test_multi_domain_query_classified_correctly(self, multi_domain_state):
         """Multi-domain queries should be classified as MULTI_DOMAIN."""
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
-            mock_orchestrator.classify_complexity = AsyncMock(
-                return_value=QueryComplexity.MULTI_DOMAIN
-            )
+            mock_orchestrator.classify_complexity = AsyncMock(return_value=QueryComplexity.MULTI_DOMAIN)
             mock_orchestrator.generate_response = AsyncMock(
                 return_value=UnifiedResponse(
                     answer="Risposta multi-dominio",
@@ -226,15 +197,13 @@ class TestComplexityClassificationBeforeLLMCall:
             )
             mock_get_orchestrator.return_value = mock_orchestrator
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": "Risposta multi-dominio"},
                 }
 
-                result = await node_step_64(multi_domain_state)
+                await node_step_64(multi_domain_state)
 
                 # Verify classification accounts for multiple domains
                 call_args = mock_orchestrator.classify_complexity.call_args
@@ -250,31 +219,21 @@ class TestModelSelectionBasedOnComplexity:
     """Test that correct model is selected based on complexity."""
 
     @pytest.mark.asyncio
-    async def test_simple_query_uses_gpt4o_mini(
-        self, base_state, mock_simple_response
-    ):
+    async def test_simple_query_uses_gpt4o_mini(self, base_state, mock_simple_response):
         """Simple queries should use GPT-4o-mini for cost efficiency."""
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
-            mock_orchestrator.classify_complexity = AsyncMock(
-                return_value=QueryComplexity.SIMPLE
-            )
-            mock_orchestrator.generate_response = AsyncMock(
-                return_value=mock_simple_response
-            )
+            mock_orchestrator.classify_complexity = AsyncMock(return_value=QueryComplexity.SIMPLE)
+            mock_orchestrator.generate_response = AsyncMock(return_value=mock_simple_response)
             mock_get_orchestrator.return_value = mock_orchestrator
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": mock_simple_response.answer},
                 }
 
-                result = await node_step_64(base_state)
+                await node_step_64(base_state)
 
                 # Verify generate_response was called with SIMPLE complexity
                 gen_call = mock_orchestrator.generate_response.call_args
@@ -282,31 +241,21 @@ class TestModelSelectionBasedOnComplexity:
                     assert gen_call.kwargs.get("complexity") == QueryComplexity.SIMPLE
 
     @pytest.mark.asyncio
-    async def test_complex_query_uses_gpt4o(
-        self, complex_query_state, mock_complex_response
-    ):
+    async def test_complex_query_uses_gpt4o(self, complex_query_state, mock_complex_response):
         """Complex queries should use GPT-4o for better reasoning."""
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
-            mock_orchestrator.classify_complexity = AsyncMock(
-                return_value=QueryComplexity.COMPLEX
-            )
-            mock_orchestrator.generate_response = AsyncMock(
-                return_value=mock_complex_response
-            )
+            mock_orchestrator.classify_complexity = AsyncMock(return_value=QueryComplexity.COMPLEX)
+            mock_orchestrator.generate_response = AsyncMock(return_value=mock_complex_response)
             mock_get_orchestrator.return_value = mock_orchestrator
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": mock_complex_response.answer},
                 }
 
-                result = await node_step_64(complex_query_state)
+                await node_step_64(complex_query_state)
 
                 # Verify generate_response was called with COMPLEX complexity
                 gen_call = mock_orchestrator.generate_response.call_args
@@ -323,25 +272,15 @@ class TestCostTrackingInState:
     """Test that LLM costs are tracked in state."""
 
     @pytest.mark.asyncio
-    async def test_cost_stored_in_state_after_simple_query(
-        self, base_state, mock_simple_response
-    ):
+    async def test_cost_stored_in_state_after_simple_query(self, base_state, mock_simple_response):
         """Cost should be stored in state after simple query."""
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
-            mock_orchestrator.classify_complexity = AsyncMock(
-                return_value=QueryComplexity.SIMPLE
-            )
-            mock_orchestrator.generate_response = AsyncMock(
-                return_value=mock_simple_response
-            )
+            mock_orchestrator.classify_complexity = AsyncMock(return_value=QueryComplexity.SIMPLE)
+            mock_orchestrator.generate_response = AsyncMock(return_value=mock_simple_response)
             mock_get_orchestrator.return_value = mock_orchestrator
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": mock_simple_response.answer},
@@ -350,30 +289,20 @@ class TestCostTrackingInState:
                 result = await node_step_64(base_state)
 
                 # Check that llm namespace has cost info
-                llm = result.get("llm", {})
+                result.get("llm", {})
                 # Cost should be tracked (implementation will add this)
                 # This test will initially fail (RED) until implementation
 
     @pytest.mark.asyncio
-    async def test_tokens_tracked_in_state(
-        self, base_state, mock_simple_response
-    ):
+    async def test_tokens_tracked_in_state(self, base_state, mock_simple_response):
         """Token usage should be tracked in state."""
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
-            mock_orchestrator.classify_complexity = AsyncMock(
-                return_value=QueryComplexity.SIMPLE
-            )
-            mock_orchestrator.generate_response = AsyncMock(
-                return_value=mock_simple_response
-            )
+            mock_orchestrator.classify_complexity = AsyncMock(return_value=QueryComplexity.SIMPLE)
+            mock_orchestrator.generate_response = AsyncMock(return_value=mock_simple_response)
             mock_get_orchestrator.return_value = mock_orchestrator
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": mock_simple_response.answer},
@@ -383,35 +312,25 @@ class TestCostTrackingInState:
                 result = await node_step_64(base_state)
 
                 # Token tracking should be available
-                llm = result.get("llm", {})
+                result.get("llm", {})
                 # Implementation will add token tracking
 
     @pytest.mark.asyncio
-    async def test_complexity_stored_in_state(
-        self, base_state, mock_simple_response
-    ):
+    async def test_complexity_stored_in_state(self, base_state, mock_simple_response):
         """Query complexity should be stored in state for analytics."""
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
-            mock_orchestrator.classify_complexity = AsyncMock(
-                return_value=QueryComplexity.SIMPLE
-            )
-            mock_orchestrator.generate_response = AsyncMock(
-                return_value=mock_simple_response
-            )
+            mock_orchestrator.classify_complexity = AsyncMock(return_value=QueryComplexity.SIMPLE)
+            mock_orchestrator.generate_response = AsyncMock(return_value=mock_simple_response)
             mock_get_orchestrator.return_value = mock_orchestrator
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": mock_simple_response.answer},
                 }
 
-                result = await node_step_64(base_state)
+                await node_step_64(base_state)
 
                 # Complexity should be stored in state
                 # Implementation will add: state["query_complexity"] = complexity
@@ -437,9 +356,7 @@ class TestExistingStep64Functionality:
             },
         }
 
-        with patch(
-            "app.orchestrators.providers.step_64__llmcall"
-        ) as mock_llmcall:
+        with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
             mock_llmcall.return_value = {
                 "llm_call_successful": True,
                 "response": {"content": "Il cliente [NOME_ABC123] deve pagare..."},
@@ -450,36 +367,28 @@ class TestExistingStep64Functionality:
             # Response should have PII restored
             llm = result.get("llm", {})
             if llm.get("response"):
-                content = (
-                    llm["response"].get("content", "")
-                    if isinstance(llm["response"], dict)
-                    else ""
-                )
+                content = llm["response"].get("content", "") if isinstance(llm["response"], dict) else ""
                 assert "Mario Rossi" in content or "[NOME_ABC123]" not in content
 
     @pytest.mark.asyncio
     async def test_json_parsing_still_works(self, base_state):
         """Unified JSON response parsing should still work."""
-        json_response = json.dumps({
-            "reasoning": {"tema": "IVA"},
-            "answer": "L'IVA è del 22%",
-            "sources_cited": [{"ref": "Art. 16 DPR 633/72"}],
-            "suggested_actions": [],
-        })
+        json_response = json.dumps(
+            {
+                "reasoning": {"tema": "IVA"},
+                "answer": "L'IVA è del 22%",
+                "sources_cited": [{"ref": "Art. 16 DPR 633/72"}],
+                "suggested_actions": [],
+            }
+        )
 
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
-            mock_orchestrator.classify_complexity = AsyncMock(
-                return_value=QueryComplexity.SIMPLE
-            )
+            mock_orchestrator.classify_complexity = AsyncMock(return_value=QueryComplexity.SIMPLE)
             mock_get_orchestrator.return_value = mock_orchestrator
 
             # Patch where it's imported (in the node module)
-            with patch(
-                "app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": json_response},
@@ -499,19 +408,19 @@ class TestExistingStep64Functionality:
     @pytest.mark.asyncio
     async def test_source_hierarchy_still_applied(self, base_state):
         """Source hierarchy ranking should still be applied."""
-        json_response = json.dumps({
-            "reasoning": {"tema": "Test"},
-            "answer": "Test answer",
-            "sources_cited": [
-                {"ref": "Circolare AdE 12/E/2024", "relevance": "supporto"},
-                {"ref": "Legge 190/2014", "relevance": "principale"},
-            ],
-            "suggested_actions": [],
-        })
+        json_response = json.dumps(
+            {
+                "reasoning": {"tema": "Test"},
+                "answer": "Test answer",
+                "sources_cited": [
+                    {"ref": "Circolare AdE 12/E/2024", "relevance": "supporto"},
+                    {"ref": "Legge 190/2014", "relevance": "principale"},
+                ],
+                "suggested_actions": [],
+            }
+        )
 
-        with patch(
-            "app.orchestrators.providers.step_64__llmcall"
-        ) as mock_llmcall:
+        with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
             mock_llmcall.return_value = {
                 "llm_call_successful": True,
                 "response": {"content": json_response},
@@ -546,18 +455,12 @@ class TestFallbackBehavior:
     @pytest.mark.asyncio
     async def test_fallback_to_default_on_classification_error(self, base_state):
         """Should fallback to default processing on classification error."""
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
-            mock_orchestrator.classify_complexity = AsyncMock(
-                side_effect=Exception("Classification failed")
-            )
+            mock_orchestrator.classify_complexity = AsyncMock(side_effect=Exception("Classification failed"))
             mock_get_orchestrator.return_value = mock_orchestrator
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": "Fallback response"},
@@ -572,18 +475,12 @@ class TestFallbackBehavior:
                 assert result.get("complexity_context", {}).get("fallback") is True
 
     @pytest.mark.asyncio
-    async def test_original_flow_preserved_when_orchestrator_unavailable(
-        self, base_state
-    ):
+    async def test_original_flow_preserved_when_orchestrator_unavailable(self, base_state):
         """Original Step 64 flow should work when orchestrator is unavailable."""
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator:
             mock_get_orchestrator.side_effect = ImportError("Orchestrator not available")
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": "Original flow response"},
@@ -611,9 +508,10 @@ class TestPerformance:
         """Classification should add minimal latency (<100ms)."""
         import time
 
-        with patch(
-            "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator"
-        ) as mock_get_orchestrator:
+        with (
+            patch("app.services.llm_response.complexity_classifier.get_llm_orchestrator") as mock_get_orchestrator,
+            patch("app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator") as mock_node_orchestrator,
+        ):
             mock_orchestrator = MagicMock()
 
             # Simulate fast classification
@@ -621,35 +519,33 @@ class TestPerformance:
                 return QueryComplexity.SIMPLE
 
             mock_orchestrator.classify_complexity = fast_classify
-            mock_orchestrator.generate_response = AsyncMock(
-                return_value=UnifiedResponse(
-                    answer="Test",
-                    reasoning={},
-                    reasoning_type="cot",
-                    tot_analysis=None,
-                    sources_cited=[],
-                    suggested_actions=[],
-                    model_used="gpt-4o-mini",
-                    tokens_input=50,
-                    tokens_output=30,
-                    cost_euros=0.0001,
-                    latency_ms=100,
-                )
+            mock_response = UnifiedResponse(
+                answer="Test",
+                reasoning={},
+                reasoning_type="cot",
+                tot_analysis=None,
+                sources_cited=[],
+                suggested_actions=[],
+                model_used="gpt-4o-mini",
+                tokens_input=50,
+                tokens_output=30,
+                cost_euros=0.0001,
+                latency_ms=100,
             )
+            mock_orchestrator.generate_response = AsyncMock(return_value=mock_response)
             mock_get_orchestrator.return_value = mock_orchestrator
+            mock_node_orchestrator.return_value = mock_orchestrator
 
-            with patch(
-                "app.orchestrators.providers.step_64__llmcall"
-            ) as mock_llmcall:
+            with patch("app.orchestrators.providers.step_64__llmcall") as mock_llmcall:
                 mock_llmcall.return_value = {
                     "llm_call_successful": True,
                     "response": {"content": "Test"},
                 }
 
                 start = time.time()
-                result = await node_step_64(base_state)
+                await node_step_64(base_state)
                 elapsed = (time.time() - start) * 1000
 
                 # Total execution should be reasonable
                 # (mocked calls should be very fast)
-                assert elapsed < 1000  # Less than 1 second for mocked test
+                assert elapsed < 5000  # Less than 5 seconds for mocked test

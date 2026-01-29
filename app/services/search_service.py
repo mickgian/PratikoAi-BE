@@ -29,17 +29,19 @@ from app.services.cache import cache_service
 
 # DEV-242 Phase 7: Topic-based synonym expansion for FTS
 # Maps colloquial tax terms to their ACTUAL legal equivalents found in law text
-# IMPORTANT: Use single words, not phrases - FTS matches on individual terms
+# NOTE: Phrases like "definizione agevolata" work because FTS matches individual terms
 # DEV-XXX: Simplified to broad categories for scalability
 TOPIC_SYNONYMS = {
     # Broad category for fiscal amnesty procedures
     "rottamazione": [
+        "definizione agevolata",  # DEV-250: Exact phrase from LEGGE 199/2025
         "definizione",  # Generic term used in all rottamazione/sanatoria laws
         "pace fiscale",
         "pacificazione",
         "stralcio",
     ],
     "saldo e stralcio": [
+        "definizione agevolata",  # DEV-250: Exact phrase from law text
         "definizione",
         "stralcio debiti",
     ],

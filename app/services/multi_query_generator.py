@@ -350,6 +350,13 @@ class MultiQueryGeneratorService:
             if response.endswith("```"):
                 response = response[:-3].strip()
 
+        # DEBUG: Log raw response to understand why semantic_expansions is empty (DEV-250)
+        logger.info(
+            "multi_query_raw_response",
+            response_length=len(response),
+            response_preview=response[:500],
+        )
+
         # Try to parse JSON
         try:
             data = json.loads(response)
@@ -366,6 +373,18 @@ class MultiQueryGeneratorService:
         document_refs = data.get("document_references")
         # DEV-242: Extract semantic_expansions for terminology bridging
         semantic_exps = data.get("semantic_expansions")
+
+        # DEBUG: Log parsed values to understand what LLM returned (DEV-250)
+        logger.info(
+            "multi_query_parsed_response",
+            has_bm25_query="bm25_query" in data,
+            has_vector_query="vector_query" in data,
+            has_entity_query="entity_query" in data,
+            has_document_refs="document_references" in data,
+            has_semantic_expansions="semantic_expansions" in data,
+            document_refs_value=document_refs,
+            semantic_expansions_value=semantic_exps,
+        )
 
         return QueryVariants(
             bm25_query=data.get("bm25_query", original_query),

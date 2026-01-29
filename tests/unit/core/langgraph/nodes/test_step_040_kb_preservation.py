@@ -601,7 +601,7 @@ class TestDEV245FontiImprovements:
 
     def test_simplify_title_removes_article_reference(self):
         """simplify_title should remove ' - Art. X' and everything after."""
-        from app.core.langgraph.nodes.step_040__build_context import simplify_title
+        from app.services.context_builder import simplify_title
 
         title = "LEGGE 30 dicembre 2025, n. 199 - Art. 1 - guenti: «33 per c…"
         result = simplify_title(title)
@@ -609,7 +609,7 @@ class TestDEV245FontiImprovements:
 
     def test_simplify_title_handles_articolo_spelled_out(self):
         """simplify_title should handle 'Articolo' spelled out."""
-        from app.core.langgraph.nodes.step_040__build_context import simplify_title
+        from app.services.context_builder import simplify_title
 
         title = "D.Lgs. 81/2008 - Articolo 2 - Definizioni"
         result = simplify_title(title)
@@ -617,7 +617,7 @@ class TestDEV245FontiImprovements:
 
     def test_simplify_title_preserves_clean_title(self):
         """simplify_title should not modify titles without article references."""
-        from app.core.langgraph.nodes.step_040__build_context import simplify_title
+        from app.services.context_builder import simplify_title
 
         title = "Circolare AdE n. 12/E del 2024"
         result = simplify_title(title)
@@ -625,20 +625,20 @@ class TestDEV245FontiImprovements:
 
     def test_simplify_title_handles_empty_string(self):
         """simplify_title should return empty string for empty input."""
-        from app.core.langgraph.nodes.step_040__build_context import simplify_title
+        from app.services.context_builder import simplify_title
 
         assert simplify_title("") == ""
         assert simplify_title(None) == ""
 
     def test_get_category_label_it_maps_regulatory_documents(self):
         """get_category_label_it should map 'regulatory_documents' to 'normativa'."""
-        from app.core.langgraph.nodes.step_040__build_context import get_category_label_it
+        from app.services.context_builder import get_category_label_it
 
         assert get_category_label_it("regulatory_documents") == "normativa"
 
     def test_get_category_label_it_maps_known_types(self):
         """get_category_label_it should map all known document types."""
-        from app.core.langgraph.nodes.step_040__build_context import get_category_label_it
+        from app.services.context_builder import get_category_label_it
 
         assert get_category_label_it("legge") == "legge"
         assert get_category_label_it("circolare") == "circolare"
@@ -647,13 +647,13 @@ class TestDEV245FontiImprovements:
 
     def test_get_category_label_it_handles_unknown_type(self):
         """get_category_label_it should replace underscores for unknown types."""
-        from app.core.langgraph.nodes.step_040__build_context import get_category_label_it
+        from app.services.context_builder import get_category_label_it
 
         assert get_category_label_it("some_unknown_type") == "some unknown type"
 
     def test_get_category_label_it_handles_empty_string(self):
         """get_category_label_it should return empty string for empty input."""
-        from app.core.langgraph.nodes.step_040__build_context import get_category_label_it
+        from app.services.context_builder import get_category_label_it
 
         assert get_category_label_it("") == ""
         assert get_category_label_it(None) == ""

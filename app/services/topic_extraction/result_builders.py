@@ -6,6 +6,7 @@ from app.schemas.router import RoutingCategory
 
 if TYPE_CHECKING:
     from app.schemas.router import RouterDecision
+    from app.services.hf_intent_classifier import IntentResult
 
 
 def decision_to_dict(decision: "RouterDecision") -> dict[str, Any]:
@@ -53,4 +54,34 @@ def create_fallback_decision() -> dict[str, Any]:
         "suggested_sources": [],
         "needs_retrieval": True,
         "is_followup": False,  # DEV-245: Default to not follow-up
+    }
+
+
+def hf_result_to_decision_dict(hf_result: "IntentResult") -> dict[str, Any]:
+    """Convert HuggingFace IntentResult to a routing decision dict.
+
+    DEV-251: Enables using HF zero-shot classifier results in the routing pipeline.
+
+    Args:
+        hf_result: IntentResult from HFIntentClassifier.classify()
+
+    Returns:
+        Routing decision dict compatible with LLM router format
+    """
+    # Map HF intent to RoutingCategory (they use the same string values)
+    route = hf_result.intent
+
+    # Determine if retrieval is needed based on route
+    retrieval_routes = {"technical_research", "theoretical_definition", "golden_set"}
+    needs_retrieval = route in retrieval_routes
+
+    return {
+        "route": route,
+        "confidence": hf_result.confidence,
+        "reasoning": f"HuggingFace zero-shot classification (confidence: {hf_result.confidence:.2f})",
+        "entities": [],  # HF classifier doesn't extract entities
+        "requires_freshness": False,
+        "suggested_sources": [],
+        "needs_retrieval": needs_retrieval,
+        "is_followup": False,  # HF can't detect follow-ups, GPT fallback handles this
     }

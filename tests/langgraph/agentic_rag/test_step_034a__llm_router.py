@@ -4,8 +4,11 @@ This node integrates LLMRouterService into the RAG pipeline for semantic
 query classification. It replaces the regex-based routing with LLM-based
 semantic understanding.
 
+DEV-251: Tests updated to mock HFIntentClassifier (now runs before GPT).
+
 Test Strategy:
 - Mock LLMRouterService to test node wrapper logic in isolation
+- Mock HFIntentClassifier to control HF vs GPT fallback behavior
 - Verify routing_decision is correctly stored in state
 - Verify state preservation and error handling
 - Verify fallback behavior on service errors
@@ -15,6 +18,8 @@ import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+from app.services.hf_intent_classifier import IntentResult
 
 # =============================================================================
 # Mock database service BEFORE importing any app modules
@@ -39,6 +44,19 @@ from app.core.langgraph.nodes.step_034a__llm_router import node_step_34a  # noqa
 from app.schemas.router import ExtractedEntity, RouterDecision, RoutingCategory  # noqa: E402
 
 
+def _create_low_confidence_hf_mock():
+    """Create a mock HF classifier that returns low confidence to force GPT fallback."""
+    mock_hf = MagicMock()
+    mock_hf.classify.return_value = IntentResult(
+        intent="technical_research",
+        confidence=0.5,  # Below threshold (0.7), forces GPT fallback
+        all_scores={"technical_research": 0.5, "chitchat": 0.2},
+    )
+    mock_hf.should_fallback_to_gpt.return_value = True
+    mock_hf.confidence_threshold = 0.7
+    return mock_hf
+
+
 # =============================================================================
 # TestNodeStep34aLLMRouter - Core Functionality Tests
 # =============================================================================
@@ -47,7 +65,7 @@ class TestNodeStep34aLLMRouter:
 
     @pytest.mark.asyncio
     async def test_successful_routing_technical_research(self):
-        """Test successful routing to TECHNICAL_RESEARCH category."""
+        """Test successful routing to TECHNICAL_RESEARCH category via GPT fallback."""
         mock_service = AsyncMock()
         mock_service.route.return_value = RouterDecision(
             route=RoutingCategory.TECHNICAL_RESEARCH,
@@ -58,9 +76,16 @@ class TestNodeStep34aLLMRouter:
             suggested_sources=["agenzia_entrate"],
         )
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier to return low confidence, forcing GPT fallback
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-req-001",
@@ -81,7 +106,7 @@ class TestNodeStep34aLLMRouter:
 
     @pytest.mark.asyncio
     async def test_successful_routing_chitchat(self):
-        """Test successful routing to CHITCHAT category."""
+        """Test successful routing to CHITCHAT category via GPT fallback."""
         mock_service = AsyncMock()
         mock_service.route.return_value = RouterDecision(
             route=RoutingCategory.CHITCHAT,
@@ -92,9 +117,16 @@ class TestNodeStep34aLLMRouter:
             suggested_sources=[],
         )
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier to return low confidence, forcing GPT fallback
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-chitchat-002",
@@ -110,7 +142,7 @@ class TestNodeStep34aLLMRouter:
 
     @pytest.mark.asyncio
     async def test_successful_routing_calculator(self):
-        """Test successful routing to CALCULATOR category."""
+        """Test successful routing to CALCULATOR category via GPT fallback."""
         mock_service = AsyncMock()
         mock_service.route.return_value = RouterDecision(
             route=RoutingCategory.CALCULATOR,
@@ -121,9 +153,16 @@ class TestNodeStep34aLLMRouter:
             suggested_sources=["calculators"],
         )
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier to return low confidence, forcing GPT fallback
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-calc-003",
@@ -138,7 +177,7 @@ class TestNodeStep34aLLMRouter:
 
     @pytest.mark.asyncio
     async def test_successful_routing_golden_set(self):
-        """Test successful routing to GOLDEN_SET category."""
+        """Test successful routing to GOLDEN_SET category via GPT fallback."""
         mock_service = AsyncMock()
         mock_service.route.return_value = RouterDecision(
             route=RoutingCategory.GOLDEN_SET,
@@ -152,9 +191,16 @@ class TestNodeStep34aLLMRouter:
             suggested_sources=["golden_set", "normattiva"],
         )
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier to return low confidence, forcing GPT fallback
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-golden-004",
@@ -176,7 +222,7 @@ class TestNodeStep34aLLMRouter:
 
     @pytest.mark.asyncio
     async def test_successful_routing_theoretical_definition(self):
-        """Test successful routing to THEORETICAL_DEFINITION category."""
+        """Test successful routing to THEORETICAL_DEFINITION category via GPT fallback."""
         mock_service = AsyncMock()
         mock_service.route.return_value = RouterDecision(
             route=RoutingCategory.THEORETICAL_DEFINITION,
@@ -187,9 +233,16 @@ class TestNodeStep34aLLMRouter:
             suggested_sources=["kb_definitions"],
         )
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier to return low confidence, forcing GPT fallback
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-theory-005",
@@ -211,13 +264,20 @@ class TestNodeStep34aErrorHandling:
 
     @pytest.mark.asyncio
     async def test_fallback_on_service_error(self):
-        """Test fallback to TECHNICAL_RESEARCH when service raises error."""
+        """Test fallback to TECHNICAL_RESEARCH when both HF and GPT services fail."""
         mock_service = AsyncMock()
         mock_service.route.side_effect = Exception("LLM service unavailable")
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier to also force GPT fallback
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-error-006",
@@ -245,9 +305,16 @@ class TestNodeStep34aErrorHandling:
             suggested_sources=[],
         )
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-no-query-007",
@@ -280,9 +347,16 @@ class TestNodeStep34aStateManagement:
             suggested_sources=[],
         )
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-preserve-008",
@@ -322,9 +396,16 @@ class TestNodeStep34aStateManagement:
             {"role": "user", "content": "Come si calcola?"},
         ]
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier to force GPT fallback so we can verify GPT call
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-history-009",
@@ -352,9 +433,16 @@ class TestNodeStep34aStateManagement:
             suggested_sources=["source1"],
         )
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-serialize-010",
@@ -394,7 +482,12 @@ class TestNodeStep34aLogging:
             suggested_sources=[],
         )
 
+        # DEV-251: Mock HF classifier
         with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
             patch(
                 "app.services.llm_router_service.LLMRouterService",
                 return_value=mock_service,
@@ -432,7 +525,12 @@ class TestNodeStep34aLogging:
         mock_timer.return_value.__enter__ = MagicMock()
         mock_timer.return_value.__exit__ = MagicMock(return_value=None)
 
+        # DEV-251: Mock HF classifier
         with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
             patch(
                 "app.services.llm_router_service.LLMRouterService",
                 return_value=mock_service,
@@ -480,9 +578,16 @@ class TestNodeStep34aIntegration:
             suggested_sources=[],
         )
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-needs-retrieval-013",
@@ -509,9 +614,16 @@ class TestNodeStep34aIntegration:
             suggested_sources=["agenzia_entrate"],
         )
 
-        with patch(
-            "app.services.llm_router_service.LLMRouterService",
-            return_value=mock_service,
+        # DEV-251: Mock HF classifier
+        with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=_create_low_confidence_hf_mock(),
+            ),
+            patch(
+                "app.services.llm_router_service.LLMRouterService",
+                return_value=mock_service,
+            ),
         ):
             state = {
                 "request_id": "test-fresh-014",

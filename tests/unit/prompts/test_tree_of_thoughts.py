@@ -1,14 +1,13 @@
-"""TDD Tests for Phase 9: tree_of_thoughts.md Prompt Template.
+"""TDD Tests for tree_of_thoughts.md Prompt Template.
 
 DEV-223: Create tree_of_thoughts.md Prompt Template.
+DEV-251: Updated for free-form responses (no JSON output required).
 
 Tests written BEFORE implementation following TDD RED-GREEN-REFACTOR methodology.
 
 Coverage Target: 90%+ for new code.
 """
 
-import json
-import re
 from pathlib import Path
 
 import pytest
@@ -123,15 +122,15 @@ class TestPromptVariablesSubstitute:
 
 
 # =============================================================================
-# Tests: JSON Schema
+# Tests: Free-Form Output (DEV-251)
 # =============================================================================
 
 
-class TestPromptJsonSchemaValid:
-    """Test that the prompt contains a valid JSON schema example."""
+class TestFreeFormOutput:
+    """Test that the prompt specifies free-form output (not JSON)."""
 
-    def test_prompt_has_json_code_block(self, loader):
-        """Prompt should contain a JSON code block."""
+    def test_prompt_does_not_require_json_output(self, loader):
+        """DEV-251: Prompt should NOT require JSON output format."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -139,10 +138,12 @@ class TestPromptJsonSchemaValid:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        assert "```json" in content, "Prompt should contain JSON code block"
+        # Should NOT have mandatory JSON output section
+        assert "Output (JSON OBBLIGATORIO)" not in content
+        assert "Rispondi SEMPRE con questo schema JSON" not in content
 
-    def test_prompt_json_schema_is_parseable(self, loader):
-        """The JSON schema example in the prompt should be valid JSON."""
+    def test_prompt_specifies_professional_document_format(self, loader):
+        """Prompt should specify writing as a professional document."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -150,19 +151,10 @@ class TestPromptJsonSchemaValid:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        # Extract JSON from code block
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        assert json_match is not None, "Could not find JSON code block"
+        assert "documento professionale" in content.lower()
 
-        json_str = json_match.group(1)
-        try:
-            parsed = json.loads(json_str)
-            assert isinstance(parsed, dict)
-        except json.JSONDecodeError as e:
-            pytest.fail(f"JSON schema in prompt is not valid: {e}")
-
-    def test_prompt_json_has_hypotheses_field(self, loader):
-        """JSON schema should have hypotheses field."""
+    def test_prompt_specifies_prose_style(self, loader):
+        """Prompt should specify using fluid prose."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -170,73 +162,16 @@ class TestPromptJsonSchemaValid:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        assert json_match is not None
-
-        parsed = json.loads(json_match.group(1))
-        assert "hypotheses" in parsed, "JSON should have 'hypotheses' field"
-        assert isinstance(parsed["hypotheses"], list), "hypotheses should be a list"
-
-    def test_prompt_json_has_selected_hypothesis_field(self, loader):
-        """JSON schema should have selected_hypothesis field."""
-        content = loader.load(
-            "tree_of_thoughts",
-            query="Test query",
-            kb_context="Contesto...",
-            kb_sources="Fonti...",
-            domains="fiscale",
-        )
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        parsed = json.loads(json_match.group(1))
-        assert "selected_hypothesis" in parsed, "JSON should have 'selected_hypothesis' field"
-
-    def test_prompt_json_has_answer_field(self, loader):
-        """JSON schema should have answer field."""
-        content = loader.load(
-            "tree_of_thoughts",
-            query="Test query",
-            kb_context="Contesto...",
-            kb_sources="Fonti...",
-            domains="fiscale",
-        )
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        parsed = json.loads(json_match.group(1))
-        assert "answer" in parsed, "JSON should have 'answer' field"
-
-    def test_prompt_json_has_sources_cited_field(self, loader):
-        """JSON schema should have sources_cited field."""
-        content = loader.load(
-            "tree_of_thoughts",
-            query="Test query",
-            kb_context="Contesto...",
-            kb_sources="Fonti...",
-            domains="fiscale",
-        )
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        parsed = json.loads(json_match.group(1))
-        assert "sources_cited" in parsed, "JSON should have 'sources_cited' field"
-
-    def test_prompt_json_has_alternatives_field(self, loader):
-        """JSON schema should have alternatives field for documenting other scenarios."""
-        content = loader.load(
-            "tree_of_thoughts",
-            query="Test query",
-            kb_context="Contesto...",
-            kb_sources="Fonti...",
-            domains="fiscale",
-        )
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        parsed = json.loads(json_match.group(1))
-        assert "alternatives" in parsed, "JSON should have 'alternatives' field"
+        assert "prosa fluida" in content.lower()
 
 
 # =============================================================================
-# Tests: Hypothesis Generation
+# Tests: Hypothesis Generation (Internal Process)
 # =============================================================================
 
 
 class TestHypothesisGeneration:
-    """Test that the prompt specifies hypothesis generation requirements."""
+    """Test that the prompt specifies hypothesis generation as internal process."""
 
     def test_prompt_mentions_hypothesis_generation(self, loader):
         """Prompt should mention hypothesis generation."""
@@ -247,7 +182,7 @@ class TestHypothesisGeneration:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        assert "ipotesi" in content.lower() or "hypothesis" in content.lower()
+        assert "ipotesi" in content.lower()
 
     def test_prompt_specifies_3_to_4_hypotheses(self, loader):
         """Prompt should specify generating 3-4 hypotheses."""
@@ -258,7 +193,7 @@ class TestHypothesisGeneration:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        # Should mention 3-4 or "tre" or "quattro"
+        # Should mention 3-4 or related
         has_count = (
             "3-4" in content
             or "3 a 4" in content
@@ -268,8 +203,8 @@ class TestHypothesisGeneration:
         )
         assert has_count, "Prompt should specify 3-4 hypotheses"
 
-    def test_prompt_has_hypothesis_structure(self, loader):
-        """Prompt should define hypothesis structure with id, description, etc."""
+    def test_reasoning_is_internal_not_in_output(self, loader):
+        """DEV-251: Reasoning process should be internal, not in output."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -277,10 +212,8 @@ class TestHypothesisGeneration:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        # Check for hypothesis structure elements
-        structure_elements = ["id", "description", "scenario"]
-        matches = sum(1 for el in structure_elements if el in content.lower())
-        assert matches >= 2, "Should define hypothesis structure"
+        # Should mention that reasoning is internal/mental
+        assert "mentalmente" in content.lower() or "interno" in content.lower()
 
 
 # =============================================================================
@@ -316,50 +249,17 @@ class TestSourceWeightedEvaluation:
         matches = sum(1 for term in hierarchy_terms if term in content.lower())
         assert matches >= 2, "Should mention legal source hierarchy"
 
-    def test_prompt_has_evaluation_criteria(self, loader):
-        """Prompt should have evaluation criteria for hypotheses."""
-        content = loader.load(
-            "tree_of_thoughts",
-            query="Test query",
-            kb_context="Contesto...",
-            kb_sources="Fonti...",
-            domains="fiscale",
-        )
-        # Should mention evaluation concepts
-        eval_terms = ["valuta", "evaluat", "score", "punteggio", "criteri"]
-        matches = sum(1 for term in eval_terms if term in content.lower())
-        assert matches >= 1, "Should have evaluation criteria"
-
-    def test_prompt_json_hypothesis_has_score(self, loader):
-        """Each hypothesis in JSON should have a score field."""
-        content = loader.load(
-            "tree_of_thoughts",
-            query="Test query",
-            kb_context="Contesto...",
-            kb_sources="Fonti...",
-            domains="fiscale",
-        )
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        assert json_match is not None
-
-        parsed = json.loads(json_match.group(1))
-        hypotheses = parsed.get("hypotheses", [])
-        if hypotheses:
-            first_hypothesis = hypotheses[0]
-            assert "score" in first_hypothesis or "confidence" in first_hypothesis, \
-                "Hypothesis should have score or confidence field"
-
 
 # =============================================================================
-# Tests: Best Hypothesis Selection
+# Tests: COMPLETEZZA OBBLIGATORIA (DEV-251)
 # =============================================================================
 
 
-class TestBestHypothesisSelection:
-    """Test that the prompt specifies best hypothesis selection with reasoning."""
+class TestCompletenessRequirements:
+    """Test that the prompt specifies completeness requirements."""
 
-    def test_prompt_mentions_selection(self, loader):
-        """Prompt should mention selecting the best hypothesis."""
+    def test_prompt_has_completezza_section(self, loader):
+        """Prompt should have COMPLETEZZA OBBLIGATORIA section."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -367,12 +267,10 @@ class TestBestHypothesisSelection:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        selection_terms = ["selezion", "scegli", "select", "migliore", "best"]
-        matches = sum(1 for term in selection_terms if term in content.lower())
-        assert matches >= 1, "Should mention hypothesis selection"
+        assert "COMPLETEZZA OBBLIGATORIA" in content
 
-    def test_prompt_requires_selection_reasoning(self, loader):
-        """Prompt should require reasoning for the selection."""
+    def test_prompt_requires_scadenze(self, loader):
+        """Prompt should require including deadlines/dates."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -380,12 +278,10 @@ class TestBestHypothesisSelection:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        reasoning_terms = ["ragionamento", "reasoning", "motivazione", "perché", "motivo"]
-        matches = sum(1 for term in reasoning_terms if term in content.lower())
-        assert matches >= 1, "Should require selection reasoning"
+        assert "scadenze" in content.lower()
 
-    def test_prompt_json_selected_hypothesis_has_reasoning(self, loader):
-        """selected_hypothesis in JSON should have reasoning field."""
+    def test_prompt_requires_importi(self, loader):
+        """Prompt should require including amounts/rates."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -393,24 +289,10 @@ class TestBestHypothesisSelection:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        parsed = json.loads(json_match.group(1))
+        assert "importi" in content.lower() or "aliquote" in content.lower()
 
-        selected = parsed.get("selected_hypothesis", {})
-        assert "reasoning" in selected or "id" in selected, \
-            "selected_hypothesis should have reasoning or at least an id"
-
-
-# =============================================================================
-# Tests: Alternative Documentation
-# =============================================================================
-
-
-class TestAlternativeDocumentation:
-    """Test that the prompt specifies documenting alternatives."""
-
-    def test_prompt_mentions_alternatives(self, loader):
-        """Prompt should mention documenting alternative scenarios."""
+    def test_prompt_requires_requisiti(self, loader):
+        """Prompt should require including requirements."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -418,12 +300,10 @@ class TestAlternativeDocumentation:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        alt_terms = ["alternativ", "altri scenari", "other scenario"]
-        matches = sum(1 for term in alt_terms if term in content.lower())
-        assert matches >= 1, "Should mention alternatives"
+        assert "requisiti" in content.lower()
 
-    def test_prompt_json_alternatives_has_structure(self, loader):
-        """alternatives field should have proper structure."""
+    def test_prompt_requires_esclusioni(self, loader):
+        """Prompt should require including exclusions."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -431,11 +311,40 @@ class TestAlternativeDocumentation:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        parsed = json.loads(json_match.group(1))
+        assert "esclusioni" in content.lower()
 
-        alternatives = parsed.get("alternatives", [])
-        assert isinstance(alternatives, list), "alternatives should be a list"
+    def test_prompt_requires_conseguenze(self, loader):
+        """Prompt should require including consequences."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+        )
+        assert "conseguenze" in content.lower()
+
+    def test_prompt_requires_procedure(self, loader):
+        """Prompt should require including procedures."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+        )
+        assert "procedure" in content.lower()
+
+    def test_prompt_says_not_to_summarize(self, loader):
+        """Prompt should explicitly say not to summarize."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+        )
+        assert "non riassumere" in content.lower()
 
 
 # =============================================================================
@@ -489,15 +398,15 @@ class TestItalianProfessionalLanguage:
 
 
 # =============================================================================
-# Tests: Output Structure
+# Tests: Anti-Hallucination Rules
 # =============================================================================
 
 
-class TestOutputStructure:
-    """Test that the prompt specifies correct output structure."""
+class TestAntiHallucinationRules:
+    """Test that the prompt includes anti-hallucination rules."""
 
-    def test_prompt_specifies_json_output(self, loader):
-        """Prompt should specify JSON output format."""
+    def test_prompt_has_anti_hallucination_section(self, loader):
+        """Prompt should have anti-hallucination rules."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -505,10 +414,10 @@ class TestOutputStructure:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        assert "json" in content.lower()
+        assert "anti-allucinazione" in content.lower() or "mai inventare" in content.lower()
 
-    def test_prompt_json_has_suggested_actions(self, loader):
-        """JSON schema should have suggested_actions field."""
+    def test_prompt_forbids_inventing_law_numbers(self, loader):
+        """Prompt should forbid inventing law numbers."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -516,12 +425,10 @@ class TestOutputStructure:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        parsed = json.loads(json_match.group(1))
-        assert "suggested_actions" in parsed, "JSON should have 'suggested_actions' field"
+        assert "mai inventare" in content.lower() or "non inventare" in content.lower()
 
-    def test_prompt_json_has_confidence(self, loader):
-        """JSON schema should have confidence field."""
+    def test_prompt_requires_kb_verification(self, loader):
+        """Prompt should require verifying sources against KB."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
@@ -529,11 +436,47 @@ class TestOutputStructure:
             kb_sources="Fonti...",
             domains="fiscale",
         )
-        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
-        parsed = json.loads(json_match.group(1))
-        # Confidence might be at top level or in selected_hypothesis
-        has_confidence = (
-            "confidence" in parsed
-            or "confidence" in parsed.get("selected_hypothesis", {})
+        assert "verifica" in content.lower()
+
+
+# =============================================================================
+# Tests: Inline Citations
+# =============================================================================
+
+
+class TestInlineCitations:
+    """Test that the prompt specifies inline citation format."""
+
+    def test_prompt_specifies_inline_citations(self, loader):
+        """Prompt should specify citing sources inline."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
         )
-        assert has_confidence, "JSON should have 'confidence' field"
+        assert "inline" in content.lower() or "nel testo" in content.lower()
+
+    def test_prompt_provides_citation_examples(self, loader):
+        """Prompt should provide citation format examples."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+        )
+        # Should have example like "Art. X, comma Y"
+        assert "art." in content.lower() and "comma" in content.lower()
+
+    def test_prompt_forbids_separate_sources_section(self, loader):
+        """Prompt should forbid adding separate Sources section."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+        )
+        assert "non aggiungere" in content.lower() and "fonti" in content.lower()

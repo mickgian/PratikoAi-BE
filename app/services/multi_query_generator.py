@@ -13,14 +13,16 @@ Usage:
 """
 
 import asyncio
+import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from app.core.llm.model_config import LLMModelConfig, ModelTier
 from app.core.logging import logger
 from app.schemas.chat import Message
 from app.schemas.router import ExtractedEntity
+from app.services.cache import cache_service
 
 
 @dataclass
@@ -199,6 +201,8 @@ class MultiQueryGeneratorService:
         Uses GPT-4o-mini to generate BM25, vector, and entity-focused
         query variants. Falls back to original query on any error.
 
+        DEV-251: Added caching to avoid redundant LLM calls for repeated queries.
+
         Args:
             query: User's original query
             entities: Extracted entities from router (may be empty)
@@ -206,6 +210,33 @@ class MultiQueryGeneratorService:
         Returns:
             QueryVariants with all 3 variants plus original
         """
+        # DEV-251: Generate query hash for caching
+        query_hash = hashlib.md5(query.encode()).hexdigest()
+
+        # DEV-251: Check cache first
+        try:
+            cached = await cache_service.get_cached_multi_query(query_hash=query_hash)
+            if cached:
+                logger.info(
+                    "multiquery_cache_hit",
+                    query_hash=query_hash[:12],
+                )
+                return QueryVariants(
+                    bm25_query=cached.get("bm25_query", query),
+                    vector_query=cached.get("vector_query", query),
+                    entity_query=cached.get("entity_query", query),
+                    original_query=query,
+                    document_references=cached.get("document_references"),
+                    semantic_expansions=cached.get("semantic_expansions"),
+                )
+        except Exception as e:
+            logger.warning(
+                "multiquery_cache_lookup_failed",
+                error=str(e),
+                query_hash=query_hash[:12],
+            )
+            # Continue with generation if cache fails
+
         try:
             # Build the prompt
             prompt = self._build_prompt(query, entities)
@@ -227,6 +258,26 @@ class MultiQueryGeneratorService:
                 document_refs_count=len(variants.document_references) if variants.document_references else 0,
                 semantic_expansions_count=len(variants.semantic_expansions) if variants.semantic_expansions else 0,
             )
+
+            # DEV-251: Store result in cache
+            try:
+                cache_data = {
+                    "bm25_query": variants.bm25_query,
+                    "vector_query": variants.vector_query,
+                    "entity_query": variants.entity_query,
+                    "document_references": variants.document_references,
+                    "semantic_expansions": variants.semantic_expansions,
+                }
+                await cache_service.cache_multi_query(
+                    query_hash=query_hash,
+                    multi_query_result=cache_data,
+                )
+            except Exception as e:
+                logger.warning(
+                    "multiquery_cache_store_failed",
+                    error=str(e),
+                    query_hash=query_hash[:12],
+                )
 
             return variants
 

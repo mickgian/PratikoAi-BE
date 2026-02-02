@@ -82,6 +82,7 @@ async def node_step_64(state: RAGState) -> RAGState:
                     complexity=cplx_enum,
                     conversation_history=state.get("messages", []),
                     web_sources_metadata=state.get("web_sources_metadata", []),
+                    domains=state.get("detected_domains", []),
                 )
             res = {
                 "llm_call_successful": True,

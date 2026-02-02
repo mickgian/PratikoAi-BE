@@ -325,6 +325,7 @@ class LLMOrchestrator:
         complexity: QueryComplexity,
         conversation_history: list[dict] | None = None,
         web_sources_metadata: list[dict] | None = None,
+        domains: list[str] | None = None,
     ) -> UnifiedResponse:
         """Generate response with appropriate model and reasoning strategy.
 
@@ -338,6 +339,7 @@ class LLMOrchestrator:
             complexity: Pre-determined complexity level
             conversation_history: Optional conversation history
             web_sources_metadata: DEV-245: Web sources from Brave Search (Parallel Hybrid RAG)
+            domains: DEV-251 fix: Domain list for Tree of Thoughts prompt
 
         Returns:
             UnifiedResponse with answer, reasoning, sources, actions, and metrics
@@ -348,6 +350,7 @@ class LLMOrchestrator:
         try:
             # Build prompt based on complexity/reasoning type
             # DEV-245: Pass web_sources_metadata for Parallel Hybrid RAG
+            # DEV-251 fix: Pass domains for Tree of Thoughts prompt
             prompt = self._build_response_prompt(
                 query=query,
                 kb_context=kb_context,
@@ -355,6 +358,7 @@ class LLMOrchestrator:
                 config=config,
                 conversation_history=conversation_history,
                 web_sources_metadata=web_sources_metadata,
+                domains=domains,
             )
 
             # Call LLM
@@ -494,6 +498,7 @@ class LLMOrchestrator:
         config: ModelConfig,
         conversation_history: list[dict] | None = None,
         web_sources_metadata: list[dict] | None = None,
+        domains: list[str] | None = None,
     ) -> str:
         """Build the response prompt based on configuration.
 
@@ -504,11 +509,18 @@ class LLMOrchestrator:
             config: Model configuration with template name
             conversation_history: Optional conversation history
             web_sources_metadata: DEV-245: Web sources from Brave Search (Parallel Hybrid RAG)
+            domains: DEV-251 fix: Domain list for Tree of Thoughts prompt
 
         Returns:
             Formatted prompt string
         """
         import datetime
+
+        # Format domains for prompt (or default)
+        domains_str = ", ".join(domains) if domains else "Generale"
+
+        # Format kb_sources for prompt (tree_of_thoughts.md uses {kb_sources})
+        kb_sources_str = json.dumps(kb_sources_metadata, ensure_ascii=False, indent=2)
 
         try:
             # Try to load the template
@@ -516,11 +528,15 @@ class LLMOrchestrator:
                 config.prompt_template,
                 query=query,
                 kb_context=kb_context or "Nessun contesto disponibile.",
+                # DEV-251 fix: Add kb_sources for tree_of_thoughts.md compatibility
+                kb_sources=kb_sources_str,
                 kb_sources_metadata=json.dumps(kb_sources_metadata, ensure_ascii=False),
                 # DEV-245: Pass web sources metadata for Parallel Hybrid RAG
                 web_sources_metadata=json.dumps(web_sources_metadata or [], ensure_ascii=False),
                 conversation_context=self._format_conversation(conversation_history),
                 current_date=datetime.date.today().isoformat(),
+                # DEV-251 fix: Add domains for tree_of_thoughts.md
+                domains=domains_str,
             )
             return prompt
         except FileNotFoundError:
@@ -654,12 +670,15 @@ Fornisci la risposta in formato JSON:
             }
 
         except (json.JSONDecodeError, KeyError) as e:
-            logger.warning(
-                "response_parse_failed_using_raw",
-                error=str(e),
+            # DEV-251: Free-form response - this is expected for ToT prompts
+            # The full raw text becomes the answer, preserving all details
+            logger.info(
+                "response_using_free_form",
+                parse_error=str(e),
                 response_length=len(response),
+                reasoning_type=config.reasoning_type,
             )
-            # Return raw response as answer
+            # Return raw response as answer (full text, not truncated)
             return {
                 "reasoning": {},
                 "tot_analysis": None,

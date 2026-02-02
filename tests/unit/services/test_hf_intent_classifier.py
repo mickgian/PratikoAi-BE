@@ -241,6 +241,56 @@ class TestFallbackThreshold:
         assert lenient_classifier.confidence_threshold == 0.5
 
 
+class TestAsyncClassification:
+    """Test async classification method."""
+
+    @pytest.mark.asyncio
+    @patch("app.services.hf_intent_classifier.pipeline")
+    async def test_classify_async_returns_same_result_as_sync(self, mock_pipeline):
+        """Async classify should return the same result as sync classify."""
+        reset_hf_intent_classifier()
+        mock_pipeline_instance = MagicMock()
+        mock_pipeline_instance.return_value = {
+            "labels": ["chitchat", "technical_research", "theoretical_definition", "calculator", "golden_set"],
+            "scores": [0.85, 0.08, 0.04, 0.02, 0.01],
+        }
+        mock_pipeline.return_value = mock_pipeline_instance
+
+        classifier = HFIntentClassifier()
+        sync_result = classifier.classify("Ciao")
+        async_result = await classifier.classify_async("Ciao")
+
+        assert sync_result.intent == async_result.intent
+        assert sync_result.confidence == async_result.confidence
+
+    @pytest.mark.asyncio
+    @patch("app.services.hf_intent_classifier.pipeline")
+    async def test_classify_async_does_not_block_event_loop(self, mock_pipeline):
+        """Async classify should run in thread pool without blocking."""
+        import asyncio
+
+        reset_hf_intent_classifier()
+        mock_pipeline_instance = MagicMock()
+        mock_pipeline_instance.return_value = {
+            "labels": ["technical_research", "chitchat", "theoretical_definition", "calculator", "golden_set"],
+            "scores": [0.80, 0.10, 0.05, 0.03, 0.02],
+        }
+        mock_pipeline.return_value = mock_pipeline_instance
+
+        classifier = HFIntentClassifier()
+
+        # Run multiple async classifications concurrently
+        results = await asyncio.gather(
+            classifier.classify_async("Query 1"),
+            classifier.classify_async("Query 2"),
+            classifier.classify_async("Query 3"),
+        )
+
+        assert len(results) == 3
+        for result in results:
+            assert result.intent == "technical_research"
+
+
 class TestIntentResult:
     """Test IntentResult dataclass."""
 

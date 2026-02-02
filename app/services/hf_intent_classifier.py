@@ -6,11 +6,11 @@ router calls for high-confidence classifications.
 Zero-shot classification allows classifying text into arbitrary categories without
 specific training, using natural language descriptions of each category.
 
-Default Model: MoritzLaworski/mDeBERTa-v3-base-mnli-xnli (280MB, native Italian support)
+Default Model: MoritzLaurer/mDeBERTa-v3-base-mnli-xnli (280MB, native Italian support)
 Alternative: facebook/bart-large-mnli (400MB, multilingual)
 
 Configure via HF_INTENT_MODEL environment variable:
-- "mdeberta" (default) -> MoritzLaworski/mDeBERTa-v3-base-mnli-xnli
+- "mdeberta" (default) -> MoritzLaurer/mDeBERTa-v3-base-mnli-xnli
 - "bart" -> facebook/bart-large-mnli
 
 Performance:
@@ -22,7 +22,7 @@ Usage:
     from app.services.hf_intent_classifier import get_hf_intent_classifier
 
     classifier = get_hf_intent_classifier()
-    result = classifier.classify("Qual è l'aliquota IVA?")
+    result = await classifier.classify_async("Qual è l'aliquota IVA?")
     if not classifier.should_fallback_to_gpt(result):
         # Use HF result
         intent = result.intent
@@ -31,12 +31,18 @@ Usage:
         ...
 """
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from transformers import pipeline
 
 from app.core.config import HF_INTENT_MODEL, HF_MODEL_MAP
 from app.core.logging import logger
+
+# Thread executor for CPU-bound HuggingFace inference (avoids blocking event loop)
+# Single worker prevents model loading race conditions and memory duplication
+_hf_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hf-intent-")
 
 
 @dataclass
@@ -87,7 +93,7 @@ class HFIntentClassifier:
     def __init__(
         self,
         model_name: str | None = None,
-        confidence_threshold: float = 0.7,
+        confidence_threshold: float = 0.5,  # DEV-251: Lowered from 0.7→0.6→0.5 to reduce GPT fallbacks
     ):
         """Initialize the intent classifier.
 
@@ -97,6 +103,7 @@ class HFIntentClassifier:
                         Accepts short names ("mdeberta", "bart") or full model paths.
             confidence_threshold: Minimum confidence to use local result (0.0-1.0).
                                   Below this threshold, GPT fallback is recommended.
+                                  DEV-251: Lowered from 0.7 to 0.5 to reduce GPT fallbacks.
         """
         self._classifier = None  # Lazy loading
 
@@ -193,6 +200,25 @@ class HFIntentClassifier:
             confidence=top_confidence,
             all_scores=all_scores,
         )
+
+    async def classify_async(self, query: str) -> IntentResult:
+        """Async-safe classification that doesn't block the event loop.
+
+        Runs the CPU-bound HuggingFace inference in a thread pool to prevent
+        blocking the asyncio event loop during model loading (~5s first call)
+        and inference (~100ms per query).
+
+        This method should be used in async contexts (LangGraph nodes, FastAPI
+        endpoints) instead of the synchronous classify() method.
+
+        Args:
+            query: User query to classify
+
+        Returns:
+            IntentResult containing intent, confidence, and all_scores
+        """
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(_hf_executor, self.classify, query)
 
     def should_fallback_to_gpt(self, result: IntentResult) -> bool:
         """Check if GPT fallback is needed due to low confidence.

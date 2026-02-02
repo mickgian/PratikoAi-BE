@@ -322,11 +322,13 @@ class TreeOfThoughtsReasoner:
         kb_context = self._format_kb_context(kb_sources)
 
         # Get response from LLM
+        # DEV-251 fix: Pass domains to generate_response for tree_of_thoughts prompt
         response: UnifiedResponse = await self.llm_orchestrator.generate_response(
             query=query,
             kb_context=kb_context,
             kb_sources_metadata=kb_sources,
             complexity=complexity_enum,
+            domains=domains,
         )
 
         # Parse hypotheses from response
@@ -340,6 +342,10 @@ class TreeOfThoughtsReasoner:
 
     def _parse_hypotheses(self, response: UnifiedResponse) -> list[ToTHypothesis]:
         """Parse hypotheses from LLM response.
+
+        DEV-251: Now handles free-form responses (no JSON/hypotheses structure).
+        When the LLM returns free-form text, we create a single hypothesis
+        from the full answer text, preserving all details.
 
         Args:
             response: UnifiedResponse from LLM
@@ -365,16 +371,25 @@ class TreeOfThoughtsReasoner:
             )
             hypotheses.append(hypothesis)
 
-        # If no hypotheses from ToT, create one from the answer
+        # DEV-251: Free-form response handling
+        # If no hypotheses from ToT (now expected with free-form prompt),
+        # create a single hypothesis from the full answer text
         if not hypotheses:
+            # The answer now contains the FULL free-form response
+            # (not just the short JSON "answer" field)
+            logger.info(
+                "tot_using_free_form_response",
+                answer_length=len(response.answer),
+                has_sources=len(response.sources_cited) > 0,
+            )
             hypotheses.append(
                 ToTHypothesis(
                     id="H1",
                     reasoning_path=response.answer,
                     conclusion=response.answer,
-                    confidence=0.5,
+                    confidence=0.7,  # DEV-251: Higher default for free-form
                     sources_used=response.sources_cited,
-                    source_weight_score=0.5,
+                    source_weight_score=0.7,  # DEV-251: Reasonable default score
                 )
             )
 

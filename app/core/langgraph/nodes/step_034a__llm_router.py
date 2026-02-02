@@ -51,7 +51,7 @@ async def node_step_34a(state: RAGState) -> RAGState:
             from app.services.hf_intent_classifier import get_hf_intent_classifier
 
             hf_classifier = get_hf_intent_classifier()
-            hf_result = hf_classifier.classify(user_query)
+            hf_result = await hf_classifier.classify_async(user_query)
 
             if not hf_classifier.should_fallback_to_gpt(hf_result):
                 # High confidence - use HF result

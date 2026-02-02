@@ -1,6 +1,6 @@
 # RAG Pipeline Steps (1-135)
 
-**Auto-generated:** 2026-01-30 15:42:46
+**Auto-generated:** 2026-02-02 16:45:03
 **Total Steps:** 138
 
 > 💡 This directory contains 138 detailed step documents describing the complete RAG pipeline from request to response.
@@ -253,4 +253,4 @@ Each step document describes a specific operation in the RAG pipeline:
 
 ---
 
-**Last Updated:** 2026-01-30 15:42:46
+**Last Updated:** 2026-02-02 16:45:03

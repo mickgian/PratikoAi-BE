@@ -376,3 +376,91 @@ Additionally implemented:
 - [facebook/bart-large-mnli Model Card](https://huggingface.co/facebook/bart-large-mnli)
 - ADR-013: TDD Methodology
 - ADR-004: LangGraph for RAG
+
+---
+
+## Trace Analysis via Langfuse REST API
+
+### Why REST API?
+
+MCP packages (`shouting-mcp-langfuse`, `@avivsinai/langfuse-mcp`) have JSON parsing bugs. The REST API provides reliable access to trace data for performance analysis.
+
+### Query a Trace
+
+```bash
+curl -s "https://cloud.langfuse.com/api/public/traces/{TRACE_ID}" \
+  -H "Authorization: Basic $(echo -n "${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}" | base64)" \
+  | jq '{
+    id: .id,
+    name: .name,
+    timestamp: .timestamp,
+    user_query: .input.user_query,
+    latency_seconds: .latency,
+    observations_count: (.observations | length)
+  }'
+```
+
+### Analyze Bottlenecks
+
+Save observations and analyze with Python:
+
+```bash
+curl -s "https://cloud.langfuse.com/api/public/traces/{TRACE_ID}" \
+  -H "Authorization: Basic $(echo -n "${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}" | base64)" \
+  | jq '[.observations[] | {name, start: .startTime, end: .endTime}]' \
+  > /tmp/observations.json
+```
+
+### Bottleneck Analysis Script
+
+```python
+import json
+from datetime import datetime
+
+with open('/tmp/observations.json') as f:
+    observations = json.load(f)
+
+def parse_time(ts):
+    return datetime.fromisoformat(ts.replace('Z', '+00:00')) if ts else None
+
+results = []
+for obs in observations:
+    start, end = parse_time(obs['start']), parse_time(obs['end'])
+    if start and end:
+        results.append({
+            'name': obs['name'],
+            'duration_ms': round((end - start).total_seconds() * 1000, 1)
+        })
+
+# Top 5 slowest steps
+print("TOP 5 BOTTLENECKS")
+print("-" * 50)
+for i, r in enumerate(sorted(results, key=lambda x: -x['duration_ms'])[:5], 1):
+    print(f"{i}. {r['name']}: {r['duration_ms']:.1f}ms ({r['duration_ms']/1000:.2f}s)")
+```
+
+### Example Output
+
+| Rank | Step | Duration | % of Total |
+|------|------|----------|------------|
+| 1 | **LLMCall** | 18.83s | 46% |
+| 2 | **MultiQuery** | 7.29s | 18% |
+| 3 | **HyDE** | 7.22s | 18% |
+| 4 | **LLMFallback** | 3.00s | 7% |
+| 5 | **LLMRouter** | 1.38s | 3% |
+
+### Critical Path
+
+For a typical query like "parlami della rottamazione quinquies":
+
+```
+[0.0s]  Start
+[1.6s]  LLMFallback (intent classification) ──── 3.0s
+[4.6s]  LLMRouter (complexity routing) ───────── 1.4s
+[6.0s]  MultiQuery (query expansion) ─────────── 7.3s
+[13.3s] HyDE (hypothetical docs) ─────────────── 7.2s
+[21.8s] LLMCall (ToT response) ───────────────── 18.8s
+[40.7s] End
+```
+
+**LLM time: 37.7s (92%)** | **Overhead: 3.3s (8%)**

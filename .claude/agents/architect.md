@@ -1332,6 +1332,368 @@ async def _grade_routing(self, test_case: TestCase) -> GradeResult:
 
 ---
 
+### Unknown Term Hallucination Prevention (DEV-251 Part 2 - ✅ IMPLEMENTED)
+
+**Critical Learning (February 2026):** LLMs confidently hallucinate definitions for unknown or typo'd terms. When a user types "e l'rap?" (typo for "IRAP"), the LLM invented "RAP = Riscossione delle Entrate Patrimoniali" - a completely fake definition.
+
+**Problem Pattern:**
+```
+User Q1: "parlami della rottamazione quinquies"
+Assistant: "La rottamazione quinquies riguarda l'IRAP..."
+
+User Q2: "e l'rap?" (typo)
+Assistant: "Il RAP (Riscossione delle Entrate Patrimoniali) è..."  ← HALLUCINATED!
+```
+
+**Solution Pattern - Two-Pronged Defense:**
+
+**1. Prompt-Level Anti-Hallucination Rules:**
+```markdown
+## Gestione Termini Sconosciuti o Ambigui
+
+**REGOLA CRITICA:** Se la domanda contiene acronimi o termini che NON riconosci:
+
+### Se il Termine è SCONOSCIUTO:
+- **NON INVENTARE** significati, definizioni o spiegazioni
+- **NON FINGERE** di conoscere qualcosa che non conosci
+- **CHIEDI CHIARIMENTO**: "Non riconosco il termine '[X]'. Intendevi forse [suggerimento]?"
+
+### Correzione Errori di Battitura (80% Confidence Threshold)
+- **Se sei >80% sicuro della correzione:** Rispondi assumendo la correzione, ma conferma: "Assumo tu intenda l'IRAP..."
+- **Se sei <80% sicuro:** Chiedi conferma prima di rispondere.
+```
+
+**2. Context-Aware Query Normalization:**
+```python
+# app/services/query_normalizer.py
+async def normalize(
+    self,
+    query: str,
+    conversation_context: str | None = None,  # DEV-251
+) -> dict[str, str | None] | None:
+    """Pass conversation context for typo correction."""
+    system_prompt = self._get_system_prompt(conversation_context)
+    # LLM now sees recent context and can correct "rap" → "IRAP"
+
+# app/services/knowledge_search_service.py
+def _format_recent_conversation(
+    self, messages: list | None, max_turns: int = 3
+) -> str | None:
+    """Extract last 3 turns (6 messages, 200 chars each) for context."""
+    if not messages:
+        return None
+    recent = []
+    for msg in messages[-max_turns * 2:]:
+        if isinstance(msg, dict) and msg.get("role") in ("user", "assistant"):
+            content = msg.get("content", "")[:200]
+            recent.append(f"{msg['role']}: {content}")
+    return "\n".join(recent) if recent else None
+```
+
+**Key Design Decisions:**
+1. **80% confidence threshold** - Don't auto-correct if uncertain
+2. **"Assumo tu intenda..." prefix** - Always clarify when correcting
+3. **Last 3 turns context** - Sufficient for typo detection without token bloat
+4. **200 char truncation** - Keep context tokens low
+5. **No additional LLM calls** - Reuse existing normalizer call
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `app/prompts/v1/tree_of_thoughts.md` | Added "Gestione Termini Sconosciuti" section |
+| `app/prompts/v1/tree_of_thoughts_multi_domain.md` | Added "Gestione Termini Sconosciuti" section |
+| `app/prompts/v1/unified_response_simple.md` | Added "Gestione Termini Sconosciuti" section |
+| `app/services/query_normalizer.py` | Added `conversation_context` parameter |
+| `app/services/knowledge_search_service.py` | Added `_format_recent_conversation()` helper |
+
+**Prevention Checklist:**
+- [ ] Never allow LLM to define terms not in KB or known Italian legal/tax vocabulary
+- [ ] Always pass conversation context to normalizer for follow-up queries
+- [ ] Use "Assumo tu intenda..." pattern when auto-correcting typos
+- [ ] Add explicit "NON INVENTARE" rules in all reasoning prompts
+- [ ] Test with common fiscal term typos: rap→IRAP, imu→IMU, iba→IVA
+
+---
+
+### Follow-Up Grounding Rules Contradiction (DEV-251 Part 3 - ✅ IMPLEMENTED)
+
+**Critical Learning (February 2026):** When prepending concise-mode instructions to full completeness rules, LLMs follow the LATER instruction ("Estrai TUTTO"), ignoring the earlier concise instruction.
+
+**Problem Pattern:**
+```python
+# BEFORE (broken):
+grounding_rules = (
+    concise_mode_prefix  # "Max 3-4 punti. NON RIPETERE..."
+    + """
+## REGOLE UNIVERSALI DI ESTRAZIONE
+Estrai TUTTO. Non riassumere. Non generalizzare.  # ← LLM follows THIS
+**Se un dato è nel KB, DEVE essere nella risposta.**
+"""
+)
+```
+
+Follow-up questions like "e l'IMU?" produced 500+ word responses repeating all base information.
+
+**Solution Pattern - Separate Grounding Rules:**
+```python
+# AFTER (fixed):
+if is_followup:
+    # Concise-only rules - NO "Estrai TUTTO" contradiction
+    grounding_rules = FOLLOWUP_GROUNDING_RULES
+elif USE_GENERIC_EXTRACTION:
+    # Full completeness rules for NEW questions
+    grounding_rules = FULL_GROUNDING_RULES
+```
+
+**Key Design Decisions:**
+1. **Separate constants** - `FOLLOWUP_GROUNDING_RULES` vs full rules (no mixing)
+2. **No completeness requirements for follow-ups** - "2-5 frasi" is appropriate
+3. **Examples in rules** - Show CORRECT (2-5 sentences) vs SBAGLIATA (500+ words)
+4. **Anti-hallucination preserved** - Accuracy rules still apply in concise mode
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `app/orchestrators/prompting.py` | Added `FOLLOWUP_GROUNDING_RULES`, conditional selection |
+| `tests/unit/orchestrators/test_prompting_followup.py` | 10 TDD tests |
+
+**Prevention Checklist:**
+- [ ] Never prepend concise instructions to completeness rules (they will be ignored)
+- [ ] Use separate grounding rule sets for different response modes
+- [ ] Test follow-up responses to verify they don't repeat base information
+- [ ] Include examples of correct vs incorrect behavior in grounding rules
+
+---
+
+### ToT Prompt Variable Injection for Follow-Ups (DEV-251 Part 3.1 - ✅ IMPLEMENTED)
+
+**Critical Learning (February 2026):** ToT (Tree of Thoughts) prompts bypass the standard `step_44` grounding rules injection. Conditional behavior must be injected via template variables in the ToT prompt itself.
+
+**Problem Pattern:**
+- CoT (simple queries) → `step_44` → `FOLLOWUP_GROUNDING_RULES` injected ✅
+- ToT (complex queries) → `tot_orchestrator` → `tree_of_thoughts.md` directly ❌ (no step_44!)
+
+**Root Causes:**
+1. **HF classifier hardcoded `is_followup=False`** - HF can't detect follow-ups natively
+2. **ToT flow bypasses step_44** - Grounding rules never reach ToT prompts
+3. **ToT prompts had "COMPLETEZZA OBBLIGATORIA"** - Hardcoded completeness rules override any concise mode
+
+**Solution Pattern - Three-Part Fix:**
+
+**1. Pattern-Based Follow-Up Detection (Zero-Cost):**
+```python
+# app/services/topic_extraction/result_builders.py
+def _detect_followup_from_query(query: str) -> bool:
+    """Use patterns instead of LLM for detection - 0ms latency, $0 cost."""
+    query_lower = query.lower().strip()
+
+    # Pattern 1: Continuation conjunctions
+    followup_starters = ("e ", "e l'", "e il ", "ma ", "però ", "anche ")
+    if any(query_lower.startswith(s) for s in followup_starters):
+        return True
+
+    # Pattern 2: Short questions (<6 words)
+    if len(query.split()) < 6 and query.endswith("?"):
+        return True
+
+    # Pattern 3: Anaphoric references (with word boundaries!)
+    anaphora_patterns = (r"\bquesto\b", r"\bquello\b", r"\banche per\b")
+    return any(re.search(p, query_lower) for p in anaphora_patterns)
+```
+
+**2. Pass `is_followup` Through Async Function Chain:**
+```python
+# Flow: step_034a → tot_orchestrator → reasoner → llm_orchestrator
+
+# tot_orchestrator.py
+routing_decision = state.get("routing_decision", {})
+is_followup = routing_decision.get("is_followup", False)
+return await reasoner.reason(..., is_followup=is_followup)
+
+# tree_of_thoughts_reasoner.py
+async def reason(..., is_followup: bool = False) -> ToTResult:
+    return await self._generate_hypotheses(..., is_followup=is_followup)
+
+# llm_orchestrator.py
+def _build_response_prompt(..., is_followup: bool = False) -> str:
+    is_followup_mode = FOLLOWUP_MODE_INSTRUCTIONS if is_followup else NEW_QUESTION_INSTRUCTIONS
+    return template.format(..., is_followup_mode=is_followup_mode)
+```
+
+**3. Conditional Variable in ToT Prompt Template:**
+```markdown
+## MODALITÀ RISPOSTA (DEV-251 Part 3.1)
+
+{is_followup_mode}
+
+## COMPLETEZZA OBBLIGATORIA (Solo per domande NUOVE)
+
+**IMPORTANTE:** Questa sezione si applica SOLO se la modalità sopra NON indica "MODALITÀ FOLLOW-UP ATTIVA".
+```
+
+**Key Design Decisions:**
+1. **Pattern detection, not LLM** - Zero latency/cost, deterministic, sufficient accuracy
+2. **Word boundaries for anaphora** - `\bquesto\b` prevents "contesto" false positive
+3. **Variable injection, not separate prompts** - Single source of truth, less maintenance
+4. **Conditional completeness** - ToT prompt checks if follow-up mode is active
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `result_builders.py` | Added `_detect_followup_from_query()`, updated `hf_result_to_decision_dict()` |
+| `step_034a__llm_router.py` | Pass query to result builder |
+| `tot_orchestrator.py` | Extract `is_followup` from routing_decision |
+| `tree_of_thoughts_reasoner.py` | Add `is_followup` parameter |
+| `llm_orchestrator.py` | Build `is_followup_mode` string for template |
+| `tree_of_thoughts.md` | Add `{is_followup_mode}` variable |
+| `tree_of_thoughts_multi_domain.md` | Add `{is_followup_mode}` variable |
+| `test_followup_detection.py` | 35 TDD tests |
+
+**Prevention Checklist:**
+- [ ] When adding conditional prompt behavior, check if ToT flow is affected
+- [ ] ToT prompts bypass step_44 - inject variables directly into ToT templates
+- [ ] Use pattern detection for simple classifications (zero LLM calls)
+- [ ] Use `\b` word boundaries in regex to prevent false positives
+- [ ] When adding new template variables, update ALL test files that call `loader.load()`
+
+---
+
+### Structural Override for Prompt Conditionals (DEV-251 Part 3.2 - ✅ IMPLEMENTED)
+
+**Critical Learning (February 2026):** Semantic conditionals in prompts ("this section applies ONLY IF NOT X") are unreliable. LLMs often ignore them and follow the more explicit rules anyway.
+
+**Problem Pattern:**
+```markdown
+## MODALITÀ RISPOSTA
+{is_followup_mode}  ← Says "MODALITÀ FOLLOW-UP ATTIVA"
+
+## COMPLETEZZA OBBLIGATORIA (Solo per domande NUOVE)
+**IMPORTANTE:** Questa sezione si applica SOLO se la modalità sopra NON indica "MODALITÀ FOLLOW-UP ATTIVA".
+[... 6 detailed completeness requirements ...]
+```
+
+Despite the "applies ONLY IF NOT follow-up" instruction, LLMs followed the completeness rules anyway because:
+1. **Strong language**: "DEVE includere TUTTI", "**IMPORTANTE**" override weaker conditionals
+2. **Negative conditionals are harder**: "applies only if NOT X" is cognitively complex
+3. **Rules are still visible**: LLMs often follow visible instructions regardless of conditionals
+
+**Solution Pattern - Structural Removal (Not Semantic):**
+```python
+# llm_orchestrator.py
+COMPLETENESS_SECTION_FULL = """## COMPLETEZZA OBBLIGATORIA
+La risposta DEVE includere TUTTI i seguenti elementi...
+[... full completeness rules ...]
+"""
+
+def _build_response_prompt(self, ..., is_followup: bool = False) -> str:
+    if is_followup:
+        is_followup_mode = FOLLOWUP_MODE_INSTRUCTIONS
+        completeness_section = ""  # STRUCTURAL REMOVAL - LLM never sees it
+    else:
+        is_followup_mode = NEW_QUESTION_INSTRUCTIONS
+        completeness_section = COMPLETENESS_SECTION_FULL
+
+    return template.format(
+        is_followup_mode=is_followup_mode,
+        completeness_section=completeness_section,  # Empty string for follow-ups
+    )
+```
+
+**ToT Prompt Template:**
+```markdown
+## MODALITÀ RISPOSTA (DEV-251 Part 3.2)
+
+{is_followup_mode}
+
+{completeness_section}  ← Empty string for follow-ups = rules never visible to LLM
+```
+
+**Key Insight:** LLMs can't follow rules they never see. Structural removal is more reliable than semantic conditionals.
+
+**Why This Works:**
+
+| Approach | Reliability |
+|----------|-------------|
+| Semantic: "applies only if NOT follow-up" | ❌ LLM ignores conditional, follows rules anyway |
+| Structural: variable is empty string | ✅ LLM never sees the rules |
+
+**Files Modified (Initial):**
+| File | Change |
+|------|--------|
+| `llm_orchestrator.py` | Added `COMPLETENESS_SECTION_FULL` constant, `completeness_section` variable |
+| `tree_of_thoughts.md` | Replaced COMPLETEZZA section with `{completeness_section}` variable |
+| `tree_of_thoughts_multi_domain.md` | Same change |
+
+### Additional Critical Issues Found (2026-02-03)
+
+Initial implementation was not working. Investigation revealed 3 critical bugs:
+
+**Issue #1: `is_followup` Flag Never Passed to Orchestrator**
+
+**File:** `app/core/langgraph/nodes/step_064__llm_call.py`
+
+The flag existed in `routing_decision` (set by step_034a) but was NEVER extracted and passed to `generate_response()`:
+
+```python
+# BEFORE (BROKEN) - is_followup never reaches orchestrator
+r = await get_llm_orchestrator().generate_response(
+    query=user_msg,
+    kb_context=kb_ctx,
+    # is_followup NOT PASSED!
+)
+
+# AFTER (FIXED)
+routing_decision = state.get("routing_decision", {})
+is_followup = routing_decision.get("is_followup", False)
+
+r = await get_llm_orchestrator().generate_response(
+    query=user_msg,
+    kb_context=kb_ctx,
+    is_followup=is_followup,  # ✅ Now passed
+)
+```
+
+**Issue #2: SIMPLE Template Had Hardcoded Completeness Rules**
+
+**File:** `app/prompts/v1/unified_response_simple.md`
+
+This template had **hardcoded** completeness rules that did NOT use `{completeness_section}` variable. Since follow-up queries ("E l'imu?" - 12 chars) are classified as SIMPLE, they always hit this template with completeness rules visible.
+
+```markdown
+# BEFORE (BROKEN - hardcoded, ignores is_followup)
+## COMPLETEZZA OBBLIGATORIA (DEV-242 Phase 20)
+Per ogni argomento normativo, DEVI includere TUTTI...
+[... 26 lines always shown ...]
+
+# AFTER (FIXED - uses variable)
+## MODALITÀ RISPOSTA (DEV-251 Part 3.2)
+{is_followup_mode}
+{completeness_section}
+```
+
+**Issue #3: Flow Problem (No Code Change Needed)**
+
+Follow-up queries → classified as SIMPLE (short) → uses `unified_response_simple.md` → was hardcoded. Fixed by Issue #2.
+
+**Additional Files Modified:**
+| File | Change |
+|------|--------|
+| `step_064__llm_call.py` | Extract `is_followup` from `routing_decision`, pass to `generate_response()` |
+| `unified_response_simple.md` | Replace hardcoded COMPLETEZZA with `{is_followup_mode}` + `{completeness_section}` |
+| `test_unified_response_simple.py` | Add `is_followup_mode`, `completeness_section` to all `loader.load()` calls |
+
+**Prevention Checklist:**
+- [ ] Never rely on LLMs to interpret negative conditionals ("applies only if NOT X")
+- [ ] Use structural removal (empty variables) instead of semantic conditionals
+- [ ] For mode-dependent content, make it a template variable that can be empty
+- [ ] Test both modes to verify the conditional content appears/disappears correctly
+- [ ] When testing, check that completeness section is absent (not just ignored) for follow-ups
+- [ ] **When adding template variables, update ALL templates that share the behavior** (ToT AND SIMPLE)
+- [ ] **Trace the full call chain** - verify flag flows from state → node → orchestrator → prompt
+- [ ] **Check classification edge cases** - short queries may be classified differently than expected
+
+---
+
 ### Comprehensive Feature Removal Checklist (DEV-245 Phase 5.15.1 - ✅ IMPLEMENTED)
 
 **Critical Learning (January 2026):** When removing a feature, missed references cause runtime errors that may not surface until specific code paths are executed.
@@ -1944,10 +2306,13 @@ PratikoAI targets Italian tax/fiscal professionals with expected scale:
 | 2026-01-23 | Removed Suggested Actions feature | DEV-245 Phase 5.15: User feedback - actions were generic/unhelpful |
 | 2026-01-23 | Added Comprehensive Feature Removal lesson | DEV-245 Phase 5.15.1: Always grep entire codebase when removing features |
 | 2026-01-29 | Added Zero-Cost Daily Evaluations lesson | DEV-252: Golden datasets for scheduled evals, integration mode for manual tests |
+| 2026-02-03 | Added Unknown Term Hallucination Prevention lesson | DEV-251 Part 2: Two-pronged defense (prompt rules + context-aware normalization) to prevent LLM from inventing definitions for unknown/typo'd terms |
+| 2026-02-03 | Added Follow-Up Grounding Rules Contradiction lesson | DEV-251 Part 3: Separate grounding rules for follow-ups - never prepend concise instructions to completeness rules (LLM ignores earlier instructions) |
+| 2026-02-03 | Added ToT Prompt Variable Injection lesson | DEV-251 Part 3.1: ToT bypasses step_44 - use template variables for conditional behavior, pattern-based follow-up detection (zero-cost) |
 
 ---
 
 **Configuration Status:** 🟢 ACTIVE
-**Last Updated:** 2026-01-23
+**Last Updated:** 2026-02-03
 **Next Monthly Report Due:** 2025-12-15
 **Maintained By:** PratikoAI System Administrator

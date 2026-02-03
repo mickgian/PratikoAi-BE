@@ -36,11 +36,16 @@ class QueryNormalizer:
         self.config = get_settings()
         self.client = AsyncOpenAI(api_key=self.config.OPENAI_API_KEY)
 
-    async def normalize(self, query: str) -> dict[str, str | None] | None:
+    async def normalize(
+        self,
+        query: str,
+        conversation_context: str | None = None,
+    ) -> dict[str, str | None] | None:
         """Normalize query to extract document reference.
 
         Args:
             query: Italian natural language query
+            conversation_context: Optional recent conversation for typo correction (DEV-251)
 
         Returns:
             {"type": "risoluzione", "number": "64", "year": null} if document found
@@ -57,7 +62,7 @@ class QueryNormalizer:
             response = await self.client.chat.completions.create(
                 model=self.config.QUERY_NORMALIZATION_MODEL,
                 messages=[
-                    {"role": "system", "content": self._get_system_prompt()},
+                    {"role": "system", "content": self._get_system_prompt(conversation_context)},
                     {"role": "user", "content": query},
                 ],
                 temperature=0,  # Deterministic for consistency
@@ -116,14 +121,17 @@ class QueryNormalizer:
             )
             return None
 
-    def _get_system_prompt(self) -> str:
+    def _get_system_prompt(self, conversation_context: str | None = None) -> str:
         """Get system prompt for LLM normalization.
+
+        Args:
+            conversation_context: Optional conversation for typo correction (DEV-251)
 
         Returns structured JSON with document type, number, year, and keywords extraction.
         Supports all Italian government document sources and formats.
         Keywords enable semantic search when no document number is found.
         """
-        return """Extract document reference AND search keywords from this Italian tax/legal query.
+        base_prompt = """Extract document reference AND search keywords from this Italian tax/legal query.
 
 Document types to recognize:
 - Agenzia Entrate: risoluzione, circolare, interpello, risposta
@@ -187,6 +195,23 @@ Examples:
 - "bonus psicologo 2025" → {"type": null, "number": null, "year": "2025", "keywords": ["bonus", "psicologo"]}
 - "come calcolare le tasse" → {"type": null, "number": null, "year": null, "keywords": ["tasse", "calcolo"]}
 """
+
+        # DEV-251: Add conversation context for typo correction
+        if conversation_context and conversation_context.strip():
+            context_section = f"""
+
+CONVERSATION CONTEXT (use for typo correction):
+{conversation_context}
+
+TYPO CORRECTION RULES:
+- If user query contains a term similar to one discussed in context, correct it
+- Example: Context discusses "IRAP", query says "l'rap" → correct to "IRAP"
+- Example: Context discusses "IMU", query says "l'imu" or "l'inu" → correct to "IMU"
+- Add corrected term to keywords if applicable
+"""
+            return base_prompt + context_section
+
+        return base_prompt
 
 
 # Export for backward compatibility

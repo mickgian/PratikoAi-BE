@@ -45,6 +45,7 @@ except Exception:  # pragma: no cover
 
 
 # DEV-245: Concise mode prefix for follow-up questions (extracted to avoid duplication)
+# NOTE: This is now only used for domain prompts (line ~516). Main grounding uses FOLLOWUP_GROUNDING_RULES.
 CONCISE_MODE_PREFIX = """
 ## MODALITÀ CONCISA - FOLLOW-UP
 
@@ -59,6 +60,46 @@ SBAGLIATO: "La rottamazione quinquies, introdotta dalla Legge 199/2025, prevede.
 CORRETTO: "Sì, le cartelle per tasse auto rientrano (Art. 1, comma 231, L. 199/2025)."
 
 ---
+
+"""
+
+
+# DEV-251 Part 3: Concise-only grounding rules for follow-up questions
+# These rules do NOT include "Estrai TUTTO" which contradicts concise mode
+FOLLOWUP_GROUNDING_RULES = """
+## MODALITÀ FOLLOW-UP (DEV-251 Part 3)
+
+**QUESTA È UNA DOMANDA DI FOLLOW-UP** - L'utente ha già ricevuto informazioni di base.
+
+### REGOLA ASSOLUTA: NON RIPETERE
+❌ NON ripetere l'introduzione ("La Rottamazione Quinquies è...")
+❌ NON ripetere scadenze già menzionate (30 aprile, 31 luglio, ecc.)
+❌ NON ripetere requisiti, procedure, aliquote già spiegate
+❌ NON ripetere riferimenti normativi già citati
+❌ NON scrivere paragrafi introduttivi generici
+
+### FORMATO RISPOSTA FOLLOW-UP
+Rispondi in **2-5 frasi** massimo:
+1. Risposta diretta alla domanda specifica
+2. Solo riferimenti normativi NUOVI (se applicabili)
+3. Eventuali differenze rispetto al caso generale
+
+### ESEMPIO
+**Domanda follow-up:** "E l'IMU?"
+**Risposta CORRETTA:**
+"L'IMU può rientrare nella Rottamazione Quinquies, ma richiede una delibera del Comune. Verifica sul sito del tuo Comune se ha aderito alla misura."
+
+**Risposta SBAGLIATA:**
+"La Rottamazione Quinquies è una misura di definizione agevolata introdotta dalla Legge 199/2025... [500 parole di ripetizione]"
+
+### ACCURATEZZA (ANTI-ALLUCINAZIONE)
+- USA SOLO DATI DAL KB sottostante
+- CITA SOLO leggi/articoli che appaiono nel KB
+- SE UN DATO NON È NEL KB → scrivi "informazione non disponibile nel database PratikoAI"
+
+### CITAZIONI INLINE
+✅ "Sì, l'IMU può rientrare se il Comune ha deliberato l'adesione (Art. 1, comma 235, L. 199/2025)."
+❌ NON creare sezioni "Fonti:", "Riferimenti:" - le fonti sono mostrate automaticamente
 
 """
 
@@ -828,25 +869,27 @@ def step_44__default_sys_prompt(
         if has_actual_context:
             # DEV-242 Phase 14D: Add grounding rules BEFORE KB context to prevent hallucinations
             # DEV-242 Phase 28: Add completeness enforcement
-            # DEV-245: Concise mode prefix for follow-up questions (uses module constant)
-            concise_mode_prefix = CONCISE_MODE_PREFIX if is_followup else ""
+            # DEV-251 Part 3: Use separate grounding rules for follow-ups (no "Estrai TUTTO" contradiction)
+            # DEV-XXX: Select extraction rules based on feature flag
+            from app.core.config import USE_GENERIC_EXTRACTION
+
             if is_followup:
+                # DEV-251 Part 3: Use concise-only rules for follow-ups
+                # These rules do NOT include "Estrai TUTTO" which contradicts concise mode
+                grounding_rules = FOLLOWUP_GROUNDING_RULES
                 step44_logger.info(
-                    "DEV245_concise_mode_enabled",
+                    "DEV251_part3_followup_grounding_rules",
                     extra={
                         "is_followup": True,
                         "trigger_reason": trigger_reason,
                         "route": route,
+                        "grounding_rules_mode": "concise_only",
+                        "grounding_rules_length": len(grounding_rules),
                     },
                 )
-            # DEV-XXX: Select extraction rules based on feature flag
-            from app.core.config import USE_GENERIC_EXTRACTION
-
-            if USE_GENERIC_EXTRACTION:
-                # Generic extraction principles - scalable to any topic
-                grounding_rules = (
-                    concise_mode_prefix
-                    + """
+            elif USE_GENERIC_EXTRACTION:
+                # Generic extraction principles - scalable to any topic (for NEW questions)
+                grounding_rules = """
 ## REGOLE UNIVERSALI DI ESTRAZIONE (DEV-XXX)
 
 ### PRINCIPIO FONDAMENTALE
@@ -901,12 +944,17 @@ Se il KB contiene frasi come:
 INCLUDI TUTTE le informazioni rilevanti dal KB. La lunghezza deve corrispondere alla quantità di dati nel KB.
 
 """
+                step44_logger.info(
+                    "DEV251_part3_new_question_grounding_rules",
+                    extra={
+                        "is_followup": False,
+                        "grounding_rules_mode": "full_completeness",
+                        "use_generic_extraction": True,
+                    },
                 )
             else:
                 # Legacy topic-specific rules (kept for rollback if needed)
-                grounding_rules = (
-                    concise_mode_prefix
-                    + """
+                grounding_rules = """
 ## REGOLE CRITICHE PER LA RISPOSTA (DEV-242 - LEGACY)
 
 ### FORMATO RISPOSTA
@@ -929,7 +977,6 @@ Scrivi come un **documento professionale** con:
 ❌ NON creare sezioni "Fonti:", "Riferimenti:" - le fonti sono mostrate automaticamente
 
 """
-                )
             context_section = f"\n\n{grounding_rules}# Relevant Knowledge Base Context\n\n{merged_context}\n"
             prompt = prompt + context_section
 

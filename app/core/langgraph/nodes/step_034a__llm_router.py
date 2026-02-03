@@ -55,12 +55,14 @@ async def node_step_34a(state: RAGState) -> RAGState:
 
             if not hf_classifier.should_fallback_to_gpt(hf_result):
                 # High confidence - use HF result
-                routing_decision = hf_result_to_decision_dict(hf_result)
+                # DEV-251 Part 3.1: Pass query for follow-up detection
+                routing_decision = hf_result_to_decision_dict(hf_result, query=user_query)
                 logger.info(
                     "DEV251_hf_classification_used",
                     step=NODE_LABEL,
                     route=routing_decision["route"],
                     confidence=hf_result.confidence,
+                    is_followup=routing_decision.get("is_followup", False),
                     all_scores=hf_result.all_scores,
                 )
             else:

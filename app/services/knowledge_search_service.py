@@ -251,6 +251,37 @@ class KnowledgeSearchService:
         self._embedding_cache: dict[str, list[float]] = {}
         self._query_cache: dict[str, list[SearchResult]] = {}
 
+    def _format_recent_conversation(self, messages: list | None, max_turns: int = 3) -> str | None:
+        """Format recent conversation for query normalization context.
+
+        DEV-251: Extract last N turns for typo correction context.
+
+        Args:
+            messages: Conversation history (list of message dicts)
+            max_turns: Max turns to include (default: 3)
+
+        Returns:
+            Formatted string or None if no messages
+        """
+        if not messages:
+            return None
+
+        recent = []
+        # Take last N turns (each turn is user + assistant = 2 messages)
+        for msg in messages[-max_turns * 2 :]:
+            if not isinstance(msg, dict):
+                continue
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            if not content:
+                continue
+            # Truncate content for efficiency (200 chars max per message)
+            content_truncated = content[:200]
+            if role in ("user", "assistant") and content_truncated:
+                recent.append(f"{role}: {content_truncated}")
+
+        return "\n".join(recent) if recent else None
+
     @staticmethod
     def _extract_topics_from_query(query: str) -> list[str] | None:
         """Extract topic tags from user query for GIN-indexed filtering.
@@ -319,6 +350,7 @@ class KnowledgeSearchService:
                 - search_mode: SearchMode enum (optional, defaults to HYBRID)
                 - filters: Dictionary of filters (category, source, etc.)
                 - max_results: Maximum results to return (optional)
+                - messages: Conversation history for context (optional, DEV-251)
 
         Returns:
             List of SearchResult objects ordered by combined relevance score
@@ -336,6 +368,9 @@ class KnowledgeSearchService:
             filters = query_data.get("filters", {})
             max_results = query_data.get("max_results", self.config.max_results)
             trace_id = query_data.get("trace_id")
+            # DEV-251: Extract conversation context for typo correction
+            messages = query_data.get("messages", [])
+            conversation_context = self._format_recent_conversation(messages)
 
             # Use timer context manager for performance logging
             with rag_step_timer(
@@ -343,7 +378,13 @@ class KnowledgeSearchService:
             ):
                 # Perform search based on mode
                 if search_mode == SearchMode.BM25_ONLY:
-                    bm25_raw_results = await self._perform_bm25_search(query, canonical_facts, max_results, filters)
+                    bm25_raw_results = await self._perform_bm25_search(
+                        query,
+                        canonical_facts,
+                        max_results,
+                        filters,
+                        conversation_context=conversation_context,
+                    )
                     # Convert BM25 dict results to SearchResult objects
                     results = []
                     for bm25_result in bm25_raw_results:
@@ -369,7 +410,13 @@ class KnowledgeSearchService:
                     results = results[:max_results]
 
                 else:  # HYBRID mode
-                    results = await self._perform_hybrid_search(query, canonical_facts, filters, max_results)
+                    results = await self._perform_hybrid_search(
+                        query,
+                        canonical_facts,
+                        filters,
+                        max_results,
+                        conversation_context=conversation_context,
+                    )
 
                 # Apply final ranking and filtering
                 results = self._apply_final_ranking(results, max_results)
@@ -411,14 +458,33 @@ class KnowledgeSearchService:
             return []
 
     async def _perform_hybrid_search(
-        self, query: str, canonical_facts: list[str], filters: dict[str, Any], max_results: int
+        self,
+        query: str,
+        canonical_facts: list[str],
+        filters: dict[str, Any],
+        max_results: int,
+        conversation_context: str | None = None,
     ) -> list[SearchResult]:
-        """Perform hybrid search combining BM25, vector search and recency boost."""
+        """Perform hybrid search combining BM25, vector search and recency boost.
+
+        Args:
+            query: User query text
+            canonical_facts: Extracted facts from query
+            filters: Search filters
+            max_results: Maximum results to return
+            conversation_context: Optional conversation context for typo correction (DEV-251)
+        """
         # Perform both searches concurrently for better performance
         import asyncio
 
         bm25_task = asyncio.create_task(
-            self._perform_bm25_search(query, canonical_facts, self.config.bm25_top_k, filters)
+            self._perform_bm25_search(
+                query,
+                canonical_facts,
+                self.config.bm25_top_k,
+                filters,
+                conversation_context=conversation_context,
+            )
         )
 
         vector_task = asyncio.create_task(self._perform_vector_search(query, canonical_facts, filters))
@@ -619,9 +685,22 @@ class KnowledgeSearchService:
         return patterns[:7]
 
     async def _perform_bm25_search(
-        self, query: str, canonical_facts: list[str], max_results: int, filters: dict[str, Any]
+        self,
+        query: str,
+        canonical_facts: list[str],
+        max_results: int,
+        filters: dict[str, Any],
+        conversation_context: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Perform BM25 full-text search with OR fallback for zero results."""
+        """Perform BM25 full-text search with OR fallback for zero results.
+
+        Args:
+            query: User query text
+            canonical_facts: Extracted facts from query
+            max_results: Maximum results to return
+            filters: Search filters
+            conversation_context: Optional conversation context for typo correction (DEV-251)
+        """
         # Query expansion: prioritize canonical facts for better search
         search_query = query
         if canonical_facts:
@@ -789,7 +868,8 @@ class KnowledgeSearchService:
             # No document reference in canonical_facts - try LLM normalization
             try:
                 normalizer = QueryNormalizer()
-                llm_doc_ref = await normalizer.normalize(query)
+                # DEV-251: Pass conversation context for typo correction
+                llm_doc_ref = await normalizer.normalize(query, conversation_context=conversation_context)
 
                 if llm_doc_ref:
                     logger.info(
@@ -798,12 +878,15 @@ class KnowledgeSearchService:
                         extracted_type=llm_doc_ref.get("type"),
                         extracted_number=llm_doc_ref.get("number"),
                         extracted_year=llm_doc_ref.get("year"),
+                        extracted_keywords=llm_doc_ref.get("keywords", []),
+                        has_conversation_context=conversation_context is not None,
                         reason="llm_extracted_document_reference",
                     )
                 else:
                     logger.info(
                         "llm_query_normalization_no_doc_found",
                         original_query=query[:100],
+                        has_conversation_context=conversation_context is not None,
                         reason="llm_returned_none_no_document_reference",
                     )
             except Exception as e:

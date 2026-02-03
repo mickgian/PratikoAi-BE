@@ -31,6 +31,46 @@ from app.services.prompt_loader import PromptLoader, get_prompt_loader
 # Enums and Constants
 # =============================================================================
 
+# DEV-251 Part 3.2: Full completeness rules for NEW questions
+# This section is COMPLETELY REMOVED for follow-up questions (structural override)
+COMPLETENESS_SECTION_FULL = """## COMPLETEZZA OBBLIGATORIA
+
+La risposta DEVE essere un documento professionale completo che include TUTTI i seguenti elementi quando pertinenti:
+
+### 1. Scadenze - Date e Termini Specifici
+- Data presentazione domanda
+- Date pagamento rate
+- Scadenze intermedie
+- Esempio: "entro il 30 aprile 2026", "prima rata il 31 luglio 2026"
+
+### 2. Importi e Aliquote - Cifre, Percentuali, Soglie Economiche
+- Tassi di interesse (es: 3% annuo)
+- Importi specifici menzionati nel KB
+- Esempio: "aliquota del 15%", "soglia di €85.000"
+
+### 3. Requisiti - Chi Può Accedere, Condizioni Necessarie
+- Presupposti soggettivi e oggettivi
+- Condizioni di accesso
+- Esempio: "carichi affidati fino al 31 dicembre 2023"
+
+### 4. Esclusioni - Chi/Cosa è Esplicitamente Escluso
+- Tutti i casi di inapplicabilità
+- Esempio: "esclusi i piani della rottamazione quater in regola"
+
+### 5. Conseguenze - Sanzioni, Decadenza, Effetti del Mancato Adempimento
+- Cosa succede se non si rispettano i termini
+- Esempio: "mancato pagamento di due rate comporta decadenza dal beneficio"
+
+### 6. Procedure - Come Fare, Passi da Seguire, Documentazione
+- Canali di presentazione
+- Documenti richiesti
+- Passaggi operativi
+- Esempio: "dichiarazione telematica all'agente della riscossione"
+
+### REGOLA FONDAMENTALE
+
+NON riassumere. Se il KB contiene 10 dettagli specifici, la risposta deve contenere tutti e 10 i dettagli."""
+
 
 class QueryComplexity(str, Enum):
     """Query complexity levels for model routing.
@@ -326,6 +366,7 @@ class LLMOrchestrator:
         conversation_history: list[dict] | None = None,
         web_sources_metadata: list[dict] | None = None,
         domains: list[str] | None = None,
+        is_followup: bool = False,
     ) -> UnifiedResponse:
         """Generate response with appropriate model and reasoning strategy.
 
@@ -340,6 +381,7 @@ class LLMOrchestrator:
             conversation_history: Optional conversation history
             web_sources_metadata: DEV-245: Web sources from Brave Search (Parallel Hybrid RAG)
             domains: DEV-251 fix: Domain list for Tree of Thoughts prompt
+            is_followup: DEV-251 Part 3.1: Whether this is a follow-up question (triggers concise mode)
 
         Returns:
             UnifiedResponse with answer, reasoning, sources, actions, and metrics
@@ -351,6 +393,7 @@ class LLMOrchestrator:
             # Build prompt based on complexity/reasoning type
             # DEV-245: Pass web_sources_metadata for Parallel Hybrid RAG
             # DEV-251 fix: Pass domains for Tree of Thoughts prompt
+            # DEV-251 Part 3.1: Pass is_followup for concise response mode
             prompt = self._build_response_prompt(
                 query=query,
                 kb_context=kb_context,
@@ -359,6 +402,7 @@ class LLMOrchestrator:
                 conversation_history=conversation_history,
                 web_sources_metadata=web_sources_metadata,
                 domains=domains,
+                is_followup=is_followup,
             )
 
             # Call LLM
@@ -499,6 +543,7 @@ class LLMOrchestrator:
         conversation_history: list[dict] | None = None,
         web_sources_metadata: list[dict] | None = None,
         domains: list[str] | None = None,
+        is_followup: bool = False,
     ) -> str:
         """Build the response prompt based on configuration.
 
@@ -510,6 +555,7 @@ class LLMOrchestrator:
             conversation_history: Optional conversation history
             web_sources_metadata: DEV-245: Web sources from Brave Search (Parallel Hybrid RAG)
             domains: DEV-251 fix: Domain list for Tree of Thoughts prompt
+            is_followup: DEV-251 Part 3.1: Whether this is a follow-up question
 
         Returns:
             Formatted prompt string
@@ -521,6 +567,40 @@ class LLMOrchestrator:
 
         # Format kb_sources for prompt (tree_of_thoughts.md uses {kb_sources})
         kb_sources_str = json.dumps(kb_sources_metadata, ensure_ascii=False, indent=2)
+
+        # DEV-251 Part 3.2: Structural override for follow-ups
+        # Key insight: Remove completeness rules entirely for follow-ups,
+        # don't rely on LLM to interpret semantic conditionals
+        if is_followup:
+            is_followup_mode = """**⚠️ MODALITÀ FOLLOW-UP ATTIVA ⚠️**
+
+Questa è una DOMANDA DI FOLLOW-UP. L'utente ha GIÀ ricevuto la risposta completa sull'argomento principale.
+
+**REGOLE OBBLIGATORIE:**
+1. Rispondi SOLO alla specifica domanda (non ripetere intro/contesto)
+2. MAX 2-5 frasi (~50-100 parole)
+3. Includi SOLO info NUOVE non già dette
+4. Se serve delibera comunale/regionale, dillo subito
+
+**ESEMPIO CORRETTO per "e l'IMU?":**
+"L'IMU può rientrare nella Rottamazione Quinquies solo se il Comune ha adottato una delibera specifica. Verifica sul sito del tuo Comune."
+
+**LUNGHEZZA MASSIMA:** 100 parole"""
+            # STRUCTURAL REMOVAL: Completeness section is NOT included for follow-ups
+            completeness_section = ""
+        else:
+            is_followup_mode = (
+                "**Questa è una DOMANDA NUOVA.** Fornisci una risposta COMPLETA con tutti i dettagli pertinenti."
+            )
+            # Full completeness rules for new questions
+            completeness_section = COMPLETENESS_SECTION_FULL
+
+        logger.debug(
+            "prompt_followup_mode",
+            is_followup=is_followup,
+            template=config.prompt_template,
+            completeness_section_included=bool(completeness_section),
+        )
 
         try:
             # Try to load the template
@@ -537,6 +617,12 @@ class LLMOrchestrator:
                 current_date=datetime.date.today().isoformat(),
                 # DEV-251 fix: Add domains for tree_of_thoughts.md
                 domains=domains_str,
+                # DEV-251 Part 3.1: Add follow-up mode instructions
+                is_followup_mode=is_followup_mode,
+                # DEV-251 Part 3.2: Structural override - completeness section is
+                # COMPLETELY REMOVED for follow-ups (empty string), ensuring LLM
+                # never sees the contradicting completeness rules
+                completeness_section=completeness_section,
             )
             return prompt
         except FileNotFoundError:

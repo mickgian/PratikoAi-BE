@@ -2,6 +2,7 @@
 
 DEV-223: Create tree_of_thoughts.md Prompt Template.
 DEV-251: Updated for free-form responses (no JSON output required).
+DEV-251 Part 3.2: Updated for structural completeness_section variable.
 
 Tests written BEFORE implementation following TDD RED-GREEN-REFACTOR methodology.
 
@@ -12,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from app.services.llm_orchestrator import COMPLETENESS_SECTION_FULL
 from app.services.prompt_loader import PromptLoader
 
 # Path to the actual prompts directory
@@ -40,6 +42,9 @@ class TestPromptLoadsViaLoader:
             kb_context="Contesto normativo sulla fatturazione internazionale...",
             kb_sources="Art. 7-ter DPR 633/72, Direttiva UE 2006/112/CE",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert content is not None
         assert len(content) > 0
@@ -72,6 +77,9 @@ class TestPromptVariablesSubstitute:
             kb_context="Contesto normativo...",
             kb_sources="Art. 7-ter DPR 633/72",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert test_query in content
 
@@ -84,6 +92,9 @@ class TestPromptVariablesSubstitute:
             kb_context=test_context,
             kb_sources="Art. 7-ter DPR 633/72",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert test_context in content
 
@@ -96,6 +107,9 @@ class TestPromptVariablesSubstitute:
             kb_context="Contesto...",
             kb_sources=test_sources,
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert test_sources in content
 
@@ -108,8 +122,26 @@ class TestPromptVariablesSubstitute:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains=test_domains,
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert test_domains in content
+
+    def test_conversation_context_substitutes(self, loader):
+        """DEV-251: conversation_context variable should substitute correctly."""
+        test_context = "Conversazione precedente sulla rottamazione quinquies..."
+        content = loader.load(
+            "tree_of_thoughts",
+            query="E l'IMU?",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context=test_context,
+            is_followup_mode="",
+            completeness_section="",
+        )
+        assert test_context in content
 
     def test_missing_variable_raises_error(self, loader):
         """Missing required variable should raise KeyError."""
@@ -117,7 +149,7 @@ class TestPromptVariablesSubstitute:
             loader.load(
                 "tree_of_thoughts",
                 query="Test query",
-                # Missing: kb_context, kb_sources, domains
+                # Missing: kb_context, kb_sources, domains, conversation_context
             )
 
 
@@ -137,6 +169,9 @@ class TestFreeFormOutput:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         # Should NOT have mandatory JSON output section
         assert "Output (JSON OBBLIGATORIO)" not in content
@@ -150,6 +185,9 @@ class TestFreeFormOutput:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert "documento professionale" in content.lower()
 
@@ -161,6 +199,9 @@ class TestFreeFormOutput:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert "prosa fluida" in content.lower()
 
@@ -181,6 +222,9 @@ class TestHypothesisGeneration:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert "ipotesi" in content.lower()
 
@@ -192,6 +236,9 @@ class TestHypothesisGeneration:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         # Should mention 3-4 or related
         has_count = (
@@ -211,6 +258,9 @@ class TestHypothesisGeneration:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         # Should mention that reasoning is internal/mental
         assert "mentalmente" in content.lower() or "interno" in content.lower()
@@ -232,6 +282,9 @@ class TestSourceWeightedEvaluation:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert "fonte" in content.lower() or "source" in content.lower()
 
@@ -243,6 +296,9 @@ class TestSourceWeightedEvaluation:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         # Should mention hierarchy concepts
         hierarchy_terms = ["gerarchia", "hierarchy", "legge", "decreto", "circolare"]
@@ -256,18 +312,41 @@ class TestSourceWeightedEvaluation:
 
 
 class TestCompletenessRequirements:
-    """Test that the prompt specifies completeness requirements."""
+    """Test that the prompt specifies completeness requirements.
 
-    def test_prompt_has_completezza_section(self, loader):
-        """Prompt should have COMPLETEZZA OBBLIGATORIA section."""
+    DEV-251 Part 3.2: These tests verify completeness rules when the
+    completeness_section variable contains the full requirements (new questions).
+    For follow-up questions, completeness_section is empty.
+    """
+
+    def test_prompt_has_completezza_section_when_passed(self, loader):
+        """DEV-251 Part 3.2: Prompt should have COMPLETEZZA section when variable contains it."""
         content = loader.load(
             "tree_of_thoughts",
             query="Test query",
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section=COMPLETENESS_SECTION_FULL,
         )
         assert "COMPLETEZZA OBBLIGATORIA" in content
+
+    def test_prompt_no_completezza_section_when_followup(self, loader):
+        """DEV-251 Part 3.2: Follow-up mode should NOT include completeness section."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="E l'IMU?",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="Conversazione precedente...",
+            is_followup_mode="MODALITÀ FOLLOW-UP ATTIVA",
+            completeness_section="",  # Empty for follow-ups
+        )
+        # When completeness_section is empty, COMPLETEZZA should NOT appear
+        assert "COMPLETEZZA OBBLIGATORIA" not in content
 
     def test_prompt_requires_scadenze(self, loader):
         """Prompt should require including deadlines/dates."""
@@ -277,6 +356,9 @@ class TestCompletenessRequirements:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section=COMPLETENESS_SECTION_FULL,
         )
         assert "scadenze" in content.lower()
 
@@ -288,6 +370,9 @@ class TestCompletenessRequirements:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section=COMPLETENESS_SECTION_FULL,
         )
         assert "importi" in content.lower() or "aliquote" in content.lower()
 
@@ -299,6 +384,9 @@ class TestCompletenessRequirements:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section=COMPLETENESS_SECTION_FULL,
         )
         assert "requisiti" in content.lower()
 
@@ -310,6 +398,9 @@ class TestCompletenessRequirements:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section=COMPLETENESS_SECTION_FULL,
         )
         assert "esclusioni" in content.lower()
 
@@ -321,6 +412,9 @@ class TestCompletenessRequirements:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section=COMPLETENESS_SECTION_FULL,
         )
         assert "conseguenze" in content.lower()
 
@@ -332,6 +426,9 @@ class TestCompletenessRequirements:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section=COMPLETENESS_SECTION_FULL,
         )
         assert "procedure" in content.lower()
 
@@ -343,6 +440,9 @@ class TestCompletenessRequirements:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section=COMPLETENESS_SECTION_FULL,
         )
         assert "non riassumere" in content.lower()
 
@@ -363,6 +463,9 @@ class TestItalianProfessionalLanguage:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         # Check for common Italian words
         italian_keywords = ["analizza", "ipotesi", "risposta", "fonti", "valuta"]
@@ -377,6 +480,9 @@ class TestItalianProfessionalLanguage:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         italian_legal_terms = ["italiana", "italian", "dpr", "d.lgs", "legge"]
         matches = sum(1 for term in italian_legal_terms if term in content.lower())
@@ -390,6 +496,9 @@ class TestItalianProfessionalLanguage:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         # Should use formal language
         professional_indicators = ["professionale", "esperto", "consulente", "analisi"]
@@ -413,6 +522,9 @@ class TestAntiHallucinationRules:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert "anti-allucinazione" in content.lower() or "mai inventare" in content.lower()
 
@@ -424,6 +536,9 @@ class TestAntiHallucinationRules:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert "mai inventare" in content.lower() or "non inventare" in content.lower()
 
@@ -435,6 +550,9 @@ class TestAntiHallucinationRules:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert "verifica" in content.lower()
 
@@ -455,6 +573,9 @@ class TestInlineCitations:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert "inline" in content.lower() or "nel testo" in content.lower()
 
@@ -466,6 +587,9 @@ class TestInlineCitations:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         # Should have example like "Art. X, comma Y"
         assert "art." in content.lower() and "comma" in content.lower()
@@ -478,5 +602,248 @@ class TestInlineCitations:
             kb_context="Contesto...",
             kb_sources="Fonti...",
             domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
         )
         assert "non aggiungere" in content.lower() and "fonti" in content.lower()
+
+
+# =============================================================================
+# Tests: Conversation Context (DEV-251: Follow-up Handling)
+# =============================================================================
+
+
+class TestConversationContext:
+    """Test that the prompt supports conversation context for follow-up questions."""
+
+    def test_prompt_has_conversation_context_placeholder(self, loader):
+        """DEV-251: Prompt should have conversation_context placeholder."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="Conversazione precedente...",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        assert "Conversazione precedente..." in content
+
+    def test_conversation_context_section_exists(self, loader):
+        """Prompt should have a Contesto Conversazione section."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="Test context",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        assert "Contesto Conversazione" in content or "contesto conversazione" in content.lower()
+
+    def test_prompt_has_follow_up_handling_section(self, loader):
+        """DEV-251: Prompt should have follow-up handling instructions."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        assert "follow-up" in content.lower()
+
+    def test_prompt_mentions_non_repetition_rule(self, loader):
+        """DEV-251: Prompt should mention not repeating information."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        assert "non ripetere" in content.lower()
+
+    def test_prompt_recognizes_follow_up_patterns(self, loader):
+        """DEV-251: Prompt should recognize follow-up question patterns."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        # Should mention patterns like "E l'IMU?", "E per l'IRAP?"
+        assert "e l'" in content.lower() or "e per" in content.lower()
+
+    def test_completeness_is_context_aware(self, loader):
+        """DEV-251: Completeness rule should differ for new vs follow-up questions."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        # Should mention different behavior for new questions vs follow-ups
+        has_new_question_rule = "nuove" in content.lower() or "nuova" in content.lower()
+        has_followup_rule = "follow-up" in content.lower()
+        assert has_new_question_rule and has_followup_rule
+
+
+# =============================================================================
+# Tests: Unknown Term Handling (DEV-251 Part 2)
+# =============================================================================
+
+
+class TestUnknownTermHandling:
+    """Test that the prompt includes unknown term handling rules to prevent hallucination."""
+
+    def test_prompt_has_unknown_term_section(self, loader):
+        """DEV-251: Prompt must have unknown term handling section."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        # Must have section for handling unknown/ambiguous terms
+        assert "Gestione Termini Sconosciuti" in content or "termini sconosciuti" in content.lower()
+
+    def test_prompt_forbids_inventing_meanings(self, loader):
+        """DEV-251: Prompt must explicitly forbid inventing meanings for unknown terms."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        # Must have explicit "NON INVENTARE" instruction
+        assert "non inventare" in content.lower()
+
+    def test_prompt_has_typo_correction_guidance(self, loader):
+        """DEV-251: Prompt must have typo correction guidance using context."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        # Must mention typo correction or error correction
+        has_typo_section = (
+            "Correzione Errori di Battitura" in content
+            or "errore di battitura" in content.lower()
+            or "errori di battitura" in content.lower()
+        )
+        assert has_typo_section
+
+    def test_prompt_has_clarification_instruction(self, loader):
+        """DEV-251: Prompt must instruct to ask for clarification on unknown terms."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        # Should mention asking for clarification
+        has_clarification = (
+            "chiedi chiarimento" in content.lower()
+            or "chiedere chiarimento" in content.lower()
+            or "chiedi conferma" in content.lower()
+        )
+        assert has_clarification
+
+    def test_prompt_has_confidence_threshold(self, loader):
+        """DEV-251: Prompt should mention confidence threshold for typo correction."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        # Should mention confidence threshold (80% or similar)
+        has_confidence = "80%" in content or "sicuro" in content.lower() or "confidenza" in content.lower()
+        assert has_confidence
+
+    def test_prompt_has_typo_examples(self, loader):
+        """DEV-251: Prompt should have examples of common typos."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        # Should have at least one example like "rap" → "IRAP"
+        has_examples = "rap" in content.lower() or "irap" in content.lower() or "imu" in content.lower()
+        assert has_examples
+
+    def test_prompt_has_assumo_tu_intenda_pattern(self, loader):
+        """DEV-251: Prompt should show "Assumo tu intenda" pattern for typo correction."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        # Should have the "Assumo tu intenda" pattern
+        has_pattern = "assumo tu intenda" in content.lower() or "assumo intenda" in content.lower()
+        assert has_pattern
+
+    def test_prompt_handles_truly_unknown_terms(self, loader):
+        """DEV-251: Prompt should have guidance for truly unknown terms (not typos)."""
+        content = loader.load(
+            "tree_of_thoughts",
+            query="Test query",
+            kb_context="Contesto...",
+            kb_sources="Fonti...",
+            domains="fiscale",
+            conversation_context="",
+            is_followup_mode="",
+            completeness_section="",
+        )
+        # Should mention handling of truly unknown terms (like "XYZ")
+        has_unknown_handling = "non riconosco" in content.lower() or "sconosciuto" in content.lower()
+        assert has_unknown_handling

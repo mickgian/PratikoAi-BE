@@ -203,6 +203,8 @@ class TreeOfThoughtsReasoner:
         complexity: str,
         max_hypotheses: int = 4,
         domains: list[str] | None = None,
+        conversation_history: list[dict] | None = None,
+        is_followup: bool = False,
     ) -> ToTResult:
         """Execute Tree of Thoughts reasoning.
 
@@ -215,6 +217,8 @@ class TreeOfThoughtsReasoner:
             complexity: Query complexity ("simple", "complex", "multi_domain")
             max_hypotheses: Maximum hypotheses to generate (default: 4)
             domains: Optional list of domains for multi-domain queries
+            conversation_history: Optional conversation history for follow-up context (DEV-251)
+            is_followup: DEV-251 Part 3.1: Whether this is a follow-up question (triggers concise mode)
 
         Returns:
             ToTResult with selected hypothesis and full reasoning trace
@@ -228,17 +232,21 @@ class TreeOfThoughtsReasoner:
             num_sources=len(kb_sources),
             complexity=complexity,
             max_hypotheses=max_hypotheses,
+            is_followup=is_followup,
         )
 
         try:
             # Generate hypotheses via LLM
             # DEV-251: Now also returns the UnifiedResponse for reuse
+            # DEV-251 Part 3.1: Pass is_followup for concise response mode
             hypotheses, tot_analysis, llm_response = await self._generate_hypotheses(
                 query=query,
                 kb_sources=kb_sources,
                 complexity=complexity,
                 count=max_hypotheses,
                 domains=domains,
+                conversation_history=conversation_history,
+                is_followup=is_followup,
             )
 
             # Score each hypothesis using source hierarchy
@@ -301,6 +309,8 @@ class TreeOfThoughtsReasoner:
         complexity: str,
         count: int,
         domains: list[str] | None = None,
+        conversation_history: list[dict] | None = None,
+        is_followup: bool = False,
     ) -> tuple[list[ToTHypothesis], dict, UnifiedResponse]:
         """Generate multiple reasoning hypotheses via LLM.
 
@@ -310,6 +320,8 @@ class TreeOfThoughtsReasoner:
             complexity: Query complexity
             count: Number of hypotheses to generate
             domains: Optional domain list for multi-domain
+            conversation_history: Optional conversation history for follow-up context (DEV-251)
+            is_followup: DEV-251 Part 3.1: Whether this is a follow-up question
 
         Returns:
             Tuple of (hypotheses list, raw tot_analysis dict, UnifiedResponse)
@@ -323,12 +335,16 @@ class TreeOfThoughtsReasoner:
 
         # Get response from LLM
         # DEV-251 fix: Pass domains to generate_response for tree_of_thoughts prompt
+        # DEV-251: Pass conversation_history for follow-up context
+        # DEV-251 Part 3.1: Pass is_followup for concise response mode
         response: UnifiedResponse = await self.llm_orchestrator.generate_response(
             query=query,
             kb_context=kb_context,
             kb_sources_metadata=kb_sources,
             complexity=complexity_enum,
             domains=domains,
+            conversation_history=conversation_history,
+            is_followup=is_followup,
         )
 
         # Parse hypotheses from response

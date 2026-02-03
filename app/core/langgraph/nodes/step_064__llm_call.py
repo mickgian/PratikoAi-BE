@@ -69,6 +69,11 @@ async def node_step_64(state: RAGState) -> RAGState:
 
         user_msg, kb_ctx = extract_user_message(state), state.get("context", "") or state.get("kb_context", "")
         cplx_enum = {"simple": QC.SIMPLE, "complex": QC.COMPLEX, "multi_domain": QC.MULTI_DOMAIN}.get(cplx, QC.SIMPLE)
+
+        # DEV-251 Part 3.2: Extract is_followup from routing_decision
+        routing_decision = state.get("routing_decision", {})
+        is_followup = routing_decision.get("is_followup", False)
+
         try:
             # DEV-251: Reuse ToT response if available, avoiding duplicate LLM call
             if tot_used and tot_response is not None:
@@ -83,6 +88,7 @@ async def node_step_64(state: RAGState) -> RAGState:
                     conversation_history=state.get("messages", []),
                     web_sources_metadata=state.get("web_sources_metadata", []),
                     domains=state.get("detected_domains", []),
+                    is_followup=is_followup,  # DEV-251 Part 3.2: Pass follow-up flag
                 )
             res = {
                 "llm_call_successful": True,

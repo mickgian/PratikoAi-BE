@@ -1052,6 +1052,241 @@ Use this when reviewing response quality issues:
 
 ---
 
+## Part 10: Cost-Free Local Classification (DEV-251)
+
+### Core Principles
+
+| Principle | Explanation |
+|-----------|-------------|
+| **Local-first for simple tasks** | Use local models for high-volume, low-complexity tasks (intent classification, entity extraction). |
+| **Graceful fallback** | Always have API fallback for low-confidence local predictions. |
+| **Lazy loading** | Load models on first use, not at startup, to avoid cold start overhead. |
+| **Singleton pattern** | One model instance in memory to avoid repeated loading. |
+
+### Zero-Shot Classification
+
+Zero-shot classification uses Natural Language Inference (NLI) to classify text into arbitrary categories without task-specific training:
+
+**How It Works:**
+```
+Input: "Calcola IVA su 1000 euro"
+Hypothesis: "Questa domanda riguarda richiesta di calcolo numerico"
+
+NLI Model → Entailment Score: 0.89 → Intent: "calculator"
+```
+
+**Model Selection:**
+
+| Model | Size | Latency | Italian Support | Use Case |
+|-------|------|---------|-----------------|----------|
+| `facebook/bart-large-mnli` | 400MB | ~50ms | Good | General purpose |
+| `MoritzLaworski/mDeBERTa-v3-base-mnli-xnli` | 280MB | ~40ms | Excellent | Italian-specific |
+| `dbmdz/bert-base-italian-cased` | 440MB | ~30ms | Native | Fine-tunable |
+
+### PratikoAI Implementation Pattern
+
+**Architecture:**
+
+```
+User Query
+    │
+    ▼
+┌─────────────────────────────────┐
+│  Local HF Classifier            │
+│  (zero-shot, CPU)               │
+└──────────────┬──────────────────┘
+               │
+               ▼
+       Confidence ≥ 0.7?
+       ┌───────┴───────┐
+      YES              NO
+       │                │
+       ▼                ▼
+   Use Local        GPT Fallback
+   (free)           (paid, accurate)
+```
+
+**Code Pattern:**
+
+```python
+from app.services.hf_intent_classifier import get_hf_intent_classifier
+
+classifier = get_hf_intent_classifier()  # Singleton
+result = classifier.classify(user_query)
+
+if not classifier.should_fallback_to_gpt(result):
+    # High confidence - use free local result
+    routing_decision = hf_result_to_decision_dict(result)
+else:
+    # Low confidence - fall back to GPT-4o-mini
+    decision = await router_service.route(query=user_query, history=messages)
+    routing_decision = decision_to_dict(decision)
+```
+
+### Intent Label Design
+
+**Best Practices for Zero-Shot Labels:**
+
+| Practice | Example | Rationale |
+|----------|---------|-----------|
+| Use natural language descriptions | `"conversazione casuale, saluti"` NOT `"chitchat"` | Model understands descriptions |
+| Include synonyms | `"calcolo numerico o computazione"` | Covers variations |
+| Use target language | Italian descriptions for Italian queries | Better alignment |
+| Keep descriptions concise | 5-10 words per label | Avoids confusion |
+
+**PratikoAI Labels:**
+
+```python
+INTENT_LABELS = {
+    "chitchat": "conversazione casuale, saluti, chiacchierata",
+    "theoretical_definition": "richiesta di definizione o spiegazione di un concetto",
+    "technical_research": "domanda tecnica complessa che richiede ricerca e analisi",
+    "calculator": "richiesta di calcolo numerico o computazione",
+    "golden_set": "riferimento specifico a legge, articolo, normativa o regolamento",
+}
+```
+
+### Confidence Thresholds
+
+**Threshold Selection Framework:**
+
+| Threshold | HF Usage | GPT Fallback | Best For |
+|-----------|----------|--------------|----------|
+| 0.5 | High | Low | Cost-sensitive, lower accuracy OK |
+| 0.7 | Medium | Medium | **Balanced (recommended)** |
+| 0.9 | Low | High | Accuracy-critical |
+
+**Monitoring Confidence Distribution:**
+
+```
+Expected Distribution (healthy system):
+┌────────────────────────────────────────┐
+│  < 0.5  │  ██████      │  ~15%        │  → Always fallback
+│  0.5-0.7│  ████        │  ~10%        │  → Edge cases
+│  > 0.7  │  ████████████│  ~75%        │  → Use local
+└────────────────────────────────────────┘
+
+Red Flags:
+- >40% below threshold → Label descriptions need tuning
+- >95% above threshold → Threshold may be too low
+- Bimodal distribution → Domain mismatch
+```
+
+### Performance Optimization
+
+**Lazy Loading Pattern:**
+
+```python
+class HFIntentClassifier:
+    def __init__(self):
+        self._classifier = None  # Not loaded yet
+
+    def _load_model(self):
+        if self._classifier is None:
+            self._classifier = pipeline(
+                "zero-shot-classification",
+                model=self.model_name,
+                device=-1,  # CPU
+            )
+
+    def classify(self, query: str) -> IntentResult:
+        self._load_model()  # Load on first use
+        # ... classification logic
+```
+
+**Performance Characteristics:**
+
+| Operation | First Call | Subsequent |
+|-----------|------------|------------|
+| Model download | ~5s (one-time) | N/A (cached) |
+| Model load | ~2s | N/A (in memory) |
+| Classification | ~50-100ms | ~50-100ms |
+
+**Memory Management:**
+- Model stays in memory after first load
+- ~400MB RAM for BART-large-mnli
+- Consider model unloading for memory-constrained environments
+
+### Cost Analysis
+
+**Comparison with API-based Classification:**
+
+| Approach | Cost/1000 queries | Latency | Accuracy |
+|----------|-------------------|---------|----------|
+| GPT-4o-mini | $0.60-1.00 | ~200ms | 95%+ |
+| Local Zero-Shot | $0.00 | ~50ms | 80-85% |
+| Hybrid (70% local) | $0.18-0.30 | ~80ms avg | 90%+ |
+
+**Monthly Savings (1M queries):**
+
+```
+Before (100% GPT-4o-mini):  ~$800/month
+After (70% local, 30% GPT): ~$240/month
+Savings: $560/month (~70%)
+```
+
+### Future Path: Fine-Tuning
+
+**Phase 1 (Current):** Zero-shot classification (no training data needed)
+**Phase 2 (DEV-253):** Expert labeling UI to collect training data
+**Phase 3 (Future):** Fine-tune Italian BERT model
+
+**Expected Accuracy Improvement:**
+
+| Approach | Accuracy | Training Data |
+|----------|----------|---------------|
+| Zero-shot | 80-85% | None |
+| Fine-tuned (1k samples) | 88-92% | 1,000 labels |
+| Fine-tuned (10k samples) | 93-97% | 10,000 labels |
+
+### Decision Framework: Local vs API Classification
+
+When deciding whether to use local classification, systematically ask:
+
+```
+1. VOLUME
+   - How many classifications per day?
+   - Is cost a significant factor?
+   - (>10k/day strongly favors local)
+
+2. ACCURACY REQUIREMENTS
+   - What's the acceptable error rate?
+   - Are errors recoverable downstream?
+   - (>5% error tolerance enables local)
+
+3. LATENCY REQUIREMENTS
+   - Is real-time response needed?
+   - What's the p95 latency budget?
+   - (Local is 2-4x faster than API)
+
+4. COMPLEXITY
+   - How many categories?
+   - Are categories well-defined?
+   - (5-10 categories ideal for zero-shot)
+
+5. FALLBACK STRATEGY
+   - Is API fallback acceptable?
+   - What's the confidence threshold?
+   - (Always have fallback for low-confidence)
+```
+
+### Local Classification Checklist
+
+Use this when implementing local classification:
+
+- [ ] Model selected based on language and accuracy needs
+- [ ] Lazy loading implemented (no startup cost)
+- [ ] Singleton pattern prevents multiple model loads
+- [ ] Confidence threshold tuned for use case
+- [ ] API fallback for low-confidence predictions
+- [ ] Structured logging for monitoring
+- [ ] Memory impact assessed
+- [ ] First-call latency acceptable
+- [ ] Labels use natural language descriptions
+- [ ] Tests cover edge cases (empty, long, special chars)
+
+---
+
 ## Version History
 
 | Date | Change | Author |
@@ -1061,6 +1296,7 @@ Use this when reviewing response quality issues:
 | 2025-12-12 | Added Part 7 (Cost Optimization) | System |
 | 2025-12-12 | Added Part 8 (Italian Legal/Tax Domain) | System |
 | 2026-01-12 | Added Part 9 (Response Quality & RAG Optimization - DEV-242) | System |
+| 2026-01-30 | Added Part 10 (Cost-Free Local Classification - DEV-251) | System |
 
 ---
 

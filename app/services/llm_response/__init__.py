@@ -7,6 +7,7 @@ KB empty detection, citation validation, and query complexity classification.
 All public API is re-exported here for backward compatibility.
 """
 
+from .bold_section_formatter import BoldSectionFormatter
 from .citation_validator import (
     validate_citations_in_response,
 )
@@ -29,6 +30,7 @@ from .response_processor import (
     fallback_to_text,
     process_unified_response,
 )
+from .section_numbering_fixer import SectionNumberingFixer
 from .source_hierarchy import apply_source_hierarchy
 from .tot_orchestrator import (
     get_tot_reasoner,
@@ -54,6 +56,9 @@ __all__ = [
     # Response processing
     "fallback_to_text",
     "process_unified_response",
+    # Response formatting (DEV-251)
+    "BoldSectionFormatter",
+    "SectionNumberingFixer",
     # Citation validation
     "validate_citations_in_response",
     # Complexity classification

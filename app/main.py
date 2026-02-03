@@ -1,5 +1,6 @@
 """This file contains the main application entry point."""
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -31,6 +32,11 @@ from app.core.limiter import limiter
 from app.core.logging import logger
 from app.core.metrics import setup_metrics
 from app.core.middleware import MetricsMiddleware
+from app.core.middleware.cost_limiter import (
+    CostLimiterMiddleware,
+    CostOptimizationMiddleware,
+)
+from app.core.middleware.prometheus_middleware import PrometheusMiddleware
 from app.core.monitoring.metrics import get_metrics_content
 from app.services.database import database_service
 
@@ -112,6 +118,33 @@ async def lifespan(app: FastAPI):
     await start_scheduler()
     logger.info("Scheduler service started successfully")
 
+    # DEV-251: Pre-warm HuggingFace classifier in background thread
+    # This prevents the first user query from waiting for model download/load (~5-30s)
+    from concurrent.futures import ThreadPoolExecutor
+
+    from app.services.hf_intent_classifier import get_hf_intent_classifier
+
+    def warmup_hf_classifier() -> None:
+        """Load HuggingFace model in background to avoid first-query latency."""
+        try:
+            classifier = get_hf_intent_classifier()
+            # Trigger model load with a simple query
+            classifier.classify("warmup query")
+            logger.info("hf_classifier_warmed_up", model=classifier.model_name)
+        except Exception as e:
+            # Don't fail startup if warmup fails - will lazy load on first real query
+            logger.warning(
+                "hf_classifier_warmup_failed",
+                error_type=type(e).__name__,
+                error_message=str(e),
+            )
+
+    # Run in background thread to not block startup
+    warmup_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hf-warmup-")
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(warmup_executor, warmup_hf_classifier)
+    logger.info("hf_classifier_warmup_started")
+
     yield
 
     # Stop the scheduler service during shutdown
@@ -182,12 +215,6 @@ app.add_middleware(
 )
 
 # Add cost limiter middleware for payment enforcement
-from app.core.middleware.cost_limiter import (
-    CostLimiterMiddleware,
-    CostOptimizationMiddleware,
-)
-from app.core.middleware.prometheus_middleware import PrometheusMiddleware
-
 app.add_middleware(CostLimiterMiddleware)
 app.add_middleware(CostOptimizationMiddleware)
 app.add_middleware(PrometheusMiddleware)

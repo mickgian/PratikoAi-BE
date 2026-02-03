@@ -394,9 +394,10 @@ class TestDEV245ConciseMode:
 
         result = step_44__default_sys_prompt(ctx=ctx)
 
-        # Verify concise mode prefix is injected
-        assert "MODALITÀ CONCISA" in result, "Concise mode prefix should be in prompt for follow-up"
-        assert "NON RIPETERE" in result, "Concise mode should instruct not to repeat"
+        # Verify follow-up mode grounding rules are injected
+        # DEV-251 Part 3: Changed from CONCISE_MODE_PREFIX to FOLLOWUP_GROUNDING_RULES
+        assert "MODALITÀ FOLLOW-UP" in result, "Follow-up mode rules should be in prompt for follow-up"
+        assert "NON RIPETERE" in result, "Follow-up mode should instruct not to repeat"
 
     @patch("app.orchestrators.prompting.rag_step_log")
     @patch("app.orchestrators.prompting.rag_step_timer")

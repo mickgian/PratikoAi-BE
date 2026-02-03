@@ -107,7 +107,7 @@ L'utente ti ha posto una domanda per ottenere informazioni specifiche.
 **FORMATO RISPOSTA:**
 - Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni (es: ### Limiti di fatturato)
-- Usa **grassetto** solo per enfasi nel testo, NON per titoli
+- Usa **grassetto** per i titoli delle sezioni (es: **Scadenze**, **Requisiti**)
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Usa elenchi puntati solo per list items dentro le sezioni
 - CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
@@ -144,7 +144,7 @@ L'utente richiede la redazione di un documento professionale.
 **FORMATO RISPOSTA:**
 - Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni del documento (es: ### Struttura standard)
-- Usa **grassetto** solo per enfasi nel testo, NON per titoli
+- Usa **grassetto** per i titoli delle sezioni (es: **Scadenze**, **Requisiti**)
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Mantieni formattazione professionale del documento
 - CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
@@ -183,7 +183,7 @@ L'utente ha fornito un documento da analizzare.
 **FORMATO RISPOSTA:**
 - Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni dell'analisi (es: ### Tipologia documento)
-- Usa **grassetto** solo per enfasi nel testo, NON per titoli
+- Usa **grassetto** per i titoli delle sezioni (es: **Scadenze**, **Requisiti**)
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Usa elenchi puntati per evidenziare criticità e raccomandazioni
 - CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
@@ -224,7 +224,7 @@ L'utente richiede un calcolo specifico.
 **FORMATO RISPOSTA:**
 - Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni del calcolo (es: ### Formula applicata)
-- Usa **grassetto** solo per enfasi nei numeri, NON per titoli
+- Usa **grassetto** per i titoli delle sezioni (es: **Scadenze**, **Requisiti**)
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Mostra formule e passaggi in modo chiaro
 - CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
@@ -267,7 +267,7 @@ L'utente chiede se una determinata azione o situazione è conforme alla normativ
 **FORMATO RISPOSTA:**
 - Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni della verifica (es: ### Leggi applicabili)
-- Usa **grassetto** solo per enfasi nel testo, NON per titoli
+- Usa **grassetto** per i titoli delle sezioni (es: **Scadenze**, **Requisiti**)
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Indica chiaramente lo stato di conformità
 - CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
@@ -311,7 +311,7 @@ L'utente richiede un consiglio strategico per orientare le proprie scelte profes
 **FORMATO RISPOSTA:**
 - Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni dell'analisi (es: ### Contesto attuale)
-- Usa **grassetto** solo per enfasi nel testo, NON per titoli
+- Usa **grassetto** per i titoli delle sezioni (es: **Scadenze**, **Requisiti**)
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Usa tabelle per confrontare opzioni quando appropriato
 - CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione
@@ -357,7 +357,7 @@ L'utente richiede informazioni specifiche sui Contratti Collettivi Nazionali di 
 **FORMATO RISPOSTA:**
 - Usa ## per titoli di sezione principali (es: ## 1. Prima Sezione, ## 2. Seconda Sezione)
 - Usa ### per sottosezioni dei dati CCNL (es: ### Valori minimi tabellari)
-- Usa **grassetto** solo per enfasi nei valori, NON per titoli
+- Usa **grassetto** per i titoli delle sezioni (es: **Scadenze**, **Requisiti**)
 - TUTTI i titoli devono usare # o ##, MAI solo numeri o asterischi
 - Usa tabelle per confrontare dati tra settori o aree geografiche
 - CRITICO: Per sezioni numerate usa numeri SEQUENZIALI (## 1., ## 2., ## 3.), MAI ripetere '## 1.' per ogni sezione

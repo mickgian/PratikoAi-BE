@@ -138,6 +138,9 @@ class ToTResult:
 
     Contains the selected hypothesis, all considered hypotheses,
     and full reasoning trace for transparency.
+
+    DEV-251: Added llm_response field to carry the UnifiedResponse
+    so it can be reused by step_064 instead of making duplicate LLM calls.
     """
 
     selected_hypothesis: ToTHypothesis
@@ -145,6 +148,8 @@ class ToTResult:
     reasoning_trace: dict
     total_latency_ms: float
     complexity_used: str
+    # DEV-251: Carry the UnifiedResponse for reuse (avoids duplicate LLM call)
+    llm_response: "UnifiedResponse | None" = None
 
 
 # =============================================================================
@@ -198,6 +203,8 @@ class TreeOfThoughtsReasoner:
         complexity: str,
         max_hypotheses: int = 4,
         domains: list[str] | None = None,
+        conversation_history: list[dict] | None = None,
+        is_followup: bool = False,
     ) -> ToTResult:
         """Execute Tree of Thoughts reasoning.
 
@@ -210,6 +217,8 @@ class TreeOfThoughtsReasoner:
             complexity: Query complexity ("simple", "complex", "multi_domain")
             max_hypotheses: Maximum hypotheses to generate (default: 4)
             domains: Optional list of domains for multi-domain queries
+            conversation_history: Optional conversation history for follow-up context (DEV-251)
+            is_followup: DEV-251 Part 3.1: Whether this is a follow-up question (triggers concise mode)
 
         Returns:
             ToTResult with selected hypothesis and full reasoning trace
@@ -223,16 +232,21 @@ class TreeOfThoughtsReasoner:
             num_sources=len(kb_sources),
             complexity=complexity,
             max_hypotheses=max_hypotheses,
+            is_followup=is_followup,
         )
 
         try:
             # Generate hypotheses via LLM
-            hypotheses, tot_analysis = await self._generate_hypotheses(
+            # DEV-251: Now also returns the UnifiedResponse for reuse
+            # DEV-251 Part 3.1: Pass is_followup for concise response mode
+            hypotheses, tot_analysis, llm_response = await self._generate_hypotheses(
                 query=query,
                 kb_sources=kb_sources,
                 complexity=complexity,
                 count=max_hypotheses,
                 domains=domains,
+                conversation_history=conversation_history,
+                is_followup=is_followup,
             )
 
             # Score each hypothesis using source hierarchy
@@ -265,12 +279,14 @@ class TreeOfThoughtsReasoner:
                 latency_ms=total_latency_ms,
             )
 
+            # DEV-251: Include llm_response for reuse by step_064
             return ToTResult(
                 selected_hypothesis=selected,
                 all_hypotheses=hypotheses,
                 reasoning_trace=reasoning_trace,
                 total_latency_ms=total_latency_ms,
                 complexity_used=complexity_used,
+                llm_response=llm_response,
             )
 
         except Exception as e:
@@ -293,7 +309,9 @@ class TreeOfThoughtsReasoner:
         complexity: str,
         count: int,
         domains: list[str] | None = None,
-    ) -> tuple[list[ToTHypothesis], dict]:
+        conversation_history: list[dict] | None = None,
+        is_followup: bool = False,
+    ) -> tuple[list[ToTHypothesis], dict, UnifiedResponse]:
         """Generate multiple reasoning hypotheses via LLM.
 
         Args:
@@ -302,9 +320,12 @@ class TreeOfThoughtsReasoner:
             complexity: Query complexity
             count: Number of hypotheses to generate
             domains: Optional domain list for multi-domain
+            conversation_history: Optional conversation history for follow-up context (DEV-251)
+            is_followup: DEV-251 Part 3.1: Whether this is a follow-up question
 
         Returns:
-            Tuple of (hypotheses list, raw tot_analysis dict)
+            Tuple of (hypotheses list, raw tot_analysis dict, UnifiedResponse)
+            DEV-251: Now returns UnifiedResponse for reuse by step_064
         """
         # Map complexity string to enum
         complexity_enum = QueryComplexity(complexity)
@@ -313,11 +334,17 @@ class TreeOfThoughtsReasoner:
         kb_context = self._format_kb_context(kb_sources)
 
         # Get response from LLM
+        # DEV-251 fix: Pass domains to generate_response for tree_of_thoughts prompt
+        # DEV-251: Pass conversation_history for follow-up context
+        # DEV-251 Part 3.1: Pass is_followup for concise response mode
         response: UnifiedResponse = await self.llm_orchestrator.generate_response(
             query=query,
             kb_context=kb_context,
             kb_sources_metadata=kb_sources,
             complexity=complexity_enum,
+            domains=domains,
+            conversation_history=conversation_history,
+            is_followup=is_followup,
         )
 
         # Parse hypotheses from response
@@ -326,10 +353,15 @@ class TreeOfThoughtsReasoner:
         # Get tot_analysis for trace
         tot_analysis = response.tot_analysis or {}
 
-        return hypotheses, tot_analysis
+        # DEV-251: Return response for reuse
+        return hypotheses, tot_analysis, response
 
     def _parse_hypotheses(self, response: UnifiedResponse) -> list[ToTHypothesis]:
         """Parse hypotheses from LLM response.
+
+        DEV-251: Now handles free-form responses (no JSON/hypotheses structure).
+        When the LLM returns free-form text, we create a single hypothesis
+        from the full answer text, preserving all details.
 
         Args:
             response: UnifiedResponse from LLM
@@ -355,16 +387,25 @@ class TreeOfThoughtsReasoner:
             )
             hypotheses.append(hypothesis)
 
-        # If no hypotheses from ToT, create one from the answer
+        # DEV-251: Free-form response handling
+        # If no hypotheses from ToT (now expected with free-form prompt),
+        # create a single hypothesis from the full answer text
         if not hypotheses:
+            # The answer now contains the FULL free-form response
+            # (not just the short JSON "answer" field)
+            logger.info(
+                "tot_using_free_form_response",
+                answer_length=len(response.answer),
+                has_sources=len(response.sources_cited) > 0,
+            )
             hypotheses.append(
                 ToTHypothesis(
                     id="H1",
                     reasoning_path=response.answer,
                     conclusion=response.answer,
-                    confidence=0.5,
+                    confidence=0.7,  # DEV-251: Higher default for free-form
                     sources_used=response.sources_cited,
-                    source_weight_score=0.5,
+                    source_weight_score=0.7,  # DEV-251: Reasonable default score
                 )
             )
 

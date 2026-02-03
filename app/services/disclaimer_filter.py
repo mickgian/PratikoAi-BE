@@ -8,6 +8,10 @@ is both unhelpful and damages our brand as a trusted AI assistant.
 
 Industry best practice: Output filtering with regex/pattern matching as a safety net
 when prompt instructions are ignored by the LLM.
+
+DEV-251: Fixed to remove only the disclaimer phrase, not entire sentences.
+This prevents excessive content removal that was causing 2000+ char responses
+to be truncated to 300-400 chars.
 """
 
 import re
@@ -15,7 +19,7 @@ import re
 from app.core.logging import logger
 
 # Patterns that match prohibited disclaimer phrases in Italian
-# Each pattern should match a complete sentence or phrase to remove
+# DEV-251: Patterns now remove only the matched phrase, not the entire sentence
 DISCLAIMER_PATTERNS: list[str] = [
     # "consult an expert" variants
     r"consult[ai] un (esperto|professionista|commercialista|consulente)",
@@ -34,7 +38,7 @@ DISCLAIMER_PATTERNS: list[str] = [
 ]
 
 # Compile patterns for efficiency
-_COMPILED_PATTERNS: list[re.Pattern] = [re.compile(pattern, re.IGNORECASE) for pattern in DISCLAIMER_PATTERNS]
+_COMPILED_PATTERNS: list[re.Pattern[str]] = [re.compile(pattern, re.IGNORECASE) for pattern in DISCLAIMER_PATTERNS]
 
 
 class DisclaimerFilter:
@@ -48,8 +52,8 @@ class DisclaimerFilter:
     def filter_response(response_text: str) -> tuple[str, list[str]]:
         """Remove disclaimer phrases from LLM response.
 
-        Finds sentences containing prohibited phrases and removes them entirely.
-        This ensures clean output without awkward partial sentences.
+        DEV-251: Changed to remove only the matched phrase, not the entire sentence.
+        This preserves sentence structure while removing just the problematic content.
 
         Args:
             response_text: The raw LLM response text
@@ -62,32 +66,68 @@ class DisclaimerFilter:
         if not response_text:
             return "", []
 
+        original_length = len(response_text)
         removed: list[str] = []
         cleaned = response_text
 
         for pattern in _COMPILED_PATTERNS:
-            # Check if pattern exists in text
+            # Find all matches for this pattern
             match = pattern.search(cleaned)
-            if match:
-                removed.append(match.group(0))
+            while match:
+                matched_text = match.group(0)
+                logger.debug(
+                    "disclaimer_phrase_matched",
+                    pattern=pattern.pattern,
+                    matched_text=matched_text,
+                    position=match.start(),
+                )
+                removed.append(matched_text)
 
-                # Remove the entire sentence containing the disclaimer
-                # A sentence is bounded by . ! ? or start/end of string
-                sentence_pattern = rf"[^.!?\n]*{pattern.pattern}[^.!?\n]*[.!?]?\s*"
-                cleaned = re.sub(sentence_pattern, "", cleaned, flags=re.IGNORECASE)
+                # DEV-251: Remove only the matched phrase, not the entire sentence
+                # This preserves the sentence structure while removing the disclaimer
+                cleaned = pattern.sub("", cleaned, count=1)
 
+                # Check for more matches of this pattern
+                match = pattern.search(cleaned)
+
+        # Clean up artifacts left by phrase removal
+        # Remove leading punctuation/connectors that now start a sentence
+        cleaned = re.sub(r"([.!?]\s*)[,;:]\s*", r"\1", cleaned)
+        # Remove double punctuation
+        cleaned = re.sub(r"([.!?])\s*[.!?]", r"\1", cleaned)
+        # Remove orphaned standalone connectors at end of sentences (with word boundaries)
+        # \b ensures we match whole words only, not "e" at end of "richieste"
+        cleaned = re.sub(r",?\s+\b(per|o|e)\b\s*[.!?]", ".", cleaned)
         # Clean up any double spaces or trailing whitespace
         # DEV-250: Only collapse multiple spaces, preserve newlines for markdown formatting
         cleaned = re.sub(r" {2,}", " ", cleaned)
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         cleaned = cleaned.strip()
 
+        # DEV-251: Log length change for debugging content loss issues
+        cleaned_length = len(cleaned)
+        chars_removed = original_length - cleaned_length
+
         if removed:
-            logger.warning(
-                "disclaimer_phrases_removed",
-                removed_count=len(removed),
-                phrases=removed[:5],  # Log first 5 for brevity
+            logger.info(
+                "disclaimer_filter_applied",
+                original_length=original_length,
+                cleaned_length=cleaned_length,
+                chars_removed=chars_removed,
+                removal_percentage=round((chars_removed / original_length) * 100, 1) if original_length > 0 else 0,
+                phrases_removed=removed[:5],  # Log first 5 for brevity
             )
+
+            # DEV-251: Warn if excessive content removal detected
+            if original_length > 0 and chars_removed > original_length * 0.5:
+                logger.warning(
+                    "disclaimer_filter_excessive_removal",
+                    original_length=original_length,
+                    cleaned_length=cleaned_length,
+                    chars_removed=chars_removed,
+                    removal_percentage=round((chars_removed / original_length) * 100, 1),
+                    phrases_removed=removed,
+                )
 
         return cleaned, removed
 

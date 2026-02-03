@@ -6,10 +6,10 @@ These tests follow TDD methodology - written BEFORE implementation.
 Run with: pytest tests/unit/services/test_tree_of_thoughts_reasoner.py -v
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 # =============================================================================
 # Fixtures
@@ -58,6 +58,7 @@ def mock_llm_orchestrator():
     # Default response with hypotheses
     async def mock_generate(*args, **kwargs):
         from app.services.llm_orchestrator import UnifiedResponse
+
         return UnifiedResponse(
             reasoning={
                 "tema": "Test tema",
@@ -151,9 +152,7 @@ def sample_kb_sources():
 class TestTreeOfThoughtsReasonerInit:
     """Tests for TreeOfThoughtsReasoner initialization."""
 
-    def test_init_with_dependencies(
-        self, mock_llm_orchestrator, mock_source_hierarchy, mock_prompt_loader
-    ):
+    def test_init_with_dependencies(self, mock_llm_orchestrator, mock_source_hierarchy, mock_prompt_loader):
         """Reasoner initializes with all dependencies."""
         from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
 
@@ -167,9 +166,7 @@ class TestTreeOfThoughtsReasonerInit:
         assert reasoner.source_hierarchy == mock_source_hierarchy
         assert reasoner.prompt_loader == mock_prompt_loader
 
-    def test_init_with_default_max_hypotheses(
-        self, mock_llm_orchestrator, mock_source_hierarchy, mock_prompt_loader
-    ):
+    def test_init_with_default_max_hypotheses(self, mock_llm_orchestrator, mock_source_hierarchy, mock_prompt_loader):
         """Reasoner has default max_hypotheses of 4."""
         from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
 
@@ -309,13 +306,7 @@ class TestSourceHierarchyScoring:
             prompt_loader=mock_prompt_loader,
         )
 
-        # Create sources with different hierarchy levels
-        kb_sources = [
-            {"id": "1", "title": "Legge 1/2020", "type": "legge", "hierarchy_weight": 1.0},
-            {"id": "2", "title": "Circolare 1/2020", "type": "circolare", "hierarchy_weight": 0.6},
-        ]
-
-        # Test internal scoring method
+        # Test internal scoring method for different hierarchy levels
         legge_score = reasoner._get_source_weight("legge")
         circolare_score = reasoner._get_source_weight("circolare")
 
@@ -327,8 +318,8 @@ class TestSourceHierarchyScoring:
     ):
         """Scoring formula: score = source_weight * confidence."""
         from app.services.tree_of_thoughts_reasoner import (
-            TreeOfThoughtsReasoner,
             ToTHypothesis,
+            TreeOfThoughtsReasoner,
         )
 
         reasoner = TreeOfThoughtsReasoner(
@@ -393,8 +384,8 @@ class TestHypothesisSelection:
         self, mock_source_hierarchy, mock_prompt_loader, sample_kb_sources
     ):
         """Single valid hypothesis is returned without comparison."""
-        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
         from app.services.llm_orchestrator import UnifiedResponse
+        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
 
         # Create orchestrator that returns single hypothesis
         single_orchestrator = MagicMock()
@@ -457,12 +448,10 @@ class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
     @pytest.mark.asyncio
-    async def test_handles_no_sources(
-        self, mock_source_hierarchy, mock_prompt_loader
-    ):
+    async def test_handles_no_sources(self, mock_source_hierarchy, mock_prompt_loader):
         """Reasoner handles queries with no KB sources gracefully."""
-        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
         from app.services.llm_orchestrator import UnifiedResponse
+        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
 
         # Create mock that returns hypothesis without sources
         no_sources_orchestrator = MagicMock()
@@ -526,9 +515,7 @@ class TestEdgeCases:
 
         # Create failing orchestrator
         failing_orchestrator = MagicMock()
-        failing_orchestrator.generate_response = AsyncMock(
-            side_effect=Exception("LLM call failed")
-        )
+        failing_orchestrator.generate_response = AsyncMock(side_effect=Exception("LLM call failed"))
 
         reasoner = TreeOfThoughtsReasoner(
             llm_orchestrator=failing_orchestrator,
@@ -547,12 +534,10 @@ class TestEdgeCases:
         assert result.complexity_used == "fallback"
 
     @pytest.mark.asyncio
-    async def test_all_low_confidence_flagged(
-        self, mock_source_hierarchy, mock_prompt_loader, sample_kb_sources
-    ):
+    async def test_all_low_confidence_flagged(self, mock_source_hierarchy, mock_prompt_loader, sample_kb_sources):
         """Low confidence hypotheses are flagged for review."""
-        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
         from app.services.llm_orchestrator import UnifiedResponse
+        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
 
         # Create orchestrator that returns low confidence
         low_conf_orchestrator = MagicMock()
@@ -641,8 +626,8 @@ class TestMultiDomainHandling:
         self, mock_source_hierarchy, mock_prompt_loader, sample_kb_sources
     ):
         """Multi-domain result includes per-domain analyses."""
-        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
         from app.services.llm_orchestrator import UnifiedResponse
+        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
 
         # Create orchestrator with multi-domain response
         multi_orchestrator = MagicMock()
@@ -756,11 +741,7 @@ class TestReasoningTrace:
 
         # Should have selection reasoning
         trace = result.reasoning_trace
-        has_selection = (
-            "selection_reasoning" in trace
-            or "selected" in trace
-            or "selection" in str(trace).lower()
-        )
+        has_selection = "selection_reasoning" in trace or "selected" in trace or "selection" in str(trace).lower()
         assert has_selection
 
     @pytest.mark.asyncio
@@ -896,6 +877,7 @@ class TestIntegration:
     ):
         """ToT reasoning completes within 3 seconds (mocked)."""
         import time
+
         from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
 
         reasoner = TreeOfThoughtsReasoner(
@@ -929,27 +911,23 @@ class TestFactoryFunctions:
     def test_get_tree_of_thoughts_reasoner_returns_instance(self):
         """get_tree_of_thoughts_reasoner returns an instance."""
         from app.services.tree_of_thoughts_reasoner import (
+            TreeOfThoughtsReasoner,
             get_tree_of_thoughts_reasoner,
             reset_reasoner,
-            TreeOfThoughtsReasoner,
         )
 
         # Reset first to ensure clean state
         reset_reasoner()
-
-        try:
-            # This may fail if LLM/DB not configured, so we just test the import works
-            pass  # Factory creates real instances that need actual deps
-        except Exception:
-            pass  # Expected in test environment without full deps
+        # Factory imports verified - actual instantiation tested elsewhere
 
     def test_reset_reasoner_clears_instance(self):
         """reset_reasoner clears the singleton instance."""
-        from app.services.tree_of_thoughts_reasoner import reset_reasoner, _reasoner_instance
+        from app.services.tree_of_thoughts_reasoner import _reasoner_instance, reset_reasoner
 
         reset_reasoner()
         # After reset, instance should be None
         from app.services import tree_of_thoughts_reasoner
+
         assert tree_of_thoughts_reasoner._reasoner_instance is None
 
 
@@ -995,9 +973,7 @@ class TestParsingMethods:
         assert reasoner._parse_confidence(0.75) == 0.75
         assert reasoner._parse_confidence(1) == 1.0
 
-    def test_parse_sources_with_string(
-        self, mock_llm_orchestrator, mock_source_hierarchy, mock_prompt_loader
-    ):
+    def test_parse_sources_with_string(self, mock_llm_orchestrator, mock_source_hierarchy, mock_prompt_loader):
         """_parse_sources handles string input."""
         from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
 
@@ -1010,9 +986,7 @@ class TestParsingMethods:
         result = reasoner._parse_sources("Art. 1 Legge 123/2020")
         assert result == [{"ref": "Art. 1 Legge 123/2020"}]
 
-    def test_parse_risk_level_empty_string(
-        self, mock_llm_orchestrator, mock_source_hierarchy, mock_prompt_loader
-    ):
+    def test_parse_risk_level_empty_string(self, mock_llm_orchestrator, mock_source_hierarchy, mock_prompt_loader):
         """_parse_risk_level handles empty string."""
         from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
 
@@ -1033,8 +1007,8 @@ class TestHypothesisFallback:
         self, mock_source_hierarchy, mock_prompt_loader, sample_kb_sources
     ):
         """Falls back to answer as hypothesis when ToT returns empty."""
-        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
         from app.services.llm_orchestrator import UnifiedResponse
+        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
 
         # Create orchestrator that returns no hypotheses
         empty_orchestrator = MagicMock()
@@ -1077,3 +1051,217 @@ class TestHypothesisFallback:
         assert result.selected_hypothesis is not None
         assert result.selected_hypothesis.id == "H1"
         assert "Fallback answer" in result.selected_hypothesis.reasoning_path
+
+
+# =============================================================================
+# Tests: Free-Form Response Handling (DEV-251)
+# =============================================================================
+
+
+class TestFreeFormResponseHandling:
+    """Tests for DEV-251 free-form response handling."""
+
+    @pytest.mark.asyncio
+    async def test_handles_long_free_form_response(self, mock_source_hierarchy, mock_prompt_loader, sample_kb_sources):
+        """DEV-251: Free-form responses preserve full content length."""
+        from app.services.llm_orchestrator import UnifiedResponse
+        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
+
+        # Create orchestrator that returns a long free-form response
+        free_form_orchestrator = MagicMock()
+
+        # Simulate a detailed 1500+ char response (like "rottamazione quinquies")
+        long_answer = """La rottamazione quinquies, disciplinata dalla Legge 199/2025, rappresenta
+una nuova opportunità per i contribuenti con debiti iscritti a ruolo.
+
+## Scadenze
+
+La domanda deve essere presentata entro il 30 aprile 2026. Il pagamento
+può essere effettuato in un'unica soluzione entro il 31 luglio 2026, oppure
+in un massimo di 18 rate.
+
+## Benefici
+
+Il provvedimento prevede la cancellazione delle sanzioni e degli interessi
+di mora. Rimangono dovuti il capitale, le spese di riscossione e gli interessi
+al tasso del 3% annuo (Art. 1, comma 231, L. 199/2025).
+
+## Requisiti
+
+Possono accedere i contribuenti con carichi affidati all'agente della
+riscossione fino al 31 dicembre 2023. Sono esclusi i piani della rottamazione
+quater in regola con i pagamenti.
+
+## Conseguenze del Mancato Pagamento
+
+Il mancato pagamento di due rate, anche non consecutive, comporta la
+decadenza dal beneficio e il ripristino del debito originario."""
+
+        async def mock_free_form(*args, **kwargs):
+            return UnifiedResponse(
+                reasoning={},
+                reasoning_type="tot",
+                tot_analysis=None,  # No structured ToT analysis
+                answer=long_answer,  # Full free-form text
+                sources_cited=[{"ref": "Art. 1, comma 231, L. 199/2025"}],
+                suggested_actions=[],
+                model_used="gpt-4o",
+                tokens_input=500,
+                tokens_output=1500,
+                cost_euros=0.02,
+                latency_ms=2000,
+            )
+
+        free_form_orchestrator.generate_response = AsyncMock(side_effect=mock_free_form)
+
+        reasoner = TreeOfThoughtsReasoner(
+            llm_orchestrator=free_form_orchestrator,
+            source_hierarchy=mock_source_hierarchy,
+            prompt_loader=mock_prompt_loader,
+        )
+
+        result = await reasoner.reason(
+            query="Parlami della rottamazione quinquies",
+            kb_sources=sample_kb_sources,
+            complexity="complex",
+        )
+
+        # The full response should be preserved
+        assert result.selected_hypothesis is not None
+        # Test string is ~923 chars, ensure it's preserved (not truncated to 319)
+        assert len(result.selected_hypothesis.conclusion) > 900
+        assert "30 aprile 2026" in result.selected_hypothesis.conclusion
+        assert "31 luglio 2026" in result.selected_hypothesis.conclusion
+        assert "18 rate" in result.selected_hypothesis.conclusion
+
+    @pytest.mark.asyncio
+    async def test_free_form_has_reasonable_confidence(
+        self, mock_source_hierarchy, mock_prompt_loader, sample_kb_sources
+    ):
+        """DEV-251: Free-form responses should have reasonable default confidence."""
+        from app.services.llm_orchestrator import UnifiedResponse
+        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
+
+        free_form_orchestrator = MagicMock()
+
+        async def mock_free_form(*args, **kwargs):
+            return UnifiedResponse(
+                reasoning={},
+                reasoning_type="tot",
+                tot_analysis=None,
+                answer="Risposta dettagliata sulla normativa fiscale.",
+                sources_cited=[{"ref": "Art. 1 DPR 633/72"}],
+                suggested_actions=[],
+                model_used="gpt-4o",
+                tokens_input=100,
+                tokens_output=500,
+                cost_euros=0.01,
+                latency_ms=1000,
+            )
+
+        free_form_orchestrator.generate_response = AsyncMock(side_effect=mock_free_form)
+
+        reasoner = TreeOfThoughtsReasoner(
+            llm_orchestrator=free_form_orchestrator,
+            source_hierarchy=mock_source_hierarchy,
+            prompt_loader=mock_prompt_loader,
+        )
+
+        result = await reasoner.reason(
+            query="Test query",
+            kb_sources=sample_kb_sources,
+            complexity="complex",
+        )
+
+        # Free-form should have reasonable confidence (not the old 0.5)
+        assert result.selected_hypothesis.confidence >= 0.7
+        # source_weight_score is recalculated by _score_hypothesis
+        # and depends on source hierarchy, so just check it's positive
+        assert result.selected_hypothesis.source_weight_score > 0
+
+    @pytest.mark.asyncio
+    async def test_llm_response_carried_for_reuse(self, mock_source_hierarchy, mock_prompt_loader, sample_kb_sources):
+        """DEV-251: UnifiedResponse should be carried in ToTResult for step_064 reuse."""
+        from app.services.llm_orchestrator import UnifiedResponse
+        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
+
+        free_form_orchestrator = MagicMock()
+
+        async def mock_free_form(*args, **kwargs):
+            return UnifiedResponse(
+                reasoning={},
+                reasoning_type="tot",
+                tot_analysis=None,
+                answer="Risposta completa.",
+                sources_cited=[],
+                suggested_actions=[],
+                model_used="gpt-4o",
+                tokens_input=100,
+                tokens_output=300,
+                cost_euros=0.005,
+                latency_ms=800,
+            )
+
+        free_form_orchestrator.generate_response = AsyncMock(side_effect=mock_free_form)
+
+        reasoner = TreeOfThoughtsReasoner(
+            llm_orchestrator=free_form_orchestrator,
+            source_hierarchy=mock_source_hierarchy,
+            prompt_loader=mock_prompt_loader,
+        )
+
+        result = await reasoner.reason(
+            query="Test query",
+            kb_sources=sample_kb_sources,
+            complexity="complex",
+        )
+
+        # The llm_response should be carried for reuse
+        assert result.llm_response is not None
+        assert result.llm_response.answer == "Risposta completa."
+        assert result.llm_response.model_used == "gpt-4o"
+
+    @pytest.mark.asyncio
+    async def test_free_form_with_sources_cited(self, mock_source_hierarchy, mock_prompt_loader, sample_kb_sources):
+        """DEV-251: Free-form responses should include sources from UnifiedResponse."""
+        from app.services.llm_orchestrator import UnifiedResponse
+        from app.services.tree_of_thoughts_reasoner import TreeOfThoughtsReasoner
+
+        free_form_orchestrator = MagicMock()
+        test_sources = [
+            {"ref": "Art. 1, comma 231, L. 199/2025", "relevance": "principale"},
+            {"ref": "Circolare AdE 10/E/2025", "relevance": "supporto"},
+        ]
+
+        async def mock_free_form(*args, **kwargs):
+            return UnifiedResponse(
+                reasoning={},
+                reasoning_type="tot",
+                tot_analysis=None,
+                answer="Risposta con fonti citate inline.",
+                sources_cited=test_sources,
+                suggested_actions=[],
+                model_used="gpt-4o",
+                tokens_input=100,
+                tokens_output=400,
+                cost_euros=0.008,
+                latency_ms=900,
+            )
+
+        free_form_orchestrator.generate_response = AsyncMock(side_effect=mock_free_form)
+
+        reasoner = TreeOfThoughtsReasoner(
+            llm_orchestrator=free_form_orchestrator,
+            source_hierarchy=mock_source_hierarchy,
+            prompt_loader=mock_prompt_loader,
+        )
+
+        result = await reasoner.reason(
+            query="Test query",
+            kb_sources=sample_kb_sources,
+            complexity="complex",
+        )
+
+        # Sources should be preserved in the hypothesis
+        assert len(result.selected_hypothesis.sources_used) == 2
+        assert result.selected_hypothesis.sources_used == test_sources

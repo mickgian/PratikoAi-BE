@@ -47,10 +47,13 @@ from app.schemas.router import ExtractedEntity, RouterDecision, RoutingCategory 
 def _create_low_confidence_hf_mock():
     """Create a mock HF classifier that returns low confidence to force GPT fallback."""
     mock_hf = MagicMock()
-    mock_hf.classify.return_value = IntentResult(
-        intent="technical_research",
-        confidence=0.5,  # Below threshold (0.7), forces GPT fallback
-        all_scores={"technical_research": 0.5, "chitchat": 0.2},
+    # DEV-251: classify_async is an async method, use AsyncMock for return value
+    mock_hf.classify_async = AsyncMock(
+        return_value=IntentResult(
+            intent="technical_research",
+            confidence=0.5,  # Below threshold (0.7), forces GPT fallback
+            all_scores={"technical_research": 0.5, "chitchat": 0.2},
+        )
     )
     mock_hf.should_fallback_to_gpt.return_value = True
     mock_hf.confidence_threshold = 0.7

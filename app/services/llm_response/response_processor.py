@@ -103,8 +103,8 @@ def process_unified_response(content: str, state: RAGStateDict) -> str:
         return answer
     else:
         # Fallback: JSON parsing failed
-        # DEV-226: Preserve ToT reasoning_type if already set
-        if state.get("reasoning_type") != "tot":
+        # DEV-226/DEV-251: Preserve reasoning_type if already set (tot or cot fallback)
+        if state.get("reasoning_type") not in ("tot", "cot"):
             state["reasoning_type"] = None
             state["reasoning_trace"] = None
         state["sources_cited"] = []

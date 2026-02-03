@@ -1694,6 +1694,149 @@ Follow-up queries → classified as SIMPLE (short) → uses `unified_response_si
 
 ---
 
+### Backend Post-Processing for Response Formatting (DEV-251 Part 4 - ✅ IMPLEMENTED)
+
+**Critical Learning (February 2026):** LLM prompt instructions for output formatting (bold, numbered sections, specific markdown) are unreliable. Use deterministic backend post-processing instead.
+
+**Problem Pattern:**
+```
+User asks: "parlami della rottamazione quinquies"
+Expected: "1. **Scadenze**: La domanda deve essere..."
+Actual:   "1. Scadenze
+          La domanda deve essere..."  ← NO bold markers!
+```
+
+Prompt instruction "Use **bold** for section titles" was ignored by the LLM.
+
+**Solution Pattern - Backend Post-Processor:**
+
+```python
+# app/services/llm_response/bold_section_formatter.py
+class BoldSectionFormatter:
+    """Transforms plain sections to bold markdown."""
+
+    # Pattern: "1. Title" at line start (not already bold)
+    NUMBERED_SECTION_PATTERN = re.compile(
+        r"^(\d+)\.\s+"  # "1. " at line start
+        r"(?!\*\*)"     # NOT already bold (negative lookahead)
+        r"([A-ZÀ-Ù][a-zà-ùA-ZÀ-Ù\s/]+?)"  # Title: uppercase start
+        r"(?::?\s*)$",  # Optional colon, end of line
+        re.MULTILINE,
+    )
+
+    @staticmethod
+    def format_sections(response_text: str) -> str:
+        """Transform '1. Title' → '1. **Title**:'"""
+        # Deterministic regex replacement - always works
+        ...
+
+# app/services/llm_response/response_processor.py
+def process_unified_response(content: str, state: RAGStateDict) -> str:
+    # ... parse JSON, filter disclaimers ...
+
+    # DEV-251: Apply formatting post-processors
+    answer = SectionNumberingFixer.fix_numbering(answer)  # 1,1,1 → 1,2,3
+    answer = BoldSectionFormatter.format_sections(answer)  # Add **bold**
+
+    return answer
+```
+
+**Why Backend Post-Processing is Better:**
+
+| Prompt-Based | Backend Post-Processor |
+|--------------|------------------------|
+| LLM may ignore | Always applied |
+| Inconsistent across runs | Deterministic |
+| Hard to test | Easy to unit test |
+| Requires prompt tuning | One-time implementation |
+| Wastes tokens on formatting | LLM focuses on content |
+
+**Industry Best Practice Sources:**
+- [Agenta: Guide to Structured Outputs](https://agenta.ai/blog/the-guide-to-structured-outputs-and-function-calling-with-llms)
+- [Dataiku: Taming LLM Outputs](https://www.dataiku.com/stories/blog/your-guide-to-structured-text-generation)
+
+**Key Design Decisions:**
+1. **Negative lookahead `(?!\*\*)`** - Skip already-bold sections (idempotent)
+2. **Uppercase detection** - Only format section titles, not regular list items
+3. **Italian accents support** - `[A-ZÀ-Ù]` for characters like Modalità, Scadenze
+4. **Processing order** - Numbering fix THEN bold formatting (order matters)
+
+**Files Created/Modified:**
+| File | Change |
+|------|--------|
+| `bold_section_formatter.py` | CREATE - New post-processor |
+| `response_processor.py` | MODIFY - Integrate formatters |
+| `__init__.py` | MODIFY - Export formatters |
+| `test_bold_section_formatter.py` | CREATE - 23 TDD tests |
+
+**Prevention Checklist:**
+- [ ] Never rely on prompt instructions for output formatting
+- [ ] Use regex-based post-processors for consistent formatting
+- [ ] Include negative lookahead to prevent double-formatting
+- [ ] Test with real LLM output variations, not just ideal cases
+- [ ] Process in correct order: numbering → bold → other transforms
+- [ ] Handle Italian accented characters in regex patterns
+
+---
+
+### Prompt-Based Bold Section Headers (DEV-251 Part 5 - ✅ IMPLEMENTED)
+
+**Critical Learning (February 2026):** Contradicting prompt instructions ("NON per titoli") prevented LLM from adding bold formatting to section headers. While Part 4 handles numbered sections via post-processing, free-form prose headers needed a prompt-based solution.
+
+**Problem Pattern:**
+```
+Prompt instruction: "Usa **grassetto** solo per enfasi nel testo, NON per titoli"
+    ↓
+LLM outputs: "Conseguenze del Mancato Adempimento" (plain text)
+    ↓
+Expected: "**Conseguenze del Mancato Adempimento**" (bold header)
+```
+
+The "NON per titoli" instruction explicitly prohibited bold headers, conflicting with the visual hierarchy goal.
+
+**Solution Pattern - Update Prompt Instructions:**
+
+Changed prompt instructions from prohibition to encouragement:
+
+```python
+# BEFORE (conflicting):
+"- Usa **grassetto** solo per enfasi nel testo, NON per titoli"
+
+# AFTER (aligned with goal):
+"- Usa **grassetto** per i titoli delle sezioni (es: **Scadenze**, **Requisiti**)"
+```
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `domain_prompt_templates.py` | 7 occurrences updated (lines 110, 147, 186, 227, 270, 314, 360) |
+| `unified_response_simple.md` | Updated STRUTTURA CONSIGLIATA section |
+| `tree_of_thoughts.md` | Updated STRUTTURA CONSIGLIATA section |
+| `prompting.py` | Updated format instruction in grounding rules |
+
+**Relationship to Part 4:**
+
+| Approach | Handles | Example |
+|----------|---------|---------|
+| Part 4: Backend post-processor | Numbered sections | `1. Scadenze` → `1. **Scadenze**:` |
+| Part 5: Prompt instruction | Free-form headers | `Conseguenze` → `**Conseguenze**` |
+
+Both approaches are complementary - post-processing catches what the LLM misses, while prompt instructions encourage proper formatting.
+
+**Key Design Decision:**
+Prompt-based approach chosen over extending the post-processor because:
+1. Free-form headers lack consistent patterns (unlike numbered sections)
+2. LLMs follow direct instructions well when not contradicted
+3. Simpler than complex regex for varied header styles
+
+**Prevention Checklist:**
+- [ ] Review prompt instructions for contradictions before expecting specific formatting
+- [ ] Check all prompt templates when changing formatting rules (7 templates in domain_prompt_templates.py)
+- [ ] Use grep to verify old instruction is removed: `grep -r "NON per titoli" app/`
+- [ ] Combine prompt instructions with post-processing for robust formatting
+
+---
+
 ### Comprehensive Feature Removal Checklist (DEV-245 Phase 5.15.1 - ✅ IMPLEMENTED)
 
 **Critical Learning (January 2026):** When removing a feature, missed references cause runtime errors that may not surface until specific code paths are executed.

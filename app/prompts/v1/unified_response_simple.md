@@ -130,7 +130,7 @@ Scrivi la risposta come un documento professionale in italiano.
 
 **STRUTTURA CONSIGLIATA:**
 - Introduzione con definizione dell'argomento
-- Sezioni con headers markdown (## Titolo) per ogni aspetto principale
+- Sezioni con titoli in **grassetto** (es: **Conseguenze del Mancato Adempimento**)
 - Paragrafi fluidi all'interno di ogni sezione
 - Citazioni inline nel testo
 

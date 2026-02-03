@@ -8,7 +8,9 @@ from typing import Any
 from app.core.logging import logger
 from app.services.reasoning_trace_logger import log_reasoning_trace_failed
 
+from .bold_section_formatter import BoldSectionFormatter
 from .json_parser import parse_unified_response
+from .section_numbering_fixer import SectionNumberingFixer
 from .source_hierarchy import apply_source_hierarchy
 
 # Type alias for RAG state dict
@@ -85,6 +87,12 @@ def process_unified_response(content: str, state: RAGStateDict) -> str:
                 request_id=state.get("request_id"),
             )
 
+        # DEV-251: Apply formatting post-processors
+        # 1. Fix section numbering (1. 1. 1. → 1. 2. 3.)
+        answer = SectionNumberingFixer.fix_numbering(answer)
+        # 2. Add bold to plain sections (1. Title → 1. **Title**:)
+        answer = BoldSectionFormatter.format_sections(answer)
+
         logger.info(
             "step64_unified_response_parsed",
             has_reasoning=parsed.get("reasoning") is not None,
@@ -126,5 +134,11 @@ def process_unified_response(content: str, state: RAGStateDict) -> str:
                 removed_count=len(removed_disclaimers),
                 request_id=state.get("request_id"),
             )
+
+        # DEV-251: Apply formatting post-processors (fallback branch)
+        # 1. Fix section numbering (1. 1. 1. → 1. 2. 3.)
+        filtered_content = SectionNumberingFixer.fix_numbering(filtered_content) or ""
+        # 2. Add bold to plain sections (1. Title → 1. **Title**:)
+        filtered_content = BoldSectionFormatter.format_sections(filtered_content) or ""
 
         return filtered_content

@@ -1281,3 +1281,275 @@ For a typical query like "parlami della rottamazione quinquies":
 ```
 
 **LLM time: 37.7s (92%)** | **Overhead: 3.3s (8%)**
+
+---
+
+## DEV-251 Part 4: Fix Response Formatting with Backend Post-Processor
+
+**Status:** ✅ Implemented (2026-02-03)
+**Author:** Claude Code
+
+### Problem
+
+Response formatting broke after DEV-251 Part 3.2 changes. Main points like "1. Scadenze" were plain text instead of bold with teal color.
+
+**Good format (expected):**
+```
+1. **Definizione**: La Rottamazione Quinquies è...
+2. **Requisiti**: Possono aderire...
+3. **Scadenze**:
+   • **Presentazione della domanda**: entro il 30 aprile...
+```
+
+**Broken format (actual):**
+```
+1. Scadenze
+La domanda di adesione...
+2. Importi e Aliquote
+```
+
+### Root Cause
+
+The LLM was not outputting `**bold**` markdown markers in numbered sections. The prompt said "PREFERISCI LA PROSA FLUIDA" and didn't explicitly instruct bold formatting. Prompt-based instructions for formatting are unreliable.
+
+### Solution: Backend Post-Processor (Industry Best Practice)
+
+Instead of relying on prompt instructions (which LLMs can ignore), we created a backend post-processor that transforms plain numbered sections to bold format.
+
+**Key insight:** `SectionNumberingFixer` already existed but was **NOT integrated** into the processing pipeline. We:
+1. Created `BoldSectionFormatter` to add bold markers
+2. Integrated BOTH formatters into `process_unified_response()`
+
+### Architecture
+
+```
+LLM Response
+    ↓
+parse_unified_response() - Extract JSON
+    ↓
+DisclaimerFilter.filter_response() - Remove unwanted disclaimers
+    ↓
+SectionNumberingFixer.fix_numbering() - Fix "1. 1. 1." → "1. 2. 3."
+    ↓
+BoldSectionFormatter.format_sections() - Add "**bold**" to titles
+    ↓
+Final Response (with styled sections)
+```
+
+### Files Modified/Created
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `app/services/llm_response/bold_section_formatter.py` | CREATE | New post-processor for bold formatting |
+| `app/services/llm_response/response_processor.py` | MODIFY | Integrate both formatters into pipeline |
+| `app/services/llm_response/__init__.py` | MODIFY | Export new formatter |
+| `tests/services/test_bold_section_formatter.py` | CREATE | TDD tests (23 tests) |
+
+### Implementation Details
+
+**BoldSectionFormatter Patterns:**
+
+```python
+# Pattern: "1. Title" at line start (not already bold)
+NUMBERED_SECTION_PATTERN = re.compile(
+    r"^(\d+)\.\s+"  # "1. " at line start
+    r"(?!\*\*)"     # NOT already bold (negative lookahead)
+    r"([A-ZÀ-Ù][a-zà-ùA-ZÀ-Ù\s/]+?)"  # Title: uppercase start
+    r"(?::?\s*)$",  # Optional colon, end of line
+    re.MULTILINE,
+)
+
+# Pattern: "- Title:" or "• Title:" bullet subsection
+BULLET_SUBSECTION_PATTERN = re.compile(
+    r"^(\s*[-•])\s+"  # Bullet at line start
+    r"(?!\*\*)"       # NOT already bold
+    r"([A-ZÀ-Ù][a-zà-ùA-ZÀ-Ù\s]+)"  # Title
+    r":\s*",          # Colon after title (required)
+    re.MULTILINE,
+)
+```
+
+**Transformations:**
+- `1. Scadenze` → `1. **Scadenze**:`
+- `- Presentazione domanda:` → `- **Presentazione domanda**:`
+- Already bold sections preserved (no double-bolding)
+
+**Integration in response_processor.py:**
+```python
+# DEV-251: Apply formatting post-processors
+# 1. Fix section numbering (1. 1. 1. → 1. 2. 3.)
+answer = SectionNumberingFixer.fix_numbering(answer)
+# 2. Add bold to plain sections (1. Title → 1. **Title**:)
+answer = BoldSectionFormatter.format_sections(answer)
+```
+
+### Key Design Decisions
+
+#### 1. Backend Post-Processing, Not Prompt Instructions
+
+**Choice:** Deterministic regex-based transformation instead of prompt instructions.
+
+**Rationale:**
+
+| Prompt-Based | Backend Post-Processor |
+|--------------|------------------------|
+| LLM may ignore | Always applied |
+| Inconsistent | Predictable |
+| Hard to test | Easy to unit test |
+| Requires prompt tuning | One-time implementation |
+
+Industry best practice: Rely on deterministic post-processing for formatting, let LLM focus on content.
+
+#### 2. Negative Lookahead for Already-Bold Sections
+
+**Choice:** Use `(?!\*\*)` to skip already-formatted sections.
+
+**Rationale:**
+- Prevents double-bolding (`****Title****`)
+- Idempotent (can run multiple times safely)
+- Preserves LLM's formatting when it does include bold
+
+#### 3. Uppercase Start Detection
+
+**Choice:** Only format lines starting with uppercase letter after number.
+
+**Rationale:**
+- Distinguishes section titles from regular numbered lists
+- `1. First Section` → formatted
+- `1. first item` → NOT formatted (regular list item)
+
+### Testing
+
+23 TDD tests covering:
+
+| Test Class | Coverage |
+|------------|----------|
+| `TestBoldSectionFormatterBasic` | Basic transformations |
+| `TestBoldSectionFormatterEdgeCases` | Empty, None, no sections |
+| `TestBoldSectionFormatterBulletPoints` | Bullet subsection formatting |
+| `TestBoldSectionFormatterRealWorld` | Rottamazione quinquies examples |
+| `TestBoldSectionFormatterIntegration` | Works with SectionNumberingFixer |
+| `TestBoldSectionFormatterTitleVariations` | Single/multi-word, slash titles |
+
+**Run Tests:**
+```bash
+pytest tests/services/test_bold_section_formatter.py tests/services/test_section_numbering_fixer.py -v
+# 59 passed
+```
+
+### Verification
+
+**Manual Tests:**
+1. Start app: `uv run uvicorn app.main:app --reload`
+2. Ask: "parlami della rottamazione quinquies"
+3. Verify response shows:
+   - `1. **Definizione**:` with teal bold text
+   - `2. **Requisiti**:` with teal bold text
+   - Bullet subsections also bold
+
+### Expected Behavior
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| Plain numbered section | `1. Scadenze` | `1. **Scadenze**:` |
+| Bullet subsection | `- Presentazione:` | `- **Presentazione**:` |
+| Already bold | `1. **Definizione**:` | `1. **Definizione**:` (unchanged) |
+| Lowercase list | `1. first item` | `1. first item` (unchanged) |
+
+### Sources
+
+- [The guide to structured outputs with LLMs](https://agenta.ai/blog/the-guide-to-structured-outputs-and-function-calling-with-llms)
+- [Taming LLM Outputs: Structured Text Generation](https://www.dataiku.com/stories/blog/your-guide-to-structured-text-generation)
+
+---
+
+## DEV-251 Part 5: Prompt-Based Bold Section Headers
+
+**Status:** ✅ Implemented (2026-02-03)
+**Author:** Claude Code
+
+### Problem
+
+LLM outputs free-form prose with natural section headers, but headers lacked visual styling because prompts explicitly said "**grassetto** solo per enfasi, NON per titoli":
+
+**Current Output (no visual hierarchy):**
+```
+Conseguenze del Mancato Adempimento
+In caso di mancato pagamento anche di una sola rata, il contribuente decade...
+
+Procedure e Documentazione
+La domanda di adesione deve essere presentata telematicamente...
+```
+
+**Expected Output (bold headers for visual hierarchy):**
+```
+**Conseguenze del Mancato Adempimento**
+In caso di mancato pagamento anche di una sola rata, il contribuente decade...
+
+**Procedure e Documentazione**
+La domanda di adesione deve essere presentata telematicamente...
+```
+
+### Solution: Prompt Instruction Update
+
+Updated prompt templates to instruct LLM to use `**bold**` for section headers instead of prohibiting it.
+
+**Old instruction (removed):**
+```
+- Usa **grassetto** solo per enfasi nel testo, NON per titoli
+```
+
+**New instruction:**
+```
+- Usa **grassetto** per i titoli delle sezioni (es: **Scadenze**, **Requisiti**)
+```
+
+### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `app/services/domain_prompt_templates.py` | 110, 147, 186, 227, 270, 314, 360 | Changed bold instruction (7 occurrences) |
+| `app/prompts/v1/unified_response_simple.md` | 133 | Updated STRUTTURA CONSIGLIATA section |
+| `app/prompts/v1/tree_of_thoughts.md` | 135 | Updated STRUTTURA CONSIGLIATA section |
+| `app/orchestrators/prompting.py` | 902 | Updated format instruction in grounding rules |
+
+### Design Constraints
+
+1. ✅ Keep "PREFERISCI LA PROSA FLUIDA" standard (DEV-250)
+2. ✅ Make natural section headers bold for visual hierarchy
+3. ❌ Do NOT force numbered sections
+4. ✅ Prompt-based approach (LLM outputs bold naturally)
+5. ❌ NO fragile regex post-processing needed for this case
+
+### Relationship to Part 4 (Backend Post-Processor)
+
+| Approach | Use Case |
+|----------|----------|
+| **Part 4: Backend post-processor** | Numbered sections like `1. Scadenze` → `1. **Scadenze**:` |
+| **Part 5: Prompt instruction** | Free-form headers like `Conseguenze` → `**Conseguenze**` |
+
+Both approaches complement each other:
+- Part 4 catches numbered sections that LLM outputs without bold
+- Part 5 instructs LLM to use bold for natural section headers
+
+### Verification
+
+**Grep Verification:**
+```bash
+# Verify old instruction is gone
+grep -r "NON per titoli" app/
+# Result: No matches found ✅
+
+# Verify new instruction is present
+grep -r "grassetto.*titoli delle sezioni" app/
+# Result: 7 matches in domain_prompt_templates.py ✅
+```
+
+### Expected Behavior
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| Free-form section header | `Conseguenze del Mancato Adempimento` | `**Conseguenze del Mancato Adempimento**` |
+| Numbered section (via Part 4) | `1. Scadenze` | `1. **Scadenze**:` |
+| Bold already present | `**Requisiti**` | `**Requisiti**` (unchanged) |
+| Free-form prose | Unchanged | Unchanged |

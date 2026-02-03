@@ -899,7 +899,7 @@ Il KB contiene le informazioni corrette - la tua risposta deve rispecchiarle fed
 ### FORMATO RISPOSTA
 Scrivi come un **documento professionale** con:
 1. Paragrafo introduttivo che definisce l'argomento
-2. Sezioni con titoli (## 1. Titolo) per ogni aspetto rilevante
+2. Sezioni con titoli in **grassetto** per ogni aspetto principale
 3. Paragrafi discorsivi (NON liste) all'interno delle sezioni
 4. Citazioni inline nel testo (Art. X, comma Y, L. Z/YYYY)
 

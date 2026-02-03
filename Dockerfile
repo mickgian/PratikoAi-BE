@@ -42,6 +42,11 @@ USER appuser
 # Create log directory
 RUN mkdir -p /app/logs
 
+# DEV-251: Pre-download HuggingFace mDeBERTa model during build
+# This prevents 30-120s model download on first query after container start
+# Model is cached in /home/appuser/.cache/huggingface (can be volume-mounted)
+RUN . /app/.venv/bin/activate && python -c "from transformers import pipeline; pipeline('zero-shot-classification', model='MoritzLaurer/mDeBERTa-v3-base-mnli-xnli')"
+
 # Default port
 EXPOSE 8000
 

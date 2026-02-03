@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2026-01-29 17:15:07
+**Auto-generated:** 2026-02-03 17:07:57
 
-> 💡 This directory contains 28 technical documentation files plus 169 architecture documents.
+> 💡 This directory contains 29 technical documentation files plus 170 architecture documents.
 
 ---
 
@@ -13,7 +13,7 @@
 - **[Architecture Overview](architecture/INDEX.md)** - Main architecture index
   - RAG flow implementation documents
   - Policy gated autonomy
-  - 169 total architecture documents including 135 detailed steps
+  - 170 total architecture documents including 135 detailed steps
 
 ---
 
@@ -72,12 +72,14 @@
   - **Status:** Implemented **Version:** 1.0
 - **[DEV-244: KB Source URLs Display Fix - Summary](DEV-244-kb-source-urls-summary.md)** ✅ Current
   - **Issue:** GitHub #TBD **Status:** ✅ FIXED - Field mapping bug resolved
+- **[DEV-251: HuggingFace Zero-Shot Intent Classifier](DEV-251-huggingface-intent-classifier.md)** ✅ Current
+  - **Status:** Implemented **Created:** 2026-01-30
 - **[DEV-252: AI Agent Evaluation Framework](DEV-252-AI-Agent-Evaluation-Framework.md)** ✅ Current
   - This ticket implements a comprehensive evaluation framework for the PratikoAI RAG system, following Anthropic's best practices for AI agent evaluat...
 - **[Database Backup System](DATABASE_BACKUP_SYSTEM.md)** ✅ Current
   - **Purpose**: Prevent data loss by maintaining automated daily backups of the PostgreSQL database.
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2026-01-29 16:55:59
+  - **Auto-generated:** 2026-02-03 17:07:50
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
 - **[Hugging Face Models for PratikoAI - Analysis Report](HUGGINGFACE_MODELS_ANALYSIS.md)** ✅ Current
@@ -94,9 +96,9 @@
 - **Feature Docs:** 9
 - **Database/Search:** 8
 - **Operations:** 3
-- **Architecture:** 169
-- **Total:** 197
+- **Architecture:** 170
+- **Total:** 199
 
 ---
 
-**Last Updated:** 2026-01-29 17:15:07
+**Last Updated:** 2026-02-03 17:07:57

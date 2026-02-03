@@ -58,6 +58,7 @@ def mock_tot_result():
         },
         total_latency_ms=1500.0,
         complexity_used="complex",
+        llm_response=None,  # DEV-251: ToT response reuse - None means step_064 makes its own call
     )
 
 
@@ -73,6 +74,19 @@ def mock_orchestrator_response():
         "tokens_used": 500,
         "cost_estimate": 0.01,
     }
+
+
+@pytest.fixture
+def mock_llm_orchestrator_response():
+    """Mock response from get_llm_orchestrator().generate_response() (DEV-251)."""
+    response = MagicMock()
+    response.answer = "Test answer from orchestrator"
+    response.model_used = "gpt-4o"
+    response.tokens_input = 100
+    response.tokens_output = 200
+    response.cost_euros = 0.01
+    response.sources_cited = []
+    return response
 
 
 # =============================================================================
@@ -415,9 +429,15 @@ class TestToTFailureFallback:
             assert llm_state.get("success") is True or result.get("llm_response") is not None
 
     @pytest.mark.asyncio
-    async def test_tot_failure_sets_fallback_reasoning_type(self, base_state, mock_orchestrator_response):
+    async def test_tot_failure_sets_fallback_reasoning_type(
+        self, base_state, mock_orchestrator_response, mock_llm_orchestrator_response
+    ):
         """ToT failure should set reasoning_type to cot (fallback)."""
         from app.core.langgraph.nodes.step_064__llm_call import node_step_64
+
+        # DEV-251: Mock get_llm_orchestrator since ToT failure triggers fallback path
+        mock_orchestrator = MagicMock()
+        mock_orchestrator.generate_response = AsyncMock(return_value=mock_llm_orchestrator_response)
 
         with (
             patch(
@@ -429,6 +449,10 @@ class TestToTFailureFallback:
                 "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 side_effect=Exception("ToT failed"),
+            ),
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator",
+                return_value=mock_orchestrator,
             ),
             patch(
                 "app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall",
@@ -512,8 +536,11 @@ class TestRegressionExistingBehavior:
                 new_callable=AsyncMock,
                 return_value=MagicMock(
                     reasoning_trace={"test": True},
-                    selected_hypothesis=MagicMock(id="H1"),
+                    selected_hypothesis=MagicMock(id="H1", confidence=0.8, source_weight_score=0.75),
+                    all_hypotheses=[MagicMock(id="H1", confidence=0.8, source_weight_score=0.75)],
                     complexity_used="complex",
+                    total_latency_ms=1000,
+                    llm_response=None,  # DEV-251: Explicit None to prevent MagicMock auto-creation
                 ),
             ),
             patch(
@@ -537,11 +564,17 @@ class TestPerformance:
     """Tests for performance requirements."""
 
     @pytest.mark.asyncio
-    async def test_tot_overhead_acceptable(self, base_state, mock_tot_result, mock_orchestrator_response):
+    async def test_tot_overhead_acceptable(
+        self, base_state, mock_tot_result, mock_orchestrator_response, mock_llm_orchestrator_response
+    ):
         """ToT overhead should be tracked in state."""
         import time
 
         from app.core.langgraph.nodes.step_064__llm_call import node_step_64
+
+        # DEV-251: Mock get_llm_orchestrator since mock_tot_result has llm_response=None
+        mock_orchestrator = MagicMock()
+        mock_orchestrator.generate_response = AsyncMock(return_value=mock_llm_orchestrator_response)
 
         with (
             patch(
@@ -553,6 +586,10 @@ class TestPerformance:
                 "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
                 new_callable=AsyncMock,
                 return_value=mock_tot_result,
+            ),
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.get_llm_orchestrator",
+                return_value=mock_orchestrator,
             ),
             patch(
                 "app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall",

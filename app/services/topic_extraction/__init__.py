@@ -6,7 +6,11 @@ and building routing decision results.
 All public API is re-exported here for backward compatibility.
 """
 
-from .result_builders import create_fallback_decision, decision_to_dict
+from .result_builders import (
+    create_fallback_decision,
+    decision_to_dict,
+    hf_result_to_decision_dict,
+)
 from .topic_extractor import extract_topic_keywords
 
 __all__ = [
@@ -15,4 +19,5 @@ __all__ = [
     # Result builders
     "decision_to_dict",
     "create_fallback_decision",
+    "hf_result_to_decision_dict",
 ]

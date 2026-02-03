@@ -561,6 +561,196 @@ class CacheService:
         except Exception as e:
             logger.error("cache_metrics_update_failed", error=str(e))
 
+    # DEV-251 Phase 5: HyDE caching methods
+
+    async def cache_hyde_document(
+        self,
+        query_hash: str,
+        routing_category: str,
+        hyde_result: dict,
+        ttl: int = 86400,  # 24 hours default
+    ) -> bool:
+        """Cache HyDE document for query.
+
+        Stores HyDE generation results to avoid redundant LLM calls for repeated
+        or similar queries. Cache key format: hyde:{routing_category}:{query_hash}
+
+        Args:
+            query_hash: MD5 hash of the query string
+            routing_category: Routing category (e.g., "technical_research")
+            hyde_result: HyDE result dict with hypothetical_document, word_count, etc.
+            ttl: Time to live in seconds (default 24 hours)
+
+        Returns:
+            True if caching succeeded, False otherwise
+        """
+        redis_client = await self._get_redis()
+        if not redis_client:
+            return False
+
+        try:
+            key = f"hyde:{routing_category}:{query_hash}"
+            await redis_client.setex(key, ttl, json.dumps(hyde_result, ensure_ascii=False))
+
+            logger.info(
+                "hyde_cache_store",
+                query_hash=query_hash[:12],
+                routing_category=routing_category,
+                ttl=ttl,
+            )
+            return True
+
+        except Exception as e:
+            logger.error(
+                "hyde_cache_store_failed",
+                error=str(e),
+                query_hash=query_hash[:12],
+            )
+            return False
+
+    async def get_cached_hyde_document(
+        self,
+        query_hash: str,
+        routing_category: str,
+    ) -> dict | None:
+        """Get cached HyDE document.
+
+        Retrieves cached HyDE generation results to avoid redundant LLM calls.
+
+        Args:
+            query_hash: MD5 hash of the query string
+            routing_category: Routing category (e.g., "technical_research")
+
+        Returns:
+            Cached HyDE result dict or None if not found
+        """
+        redis_client = await self._get_redis()
+        if not redis_client:
+            return None
+
+        try:
+            key = f"hyde:{routing_category}:{query_hash}"
+            cached_data = await redis_client.get(key)
+
+            if cached_data:
+                try:
+                    result = json.loads(cached_data)
+                    logger.info(
+                        "hyde_cache_hit",
+                        query_hash=query_hash[:12],
+                        routing_category=routing_category,
+                    )
+                    return result
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(
+                        "hyde_cache_deserialization_failed",
+                        error=str(e),
+                        key=key,
+                    )
+                    await redis_client.delete(key)
+
+            return None
+
+        except Exception as e:
+            logger.error(
+                "hyde_cache_get_failed",
+                error=str(e),
+                query_hash=query_hash[:12],
+            )
+            return None
+
+    # DEV-251: MultiQuery caching methods
+
+    async def cache_multi_query(
+        self,
+        query_hash: str,
+        multi_query_result: dict,
+        ttl: int = 86400,  # 24 hours default
+    ) -> bool:
+        """Cache MultiQuery variants for query.
+
+        Stores MultiQuery generation results to avoid redundant LLM calls for repeated
+        or similar queries. Cache key format: multiquery:{query_hash}
+
+        Args:
+            query_hash: MD5 hash of the query string
+            multi_query_result: MultiQuery result dict with bm25_query, vector_query, etc.
+            ttl: Time to live in seconds (default 24 hours)
+
+        Returns:
+            True if caching succeeded, False otherwise
+        """
+        redis_client = await self._get_redis()
+        if not redis_client:
+            return False
+
+        try:
+            key = f"multiquery:{query_hash}"
+            await redis_client.setex(key, ttl, json.dumps(multi_query_result, ensure_ascii=False))
+
+            logger.info(
+                "multiquery_cache_store",
+                query_hash=query_hash[:12],
+                ttl=ttl,
+            )
+            return True
+
+        except Exception as e:
+            logger.error(
+                "multiquery_cache_store_failed",
+                error=str(e),
+                query_hash=query_hash[:12],
+            )
+            return False
+
+    async def get_cached_multi_query(
+        self,
+        query_hash: str,
+    ) -> dict | None:
+        """Get cached MultiQuery variants.
+
+        Retrieves cached MultiQuery generation results to avoid redundant LLM calls.
+
+        Args:
+            query_hash: MD5 hash of the query string
+
+        Returns:
+            Cached MultiQuery result dict or None if not found
+        """
+        redis_client = await self._get_redis()
+        if not redis_client:
+            return None
+
+        try:
+            key = f"multiquery:{query_hash}"
+            cached_data = await redis_client.get(key)
+
+            if cached_data:
+                try:
+                    result = json.loads(cached_data)
+                    logger.info(
+                        "multiquery_cache_hit",
+                        query_hash=query_hash[:12],
+                    )
+                    return result
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(
+                        "multiquery_cache_deserialization_failed",
+                        error=str(e),
+                        key=key,
+                    )
+                    await redis_client.delete(key)
+
+            return None
+
+        except Exception as e:
+            logger.error(
+                "multiquery_cache_get_failed",
+                error=str(e),
+                query_hash=query_hash[:12],
+            )
+            return None
+
 
 # Global cache service instance
 cache_service = CacheService()

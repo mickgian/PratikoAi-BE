@@ -23,13 +23,15 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+import hashlib
+from dataclasses import asdict, dataclass, field
 from typing import Optional
 
 from app.core.llm.model_config import LLMModelConfig, ModelTier
 from app.core.logging import logger
 from app.schemas.chat import Message
 from app.schemas.router import RoutingCategory
+from app.services.cache import cache_service
 from app.services.prompt_loader import get_prompt_loader
 from app.services.query_ambiguity_detector import get_query_ambiguity_detector
 
@@ -109,10 +111,20 @@ class HyDEGeneratorService:
 
         Args:
             config: LLM model configuration for accessing model settings
+
+        DEV-251 Phase 5b: Uses HyDE-specific model (Claude Haiku) instead of
+        BASIC tier to reduce latency from ~20s to ~3-5s. Falls back to BASIC
+        tier if HYDE_PROVIDER/HYDE_MODEL not configured.
         """
+        from app.core.config import HYDE_MODEL, HYDE_PROVIDER
+
         self._config = config
-        self._model = config.get_model(ModelTier.BASIC)  # Use GPT-4o-mini
-        self._provider = config.get_provider(ModelTier.BASIC)
+
+        # DEV-251 Phase 5b: Use HyDE-specific model (Haiku) instead of BASIC tier
+        # This reduces HyDE latency from ~20s (GPT-4o-mini) to ~3-5s (Haiku)
+        self._provider = HYDE_PROVIDER or config.get_provider(ModelTier.BASIC)
+        self._model = HYDE_MODEL or config.get_model(ModelTier.BASIC)
+
         self._timeout_ms = config.get_timeout(ModelTier.BASIC)
         self._temperature = config.get_temperature(ModelTier.BASIC)
 
@@ -146,6 +158,11 @@ class HyDEGeneratorService:
         - Generates multi-variant HyDE for ambiguous queries
         - Uses conversational prompt when history is provided
 
+        DEV-251 Phase 5: Added Redis caching:
+        - Checks cache first before making LLM call
+        - Stores results in cache with 24h TTL
+        - Cache key: hyde:{routing_category}:{query_hash}
+
         Args:
             query: User's query
             routing: Routing category from router
@@ -170,6 +187,28 @@ class HyDEGeneratorService:
                 skip_reason=skip_reason,
             )
 
+        # DEV-251 Phase 5: Check cache first
+        query_hash = hashlib.md5(query.encode()).hexdigest()
+        try:
+            cached = await cache_service.get_cached_hyde_document(
+                query_hash=query_hash,
+                routing_category=routing.value,
+            )
+            if cached:
+                logger.info(
+                    "hyde_cache_hit",
+                    query_hash=query_hash[:12],
+                    routing_category=routing.value,
+                )
+                return HyDEResult(**cached)
+        except Exception as e:
+            logger.warning(
+                "hyde_cache_lookup_failed",
+                error=str(e),
+                query_hash=query_hash[:12],
+            )
+            # Continue with generation if cache fails
+
         try:
             # DEV-235: Check query ambiguity
             ambiguity_result = self._check_ambiguity(query, conversation_history)
@@ -177,11 +216,28 @@ class HyDEGeneratorService:
 
             # DEV-235: Generate based on strategy
             if strategy == "multi_variant":
-                return await self._generate_multi_variant(query, conversation_history, ambiguity_result)
+                result = await self._generate_multi_variant(query, conversation_history, ambiguity_result)
             elif strategy == "conversational" and conversation_history:
-                return await self._generate_conversational(query, conversation_history)
+                result = await self._generate_conversational(query, conversation_history)
             else:
-                return await self._generate_standard(query)
+                result = await self._generate_standard(query)
+
+            # DEV-251 Phase 5: Store result in cache
+            if not result.skipped:
+                try:
+                    await cache_service.cache_hyde_document(
+                        query_hash=query_hash,
+                        routing_category=routing.value,
+                        hyde_result=asdict(result),
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "hyde_cache_store_failed",
+                        error=str(e),
+                        query_hash=query_hash[:12],
+                    )
+
+            return result
 
         except TimeoutError:
             logger.warning(
@@ -250,6 +306,8 @@ class HyDEGeneratorService:
         logger.info(
             "hyde_generated",
             strategy="standard",
+            model=self._model,
+            provider=self._provider,
             query_length=len(query),
             doc_length=len(result.hypothetical_document),
             word_count=result.word_count,
@@ -287,6 +345,8 @@ class HyDEGeneratorService:
         logger.info(
             "hyde_generated",
             strategy="conversational",
+            model=self._model,
+            provider=self._provider,
             query_length=len(query),
             history_turns=len(conversation_history) // 2,
             doc_length=len(result.hypothetical_document),
@@ -350,6 +410,8 @@ class HyDEGeneratorService:
         logger.info(
             "hyde_generated",
             strategy="multi_variant",
+            model=self._model,
+            provider=self._provider,
             query_length=len(query),
             num_variants=len(variants),
             doc_length=len(main_doc.hypothetical_document),
@@ -452,6 +514,14 @@ Documento ipotetico:"""
         factory = get_llm_factory()
 
         try:
+            # DEV-251 Phase 5b: Log which model is being used for HyDE
+            logger.info(
+                "hyde_llm_call_start",
+                provider=self._provider,
+                model=self._model,
+                prompt_length=len(prompt),
+            )
+
             provider = factory.create_provider(
                 provider_type=self._provider,
                 model=self._model,
@@ -475,6 +545,7 @@ Documento ipotetico:"""
             logger.error(
                 "hyde_call_failed",
                 error=str(e),
+                provider=self._provider,
                 model=self._model,
             )
             raise
@@ -507,6 +578,14 @@ Documento ipotetico:"""
         factory = get_llm_factory()
 
         try:
+            # DEV-251 Phase 5b: Log which model is being used for HyDE
+            logger.info(
+                "hyde_llm_call_start",
+                provider=self._provider,
+                model=self._model,
+                prompt_length=len(prompt),
+            )
+
             provider = factory.create_provider(
                 provider_type=self._provider,
                 model=self._model,
@@ -530,6 +609,7 @@ Documento ipotetico:"""
             logger.error(
                 "hyde_call_failed",
                 error=str(e),
+                provider=self._provider,
                 model=self._model,
             )
             raise

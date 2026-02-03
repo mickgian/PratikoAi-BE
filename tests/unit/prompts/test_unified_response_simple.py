@@ -39,6 +39,8 @@ class TestPromptLoadsViaLoader:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         assert content is not None
         assert len(content) > 0
@@ -68,6 +70,8 @@ class TestPromptContainsJsonSchema:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         assert "```json" in content, "Prompt should contain JSON code block"
 
@@ -81,6 +85,8 @@ class TestPromptContainsJsonSchema:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         # Extract JSON from code block
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
@@ -104,6 +110,8 @@ class TestPromptContainsJsonSchema:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
         assert json_match is not None
@@ -126,6 +134,8 @@ class TestPromptContainsJsonSchema:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
         parsed = json.loads(json_match.group(1))
@@ -151,6 +161,8 @@ class TestPromptVariablesSubstitute:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         assert test_context in content
 
@@ -165,6 +177,8 @@ class TestPromptVariablesSubstitute:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         assert test_metadata in content
 
@@ -179,6 +193,8 @@ class TestPromptVariablesSubstitute:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         assert test_query in content
 
@@ -193,6 +209,8 @@ class TestPromptVariablesSubstitute:
             conversation_context=test_conv,
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         assert test_conv in content
 
@@ -207,6 +225,8 @@ class TestPromptVariablesSubstitute:
             conversation_context="",
             current_date=test_date,
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         assert test_date in content
 
@@ -233,6 +253,8 @@ class TestPromptReasoningStructure:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         # Check for CoT keywords in Italian
         assert "ragionamento" in content.lower() or "chain of thought" in content.lower()
@@ -247,6 +269,8 @@ class TestPromptReasoningStructure:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         # Should have numbered steps or clear structure
         assert "TEMA" in content or "tema" in content.lower()
@@ -329,6 +353,8 @@ class TestPromptCitationRules:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         # Should mention citations
         assert "citazion" in content.lower() or "citation" in content.lower()
@@ -343,6 +369,8 @@ class TestPromptCitationRules:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         # Should mention Italian legal format
         assert "Art." in content or "D.Lgs." in content or "DPR" in content
@@ -361,6 +389,8 @@ class TestPromptItalianLanguage:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         # Check for common Italian words
         italian_keywords = ["risposta", "domanda", "contesto", "fonti", "italiano"]
@@ -377,6 +407,8 @@ class TestPromptItalianLanguage:
             conversation_context="",
             current_date="2024-12-31",
             web_sources_metadata="[]",
+            is_followup_mode="Questa è una DOMANDA NUOVA.",
+            completeness_section="## COMPLETEZZA OBBLIGATORIA",
         )
         assert "PratikoAI" in content
 

@@ -517,6 +517,22 @@ SOURCE_AUTHORITY_WEIGHTS = {
     "cndcec": 0.10,
 }
 
+# HuggingFace Intent Classifier Configuration (DEV-251)
+# Model for zero-shot intent classification to replace GPT router calls
+HF_INTENT_MODEL = os.getenv("HF_INTENT_MODEL", "mdeberta")
+
+# HyDE-specific Model Configuration (DEV-251 Phase 5b)
+# Separate from BASIC tier to allow HyDE to use faster Haiku while other
+# BASIC operations remain on GPT-4o-mini. This reduces HyDE latency from ~20s to ~3-5s.
+HYDE_PROVIDER = os.getenv("HYDE_PROVIDER", "anthropic")
+HYDE_MODEL = os.getenv("HYDE_MODEL", "claude-3-haiku-20240307")
+
+# Map short names to full HuggingFace model names
+HF_MODEL_MAP = {
+    "mdeberta": "MoritzLaurer/mDeBERTa-v3-base-mnli-xnli",  # 280MB, native Italian support
+    "bart": "facebook/bart-large-mnli",  # 400MB, multilingual (fair Italian)
+}
+
 # Retrieval Parameters
 # DEV-242 Phase 21: Increased limits for more comprehensive context
 

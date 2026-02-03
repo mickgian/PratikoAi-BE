@@ -45,6 +45,7 @@ services:
       - ./app:/app/app
       - ./logs:/app/logs
       - ./docs:/app/docs  # Removed :ro to allow task generation to write to docs/tasks/
+      - hf_cache:/home/appuser/.cache/huggingface  # DEV-251: Persist HuggingFace models across restarts
     env_file:
       - .env.${APP_ENV:-development}
     environment:
@@ -223,3 +224,4 @@ volumes:
   grafana-storage:
   prometheus-data:
   alertmanager-data:
+  hf_cache:  # DEV-251: HuggingFace model cache to persist across container restarts

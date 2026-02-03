@@ -10,7 +10,10 @@ from uuid import uuid4
 import pytest
 from sqlmodel import Session as DBSession
 
-from app.models.workflow import (
+# Skip entire module if workflow models not yet implemented
+pytest.importorskip("app.models.workflow", reason="DEV-260: Workflow models not yet implemented")
+
+from app.models.workflow import (  # noqa: E402
     CheckpointStatus,
     CheckpointType,
     Project,

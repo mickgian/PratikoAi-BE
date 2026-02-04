@@ -525,7 +525,11 @@ class LLMOrchestrator:
         )
 
         # Handle optional tokens_used with sensible defaults
-        tokens_total = response.tokens_used or 0
+        raw_tokens = response.tokens_used
+        if isinstance(raw_tokens, dict):
+            tokens_total = raw_tokens.get("input", 0) + raw_tokens.get("output", 0)
+        else:
+            tokens_total = raw_tokens or 0
         tokens_output = tokens_total // 3  # Rough estimate: output is ~1/3 of total
 
         return (

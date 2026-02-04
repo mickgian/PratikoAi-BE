@@ -27,9 +27,17 @@ async def node_step_74(state: RAGState) -> RAGState:
     """Node wrapper for Step 74: Track LLM usage metrics."""
     rag_step_log(STEP, "enter", metrics=state.get("metrics"))
     with rag_step_timer(STEP):
+        # DEV-254: Extract correct field names from state for the orchestrator.
+        # step_064 stores model as "model_used" and provider as a dict.
+        model = state.get("model_used") or (state.get("llm") or {}).get("model_used")
+        provider_raw = state.get("provider")
+        provider = provider_raw.get("selected") if isinstance(provider_raw, dict) else provider_raw
+
         res = await step_74__track_usage(
             messages=state.get("messages"),
             ctx=dict(state),
+            model=model,
+            provider=provider,
         )
 
         # Map to canonical state keys

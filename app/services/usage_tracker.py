@@ -113,7 +113,7 @@ class UsageTracker:
             # Extract token information
             # tokens_used may be a dict (converted by caller) or int or None
             raw_tokens = llm_response.tokens_used
-            tokens_used: dict[str, int] = cast(dict[str, int], raw_tokens) if isinstance(raw_tokens, dict) else {}
+            tokens_used: dict[str, int] = raw_tokens if isinstance(raw_tokens, dict) else {}
             input_tokens = tokens_used.get("input", 0)
             output_tokens = tokens_used.get("output", 0)
             total_tokens = input_tokens + output_tokens

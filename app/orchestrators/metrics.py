@@ -150,6 +150,99 @@ async def step_34__track_metrics(
         return metrics_data
 
 
+def _extract_usage_fields(
+    kwargs: dict[str, Any], _ctx: dict[str, Any], llm_dict: dict[str, Any]
+) -> tuple[Any, Any, Any, Any, Any, Any, bool, bool, Any, Any, Any]:
+    """Extract and normalize all usage fields from kwargs/ctx with DEV-254 fixes.
+
+    Returns (user_id, session_id, provider, model, llm_response,
+             response_time_ms, cache_hit, pii_detected, pii_types,
+             ip_address, user_agent).
+    """
+    from app.core.llm.base import LLMResponse
+
+    user_id = kwargs.get("user_id") or _ctx.get("user_id")
+    session_id = kwargs.get("session_id") or _ctx.get("session_id")
+    response_time_ms = kwargs.get("response_time_ms") or _ctx.get("response_time_ms", 0)
+    cache_hit = kwargs.get("cache_hit") or _ctx.get("cache_hit", False)
+    pii_detected = kwargs.get("pii_detected") or _ctx.get("pii_detected", False)
+    pii_types = kwargs.get("pii_types") or _ctx.get("pii_types")
+    ip_address = kwargs.get("ip_address") or _ctx.get("ip_address")
+    user_agent = kwargs.get("user_agent") or _ctx.get("user_agent")
+
+    # DEV-254 Bug 1: model field — step_064 stores as "model_used", not "model"
+    model = kwargs.get("model") or _ctx.get("model") or _ctx.get("model_used") or llm_dict.get("model_used")
+
+    # DEV-254 Bug 2: provider — step_064 stores as dict with "selected" key
+    provider = kwargs.get("provider") or _ctx.get("provider")
+    if isinstance(provider, dict):
+        provider = provider.get("selected")
+
+    # DEV-254 Bug 3: llm_response — step_064 stores as dict, not LLMResponse
+    llm_response = kwargs.get("llm_response") or _ctx.get("llm_response")
+    if isinstance(llm_response, dict):
+        tokens_data = llm_dict.get("tokens_used", {})
+        if isinstance(tokens_data, dict):
+            resp_tokens = tokens_data.get("input", 0) + tokens_data.get("output", 0)
+        elif isinstance(tokens_data, int):
+            resp_tokens = tokens_data
+        else:
+            resp_tokens = 0
+        llm_response = LLMResponse(
+            content=llm_response.get("content", ""),
+            model=model or "",
+            provider=provider or "",
+            tokens_used=resp_tokens or llm_dict.get("tokens_used"),
+            cost_estimate=llm_dict.get("cost_estimate"),
+        )
+
+    return (
+        user_id,
+        session_id,
+        provider,
+        model,
+        llm_response,
+        response_time_ms,
+        cache_hit,
+        pii_detected,
+        pii_types,
+        ip_address,
+        user_agent,
+    )
+
+
+def _extract_token_cost_info(llm_response: Any) -> tuple[int, float]:
+    """Extract total_tokens and cost from an LLMResponse."""
+    total_tokens = 0
+    cost = 0.0
+
+    if hasattr(llm_response, "tokens_used") and llm_response.tokens_used:
+        if isinstance(llm_response.tokens_used, int):
+            total_tokens = llm_response.tokens_used
+        elif isinstance(llm_response.tokens_used, dict):
+            total_tokens = llm_response.tokens_used.get("input", 0) + llm_response.tokens_used.get("output", 0)
+        else:
+            total_tokens = llm_response.tokens_used
+
+    if hasattr(llm_response, "cost_estimate"):
+        cost = llm_response.cost_estimate or 0.0
+
+    return total_tokens, cost
+
+
+def _convert_tokens_for_tracker(llm_response: Any) -> Any:
+    """Convert int tokens_used to dict format for UsageTracker compatibility.
+
+    Returns the original tokens_used value so the caller can restore it.
+    """
+    original_tokens = llm_response.tokens_used
+    if isinstance(original_tokens, int):
+        input_tokens = int(original_tokens * 0.6)
+        output_tokens = original_tokens - input_tokens
+        llm_response.tokens_used = {"input": input_tokens, "output": output_tokens}
+    return original_tokens
+
+
 async def step_74__track_usage(
     *, messages: list[Any] | None = None, ctx: dict[str, Any] | None = None, **kwargs
 ) -> Any:
@@ -166,54 +259,37 @@ async def step_74__track_usage(
     from app.services.usage_tracker import usage_tracker
 
     with rag_step_timer(74, "RAG.metrics.usagetracker.track.track.api.usage", "TrackUsage", stage="start"):
-        # Extract context parameters
-        user_id = kwargs.get("user_id") or (ctx or {}).get("user_id")
-        session_id = kwargs.get("session_id") or (ctx or {}).get("session_id")
-        provider = kwargs.get("provider") or (ctx or {}).get("provider")
-        model = kwargs.get("model") or (ctx or {}).get("model")
-        llm_response = kwargs.get("llm_response") or (ctx or {}).get("llm_response")
-        response_time_ms = kwargs.get("response_time_ms") or (ctx or {}).get("response_time_ms", 0)
-        cache_hit = kwargs.get("cache_hit") or (ctx or {}).get("cache_hit", False)
-        pii_detected = kwargs.get("pii_detected") or (ctx or {}).get("pii_detected", False)
-        pii_types = kwargs.get("pii_types") or (ctx or {}).get("pii_types")
-        ip_address = kwargs.get("ip_address") or (ctx or {}).get("ip_address")
-        user_agent = kwargs.get("user_agent") or (ctx or {}).get("user_agent")
+        _ctx = ctx or {}
+        llm_dict = _ctx.get("llm", {}) or {}
 
-        # Initialize usage tracking data
+        (
+            user_id,
+            session_id,
+            provider,
+            model,
+            llm_response,
+            response_time_ms,
+            cache_hit,
+            pii_detected,
+            pii_types,
+            ip_address,
+            user_agent,
+        ) = _extract_usage_fields(kwargs, _ctx, llm_dict)
+
         usage_tracked = False
         total_tokens = 0
         cost = 0.0
         error = None
 
         try:
-            # Validate required fields
             if not all([user_id, session_id, provider, model, llm_response]):
                 error = "Missing required usage tracking data"
                 raise ValueError(error)
 
-            # Extract token and cost information
-            if hasattr(llm_response, "tokens_used") and llm_response.tokens_used:
-                if isinstance(llm_response.tokens_used, int):
-                    total_tokens = llm_response.tokens_used
-                elif isinstance(llm_response.tokens_used, dict):
-                    total_tokens = llm_response.tokens_used.get("input", 0) + llm_response.tokens_used.get("output", 0)
-                else:
-                    total_tokens = llm_response.tokens_used
-            if hasattr(llm_response, "cost_estimate"):
-                cost = llm_response.cost_estimate or 0.0
+            total_tokens, cost = _extract_token_cost_info(llm_response)
 
-            # Handle token format compatibility for UsageTracker
-            # UsageTracker expects tokens_used to be a dict with 'input' and 'output' keys
-            original_tokens = llm_response.tokens_used
-            if isinstance(original_tokens, int):
-                # Convert int format to dict format expected by UsageTracker
-                # Split tokens roughly 60/40 input/output as a reasonable approximation
-                input_tokens = int(original_tokens * 0.6)
-                output_tokens = original_tokens - input_tokens
-                llm_response.tokens_used = {"input": input_tokens, "output": output_tokens}
-
+            original_tokens = _convert_tokens_for_tracker(llm_response)
             try:
-                # Track LLM usage
                 await usage_tracker.track_llm_usage(
                     user_id=user_id,
                     session_id=session_id,
@@ -228,7 +304,6 @@ async def step_74__track_usage(
                     user_agent=user_agent,
                 )
             finally:
-                # Restore original tokens format
                 llm_response.tokens_used = original_tokens
 
             usage_tracked = True
@@ -236,7 +311,6 @@ async def step_74__track_usage(
         except Exception as e:
             error = str(e)
 
-        # Create usage tracking result
         usage_data = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "usage_tracked": usage_tracked,

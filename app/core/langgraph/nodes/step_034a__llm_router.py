@@ -75,6 +75,29 @@ async def node_step_34a(state: RAGState) -> RAGState:
                     threshold=hf_classifier.confidence_threshold,
                 )
 
+                # DEV-253: Capture low-confidence prediction for expert labeling
+                try:
+                    from app.models.database import AsyncSessionLocal
+                    from app.services.intent_labeling_service import intent_labeling_service
+
+                    async with AsyncSessionLocal() as labeling_db:
+                        await intent_labeling_service.capture_prediction(
+                            query=user_query,
+                            predicted_intent=hf_result.intent,
+                            confidence=hf_result.confidence,
+                            all_scores=hf_result.all_scores,
+                            source_query_id=state.get("query_id"),
+                            db=labeling_db,
+                        )
+                except Exception as labeling_err:
+                    # Non-blocking: labeling capture failure must not affect routing
+                    logger.warning(
+                        "DEV253_labeling_capture_failed",
+                        step=NODE_LABEL,
+                        error_type=type(labeling_err).__name__,
+                        error_message=str(labeling_err),
+                    )
+
                 from app.core.llm.model_config import get_model_config
                 from app.services.llm_router_service import LLMRouterService
 

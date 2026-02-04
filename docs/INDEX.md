@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2026-02-03 17:07:57
+**Auto-generated:** 2026-02-04 12:20:58
 
-> 💡 This directory contains 29 technical documentation files plus 170 architecture documents.
+> 💡 This directory contains 30 technical documentation files plus 170 architecture documents.
 
 ---
 
@@ -79,11 +79,13 @@
 - **[Database Backup System](DATABASE_BACKUP_SYSTEM.md)** ✅ Current
   - **Purpose**: Prevent data loss by maintaining automated daily backups of the PostgreSQL database.
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2026-02-03 17:07:50
+  - **Auto-generated:** 2026-02-04 12:19:26
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
 - **[Hugging Face Models for PratikoAI - Analysis Report](HUGGINGFACE_MODELS_ANALYSIS.md)** ✅ Current
   - This report analyzes small, CPU-efficient Hugging Face models suitable for PratikoAI's Italian legal/labor domain. Focus areas: embeddings, reranki...
+- **[Intent Classifier Training Guide](intent-classifier-training-guide.md)** ✅ Current
+  - Guide for training and deploying fine-tuned intent classification models.
 - **[Pinecone Guardrails Implementation](pinecone-guardrails.md)** ✅ Current
   - This document describes the implemented Pinecone environment guardrails, provider selection logic, fallback behavior, and smoke test verification f...
 - **[Regional Tax Variations for PratikoAI](REGIONAL_TAX_VARIATIONS.md)** ✅ Current
@@ -97,8 +99,8 @@
 - **Database/Search:** 8
 - **Operations:** 3
 - **Architecture:** 170
-- **Total:** 199
+- **Total:** 200
 
 ---
 
-**Last Updated:** 2026-02-03 17:07:57
+**Last Updated:** 2026-02-04 12:20:58

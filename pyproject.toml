@@ -70,6 +70,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["black", "isort", "flake8", "ruff", "djlint==1.36.4"]
+training = ["datasets>=2.14.0", "scikit-learn>=1.3.0", "accelerate>=0.24.0"]
 
 [dependency-groups]
 dev = [

@@ -226,8 +226,8 @@ class TestMetadataEnrichment:
     """Tests for metadata enrichment."""
 
     @patch("app.observability.langfuse_config.CallbackHandler")
-    def test_metadata_includes_environment(self, mock_handler_class: MagicMock) -> None:
-        """Metadata should include environment."""
+    def test_metadata_does_not_include_environment(self, mock_handler_class: MagicMock) -> None:
+        """Environment should NOT be in metadata (uses LANGFUSE_TRACING_ENVIRONMENT env var instead)."""
         from app.observability.langfuse_config import create_langfuse_handler
 
         with patch("app.observability.langfuse_config.settings") as mock_settings:
@@ -241,8 +241,7 @@ class TestMetadataEnrichment:
                 user_id="user-456",
             )
 
-        assert "environment" in metadata
-        assert metadata["environment"] == "development"
+        assert "environment" not in metadata
 
     @patch("app.observability.langfuse_config.CallbackHandler")
     def test_metadata_includes_request_id(self, mock_handler_class: MagicMock) -> None:
@@ -299,6 +298,138 @@ class TestMetadataEnrichment:
             )
 
         assert metadata["stage"] == "retrieval"
+
+    @patch("app.observability.langfuse_config.CallbackHandler")
+    def test_metadata_includes_trace_name(self, mock_handler_class: MagicMock) -> None:
+        """Trace name should be included in metadata with langfuse_ prefix."""
+        from app.observability.langfuse_config import create_langfuse_handler
+
+        with patch("app.observability.langfuse_config.settings") as mock_settings:
+            mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
+            mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
+            mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
+
+            handler, metadata = create_langfuse_handler(
+                session_id="session-123",
+                trace_name="rag-query",
+            )
+
+        assert metadata["langfuse_trace_name"] == "rag-query"
+
+    @patch("app.observability.langfuse_config.CallbackHandler")
+    def test_metadata_excludes_trace_name_when_not_provided(self, mock_handler_class: MagicMock) -> None:
+        """Trace name should not be in metadata when not provided."""
+        from app.observability.langfuse_config import create_langfuse_handler
+
+        with patch("app.observability.langfuse_config.settings") as mock_settings:
+            mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
+            mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
+            mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
+
+            handler, metadata = create_langfuse_handler(session_id="session-123")
+
+        assert "langfuse_trace_name" not in metadata
+
+    @patch("app.observability.langfuse_config.CallbackHandler")
+    def test_metadata_includes_update_parent(self, mock_handler_class: MagicMock) -> None:
+        """Metadata should include langfuse_update_parent=True for token bubbling."""
+        from app.observability.langfuse_config import create_langfuse_handler
+
+        with patch("app.observability.langfuse_config.settings") as mock_settings:
+            mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
+            mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
+            mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
+
+            handler, metadata = create_langfuse_handler(session_id="session-123")
+
+        assert metadata["langfuse_update_parent"] is True
+
+    @patch("app.observability.langfuse_config.CallbackHandler")
+    def test_metadata_includes_query_type_new(self, mock_handler_class: MagicMock) -> None:
+        """Query type should default to 'new' when is_followup is False."""
+        from app.observability.langfuse_config import create_langfuse_handler
+
+        with patch("app.observability.langfuse_config.settings") as mock_settings:
+            mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
+            mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
+            mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
+
+            handler, metadata = create_langfuse_handler(session_id="session-123")
+
+        assert metadata["query_type"] == "new"
+
+    @patch("app.observability.langfuse_config.CallbackHandler")
+    def test_metadata_includes_query_type_followup(self, mock_handler_class: MagicMock) -> None:
+        """Query type should be 'followup' when is_followup is True."""
+        from app.observability.langfuse_config import create_langfuse_handler
+
+        with patch("app.observability.langfuse_config.settings") as mock_settings:
+            mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
+            mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
+            mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
+
+            handler, metadata = create_langfuse_handler(
+                session_id="session-123",
+                is_followup=True,
+            )
+
+        assert metadata["query_type"] == "followup"
+
+    @patch("app.observability.langfuse_config.CallbackHandler")
+    def test_metadata_includes_has_attachments(self, mock_handler_class: MagicMock) -> None:
+        """Metadata should include has_attachments flag."""
+        from app.observability.langfuse_config import create_langfuse_handler
+
+        with patch("app.observability.langfuse_config.settings") as mock_settings:
+            mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
+            mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
+            mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
+
+            handler, metadata = create_langfuse_handler(
+                session_id="session-123",
+                has_attachments=True,
+            )
+
+        assert metadata["has_attachments"] is True
+
+    @patch("app.observability.langfuse_config.CallbackHandler")
+    def test_metadata_includes_studio_id(self, mock_handler_class: MagicMock) -> None:
+        """Metadata should include studio_id when provided."""
+        from app.observability.langfuse_config import create_langfuse_handler
+
+        with patch("app.observability.langfuse_config.settings") as mock_settings:
+            mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
+            mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
+            mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
+
+            handler, metadata = create_langfuse_handler(
+                session_id="session-123",
+                studio_id="studio-abc-123",
+            )
+
+        assert metadata["studio_id"] == "studio-abc-123"
+
+    @patch("app.observability.langfuse_config.CallbackHandler")
+    def test_metadata_includes_pipeline_version(self, mock_handler_class: MagicMock) -> None:
+        """Metadata should include pipeline_version."""
+        from app.observability.langfuse_config import create_langfuse_handler
+
+        with patch("app.observability.langfuse_config.settings") as mock_settings:
+            mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
+            mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
+            mock_settings.ENVIRONMENT = Environment.DEVELOPMENT
+
+            handler, metadata = create_langfuse_handler(session_id="session-123")
+
+        assert metadata["pipeline_version"] == "unified"
 
 
 class TestGracefulDegradation:

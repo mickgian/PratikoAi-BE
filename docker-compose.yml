@@ -39,6 +39,7 @@ services:
       context: .
       args:
         APP_ENV: ${APP_ENV:-development}
+        HF_INTENT_MODEL: ${HF_INTENT_MODEL:-mdeberta}
     ports:
       - "8000:8000"
     volumes:

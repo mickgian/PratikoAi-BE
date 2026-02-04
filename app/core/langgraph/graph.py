@@ -2604,11 +2604,14 @@ class LangGraphAgent:
         # Build callbacks list with enhanced Langfuse handler (DEV-243, updated for v3)
         callbacks = []
         langfuse_metadata: dict[str, Any] = {}
+        has_attachments = bool(attachments)
         if should_sample():
             handler, langfuse_metadata = create_langfuse_handler(
                 session_id=session_id,
                 user_id=user_id,
-                tags=["rag", "ainvoke"],
+                trace_name="rag-query",
+                tags=["rag", "sync", "new"],
+                has_attachments=has_attachments,
             )
             if handler:
                 callbacks.append(handler)
@@ -2622,7 +2625,6 @@ class LangGraphAgent:
                 **langfuse_metadata,  # Langfuse v3 metadata (langfuse_session_id, etc.)
                 "user_id": user_id,
                 "session_id": session_id,
-                "environment": settings.ENVIRONMENT.value,
                 "debug": False,
             },
         }
@@ -2988,11 +2990,18 @@ class LangGraphAgent:
             # Build Langfuse callbacks for tracing (DEV-243, Langfuse v3)
             callbacks_for_stream: list[Any] = []
             langfuse_metadata_stream: dict[str, Any] = {}
+            is_followup = bool(prior_messages)
+            has_attachments = bool(attachments)
+            trace_name = "rag-followup" if is_followup else "rag-stream"
+            stream_tags = ["rag", "streaming", "followup" if is_followup else "new"]
             if should_sample():
                 handler_stream, langfuse_metadata_stream = create_langfuse_handler(
                     session_id=session_id,
                     user_id=user_id,
-                    tags=["rag", "stream", "get_stream_response"],
+                    trace_name=trace_name,
+                    tags=stream_tags,
+                    is_followup=is_followup,
+                    has_attachments=has_attachments,
                 )
                 if handler_stream:
                     callbacks_for_stream.append(handler_stream)
@@ -3900,7 +3909,8 @@ class LangGraphAgent:
                 handler, langfuse_metadata = create_langfuse_handler(
                     session_id=session_id,
                     user_id=self._current_user_id,
-                    tags=["rag", "stream"],
+                    trace_name="rag-workflow-stream",
+                    tags=["rag", "streaming", "workflow"],
                 )
                 if handler:
                     callbacks.append(handler)

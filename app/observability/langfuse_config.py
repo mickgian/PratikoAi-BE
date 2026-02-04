@@ -89,6 +89,10 @@ def create_langfuse_handler(
     request_id: str | None = None,
     stage: str | None = None,
     tags: list[str] | None = None,
+    trace_name: str | None = None,
+    is_followup: bool = False,
+    has_attachments: bool = False,
+    studio_id: str | None = None,
 ) -> tuple[CallbackHandler | None, dict[str, Any]]:
     """Create a Langfuse CallbackHandler with enhanced tracking (v3 API).
 
@@ -102,6 +106,11 @@ def create_langfuse_handler(
         request_id: Optional request identifier for tracing.
         stage: Optional pipeline stage identifier (e.g., "retrieval", "generation").
         tags: Optional list of tags for filtering in Langfuse UI.
+        trace_name: Langfuse trace name describing the user operation (e.g., "rag-query").
+            Overrides the auto-detected graph compile name.
+        is_followup: Whether this is a follow-up question in a conversation.
+        has_attachments: Whether the request includes file attachments.
+        studio_id: Multi-tenant studio identifier for isolation tracking.
 
     Returns:
         Tuple of (CallbackHandler, metadata_dict) where metadata_dict should be
@@ -113,7 +122,8 @@ def create_langfuse_handler(
         handler, langfuse_metadata = create_langfuse_handler(
             session_id="conv-123",
             user_id="user-456",
-            tags=["rag", "debug"],
+            trace_name="rag-query",
+            tags=["rag", "streaming", "new"],
         )
         if handler:
             config = {
@@ -139,14 +149,24 @@ def create_langfuse_handler(
         "langfuse_session_id": effective_session_id,
         "langfuse_user_id": effective_user_id,
         "langfuse_tags": tags or ["rag"],
+        "langfuse_update_parent": True,
     }
+
+    # Override trace name if provided (Langfuse v3 convention)
+    if trace_name:
+        langfuse_metadata["langfuse_trace_name"] = trace_name
 
     # Add custom metadata (non-prefixed for general use)
     if request_id:
         langfuse_metadata["request_id"] = request_id
     if stage:
         langfuse_metadata["stage"] = stage
-    langfuse_metadata["environment"] = settings.ENVIRONMENT.value
+    if studio_id:
+        langfuse_metadata["studio_id"] = studio_id
+
+    langfuse_metadata["query_type"] = "followup" if is_followup else "new"
+    langfuse_metadata["has_attachments"] = has_attachments
+    langfuse_metadata["pipeline_version"] = "unified"
 
     try:
         logger.info(
@@ -154,6 +174,7 @@ def create_langfuse_handler(
             extra={
                 "session_id": effective_session_id,
                 "user_id": effective_user_id,
+                "trace_name": trace_name,
                 "has_public_key": bool(settings.LANGFUSE_PUBLIC_KEY),
                 "has_secret_key": bool(settings.LANGFUSE_SECRET_KEY),
             },

@@ -482,6 +482,202 @@ class TestEdgeCases:
         assert result.intent is not None
 
 
+class TestFinetunedModelDetection:
+    """Test auto-detection of fine-tuned models (DEV-253)."""
+
+    @patch("app.services.hf_intent_classifier.pipeline")
+    def test_finetuned_model_uses_text_classification_pipeline(self, mock_pipeline):
+        """Fine-tuned models with id2label should use text-classification pipeline."""
+        reset_hf_intent_classifier()
+
+        # Mock AutoConfig to return id2label (fine-tuned indicator)
+        with patch("app.services.hf_intent_classifier.AutoConfig") as mock_config_cls:
+            mock_config = MagicMock()
+            mock_config.id2label = {
+                0: "chitchat",
+                1: "theoretical_definition",
+                2: "technical_research",
+                3: "calculator",
+                4: "golden_set",
+            }
+            mock_config_cls.from_pretrained.return_value = mock_config
+
+            mock_pipeline_instance = MagicMock()
+            mock_pipeline_instance.return_value = [{"label": "calculator", "score": 0.92}]
+            mock_pipeline.return_value = mock_pipeline_instance
+
+            classifier = HFIntentClassifier(model_name="pratikoai/intent-classifier-v1")
+            result = classifier.classify("Calcola IVA su 1000 euro")
+
+            mock_pipeline.assert_called_once_with(
+                "text-classification",
+                model="pratikoai/intent-classifier-v1",
+                device=-1,
+            )
+            assert result.intent == "calculator"
+
+    @patch("app.services.hf_intent_classifier.pipeline")
+    def test_zero_shot_model_uses_zero_shot_pipeline(self, mock_pipeline):
+        """Zero-shot models (no id2label) should use zero-shot-classification pipeline."""
+        reset_hf_intent_classifier()
+
+        with patch("app.services.hf_intent_classifier.AutoConfig") as mock_config_cls:
+            mock_config = MagicMock()
+            mock_config.id2label = {0: "ENTAILMENT", 1: "NEUTRAL", 2: "CONTRADICTION"}
+            mock_config_cls.from_pretrained.return_value = mock_config
+
+            mock_pipeline_instance = MagicMock()
+            mock_pipeline_instance.return_value = {
+                "labels": ["chitchat"],
+                "scores": [0.9],
+            }
+            mock_pipeline.return_value = mock_pipeline_instance
+
+            classifier = HFIntentClassifier(model_name="mdeberta")
+            classifier.classify("Ciao")
+
+            mock_pipeline.assert_called_once_with(
+                "zero-shot-classification",
+                model="MoritzLaurer/mDeBERTa-v3-base-mnli-xnli",
+                device=-1,
+            )
+
+    @patch("app.services.hf_intent_classifier.pipeline")
+    def test_config_load_failure_falls_back_to_zero_shot(self, mock_pipeline):
+        """If AutoConfig fails, default to zero-shot pipeline."""
+        reset_hf_intent_classifier()
+
+        with patch("app.services.hf_intent_classifier.AutoConfig") as mock_config_cls:
+            mock_config_cls.from_pretrained.side_effect = OSError("Model not found")
+
+            mock_pipeline_instance = MagicMock()
+            mock_pipeline_instance.return_value = {
+                "labels": ["chitchat"],
+                "scores": [0.9],
+            }
+            mock_pipeline.return_value = mock_pipeline_instance
+
+            classifier = HFIntentClassifier(model_name="unknown/model")
+            classifier.classify("Ciao")
+
+            mock_pipeline.assert_called_once_with(
+                "zero-shot-classification",
+                model="unknown/model",
+                device=-1,
+            )
+
+
+class TestFinetunedClassification:
+    """Test classification output for fine-tuned models (DEV-253)."""
+
+    @patch("app.services.hf_intent_classifier.pipeline")
+    def test_finetuned_result_format_matches_zero_shot(self, mock_pipeline):
+        """Fine-tuned output should produce same IntentResult format."""
+        reset_hf_intent_classifier()
+
+        with patch("app.services.hf_intent_classifier.AutoConfig") as mock_config_cls:
+            mock_config = MagicMock()
+            mock_config.id2label = {
+                0: "chitchat",
+                1: "theoretical_definition",
+                2: "technical_research",
+                3: "calculator",
+                4: "golden_set",
+            }
+            mock_config_cls.from_pretrained.return_value = mock_config
+
+            mock_pipeline_instance = MagicMock()
+            mock_pipeline_instance.return_value = [
+                {"label": "calculator", "score": 0.92},
+                {"label": "technical_research", "score": 0.04},
+                {"label": "theoretical_definition", "score": 0.02},
+                {"label": "chitchat", "score": 0.01},
+                {"label": "golden_set", "score": 0.01},
+            ]
+            mock_pipeline.return_value = mock_pipeline_instance
+
+            classifier = HFIntentClassifier(model_name="pratikoai/intent-classifier-v1")
+            result = classifier.classify("Calcola IVA su 1000 euro")
+
+            assert result.intent == "calculator"
+            assert result.confidence == 0.92
+            assert len(result.all_scores) == 5
+            assert result.all_scores["calculator"] == 0.92
+
+    @patch("app.services.hf_intent_classifier.pipeline")
+    def test_finetuned_single_result_populates_all_scores(self, mock_pipeline):
+        """Single-result fine-tuned output should fill missing intents with 0."""
+        reset_hf_intent_classifier()
+
+        with patch("app.services.hf_intent_classifier.AutoConfig") as mock_config_cls:
+            mock_config = MagicMock()
+            mock_config.id2label = {
+                0: "chitchat",
+                1: "theoretical_definition",
+                2: "technical_research",
+                3: "calculator",
+                4: "golden_set",
+            }
+            mock_config_cls.from_pretrained.return_value = mock_config
+
+            mock_pipeline_instance = MagicMock()
+            # Some models only return top-1
+            mock_pipeline_instance.return_value = [{"label": "chitchat", "score": 0.95}]
+            mock_pipeline.return_value = mock_pipeline_instance
+
+            classifier = HFIntentClassifier(model_name="pratikoai/intent-classifier-v1")
+            result = classifier.classify("Ciao!")
+
+            assert result.intent == "chitchat"
+            assert result.confidence == 0.95
+            # Missing intents should be 0.0
+            assert result.all_scores.get("calculator", 0.0) == 0.0
+
+    @patch("app.services.hf_intent_classifier.pipeline")
+    def test_finetuned_fallback_threshold_works(self, mock_pipeline):
+        """Fallback threshold should work the same for fine-tuned models."""
+        reset_hf_intent_classifier()
+
+        with patch("app.services.hf_intent_classifier.AutoConfig") as mock_config_cls:
+            mock_config = MagicMock()
+            mock_config.id2label = {0: "chitchat", 1: "calculator"}
+            mock_config_cls.from_pretrained.return_value = mock_config
+
+            mock_pipeline_instance = MagicMock()
+            mock_pipeline_instance.return_value = [{"label": "chitchat", "score": 0.45}]
+            mock_pipeline.return_value = mock_pipeline_instance
+
+            classifier = HFIntentClassifier(
+                model_name="pratikoai/intent-classifier-v1",
+                confidence_threshold=0.5,
+            )
+            result = classifier.classify("Hmm...")
+
+            assert classifier.should_fallback_to_gpt(result)
+
+    @patch("app.services.hf_intent_classifier.pipeline")
+    def test_finetuned_async_works(self, mock_pipeline):
+        """Async classification should work for fine-tuned models."""
+        import asyncio
+
+        reset_hf_intent_classifier()
+
+        with patch("app.services.hf_intent_classifier.AutoConfig") as mock_config_cls:
+            mock_config = MagicMock()
+            mock_config.id2label = {0: "chitchat", 1: "calculator"}
+            mock_config_cls.from_pretrained.return_value = mock_config
+
+            mock_pipeline_instance = MagicMock()
+            mock_pipeline_instance.return_value = [{"label": "calculator", "score": 0.88}]
+            mock_pipeline.return_value = mock_pipeline_instance
+
+            classifier = HFIntentClassifier(model_name="pratikoai/intent-classifier-v1")
+            result = asyncio.get_event_loop().run_until_complete(classifier.classify_async("Calcola contributi"))
+
+            assert result.intent == "calculator"
+            assert result.confidence == 0.88
+
+
 @pytest.mark.slow
 class TestIntegrationWithRealModel:
     """Integration tests with real HuggingFace model.

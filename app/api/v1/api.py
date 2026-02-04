@@ -19,6 +19,7 @@ from app.api.v1.expert_feedback import router as expert_feedback_router
 # from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router
 from app.api.v1.financial_validation import router as financial_validation_router
 from app.api.v1.health import router as health_router
+from app.api.v1.intent_labeling import router as intent_labeling_router
 from app.api.v1.italian import router as italian_router
 
 # TEMPORARY: Commented out due to duplicate Subscription model conflict
@@ -50,6 +51,7 @@ api_router.include_router(analytics_router, prefix="/analytics", tags=["analytic
 api_router.include_router(privacy_router, prefix="/privacy", tags=["privacy"])
 api_router.include_router(italian_router, prefix="/italian", tags=["italian"])
 api_router.include_router(expert_feedback_router)  # Includes /expert-feedback prefix from router
+api_router.include_router(intent_labeling_router)  # Includes /labeling prefix from router
 # TEMPORARY: Commented out due to duplicate Subscription model conflict
 # api_router.include_router(italian_subscriptions_router, prefix="/billing", tags=["billing"])
 # api_router.include_router(data_export_router, prefix="/gdpr", tags=["data-export"])

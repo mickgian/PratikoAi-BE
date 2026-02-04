@@ -517,8 +517,11 @@ SOURCE_AUTHORITY_WEIGHTS = {
     "cndcec": 0.10,
 }
 
-# HuggingFace Intent Classifier Configuration (DEV-251)
-# Model for zero-shot intent classification to replace GPT router calls
+# HuggingFace Intent Classifier Configuration (DEV-251, DEV-253)
+# Model for intent classification to replace GPT router calls.
+# Zero-shot: "mdeberta" (default), "bart"
+# Fine-tuned: any HuggingFace Hub path, e.g. "pratikoai/intent-classifier-v1"
+# The classifier auto-detects pipeline type from the model config.
 HF_INTENT_MODEL = os.getenv("HF_INTENT_MODEL", "mdeberta")
 
 # HyDE-specific Model Configuration (DEV-251 Phase 5b)

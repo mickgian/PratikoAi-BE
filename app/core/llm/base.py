@@ -43,7 +43,7 @@ class LLMResponse:
     content: str
     model: str
     provider: str
-    tokens_used: int | None = None
+    tokens_used: int | dict[str, int] | None = None
     cost_estimate: float | None = None
     finish_reason: str | None = None
     tool_calls: list[dict[str, Any]] | None = None
@@ -117,7 +117,7 @@ class LLMProvider(ABC):
         temperature: float = 0.2,
         max_tokens: int | None = None,
         **kwargs,
-    ) -> AsyncGenerator[LLMStreamResponse, None]:
+    ) -> AsyncGenerator[LLMStreamResponse]:
         """Generate a streaming chat completion.
 
         Args:

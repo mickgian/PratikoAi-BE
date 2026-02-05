@@ -63,3 +63,6 @@ errors
 backups/*.sql
 backups/*.sql.gz
 *.sql.backup
+
+# MCP configuration (contains credentials)
+.mcp.json

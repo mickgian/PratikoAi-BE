@@ -6,7 +6,7 @@ Create Date: 2026-02-04 10:00:00.000000
 
 """
 
-from typing import Sequence, Union
+from typing import Sequence
 
 import sqlalchemy as sa
 
@@ -21,14 +21,26 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Add account_code column and backfill existing users."""
-    # Add nullable column
-    op.add_column("user", sa.Column("account_code", sa.String(length=20), nullable=True))
+    # Check if column already exists (idempotent migration)
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(
+            """
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'user' AND column_name = 'account_code'
+            """
+        )
+    )
+    column_exists = result.fetchone() is not None
 
-    # Create unique index
-    op.create_index("ix_user_account_code", "user", ["account_code"], unique=True)
+    if not column_exists:
+        # Add nullable column
+        op.add_column("user", sa.Column("account_code", sa.String(length=20), nullable=True))
+
+        # Create unique index
+        op.create_index("ix_user_account_code", "user", ["account_code"], unique=True)
 
     # Backfill existing users with generated account codes
-    # Backfill existing users with email-based account codes
     # Format: {first_3_letters}{hundreds}{2_random}-{id}
     # Example: MGI70021-1 (from michele.giannone@gmail.com)
     op.execute(

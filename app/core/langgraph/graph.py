@@ -25,8 +25,9 @@ from langchain_core.messages import (
 )
 
 from app.observability.langfuse_config import (
-    create_langfuse_handler,
-    flush_langfuse_handler,
+    get_current_trace_id,
+    open_langfuse_trace,
+    record_latency_score,
     should_sample,
 )
 
@@ -2582,6 +2583,7 @@ class LangGraphAgent:
         session_id: str,
         user_id: str | None = None,
         attachments: list[dict] | None = None,
+        account_code: str | None = None,
     ) -> list[Message]:
         """Get a response from the LLM.
 
@@ -2590,6 +2592,7 @@ class LangGraphAgent:
             session_id (str): The session ID for Langfuse tracking.
             user_id (Optional[str]): The user ID for Langfuse tracking.
             attachments (list[dict] | None): Resolved file attachments for context (DEV-007).
+            account_code (str | None): Human-readable account code for Langfuse user_id (DEV-255).
 
         Returns:
             list[Message]: The response from the LLM.
@@ -2601,54 +2604,58 @@ class LangGraphAgent:
         if self._graph is None:
             self._graph = await self.create_graph()
 
-        # Build callbacks list with enhanced Langfuse handler (DEV-243, updated for v3)
-        callbacks = []
-        langfuse_metadata: dict[str, Any] = {}
+        import time
+        from contextlib import nullcontext
+
+        from app.observability.langfuse_config import LangfuseTraceContext
+
         has_attachments = bool(attachments)
-        if should_sample():
-            handler, langfuse_metadata = create_langfuse_handler(
+        _noop_ctx = LangfuseTraceContext(handler=None, trace_id="", metadata={})
+
+        # DEV-255: Use open_langfuse_trace context manager (v3 best-practice)
+        trace_cm = (
+            open_langfuse_trace(
+                trace_name="PratikoAI",
                 session_id=session_id,
                 user_id=user_id,
-                trace_name="rag-query",
-                tags=["rag", "sync", "new"],
+                tags=["sync"],
                 has_attachments=has_attachments,
+                account_code=account_code,
             )
-            if handler:
-                callbacks.append(handler)
-
-        # Type cast: LangGraph accepts dicts for config
-        # Langfuse v3: metadata with langfuse_ prefix is required for session/user tracking
-        config: Any = {
-            "configurable": {"thread_id": session_id},
-            "callbacks": callbacks,
-            "metadata": {
-                **langfuse_metadata,  # Langfuse v3 metadata (langfuse_session_id, etc.)
-                "user_id": user_id,
-                "session_id": session_id,
-                "debug": False,
-            },
-        }
-        try:
-            # Type cast: LangGraph accepts dicts matching the state schema
-            input_state: Any = {
-                "messages": dump_messages(messages),
-                "session_id": session_id,
-                "attachments": attachments or [],
+            if should_sample()
+            else nullcontext(_noop_ctx)
+        )
+        with trace_cm as trace_ctx:
+            config: Any = {
+                "configurable": {"thread_id": session_id},
+                "callbacks": [trace_ctx.handler] if trace_ctx.handler else [],
+                "metadata": {
+                    **trace_ctx.metadata,
+                    "user_id": user_id,
+                    "session_id": session_id,
+                },
             }
-            response = await self._graph.ainvoke(input_state, config)  # type: ignore[union-attr]
-            # DEV-241: Extract reasoning_trace from state and pass to message processing
-            reasoning_trace = response.get("reasoning_trace")
-            return self.__process_messages(response["messages"], reasoning_trace=reasoning_trace)
-        except Exception as e:
-            logger.error(f"Error getting response: {str(e)}")
-            raise e
-        finally:
-            # Flush Langfuse traces to ensure they are sent
-            for cb in callbacks:
-                flush_langfuse_handler(cb)
-            # Clean up tracking info
-            self._current_user_id = None
-            self._current_session_id = None
+
+            pipeline_start_time = time.perf_counter()
+            try:
+                input_state: Any = {
+                    "messages": dump_messages(messages),
+                    "session_id": session_id,
+                    "attachments": attachments or [],
+                }
+                response = await self._graph.ainvoke(input_state, config)  # type: ignore[union-attr]
+                # DEV-241: Extract reasoning_trace from state and pass to message processing
+                reasoning_trace = response.get("reasoning_trace")
+                return self.__process_messages(response["messages"], reasoning_trace=reasoning_trace)
+            except Exception as e:
+                logger.error(f"Error getting response: {str(e)}")
+                raise e
+            finally:
+                latency_ms = (time.perf_counter() - pipeline_start_time) * 1000
+                record_latency_score(latency_ms, trace_id=get_current_trace_id())
+                # Clean up tracking info
+                self._current_user_id = None
+                self._current_session_id = None
 
     @staticmethod
     def _needs_complex_workflow(classification: DomainActionClassification | None) -> bool:
@@ -2689,6 +2696,7 @@ class LangGraphAgent:
         session_id: str,
         user_id: str | None = None,
         attachments: list[dict] | None = None,
+        account_code: str | None = None,
     ) -> AsyncGenerator[str]:
         """Get a hybrid stream response using unified graph for pre-LLM steps.
 
@@ -2987,31 +2995,39 @@ class LangGraphAgent:
                 next_step=11,  # First step in Lane 2 (message processing)
             )
 
-            # Build Langfuse callbacks for tracing (DEV-243, Langfuse v3)
-            callbacks_for_stream: list[Any] = []
-            langfuse_metadata_stream: dict[str, Any] = {}
+            # DEV-255: Open Langfuse trace for streaming path (v3 best-practice)
+            import time
+            from contextlib import ExitStack, nullcontext
+
+            from app.observability.langfuse_config import LangfuseTraceContext
+
             is_followup = bool(prior_messages)
             has_attachments = bool(attachments)
-            trace_name = "rag-followup" if is_followup else "rag-stream"
-            stream_tags = ["rag", "streaming", "followup" if is_followup else "new"]
+            _noop_ctx = LangfuseTraceContext(handler=None, trace_id="", metadata={})
+
+            self._langfuse_exit_stack = ExitStack()
             if should_sample():
-                handler_stream, langfuse_metadata_stream = create_langfuse_handler(
-                    session_id=session_id,
-                    user_id=user_id,
-                    trace_name=trace_name,
-                    tags=stream_tags,
-                    is_followup=is_followup,
-                    has_attachments=has_attachments,
+                trace_ctx = self._langfuse_exit_stack.enter_context(
+                    open_langfuse_trace(
+                        trace_name="PratikoAI",
+                        session_id=session_id,
+                        user_id=user_id,
+                        tags=["streaming"],
+                        is_followup=is_followup,
+                        has_attachments=has_attachments,
+                        account_code=account_code,
+                    )
                 )
-                if handler_stream:
-                    callbacks_for_stream.append(handler_stream)
-                    logger.info("langfuse_handler_added_to_stream_config", session_id=session_id)
+            else:
+                trace_ctx = _noop_ctx
+
+            pipeline_start_time = time.perf_counter()
 
             # Debug: Log config and graph state
             config_to_use: dict[str, Any] = {
                 "configurable": {"thread_id": session_id},
-                "callbacks": callbacks_for_stream,
-                "metadata": langfuse_metadata_stream,
+                "callbacks": [trace_ctx.handler] if trace_ctx.handler else [],
+                "metadata": {**trace_ctx.metadata, "user_id": user_id, "session_id": session_id},
                 "recursion_limit": 50,  # Increased from default 25 to prevent infinite loops
             }
             logger.debug(
@@ -3813,9 +3829,12 @@ class LangGraphAgent:
                 original_error=str(stream_error),
             )
         finally:
-            # Flush Langfuse traces to ensure they are sent
-            for cb in callbacks_for_stream:
-                flush_langfuse_handler(cb)
+            # Record latency score and close Langfuse trace (DEV-255)
+            latency_ms = (time.perf_counter() - pipeline_start_time) * 1000
+            record_latency_score(latency_ms, trace_id=get_current_trace_id())
+            # Close the ExitStack to flush and end the Langfuse span
+            if hasattr(self, "_langfuse_exit_stack"):
+                self._langfuse_exit_stack.close()
             # Clean up tracking info
             self._current_user_id = None
             self._current_session_id = None
@@ -3897,30 +3916,37 @@ class LangGraphAgent:
         Yields:
             str: Raw markdown chunks and workflow updates
         """
+        import time
+
+        workflow_start_time = time.perf_counter()
         try:
             # Ensure graph is initialized
             if self._graph is None:
                 self._graph = await self.create_graph()
 
-            # Build callbacks list with enhanced Langfuse handler (DEV-243, updated for v3)
-            callbacks = []
-            langfuse_metadata: dict[str, Any] = {}
-            if should_sample():
-                handler, langfuse_metadata = create_langfuse_handler(
-                    session_id=session_id,
-                    user_id=self._current_user_id,
-                    trace_name="rag-workflow-stream",
-                    tags=["rag", "streaming", "workflow"],
-                )
-                if handler:
-                    callbacks.append(handler)
+            # DEV-255: Open Langfuse trace for workflow streaming (v3 best-practice)
+            from contextlib import ExitStack
 
-            # Type cast: LangGraph accepts dicts for config
-            # Langfuse v3: metadata with langfuse_ prefix is required for session/user tracking
+            from app.observability.langfuse_config import LangfuseTraceContext
+
+            _noop_ctx = LangfuseTraceContext(handler=None, trace_id="", metadata={})
+            workflow_exit_stack = ExitStack()
+            if should_sample():
+                trace_ctx = workflow_exit_stack.enter_context(
+                    open_langfuse_trace(
+                        trace_name="PratikoAI",
+                        session_id=session_id,
+                        user_id=self._current_user_id,
+                        tags=["streaming", "workflow"],
+                    )
+                )
+            else:
+                trace_ctx = _noop_ctx
+
             config: Any = {
                 "configurable": {"thread_id": session_id},
-                "callbacks": callbacks,
-                "metadata": langfuse_metadata,  # Langfuse v3 metadata
+                "callbacks": [trace_ctx.handler] if trace_ctx.handler else [],
+                "metadata": {**trace_ctx.metadata, "user_id": self._current_user_id, "session_id": session_id},
                 "recursion_limit": 50,  # Increased from default 25 to prevent infinite loops
             }
 
@@ -3967,9 +3993,10 @@ class LangGraphAgent:
             )
             raise
         finally:
-            # Flush Langfuse traces after streaming completes
-            for cb in callbacks:
-                flush_langfuse_handler(cb)
+            # DEV-255: Record latency score and close Langfuse trace
+            latency_ms = (time.perf_counter() - workflow_start_time) * 1000
+            record_latency_score(latency_ms, trace_id=get_current_trace_id())
+            workflow_exit_stack.close()
 
     async def get_chat_history(self, session_id: str) -> list[Message]:
         """Get the chat history for a given thread ID.

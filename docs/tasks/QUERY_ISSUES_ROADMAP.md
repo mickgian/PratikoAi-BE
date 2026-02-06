@@ -238,3 +238,53 @@ this is just a test
 **Note:**
 Questo task è stato generato automaticamente dal sistema di feedback esperti.
 Per maggiori dettagli sul feedback originale, consultare il database con `feedback_id: 4d5b0816-6c87-44e1-813e-278ea6ac0838`
+
+---
+
+### QUERY-12: PARLAMI_DELLA_ROTTAMAZIONE_QUI
+
+**Priority:** HIGH | **Effort:** TBD | **Dependencies:** None
+**Created:** 2026-02-05
+**Source:** Expert Feedback (ID: 174c5718-b20f-4f04-bca5-d0dcb2d16db0)
+**Expert:** User 1 (Trust Score: 1.00)
+
+**Problema rilevato dall'esperto:**
+
+La risposta fornita dal sistema è stata marcata come **Errata** dall'esperto.
+
+**Domanda originale:**
+```
+parlami della rottamazione quinqui
+```
+
+**Risposta fornita (incompleta/errata):**
+```
+La "Rottamazione Quinquies" è una misura introdotta dalla Legge 30 dicembre 2025, n. 199, che consente ai contribuenti di estinguere i debiti iscritti a ruolo senza il pagamento di sanzioni, interessi di mora e aggio. Possono accedere a questa definizione agevolata anche i contribuenti decaduti da precedenti definizioni, purché i debiti rientrino nel perimetro previsto dalla nuova misura (Confcommercio).
+
+La procedura prevede che i debitori possano presentare domanda per aderire alla rottamazione entro una scadenza specifica, beneficiando di una riduzione degli importi dovuti. È importante notare che la decadenza dal beneficio avviene in caso di mancato pagamento delle rate previste (Regole Ufficiali AdER).
+```
+
+**Dettagli aggiuntivi dall'esperto:**
+```
+test
+```
+
+**Feedback dell'esperto:**
+- Tipo di feedback: incorrect
+- Confidence score: 0.80
+- Tempo impiegato: 210s
+
+**Implementazione richiesta:**
+[Da definire dal team di sviluppo in base ai dettagli forniti dall'esperto]
+
+**Acceptance Criteria:**
+- [ ] Verificare che la risposta copra tutti i casi sollevati dall'esperto
+- [ ] Aggiungere riferimenti normativi se mancanti
+- [ ] Testare la risposta con domande simili
+- [ ] Far validare la correzione da un esperto fiscale
+
+**Status:** TODO
+
+**Note:**
+Questo task è stato generato automaticamente dal sistema di feedback esperti.
+Per maggiori dettagli sul feedback originale, consultare il database con `feedback_id: 174c5718-b20f-4f04-bca5-d0dcb2d16db0`

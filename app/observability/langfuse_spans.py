@@ -9,6 +9,11 @@ non-LLM operations like:
 - Cache operations
 
 All span functions degrade gracefully when Langfuse is unavailable.
+
+Updated for Langfuse SDK v3.x:
+- Uses get_client() singleton pattern
+- Uses start_span() / start_as_current_span() with trace_context
+- Removed deprecated client.trace(id=...).span(...) pattern
 """
 
 import logging
@@ -16,40 +21,27 @@ from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from typing import Any, Optional
 
-from langfuse import Langfuse
+from langfuse import get_client
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Module-level client (lazy initialized)
-_langfuse_client: Langfuse | None = None
 
-
-def get_langfuse_client() -> Langfuse | None:
-    """Get or create the Langfuse client singleton.
+def get_langfuse_client():
+    """Get the Langfuse client singleton (v3 SDK pattern).
 
     Returns:
         Langfuse client instance, or None if credentials are missing.
     """
-    global _langfuse_client
-
-    if _langfuse_client is not None:
-        return _langfuse_client
-
     if not settings.LANGFUSE_PUBLIC_KEY or not settings.LANGFUSE_SECRET_KEY:
         return None
 
     try:
-        _langfuse_client = Langfuse(
-            public_key=settings.LANGFUSE_PUBLIC_KEY,
-            secret_key=settings.LANGFUSE_SECRET_KEY,
-            host=settings.LANGFUSE_HOST,
-        )
-        return _langfuse_client
+        return get_client()
     except Exception as e:
         logger.warning(
-            "Failed to create Langfuse client",
+            "Failed to get Langfuse client",
             extra={"error": str(e), "error_type": type(e).__name__},
         )
         return None
@@ -102,7 +94,7 @@ def create_span(
     metadata: dict[str, Any] | None = None,
     level: str = "DEFAULT",
 ) -> Any | None:
-    """Create a custom span for non-LLM operations.
+    """Create a custom span for non-LLM operations (v3 SDK).
 
     Args:
         name: Name of the span (e.g., "retrieval_step", "cache_lookup")
@@ -119,12 +111,13 @@ def create_span(
         return None
 
     try:
-        trace = client.trace(id=trace_id)
-        span = trace.span(
+        # v3 SDK: Use start_span() with trace_context to attach to existing trace
+        span = client.start_span(
             name=name,
             input=input_data or {},
             metadata=metadata or {},
             level=level,
+            trace_context={"trace_id": trace_id},
         )
         return span
     except Exception as e:
@@ -143,7 +136,7 @@ def span_context(
     metadata: dict[str, Any] | None = None,
     level: str = "DEFAULT",
 ) -> Generator[SpanWrapper, None, None]:
-    """Context manager for creating and auto-ending spans.
+    """Context manager for creating and auto-ending spans (v3 SDK).
 
     Usage:
         ```python
@@ -171,12 +164,13 @@ def span_context(
     span = None
     wrapper = SpanWrapper(None)
     try:
-        trace = client.trace(id=trace_id)
-        span = trace.span(
+        # v3 SDK: Use start_span() with trace_context to attach to existing trace
+        span = client.start_span(
             name=name,
             input=input_data or {},
             metadata=metadata or {},
             level=level,
+            trace_context={"trace_id": trace_id},
         )
         wrapper = SpanWrapper(span)
     except Exception as e:

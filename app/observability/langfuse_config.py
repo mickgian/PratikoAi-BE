@@ -1,12 +1,15 @@
-"""Langfuse configuration and handler creation for LangGraph observability.
+"""Langfuse configuration and tracing for LangGraph observability.
 
-Updated for Langfuse SDK v3.x which uses a different API:
-- CallbackHandler accepts no constructor arguments
-- Session ID, user ID, tags passed via config["metadata"] with langfuse_ prefix
+Updated for Langfuse SDK v3.x best-practice pattern:
+- open_langfuse_trace() context manager using start_as_current_span()
+- Natural root span creation (SDK auto-generates W3C trace ID)
+- get_current_trace_id() retrieves the auto-generated ID
+- update_current_trace() for user_id, session_id, tags
+- CallbackHandler created inside the span context
 
 This module provides:
 - Environment-aware sampling rates (100% DEV/QA, 10% PROD)
-- Session ID and user ID propagation via metadata
+- Session ID and user ID propagation via update_current_trace
 - Searchable metadata enrichment
 - Graceful degradation when Langfuse is unavailable
 
@@ -15,16 +18,68 @@ Performance constraints:
 - Sampling decision: <0.1ms
 """
 
+import contextvars
 import logging
 import random
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from typing import Any
 
+from langfuse import get_client
 from langfuse.langchain import CallbackHandler
 
 from app.core.config import Environment, settings
 
 logger = logging.getLogger(__name__)
+
+# Async-safe trace_id and observation_id propagation (DEV-255)
+_current_trace_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("_current_trace_id", default=None)
+_current_observation_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "_current_observation_id", default=None
+)
+
+
+@dataclass
+class LangfuseTraceContext:
+    """Context yielded by open_langfuse_trace().
+
+    Attributes:
+        handler: LangChain CallbackHandler for graph invocation, or None if disabled.
+        trace_id: W3C 32-char hex trace ID, or "" if disabled.
+        metadata: Custom metadata dict for config["metadata"] merging.
+    """
+
+    handler: CallbackHandler | None
+    trace_id: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+_NOOP_CONTEXT = LangfuseTraceContext(handler=None, trace_id="", metadata={})
+
+
+def get_current_trace_id() -> str | None:
+    """Get the current trace_id set by open_langfuse_trace.
+
+    Returns:
+        The trace_id string, or None if no trace is active in this context.
+    """
+    return _current_trace_id.get()
+
+
+def get_current_observation_id() -> str | None:
+    """Get the current observation_id (span_id) set by open_langfuse_trace.
+
+    This is the 16-char hex ID of the root span, used as parent_span_id when
+    creating nested generations to ensure they appear under the correct parent
+    in the Langfuse trace hierarchy.
+
+    Returns:
+        The observation_id string, or None if no trace is active in this context.
+    """
+    return _current_observation_id.get()
+
 
 # Default sampling rates by environment
 DEFAULT_SAMPLING_RATES = {
@@ -48,7 +103,6 @@ def get_sampling_rate(
         Sampling rate between 0.0 and 1.0
     """
     if override_rate is not None:
-        # Clamp to valid range
         return max(0.0, min(1.0, override_rate))
 
     return DEFAULT_SAMPLING_RATES.get(environment, 1.0)
@@ -69,12 +123,10 @@ def should_sample(override_rate: float | None = None) -> bool:
     """
     rate = override_rate
     if rate is None:
-        # Check for settings override first
         rate = getattr(settings, "LANGFUSE_SAMPLING_RATE", None)
 
     sampling_rate = get_sampling_rate(settings.ENVIRONMENT, rate)
 
-    # For 100% sampling, skip random call for performance
     if sampling_rate >= 1.0:
         return True
     if sampling_rate <= 0.0:
@@ -83,151 +135,158 @@ def should_sample(override_rate: float | None = None) -> bool:
     return random.random() < sampling_rate
 
 
-def create_langfuse_handler(
+@contextmanager
+def open_langfuse_trace(
+    trace_name: str,
     session_id: str | None = None,
     user_id: str | None = None,
-    request_id: str | None = None,
-    stage: str | None = None,
     tags: list[str] | None = None,
-    trace_name: str | None = None,
     is_followup: bool = False,
     has_attachments: bool = False,
     studio_id: str | None = None,
-) -> tuple[CallbackHandler | None, dict[str, Any]]:
-    """Create a Langfuse CallbackHandler with enhanced tracking (v3 API).
+    account_code: str | None = None,
+) -> Iterator[LangfuseTraceContext]:
+    """Open a Langfuse trace span using the v3 best-practice pattern.
 
-    In Langfuse SDK v3, the CallbackHandler accepts no constructor arguments.
-    Session ID, user ID, and tags are passed via config["metadata"] with
-    the langfuse_ prefix when invoking the chain.
+    Uses start_as_current_span() to create a root span, then
+    update_current_trace() to set trace-level metadata (name, user_id,
+    session_id, tags). A CallbackHandler is created inside the span
+    context so LangChain callbacks attach to the correct trace.
+
+    Gracefully degrades: yields a no-op LangfuseTraceContext when
+    credentials are missing or any error occurs. Never raises.
 
     Args:
-        session_id: Unique session/conversation identifier. If not provided, generates UUID.
-        user_id: User identifier. Defaults to "anonymous" if not provided.
-        request_id: Optional request identifier for tracing.
-        stage: Optional pipeline stage identifier (e.g., "retrieval", "generation").
-        tags: Optional list of tags for filtering in Langfuse UI.
-        trace_name: Langfuse trace name describing the user operation (e.g., "rag-query").
-            Overrides the auto-detected graph compile name.
-        is_followup: Whether this is a follow-up question in a conversation.
+        trace_name: Trace name shown in Langfuse UI (e.g., "rag-query").
+        session_id: Session/conversation ID for grouping traces.
+        user_id: Numeric user ID (fallback if account_code not provided).
+        tags: Filterable tags (e.g., ["streaming", "workflow"]).
+        is_followup: Whether this is a follow-up in a conversation.
         has_attachments: Whether the request includes file attachments.
-        studio_id: Multi-tenant studio identifier for isolation tracking.
+        studio_id: Multi-tenant studio identifier.
+        account_code: Human-readable account code (e.g., PRA70021-1).
 
-    Returns:
-        Tuple of (CallbackHandler, metadata_dict) where metadata_dict should be
-        merged into config["metadata"] when invoking the chain.
-        Returns (None, {}) if credentials are missing or creation fails.
-
-    Example:
-        ```python
-        handler, langfuse_metadata = create_langfuse_handler(
-            session_id="conv-123",
-            user_id="user-456",
-            trace_name="rag-query",
-            tags=["rag", "streaming", "new"],
-        )
-        if handler:
-            config = {
-                "callbacks": [handler],
-                "metadata": {**langfuse_metadata, "other_key": "value"},
-            }
-            await graph.ainvoke(state, config)
-        ```
+    Yields:
+        LangfuseTraceContext with handler, trace_id, and metadata.
     """
     # Check for credentials
     if not settings.LANGFUSE_PUBLIC_KEY or not settings.LANGFUSE_SECRET_KEY:
-        logger.debug("Langfuse credentials not configured, skipping handler creation")
-        return None, {}
+        logger.debug("Langfuse credentials not configured, skipping trace")
+        yield _NOOP_CONTEXT
+        return
 
-    # Generate session ID if not provided
-    effective_session_id = session_id or str(uuid.uuid4())
-
-    # Default to anonymous user
-    effective_user_id = str(user_id) if user_id else "anonymous"
-
-    # Build Langfuse v3 metadata (prefixed with langfuse_)
-    langfuse_metadata: dict[str, Any] = {
-        "langfuse_session_id": effective_session_id,
-        "langfuse_user_id": effective_user_id,
-        "langfuse_tags": tags or ["rag"],
-        "langfuse_update_parent": True,
-    }
-
-    # Override trace name if provided (Langfuse v3 convention)
-    if trace_name:
-        langfuse_metadata["langfuse_trace_name"] = trace_name
-
-    # Add custom metadata (non-prefixed for general use)
-    if request_id:
-        langfuse_metadata["request_id"] = request_id
-    if stage:
-        langfuse_metadata["stage"] = stage
-    if studio_id:
-        langfuse_metadata["studio_id"] = studio_id
-
-    langfuse_metadata["query_type"] = "followup" if is_followup else "new"
-    langfuse_metadata["has_attachments"] = has_attachments
-    langfuse_metadata["pipeline_version"] = "unified"
-
+    # Try to set up Langfuse tracing
     try:
-        logger.info(
-            "Creating Langfuse v3 handler",
-            extra={
-                "session_id": effective_session_id,
-                "user_id": effective_user_id,
-                "trace_name": trace_name,
-                "has_public_key": bool(settings.LANGFUSE_PUBLIC_KEY),
-                "has_secret_key": bool(settings.LANGFUSE_SECRET_KEY),
-            },
-        )
-        # Langfuse v3: CallbackHandler takes no constructor arguments
-        handler = CallbackHandler()
-        logger.info("Langfuse v3 handler created successfully")
-        return handler, langfuse_metadata
+        client = get_client()
+
+        # Build custom metadata (non-prefixed, for config["metadata"])
+        custom_metadata: dict[str, Any] = {
+            "query_type": "followup" if is_followup else "new",
+            "has_attachments": has_attachments,
+            "pipeline_version": "unified",
+        }
+        if studio_id:
+            custom_metadata["studio_id"] = studio_id
+
+        # Prefer account_code for readable Langfuse analytics
+        effective_user_id = account_code or (str(user_id) if user_id else "anonymous")
+        effective_session_id = session_id or str(uuid.uuid4())
     except Exception as e:
+        # Setup failed - yield no-op context and return
         logger.warning(
-            "Failed to create Langfuse handler",
-            extra={
-                "error": str(e),
-                "error_type": type(e).__name__,
-            },
+            "Langfuse trace setup failed, yielding no-op context",
+            extra={"error": str(e), "error_type": type(e).__name__},
         )
-        return None, {}
+        yield _NOOP_CONTEXT
+        return
+
+    # DEV-255 Fix: Use natural root span pattern (v3 SDK).
+    # start_as_current_span() creates a real root span with auto-generated
+    # W3C trace_id. We retrieve it via get_current_trace_id() INSIDE the
+    # context, then use update_current_trace() to set trace-level metadata.
+    #
+    # User exceptions inside the context MUST propagate - only catch Langfuse errors.
+    with client.start_as_current_span(name=trace_name):
+        # Get the auto-generated trace_id and observation_id from the SDK
+        trace_id = client.get_current_trace_id() or ""
+        observation_id = client.get_current_observation_id() or ""
+
+        # Set contextvars for downstream consumers (e.g., _report_langfuse_generation)
+        _current_trace_id.set(trace_id)
+        _current_observation_id.set(observation_id)
+
+        try:
+            # Set trace-level attributes (name, user_id, session_id, tags)
+            client.update_current_trace(
+                name=trace_name,
+                user_id=effective_user_id,
+                session_id=effective_session_id,
+                tags=tags or [],
+                metadata=custom_metadata,
+            )
+
+            # Create CallbackHandler inside span context
+            handler = CallbackHandler()
+
+            ctx = LangfuseTraceContext(
+                handler=handler,
+                trace_id=trace_id,
+                metadata=custom_metadata,
+            )
+
+            logger.info(
+                "Langfuse trace opened",
+                extra={
+                    "trace_name": trace_name,
+                    "trace_id": trace_id,
+                    "session_id": effective_session_id,
+                    "user_id": effective_user_id,
+                },
+            )
+
+            yield ctx
+        finally:
+            # Reset contextvars to prevent leakage across async contexts
+            _current_trace_id.set(None)
+            _current_observation_id.set(None)
+            client.flush()
 
 
-def flush_langfuse_handler(handler: CallbackHandler | None) -> None:
-    """Flush pending traces to Langfuse.
+def record_latency_score(
+    latency_ms: float,
+    trace_id: str | None = None,
+) -> None:
+    """Record pipeline latency as a Langfuse score.
 
-    The CallbackHandler queues traces asynchronously. Call this after the
-    LangGraph invocation completes to ensure traces are sent to Langfuse.
+    Creates a numeric score named "latency-ms" attached to the trace.
+    Degrades gracefully: logs warning on any error, never raises.
 
     Args:
-        handler: The CallbackHandler to flush, or None (no-op).
-
-    Example:
-        ```python
-        handler, metadata = create_langfuse_handler(session_id="conv-123")
-        try:
-            result = await graph.ainvoke(state, {"callbacks": [handler], "metadata": metadata})
-        finally:
-            flush_langfuse_handler(handler)
-        ```
+        latency_ms: Pipeline latency in milliseconds.
+        trace_id: The W3C trace_id to attach the score to.
     """
-    if handler is None:
-        logger.debug("flush_langfuse_handler: handler is None, skipping")
+    if trace_id is None:
+        return
+
+    if latency_ms < 0:
         return
 
     try:
-        # Langfuse v3: Use global client to flush
-        from langfuse import get_client
-
         client = get_client()
-        client.flush()
-        logger.debug("flush_langfuse_handler: flushed via get_client()")
+        client.create_score(
+            name="latency-ms",
+            value=latency_ms,
+            trace_id=trace_id,
+            data_type="NUMERIC",
+        )
+        logger.debug("record_latency_score: recorded %.1fms for trace %s", latency_ms, trace_id)
     except Exception as e:
         logger.warning(
-            "Failed to flush Langfuse handler",
+            "Failed to record latency score",
             extra={
                 "error": str(e),
                 "error_type": type(e).__name__,
+                "latency_ms": latency_ms,
+                "trace_id": trace_id,
             },
         )

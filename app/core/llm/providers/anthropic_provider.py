@@ -20,6 +20,8 @@ except ImportError:
     ANTHROPIC_AVAILABLE = False
     AnthropicError = Exception
 
+from langfuse import get_client
+
 from app.core.llm.base import (
     LLMCostInfo,
     LLMModelTier,
@@ -33,6 +35,7 @@ from app.core.llm.utils import (
     get_message_role,
 )
 from app.core.logging import logger
+from app.observability.langfuse_config import get_current_observation_id, get_current_trace_id
 from app.observability.rag_logging import rag_step_timer
 from app.schemas.chat import Message
 
@@ -220,6 +223,18 @@ class AnthropicProvider(LLMProvider):
             cost_estimate = None
             if response.usage:
                 cost_estimate = self.estimate_cost(response.usage.input_tokens, response.usage.output_tokens)
+                # Report generation to Langfuse for token/cost tracking (DEV-255)
+                # Only for non-tool-call responses (tool calls would use LangChain)
+                if not tool_calls:
+                    self._report_langfuse_generation(
+                        model=self.model,
+                        input_messages=conversation_messages,
+                        output_content=content,
+                        input_tokens=response.usage.input_tokens,
+                        output_tokens=response.usage.output_tokens,
+                        trace_id=get_current_trace_id(),
+                        parent_span_id=get_current_observation_id(),
+                    )
 
             return LLMResponse(
                 content=content,
@@ -414,3 +429,62 @@ class AnthropicProvider(LLMProvider):
             )
 
         return base_capabilities
+
+    @staticmethod
+    def _report_langfuse_generation(
+        model: str,
+        input_messages: list[dict[str, Any]],
+        output_content: str,
+        input_tokens: int,
+        output_tokens: int,
+        trace_id: str | None = None,
+        parent_span_id: str | None = None,
+    ) -> None:
+        """Report a direct Anthropic call to Langfuse as a generation (DEV-255).
+
+        Called only for non-tool-call paths where the raw AsyncAnthropic client
+        is used. Tool-call paths would use LangChain which auto-reports.
+
+        Uses start_generation() with explicit trace_context binding instead of
+        start_as_current_observation() because OpenTelemetry context propagation
+        fails across async boundaries in our LangGraph pipeline. start_generation()
+        creates a proper "generation" type observation that enables automatic
+        cost calculation in Langfuse UI (unlike start_span which creates "span" type).
+
+        Args:
+            trace_id: The trace ID to bind this generation to.
+            parent_span_id: The parent span ID to nest this generation under.
+        """
+        # Skip if no active trace (sampling disabled or setup failed)
+        # This prevents orphan traces named "anthropic-chat" in Langfuse
+        if not trace_id:
+            return
+
+        try:
+            client = get_client()
+            # Use start_generation() with explicit trace_context binding.
+            # This creates a proper "generation" observation type that:
+            # 1. Accepts native model/usage_details parameters
+            # 2. Enables automatic cost calculation in Langfuse UI
+            # 3. Shows tokens in the Langfuse tokens column
+            # 4. Nests under the parent span (not at trace root level)
+            trace_context = {"trace_id": trace_id}
+            if parent_span_id:
+                trace_context["parent_span_id"] = parent_span_id
+
+            generation = client.start_generation(
+                trace_context=trace_context,
+                name="anthropic-chat",
+                model=model,
+                input={"messages": input_messages},
+            )
+            generation.update(
+                output=output_content,
+                usage_details={
+                    "input": input_tokens,
+                    "output": output_tokens,
+                },
+            )
+            generation.end()
+        except Exception:
+            pass  # Graceful degradation

@@ -210,6 +210,9 @@ class ChatResponse(BaseModel):
         None, description="Parameters extracted from the user query for confirmation"
     )
 
+    # DEV-255: Trace ID for user feedback attachment
+    trace_id: str | None = Field(default=None, description="Langfuse trace ID for attaching user feedback scores")
+
 
 class StreamResponse(BaseModel):
     """Response model for streaming chat endpoint.
@@ -267,3 +270,6 @@ class StreamResponse(BaseModel):
     web_verification: dict[str, Any] | None = Field(
         default=None, description="Web verification results including caveats and web sources"
     )
+
+    # DEV-255: Trace ID for user feedback attachment
+    trace_id: str | None = Field(default=None, description="Langfuse trace ID for attaching user feedback scores")

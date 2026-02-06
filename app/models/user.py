@@ -62,6 +62,9 @@ class User(BaseModel, table=True):  # type: ignore[call-arg]
     # User role
     role: str = Field(default=UserRole.REGULAR_USER.value, max_length=50, index=True)
 
+    # Human-readable account code for Langfuse analytics (DEV-255)
+    account_code: str | None = Field(default=None, max_length=20, unique=True, index=True)
+
     sessions: list["Session"] = Relationship(back_populates="user")
 
     def verify_password(self, password: str) -> bool:

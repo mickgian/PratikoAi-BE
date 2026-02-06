@@ -2250,6 +2250,7 @@ CREATE INDEX idx_qh_user_timestamp ON query_history(user_id, timestamp DESC);
 5. **Pydantic V2 only** - No V1 syntax (ADR-005)
 6. **Chat History: PostgreSQL (NEW 2025-11-29)** - Server-side storage, NO IndexedDB-only (ADR-015)
 7. **NO Terraform/Kubernetes (NEW 2025-12-27)** - Docker Compose only (ADR-017)
+8. **LLM Model Tiering (NEW 2026-02-04)** - BASIC/PREMIUM/LOCAL tiers, document all model changes (ADR-025)
 
 ### ADR-017: No Terraform/Kubernetes - Docker Compose Only (2025-12-27)
 
@@ -2452,6 +2453,7 @@ PratikoAI targets Italian tax/fiscal professionals with expected scale:
 | 2026-02-03 | Added Unknown Term Hallucination Prevention lesson | DEV-251 Part 2: Two-pronged defense (prompt rules + context-aware normalization) to prevent LLM from inventing definitions for unknown/typo'd terms |
 | 2026-02-03 | Added Follow-Up Grounding Rules Contradiction lesson | DEV-251 Part 3: Separate grounding rules for follow-ups - never prepend concise instructions to completeness rules (LLM ignores earlier instructions) |
 | 2026-02-03 | Added ToT Prompt Variable Injection lesson | DEV-251 Part 3.1: ToT bypasses step_44 - use template variables for conditional behavior, pattern-based follow-up detection (zero-cost) |
+| 2026-02-04 | Added ADR-025: LLM Model Inventory & Tiering Strategy | DEV-255: Documented all 10+ LLM models across 4 providers, 2-tier strategy (BASIC/PREMIUM/LOCAL), fallback chains, Langfuse pricing definitions |
 
 ---
 

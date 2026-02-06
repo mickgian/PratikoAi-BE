@@ -7,7 +7,8 @@ Tests cover:
 - Nested span support
 - Graceful degradation
 
-Following TDD: These tests are written BEFORE the implementation.
+Updated for Langfuse SDK v3.x:
+- Uses client.start_span() with trace_context instead of client.trace().span()
 """
 
 from contextlib import contextmanager
@@ -18,21 +19,19 @@ import pytest
 
 
 class TestCreateSpan:
-    """Tests for create_span function."""
+    """Tests for create_span function (v3 SDK)."""
 
-    @patch("app.observability.langfuse_spans.Langfuse")
-    def test_creates_span_with_name(self, mock_langfuse_class: MagicMock) -> None:
-        """Should create a span with the given name."""
+    @patch("app.observability.langfuse_spans.get_client")
+    def test_creates_span_with_name(self, mock_get_client_fn: MagicMock) -> None:
+        """Should create a span with the given name using start_span()."""
         from app.observability.langfuse_spans import create_span
 
-        mock_langfuse = MagicMock()
-        mock_langfuse_class.return_value = mock_langfuse
-        mock_trace = MagicMock()
-        mock_langfuse.trace.return_value = mock_trace
+        mock_client = MagicMock()
+        mock_get_client_fn.return_value = mock_client
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
-            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret  # pragma: allowlist secret
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
 
             create_span(
@@ -40,9 +39,11 @@ class TestCreateSpan:
                 trace_id="trace-123",
             )
 
-        mock_trace.span.assert_called()
-        call_kwargs = mock_trace.span.call_args[1]
+        # v3 SDK: should call start_span() with trace_context
+        mock_client.start_span.assert_called()
+        call_kwargs = mock_client.start_span.call_args[1]
         assert call_kwargs["name"] == "retrieval_step"
+        assert call_kwargs["trace_context"] == {"trace_id": "trace-123"}
 
     @patch("app.observability.langfuse_spans.get_langfuse_client")
     def test_span_includes_input_data(self, mock_get_client: MagicMock) -> None:
@@ -51,8 +52,6 @@ class TestCreateSpan:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
 
         create_span(
             name="retrieval_step",
@@ -60,7 +59,7 @@ class TestCreateSpan:
             input_data={"query": "test query"},
         )
 
-        call_kwargs = mock_trace.span.call_args[1]
+        call_kwargs = mock_client.start_span.call_args[1]
         assert call_kwargs["input"] == {"query": "test query"}
 
     @patch("app.observability.langfuse_spans.get_langfuse_client")
@@ -70,8 +69,6 @@ class TestCreateSpan:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
 
         create_span(
             name="retrieval_step",
@@ -79,13 +76,13 @@ class TestCreateSpan:
             metadata={"stage": "S040", "node": "build_context"},
         )
 
-        call_kwargs = mock_trace.span.call_args[1]
+        call_kwargs = mock_client.start_span.call_args[1]
         assert call_kwargs["metadata"]["stage"] == "S040"
         assert call_kwargs["metadata"]["node"] == "build_context"
 
 
 class TestSpanContextManager:
-    """Tests for span_context context manager."""
+    """Tests for span_context context manager (v3 SDK)."""
 
     @patch("app.observability.langfuse_spans.get_langfuse_client")
     def test_span_context_creates_and_ends_span(self, mock_get_client: MagicMock) -> None:
@@ -94,10 +91,8 @@ class TestSpanContextManager:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
         mock_span = MagicMock()
-        mock_trace.span.return_value = mock_span
+        mock_client.start_span.return_value = mock_span
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
@@ -116,10 +111,8 @@ class TestSpanContextManager:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
         mock_span = MagicMock()
-        mock_trace.span.return_value = mock_span
+        mock_client.start_span.return_value = mock_span
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
@@ -139,14 +132,12 @@ class TestSpanContextManager:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
         mock_span = MagicMock()
-        mock_trace.span.return_value = mock_span
+        mock_client.start_span.return_value = mock_span
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
-            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret  # pragma: allowlist secret
+            mock_settings.LANGFUSE_SECRET_KEY = "sk-test"  # pragma: allowlist secret
             mock_settings.LANGFUSE_HOST = "https://cloud.langfuse.com"
 
             with (
@@ -160,7 +151,7 @@ class TestSpanContextManager:
 
 
 class TestNodeSpan:
-    """Tests for node_span helper for LangGraph nodes."""
+    """Tests for node_span helper for LangGraph nodes (v3 SDK)."""
 
     @patch("app.observability.langfuse_spans.get_langfuse_client")
     def test_node_span_includes_step_number(self, mock_get_client: MagicMock) -> None:
@@ -169,10 +160,8 @@ class TestNodeSpan:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
         mock_span = MagicMock()
-        mock_trace.span.return_value = mock_span
+        mock_client.start_span.return_value = mock_span
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
@@ -186,7 +175,7 @@ class TestNodeSpan:
             ):
                 pass
 
-        call_kwargs = mock_trace.span.call_args[1]
+        call_kwargs = mock_client.start_span.call_args[1]
         assert call_kwargs["metadata"]["step_number"] == "S040"
 
     @patch("app.observability.langfuse_spans.get_langfuse_client")
@@ -196,10 +185,8 @@ class TestNodeSpan:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
         mock_span = MagicMock()
-        mock_trace.span.return_value = mock_span
+        mock_client.start_span.return_value = mock_span
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
@@ -213,12 +200,12 @@ class TestNodeSpan:
             ):
                 pass
 
-        call_kwargs = mock_trace.span.call_args[1]
+        call_kwargs = mock_client.start_span.call_args[1]
         assert call_kwargs["name"] == "S040_build_context"
 
 
 class TestRetrievalSpan:
-    """Tests for retrieval_span helper for search operations."""
+    """Tests for retrieval_span helper for search operations (v3 SDK)."""
 
     @patch("app.observability.langfuse_spans.get_langfuse_client")
     def test_retrieval_span_includes_query(self, mock_get_client: MagicMock) -> None:
@@ -227,10 +214,8 @@ class TestRetrievalSpan:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
         mock_span = MagicMock()
-        mock_trace.span.return_value = mock_span
+        mock_client.start_span.return_value = mock_span
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
@@ -243,7 +228,7 @@ class TestRetrievalSpan:
             ):
                 pass
 
-        call_kwargs = mock_trace.span.call_args[1]
+        call_kwargs = mock_client.start_span.call_args[1]
         assert call_kwargs["input"]["query"] == "rottamazione quater"
 
     @patch("app.observability.langfuse_spans.get_langfuse_client")
@@ -253,10 +238,8 @@ class TestRetrievalSpan:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
         mock_span = MagicMock()
-        mock_trace.span.return_value = mock_span
+        mock_client.start_span.return_value = mock_span
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
@@ -270,7 +253,7 @@ class TestRetrievalSpan:
             ):
                 pass
 
-        call_kwargs = mock_trace.span.call_args[1]
+        call_kwargs = mock_client.start_span.call_args[1]
         assert call_kwargs["metadata"]["search_type"] == "hybrid"
 
     @patch("app.observability.langfuse_spans.get_langfuse_client")
@@ -280,10 +263,8 @@ class TestRetrievalSpan:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
         mock_span = MagicMock()
-        mock_trace.span.return_value = mock_span
+        mock_client.start_span.return_value = mock_span
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
@@ -344,7 +325,7 @@ class TestGracefulDegradation:
 
 
 class TestSpanLevel:
-    """Tests for span level/severity."""
+    """Tests for span level/severity (v3 SDK)."""
 
     @patch("app.observability.langfuse_spans.get_langfuse_client")
     def test_span_can_set_error_level(self, mock_get_client: MagicMock) -> None:
@@ -353,10 +334,8 @@ class TestSpanLevel:
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
         mock_span = MagicMock()
-        mock_trace.span.return_value = mock_span
+        mock_client.start_span.return_value = mock_span
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
@@ -366,24 +345,22 @@ class TestSpanLevel:
             with span_context(name="test_span", trace_id="trace-123", level="ERROR"):
                 pass
 
-        call_kwargs = mock_trace.span.call_args[1]
+        call_kwargs = mock_client.start_span.call_args[1]
         assert call_kwargs["level"] == "ERROR"
 
 
 class TestTraceIdGeneration:
-    """Tests for trace ID handling."""
+    """Tests for trace ID handling (v3 SDK)."""
 
     @patch("app.observability.langfuse_spans.get_langfuse_client")
     def test_uses_provided_trace_id(self, mock_get_client: MagicMock) -> None:
-        """Should use the provided trace_id."""
+        """Should use the provided trace_id via trace_context."""
         from app.observability.langfuse_spans import span_context
 
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_trace = MagicMock()
-        mock_client.trace.return_value = mock_trace
         mock_span = MagicMock()
-        mock_trace.span.return_value = mock_span
+        mock_client.start_span.return_value = mock_span
 
         with patch("app.observability.langfuse_spans.settings") as mock_settings:
             mock_settings.LANGFUSE_PUBLIC_KEY = "pk-test"
@@ -393,4 +370,6 @@ class TestTraceIdGeneration:
             with span_context(name="test_span", trace_id="my-trace-id"):
                 pass
 
-        mock_client.trace.assert_called_with(id="my-trace-id")
+        # v3 SDK: trace_id passed via trace_context parameter
+        call_kwargs = mock_client.start_span.call_args[1]
+        assert call_kwargs["trace_context"] == {"trace_id": "my-trace-id"}

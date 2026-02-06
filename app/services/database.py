@@ -7,6 +7,7 @@ from typing import (
 )
 
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError as SAIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import QueuePool
 from sqlmodel import (
@@ -23,6 +24,7 @@ from app.core.config import (
 from app.core.logging import logger
 from app.models.session import Session as ChatSession
 from app.models.user import User
+from app.utils.account_code import generate_account_code
 
 
 class DatabaseService:
@@ -66,7 +68,10 @@ class DatabaseService:
                 raise
 
     async def create_user(self, email: str, password: str) -> User:
-        """Create a new user.
+        """Create a new user with a unique account_code.
+
+        Generates a human-readable account code ({3_letters}{hundreds}{2_random}-{sequence})
+        from the email for Langfuse analytics. Retries up to 3 times on uniqueness collisions.
 
         Args:
             email: User's email address
@@ -75,13 +80,27 @@ class DatabaseService:
         Returns:
             User: The created user
         """
-        with Session(self.engine) as session:
-            user = User(email=email, hashed_password=password)
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-            logger.info("user_created", email=email)
-            return user
+        max_retries = 3
+        for attempt in range(max_retries):
+            account_code = generate_account_code(email=email, sequence=attempt + 1)
+            try:
+                with Session(self.engine) as session:
+                    user = User(email=email, hashed_password=password, account_code=account_code)
+                    session.add(user)
+                    session.commit()
+                    session.refresh(user)
+                    logger.info("user_created", email=email, account_code=account_code)
+                    return user
+            except SAIntegrityError as e:
+                if "account_code" in str(e).lower() and attempt < max_retries - 1:
+                    logger.warning(
+                        "account_code_collision_retry",
+                        email=email,
+                        attempt=attempt + 1,
+                        account_code=account_code,
+                    )
+                    continue
+                raise
 
     async def get_user(self, user_id: int) -> User | None:
         """Get a user by ID.

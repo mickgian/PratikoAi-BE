@@ -49,6 +49,7 @@ from app.core.streaming_guard import SinglePassStream
 from app.core.utils.xml_stripper import clean_proactivity_content
 from app.models.database import get_db, get_sync_session
 from app.models.session import Session
+from app.observability.langfuse_config import get_current_trace_id
 from app.observability.rag_logging import rag_step_log
 from app.observability.rag_trace import rag_trace_context
 from app.schemas.chat import (
@@ -83,6 +84,24 @@ from app.services.proactivity_engine_simplified import (
 
 router = APIRouter()
 agent = LangGraphAgent()
+
+
+def _get_user_account_code(user_id: int) -> str | None:
+    """Look up user's account_code for Langfuse tracking (DEV-255).
+
+    Uses sync session for a lightweight read-only lookup.
+    Returns None on any failure (graceful degradation).
+    """
+    try:
+        from sqlmodel import select as sql_select
+
+        from app.models.user import User
+
+        with get_sync_session() as sync_db:
+            stmt = sql_select(User.account_code).where(User.id == user_id)
+            return sync_db.exec(stmt).first()
+    except Exception:
+        return None
 
 
 def get_template_service():
@@ -652,12 +671,16 @@ async def chat(
                         detail="Non sei autorizzato ad accedere a questo documento allegato.",
                     )
 
+            # Look up account_code for Langfuse tracking (DEV-255)
+            user_account_code = _get_user_account_code(session.user_id)
+
             # Pass attachments to agent (will be injected into RAG state)
             result = await agent.get_response(
                 processed_messages,
                 session.id,
                 user_id=session.user_id,
                 attachments=resolved_attachments,
+                account_code=user_account_code,
             )
 
             logger.info("chat_request_processed", session_id=session.id)
@@ -734,6 +757,7 @@ async def chat(
                 messages=result,
                 interactive_question=interactive_question,
                 extracted_params=None,  # Not available in simplified engine
+                trace_id=get_current_trace_id(),  # DEV-255: For user feedback
             )
     except Exception as e:
         logger.error("chat_request_failed", session_id=session.id, error=str(e), exc_info=True)
@@ -772,6 +796,9 @@ async def chat_stream(
             legal_basis="Service provision under contract",
             anonymized=settings.PRIVACY_ANONYMIZE_REQUESTS,
         )
+
+        # Look up account_code for Langfuse tracking (DEV-255)
+        user_account_code = _get_user_account_code(session.user_id)
 
         # Resolve file attachments if provided (DEV-007)
         resolved_attachments = None
@@ -1151,6 +1178,7 @@ async def chat_stream(
                                 session.id,
                                 user_id=session.user_id,
                                 attachments=resolved_attachments,
+                                account_code=user_account_code,
                             )
                         )
 
@@ -1355,8 +1383,13 @@ async def chat_stream(
                     # The SSE event emission for suggested_actions has been removed.
                     # Interactive questions (pre-response) are still supported.
 
-                    # Send final done frame using validated formatter
-                    sse_done = format_sse_done()
+                    # Send final done frame with trace_id for feedback (DEV-255)
+                    done_response = StreamResponse(
+                        content="",
+                        done=True,
+                        trace_id=get_current_trace_id(),
+                    )
+                    sse_done = format_sse_event(done_response)
                     yield write_sse(None, sse_done, request_id=request_id)
 
                     # Log aggregated statistics for this streaming session

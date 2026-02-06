@@ -1403,7 +1403,7 @@ PratikoAI memorizza dati dei clienti degli studi professionali. Questo comporta 
 | Requisito | Implementazione |
 |-----------|-----------------|
 | Hosting | EU (preferibilmente Italia) |
-| Provider | AWS eu-south-1 (Milano) o Hetzner (Germania) |
+| Provider | Hetzner (Germania - Norimberga/Falkenstein) |
 | Backup | Giornaliero, retention 30 giorni, encrypted |
 | Disaster recovery | RTO 4 ore, RPO 24 ore |
 
@@ -1493,7 +1493,7 @@ I clienti finali (interessati) possono esercitare i loro diritti tramite lo stud
 
 | Fornitore | Servizio | Dati trattati | Paese |
 |-----------|----------|---------------|-------|
-| AWS (Amazon) | Hosting, database | Tutti | Irlanda/Italia |
+| Hetzner Online GmbH | Hosting, database | Tutti | Germania (EU) |
 | OpenAI | LLM per risposte | Query (no dati clienti) | USA* |
 | Anthropic | LLM per risposte | Query (no dati clienti) | USA* |
 | Stripe | Pagamenti | Solo dati studio (no clienti) | USA* |

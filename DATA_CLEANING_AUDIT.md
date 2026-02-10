@@ -3,6 +3,9 @@
 **Date:** 2026-02-10
 **Scope:** Full RSS-to-knowledge-base pipeline analysis
 **Codebase:** PratikoAi-BE
+**Verification:** Static code analysis + corroborating evidence (backfill scripts,
+cleanup scripts, test fixtures, migration history). Live DB diagnostic available
+via `scripts/audit_data_quality.py`.
 
 ---
 
@@ -696,6 +699,79 @@ for lig, replacement in LIGATURES.items():
 8. **E.2** (content-hash dedup) — medium effort, high value
 9. **E.4** (section-aware chunking) — medium effort, highest quality impact
 10. **E.3** (staleness management) — large effort, critical for regulatory correctness
+
+---
+
+## Section F: Verification Results
+
+### Methodology
+
+No live database was available in this environment (PostgreSQL not running). Findings
+were verified through:
+
+1. **Static code tracing** — following execution paths to confirm each gap
+2. **Corroborating evidence** — backfill scripts, cleanup scripts, migration history
+3. **Test fixtures** — examining what test data reveals about stored content
+
+A runnable diagnostic script (`scripts/audit_data_quality.py`) is provided for live
+DB verification.
+
+### Finding Verification Summary
+
+| # | Finding | Verified? | Evidence |
+|---|---------|-----------|----------|
+| E.1 | PDF line-break repair missing | **CONFIRMED** | `extract_pdf_plumber.py:97` only does `re.sub(r"\s+", " ", text)` — no hyphen-repair regex anywhere in `app/core/text/` |
+| E.2 | Content-hash computed but unused | **CONFIRMED** | `document_ingestion.py:432`: `compute_content_hash(content)` return value discarded; `KnowledgeItem` model has no `content_hash` field |
+| E.3 | No staleness management | **CONFIRMED** | `KnowledgeItem.status` allows "active/archived/draft" only — no "superseded"; `RegulatoryDocument` has `SUPERSEDED` enum but it's a separate model |
+| E.4 | Section-aware chunking absent | **CONFIRMED** | `chunking.py:190`: splits on `[.!?]\s+[A-Z]` only; no detection of `Art.`, `TITOLO`, `CAPO` boundaries |
+| E.5 | RSS summary fallback stores raw HTML | **CONFIRMED** | `rss_normativa.py:364`: `extraction_result["content"] = rss_summary` — no `clean_html()` call; `normalize_document_text()` only fixes dates |
+| E.6 | Navigation pattern list incomplete | **CONFIRMED** | `clean.py:30-45`: 14 patterns, all INPS-focused; no Agenzia Entrate-specific ("area riservata", "cassetto fiscale") |
+| E.7 | No preamble/signature removal | **CONFIRMED** | No regex or function anywhere targeting "IL DIRETTORE DELL'AGENZIA" or attribution clauses |
+| E.8 | No Unicode NFC normalization | **CONFIRMED** | `grep -r "unicodedata\|normalize.*NFC" app/core/text/` returns zero results |
+| E.9 | Chunk size config mismatch | **CONFIRMED** | Config: `CHUNK_TOKENS=900` (`config.py:467`); Actual: `max_tokens=512` hardcoded (`document_ingestion.py:490` and `knowledge_integrator.py:125`) |
+| E.10 | Batch embedding not used | **CONFIRMED** | `document_ingestion.py:497`: per-chunk `generate_embedding()` in loop; `generate_embeddings_batch()` exists at `embed.py:53` but never called in ingestion |
+
+### Corroborating Evidence from Codebase
+
+The following scripts in the repository provide indirect confirmation that data quality
+issues were encountered and required manual remediation:
+
+| Script | Purpose | Confirms |
+|--------|---------|----------|
+| `scripts/backfill_text_quality.py` | Backfills NULL `text_quality` for older documents | Documents were ingested without quality assessment |
+| `scripts/backfill_rss_dates.py` | Backfills `publication_date` from RSS feeds | Publication dates were missing from early ingestions |
+| `scripts/cleanup_irrelevant_gazzetta.py` | Removes concorsi/nomine from knowledge base | Irrelevant documents made it into production KB (pre-DEV-247 filtering) |
+| `scripts/reingest_gazzetta_document.py` | Re-ingests individual Gazzetta documents | Quality issues required document re-ingestion |
+| `scripts/reingest_critical_law.py` | Re-ingests laws with article-level parsing | Original chunking was insufficient for legal structure (ADR-023) |
+
+### Test Evidence
+
+- `tests/core/test_clean.py:141-144` — Tests explicitly show INPS navigation content
+  ("Vai al menu principale Vai al contenuto...") confirming it's a real extraction concern
+- `tests/fixtures/cassazione_fixtures.py:306` — Fixtures contain `<nav class="page-navigation">`
+  confirming HTML navigation elements in court documents
+- `tests/e2e/feeds/test_inps_feeds.py:88-100` — Regression test for "Messaggio 3585"
+  confirms documents weren't being found correctly, suggesting content quality impacts retrieval
+
+### Running the Live Diagnostic
+
+To verify findings against the actual knowledge base:
+
+```bash
+# Start database
+docker-compose up -d db
+
+# Run full diagnostic
+python scripts/audit_data_quality.py
+
+# With custom DB and limited samples
+DATABASE_URL="postgresql+asyncpg://user:pass@host:5432/db" \
+  python scripts/audit_data_quality.py --samples 3
+```
+
+The script checks 12 categories: duplicates, navigation text, HTML artifacts, broken
+hyphenation, chunk size distribution, quality scores, missing embeddings, staleness,
+text quality backfill status, legal preamble, and Unicode normalization.
 
 ---
 

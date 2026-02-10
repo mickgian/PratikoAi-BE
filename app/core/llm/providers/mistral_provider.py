@@ -163,12 +163,20 @@ class MistralProvider(LLMProvider):
                 input_tokens = response.usage.prompt_tokens
                 output_tokens = response.usage.completion_tokens
 
-            # Calculate cost
+            # Calculate cost (individual input/output costs for Langfuse)
             cost_estimate = None
+            input_cost = None
+            output_cost = None
             if input_tokens and output_tokens:
-                cost_estimate = self.estimate_cost(input_tokens, output_tokens)
+                cost_info = self.supported_models.get(self.model)
+                if not cost_info:
+                    # Fallback to mistral-small-latest for unknown models
+                    cost_info = self.supported_models["mistral-small-latest"]
+                input_cost = (input_tokens / 1000) * cost_info.input_cost_per_1k_tokens
+                output_cost = (output_tokens / 1000) * cost_info.output_cost_per_1k_tokens
+                cost_estimate = input_cost + output_cost
 
-            # Report to Langfuse
+            # Report to Langfuse with explicit cost (bypasses Langfuse auto-calculation)
             self._report_langfuse_generation(
                 model=self.model,
                 input_messages=mistral_messages,
@@ -177,6 +185,8 @@ class MistralProvider(LLMProvider):
                 completion_tokens=output_tokens or 0,
                 trace_id=get_current_trace_id(),
                 parent_span_id=get_current_observation_id(),
+                input_cost=input_cost,
+                output_cost=output_cost,
             )
 
             return LLMResponse(
@@ -346,8 +356,22 @@ class MistralProvider(LLMProvider):
         completion_tokens: int,
         trace_id: str | None = None,
         parent_span_id: str | None = None,
+        input_cost: float | None = None,
+        output_cost: float | None = None,
     ) -> None:
-        """Report Mistral call to Langfuse as a generation (DEV-255)."""
+        """Report Mistral call to Langfuse as a generation (DEV-255).
+
+        Args:
+            model: Model name
+            input_messages: Input messages in Mistral format
+            output_content: Generated output content
+            prompt_tokens: Number of input tokens
+            completion_tokens: Number of output tokens
+            trace_id: Langfuse trace ID for context binding
+            parent_span_id: Parent observation ID for proper nesting
+            input_cost: Cost in EUR for input tokens (bypasses Langfuse auto-calculation)
+            output_cost: Cost in EUR for output tokens (bypasses Langfuse auto-calculation)
+        """
         # Debug logging to diagnose Langfuse cost tracking issues
         logger.info(
             "langfuse_generation_params",
@@ -356,6 +380,8 @@ class MistralProvider(LLMProvider):
             completion_tokens=completion_tokens,
             trace_id=trace_id,
             parent_span_id=parent_span_id,
+            input_cost=input_cost,
+            output_cost=output_cost,
         )
 
         if not trace_id:
@@ -368,20 +394,57 @@ class MistralProvider(LLMProvider):
             if parent_span_id:
                 trace_context["parent_span_id"] = parent_span_id
 
+            logger.debug(
+                "langfuse_creating_generation",
+                model=model,
+                trace_context=trace_context,
+            )
+
             generation = client.start_generation(
                 trace_context=trace_context,
                 name="mistral-chat",
                 model=model,
                 input={"messages": input_messages},
             )
-            generation.update(
-                output=output_content,
-                usage_details={
+
+            # Build update kwargs
+            update_kwargs: dict = {
+                "output": output_content,
+                "usage_details": {
                     "input": prompt_tokens,
                     "output": completion_tokens,
                 },
+            }
+
+            # Pass cost explicitly to bypass Langfuse's auto-calculation
+            # (Langfuse doesn't have Mistral model pricing in its database)
+            if input_cost is not None or output_cost is not None:
+                update_kwargs["cost_details"] = {
+                    "input": input_cost or 0.0,
+                    "output": output_cost or 0.0,
+                }
+
+            logger.debug(
+                "langfuse_updating_generation",
+                model=model,
+                has_cost_details=("cost_details" in update_kwargs),
             )
+
+            generation.update(**update_kwargs)
             generation.end()
-            logger.debug("langfuse_generation_reported", model=model, trace_id=trace_id)
+            logger.info(
+                "langfuse_generation_reported",
+                model=model,
+                trace_id=trace_id,
+                input_cost=input_cost,
+                output_cost=output_cost,
+            )
         except Exception as e:
-            logger.warning("langfuse_generation_failed", error=str(e), model=model)
+            logger.error(
+                "langfuse_generation_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+                model=model,
+                trace_id=trace_id,
+                parent_span_id=parent_span_id,
+            )

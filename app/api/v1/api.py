@@ -16,12 +16,13 @@ from app.api.v1.demo import router as demo_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.expert_feedback import router as expert_feedback_router
 from app.api.v1.feedback import router as feedback_router
-
-# from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router
 from app.api.v1.financial_validation import router as financial_validation_router
 from app.api.v1.health import router as health_router
 from app.api.v1.intent_labeling import router as intent_labeling_router
 from app.api.v1.italian import router as italian_router
+
+# from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router
+from app.api.v1.model_comparison import router as model_comparison_router
 
 # TEMPORARY: Commented out due to duplicate Subscription model conflict
 # TODO: Re-enable after consolidating payment.py and subscription.py models
@@ -74,6 +75,7 @@ api_router.include_router(ccnl_search_router, tags=["ccnl-search"])
 api_router.include_router(data_sources_router, tags=["data-sources"])
 api_router.include_router(success_criteria_router, tags=["success-criteria"])
 api_router.include_router(feedback_router, prefix="/feedback", tags=["feedback"])
+api_router.include_router(model_comparison_router)  # Includes /model-comparison prefix from router
 
 
 @api_router.get("/health")

@@ -171,6 +171,17 @@ class Settings:
         self.ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
         self.ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
 
+        # Additional providers for model comparison (DEV-256)
+        self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+        self.GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
+        self.MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
+        self.MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "mistral-small-latest")
+
+        # Production LLM model (format: provider:model, e.g., "openai:gpt-4o")
+        # Used in normal chat and marked as "Modello Corrente" in comparison feature
+        self.PRODUCTION_LLM_MODEL = os.getenv("PRODUCTION_LLM_MODEL", "openai:gpt-4o")
+
         # LLM routing configuration
         self.LLM_ROUTING_STRATEGY = os.getenv(
             "LLM_ROUTING_STRATEGY", "cost_optimized"

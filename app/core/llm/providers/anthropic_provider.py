@@ -101,6 +101,19 @@ class AnthropicProvider(LLMProvider):
                 model_name="claude-3-opus-20240229",
                 tier=LLMModelTier.PREMIUM,
             ),
+            # Claude 4.5 family (November 2025)
+            "claude-sonnet-4-5-20250929": LLMCostInfo(
+                input_cost_per_1k_tokens=0.00276,  # $3.00/1M tokens * 0.92
+                output_cost_per_1k_tokens=0.0138,  # $15.00/1M tokens * 0.92
+                model_name="claude-sonnet-4-5-20250929",
+                tier=LLMModelTier.ADVANCED,
+            ),
+            "claude-opus-4-5-20251101": LLMCostInfo(
+                input_cost_per_1k_tokens=0.0138,  # $15.00/1M tokens * 0.92
+                output_cost_per_1k_tokens=0.069,  # $75.00/1M tokens * 0.92
+                model_name="claude-opus-4-5-20251101",
+                tier=LLMModelTier.PREMIUM,
+            ),
         }
 
     def _convert_messages_to_anthropic(self, messages: list[Message]) -> tuple[str, list[dict[str, Any]]]:
@@ -240,7 +253,9 @@ class AnthropicProvider(LLMProvider):
                 content=content,
                 model=self.model,
                 provider=self.provider_type.value,
-                tokens_used=response.usage.input_tokens + response.usage.output_tokens if response.usage else None,
+                tokens_used={"input": response.usage.input_tokens, "output": response.usage.output_tokens}
+                if response.usage
+                else None,
                 cost_estimate=cost_estimate,
                 finish_reason=response.stop_reason,
                 tool_calls=tool_calls,

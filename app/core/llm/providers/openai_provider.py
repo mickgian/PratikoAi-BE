@@ -215,7 +215,9 @@ class OpenAIProvider(LLMProvider):
                 )
 
                 choice = response.choices[0]
-                tokens_used = response.usage.total_tokens if response.usage else None
+                tokens_used = None
+                if response.usage:
+                    tokens_used = {"input": response.usage.prompt_tokens, "output": response.usage.completion_tokens}
                 cost_estimate = None
 
                 if response.usage:

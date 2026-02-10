@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from app.core.config import settings
 from app.core.logging import logger
 from app.schemas.chat import Message
 from app.services.prompt_loader import PromptLoader, get_prompt_loader
@@ -114,17 +115,27 @@ class ModelConfig:
     def for_complexity(cls, complexity: QueryComplexity) -> "ModelConfig":
         """Get the model configuration for a given complexity level.
 
+        Uses PRODUCTION_LLM_MODEL env variable to determine the model.
+        Format: "provider:model" (e.g., "openai:gpt-4o")
+
         Args:
             complexity: The query complexity level
 
         Returns:
             ModelConfig for the specified complexity
         """
+        # DEV-256: Read model from PRODUCTION_LLM_MODEL env variable
+        production_model = settings.PRODUCTION_LLM_MODEL
+        if ":" in production_model:
+            _, model_name = production_model.split(":", 1)
+        else:
+            model_name = production_model
+
         # DEV-242 Phase 13A: Upgraded SIMPLE to gpt-4o and doubled all max_tokens
         # for detailed regulatory responses with specific values (dates, rates, etc.)
         configs = {
             QueryComplexity.SIMPLE: cls(
-                model="gpt-4o",  # DEV-242: Upgraded from gpt-4o-mini for quality
+                model=model_name,  # DEV-256: From PRODUCTION_LLM_MODEL env
                 temperature=0.3,
                 max_tokens=4500,  # DEV-242 Phase 44: Increased from 3000 for complete responses with sources
                 cost_input_per_1k=0.005,  # DEV-242: Updated for gpt-4o
@@ -134,7 +145,7 @@ class ModelConfig:
                 timeout_seconds=30,
             ),
             QueryComplexity.COMPLEX: cls(
-                model="gpt-4o",
+                model=model_name,  # DEV-256: From PRODUCTION_LLM_MODEL env
                 temperature=0.4,
                 max_tokens=6500,  # DEV-242 Phase 44: Increased from 5000 for complete responses with sources
                 cost_input_per_1k=0.005,
@@ -144,7 +155,7 @@ class ModelConfig:
                 timeout_seconds=45,
             ),
             QueryComplexity.MULTI_DOMAIN: cls(
-                model="gpt-4o",
+                model=model_name,  # DEV-256: From PRODUCTION_LLM_MODEL env
                 temperature=0.5,
                 max_tokens=9000,  # DEV-242 Phase 44: Increased from 7000 for complete responses with sources
                 cost_input_per_1k=0.005,
@@ -196,6 +207,7 @@ class UnifiedResponse:
     tokens_output: int
     cost_euros: float
     latency_ms: int
+    enriched_prompt: str | None = None  # DEV-256: Full prompt sent to LLM for comparison feature
 
 
 @dataclass
@@ -433,6 +445,7 @@ class LLMOrchestrator:
                 tokens_output=tokens_output,
                 cost_euros=cost_euros,
                 latency_ms=latency_ms,
+                enriched_prompt=prompt,  # DEV-256: Include full prompt for comparison feature
             )
 
             # Track session costs
@@ -506,8 +519,18 @@ class LLMOrchestrator:
 
         factory = get_llm_factory()
 
-        # Determine provider based on model
-        provider_type = LLMProviderType.OPENAI if "gpt" in model else LLMProviderType.ANTHROPIC
+        # DEV-256: Detect provider from PRODUCTION_LLM_MODEL env variable
+        production_model = settings.PRODUCTION_LLM_MODEL
+        if ":" in production_model:
+            provider_name, _ = production_model.split(":", 1)
+            try:
+                provider_type = LLMProviderType(provider_name)
+            except ValueError:
+                # Fallback to model name heuristic
+                provider_type = LLMProviderType.OPENAI if "gpt" in model else LLMProviderType.ANTHROPIC
+        else:
+            # Legacy fallback: determine provider based on model name
+            provider_type = LLMProviderType.OPENAI if "gpt" in model else LLMProviderType.ANTHROPIC
 
         provider = factory.create_provider(
             provider_type=provider_type,

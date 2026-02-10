@@ -1,6 +1,7 @@
 """Comparison service for multi-model LLM comparison feature (DEV-256)."""
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import time
@@ -177,32 +178,34 @@ class ComparisonService:
         comparison_trace_id = f"comparison-{batch_id}-{model_id.replace(':', '-')}"
         start_time = time.time()
 
-        # DEV-256: Create Langfuse trace + span for tracking comparison model calls
-        # Creates a parent span and sets contextvars so provider's internal
-        # _report_langfuse_generation() creates a nested generation with proper cost tracking
+        # DEV-256: Initialize Langfuse client for cost tracking
         langfuse_client = None
-        langfuse_trace_id = None
-        langfuse_observation_id = None
-        span = None
-
         try:
             langfuse_client = get_langfuse_client()
-            if langfuse_client and settings.LANGFUSE_PUBLIC_KEY:
-                # Create a span that will serve as parent trace for this model call
-                # This sets up the Langfuse trace context properly
-                span = langfuse_client.start_span(
-                    name=f"comparison-{model_id}",
-                    metadata={
-                        "batch_id": batch_id,
-                        "provider": provider_name,
-                        "comparison_trace_id": comparison_trace_id,
-                    },
-                )
-                # Get the trace_id and observation_id from the span
-                langfuse_trace_id = span.trace_id
-                langfuse_observation_id = span.id
+        except Exception as lf_err:
+            logger.warning(
+                "comparison_langfuse_init_error",
+                error=str(lf_err),
+                model_id=model_id,
+            )
 
-                # Set contextvars so provider's _report_langfuse_generation() can find them
+        # Execute with or without Langfuse context
+        if langfuse_client and settings.LANGFUSE_PUBLIC_KEY:
+            # Use context manager pattern - IDs are retrieved from SDK's internal state
+            # CRITICAL: start_as_current_span() sets up proper trace context, then
+            # get_current_trace_id() retrieves the REAL ID (not None like start_span())
+            with langfuse_client.start_as_current_span(
+                name=f"comparison-{model_id}",
+                metadata={
+                    "batch_id": batch_id,
+                    "provider": provider_name,
+                    "comparison_trace_id": comparison_trace_id,
+                },
+            ):
+                langfuse_trace_id = langfuse_client.get_current_trace_id()
+                langfuse_observation_id = langfuse_client.get_current_observation_id()
+
+                # Set contextvars so provider's _report_langfuse_generation() works
                 _current_trace_id.set(langfuse_trace_id)
                 _current_observation_id.set(langfuse_observation_id)
 
@@ -212,13 +215,71 @@ class ComparisonService:
                     trace_id=langfuse_trace_id,
                     observation_id=langfuse_observation_id,
                 )
-        except Exception as lf_err:
-            logger.warning(
-                "comparison_langfuse_init_error",
-                error=str(lf_err),
+
+                try:
+                    result = await self._execute_model_call(
+                        model_id=model_id,
+                        provider_name=provider_name,
+                        model_name=model_name,
+                        query=query,
+                        enriched_prompt=enriched_prompt,
+                        batch_id=batch_id,
+                        start_time=start_time,
+                        langfuse_trace_id=langfuse_trace_id,
+                        comparison_trace_id=comparison_trace_id,
+                        langfuse_client=langfuse_client,
+                    )
+                    return result
+                finally:
+                    # Reset contextvars to prevent leakage
+                    _current_trace_id.set(None)
+                    _current_observation_id.set(None)
+                    langfuse_client.flush()
+        else:
+            # No Langfuse - execute without tracing
+            return await self._execute_model_call(
                 model_id=model_id,
+                provider_name=provider_name,
+                model_name=model_name,
+                query=query,
+                enriched_prompt=enriched_prompt,
+                batch_id=batch_id,
+                start_time=start_time,
+                langfuse_trace_id=None,
+                comparison_trace_id=comparison_trace_id,
+                langfuse_client=None,
             )
 
+    async def _execute_model_call(
+        self,
+        model_id: str,
+        provider_name: str,
+        model_name: str,
+        query: str,
+        enriched_prompt: str | None,
+        batch_id: str,
+        start_time: float,
+        langfuse_trace_id: str | None,
+        comparison_trace_id: str,
+        langfuse_client,
+    ) -> ModelResponseInfo:
+        """Execute the actual model call (extracted for Langfuse context management).
+
+        Args:
+            model_id: Full model ID (e.g., "openai:gpt-4o")
+            provider_name: Provider name
+            model_name: Model name
+            query: Query to send (fallback if no enriched_prompt)
+            enriched_prompt: Full prompt with KB context
+            batch_id: Batch ID for tracing
+            start_time: Start time for latency calculation
+            langfuse_trace_id: Langfuse trace ID if available
+            comparison_trace_id: Fallback trace ID
+            langfuse_client: Langfuse client for span updates
+
+        Returns:
+            ModelResponseInfo with response or error
+        """
         try:
             # Create provider
             provider_type = LLMProviderType(provider_name)
@@ -246,12 +307,12 @@ class ComparisonService:
             elif isinstance(response.tokens_used, int):
                 output_tokens = response.tokens_used
 
-            # DEV-256: End Langfuse span on success
+            # DEV-256: Update current span on success
             # Note: The provider's _report_langfuse_generation() already created a nested
-            # generation with cost/tokens, so we just need to end the parent span
-            if langfuse_client and span:
+            # generation with cost/tokens, so we just update metadata on the parent span
+            if langfuse_client:
                 try:
-                    span.update(
+                    langfuse_client.update_current_span(
                         output=response.content[:500] if response.content else "",
                         metadata={
                             "status": "success",
@@ -259,8 +320,6 @@ class ComparisonService:
                             "cost_eur": response.cost_estimate,
                         },
                     )
-                    span.end()
-                    langfuse_client.flush()
                 except Exception as lf_err:
                     logger.warning("comparison_langfuse_update_error", error=str(lf_err))
 
@@ -285,19 +344,15 @@ class ComparisonService:
                 batch_id=batch_id,
                 latency_ms=latency_ms,
             )
-            # DEV-256: End Langfuse span with error
-            if langfuse_client and span:
-                try:
-                    span.update(
+            # DEV-256: Update span with timeout error
+            if langfuse_client:
+                with contextlib.suppress(Exception):
+                    langfuse_client.update_current_span(
                         metadata={
                             "status": "timeout",
                             "error": f"Timeout after {MODEL_TIMEOUT_SECONDS}s",
                         },
                     )
-                    span.end()
-                    langfuse_client.flush()
-                except Exception:
-                    pass
             return ModelResponseInfo(
                 model_id=model_id,
                 provider=provider_name,
@@ -321,19 +376,15 @@ class ComparisonService:
                 error_type=type(e).__name__,
                 error_message=_truncate_error_message(str(e)),
             )
-            # DEV-256: End Langfuse span with error
-            if langfuse_client and span:
-                try:
-                    span.update(
+            # DEV-256: Update span with error
+            if langfuse_client:
+                with contextlib.suppress(Exception):
+                    langfuse_client.update_current_span(
                         metadata={
                             "status": "error",
                             "error": _truncate_error_message(str(e))[:200],
                         },
                     )
-                    span.end()
-                    langfuse_client.flush()
-                except Exception:
-                    pass
             return ModelResponseInfo(
                 model_id=model_id,
                 provider=provider_name,
@@ -347,11 +398,6 @@ class ComparisonService:
                 error_message=_truncate_error_message(str(e)),
                 trace_id=langfuse_trace_id or comparison_trace_id,
             )
-
-        finally:
-            # Always reset contextvars to prevent leakage across async contexts
-            _current_trace_id.set(None)
-            _current_observation_id.set(None)
 
     async def run_comparison(
         self,

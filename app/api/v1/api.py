@@ -15,6 +15,7 @@ from app.api.v1.data_sources import router as data_sources_router
 from app.api.v1.demo import router as demo_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.expert_feedback import router as expert_feedback_router
+from app.api.v1.feedback import router as feedback_router
 
 # from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router
 from app.api.v1.financial_validation import router as financial_validation_router
@@ -72,6 +73,7 @@ api_router.include_router(ccnl_calculations_router, tags=["ccnl-calculations"])
 api_router.include_router(ccnl_search_router, tags=["ccnl-search"])
 api_router.include_router(data_sources_router, tags=["data-sources"])
 api_router.include_router(success_criteria_router, tags=["success-criteria"])
+api_router.include_router(feedback_router, prefix="/feedback", tags=["feedback"])
 
 
 @api_router.get("/health")

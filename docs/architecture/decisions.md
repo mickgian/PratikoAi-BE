@@ -31,6 +31,7 @@
 | [011](#adr-011-branch-management-coordination) | 2025-11 | ✅ Active | Branch Management for Parallel Subagent Work |
 | [012](#adr-012-remove-step-131-vector-reindexing) | 2025-11 | ✅ Active | Remove Step 131 Vector Reindexing (Pinecone → pgvector) |
 | [014](#adr-014-multi-pattern-document-title-matching) | 2025-12 | ✅ Active | Multi-Pattern Document Title Matching |
+| [025](decisions/ADR-025-llm-model-inventory-and-tiering.md) | 2026-02 | ✅ Active | LLM Model Inventory & Tiering Strategy |
 
 ---
 
@@ -1151,6 +1152,7 @@ Why this decision? What alternatives did we consider?
 | 1.1 | 2025-11-17 | Added ADR-011: Branch Management for Parallel Subagent Work | Architect Subagent (@Egidio) |
 | 1.2 | 2025-11-19 | Added ADR-012: Remove Step 131 Vector Reindexing (Pinecone → pgvector) | Architect Subagent (@Egidio) |
 | 1.3 | 2025-12-05 | Added ADR-014: Multi-Pattern Document Title Matching | Backend Expert (@Ezio) |
+| 1.4 | 2026-02-04 | Added ADR-025: LLM Model Inventory & Tiering Strategy | Architect Subagent (@Egidio) |
 
 ---
 

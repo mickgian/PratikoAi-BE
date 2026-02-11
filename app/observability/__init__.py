@@ -7,9 +7,11 @@ This package provides:
 """
 
 from app.observability.langfuse_config import (
-    create_langfuse_handler,
-    flush_langfuse_handler,
+    LangfuseTraceContext,
+    get_current_trace_id,
     get_sampling_rate,
+    open_langfuse_trace,
+    record_latency_score,
     should_sample,
 )
 from app.observability.langfuse_spans import (
@@ -19,9 +21,11 @@ from app.observability.langfuse_spans import (
 )
 
 __all__ = [
-    "create_langfuse_handler",
-    "flush_langfuse_handler",
+    "LangfuseTraceContext",
+    "get_current_trace_id",
     "get_sampling_rate",
+    "open_langfuse_trace",
+    "record_latency_score",
     "should_sample",
     "node_span",
     "retrieval_span",

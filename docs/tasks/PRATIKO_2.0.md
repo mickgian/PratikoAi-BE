@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-26
 **Status:** Active Development
-**Task ID Range:** DEV-300 to DEV-395
+**Task ID Range:** DEV-300 to DEV-401
 **Timeline:** 10-12 weeks (~96 tasks, accelerated with Claude Code)
 **Target:** MVP Launch
 
@@ -130,7 +130,8 @@ tests/
 | ADR-018 | Normative Matching Engine | PROPOSED | Hybrid: LangGraph node + background service |
 | ADR-019 | Communication Generation | PROPOSED | LangGraph tool following existing patterns |
 | ADR-020 | Suggested Actions | SUPERSEDED | Feature removed per user feedback (see Deprecated Features) |
-| ADR-024 | GDPR Client Data Architecture | PROPOSED | DPA, breach notification, processing register |
+| ADR-024 | Workflow Automation Architecture | PROPOSED | LangGraph workflow patterns |
+| ADR-025 | GDPR Client Data Architecture | PROPOSED | DPA, encryption, data residency, LLM isolation |
 
 ---
 
@@ -204,6 +205,7 @@ The following patterns were established during Response Quality improvements and
 | DEV-2.0-073 to DEV-2.0-080 | DEV-372 to DEV-379 | Phase 9: GDPR Compliance |
 | NEW | DEV-380 to DEV-387 | Phase 10: Deadline System |
 | NEW | DEV-388 to DEV-395 | Phase 11: Infrastructure & Quality |
+| NEW | DEV-396 to DEV-401 | Phase 12: Pre-Launch Compliance |
 
 ---
 
@@ -218,6 +220,10 @@ The following patterns were established during Response Quality improvements and
 | DEV-337 | HIGH | LangGraph Modification | Response formatter changes |
 | DEV-372 | CRITICAL | Legal/Compliance | DPA required before client data |
 | DEV-374 | CRITICAL | Legal/Compliance | 72h breach notification requirement |
+| DEV-396 | CRITICAL | Legal/Compliance | DPIA mandatory before client data storage |
+| DEV-397 | CRITICAL | Infrastructure | Encryption at rest + DPA with Hetzner |
+| DEV-398 | CRITICAL | Legal/Compliance | LLM transfer safeguards required |
+| DEV-399 | HIGH | Legal/Compliance | 30-day Garante notification period |
 
 ---
 
@@ -9606,6 +9612,255 @@ Implement rate limiting using Redis with configurable limits per endpoint.
 - [ ] Per-endpoint configurable limits
 - [ ] 429 response with Retry-After header
 - [ ] 90%+ test coverage achieved
+
+---
+
+## Phase 12: Pre-Launch Compliance - 6 Tasks
+
+This phase covers the **legal and operational compliance prerequisites** that must be completed before or in parallel with Phase 9's in-app GDPR software. Phase 9 builds the technical GDPR features (DPA models, breach tracking, processing registers, data rights API). This phase covers the actual vendor contracts, formal legal documents, regulatory notifications, and infrastructure security measures.
+
+**Reference:** `docs/compliance/GDPR_INVESTIGATION_CLIENT_DATA_HETZNER.md`
+
+---
+
+### DEV-396: DPIA Preparation and Documentation
+
+**Priority:** CRITICAL | **Status:** NOT STARTED
+
+**Problem:** GDPR Article 35 and the Garante's Provvedimento of Oct 11, 2018 mandate a Data Protection Impact Assessment for PratikoAI's processing activities. PratikoAI triggers at least 3 categories of the Garante's DPIA blacklist: large-scale financial data processing, AI/scoring processing via LLMs, and cross-referencing fiscal + personal + employment data. Penalty for non-compliance: up to EUR 10,000,000 or 2% of worldwide turnover.
+
+**Solution:** Create a formal DPIA document covering all data categories, processing purposes, risk assessment, and mitigations. Include LLM sub-processor assessment and Hetzner security analysis.
+
+**Agent Assignment:** @Severino (primary), @Mario (requirements)
+
+**Dependencies:**
+- **Blocking:** None
+- **Unlocks:** DEV-397, DEV-398, DEV-399
+
+**Change Classification:** ADDITIVE
+
+**File:** `docs/compliance/DPIA_PratikoAI.md`
+
+**Relationship to Phase 9:** Phase 9 builds the in-app software (DPA models, breach tracking, processing registers). This task produces the legal DPIA document required by law, which is NOT a software artifact.
+
+**Code Completeness:** (MANDATORY)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All sections complete with accurate legal references
+- [ ] No "will implement later" patterns
+
+**Acceptance Criteria:**
+- [ ] DPIA covers all personal data categories processed by PratikoAI
+- [ ] DPIA includes LLM sub-processor risk assessment (OpenAI, Anthropic)
+- [ ] DPIA includes Hetzner security gap analysis and mitigations
+- [ ] DPIA includes multi-tenant isolation assessment
+- [ ] DPIA references existing technical measures (PII anonymizer, AES-256-GCM encryption)
+- [ ] Document reviewed by legal counsel before finalization
+
+**Code Size Guidelines:**
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
+
+---
+
+### DEV-397: Vendor DPA Execution and Encryption at Rest
+
+**Priority:** CRITICAL | **Status:** NOT STARTED
+
+**Problem:** Hetzner does not provide encryption at rest by default. Additionally, a formal DPA must be signed with Hetzner as sub-processor under GDPR Article 28. The existing field-level encryption (AES-256-GCM for codice_fiscale, partita_iva, importi) covers PII fields but does not protect database files, logs, or temporary files on disk. Hetzner also had a 2022 data loss incident, requiring independent backup strategy.
+
+**Solution:** Sign DPA with Hetzner via customer portal. Implement LUKS full-disk encryption on all Hetzner VPS instances. Configure independent backup system to a geographically separate location.
+
+**Agent Assignment:** @Silvano (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-396 (DPIA should inform security requirements)
+- **Unlocks:** DEV-308 (StudioService - must complete before client data storage)
+
+**Change Classification:** ADDITIVE
+
+**Relationship to Phase 9:** DEV-372/DEV-373 are about PratikoAI-to-studio DPAs (software). This task is about PratikoAI-to-vendor DPAs (legal contracts) and infrastructure security.
+
+**Code Completeness:** (MANDATORY)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All integrations complete and functional
+- [ ] No "will implement later" patterns
+
+**Acceptance Criteria:**
+- [ ] DPA signed with Hetzner via https://accounts.hetzner.com/account/dpa
+- [ ] EU-only server location confirmed (Nuremberg or Falkenstein)
+- [ ] LUKS full-disk encryption implemented and verified on all VPS instances
+- [ ] Independent backup system configured (separate geographic location)
+- [ ] Backup restoration tested and documented
+
+**Code Size Guidelines:**
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
+
+---
+
+### DEV-398: LLM Provider DPA and Transfer Safeguards
+
+**Priority:** CRITICAL | **Status:** NOT STARTED
+
+**Problem:** PratikoAI sends anonymized queries to OpenAI and Anthropic (US-based). Post-Schrems II, international data transfers to the US require proper legal safeguards including DPAs with Standard Contractual Clauses (SCCs) and a Transfer Impact Assessment (TIA). The Garante fined OpenAI EUR 15M in December 2024 for GDPR violations, making proper documentation especially important.
+
+**Solution:** Execute DPAs with both LLM providers, enable EU Data Residency / Zero Data Retention options, and document a Transfer Impact Assessment per EDPB Recommendations 01/2020.
+
+**Agent Assignment:** @Severino (primary), @Ezio (backend integration)
+
+**Dependencies:**
+- **Blocking:** DEV-396 (DPIA should assess transfer risks first)
+- **Unlocks:** Production LLM calls with client context
+
+**Change Classification:** ADDITIVE
+
+**Relationship to Phase 9:** No Phase 9 task addresses vendor LLM contracts, SCCs, or TIA documentation.
+
+**Code Completeness:** (MANDATORY)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All integrations complete and functional
+- [ ] No "will implement later" patterns
+
+**Acceptance Criteria:**
+- [ ] DPA executed with OpenAI (including EU Data Residency with zero retention)
+- [ ] DPA executed with Anthropic (including Zero Data Retention agreement)
+- [ ] Both DPAs include Standard Contractual Clauses (SCCs) per EC Decision 2021/914
+- [ ] Transfer Impact Assessment (TIA) documented for US transfers
+- [ ] TIA documents supplementary measures (PII anonymization, zero retention, encryption in transit)
+- [ ] Backend configuration updated to use EU endpoints where available
+
+**Code Size Guidelines:**
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
+
+---
+
+### DEV-399: Italian AI Law Garante Notification
+
+**Priority:** HIGH | **Status:** NOT STARTED
+
+**Problem:** Italy's AI Law (Legge 132/2025, signed September 2025) requires operators of AI systems processing personal data to notify the Garante before deployment. Processing may only begin 30 days after notification unless the Garante objects. This law postdates the original PratikoAI roadmap and is not covered by any existing task.
+
+**Solution:** Prepare and submit notification to the Garante listing all AI-related processing activities, data categories, purposes, and data processors (Hetzner, OpenAI, Anthropic).
+
+**Agent Assignment:** @Mario (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-396 (DPIA), DEV-398 (LLM DPAs - needed to list processors)
+- **Unlocks:** Public launch (30-day waiting period)
+
+**Change Classification:** ADDITIVE
+
+**Relationship to Phase 9:** New legal requirement that postdates the original Phase 9 planning. Not covered by any existing task.
+
+**Code Completeness:** (MANDATORY)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All sections complete
+- [ ] No "will implement later" patterns
+
+**Acceptance Criteria:**
+- [ ] Notification document prepared listing all AI processing activities
+- [ ] All data processors listed (Hetzner, OpenAI, Anthropic)
+- [ ] Data categories and processing purposes documented
+- [ ] Notification submitted to the Garante
+- [ ] 30-day waiting period tracked and documented
+- [ ] Launch timeline updated to account for waiting period
+
+**Code Size Guidelines:**
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
+
+---
+
+### DEV-400: Public Sub-Processor List and Privacy Policy
+
+**Priority:** HIGH | **Status:** NOT STARTED
+
+**Problem:** EDPB Opinion 22/2024 requires full chain visibility of sub-processors. GDPR Articles 12-13 require a clear, accessible privacy policy. PratikoAI currently has neither a public sub-processor list nor a formal Italian-language privacy policy.
+
+**Solution:** Create and publish a sub-processor list with all vendors, their roles, data processed, and locations. Draft an Italian-language privacy policy compliant with Art. 12-13 GDPR. Draft studio informativa template.
+
+**Agent Assignment:** @Severino (primary), @Mario (business requirements)
+
+**Dependencies:**
+- **Blocking:** DEV-397 (Hetzner DPA), DEV-398 (LLM DPAs) - need finalized vendor list
+- **Unlocks:** Public launch
+
+**Change Classification:** ADDITIVE
+
+**Files:**
+- `docs/compliance/SUB_PROCESSORS.md`
+- `docs/compliance/PRIVACY_POLICY_IT.md`
+
+**Relationship to Phase 9:** Phase 9 builds technical GDPR features (software). This task produces the legal documentation required for public launch.
+
+**Code Completeness:** (MANDATORY)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All sections complete with accurate information
+- [ ] No "will implement later" patterns
+
+**Acceptance Criteria:**
+- [ ] Sub-processor list includes all vendors (Hetzner, OpenAI, Anthropic, Stripe, SendGrid)
+- [ ] Each sub-processor entry includes: name, service, data processed, country, DPA status
+- [ ] Privacy policy in Italian covering all Art. 12-13 GDPR requirements
+- [ ] Studio informativa template drafted
+- [ ] Documents reviewed by legal counsel
+
+**Code Size Guidelines:**
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
+
+---
+
+### DEV-401: ADR-025 GDPR Client Data Architecture
+
+**Priority:** MEDIUM | **Status:** NOT STARTED
+
+**Problem:** The project's architecture decision for GDPR client data handling (originally referenced as ADR-024) needs a formal ADR. ADR-024 was found to be about Workflow Automation Architecture, not GDPR. A new ADR-025 is needed to formally document the GDPR architecture decisions.
+
+**Solution:** Create ADR-025 documenting the GDPR client data architecture: DPA structure between PratikoAI and studios, encryption layers (field-level AES-256-GCM + full-disk LUKS), data residency rationale (Hetzner Germany), LLM isolation strategy (PII anonymizer), and multi-tenant data isolation.
+
+**Agent Assignment:** @Egidio (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-396 (DPIA informs architecture decisions)
+- **Unlocks:** None (documentation task)
+
+**Change Classification:** ADDITIVE
+
+**File:** `docs/architecture/decisions/ADR-025-gdpr-client-data-architecture.md`
+
+**Relationship to Phase 9:** Provides the architectural rationale document that Phase 9's implementation should follow.
+
+**Code Completeness:** (MANDATORY)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All sections complete
+- [ ] No "will implement later" patterns
+
+**Acceptance Criteria:**
+- [ ] ADR follows project ADR template format
+- [ ] Documents DPA structure (processor/controller/sub-processor relationships)
+- [ ] Documents encryption architecture (field-level + full-disk)
+- [ ] Documents data residency decision (Hetzner Germany) with legal rationale
+- [ ] Documents LLM isolation strategy (PII anonymizer architecture)
+- [ ] Documents multi-tenant isolation (studio_id + RLS)
+- [ ] Reviewed and approved by @Egidio
+
+**Code Size Guidelines:**
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
 
 ---
 

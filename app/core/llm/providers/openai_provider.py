@@ -84,31 +84,30 @@ class OpenAIProvider(LLMProvider):
     def supported_models(self) -> dict[str, LLMCostInfo]:
         """Get supported OpenAI models and their cost information.
 
-        Costs are in EUR per 1K tokens (converted from USD).
-        Current exchange rate: 1 USD ≈ 0.92 EUR
+        Costs are in USD per 1K tokens (vendor pricing).
         """
         return {
             "gpt-4o-mini": LLMCostInfo(
-                input_cost_per_1k_tokens=0.000138,  # $0.15/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.000552,  # $0.60/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.00015,  # $0.15/1M tokens
+                output_cost_per_1k_tokens=0.0006,  # $0.60/1M tokens
                 model_name="gpt-4o-mini",
                 tier=LLMModelTier.BASIC,
             ),
             "gpt-4o": LLMCostInfo(
-                input_cost_per_1k_tokens=0.0046,  # $5.00/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.0138,  # $15.00/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.005,  # $5.00/1M tokens
+                output_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
                 model_name="gpt-4o",
                 tier=LLMModelTier.ADVANCED,
             ),
             "gpt-4-turbo": LLMCostInfo(
-                input_cost_per_1k_tokens=0.0092,  # $10.00/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.0276,  # $30.00/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.01,  # $10.00/1M tokens
+                output_cost_per_1k_tokens=0.03,  # $30.00/1M tokens
                 model_name="gpt-4-turbo",
                 tier=LLMModelTier.PREMIUM,
             ),
             "gpt-3.5-turbo": LLMCostInfo(
-                input_cost_per_1k_tokens=0.0005,  # $0.50/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.0015,  # $1.50/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.0005,  # $0.50/1M tokens
+                output_cost_per_1k_tokens=0.0015,  # $1.50/1M tokens
                 model_name="gpt-3.5-turbo",
                 tier=LLMModelTier.BASIC,
             ),
@@ -355,7 +354,7 @@ class OpenAIProvider(LLMProvider):
             output_tokens: Number of output tokens
 
         Returns:
-            Estimated cost in EUR
+            Estimated cost in USD
         """
         if self.model not in self.supported_models:
             logger.warning(

@@ -63,43 +63,42 @@ class MistralProvider(LLMProvider):
     def supported_models(self) -> dict[str, LLMCostInfo]:
         """Get supported Mistral models and their cost information.
 
-        Costs are in EUR per 1K tokens (converted from USD).
-        Current exchange rate: 1 USD = 0.92 EUR
+        Costs are in USD per 1K tokens (vendor pricing).
         """
         return {
             "mistral-small-latest": LLMCostInfo(
-                input_cost_per_1k_tokens=0.000184,  # $0.20/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.000552,  # $0.60/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.0002,  # $0.20/1M tokens
+                output_cost_per_1k_tokens=0.0006,  # $0.60/1M tokens
                 model_name="mistral-small-latest",
                 tier=LLMModelTier.BASIC,
             ),
             "mistral-medium-latest": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00253,  # $2.75/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.00759,  # $8.25/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.00275,  # $2.75/1M tokens
+                output_cost_per_1k_tokens=0.00825,  # $8.25/1M tokens
                 model_name="mistral-medium-latest",
                 tier=LLMModelTier.STANDARD,
             ),
             "mistral-large-latest": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00276,  # $3.00/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.00828,  # $9.00/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.003,  # $3.00/1M tokens
+                output_cost_per_1k_tokens=0.009,  # $9.00/1M tokens
                 model_name="mistral-large-latest",
                 tier=LLMModelTier.ADVANCED,
             ),
             "open-mistral-7b": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00023,  # $0.25/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.00023,  # $0.25/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.00025,  # $0.25/1M tokens
+                output_cost_per_1k_tokens=0.00025,  # $0.25/1M tokens
                 model_name="open-mistral-7b",
                 tier=LLMModelTier.BASIC,
             ),
             "open-mixtral-8x7b": LLMCostInfo(
-                input_cost_per_1k_tokens=0.000644,  # $0.70/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.000644,  # $0.70/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.0007,  # $0.70/1M tokens
+                output_cost_per_1k_tokens=0.0007,  # $0.70/1M tokens
                 model_name="open-mixtral-8x7b",
                 tier=LLMModelTier.STANDARD,
             ),
             "codestral-latest": LLMCostInfo(
-                input_cost_per_1k_tokens=0.000276,  # $0.30/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.000828,  # $0.90/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.0003,  # $0.30/1M tokens
+                output_cost_per_1k_tokens=0.0009,  # $0.90/1M tokens
                 model_name="codestral-latest",
                 tier=LLMModelTier.STANDARD,
             ),
@@ -289,7 +288,7 @@ class MistralProvider(LLMProvider):
             output_tokens: Number of output tokens
 
         Returns:
-            Estimated cost in EUR
+            Estimated cost in USD
         """
         if self.model not in self.supported_models:
             cost_info = self.supported_models["mistral-small-latest"]
@@ -369,8 +368,8 @@ class MistralProvider(LLMProvider):
             completion_tokens: Number of output tokens
             trace_id: Langfuse trace ID for context binding
             parent_span_id: Parent observation ID for proper nesting
-            input_cost: Cost in EUR for input tokens (bypasses Langfuse auto-calculation)
-            output_cost: Cost in EUR for output tokens (bypasses Langfuse auto-calculation)
+            input_cost: Cost in USD for input tokens (bypasses Langfuse auto-calculation)
+            output_cost: Cost in USD for output tokens (bypasses Langfuse auto-calculation)
         """
         # Debug logging to diagnose Langfuse cost tracking issues
         logger.info(

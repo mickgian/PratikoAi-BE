@@ -176,7 +176,8 @@ class TestRunComparison:
                 model_name="gpt-4o",
                 response_text="Response",
                 latency_ms=100,
-                cost_eur=0.001,
+                cost_usd=0.001,  # USD first (vendor pricing)
+                cost_eur=0.00093,  # EUR converted
                 input_tokens=10,
                 output_tokens=20,
                 status="success",
@@ -501,7 +502,8 @@ class TestRunComparisonWithExisting:
                 model_name="claude-opus-4-5-20251101",
                 response_text="Response from other model",
                 latency_ms=600,
-                cost_eur=0.02,
+                cost_usd=0.02,  # USD first (vendor pricing)
+                cost_eur=0.0186,  # EUR converted
                 input_tokens=100,
                 output_tokens=200,
                 status="success",
@@ -531,7 +533,7 @@ class TestRunComparisonWithExisting:
 
         call_count = 0
 
-        async def mock_call(model_id, query, batch_id, enriched_prompt=None):
+        async def mock_call(model_id, query, batch_id, enriched_prompt=None, user_id=None, exchange_rate=1.0):
             nonlocal call_count
             call_count += 1
             provider, model_name = model_id.split(":", 1)
@@ -541,7 +543,8 @@ class TestRunComparisonWithExisting:
                 model_name=model_name,
                 response_text=f"Response from {model_id}",
                 latency_ms=500,
-                cost_eur=0.01,
+                cost_usd=0.01,  # USD first (vendor pricing)
+                cost_eur=0.01 / exchange_rate if exchange_rate else 0.01,  # EUR converted
                 input_tokens=100,
                 output_tokens=200,
                 status="success",
@@ -776,3 +779,140 @@ class TestPendingComparisonMetrics:
         assert data.input_tokens is None
         assert data.output_tokens is None
         assert data.trace_id is None
+
+
+class TestComparisonServiceUsageTracking:
+    """Test usage tracking in comparison service (DEV-257)."""
+
+    @pytest.fixture
+    def mock_db(self):
+        """Create mock database session."""
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.commit = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def service(self):
+        """Create service."""
+        return ComparisonService()
+
+    @pytest.mark.asyncio
+    async def test_execute_model_call_tracks_usage(self, service, mock_db):
+        """Test that _execute_model_call tracks usage via usage_tracker."""
+        from app.core.llm.base import LLMResponse
+
+        # Mock at the lower level - the provider's chat_completion
+        mock_provider = MagicMock()
+        mock_provider.chat_completion = AsyncMock(
+            return_value=LLMResponse(
+                content="Test response",
+                model="gpt-4o",
+                provider="openai",
+                tokens_used={"input": 100, "output": 50},
+                cost_estimate=0.01,
+            )
+        )
+
+        with (
+            patch.object(service._factory, "create_provider", return_value=mock_provider),
+            patch("app.services.comparison_service.usage_tracker") as mock_usage_tracker,
+            patch("app.services.comparison_service.get_langfuse_client", return_value=None),
+        ):
+            mock_usage_tracker.track_llm_usage = AsyncMock()
+
+            await service.run_comparison(
+                "Test query",
+                user_id=123,
+                db=mock_db,
+                model_ids=["openai:gpt-4o", "anthropic:claude-3-sonnet"],
+            )
+
+            # Verify usage_tracker was called for each model
+            assert mock_usage_tracker.track_llm_usage.call_count == 2
+
+            # Verify user_id was passed correctly
+            for call in mock_usage_tracker.track_llm_usage.call_args_list:
+                assert call.kwargs.get("user_id") == 123
+
+    @pytest.mark.asyncio
+    async def test_run_comparison_with_existing_tracks_usage_for_new_models(self, service, mock_db):
+        """Test that run_comparison_with_existing tracks usage only for new model calls."""
+        from app.core.llm.base import LLMResponse
+        from app.schemas.comparison import ExistingModelResponse
+
+        existing_response = ExistingModelResponse(
+            model_id="openai:gpt-4o",
+            response_text="Existing response",
+            latency_ms=500,
+            cost_eur=0.01,
+            input_tokens=100,
+            output_tokens=50,
+            trace_id="existing-trace",
+        )
+
+        mock_provider = MagicMock()
+        mock_provider.chat_completion = AsyncMock(
+            return_value=LLMResponse(
+                content="New response",
+                model="claude-opus-4-5-20251101",
+                provider="anthropic",
+                tokens_used={"input": 100, "output": 75},
+                cost_estimate=0.02,
+            )
+        )
+
+        with (
+            patch.object(service._factory, "create_provider", return_value=mock_provider),
+            patch("app.services.comparison_service.usage_tracker") as mock_usage_tracker,
+            patch("app.services.comparison_service.get_langfuse_client", return_value=None),
+        ):
+            mock_usage_tracker.track_llm_usage = AsyncMock()
+
+            await service.run_comparison_with_existing(
+                "Test query",
+                user_id=123,
+                db=mock_db,
+                existing_response=existing_response,
+            )
+
+            # Should track usage for new model calls only (not existing response)
+            # The existing response was already tracked in main chat
+            assert mock_usage_tracker.track_llm_usage.call_count >= 1
+
+    @pytest.mark.asyncio
+    async def test_usage_tracking_includes_session_id(self, service, mock_db):
+        """Test that usage tracking includes session_id from batch_id."""
+        from app.core.llm.base import LLMResponse
+
+        mock_provider = MagicMock()
+        mock_provider.chat_completion = AsyncMock(
+            return_value=LLMResponse(
+                content="Test response",
+                model="gpt-4o",
+                provider="openai",
+                tokens_used={"input": 100, "output": 50},
+                cost_estimate=0.01,
+            )
+        )
+
+        with (
+            patch.object(service._factory, "create_provider", return_value=mock_provider),
+            patch("app.services.comparison_service.usage_tracker") as mock_usage_tracker,
+            patch("app.services.comparison_service.get_langfuse_client", return_value=None),
+        ):
+            mock_usage_tracker.track_llm_usage = AsyncMock()
+
+            result = await service.run_comparison(
+                "Test query",
+                user_id=123,
+                db=mock_db,
+                model_ids=["openai:gpt-4o", "anthropic:claude-3-sonnet"],
+            )
+
+            # Verify session_id was passed (derived from batch_id)
+            for call in mock_usage_tracker.track_llm_usage.call_args_list:
+                session_id = call.kwargs.get("session_id")
+                assert session_id is not None
+                assert session_id.startswith("comparison-")

@@ -68,25 +68,24 @@ class GeminiProvider(LLMProvider):
     def supported_models(self) -> dict[str, LLMCostInfo]:
         """Get supported Gemini models and their cost information.
 
-        Costs are in EUR per 1K tokens (converted from USD).
-        Current exchange rate: 1 USD = 0.92 EUR
+        Costs are in USD per 1K tokens (vendor pricing).
         """
         return {
             "gemini-2.5-flash": LLMCostInfo(
-                input_cost_per_1k_tokens=0.0000691,  # Estimate based on Flash pricing
-                output_cost_per_1k_tokens=0.000276,
+                input_cost_per_1k_tokens=0.000075,  # $0.075/1M tokens
+                output_cost_per_1k_tokens=0.0003,  # $0.30/1M tokens
                 model_name="gemini-2.5-flash",
                 tier=LLMModelTier.BASIC,
             ),
             "gemini-2.5-pro": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00115,  # Estimate based on Pro pricing
-                output_cost_per_1k_tokens=0.0046,
+                input_cost_per_1k_tokens=0.00125,  # $1.25/1M tokens
+                output_cost_per_1k_tokens=0.005,  # $5.00/1M tokens
                 model_name="gemini-2.5-pro",
                 tier=LLMModelTier.ADVANCED,
             ),
             "gemini-2.0-flash": LLMCostInfo(
-                input_cost_per_1k_tokens=0.0000691,
-                output_cost_per_1k_tokens=0.000276,
+                input_cost_per_1k_tokens=0.000075,  # $0.075/1M tokens
+                output_cost_per_1k_tokens=0.0003,  # $0.30/1M tokens
                 model_name="gemini-2.0-flash",
                 tier=LLMModelTier.STANDARD,
             ),
@@ -307,7 +306,7 @@ class GeminiProvider(LLMProvider):
             output_tokens: Number of output tokens
 
         Returns:
-            Estimated cost in EUR
+            Estimated cost in USD
         """
         if self.model not in self.supported_models:
             cost_info = self.supported_models["gemini-2.5-flash"]

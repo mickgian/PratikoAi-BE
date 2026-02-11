@@ -130,7 +130,8 @@ class ModelResponseInfo(BaseModel):
     model_name: str
     response_text: str
     latency_ms: int
-    cost_eur: float | None
+    cost_usd: float | None = Field(default=None, description="Cost in USD (vendor pricing)")
+    cost_eur: float | None = Field(default=None, description="Cost in EUR (converted from USD)")
     input_tokens: int | None
     output_tokens: int | None
     status: str  # success, error, timeout

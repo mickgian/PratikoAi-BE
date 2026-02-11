@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.llm.base import LLMProviderType
+from app.core.llm.base import LLMProviderType, LLMResponse
 from app.core.llm.factory import LLMFactory
 from app.core.logging import logger
 from app.models.comparison import (
@@ -39,6 +39,8 @@ from app.schemas.comparison import (
     PendingComparisonData,
     VoteResponse,
 )
+from app.services.exchange_rate_service import convert_usd_to_eur, get_eur_to_usd_rate
+from app.services.usage_tracker import usage_tracker
 
 # Constants
 ELO_K_FACTOR = 32
@@ -162,6 +164,8 @@ class ComparisonService:
         query: str,
         batch_id: str,
         enriched_prompt: str | None = None,
+        user_id: int | None = None,
+        exchange_rate: float = 1.0,
     ) -> ModelResponseInfo:
         """Call a single model and return response info.
 
@@ -170,6 +174,8 @@ class ComparisonService:
             query: Query to send (fallback if no enriched_prompt)
             batch_id: Batch ID for tracing
             enriched_prompt: DEV-256: Full prompt with KB context, web results, etc.
+            user_id: DEV-257: User ID for usage tracking
+            exchange_rate: ADR-026: EUR to USD exchange rate
 
         Returns:
             ModelResponseInfo with response or error
@@ -228,6 +234,8 @@ class ComparisonService:
                         langfuse_trace_id=langfuse_trace_id,
                         comparison_trace_id=comparison_trace_id,
                         langfuse_client=langfuse_client,
+                        user_id=user_id,
+                        exchange_rate=exchange_rate,
                     )
                     return result
                 finally:
@@ -248,6 +256,8 @@ class ComparisonService:
                 langfuse_trace_id=None,
                 comparison_trace_id=comparison_trace_id,
                 langfuse_client=None,
+                user_id=user_id,
+                exchange_rate=exchange_rate,
             )
 
     async def _execute_model_call(
@@ -262,6 +272,8 @@ class ComparisonService:
         langfuse_trace_id: str | None,
         comparison_trace_id: str,
         langfuse_client,
+        user_id: int | None = None,
+        exchange_rate: float = 1.0,
     ) -> ModelResponseInfo:
         """Execute the actual model call (extracted for Langfuse context management).
 
@@ -271,11 +283,13 @@ class ComparisonService:
             model_name: Model name
             query: Query to send (fallback if no enriched_prompt)
             enriched_prompt: Full prompt with KB context
+            exchange_rate: ADR-026: EUR to USD exchange rate
             batch_id: Batch ID for tracing
             start_time: Start time for latency calculation
             langfuse_trace_id: Langfuse trace ID if available
             comparison_trace_id: Fallback trace ID
             langfuse_client: Langfuse client for span updates
+            user_id: DEV-257: User ID for usage tracking
 
         Returns:
             ModelResponseInfo with response or error
@@ -317,11 +331,38 @@ class ComparisonService:
                         metadata={
                             "status": "success",
                             "latency_ms": latency_ms,
-                            "cost_eur": response.cost_estimate,
+                            "cost_usd": response.cost_estimate,
                         },
                     )
                 except Exception as lf_err:
                     logger.warning("comparison_langfuse_update_error", error=str(lf_err))
+
+            # DEV-257: Track usage in UsageEvent table for cost reporting
+            if user_id is not None:
+                try:
+                    # Create LLMResponse for usage tracker
+                    llm_response_for_tracking = LLMResponse(
+                        content=response.content,
+                        model=model_name,
+                        provider=provider_name,
+                        tokens_used={"input": input_tokens or 0, "output": output_tokens or 0},
+                        cost_estimate=response.cost_estimate,
+                    )
+                    await usage_tracker.track_llm_usage(
+                        user_id=user_id,
+                        session_id=f"comparison-{batch_id}",
+                        provider=provider_name,
+                        model=model_name,
+                        llm_response=llm_response_for_tracking,
+                        response_time_ms=latency_ms,
+                        cache_hit=False,
+                    )
+                except Exception as track_err:
+                    logger.warning(
+                        "comparison_usage_tracking_failed",
+                        model_id=model_id,
+                        error=str(track_err),
+                    )
 
             return ModelResponseInfo(
                 model_id=model_id,
@@ -329,7 +370,8 @@ class ComparisonService:
                 model_name=model_name,
                 response_text=response.content,
                 latency_ms=latency_ms,
-                cost_eur=response.cost_estimate,
+                cost_usd=response.cost_estimate,  # Now in USD (vendor pricing)
+                cost_eur=convert_usd_to_eur(response.cost_estimate, exchange_rate),
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 status=ComparisonStatus.SUCCESS.value,
@@ -444,17 +486,28 @@ class ComparisonService:
         # Generate batch ID
         batch_id = str(uuid4())[:8]
 
+        # ADR-026: Fetch exchange rate for USD cost display
+        exchange_rate = await get_eur_to_usd_rate()
+
         logger.info(
             "comparison_started",
             batch_id=batch_id,
             user_id=user_id,
             model_count=len(model_ids),
             has_enriched_prompt=enriched_prompt is not None,
+            exchange_rate=exchange_rate,
         )
 
         # Run all models in parallel
         # DEV-256: Pass enriched_prompt so all models receive same context as production
-        tasks = [self._call_single_model(model_id, query, batch_id, enriched_prompt) for model_id in model_ids]
+        # DEV-257: Pass user_id for usage tracking
+        # ADR-026: Pass exchange_rate for USD cost calculation
+        tasks = [
+            self._call_single_model(
+                model_id, query, batch_id, enriched_prompt, user_id=user_id, exchange_rate=exchange_rate
+            )
+            for model_id in model_ids
+        ]
         responses = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Process responses
@@ -568,6 +621,9 @@ class ComparisonService:
         # Generate batch ID
         batch_id = str(uuid4())[:8]
 
+        # ADR-026: Fetch exchange rate for USD cost display
+        exchange_rate = await get_eur_to_usd_rate()
+
         logger.info(
             "comparison_with_existing_started",
             batch_id=batch_id,
@@ -575,9 +631,13 @@ class ComparisonService:
             existing_model=current_model_id,
             other_model_count=len(other_model_ids),
             has_enriched_prompt=enriched_prompt is not None,
+            exchange_rate=exchange_rate,
         )
 
         # Convert existing response to ModelResponseInfo
+        # Note: existing_response.cost_eur is actually USD now (from provider's cost_estimate)
+        # The field name in ExistingModelResponse is still cost_eur for backward compatibility
+        # but the value coming from providers is now in USD
         provider, model_name = self._parse_model_id(current_model_id)
         existing_info = ModelResponseInfo(
             model_id=current_model_id,
@@ -585,7 +645,8 @@ class ComparisonService:
             model_name=model_name,
             response_text=existing_response.response_text,
             latency_ms=existing_response.latency_ms,
-            cost_eur=existing_response.cost_eur,
+            cost_usd=existing_response.cost_eur,  # cost_eur field contains USD (from provider)
+            cost_eur=convert_usd_to_eur(existing_response.cost_eur, exchange_rate),
             input_tokens=existing_response.input_tokens,
             output_tokens=existing_response.output_tokens,
             status=ComparisonStatus.SUCCESS.value,
@@ -594,7 +655,14 @@ class ComparisonService:
 
         # Call only the other models in parallel
         # DEV-256: Pass enriched_prompt so all models receive same context as production
-        tasks = [self._call_single_model(model_id, query, batch_id, enriched_prompt) for model_id in other_model_ids]
+        # DEV-257: Pass user_id for usage tracking
+        # ADR-026: Pass exchange_rate for USD cost calculation
+        tasks = [
+            self._call_single_model(
+                model_id, query, batch_id, enriched_prompt, user_id=user_id, exchange_rate=exchange_rate
+            )
+            for model_id in other_model_ids
+        ]
         other_responses = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Combine: existing + new responses

@@ -122,6 +122,25 @@ class ComparisonService:
         """Get display name for a model."""
         return MODEL_DISPLAY_NAMES.get(model_id, model_id)
 
+    @staticmethod
+    def _get_user_account_code(user_id: int) -> str | None:
+        """Look up user's account_code for Langfuse tracking.
+
+        Uses sync session for a lightweight read-only lookup.
+        Returns None on any failure (graceful degradation).
+        """
+        try:
+            from sqlmodel import select as sql_select
+
+            from app.models.database import get_sync_session
+            from app.models.user import User
+
+            with get_sync_session() as sync_db:
+                stmt = sql_select(User.account_code).where(User.id == user_id)
+                return sync_db.exec(stmt).first()
+        except Exception:
+            return None
+
     def _hash_query(self, query: str) -> str:
         """Generate SHA256 hash of query for grouping."""
         return hashlib.sha256(query.encode()).hexdigest()
@@ -210,6 +229,14 @@ class ComparisonService:
             ):
                 langfuse_trace_id = langfuse_client.get_current_trace_id()
                 langfuse_observation_id = langfuse_client.get_current_observation_id()
+
+                # Set user_id on trace for Langfuse UI filtering (DEV-256)
+                # Prefer account_code for readable analytics (same as main chat)
+                if user_id is not None:
+                    account_code = self._get_user_account_code(user_id)
+                    langfuse_client.update_current_trace(
+                        user_id=account_code or str(user_id),
+                    )
 
                 # Set contextvars so provider's _report_langfuse_generation() works
                 _current_trace_id.set(langfuse_trace_id)

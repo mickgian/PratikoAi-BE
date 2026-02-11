@@ -422,6 +422,11 @@ class RAGState(TypedDict, total=False):
     #             context_citations, has_hallucinations, hallucination_rate}
     hallucination_check_result: dict | None
 
+    # DEV-256: Enriched prompt for model comparison feature
+    # Contains the full prompt sent to LLM including KB context and web sources
+    # Used by SUPER_USERs to compare how different models respond to same context
+    enriched_prompt: str | None
+
     # Phase 9: LLM Excellence - Dual Reasoning (DEV-229, DEV-230)
     # Technical reasoning for debugging/logging (not shown to user)
     internal_reasoning: dict | None

@@ -77,9 +77,31 @@ class UsageTracker:
             "hourly_requests": 50,  # Rate limit warning
         }
 
+    def _convert_user_id(self, user_id: str | int) -> int:
+        """Convert user_id to int for database FK constraint.
+
+        DEV-257: UsageEvent.user_id is FK to user.id (int), but callers often
+        pass string user_ids from session data.
+
+        Args:
+            user_id: User identifier as string or int
+
+        Returns:
+            int: User ID as integer
+
+        Raises:
+            ValueError: If user_id cannot be converted to int
+        """
+        if isinstance(user_id, int):
+            return user_id
+        try:
+            return int(user_id)
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Invalid user_id: {user_id!r} - must be numeric") from e
+
     async def track_llm_usage(
         self,
-        user_id: str,
+        user_id: str | int,
         session_id: str,
         provider: str,
         model: str,
@@ -94,7 +116,7 @@ class UsageTracker:
         """Track LLM usage event and update quotas.
 
         Args:
-            user_id: User identifier
+            user_id: User identifier (str or int, will be converted to int)
             session_id: Session identifier
             provider: LLM provider name
             model: Model name
@@ -108,7 +130,13 @@ class UsageTracker:
 
         Returns:
             UsageEvent: The created usage event
+
+        Raises:
+            ValueError: If user_id cannot be converted to int
         """
+        # DEV-257: Convert user_id to int (UsageEvent.user_id is FK to user.id)
+        user_id_int = self._convert_user_id(user_id)
+
         try:
             # Extract token information
             # tokens_used may be a dict (converted by caller) or int or None
@@ -123,7 +151,7 @@ class UsageTracker:
 
             # Create usage event
             usage_event = UsageEvent(
-                user_id=user_id,
+                user_id=user_id_int,
                 session_id=session_id,
                 event_type=UsageType.LLM_QUERY,
                 environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
@@ -150,17 +178,17 @@ class UsageTracker:
                 await db.refresh(usage_event)
 
             # Update quotas and check limits
-            await self._update_user_quota(user_id, cost_eur, total_tokens)
+            await self._update_user_quota(user_id_int, cost_eur, total_tokens)
 
             # Update daily summary
-            await self._update_daily_summary(user_id, usage_event)
+            await self._update_daily_summary(user_id_int, usage_event)
 
             # Check for alerts
-            await self._check_cost_alerts(user_id, cost_eur)
+            await self._check_cost_alerts(user_id_int, cost_eur)
 
             logger.info(
                 "usage_tracked",
-                user_id=user_id,
+                user_id=user_id_int,
                 provider=provider,
                 model=model,
                 cost_eur=cost_eur,
@@ -172,10 +200,10 @@ class UsageTracker:
             return usage_event
 
         except Exception as e:
-            logger.error("usage_tracking_failed", user_id=user_id, error=str(e), exc_info=True)
+            logger.error("usage_tracking_failed", user_id=user_id_int, error=str(e), exc_info=True)
             # Create minimal event for error tracking
             return UsageEvent(
-                user_id=user_id,
+                user_id=user_id_int,
                 session_id=session_id,
                 event_type=UsageType.LLM_QUERY,
                 environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
@@ -185,7 +213,7 @@ class UsageTracker:
 
     async def track_api_request(
         self,
-        user_id: str,
+        user_id: str | int,
         session_id: str,
         endpoint: str,
         method: str,
@@ -198,7 +226,7 @@ class UsageTracker:
         """Track general API usage.
 
         Args:
-            user_id: User identifier
+            user_id: User identifier (str or int, will be converted to int)
             session_id: Session identifier
             endpoint: API endpoint
             method: HTTP method
@@ -210,9 +238,15 @@ class UsageTracker:
 
         Returns:
             UsageEvent: The created usage event
+
+        Raises:
+            ValueError: If user_id cannot be converted to int
         """
+        # DEV-257: Convert user_id to int (UsageEvent.user_id is FK to user.id)
+        user_id_int = self._convert_user_id(user_id)
+
         usage_event = UsageEvent(
-            user_id=user_id,
+            user_id=user_id_int,
             session_id=session_id,
             event_type=UsageType.API_REQUEST,
             environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
@@ -232,7 +266,7 @@ class UsageTracker:
 
     async def track_third_party_api(
         self,
-        user_id: str,
+        user_id: str | int,
         session_id: str,
         api_type: str,
         cost_eur: float,
@@ -246,7 +280,7 @@ class UsageTracker:
         DEV-246: Track third-party API costs separately for daily cost reporting.
 
         Args:
-            user_id: User identifier
+            user_id: User identifier (str or int, will be converted to int)
             session_id: Session identifier
             api_type: Type of API (e.g., "brave_search", "web_scraper")
             cost_eur: Cost in EUR for this API call
@@ -257,9 +291,15 @@ class UsageTracker:
 
         Returns:
             UsageEvent: The created usage event
+
+        Raises:
+            ValueError: If user_id cannot be converted to int
         """
+        # DEV-257: Convert user_id to int (UsageEvent.user_id is FK to user.id)
+        user_id_int = self._convert_user_id(user_id)
+
         usage_event = UsageEvent(
-            user_id=user_id,
+            user_id=user_id_int,
             session_id=session_id,
             event_type=UsageType.API_REQUEST,
             environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
@@ -279,7 +319,7 @@ class UsageTracker:
 
             logger.info(
                 "third_party_api_tracked",
-                user_id=user_id,
+                user_id=user_id_int,
                 api_type=api_type,
                 cost_eur=cost_eur,
                 environment=settings.ENVIRONMENT.value,
@@ -290,7 +330,7 @@ class UsageTracker:
         except Exception as e:
             logger.error(
                 "third_party_api_tracking_failed",
-                user_id=user_id,
+                user_id=user_id_int,
                 api_type=api_type,
                 error=str(e),
             )

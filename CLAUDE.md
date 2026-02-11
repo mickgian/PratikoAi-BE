@@ -72,6 +72,12 @@ User Request
 
 ---
 
+## Feature Implementation
+
+When implementing new backend features, always verify the corresponding frontend is updated and accessible before marking the task complete.
+
+---
+
 ## Before Implementing Non-Trivial Tasks
 
 **ALWAYS follow this workflow for tasks affecting 3+ files:**
@@ -397,6 +403,13 @@ export function useExample() {
   return { data, fetch }
 }
 ```
+
+---
+
+## Code Conventions
+
+- **Avoid hardcoding values** that should be dynamic or configurable - always ask for clarification if the intended behavior is ambiguous.
+- **LLM model configurations:** Prefer environment variables or config files over hardcoded model names.
 
 ---
 

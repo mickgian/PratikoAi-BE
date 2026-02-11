@@ -369,4 +369,6 @@ class TestAnthropicProviderLangfuseReporting:
                 output_tokens=8,
                 trace_id=ANY,  # trace_id from get_current_trace_id() contextvar
                 parent_span_id=ANY,  # parent_span_id from get_current_observation_id() contextvar
+                input_cost=ANY,  # DEV-256: cost passed for explicit Langfuse tracking
+                output_cost=ANY,
             )

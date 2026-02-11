@@ -73,32 +73,44 @@ class AnthropicProvider(LLMProvider):
     def supported_models(self) -> dict[str, LLMCostInfo]:
         """Get supported Anthropic models and their cost information.
 
-        Costs are in EUR per 1K tokens (converted from USD).
-        Current exchange rate: 1 USD ≈ 0.92 EUR
+        Costs are in USD per 1K tokens (vendor pricing).
         """
         return {
             "claude-3-haiku-20240307": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00023,  # $0.25/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.00115,  # $1.25/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.00025,  # $0.25/1M tokens
+                output_cost_per_1k_tokens=0.00125,  # $1.25/1M tokens
                 model_name="claude-3-haiku-20240307",
                 tier=LLMModelTier.BASIC,
             ),
             "claude-3-sonnet-20241022": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00276,  # $3.00/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.0138,  # $15.00/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.003,  # $3.00/1M tokens
+                output_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
                 model_name="claude-3-sonnet-20241022",
                 tier=LLMModelTier.STANDARD,
             ),
             "claude-3-5-sonnet-20241022": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00276,  # $3.00/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.0138,  # $15.00/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.003,  # $3.00/1M tokens
+                output_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
                 model_name="claude-3-5-sonnet-20241022",
                 tier=LLMModelTier.ADVANCED,
             ),
             "claude-3-opus-20240229": LLMCostInfo(
-                input_cost_per_1k_tokens=0.0138,  # $15.00/1M tokens * 0.92
-                output_cost_per_1k_tokens=0.069,  # $75.00/1M tokens * 0.92
+                input_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
+                output_cost_per_1k_tokens=0.075,  # $75.00/1M tokens
                 model_name="claude-3-opus-20240229",
+                tier=LLMModelTier.PREMIUM,
+            ),
+            # Claude 4.5 family (November 2025)
+            "claude-sonnet-4-5-20250929": LLMCostInfo(
+                input_cost_per_1k_tokens=0.003,  # $3.00/1M tokens
+                output_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
+                model_name="claude-sonnet-4-5-20250929",
+                tier=LLMModelTier.ADVANCED,
+            ),
+            "claude-opus-4-5-20251101": LLMCostInfo(
+                input_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
+                output_cost_per_1k_tokens=0.075,  # $75.00/1M tokens
+                model_name="claude-opus-4-5-20251101",
                 tier=LLMModelTier.PREMIUM,
             ),
         }
@@ -221,8 +233,18 @@ class AnthropicProvider(LLMProvider):
 
             # Calculate cost estimate
             cost_estimate = None
+            input_cost = None
+            output_cost = None
             if response.usage:
-                cost_estimate = self.estimate_cost(response.usage.input_tokens, response.usage.output_tokens)
+                # Get cost info for the model
+                cost_info = self.supported_models.get(self.model)
+                if not cost_info:
+                    cost_info = self.supported_models["claude-3-haiku-20240307"]
+
+                input_cost = (response.usage.input_tokens / 1000) * cost_info.input_cost_per_1k_tokens
+                output_cost = (response.usage.output_tokens / 1000) * cost_info.output_cost_per_1k_tokens
+                cost_estimate = input_cost + output_cost
+
                 # Report generation to Langfuse for token/cost tracking (DEV-255)
                 # Only for non-tool-call responses (tool calls would use LangChain)
                 if not tool_calls:
@@ -234,13 +256,17 @@ class AnthropicProvider(LLMProvider):
                         output_tokens=response.usage.output_tokens,
                         trace_id=get_current_trace_id(),
                         parent_span_id=get_current_observation_id(),
+                        input_cost=input_cost,
+                        output_cost=output_cost,
                     )
 
             return LLMResponse(
                 content=content,
                 model=self.model,
                 provider=self.provider_type.value,
-                tokens_used=response.usage.input_tokens + response.usage.output_tokens if response.usage else None,
+                tokens_used={"input": response.usage.input_tokens, "output": response.usage.output_tokens}
+                if response.usage
+                else None,
                 cost_estimate=cost_estimate,
                 finish_reason=response.stop_reason,
                 tool_calls=tool_calls,
@@ -364,7 +390,7 @@ class AnthropicProvider(LLMProvider):
             output_tokens: Number of output tokens
 
         Returns:
-            Estimated cost in EUR
+            Estimated cost in USD
         """
         if self.model not in self.supported_models:
             logger.warning(
@@ -439,6 +465,8 @@ class AnthropicProvider(LLMProvider):
         output_tokens: int,
         trace_id: str | None = None,
         parent_span_id: str | None = None,
+        input_cost: float | None = None,
+        output_cost: float | None = None,
     ) -> None:
         """Report a direct Anthropic call to Langfuse as a generation (DEV-255).
 
@@ -452,8 +480,15 @@ class AnthropicProvider(LLMProvider):
         cost calculation in Langfuse UI (unlike start_span which creates "span" type).
 
         Args:
+            model: Model name
+            input_messages: Input messages in Anthropic format
+            output_content: Generated output content
+            input_tokens: Number of input tokens
+            output_tokens: Number of output tokens
             trace_id: The trace ID to bind this generation to.
             parent_span_id: The parent span ID to nest this generation under.
+            input_cost: Cost in USD for input tokens (bypasses Langfuse auto-calculation)
+            output_cost: Cost in USD for output tokens (bypasses Langfuse auto-calculation)
         """
         # Skip if no active trace (sampling disabled or setup failed)
         # This prevents orphan traces named "anthropic-chat" in Langfuse
@@ -478,13 +513,25 @@ class AnthropicProvider(LLMProvider):
                 model=model,
                 input={"messages": input_messages},
             )
-            generation.update(
-                output=output_content,
-                usage_details={
+
+            # Build update kwargs
+            update_kwargs: dict = {
+                "output": output_content,
+                "usage_details": {
                     "input": input_tokens,
                     "output": output_tokens,
                 },
-            )
+            }
+
+            # Pass cost explicitly to bypass Langfuse's auto-calculation
+            # (Langfuse doesn't have correct pricing for newer Claude models like claude-opus-4-5-20251101)
+            if input_cost is not None or output_cost is not None:
+                update_kwargs["cost_details"] = {
+                    "input": input_cost or 0.0,
+                    "output": output_cost or 0.0,
+                }
+
+            generation.update(**update_kwargs)
             generation.end()
         except Exception:
             pass  # Graceful degradation

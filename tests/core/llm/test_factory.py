@@ -22,6 +22,9 @@ class TestLLMFactory:
         mock_settings.LLM_API_KEY = "test-openai-key"
         mock_settings.LLM_MODEL = "gpt-4o-mini"
         mock_settings.ANTHROPIC_API_KEY = ""
+        # New providers (DEV-256)
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         configs = factory._get_provider_configs()
@@ -37,6 +40,9 @@ class TestLLMFactory:
         mock_settings.LLM_MODEL = "gpt-4o-mini"
         mock_settings.ANTHROPIC_API_KEY = "test-anthropic-key"
         mock_settings.ANTHROPIC_MODEL = "claude-3-haiku-20240307"
+        # New providers (DEV-256)
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         configs = factory._get_provider_configs()
@@ -52,6 +58,8 @@ class TestLLMFactory:
         mock_settings.LLM_API_KEY = "test-openai-key"
         mock_settings.LLM_MODEL = "gpt-4o-mini"
         mock_settings.ANTHROPIC_API_KEY = ""
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         provider = factory.create_provider(LLMProviderType.OPENAI)
@@ -66,6 +74,8 @@ class TestLLMFactory:
         mock_settings.LLM_API_KEY = "test-openai-key"
         mock_settings.ANTHROPIC_API_KEY = "test-anthropic-key"
         mock_settings.ANTHROPIC_MODEL = "claude-3-haiku-20240307"
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         provider = factory.create_provider(LLMProviderType.ANTHROPIC)
@@ -79,6 +89,8 @@ class TestLLMFactory:
         """Test creating provider that's not configured."""
         mock_settings.LLM_API_KEY = ""
         mock_settings.ANTHROPIC_API_KEY = ""
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
 
@@ -98,6 +110,8 @@ class TestLLMFactory:
         mock_settings.LLM_MODEL = "gpt-4o-mini"
         mock_settings.ANTHROPIC_API_KEY = "test-anthropic-key"
         mock_settings.ANTHROPIC_MODEL = "claude-3-haiku-20240307"
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         providers = factory.get_available_providers()
@@ -113,6 +127,8 @@ class TestLLMFactory:
         mock_settings.LLM_API_KEY = "test-openai-key"
         mock_settings.LLM_MODEL = "gpt-4o-mini"
         mock_settings.ANTHROPIC_API_KEY = ""
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         messages = [Message(role="user", content="Hello")]
@@ -128,6 +144,8 @@ class TestLLMFactory:
         mock_settings.LLM_MODEL = "gpt-4o-mini"
         mock_settings.ANTHROPIC_API_KEY = "test-anthropic-key"
         mock_settings.ANTHROPIC_MODEL = "claude-3-haiku-20240307"
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         messages = [Message(role="user", content="Hello")]
@@ -141,6 +159,8 @@ class TestLLMFactory:
         """Test getting optimal provider with no configured providers."""
         mock_settings.LLM_API_KEY = ""
         mock_settings.ANTHROPIC_API_KEY = ""
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         messages = [Message(role="user", content="Hello")]
@@ -153,6 +173,9 @@ class TestLLMFactory:
         """Test quality-first routing strategy."""
         mock_settings.LLM_API_KEY = "test-openai-key"
         mock_settings.LLM_MODEL = "gpt-4o-mini"
+        mock_settings.ANTHROPIC_API_KEY = ""
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         providers = factory.get_available_providers()
@@ -167,6 +190,9 @@ class TestLLMFactory:
         """Test balanced routing strategy."""
         mock_settings.LLM_API_KEY = "test-openai-key"
         mock_settings.LLM_MODEL = "gpt-4o-mini"
+        mock_settings.ANTHROPIC_API_KEY = ""
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         providers = factory.get_available_providers()
@@ -180,6 +206,9 @@ class TestLLMFactory:
         """Test failover routing strategy."""
         mock_settings.LLM_API_KEY = "test-openai-key"
         mock_settings.LLM_MODEL = "gpt-4o-mini"
+        mock_settings.ANTHROPIC_API_KEY = ""
+        mock_settings.GOOGLE_API_KEY = ""
+        mock_settings.MISTRAL_API_KEY = ""
 
         factory = LLMFactory()
         providers = factory.get_available_providers()

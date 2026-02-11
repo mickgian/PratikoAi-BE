@@ -31,6 +31,14 @@ from app.models.ccnl_update_models import (
     CCNLVersion,
 )
 
+# DEV-256: Multi-Model LLM Comparison Feature
+from app.models.comparison import (
+    ModelComparisonResponse,
+    ModelComparisonSession,
+    ModelEloRating,
+    UserModelPreference,
+)
+
 # Phase 3: GDPR Data Export Models
 from app.models.data_export import (
     DataExportRequest,

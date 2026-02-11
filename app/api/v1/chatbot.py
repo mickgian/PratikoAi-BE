@@ -1164,6 +1164,10 @@ async def chat_stream(
                     collected_kb_sources_metadata: list[dict] | None = None
                     # DEV-245: Collect web verification metadata for persistence in chat history
                     collected_web_verification_data: dict | None = None
+                    # DEV-256: Collect enriched prompt for model comparison feature
+                    collected_enriched_prompt: str | None = None
+                    # DEV-256: Collect LLM metrics for model comparison feature
+                    collected_metrics: dict | None = None
 
                     # Send progress event for attachment analysis (DEV-007)
                     if resolved_attachments:
@@ -1341,6 +1345,49 @@ async def chat_stream(
                                             session_id=session.id,
                                             error=str(parse_err),
                                         )
+                                elif chunk.startswith("__METRICS__:"):
+                                    # DEV-256: LLM metrics for model comparison feature
+                                    # Format: __METRICS__:<json_object>
+                                    try:
+                                        import json as _json_metrics
+
+                                        metrics_json = chunk.replace("__METRICS__:", "")
+                                        collected_metrics = _json_metrics.loads(metrics_json)
+                                        logger.info(
+                                            "metrics_received_from_graph",
+                                            session_id=session.id,
+                                            tokens_used=collected_metrics.get("tokens_used"),
+                                            cost_estimate=collected_metrics.get("cost_estimate"),
+                                        )
+                                        # Don't send SSE event - only include in done event
+                                    except Exception as parse_err:
+                                        logger.warning(
+                                            "metrics_parse_failed",
+                                            session_id=session.id,
+                                            error=str(parse_err),
+                                        )
+                                elif chunk.startswith("__ENRICHED_PROMPT__:"):
+                                    # DEV-256: Enriched prompt for model comparison feature
+                                    # Format: __ENRICHED_PROMPT__:<json_string>
+                                    try:
+                                        import json as _json_prompt
+
+                                        prompt_json = chunk.replace("__ENRICHED_PROMPT__:", "")
+                                        collected_enriched_prompt = _json_prompt.loads(prompt_json)
+                                        logger.info(
+                                            "enriched_prompt_received_from_graph",
+                                            session_id=session.id,
+                                            prompt_length=len(collected_enriched_prompt)
+                                            if collected_enriched_prompt
+                                            else 0,
+                                        )
+                                        # Don't send SSE event - only include in done event for SUPER_USERs
+                                    except Exception as parse_err:
+                                        logger.warning(
+                                            "enriched_prompt_parse_failed",
+                                            session_id=session.id,
+                                            error=str(parse_err),
+                                        )
                                 else:
                                     # This is regular content (plain text string from graph)
                                     # Collect chunk for chat history
@@ -1384,10 +1431,31 @@ async def chat_stream(
                     # Interactive questions (pre-response) are still supported.
 
                     # Send final done frame with trace_id for feedback (DEV-255)
+                    # DEV-256: Include enriched_prompt and metrics for model comparison feature (SUPER_USERs)
+                    # Extract metrics from collected data
+                    response_time_ms: int | None = None
+                    tokens_used: dict[str, int] | None = None
+                    cost_cents: int | None = None
+                    model_used: str | None = None
+
+                    if collected_metrics:
+                        tokens_used = collected_metrics.get("tokens_used")
+                        cost_estimate = collected_metrics.get("cost_estimate")
+                        model_used = collected_metrics.get("model_used")
+                        response_time_ms = collected_metrics.get("response_time_ms")  # DEV-256: Extract response time
+                        # Convert cost from EUR to cents (EUR * 100)
+                        if cost_estimate is not None:
+                            cost_cents = int(cost_estimate * 100)
+
                     done_response = StreamResponse(
                         content="",
                         done=True,
                         trace_id=get_current_trace_id(),
+                        enriched_prompt=collected_enriched_prompt,
+                        tokens_used=tokens_used,
+                        cost_cents=cost_cents,
+                        model_used=model_used,
+                        response_time_ms=response_time_ms,  # DEV-256: Include response time
                     )
                     sse_done = format_sse_event(done_response)
                     yield write_sse(None, sse_done, request_id=request_id)

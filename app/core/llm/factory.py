@@ -7,6 +7,8 @@ from app.core.config import settings
 from app.core.llm.base import LLMModelTier, LLMProvider, LLMProviderType
 from app.core.llm.cost_calculator import CostCalculator, QueryComplexity
 from app.core.llm.providers.anthropic_provider import AnthropicProvider
+from app.core.llm.providers.gemini_provider import GeminiProvider
+from app.core.llm.providers.mistral_provider import MistralProvider
 from app.core.llm.providers.openai_provider import OpenAIProvider
 from app.core.logging import logger
 from app.core.monitoring.metrics import track_api_call, track_llm_cost, track_llm_error
@@ -52,7 +54,30 @@ class LLMFactory:
             configs["anthropic"] = {
                 "api_key": settings.ANTHROPIC_API_KEY,
                 "default_model": getattr(settings, "ANTHROPIC_MODEL", "claude-3-haiku-20240307"),
-                "models": ["claude-3-haiku-20240307", "claude-3-sonnet-20241022", "claude-3-opus-20240229"],
+                "models": [
+                    "claude-3-haiku-20240307",
+                    "claude-3-sonnet-20241022",
+                    "claude-3-5-sonnet-20241022",
+                    "claude-3-opus-20240229",
+                    "claude-sonnet-4-5-20250929",
+                    "claude-opus-4-5-20251101",
+                ],
+            }
+
+        # Gemini configuration (DEV-256)
+        if hasattr(settings, "GOOGLE_API_KEY") and settings.GOOGLE_API_KEY:
+            configs["gemini"] = {
+                "api_key": settings.GOOGLE_API_KEY,
+                "default_model": getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash"),
+                "models": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
+            }
+
+        # Mistral configuration (DEV-256)
+        if hasattr(settings, "MISTRAL_API_KEY") and settings.MISTRAL_API_KEY:
+            configs["mistral"] = {
+                "api_key": settings.MISTRAL_API_KEY,
+                "default_model": getattr(settings, "MISTRAL_MODEL", "mistral-small-latest"),
+                "models": ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
             }
 
         return configs
@@ -87,6 +112,10 @@ class LLMFactory:
             return OpenAIProvider(api_key=config["api_key"], model=model, **kwargs)
         elif provider_type == LLMProviderType.ANTHROPIC:
             return AnthropicProvider(api_key=config["api_key"], model=model, **kwargs)
+        elif provider_type == LLMProviderType.GEMINI:
+            return GeminiProvider(api_key=config["api_key"], model=model, **kwargs)
+        elif provider_type == LLMProviderType.MISTRAL:
+            return MistralProvider(api_key=config["api_key"], model=model, **kwargs)
         else:
             raise ValueError(f"Unsupported provider type: {provider_type}")
 
@@ -276,7 +305,9 @@ class LLMFactory:
         # Preferred provider order for failover
         provider_priority = [
             LLMProviderType.OPENAI,  # Primary
-            LLMProviderType.ANTHROPIC,  # Fallback
+            LLMProviderType.ANTHROPIC,  # First fallback
+            LLMProviderType.GEMINI,  # Second fallback
+            LLMProviderType.MISTRAL,  # Third fallback
         ]
 
         for provider_type in provider_priority:

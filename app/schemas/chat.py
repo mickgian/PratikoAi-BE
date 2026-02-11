@@ -273,3 +273,27 @@ class StreamResponse(BaseModel):
 
     # DEV-255: Trace ID for user feedback attachment
     trace_id: str | None = Field(default=None, description="Langfuse trace ID for attaching user feedback scores")
+
+    # DEV-256: Enriched prompt for model comparison feature
+    enriched_prompt: str | None = Field(
+        default=None,
+        description="Full prompt sent to LLM including KB context, web results, etc. for model comparison",
+    )
+
+    # DEV-256: LLM metrics for model comparison feature
+    response_time_ms: int | None = Field(
+        default=None,
+        description="Response latency in milliseconds",
+    )
+    tokens_used: dict[str, int] | None = Field(
+        default=None,
+        description="Token counts with 'input' and 'output' keys",
+    )
+    cost_cents: int | None = Field(
+        default=None,
+        description="Cost in cents (EUR * 100)",
+    )
+    model_used: str | None = Field(
+        default=None,
+        description="Model identifier that generated the response",
+    )

@@ -2641,6 +2641,7 @@ class LangGraphAgent:
                 input_state: Any = {
                     "messages": dump_messages(messages),
                     "session_id": session_id,
+                    "user_id": user_id,
                     "attachments": attachments or [],
                 }
                 response = await self._graph.ainvoke(input_state, config)  # type: ignore[union-attr]
@@ -3708,6 +3709,44 @@ class LangGraphAgent:
                         has_synthesized=web_verification.get("has_synthesized_response", False),
                     )
 
+                # DEV-256: Yield LLM metrics for model comparison feature
+                # This allows SUPER_USERs to see actual latency/cost/tokens for GPT-4o
+                llm_state = state.get("llm", {})
+                if llm_state:
+                    import json as _json_metrics
+
+                    metrics_data = {
+                        "tokens_used": llm_state.get("tokens_used"),
+                        "cost_estimate": llm_state.get("cost_estimate"),
+                        "model_used": llm_state.get("model_used"),
+                        "response_time_ms": llm_state.get("response_time_ms"),  # DEV-256: Include response time
+                    }
+                    # Only yield if we have actual metrics
+                    if metrics_data.get("tokens_used") or metrics_data.get("cost_estimate"):
+                        metrics_json = _json_metrics.dumps(metrics_data)
+                        yield f"__METRICS__:{metrics_json}"
+                        logger.info(
+                            "metrics_yielded",
+                            session_id=session_id,
+                            tokens_used=metrics_data.get("tokens_used"),
+                            cost_estimate=metrics_data.get("cost_estimate"),
+                        )
+
+                # DEV-256: Yield enriched prompt for model comparison feature
+                # This allows SUPER_USERs to compare models with the same KB/web context
+                enriched_prompt = state.get("enriched_prompt")
+                if enriched_prompt:
+                    import json as _json_prompt
+
+                    # Encode as JSON to safely transmit potentially large multi-line prompt
+                    enriched_prompt_json = _json_prompt.dumps(enriched_prompt)
+                    yield f"__ENRICHED_PROMPT__:{enriched_prompt_json}"
+                    logger.info(
+                        "enriched_prompt_yielded",
+                        session_id=session_id,
+                        prompt_length=len(enriched_prompt),
+                    )
+
                 return  # Exit without making second LLM call
 
             # DIAGNOSTIC: We reached the fallback streaming path (content was not found)
@@ -3798,6 +3837,20 @@ class LangGraphAgent:
                     reason="provider_streaming_yielded_nothing",
                 )
                 yield fallback_message
+
+            # DEV-256: Yield enriched prompt for model comparison (also in fallback path)
+            # This ensures SUPER_USERs can compare models even when fallback streaming is used
+            enriched_prompt = state.get("enriched_prompt")
+            if enriched_prompt:
+                import json as _json_prompt_fallback
+
+                enriched_prompt_json = _json_prompt_fallback.dumps(enriched_prompt)
+                yield f"__ENRICHED_PROMPT__:{enriched_prompt_json}"
+                logger.info(
+                    "enriched_prompt_yielded_fallback",
+                    session_id=session_id,
+                    prompt_length=len(enriched_prompt),
+                )
 
         except Exception as stream_error:
             # Step 8: InitAgent - Failure logging
@@ -3962,6 +4015,7 @@ class LangGraphAgent:
             input_state: Any = {
                 "messages": dump_messages(messages),
                 "session_id": session_id,
+                "user_id": self._current_user_id,
                 "attachments": [],  # Attachments handled in get_stream_response
             }
 

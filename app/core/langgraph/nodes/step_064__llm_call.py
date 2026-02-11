@@ -5,6 +5,7 @@ from typing import Any
 
 from app.core.langgraph.node_utils import mirror, ns
 from app.core.langgraph.types import RAGState
+from app.core.logging import logger
 from app.observability.rag_logging import rag_step_log_compat as rag_step_log
 from app.observability.rag_logging import rag_step_timer_compat as rag_step_timer
 from app.orchestrators.providers import step_64__llmcall
@@ -96,13 +97,38 @@ async def node_step_64(state: RAGState) -> RAGState:
                 "model": r.model_used,
                 "tokens_used": {"input": r.tokens_input, "output": r.tokens_output},
                 "cost_estimate": r.cost_euros,
+                "response_time_ms": int((time.perf_counter() - t0) * 1000),  # DEV-256: Track response time
             }
             if r.sources_cited:
                 state["sources_cited"] = r.sources_cited
-        except Exception:
+            # DEV-256: Store enriched prompt for model comparison feature
+            logger.info(
+                "step_064_enriched_prompt_check",
+                has_enriched_prompt=bool(r.enriched_prompt),
+                prompt_length=len(r.enriched_prompt) if r.enriched_prompt else 0,
+            )
+            if r.enriched_prompt:
+                state["enriched_prompt"] = r.enriched_prompt
+                logger.info("step_064_enriched_prompt_set", length=len(r.enriched_prompt))
+        except Exception as e:
+            logger.warning(
+                "step_064_fallback_triggered",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             res = await step_64__llmcall(
                 messages=state.get("messages"), ctx={**state, "query_complexity": cplx, "tot_used": tot_used}
             )
+            # DEV-256: For fallback path, construct enriched_prompt from available context
+            if not state.get("enriched_prompt"):
+                kb_ctx = state.get("context", "") or state.get("kb_context", "")
+                fallback_user_msg = extract_user_message(state)
+                if kb_ctx or fallback_user_msg:
+                    fallback_prompt = (
+                        f"Query: {fallback_user_msg}\n\nContext: {kb_ctx}" if kb_ctx else fallback_user_msg
+                    )
+                    state["enriched_prompt"] = fallback_prompt
+                    logger.info("step_064_enriched_prompt_fallback", length=len(fallback_prompt))
 
         llm, priv = ns(state, "llm"), state.get("privacy") or {}
         dmap = priv.get("document_deanonymization_map", {})
@@ -128,7 +154,7 @@ async def node_step_64(state: RAGState) -> RAGState:
 
         _merge(llm, res.get("llm_extra", {}))
         _merge(state.setdefault("decisions", {}), res.get("decisions", {}))
-        for k in ("tokens_used", "cost_estimate"):
+        for k in ("tokens_used", "cost_estimate", "response_time_ms"):  # DEV-256: Include response_time_ms
             if res.get(k):
                 llm[k] = res[k]
         if res.get("model"):

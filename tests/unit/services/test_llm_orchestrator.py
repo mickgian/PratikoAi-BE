@@ -1007,3 +1007,68 @@ class TestParseClassificationResponse:
         result = orchestrator._parse_classification_response(response_json)
 
         assert result == QueryComplexity.COMPLEX
+
+
+# =============================================================================
+# PRODUCTION_LLM_MODEL Configuration Tests (DEV-256)
+# =============================================================================
+
+
+class TestProductionLLMModelConfig:
+    """Test PRODUCTION_LLM_MODEL env variable configuration (DEV-256)."""
+
+    def test_model_config_uses_settings_model(self):
+        """ModelConfig should use model from PRODUCTION_LLM_MODEL setting."""
+        from app.core.config import settings
+
+        config = ModelConfig.for_complexity(QueryComplexity.SIMPLE)
+
+        # Extract expected model name from settings
+        production_model = settings.PRODUCTION_LLM_MODEL
+        if ":" in production_model:
+            _, expected_model = production_model.split(":", 1)
+        else:
+            expected_model = production_model
+
+        assert config.model == expected_model
+
+    def test_all_complexities_use_same_model(self):
+        """All complexity levels should use the same model from env."""
+        simple_config = ModelConfig.for_complexity(QueryComplexity.SIMPLE)
+        complex_config = ModelConfig.for_complexity(QueryComplexity.COMPLEX)
+        multi_domain_config = ModelConfig.for_complexity(QueryComplexity.MULTI_DOMAIN)
+
+        # All should use the same model from env
+        assert simple_config.model == complex_config.model
+        assert complex_config.model == multi_domain_config.model
+
+    def test_model_config_with_provider_prefix(self):
+        """ModelConfig should correctly parse provider:model format."""
+        from app.core.config import settings
+
+        # Verify settings has expected format
+        production_model = settings.PRODUCTION_LLM_MODEL
+        assert ":" in production_model, "PRODUCTION_LLM_MODEL should have provider:model format"
+
+        config = ModelConfig.for_complexity(QueryComplexity.SIMPLE)
+
+        # Model should be just the model name, not the full provider:model
+        assert ":" not in config.model
+
+    @patch("app.services.llm_orchestrator.settings")
+    def test_model_config_respects_custom_env(self, mock_settings):
+        """ModelConfig should respect custom PRODUCTION_LLM_MODEL values."""
+        mock_settings.PRODUCTION_LLM_MODEL = "anthropic:claude-3-5-sonnet-20241022"
+
+        config = ModelConfig.for_complexity(QueryComplexity.SIMPLE)
+
+        assert config.model == "claude-3-5-sonnet-20241022"
+
+    @patch("app.services.llm_orchestrator.settings")
+    def test_model_config_handles_model_without_prefix(self, mock_settings):
+        """ModelConfig should handle legacy model format without provider prefix."""
+        mock_settings.PRODUCTION_LLM_MODEL = "gpt-4o-mini"
+
+        config = ModelConfig.for_complexity(QueryComplexity.SIMPLE)
+
+        assert config.model == "gpt-4o-mini"

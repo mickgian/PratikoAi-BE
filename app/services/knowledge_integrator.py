@@ -31,6 +31,7 @@ from app.core.chunking import chunk_document
 from app.core.embed import (
     embedding_to_pgvector,
     generate_embedding,
+    generate_embeddings_batch,
 )
 from app.core.logging import logger
 from app.models.knowledge import KnowledgeItem
@@ -94,15 +95,15 @@ class KnowledgeIntegrator:
             kb_epoch = time.time()
             content = document_data.get("content", "")
 
-            # Generate embedding for full content
-            content_for_embedding = content[:30000]  # ~8k tokens
-            embedding_vec = await generate_embedding(content_for_embedding)
+            # Generate embedding for full content (token-truncated inside generate_embedding)
+            embedding_vec = await generate_embedding(content)
             # For asyncpg, pass embedding list directly (not string format)
             embedding_data = embedding_vec if embedding_vec else None
 
             knowledge_item = KnowledgeItem(
                 title=document_data.get("title", ""),
                 content=content,
+                content_hash=content_hash,
                 category=self._determine_knowledge_category(document_data),
                 subcategory=self._determine_knowledge_subcategory(document_data),
                 source=document_data.get("source", "regulatory_update"),
@@ -122,20 +123,19 @@ class KnowledgeIntegrator:
             # Chunk the document and create chunk records
             title = document_data.get("title", "")
             url = document_data.get("url", "")
-            chunks = chunk_document(content=content, title=title, max_tokens=512, overlap_tokens=50)
+            chunks = chunk_document(content=content, title=title)
 
-            # Create KnowledgeChunk records with embeddings
-            for chunk_dict in chunks:
-                chunk_text = chunk_dict["chunk_text"]
+            # Batch-generate embeddings for all chunks (P0-A)
+            chunk_texts = [c["chunk_text"] for c in chunks]
+            chunk_embeddings = await generate_embeddings_batch(chunk_texts) if chunk_texts else []
 
-                # Generate embedding for chunk
-                chunk_embedding_vec = await generate_embedding(chunk_text)
+            for chunk_dict, chunk_embedding_vec in zip(chunks, chunk_embeddings, strict=False):
                 # For asyncpg, pass embedding list directly (not string format)
                 chunk_embedding_data = chunk_embedding_vec if chunk_embedding_vec else None
 
                 knowledge_chunk = KnowledgeChunk(
                     knowledge_item_id=knowledge_item.id,
-                    chunk_text=chunk_text,
+                    chunk_text=chunk_dict["chunk_text"],
                     chunk_index=chunk_dict["chunk_index"],
                     token_count=chunk_dict["token_count"],
                     embedding=chunk_embedding_data,
@@ -221,8 +221,7 @@ class KnowledgeIntegrator:
             # Generate kb_epoch and embeddings
             kb_epoch = time.time()
             content = document_data.get("content", "")
-            content_for_embedding = content[:30000]
-            embedding_vec = await generate_embedding(content_for_embedding)
+            embedding_vec = await generate_embedding(content)
             # For asyncpg, pass embedding list directly (not string format)
             embedding_data = embedding_vec if embedding_vec else None
 
@@ -263,20 +262,19 @@ class KnowledgeIntegrator:
             # Chunk the document and create chunk records
             title = document_data.get("title", "")
             url = document_data.get("url", "")
-            chunks = chunk_document(content=content, title=title, max_tokens=512, overlap_tokens=50)
+            chunks = chunk_document(content=content, title=title)
 
-            # Create KnowledgeChunk records with embeddings
-            for chunk_dict in chunks:
-                chunk_text = chunk_dict["chunk_text"]
+            # Batch-generate embeddings for all chunks (P0-A)
+            chunk_texts = [c["chunk_text"] for c in chunks]
+            chunk_embeddings = await generate_embeddings_batch(chunk_texts) if chunk_texts else []
 
-                # Generate embedding for chunk
-                chunk_embedding_vec = await generate_embedding(chunk_text)
+            for chunk_dict, chunk_embedding_vec in zip(chunks, chunk_embeddings, strict=False):
                 # For asyncpg, pass embedding list directly (not string format)
                 chunk_embedding_data = chunk_embedding_vec if chunk_embedding_vec else None
 
                 knowledge_chunk = KnowledgeChunk(
                     knowledge_item_id=updated_item.id,
-                    chunk_text=chunk_text,
+                    chunk_text=chunk_dict["chunk_text"],
                     chunk_index=chunk_dict["chunk_index"],
                     token_count=chunk_dict["token_count"],
                     embedding=chunk_embedding_data,
@@ -443,20 +441,26 @@ class KnowledgeIntegrator:
             logger.error("cache_invalidation_failed", topics=topics, source=source, error=str(e), exc_info=True)
 
     async def _find_existing_document(self, url: str, content_hash: str) -> KnowledgeItem | None:
-        """Find existing document by URL.
+        """Find existing document by URL or content hash.
 
         Args:
             url: Document URL
-            content_hash: Content hash (unused, KnowledgeItem doesn't have this field)
+            content_hash: SHA-256 content hash for cross-URL deduplication
 
         Returns:
             Existing KnowledgeItem or None
         """
         try:
-            # Find by URL (KnowledgeItem doesn't have content_hash field)
+            from sqlalchemy import or_
+
+            # Find by URL OR content hash (P1-A: catches same content at different URLs)
+            conditions = [KnowledgeItem.source_url == url]
+            if content_hash:
+                conditions.append(KnowledgeItem.content_hash == content_hash)
+
             query = (
                 select(KnowledgeItem)
-                .where(and_(KnowledgeItem.source_url == url, KnowledgeItem.status == "active"))
+                .where(and_(or_(*conditions), KnowledgeItem.status == "active"))
                 .order_by(KnowledgeItem.created_at.desc())  # type: ignore[attr-defined]
             )
 

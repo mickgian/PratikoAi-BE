@@ -20,9 +20,12 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.chunking import estimate_tokens
+from app.core.config import CHUNK_OVERLAP, CHUNK_TOKENS
+from app.core.document_ingestion import compute_content_hash
 from app.core.logging import logger
 from app.models.knowledge import KnowledgeItem
 from app.models.knowledge_chunk import KnowledgeChunk
@@ -34,9 +37,10 @@ from app.services.document_classifier import (
 )
 from app.services.italian_law_parser import ItalianLawParser, ParsedLaw
 
-# Default chunk size for standard chunking
-DEFAULT_CHUNK_SIZE = 1500
-DEFAULT_CHUNK_OVERLAP = 150
+# Default chunk size derived from config (P0-B: consistent with CHUNK_TOKENS)
+# ~4 chars per token, so CHUNK_TOKENS=900 → 3600 chars
+DEFAULT_CHUNK_SIZE = CHUNK_TOKENS * 4
+DEFAULT_CHUNK_OVERLAP = int(CHUNK_TOKENS * CHUNK_OVERLAP) * 4
 
 
 @dataclass
@@ -146,6 +150,28 @@ class TieredIngestionService:
         # Parse publication date
         pub_date = self._parse_date(publication_date)
 
+        # 1b. Content-hash dedup (P1-A: prevent duplicate content across URLs)
+        content_hash = compute_content_hash(content)
+        existing = await self._db.execute(
+            select(KnowledgeItem.id).where(
+                KnowledgeItem.content_hash == content_hash,
+                KnowledgeItem.status == "active",
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            logger.info("tiered_ingestion_duplicate_skipped", title=title[:100], content_hash=content_hash)
+            return IngestionResult(
+                document_id=None,
+                tier=classification.tier.value,
+                items_created=0,
+                articles_parsed=0,
+                topics_detected=classification.detected_topics,
+                parsing_strategy=classification.parsing_strategy,
+            )
+
+        # Store content_hash for use in tier-specific methods
+        self._current_content_hash = content_hash
+
         # 2. Route to appropriate ingestion strategy
         if classification.parsing_strategy == ParsingStrategy.ARTICLE_LEVEL:
             return await self._ingest_article_level(
@@ -187,6 +213,7 @@ class TieredIngestionService:
             publication_date=publication_date,
             tier=DocumentTier.CRITICAL,
             document_type="full_document",
+            content_hash=self._current_content_hash,
             topics=classification.detected_topics,
             parsing_metadata={
                 "law_number": parsed_law.law_number,
@@ -251,7 +278,7 @@ class TieredIngestionService:
                             knowledge_item_id=article_doc.id,
                             chunk_text=chunk_text,
                             chunk_index=i,
-                            token_count=len(chunk_text.split()),
+                            token_count=estimate_tokens(chunk_text),
                             kb_epoch=time.time(),
                             document_title=doc_title,
                             junk=False,
@@ -264,7 +291,7 @@ class TieredIngestionService:
                         knowledge_item_id=article_doc.id,
                         chunk_text=article_text,
                         chunk_index=0,
-                        token_count=len(article_text.split()),
+                        token_count=estimate_tokens(article_text),
                         kb_epoch=time.time(),
                         document_title=doc_title,
                         junk=False,
@@ -335,6 +362,7 @@ class TieredIngestionService:
                 publication_date=publication_date,
                 tier=DocumentTier.IMPORTANT,
                 document_type="chunk",
+                content_hash=self._current_content_hash,
                 topics=classification.detected_topics,
                 parsing_metadata={
                     "chunk_index": i,
@@ -391,6 +419,7 @@ class TieredIngestionService:
             publication_date=publication_date,
             tier=DocumentTier.REFERENCE,
             document_type="chunk",
+            content_hash=self._current_content_hash,
             topics=classification.detected_topics,
             parsing_metadata={
                 "original_length": len(content),

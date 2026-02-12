@@ -42,7 +42,59 @@ NAVIGATION_PATTERNS = [
     "menu principale",
     "skip to content",
     "skip to main",
+    "area riservata",
+    "cassetto fiscale",
+    "fatture e corrispettivi",
+    "amministrazione trasparente",
+    "note legali",
+    "dipartimento delle finanze",
 ]
+
+
+_HTML_ENTITY_PATTERN = re.compile(r"&(?:#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);")
+
+
+def sanitize_html_entities(text: str) -> str:
+    """Decode any residual HTML entities in text.
+
+    Safety net for content that passed through HTML extraction but still
+    contains encoded entities like &amp;, &lt;, &#8217;, &#xE0;.
+
+    Args:
+        text: Input text that may contain HTML entities
+
+    Returns:
+        Text with all HTML entities decoded
+    """
+    if _HTML_ENTITY_PATTERN.search(text):
+        return html.unescape(text)
+    return text
+
+
+def chunk_contains_navigation(text: str, threshold: int = 2) -> bool:
+    """Check if a chunk contains navigation boilerplate text.
+
+    Used to filter out chunks contaminated with web scraping artifacts
+    (e.g. "vai al menu", "cookie policy", "area riservata").
+
+    Args:
+        text: Chunk text content
+        threshold: Minimum pattern matches to flag as navigation
+
+    Returns:
+        True if chunk is navigation boilerplate and should be dropped
+    """
+    text_lower = text.lower()
+    matches = sum(1 for p in NAVIGATION_PATTERNS if p in text_lower)
+
+    if matches >= threshold:
+        return True
+
+    # Single match in a short chunk — too small to have meaningful content
+    if matches >= 1 and len(text) < 300:
+        return True
+
+    return False
 
 
 def validate_extracted_content(text: str, url: str = "") -> tuple[bool, str]:

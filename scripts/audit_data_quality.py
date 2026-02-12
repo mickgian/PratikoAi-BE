@@ -9,7 +9,7 @@ Usage:
     python scripts/audit_data_quality.py
 
     # With custom database URL
-    DATABASE_URL="postgresql+asyncpg://user:pass@host:5432/db" python scripts/audit_data_quality.py
+    DATABASE_URL="postgresql+asyncpg://user:pass@host:5432/db" python scripts/audit_data_quality.py  # pragma: allowlist secret
 
     # Limit samples per query
     python scripts/audit_data_quality.py --samples 3
@@ -31,6 +31,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.services.data_quality_audit_service import DataQualityAuditService, DataQualitySummary
+
 
 async def get_db_session() -> AsyncSession:
     """Create async database session."""
@@ -38,6 +40,9 @@ async def get_db_session() -> AsyncSession:
         "DATABASE_URL",
         "postgresql+asyncpg://aifinance:devpass@localhost:5433/aifinance",  # pragma: allowlist secret
     )
+    # Normalize sync driver URL (set for alembic) to async driver
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     engine = create_async_engine(database_url, echo=False)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     return async_session()
@@ -58,22 +63,42 @@ def print_finding(label: str, count: int, status: str = "") -> None:
     print(f"  [{icon:>12}] {label}: {count}")
 
 
+def print_summary_from_service(s: DataQualitySummary) -> None:
+    """Print the SUMMARY section using DataQualitySummary fields."""
+    print_section("SUMMARY")
+    print(f"""
+  Total documents:          {s.total_items}
+  Total chunks:             {s.total_chunks}
+  URL duplicates:           {s.url_duplicate_groups} groups
+  Title duplicates:         {s.title_duplicate_groups} groups
+  Navigation-contaminated:  {s.navigation_contaminated_chunks}
+  RSS fallback docs:        {s.rss_fallback_docs}
+  Broken hyphenation:       {s.broken_hyphenation_chunks}
+  Junk chunks stored:       {s.junk_chunks_stored}
+  Low quality chunks:       {s.low_quality_chunks}
+  Missing embeddings:       {s.items_missing_embedding} items, {s.chunks_missing_embedding} chunks
+  NULL text_quality:        {s.null_text_quality}
+  No publication_date:      {s.no_publication_date}
+  Old active (>1yr):        {s.old_active_documents}
+  NFD Unicode:              {s.nfd_unicode_chunks}
+""")
+
+
 async def run_diagnostics(samples: int = 5) -> None:
     """Run all diagnostic queries."""
     db = await get_db_session()
 
     try:
+        # --- Use service for all COUNT metrics ---
+        audit_service = DataQualityAuditService(db)
+        s = await audit_service.run_summary()
+
         # =====================================================================
         print_section("1. KNOWLEDGE BASE OVERVIEW")
         # =====================================================================
 
-        result = await db.execute(text("SELECT COUNT(*) FROM knowledge_items"))
-        total_items = result.scalar() or 0
-        print(f"  Total knowledge_items: {total_items}")
-
-        result = await db.execute(text("SELECT COUNT(*) FROM knowledge_chunks"))
-        total_chunks = result.scalar() or 0
-        print(f"  Total knowledge_chunks: {total_chunks}")
+        print(f"  Total knowledge_items: {s.total_items}")
+        print(f"  Total knowledge_chunks: {s.total_chunks}")
 
         result = await db.execute(
             text("SELECT source, COUNT(*) as cnt FROM knowledge_items GROUP BY source ORDER BY cnt DESC")
@@ -98,58 +123,51 @@ async def run_diagnostics(samples: int = 5) -> None:
         print_section("2. DUPLICATE DOCUMENTS (Finding E.2)")
         # =====================================================================
 
-        # URL-based duplicates (same URL stored multiple times)
-        result = await db.execute(
-            text(
-                "SELECT source_url, COUNT(*) as cnt "
-                "FROM knowledge_items "
-                "WHERE source_url IS NOT NULL "
-                "GROUP BY source_url HAVING COUNT(*) > 1 "
-                "ORDER BY cnt DESC LIMIT :limit"
-            ),
-            {"limit": samples},
-        )
-        url_dupes = result.fetchall()
-        print_finding("Exact URL duplicates (same URL, multiple records)", len(url_dupes))
-        for row in url_dupes[:samples]:
-            print(f"    URL: {row[0][:80]}... ({row[1]} copies)")
+        # URL-based duplicates — count from service, samples from DB
+        print_finding("Exact URL duplicates (same URL, multiple records)", s.url_duplicate_groups)
+        if samples > 0:
+            result = await db.execute(
+                text(
+                    "SELECT source_url, COUNT(*) as cnt "
+                    "FROM knowledge_items "
+                    "WHERE source_url IS NOT NULL "
+                    "GROUP BY source_url HAVING COUNT(*) > 1 "
+                    "ORDER BY cnt DESC LIMIT :limit"
+                ),
+                {"limit": samples},
+            )
+            for row in result.fetchall():
+                print(f"    URL: {row[0][:80]}... ({row[1]} copies)")
 
         # Content-based near-duplicates (same title, different URL)
-        result = await db.execute(
-            text(
-                "SELECT title, COUNT(*) as cnt, "
-                "array_agg(DISTINCT source_url) as urls "
-                "FROM knowledge_items "
-                "WHERE title IS NOT NULL AND title != '' "
-                "GROUP BY title HAVING COUNT(*) > 1 "
-                "ORDER BY cnt DESC LIMIT :limit"
-            ),
-            {"limit": samples},
-        )
-        title_dupes = result.fetchall()
-        print_finding("Same title, different URLs (potential content dupes)", len(title_dupes))
-        for row in title_dupes[:samples]:
-            print(f"    Title: {row[0][:70]}... ({row[1]} copies)")
+        print_finding("Same title, different URLs (potential content dupes)", s.title_duplicate_groups)
+        if samples > 0:
+            result = await db.execute(
+                text(
+                    "SELECT title, COUNT(*) as cnt, "
+                    "array_agg(DISTINCT source_url) as urls "
+                    "FROM knowledge_items "
+                    "WHERE title IS NOT NULL AND title != '' "
+                    "GROUP BY title HAVING COUNT(*) > 1 "
+                    "ORDER BY cnt DESC LIMIT :limit"
+                ),
+                {"limit": samples},
+            )
+            for row in result.fetchall():
+                print(f"    Title: {row[0][:70]}... ({row[1]} copies)")
 
         # =====================================================================
         print_section("3. NAVIGATION TEXT IN CHUNKS (Finding E.6)")
         # =====================================================================
 
-        nav_patterns = [
-            "vai al menu",
-            "vai al contenuto",
-            "cookie policy",
-            "accedi a myinps",
-            "cedolino pensione",
-            "mappa del sito",
-            "privacy policy",
-            "seguici su",
-            "menu principale",
-            "skip to content",
-            "area riservata",
-        ]
+        print_finding("Navigation-contaminated chunks (repair criteria)", s.navigation_contaminated_chunks)
 
-        total_nav = 0
+        # --- Informational: per-pattern occurrence breakdown ---
+        from app.core.text.clean import NAVIGATION_PATTERNS
+
+        nav_patterns = list(NAVIGATION_PATTERNS)
+        print("\n  Per-pattern occurrence counts (informational, may overlap):")
+        total_pattern_hits = 0
         for pattern in nav_patterns:
             result = await db.execute(
                 text("SELECT COUNT(*) FROM knowledge_chunks WHERE LOWER(chunk_text) LIKE :pattern"),
@@ -157,27 +175,31 @@ async def run_diagnostics(samples: int = 5) -> None:
             )
             count = result.scalar() or 0
             if count > 0:
-                total_nav += count
+                total_pattern_hits += count
                 print(f"    '{pattern}': {count} chunks")
+        print(f"  Total pattern occurrences (summed, with overlap): {total_pattern_hits}")
 
-        print_finding("Chunks containing navigation text", total_nav)
+        if s.navigation_contaminated_chunks > 0 and samples > 0:
+            from app.services.data_quality_audit_service import _build_navigation_contamination_sql
 
-        if total_nav > 0:
-            # Show a sample
-            result = await db.execute(
-                text(
-                    "SELECT LEFT(chunk_text, 200), document_title, source_url "
-                    "FROM knowledge_chunks "
-                    "WHERE LOWER(chunk_text) LIKE '%vai al menu%' "
-                    "   OR LOWER(chunk_text) LIKE '%cookie policy%' "
-                    "LIMIT :limit"
-                ),
-                {"limit": samples},
+            # Re-build the expressions for sample query
+            like_conditions = [f"LOWER(chunk_text) LIKE '%{p}%'" for p in nav_patterns]
+            count_expr = " + ".join(f"CASE WHEN {c} THEN 1 ELSE 0 END" for c in like_conditions)
+            any_condition = " OR ".join(like_conditions)
+
+            sample_sql = (
+                f"SELECT LEFT(chunk_text, 200), document_title, source_url, "
+                f"({count_expr}) as nav_count, LENGTH(chunk_text) as len "
+                f"FROM knowledge_chunks "
+                f"WHERE ({any_condition}) "
+                f"AND (({count_expr}) >= 2 OR (({count_expr}) >= 1 AND LENGTH(chunk_text) < 300)) "
+                f"LIMIT :limit"
             )
+            result = await db.execute(text(sample_sql), {"limit": samples})
             nav_samples = result.fetchall()
-            print("\n  Sample chunks with navigation text:")
+            print("\n  Sample contaminated chunks:")
             for row in nav_samples:
-                print(f"    Doc: {row[1]}")
+                print(f"    Doc: {row[1]} (nav_count={row[3]}, len={row[4]})")
                 print(f"    Text: {row[0][:150]}...")
                 print()
 
@@ -197,13 +219,11 @@ async def run_diagnostics(samples: int = 5) -> None:
         ]
 
         for pattern, label in html_patterns:
-            # Check in knowledge_items.content
             result = await db.execute(
                 text("SELECT COUNT(*) FROM knowledge_items WHERE content LIKE :pattern"), {"pattern": f"%{pattern}%"}
             )
             items_count = result.scalar() or 0
 
-            # Check in knowledge_chunks.chunk_text
             result = await db.execute(
                 text("SELECT COUNT(*) FROM knowledge_chunks WHERE chunk_text LIKE :pattern"),
                 {"pattern": f"%{pattern}%"},
@@ -213,14 +233,9 @@ async def run_diagnostics(samples: int = 5) -> None:
             if items_count > 0 or chunks_count > 0:
                 print(f"    {label}: {items_count} items, {chunks_count} chunks")
 
-        # Check RSS summary fallback specifically
-        result = await db.execute(
-            text("SELECT COUNT(*) FROM knowledge_items WHERE extraction_method = 'rss_summary_fallback'")
-        )
-        rss_fallback_count = result.scalar() or 0
-        print_finding("Documents using RSS summary fallback", rss_fallback_count)
+        print_finding("Documents using RSS summary fallback", s.rss_fallback_docs)
 
-        if rss_fallback_count > 0:
+        if s.rss_fallback_docs > 0 and samples > 0:
             result = await db.execute(
                 text(
                     "SELECT title, LEFT(content, 200) "
@@ -243,14 +258,9 @@ async def run_diagnostics(samples: int = 5) -> None:
         print_section("5. BROKEN HYPHENATION IN CHUNKS (Finding E.1)")
         # =====================================================================
 
-        # Pattern: word fragment + hyphen + space (PDF line-break artifact)
-        result = await db.execute(
-            text("SELECT COUNT(*) FROM knowledge_chunks WHERE chunk_text ~ '[a-zàèéìòù]- [a-zàèéìòù]'")
-        )
-        hyphen_break_count = result.scalar() or 0
-        print_finding("Chunks with broken hyphenation (word- fragment)", hyphen_break_count)
+        print_finding("Chunks with broken hyphenation (word- fragment)", s.broken_hyphenation_chunks)
 
-        if hyphen_break_count > 0:
+        if s.broken_hyphenation_chunks > 0 and samples > 0:
             result = await db.execute(
                 text(
                     "SELECT document_title, "
@@ -273,30 +283,14 @@ async def run_diagnostics(samples: int = 5) -> None:
         print_section("6. CHUNK SIZE DISTRIBUTION (Finding E.9)")
         # =====================================================================
 
-        result = await db.execute(
-            text(
-                "SELECT "
-                "  MIN(token_count) as min_tokens, "
-                "  MAX(token_count) as max_tokens, "
-                "  AVG(token_count)::int as avg_tokens, "
-                "  percentile_cont(0.5) WITHIN GROUP (ORDER BY token_count)::int as median_tokens, "
-                "  percentile_cont(0.95) WITHIN GROUP (ORDER BY token_count)::int as p95_tokens "
-                "FROM knowledge_chunks"
-            )
-        )
-        row = result.fetchone()
-        if row:
+        if s.chunk_stats:
+            cs = s.chunk_stats
             print("  Token count distribution:")
-            print(f"    Min:    {row[0]}")
-            print(f"    Max:    {row[1]}")
-            print(f"    Avg:    {row[2]}")
-            print(f"    Median: {row[3]}")
-            print(f"    P95:    {row[4]}")
-
-            config_tokens = 900
-            hardcoded_tokens = 512
-            over_512 = 0
-            over_900 = 0
+            print(f"    Min:    {cs.get('min')}")
+            print(f"    Max:    {cs.get('max')}")
+            print(f"    Avg:    {cs.get('avg')}")
+            print(f"    Median: {cs.get('median')}")
+            print(f"    P95:    {cs.get('p95')}")
 
             result = await db.execute(
                 text(
@@ -316,69 +310,33 @@ async def run_diagnostics(samples: int = 5) -> None:
         print_section("7. QUALITY SCORES & JUNK CHUNKS (Quality Gates)")
         # =====================================================================
 
-        result = await db.execute(text("SELECT COUNT(*) FROM knowledge_chunks WHERE junk = TRUE"))
-        junk_stored = result.scalar() or 0
-
-        result = await db.execute(
-            text("SELECT COUNT(*) FROM knowledge_chunks WHERE quality_score IS NOT NULL AND quality_score < 0.5")
-        )
-        low_quality = result.scalar() or 0
-
-        result = await db.execute(text("SELECT COUNT(*) FROM knowledge_chunks WHERE quality_score IS NULL"))
-        null_quality = result.scalar() or 0
-
-        print_finding("Chunks flagged as junk (stored despite JUNK_DROP_CHUNK)", junk_stored)
-        print_finding("Low quality chunks (quality_score < 0.5)", low_quality)
-        print_finding("Chunks with NULL quality_score", null_quality)
+        print_finding("Chunks flagged as junk (stored despite JUNK_DROP_CHUNK)", s.junk_chunks_stored)
+        print_finding("Low quality chunks (quality_score < 0.5)", s.low_quality_chunks)
+        print_finding("Chunks with NULL quality_score", s.null_quality_chunks)
 
         # =====================================================================
         print_section("8. MISSING EMBEDDINGS (Finding E.9)")
         # =====================================================================
 
-        result = await db.execute(text("SELECT COUNT(*) FROM knowledge_items WHERE embedding IS NULL"))
-        items_no_embed = result.scalar() or 0
-
-        result = await db.execute(text("SELECT COUNT(*) FROM knowledge_chunks WHERE embedding IS NULL"))
-        chunks_no_embed = result.scalar() or 0
-
-        print_finding("Knowledge items without embedding", items_no_embed)
-        print_finding("Knowledge chunks without embedding", chunks_no_embed)
+        print_finding("Knowledge items without embedding", s.items_missing_embedding)
+        print_finding("Knowledge chunks without embedding", s.chunks_missing_embedding)
 
         # =====================================================================
         print_section("9. STALENESS / SUPERSEDED DOCUMENTS (Finding E.3)")
         # =====================================================================
 
-        result = await db.execute(
-            text("SELECT status, COUNT(*) FROM knowledge_items GROUP BY status ORDER BY COUNT(*) DESC")
-        )
-        rows = result.fetchall()
         print("  Document status distribution:")
-        for row in rows:
-            print(f"    {str(row[0] or 'NULL'):20s} {row[1]:>5d}")
+        for status_name, count in s.status_distribution.items():
+            print(f"    {str(status_name):20s} {count:>5d}")
 
-        # Check for old documents still active
-        result = await db.execute(
-            text(
-                "SELECT COUNT(*) FROM knowledge_items "
-                "WHERE status = 'active' "
-                "AND created_at < NOW() - INTERVAL '365 days'"
-            )
-        )
-        old_active = result.scalar() or 0
-        print_finding("Active documents older than 1 year", old_active)
-
-        # Check for documents without publication_date
-        result = await db.execute(text("SELECT COUNT(*) FROM knowledge_items WHERE publication_date IS NULL"))
-        no_pub_date = result.scalar() or 0
-        print_finding("Documents without publication_date", no_pub_date)
+        print_finding("Active documents older than 1 year", s.old_active_documents)
+        print_finding("Documents without publication_date", s.no_publication_date)
 
         # =====================================================================
         print_section("10. TEXT QUALITY FOR HTML DOCUMENTS (Backfill check)")
         # =====================================================================
 
-        result = await db.execute(text("SELECT COUNT(*) FROM knowledge_items WHERE text_quality IS NULL"))
-        null_tq = result.scalar() or 0
-        print_finding("Documents with NULL text_quality", null_tq)
+        print_finding("Documents with NULL text_quality", s.null_text_quality)
 
         result = await db.execute(
             text(
@@ -421,37 +379,13 @@ async def run_diagnostics(samples: int = 5) -> None:
         print_section("12. UNICODE NORMALIZATION CHECK (Finding E.8)")
         # =====================================================================
 
-        # Check for common NFD sequences (combining accents)
-        # e + combining grave = è in NFD
-        result = await db.execute(
-            text(
-                r"SELECT COUNT(*) FROM knowledge_chunks "
-                r"WHERE chunk_text ~ E'[\u0300-\u036f]'"
-            )
-        )
-        nfd_count = result.scalar() or 0
-        print_finding("Chunks with combining Unicode marks (NFD)", nfd_count)
+        print_finding("Chunks with combining Unicode marks (NFD)", s.nfd_unicode_chunks)
 
         # =====================================================================
-        print_section("SUMMARY")
+        # SUMMARY — uses service dataclass
         # =====================================================================
 
-        print(f"""
-  Total documents:          {total_items}
-  Total chunks:             {total_chunks}
-  URL duplicates:           {len(url_dupes)} groups
-  Title duplicates:         {len(title_dupes)} groups
-  Navigation in chunks:     {total_nav}
-  RSS fallback docs:        {rss_fallback_count}
-  Broken hyphenation:       {hyphen_break_count}
-  Junk chunks stored:       {junk_stored}
-  Low quality chunks:       {low_quality}
-  Missing embeddings:       {items_no_embed} items, {chunks_no_embed} chunks
-  NULL text_quality:        {null_tq}
-  No publication_date:      {no_pub_date}
-  Old active (>1yr):        {old_active}
-  NFD Unicode:              {nfd_count}
-""")
+        print_summary_from_service(s)
 
     except Exception as e:
         print(f"\n  ERROR: {e}")

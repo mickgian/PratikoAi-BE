@@ -60,6 +60,9 @@ class KnowledgeItem(SQLModel, table=True):  # type: ignore[call-arg]
     source_url: str | None = Field(default=None, description="Original source URL")
     source_id: str | None = Field(default=None, description="External source identifier")
 
+    # Deduplication
+    content_hash: str | None = Field(default=None, max_length=64, description="SHA-256 hash of content for dedup")
+
     # Content metadata
     language: str = Field(default="it", description="Content language")
     content_type: str = Field(default="text", description="Content type (text, html, markdown)")

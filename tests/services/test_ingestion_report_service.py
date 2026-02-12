@@ -829,6 +829,17 @@ class TestHTMLReportWithFilteredContent:
         assert "irrelevant to PratikoAI scope" in html
         assert "concorsi, nomine, graduatorie" in html
 
+    def test_html_report_no_filtered_content_section_omitted(self, mock_db_session):
+        """DEV-258: Test HTML report omits Data Quality when data_quality is None."""
+        service = IngestionReportService(mock_db_session)
+
+        report = DailyIngestionReport(report_date=date.today())
+        assert report.data_quality is None
+
+        html = service._generate_html_report(report)
+
+        assert "Data Quality" not in html
+
     def test_html_report_multiple_filtered_sources(self, mock_db_session):
         """Test HTML report with multiple filtered sources."""
         service = IngestionReportService(mock_db_session)
@@ -858,3 +869,63 @@ class TestHTMLReportWithFilteredContent:
         assert "source_b" in html
         assert "8" in html  # source_a count
         assert "4" in html  # source_b count
+
+
+# =============================================================================
+# DEV-258: Tests for Data Quality Integration
+# =============================================================================
+
+
+class TestDailyIngestionReportDataQuality:
+    """Tests for DailyIngestionReport data_quality field."""
+
+    def test_report_data_quality_default_none(self):
+        """Test that data_quality defaults to None."""
+        report = DailyIngestionReport(report_date=date.today())
+
+        assert report.data_quality is None
+
+
+class TestHTMLReportWithDataQuality:
+    """Tests for HTML report with data quality section."""
+
+    @pytest.fixture
+    def mock_db_session(self):
+        """Create mock database session."""
+        return MagicMock()
+
+    def test_html_includes_quality_section(self, mock_db_session):
+        """Test that HTML includes Data Quality section when data_quality is set."""
+        from app.services.data_quality_audit_service import DataQualitySummary
+
+        service = IngestionReportService(mock_db_session)
+
+        dq = DataQualitySummary(
+            total_items=100,
+            total_chunks=500,
+            url_duplicate_groups=2,
+            navigation_contaminated_chunks=5,
+            items_missing_embedding=0,
+            chunks_missing_embedding=0,
+        )
+        report = DailyIngestionReport(
+            report_date=date.today(),
+            data_quality=dq,
+        )
+
+        html = service._generate_html_report(report)
+
+        assert "Data Quality" in html
+        assert "URL Duplicate Groups" in html
+        assert "Navigation Contaminated Chunks" in html
+        assert "audit_data_quality.py" in html
+
+    def test_html_omits_quality_when_none(self, mock_db_session):
+        """Test that HTML has no Data Quality section when data_quality is None."""
+        service = IngestionReportService(mock_db_session)
+
+        report = DailyIngestionReport(report_date=date.today())
+
+        html = service._generate_html_report(report)
+
+        assert "Data Quality" not in html

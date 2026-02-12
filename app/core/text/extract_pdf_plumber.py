@@ -93,6 +93,11 @@ def _clean_text(text: str) -> str:
     """
     if not text:
         return ""
+    # Repair broken hyphenation BEFORE collapsing whitespace so the
+    # "letter- letter" pattern is still visible.
+    from app.core.text.hyphenation import repair_broken_hyphenation
+
+    text = repair_broken_hyphenation(text)
     # Normalize multiple spaces/newlines to single space
     text = re.sub(r"\s+", " ", text)
     return text.strip()

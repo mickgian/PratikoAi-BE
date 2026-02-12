@@ -25,6 +25,7 @@ from app.core.config import (
     CHUNK_TOKENS,
     JUNK_DROP_CHUNK,
 )
+from app.core.text.clean import chunk_contains_navigation
 from app.core.text.extract_pdf import text_metrics
 
 logger = logging.getLogger(__name__)
@@ -229,8 +230,14 @@ def chunk_document(
     # Convert to dict format with quality gates
     chunk_dicts = []
     dropped_junk_count = 0
+    dropped_nav_count = 0
 
     for chunk in chunks:
+        # Drop chunks contaminated with navigation boilerplate
+        if chunk_contains_navigation(chunk.text):
+            dropped_nav_count += 1
+            continue
+
         # Compute quality metrics
         metrics = text_metrics(chunk.text)
 
@@ -254,22 +261,28 @@ def chunk_document(
             }
         )
 
+    if dropped_nav_count > 0:
+        logger.info(f"Dropped {dropped_nav_count} navigation chunks from document '{title}'")
+
     if dropped_junk_count > 0:
         logger.info(f"Dropped {dropped_junk_count} junk chunks from document '{title}'")
 
     return chunk_dicts
 
 
-def validate_chunks(chunks: list[TextChunk], max_tokens: int = 512) -> bool:
+def validate_chunks(chunks: list[TextChunk], max_tokens: int | None = None) -> bool:
     """Validate that chunks meet requirements.
 
     Args:
         chunks: List of chunks to validate
-        max_tokens: Maximum allowed tokens per chunk
+        max_tokens: Maximum allowed tokens per chunk (defaults to config.CHUNK_TOKENS)
 
     Returns:
         True if all chunks are valid
     """
+    if max_tokens is None:
+        max_tokens = CHUNK_TOKENS
+
     for chunk in chunks:
         if chunk.token_count > max_tokens:
             return False

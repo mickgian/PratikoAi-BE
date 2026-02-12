@@ -35,7 +35,7 @@ from bs4 import BeautifulSoup
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.chunking import chunk_document
-from app.core.embed import generate_embedding
+from app.core.embed import generate_embedding, generate_embeddings_batch
 from app.core.logging import logger
 from app.core.text.clean import (
     extract_text_from_url_content,
@@ -96,8 +96,9 @@ def normalize_document_text(content: str) -> str:
     """Normalize document text to improve searchability.
 
     Fixes common PDF extraction issues:
-    1. Broken years like "20 25" → "2025"
-    2. Adds Italian month names after dates like "30/10/2025" → "30/10/2025 (ottobre)"
+    1. Broken hyphenation like "contri- buto" → "contributo"
+    2. Broken years like "20 25" → "2025"
+    3. Adds Italian month names after dates like "30/10/2025" → "30/10/2025 (ottobre)"
 
     This allows users to search for "ottobre 2025" even when documents
     only contain dates in DD/MM/YYYY format.
@@ -108,6 +109,11 @@ def normalize_document_text(content: str) -> str:
     Returns:
         Normalized text with fixed dates and added month names
     """
+    # Fix 0: Repair broken hyphenation from PDF line breaks
+    from app.core.text.hyphenation import repair_broken_hyphenation
+
+    content = repair_broken_hyphenation(content)
+
     # Fix 1: Repair broken years "20 XX" → "20XX" (e.g., "20 25" → "2025")
     # Pattern: date like DD/MM/20 followed by space and 2 digits
     content = re.sub(r"\b(\d{1,2})/(\d{1,2})/(\d{2})\s+(\d{2})\b", r"\1/\2/\3\4", content)
@@ -429,11 +435,23 @@ async def ingest_document_with_chunks(
 
         # Create knowledge item
         kb_epoch = time.time()
-        compute_content_hash(content)
+        content_hash = compute_content_hash(content)
 
-        # Generate embedding for full content (truncated if needed)
-        content_for_embedding = content[:30000]  # ~8k tokens
-        embedding_vec = await generate_embedding(content_for_embedding)
+        # Content-hash dedup: skip if identical content already exists
+        from sqlalchemy import select
+
+        existing = await session.execute(
+            select(KnowledgeItem.id).where(
+                KnowledgeItem.content_hash == content_hash,
+                KnowledgeItem.status == "active",
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            logger.info("duplicate_content_skipped", title=title, content_hash=content_hash)
+            return None
+
+        # Generate embedding for full content (token-truncated inside generate_embedding)
+        embedding_vec = await generate_embedding(content)
         # For asyncpg, pass embedding list directly (not string format)
         embedding_data = embedding_vec if embedding_vec else None
 
@@ -460,6 +478,7 @@ async def ingest_document_with_chunks(
         knowledge_item = KnowledgeItem(
             title=title,
             content=content,
+            content_hash=content_hash,
             category=category,
             subcategory=subcategory,
             source=source,
@@ -487,20 +506,19 @@ async def ingest_document_with_chunks(
 
         # Chunk the document
         ocr_used = extraction_method in ("mixed", "ocr")
-        chunks = chunk_document(content=content, title=title, max_tokens=512, overlap_tokens=50, ocr_used=ocr_used)
+        chunks = chunk_document(content=content, title=title, ocr_used=ocr_used)
 
-        # Process each chunk
-        for chunk_dict in chunks:
-            chunk_text = chunk_dict["chunk_text"]
+        # Batch-generate embeddings for all chunks (P0-A: N chunks → ceil(N/20) API calls)
+        chunk_texts = [c["chunk_text"] for c in chunks]
+        chunk_embeddings = await generate_embeddings_batch(chunk_texts) if chunk_texts else []
 
-            # Generate embedding for chunk
-            chunk_embedding_vec = await generate_embedding(chunk_text)
+        for chunk_dict, chunk_embedding_vec in zip(chunks, chunk_embeddings, strict=False):
             # For asyncpg, pass embedding list directly (not string format)
             chunk_embedding_data = chunk_embedding_vec if chunk_embedding_vec else None
 
             knowledge_chunk = KnowledgeChunk(
                 knowledge_item_id=knowledge_item_id,
-                chunk_text=chunk_text,
+                chunk_text=chunk_dict["chunk_text"],
                 chunk_index=chunk_dict["chunk_index"],
                 token_count=chunk_dict["token_count"],
                 embedding=chunk_embedding_data,

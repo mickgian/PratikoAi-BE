@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.models.knowledge_chunk import KnowledgeChunk
 from app.services.document_classifier import (
     ClassificationResult,
     DocumentClassifier,
@@ -143,6 +144,10 @@ class TestTieredIngestionServiceTier1:
         db.add = MagicMock()
         db.flush = AsyncMock()
         db.commit = AsyncMock()
+        # P1-A: Mock content-hash dedup query to return no duplicate
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        db.execute = AsyncMock(return_value=mock_result)
         return db
 
     @pytest.fixture
@@ -267,6 +272,10 @@ class TestTieredIngestionServiceTier2:
         db.add = MagicMock()
         db.flush = AsyncMock()
         db.commit = AsyncMock()
+        # P1-A: Mock content-hash dedup query to return no duplicate
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        db.execute = AsyncMock(return_value=mock_result)
         return db
 
     @pytest.fixture
@@ -357,6 +366,10 @@ class TestTieredIngestionServiceTier3:
         db = AsyncMock()
         db.add = MagicMock()
         db.commit = AsyncMock()
+        # P1-A: Mock content-hash dedup query to return no duplicate
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        db.execute = AsyncMock(return_value=mock_result)
         return db
 
     @pytest.fixture
@@ -459,3 +472,192 @@ class TestIngestionResultDataclass:
         )
 
         assert result.document_id is None
+
+
+class TestDefaultChunkSizeDerivedFromConfig:
+    """Verify DEFAULT_CHUNK_SIZE and DEFAULT_CHUNK_OVERLAP are derived from config."""
+
+    def test_default_chunk_size_derived_from_config(self) -> None:
+        """DEFAULT_CHUNK_SIZE == CHUNK_TOKENS * 4."""
+        from app.core.config import CHUNK_OVERLAP, CHUNK_TOKENS
+
+        assert DEFAULT_CHUNK_SIZE == CHUNK_TOKENS * 4
+        assert int(CHUNK_TOKENS * CHUNK_OVERLAP) * 4 == DEFAULT_CHUNK_OVERLAP
+
+
+class TestContentHashDedup:
+    """P1-A: Verify TieredIngestionService deduplicates by content hash."""
+
+    @pytest.fixture
+    def mock_db(self) -> AsyncMock:
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.commit = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def mock_classifier(self) -> MagicMock:
+        classifier = MagicMock(spec=DocumentClassifier)
+        classifier.classify.return_value = ClassificationResult(
+            tier=DocumentTier.IMPORTANT,
+            parsing_strategy=ParsingStrategy.STANDARD_CHUNKING,
+            confidence=0.9,
+            matched_pattern="Circolare",
+            detected_topics=["iva"],
+            is_explicit_match=False,
+        )
+        return classifier
+
+    @pytest.mark.asyncio
+    async def test_ingest_skips_duplicate_content_hash(
+        self,
+        mock_db: AsyncMock,
+        mock_classifier: MagicMock,
+    ) -> None:
+        """ingest() returns items_created=0 when content_hash already exists."""
+        # Mock DB execute to return an existing item (duplicate content)
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = 42  # existing ID
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        service = TieredIngestionService(
+            db_session=mock_db,
+            classifier=mock_classifier,
+        )
+
+        result = await service.ingest(
+            title="Duplicate Content",
+            content="Some content that already exists in the DB.",
+            source="test",
+        )
+
+        assert result.items_created == 0
+
+    @pytest.mark.asyncio
+    async def test_ingest_sets_content_hash_on_new_item(
+        self,
+        mock_db: AsyncMock,
+        mock_classifier: MagicMock,
+    ) -> None:
+        """ingest() sets content_hash on newly created KnowledgeItem."""
+        from app.models.knowledge import KnowledgeItem
+
+        # No existing duplicate
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        added_items = []
+        mock_db.add = lambda item: added_items.append(item)
+
+        async def assign_ids():
+            for i, item in enumerate(added_items):
+                if hasattr(item, "id") and item.id is None:
+                    item.id = i + 1
+
+        mock_db.flush = AsyncMock(side_effect=assign_ids)
+
+        service = TieredIngestionService(
+            db_session=mock_db,
+            classifier=mock_classifier,
+        )
+
+        await service.ingest(
+            title="New Doc",
+            content="Unique content for testing.",
+            source="test",
+        )
+
+        ki_items = [i for i in added_items if isinstance(i, KnowledgeItem)]
+        assert len(ki_items) >= 1
+        assert ki_items[0].content_hash is not None
+        assert len(ki_items[0].content_hash) == 64
+
+
+class TestTokenCountUsesEstimateTokens:
+    """Verify token_count uses character-based estimation, not word count."""
+
+    @pytest.fixture
+    def mock_db(self) -> AsyncMock:
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.commit = AsyncMock()
+        # P1-A: Mock content-hash dedup query to return no duplicate
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        db.execute = AsyncMock(return_value=mock_result)
+        return db
+
+    @pytest.fixture
+    def mock_classifier(self) -> MagicMock:
+        classifier = MagicMock(spec=DocumentClassifier)
+        classifier.classify.return_value = ClassificationResult(
+            tier=DocumentTier.CRITICAL,
+            parsing_strategy=ParsingStrategy.ARTICLE_LEVEL,
+            confidence=1.0,
+            matched_pattern="explicit:test",
+            detected_topics=["irpef"],
+            is_explicit_match=True,
+        )
+        return classifier
+
+    @pytest.mark.asyncio
+    async def test_token_count_uses_char_estimate_not_word_count(
+        self,
+        mock_db: AsyncMock,
+        mock_classifier: MagicMock,
+    ) -> None:
+        """token_count should be len(text)//4, not len(text.split())."""
+        added_items: list = []
+        mock_db.add = lambda item: added_items.append(item)
+
+        async def assign_ids() -> None:
+            for i, item in enumerate(added_items):
+                if hasattr(item, "id") and item.id is None:
+                    item.id = i + 1
+
+        mock_db.flush = AsyncMock(side_effect=assign_ids)
+
+        # Article text with long words → word count ≠ char//4
+        article_text = "contributo previdenziale obbligatorio"  # 3 words, 37 chars
+        expected_tokens = len(article_text) // 4  # 9
+        word_count = len(article_text.split())  # 3
+
+        mock_parser = MagicMock(spec=ItalianLawParser)
+        mock_parser.parse.return_value = ParsedLaw(
+            title="Test",
+            law_number="1/2026",
+            publication_date="2026-01-01",
+            articles=[
+                LawArticle(
+                    article_number="Art. 1",
+                    article_number_int=1,
+                    title="Test",
+                    full_text=article_text,
+                    commi=[],
+                    cross_references=[],
+                    topics=[],
+                    titolo=None,
+                    capo=None,
+                ),
+            ],
+            allegati=[],
+            metadata={},
+        )
+
+        service = TieredIngestionService(
+            db_session=mock_db,
+            classifier=mock_classifier,
+            law_parser=mock_parser,
+        )
+
+        await service.ingest(title="Test", content=article_text, source="test")
+
+        # Find the KnowledgeChunk in added items
+        chunks = [item for item in added_items if isinstance(item, KnowledgeChunk)]
+        assert len(chunks) >= 1
+        chunk = chunks[0]
+        assert chunk.token_count == expected_tokens
+        assert chunk.token_count != word_count

@@ -314,3 +314,63 @@ class TestTextChunk:
         chunk2 = TextChunk(text="Test", chunk_index=0, token_count=5, start_char=0, end_char=4)
 
         assert chunk1 == chunk2
+
+
+class TestValidateChunksConfigDefault:
+    """Test validate_chunks uses config default for max_tokens."""
+
+    def test_validate_chunks_defaults_to_config(self):
+        """Call validate_chunks(chunks) without max_tokens, verify it uses CHUNK_TOKENS."""
+        from app.core.config import CHUNK_TOKENS
+
+        # Chunk with token_count just under CHUNK_TOKENS → should pass
+        chunks_under = [
+            TextChunk(
+                text="Valid chunk",
+                chunk_index=0,
+                token_count=CHUNK_TOKENS - 1,
+                start_char=0,
+                end_char=100,
+            ),
+        ]
+        assert validate_chunks(chunks_under) is True
+
+        # Chunk with token_count over CHUNK_TOKENS → should fail
+        chunks_over = [
+            TextChunk(
+                text="Over limit chunk",
+                chunk_index=0,
+                token_count=CHUNK_TOKENS + 1,
+                start_char=0,
+                end_char=100,
+            ),
+        ]
+        assert validate_chunks(chunks_over) is False
+
+
+class TestChunkDocumentNavigationFilter:
+    """Test navigation text filtering in chunk_document."""
+
+    @patch("app.core.chunking.text_metrics")
+    @patch("app.core.chunking.JUNK_DROP_CHUNK", False)
+    def test_chunk_document_drops_navigation_chunks(self, mock_metrics):
+        """Verify chunks with navigation text are excluded from output."""
+        mock_metrics.return_value = {"quality_score": 0.8, "looks_junk": False}
+
+        # Build content where one "sentence" is navigation boilerplate
+        nav_text = "Vai al menu principale. Cookie policy. Privacy policy. Area riservata."
+        good_text = "Questo documento contiene informazioni importanti. " * 10
+
+        # Put nav text first so it forms its own chunk
+        content = nav_text + " " + good_text
+
+        chunks = chunk_document(content, title="Test Nav Filter", max_tokens=30)
+
+        # No chunk should contain multiple navigation patterns
+        for chunk in chunks:
+            text_lower = chunk["chunk_text"].lower()
+            from app.core.text.clean import NAVIGATION_PATTERNS
+
+            nav_matches = sum(1 for p in NAVIGATION_PATTERNS if p in text_lower)
+            # Chunks with 2+ nav patterns should have been dropped
+            assert nav_matches < 2, f"Nav chunk not dropped: {chunk['chunk_text'][:100]}"

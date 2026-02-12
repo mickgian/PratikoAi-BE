@@ -1,6 +1,7 @@
 """Embedding utilities for hybrid RAG.
 
 Generates vector embeddings using configurable OpenAI embedding models.
+Includes retry logic for transient API errors (rate limit, timeout, connection).
 """
 
 import os
@@ -11,7 +12,9 @@ from typing import (
 )
 
 import numpy as np
-from openai import AsyncOpenAI
+import tiktoken
+from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, RateLimitError
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import (
     EMBED_DIM,
@@ -22,9 +25,47 @@ from app.core.logging import logger
 # Initialize OpenAI client
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Token limit for text-embedding-3-small / text-embedding-3-large
+_MAX_EMBEDDING_TOKENS = 8191
+_tokenizer = tiktoken.get_encoding("cl100k_base")
+
+
+def truncate_to_token_limit(text: str, max_tokens: int = _MAX_EMBEDDING_TOKENS) -> str:
+    """Truncate text to fit within a token limit using tiktoken.
+
+    Args:
+        text: Input text to truncate
+        max_tokens: Maximum number of tokens (default: 8191 for OpenAI embeddings)
+
+    Returns:
+        Text truncated to at most max_tokens tokens
+    """
+    tokens = _tokenizer.encode(text)
+    if len(tokens) <= max_tokens:
+        return text
+    return _tokenizer.decode(tokens[:max_tokens])
+
+
+# Retry decorator for transient OpenAI errors
+_RETRY_POLICY = retry(
+    retry=retry_if_exception_type((RateLimitError, APITimeoutError, APIConnectionError)),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    reraise=True,
+)
+
+
+@_RETRY_POLICY
+async def _create_embedding(model: str, input_data: str | list[str]):
+    """Call OpenAI embeddings API with retry on transient errors."""
+    return await client.embeddings.create(model=model, input=input_data)
+
 
 async def generate_embedding(text: str) -> list[float] | None:
     """Generate embedding for a single text.
+
+    Retries up to 3 times on RateLimitError, APITimeoutError, and
+    APIConnectionError with exponential backoff.
 
     Args:
         text: Input text to embed
@@ -36,11 +77,9 @@ async def generate_embedding(text: str) -> list[float] | None:
         return None
 
     try:
-        # Truncate text if too long (OpenAI limit is ~8k tokens)
-        if len(text) > 30000:  # ~8k tokens
-            text = text[:30000]
+        text = truncate_to_token_limit(text)
 
-        response = await client.embeddings.create(model=EMBED_MODEL, input=text)
+        response = await _create_embedding(model=EMBED_MODEL, input_data=text)
 
         embedding = cast(list[float], response.data[0].embedding)
         return embedding
@@ -52,6 +91,8 @@ async def generate_embedding(text: str) -> list[float] | None:
 
 async def generate_embeddings_batch(texts: list[str], batch_size: int = 20) -> list[list[float] | None]:
     """Generate embeddings for multiple texts in batches.
+
+    Each batch is retried up to 3 times on transient OpenAI errors.
 
     Args:
         texts: List of input texts
@@ -65,11 +106,11 @@ async def generate_embeddings_batch(texts: list[str], batch_size: int = 20) -> l
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
 
-        # Filter empty texts
-        batch_texts = [t if t and t.strip() else " " for t in batch]
+        # Filter empty texts and truncate to token limit
+        batch_texts = [truncate_to_token_limit(t) if t and t.strip() else " " for t in batch]
 
         try:
-            response = await client.embeddings.create(model=EMBED_MODEL, input=batch_texts)
+            response = await _create_embedding(model=EMBED_MODEL, input_data=batch_texts)
 
             batch_embeddings = [item.embedding for item in response.data]
             all_embeddings.extend(batch_embeddings)

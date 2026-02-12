@@ -361,7 +361,15 @@ async def run_rss_ingestion(
 
         if len(content.strip()) < MIN_CONTENT_LENGTH and len(rss_summary.strip()) > 50:
             print(f"⚠️  Page content too short ({len(content)} chars), using RSS summary")
-            extraction_result["content"] = rss_summary
+            import html as html_module
+
+            from app.core.text.clean import clean_html, clean_italian_text, sanitize_html_entities
+
+            # Pre-decode HTML entities before HTML parsing (safety net for short snippets)
+            decoded_summary = html_module.unescape(rss_summary)
+            cleaned = clean_italian_text(clean_html(decoded_summary))
+            # Final pass: catch any residual HTML entities
+            extraction_result["content"] = sanitize_html_entities(cleaned)
             extraction_result["extraction_method"] = "rss_summary_fallback"
 
         # Parse RSS publication date (more reliable than content extraction)

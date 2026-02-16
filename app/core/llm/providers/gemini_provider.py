@@ -17,7 +17,6 @@ from langfuse import get_client
 
 from app.core.llm.base import (
     LLMCostInfo,
-    LLMModelTier,
     LLMProvider,
     LLMProviderType,
     LLMResponse,
@@ -66,30 +65,11 @@ class GeminiProvider(LLMProvider):
 
     @property
     def supported_models(self) -> dict[str, LLMCostInfo]:
-        """Get supported Gemini models and their cost information.
+        """Get supported Gemini models from the centralized registry (DEV-257)."""
+        from app.core.llm.model_registry import get_model_registry
 
-        Costs are in USD per 1K tokens (vendor pricing).
-        """
-        return {
-            "gemini-2.5-flash": LLMCostInfo(
-                input_cost_per_1k_tokens=0.000075,  # $0.075/1M tokens
-                output_cost_per_1k_tokens=0.0003,  # $0.30/1M tokens
-                model_name="gemini-2.5-flash",
-                tier=LLMModelTier.BASIC,
-            ),
-            "gemini-2.5-pro": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00125,  # $1.25/1M tokens
-                output_cost_per_1k_tokens=0.005,  # $5.00/1M tokens
-                model_name="gemini-2.5-pro",
-                tier=LLMModelTier.ADVANCED,
-            ),
-            "gemini-2.0-flash": LLMCostInfo(
-                input_cost_per_1k_tokens=0.000075,  # $0.075/1M tokens
-                output_cost_per_1k_tokens=0.0003,  # $0.30/1M tokens
-                model_name="gemini-2.0-flash",
-                tier=LLMModelTier.STANDARD,
-            ),
-        }
+        registry = get_model_registry()
+        return {m.model_name: m.to_cost_info() for m in registry.get_models_by_provider("gemini")}
 
     def _convert_messages_to_gemini(self, messages: list[Message]) -> tuple[str | None, list[dict[str, Any]]]:
         """Convert messages to Gemini format.
@@ -195,7 +175,7 @@ class GeminiProvider(LLMProvider):
                 content=response.text,
                 model=self.model,
                 provider=self.provider_type.value,
-                tokens_used={"input": input_tokens, "output": output_tokens} if input_tokens else None,
+                tokens_used={"input": input_tokens, "output": output_tokens} if input_tokens else None,  # type: ignore[dict-item]
                 cost_estimate=cost_estimate,
                 finish_reason="stop",
             )
@@ -210,7 +190,7 @@ class GeminiProvider(LLMProvider):
             )
             raise
 
-    async def stream_completion(
+    async def stream_completion(  # type: ignore[override]
         self,
         messages: list[Message],
         tools: list[Any] | None = None,
@@ -348,7 +328,7 @@ class GeminiProvider(LLMProvider):
             {
                 "supports_json_mode": True,
                 "supports_function_calling": True,
-                "max_context_length": 1000000 if "pro" in self.model else 128000,
+                "max_context_length": 1000000 if "pro" in self.model else 128000,  # type: ignore[dict-item]
                 "supports_vision": True,
             }
         )

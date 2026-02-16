@@ -27,7 +27,7 @@ import hashlib
 from dataclasses import asdict, dataclass, field
 from typing import Optional
 
-from app.core.llm.model_config import LLMModelConfig, ModelTier
+from app.core.llm.model_config import LLMModelConfig, ModelTier, resolve_model_from_env
 from app.core.logging import logger
 from app.schemas.chat import Message
 from app.schemas.router import RoutingCategory
@@ -114,16 +114,13 @@ class HyDEGeneratorService:
 
         DEV-251 Phase 5b: Uses HyDE-specific model (Claude Haiku) instead of
         BASIC tier to reduce latency from ~20s to ~3-5s. Falls back to BASIC
-        tier if HYDE_PROVIDER/HYDE_MODEL not configured.
+        tier if HYDE_MODEL env var not configured.
         """
-        from app.core.config import HYDE_MODEL, HYDE_PROVIDER
-
         self._config = config
 
         # DEV-251 Phase 5b: Use HyDE-specific model (Haiku) instead of BASIC tier
         # This reduces HyDE latency from ~20s (GPT-4o-mini) to ~3-5s (Haiku)
-        self._provider = HYDE_PROVIDER or config.get_provider(ModelTier.BASIC)
-        self._model = HYDE_MODEL or config.get_model(ModelTier.BASIC)
+        self._provider, self._model = resolve_model_from_env("HYDE_MODEL", config)
 
         self._timeout_ms = config.get_timeout(ModelTier.BASIC)
         self._temperature = config.get_temperature(ModelTier.BASIC)

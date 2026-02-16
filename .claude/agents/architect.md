@@ -412,6 +412,8 @@ This decision requires human stakeholder review to override veto.
 5. **`docs/DATABASE_ARCHITECTURE.md`** - Database schema and design patterns
 6. **`/docs/architecture/AI_ARCHITECT_KNOWLEDGE_BASE.md`** - Senior AI architect domain expertise (REQUIRED READING)
 7. **`/docs/architecture/PRATIKOAI_CONTEXT_ARCHITECTURE.md`** - PratikoAI conversation context flow and known gaps
+8. **`docs/USAGE_BASED_BILLING.md`** - Billing system architecture, plans, windows, credits
+9. **`docs/architecture/decisions/ADR-027-usage-based-billing.md`** - Usage-based billing decision record
 
 ### Reference Documentation
 - **`pyproject.toml`** - Python dependencies and tool configurations
@@ -748,6 +750,7 @@ When any feature affects LLM costs:
 - [ ] **Model Selection**: Can a cheaper model handle this?
 - [ ] **Scaling**: What's the cost at 10x usage?
 - [ ] **Budget Alerts**: Are cost alerts configured?
+- [ ] **Billing Integration**: Will this affect rolling window costs? Does the middleware need updating?
 
 ### Italian Legal/Tax Features
 
@@ -758,6 +761,20 @@ When any feature involves Italian legal/tax content:
 - [ ] **Deadlines**: Are scadenze accurate and properly formatted?
 - [ ] **Regional Variation**: Is regional variation considered?
 - [ ] **Superseded Rules**: How are abrogated/modified laws handled?
+
+### Billing/Usage Features
+
+When any feature involves billing, usage tracking, or cost limits:
+
+- [ ] **Plan Awareness**: Does the feature respect the user's billing plan (Base/Pro/Premium)?
+- [ ] **Window Limits**: Are rolling windows (5h and 7d) checked before allowing the operation?
+- [ ] **Credit Handling**: If user exceeds limit, are credits checked (opt-in only)?
+- [ ] **Markup Applied**: Is the plan-specific credit markup factor applied correctly?
+- [ ] **Italian Messaging**: Are all user-facing error messages in Italian?
+- [ ] **Admin Bypass**: Is the `X-Cost-Limit-Bypass` header handled correctly (and cleared when appropriate)?
+- [ ] **YAML Config**: Are plan changes made in `config/billing_plans.yaml` (not hardcoded)?
+- [ ] **Dual-Layer**: Does the feature work with both Redis (fast path) and PostgreSQL (fallback)?
+- [ ] **429 Response**: Does the error response include `limit_info`, `options`, and `reset_at`?
 
 ---
 
@@ -996,6 +1013,46 @@ SOURCE_AUTHORITY = {
 - [ ] Verify document codes by checking actual content
 - [ ] Don't transform URLs without evidence the format is broken
 - [ ] Consider RSS feed data quality issues as root cause
+
+### Usage-Based Billing Architecture (DEV-257 - IMPLEMENTED)
+
+**Architecture (February 2026):** Complete 3-tier billing system with rolling cost windows and pay-as-you-go credits.
+
+**Key Files:**
+| File | Purpose |
+|------|---------|
+| `config/billing_plans.yaml` | Source of truth for plan tiers (synced to DB on startup) |
+| `app/models/billing.py` | SQLModel tables: BillingPlan, UsageWindow, UserCredit, CreditTransaction |
+| `app/services/billing_plan_service.py` | YAML sync, plan CRUD, user subscription |
+| `app/services/rolling_window_service.py` | 5h/7d window checks (Redis + PostgreSQL) |
+| `app/services/usage_credit_service.py` | Credit balance, recharge, consumption with markup |
+| `app/core/middleware/cost_limiter.py` | HTTP-level enforcement, returns 429 before LangGraph |
+| `app/api/v1/billing.py` | REST endpoints for usage, plans, credits, admin tools |
+| `app/core/llm/model_registry.py` | Centralized LLM model costs (loaded from `config/llm_models.yaml`) |
+
+**Design Patterns:**
+1. **YAML → DB Sync**: Plans defined in version-controlled YAML, upserted on app startup. No migration needed for price changes.
+2. **Rolling Windows**: Time-based (not calendar-based) for fairness. Users gain capacity as old queries age out.
+3. **Dual-Layer Enforcement**: Redis sorted sets for fast checks, PostgreSQL as durable fallback.
+4. **Plan-Specific Markup**: Higher-tier plans get lower credit markup (incentivizes upgrading).
+5. **Opt-in Credits**: `extra_usage_enabled` must be explicitly toggled — prevents surprise charges.
+6. **Margin Rule**: `monthly_price ≈ 2.5 × monthly_cost_limit` ensures 60% margin.
+
+**Anti-Patterns to Reject:**
+- Hardcoding plan limits in code instead of YAML config
+- Calendar-based resets (midnight UTC creates unfair edges)
+- Checking only one window (both 5h AND 7d must be checked)
+- Consuming credits without checking `extra_usage_enabled` flag
+- Missing `parent_span_id` in cost tracking (see Langfuse lesson in MEMORY.md)
+- Forgetting to clear `cost_limit_bypass` from sessionStorage after simulator use (see DEV-257 frontend fix)
+
+**Changing Prices (No Migration Needed):**
+1. Edit `config/billing_plans.yaml`
+2. Commit & deploy
+3. `sync_plans_from_config()` runs on startup, upserts all plans
+4. New limits apply immediately
+
+**Related:** ADR-027, ADR-025 (model inventory), ADR-026 (exchange rates), `docs/USAGE_BASED_BILLING.md`
 
 ### Web Search Query Construction (DEV-245 Lesson)
 
@@ -1837,6 +1894,69 @@ Prompt-based approach chosen over extending the post-processor because:
 
 ---
 
+### Daily Cost Report Formatting & Display (DEV-246 Fix - ✅ IMPLEMENTED)
+
+**Critical Learning (February 2026):** Small cost values and raw database IDs in email reports create misleading or unreadable output.
+
+**Problem 1 — Decimal Truncation:**
+```
+Third-party cost: €0.0030 (Brave Search)
+Displayed as: €0.00 (truncated by :.2f formatting)
+```
+Users see €0.00 and assume no third-party costs exist.
+
+**Problem 2 — Raw Database IDs:**
+```
+User ID column shows: "1" (raw integer PK from usage_event.user_id)
+Should show: "MIC40048-1" (human-readable account_code from user table)
+```
+Raw IDs are meaningless in business reports.
+
+**Solution Pattern — Precision-Appropriate Formatting:**
+```python
+# Use :.4f for small third-party costs (Brave: €0.003/request)
+f"€{env.third_party_cost_eur:.4f}"   # → €0.0030
+
+# Keep :.2f for larger LLM/total costs (€0.33, €1.50)
+f"€{env.total_cost_eur:.2f}"         # → €0.33
+```
+
+**Solution Pattern — JOIN for Display Data:**
+```python
+query = (
+    select(
+        UsageEvent.user_id,
+        User.account_code,        # Human-readable identifier
+        func.sum(UsageEvent.cost_eur),
+    )
+    .join(User, UsageEvent.user_id == User.id)
+    .group_by(UsageEvent.user_id, User.account_code)
+)
+
+# Fallback to raw ID when account_code is NULL
+display_id = row.account_code if row.account_code else str(row.user_id)
+```
+
+**Key Design Decisions:**
+1. **Only third-party costs get :.4f** — LLM costs are large enough for :.2f
+2. **Fallback to raw ID** — Graceful degradation when account_code is NULL
+3. **JOIN not subquery** — Simple, readable, efficient for small user tables
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `daily_cost_report_service.py` | :.2f → :.4f for 3 third-party locations, JOIN with User for account_code |
+| `test_daily_cost_report_service.py` | Updated mock data with account_code column |
+
+**Prevention Checklist:**
+- [ ] When displaying monetary values, choose decimal precision based on expected magnitude
+- [ ] Small costs (per-request API pricing) need :.4f or more
+- [ ] Reports should show human-readable identifiers, not raw database PKs
+- [ ] Always JOIN with the user/entity table when displaying IDs in reports
+- [ ] Include NULL fallback when the display field is optional
+
+---
+
 ### Comprehensive Feature Removal Checklist (DEV-245 Phase 5.15.1 - ✅ IMPLEMENTED)
 
 **Critical Learning (January 2026):** When removing a feature, missed references cause runtime errors that may not surface until specific code paths are executed.
@@ -2454,10 +2574,12 @@ PratikoAI targets Italian tax/fiscal professionals with expected scale:
 | 2026-02-03 | Added Follow-Up Grounding Rules Contradiction lesson | DEV-251 Part 3: Separate grounding rules for follow-ups - never prepend concise instructions to completeness rules (LLM ignores earlier instructions) |
 | 2026-02-03 | Added ToT Prompt Variable Injection lesson | DEV-251 Part 3.1: ToT bypasses step_44 - use template variables for conditional behavior, pattern-based follow-up detection (zero-cost) |
 | 2026-02-04 | Added ADR-025: LLM Model Inventory & Tiering Strategy | DEV-255: Documented all 10+ LLM models across 4 providers, 2-tier strategy (BASIC/PREMIUM/LOCAL), fallback chains, Langfuse pricing definitions |
+| 2026-02-13 | Added Daily Cost Report Formatting & Display lesson | DEV-246 fix: :.4f for small third-party costs, JOIN with User table for account_code display |
+| 2026-02-16 | Added Usage-Based Billing Architecture lesson + review checklist | DEV-257: 3-tier billing with rolling windows, credits, YAML config, model registry |
 
 ---
 
 **Configuration Status:** 🟢 ACTIVE
-**Last Updated:** 2026-02-03
+**Last Updated:** 2026-02-16
 **Next Monthly Report Due:** 2025-12-15
 **Maintained By:** PratikoAI System Administrator

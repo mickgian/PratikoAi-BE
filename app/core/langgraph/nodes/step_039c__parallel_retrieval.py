@@ -92,6 +92,8 @@ async def node_step_39c(state: RAGState) -> RAGState:
                         top_k=CONTEXT_TOP_K,
                         messages=messages,
                         topic_keywords=topic_keywords,
+                        user_id=state.get("user_id"),
+                        session_id=state.get("session_id"),
                     )
                     retrieval_result = retrieval_result_to_dict(result)
 

@@ -76,10 +76,10 @@ Esempio: "e l'imu?" dopo discussione su rottamazione → "L'IMU può essere incl
     try:
         from openai import AsyncOpenAI
 
-        from app.core.llm.model_config import ModelTier, get_model_config
+        from app.core.llm.model_config import get_model_config, resolve_model_from_env
 
-        config = get_model_config()  # Get singleton (no args)
-        model = config.get_model(ModelTier.BASIC)  # gpt-4o-mini for fast reformulation
+        config = get_model_config()
+        _, model = resolve_model_from_env("LLM_MODEL_REFORMULATION", config)
         client = AsyncOpenAI()
 
         response = await client.chat.completions.create(

@@ -420,16 +420,16 @@ class TestBestModelsConfiguration:
 
     def test_get_default_comparison_model_ids_includes_best_models(self):
         """Test default models include best models from each provider."""
-        from app.services.comparison_service import BEST_MODELS_BY_PROVIDER
+        from app.core.llm.model_registry import get_model_registry
 
         result = self.service.get_default_comparison_model_ids()
 
-        # Should include at least some best models
-        best_model_ids = set(BEST_MODELS_BY_PROVIDER.values())
+        # Should include at least some best models from registry
+        best_model_ids = set(get_model_registry().get_best_models().values())
         included_best = [m for m in result if m in best_model_ids]
 
-        # At least 3 best models should be included (4 minus possible current overlap)
-        assert len(included_best) >= 3
+        # At least 2 best models should be included (some may overlap with current)
+        assert len(included_best) >= 2
 
     def test_get_default_comparison_model_ids_no_duplicates(self):
         """Test default models have no duplicates."""
@@ -528,8 +528,8 @@ class TestRunComparisonWithExisting:
     @pytest.mark.asyncio
     async def test_run_comparison_with_existing_calls_other_models(self, service, mock_db, existing_response):
         """Test that other best models are called."""
+        from app.core.llm.model_registry import get_model_registry
         from app.schemas.comparison import ModelResponseInfo
-        from app.services.comparison_service import BEST_MODELS_BY_PROVIDER
 
         call_count = 0
 
@@ -555,8 +555,11 @@ class TestRunComparisonWithExisting:
             await service.run_comparison_with_existing("Test query", 1, mock_db, existing_response)
 
             # Should call other best models (excluding current)
-            # DEV-256: Count is dynamic based on BEST_MODELS_BY_PROVIDER (Gemini disabled)
-            expected_count = len(BEST_MODELS_BY_PROVIDER)  # All best models except current
+            # DEV-257: Count is dynamic based on registry best_models
+            best_models = get_model_registry().get_best_models()
+            # Existing response model (openai:gpt-4o) may overlap with best models
+            current = existing_response.model_id
+            expected_count = len([m for m in best_models.values() if m != current])
             assert call_count == expected_count
 
 
@@ -581,7 +584,9 @@ class TestAvailableModelsFlags:
     @pytest.mark.asyncio
     async def test_available_models_include_is_best_flag(self, service, mock_db):
         """Test that available models include is_best flag."""
-        from app.services.comparison_service import BEST_MODELS_BY_PROVIDER
+        from app.core.llm.model_registry import get_model_registry
+
+        best_model_ids = set(get_model_registry().get_best_models().values())
 
         with patch.object(service._factory, "create_provider") as mock_create:
             mock_provider = MagicMock()
@@ -592,7 +597,7 @@ class TestAvailableModelsFlags:
 
             # Check that is_best is set correctly
             for model in models:
-                expected_is_best = model.model_id in BEST_MODELS_BY_PROVIDER.values()
+                expected_is_best = model.model_id in best_model_ids
                 assert model.is_best == expected_is_best
 
     @pytest.mark.asyncio

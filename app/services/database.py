@@ -1,5 +1,7 @@
 """This file contains the database service for the application."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import (
     List,
     Optional,
@@ -9,6 +11,7 @@ from typing import (
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError as SAIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.pool import QueuePool
 from sqlmodel import (
     Session,
@@ -22,6 +25,7 @@ from app.core.config import (
     settings,
 )
 from app.core.logging import logger
+from app.models.database import AsyncSessionLocal
 from app.models.session import Session as ChatSession
 from app.models.user import User
 from app.utils.account_code import generate_account_code
@@ -101,6 +105,7 @@ class DatabaseService:
                     )
                     continue
                 raise
+        raise RuntimeError(f"Impossibile generare account_code unico dopo {max_retries} tentativi")
 
     async def get_user(self, user_id: int) -> User | None:
         """Get a user by ID.
@@ -245,6 +250,27 @@ class DatabaseService:
             Session: A SQLModel session maker
         """
         return Session(self.engine)
+
+    @asynccontextmanager
+    async def get_db(self) -> AsyncIterator[AsyncSession]:
+        """Get an async database session as a context manager.
+
+        Yields an async session from the shared AsyncSessionLocal factory.
+        The session is automatically closed when the context exits.
+
+        Usage:
+            async with database_service.get_db() as db:
+                db.add(entity)
+                await db.commit()
+
+        Yields:
+            AsyncSession: Async database session
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                yield session
+            finally:
+                await session.close()
 
     async def update_user_refresh_token(self, user_id: int, refresh_token: str) -> bool:
         """Update a user's refresh token hash.

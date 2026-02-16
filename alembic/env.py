@@ -1,6 +1,7 @@
 import os
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import (
     engine_from_config,
     pool,
@@ -8,7 +9,9 @@ from sqlalchemy import (
 )
 from sqlmodel import SQLModel
 
-from alembic import context
+from alembic import context  # type: ignore[attr-defined]
+
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env.development"))
 from app.models.cassazione import CassazioneDecision
 
 # Phase 2: CCNL Database Models

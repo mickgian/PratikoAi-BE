@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Environment, get_environment, settings
 from app.models.usage import CostCategory, UsageEvent, UsageType
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +105,7 @@ ENVIRONMENT_COLORS = {
     "development": {"bg": "#6c757d", "name": "Development", "prefix": "DEV"},
     "qa": {"bg": "#007bff", "name": "QA", "prefix": "QA"},
     "production": {"bg": "#28a745", "name": "Production", "prefix": "PROD"},
+    "test": {"bg": "#fd7e14", "name": "E2E Test", "prefix": "TEST"},
 }
 
 
@@ -153,6 +155,10 @@ COST_THRESHOLDS = {
     "production": {
         "daily_total": 50.0,  # €50/day warning for prod
         "per_user": 2.0,  # €2/user/day for prod (matching monthly target)
+    },
+    "test": {
+        "daily_total": 5.0,  # €5/day warning for E2E tests
+        "per_user": 5.0,  # €5/user/day (single system user)
     },
 }
 
@@ -364,6 +370,7 @@ class DailyCostReportService:
         query = (
             select(
                 UsageEvent.user_id,
+                User.account_code,
                 func.coalesce(func.sum(UsageEvent.cost_eur), 0).label("total_cost"),
                 func.coalesce(
                     func.sum(
@@ -386,13 +393,14 @@ class DailyCostReportService:
                 func.count(UsageEvent.id).label("request_count"),
                 func.coalesce(func.sum(UsageEvent.total_tokens), 0).label("total_tokens"),
             )
+            .join(User, UsageEvent.user_id == User.id)
             .where(
                 and_(
                     UsageEvent.timestamp >= start_dt,
                     UsageEvent.timestamp <= end_dt,
                 )
             )
-            .group_by(UsageEvent.user_id)
+            .group_by(UsageEvent.user_id, User.account_code)
             .order_by(func.sum(UsageEvent.cost_eur).desc())
             .limit(limit)
         )
@@ -402,14 +410,15 @@ class DailyCostReportService:
 
         breakdowns = []
         for row in rows:
+            display_id = row[1] if row[1] else str(row[0] or "unknown")
             breakdowns.append(
                 UserCostBreakdown(
-                    user_id=str(row[0] or "unknown"),
-                    total_cost_eur=float(row[1] or 0),
-                    llm_cost_eur=float(row[2] or 0),
-                    third_party_cost_eur=float(row[3] or 0),
-                    request_count=int(row[4] or 0),
-                    total_tokens=int(row[5] or 0),
+                    user_id=display_id,
+                    total_cost_eur=float(row[2] or 0),
+                    llm_cost_eur=float(row[3] or 0),
+                    third_party_cost_eur=float(row[4] or 0),
+                    request_count=int(row[5] or 0),
+                    total_tokens=int(row[6] or 0),
                 )
             )
 
@@ -530,10 +539,10 @@ class DailyCostReportService:
             env_c = get_environment_color(env.environment)
             env_rows += f"""
             <tr>
-                <td><span style="background-color: {env_c['bg']}; color: white; padding: 2px 8px; border-radius: 4px;">{env.environment.upper()}</span></td>
+                <td><span style="background-color: {env_c["bg"]}; color: white; padding: 2px 8px; border-radius: 4px;">{env.environment.upper()}</span></td>
                 <td style="text-align: right;">€{env.total_cost_eur:.2f}</td>
                 <td style="text-align: right;">€{env.llm_cost_eur:.2f}</td>
-                <td style="text-align: right;">€{env.third_party_cost_eur:.2f}</td>
+                <td style="text-align: right;">€{env.third_party_cost_eur:.4f}</td>
                 <td style="text-align: right;">{env.request_count:,}</td>
                 <td style="text-align: right;">{env.unique_users}</td>
             </tr>
@@ -559,7 +568,7 @@ class DailyCostReportService:
             third_party_rows += f"""
             <tr>
                 <td>{tp.api_type}</td>
-                <td style="text-align: right;">€{tp.total_cost_eur:.2f}</td>
+                <td style="text-align: right;">€{tp.total_cost_eur:.4f}</td>
                 <td style="text-align: right;">{tp.request_count:,}</td>
                 <td style="text-align: right;">€{tp.avg_cost_per_request:.4f}</td>
             </tr>
@@ -589,7 +598,7 @@ class DailyCostReportService:
     <style>
         body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }}
         .container {{ max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
-        .header {{ background-color: {env_color['bg']}; color: white; padding: 20px; border-radius: 12px 12px 0 0; }}
+        .header {{ background-color: {env_color["bg"]}; color: white; padding: 20px; border-radius: 12px 12px 0 0; }}
         .header h1 {{ margin: 0; font-size: 24px; }}
         .header p {{ margin: 5px 0 0 0; opacity: 0.9; }}
         .content {{ padding: 20px; }}
@@ -608,7 +617,7 @@ class DailyCostReportService:
     <div class="container">
         <div class="header">
             <h1>📊 Daily Cost Report</h1>
-            <p>{report.report_date.strftime('%A, %B %d, %Y')} | Environment: {env_color['name']}</p>
+            <p>{report.report_date.strftime("%A, %B %d, %Y")} | Environment: {env_color["name"]}</p>
         </div>
         <div class="content">
             {alerts_html}
@@ -635,7 +644,7 @@ class DailyCostReportService:
                     <div class="stat-label">LLM Inference</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">€{report.third_party_cost_eur:.2f}</div>
+                    <div class="stat-value">€{report.third_party_cost_eur:.4f}</div>
                     <div class="stat-label">Third-Party APIs</div>
                 </div>
                 <div class="stat-card">

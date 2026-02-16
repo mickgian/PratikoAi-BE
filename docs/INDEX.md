@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2026-02-12 15:57:36
+**Auto-generated:** 2026-02-16 11:30:15
 
-> 💡 This directory contains 31 technical documentation files plus 172 architecture documents.
+> 💡 This directory contains 32 technical documentation files plus 173 architecture documents.
 
 ---
 
@@ -13,7 +13,7 @@
 - **[Architecture Overview](architecture/INDEX.md)** - Main architecture index
   - RAG flow implementation documents
   - Policy gated autonomy
-  - 172 total architecture documents including 135 detailed steps
+  - 173 total architecture documents including 135 detailed steps
 
 ---
 
@@ -81,7 +81,7 @@
 - **[Database Backup System](DATABASE_BACKUP_SYSTEM.md)** ✅ Current
   - **Purpose**: Prevent data loss by maintaining automated daily backups of the PostgreSQL database.
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2026-02-12 15:46:05
+  - **Auto-generated:** 2026-02-16 11:29:15
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
 - **[Hugging Face Models for PratikoAI - Analysis Report](HUGGINGFACE_MODELS_ANALYSIS.md)** ✅ Current
@@ -92,6 +92,8 @@
   - This document describes the implemented Pinecone environment guardrails, provider selection logic, fallback behavior, and smoke test verification f...
 - **[Regional Tax Variations for PratikoAI](REGIONAL_TAX_VARIATIONS.md)** ✅ Current
   - The Regional Tax Variations system provides comprehensive support for Italian regional and municipal tax calculations, accounting for the significa...
+- **[Usage-Based Billing System](USAGE_BASED_BILLING.md)** ✅ Current
+  - Usage-based billing for PratikoAI with 3-tier plans, rolling cost windows, and pay-as-you-go credits. Implemented in DEV-257.
 
 ---
 
@@ -100,9 +102,9 @@
 - **Feature Docs:** 9
 - **Database/Search:** 9
 - **Operations:** 3
-- **Architecture:** 172
-- **Total:** 203
+- **Architecture:** 173
+- **Total:** 205
 
 ---
 
-**Last Updated:** 2026-02-12 15:57:36
+**Last Updated:** 2026-02-16 11:30:15

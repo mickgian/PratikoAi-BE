@@ -1,0 +1,56 @@
+# Billing Plans Configuration (DEV-257)
+#
+# Source of truth for all billing plan definitions.
+# Synced to DB on app startup via billing_plan_service.sync_plans_from_config().
+#
+# HOW TO CHANGE PRICES:
+#   1. Edit the values below
+#   2. Commit & deploy
+#   3. On startup, all plans are upserted by slug — no migration needed
+#
+# DESIGN RULES:
+#   - Maintain 60% margin: price_eur_monthly ≈ 2.5 × monthly_cost_limit_eur
+#   - Window proportions: window_7d ≈ 3 × window_5h; monthly ≈ 4 × window_7d
+#   - Median cost per query: EUR 0.10 (mistral-large-latest with RAG)
+#
+# FIELD DESCRIPTIONS:
+#   name                    - Display name shown in UI and API responses
+#   price_eur_monthly       - Monthly subscription price in EUR
+#   monthly_cost_limit_eur  - Total LLM cost cap per calendar month
+#   window_5h_cost_limit_eur - Max LLM cost in any rolling 5-hour window (burst protection)
+#   window_7d_cost_limit_eur - Max LLM cost in any rolling 7-day window (sustained protection)
+#   credit_markup_factor    - Multiplier on raw cost for credit consumption (1.5 = 50% markup)
+#   is_active               - Whether the plan is available for new subscriptions
+#
+# Full documentation: docs/USAGE_BASED_BILLING.md
+# Architecture decision: docs/architecture/decisions/ADR-027-usage-based-billing.md
+
+version: "1.0"
+
+plans:
+  base:
+    name: "Base"
+    price_eur_monthly: 25.0
+    monthly_cost_limit_eur: 10.0
+    window_5h_cost_limit_eur: 2.50      # ~25 queries/5h
+    window_7d_cost_limit_eur: 7.50      # ~75 queries/7d
+    credit_markup_factor: 1.50
+    is_active: true
+
+  pro:
+    name: "Pro"
+    price_eur_monthly: 75.0
+    monthly_cost_limit_eur: 30.0
+    window_5h_cost_limit_eur: 5.00      # ~50 queries/5h
+    window_7d_cost_limit_eur: 22.50     # ~225 queries/7d
+    credit_markup_factor: 1.30
+    is_active: true
+
+  premium:
+    name: "Premium"
+    price_eur_monthly: 150.0
+    monthly_cost_limit_eur: 60.0
+    window_5h_cost_limit_eur: 10.00     # ~100 queries/5h
+    window_7d_cost_limit_eur: 45.00     # ~450 queries/7d
+    credit_markup_factor: 1.20
+    is_active: true

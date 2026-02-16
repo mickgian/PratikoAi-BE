@@ -31,10 +31,12 @@ class TestDatabaseServiceGetDb:
         mock_settings.ENVIRONMENT.value = "development"
 
         mock_session = AsyncMock(spec=AsyncSession)
-        # AsyncSessionLocal() is used as `async with AsyncSessionLocal() as session:`
-        # so the return value itself must be an async context manager
-        mock_async_session_local.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_async_session_local.return_value.__aexit__ = AsyncMock(return_value=None)
+        # AsyncSessionLocal() returns an async context manager
+        # Must use AsyncMock (not MagicMock) so async-with protocol works
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_session
+        mock_ctx.__aexit__.return_value = False
+        mock_async_session_local.return_value = mock_ctx
 
         service = DatabaseService()
 
@@ -57,8 +59,10 @@ class TestDatabaseServiceGetDb:
         mock_settings.ENVIRONMENT.value = "development"
 
         mock_session = AsyncMock(spec=AsyncSession)
-        mock_async_session_local.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_async_session_local.return_value.__aexit__ = AsyncMock(return_value=None)
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_session
+        mock_ctx.__aexit__.return_value = False
+        mock_async_session_local.return_value = mock_ctx
 
         service = DatabaseService()
 

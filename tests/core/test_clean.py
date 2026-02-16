@@ -3,6 +3,7 @@
 import pytest
 
 from app.core.text.clean import (
+    chunk_contains_navigation,
     clean_html,
     clean_italian_text,
     is_valid_text,
@@ -333,3 +334,95 @@ class TestIsValidText:
         """Test that Italian accented characters are counted as valid."""
         text = "àèìòùéÀÈÌÒÙÉ" * 10
         assert is_valid_text(text, min_length=10)
+
+
+class TestSanitizeHtmlEntities:
+    """P1-B: Test HTML entity sanitization safety net."""
+
+    def test_sanitize_decodes_named_entities(self):
+        """Named HTML entities like &amp; are decoded."""
+        from app.core.text.clean import sanitize_html_entities
+
+        text = "lettera a) &amp; b) del D.Lgs."
+        result = sanitize_html_entities(text)
+        assert "&amp;" not in result
+        assert "& b)" in result
+
+    def test_sanitize_decodes_numeric_entities(self):
+        """Numeric HTML entities like &#8217; are decoded."""
+        from app.core.text.clean import sanitize_html_entities
+
+        text = "l&#8217;articolo 42"
+        result = sanitize_html_entities(text)
+        assert "&#8217;" not in result
+        assert "\u2019" in result or "'" in result
+
+    def test_sanitize_decodes_hex_entities(self):
+        """Hex HTML entities like &#xE0; are decoded."""
+        from app.core.text.clean import sanitize_html_entities
+
+        text = "l&#xE0; legge"
+        result = sanitize_html_entities(text)
+        assert "&#xE0;" not in result
+        assert "à" in result
+
+    def test_sanitize_leaves_clean_text_unchanged(self):
+        """Clean text without HTML entities is returned unchanged."""
+        from app.core.text.clean import sanitize_html_entities
+
+        text = "Articolo 42 del decreto legislativo."
+        result = sanitize_html_entities(text)
+        assert result == text
+
+    def test_sanitize_multiple_entities(self):
+        """Multiple HTML entities in one text are all decoded."""
+        from app.core.text.clean import sanitize_html_entities
+
+        text = "&lt;Art. 1&gt; comma &amp; lettera"
+        result = sanitize_html_entities(text)
+        assert "&lt;" not in result
+        assert "&gt;" not in result
+        assert "&amp;" not in result
+        assert "<Art. 1>" in result
+
+
+class TestChunkContainsNavigation:
+    """Tests for chunk-level navigation detection."""
+
+    def test_multiple_patterns_detected(self):
+        """Chunk with 2+ navigation patterns is flagged."""
+        text = "Vai al menu principale. Cookie policy applicata. Contenuto reale del documento."
+        assert chunk_contains_navigation(text) is True
+
+    def test_single_pattern_short_chunk_detected(self):
+        """Short chunk (<300 chars) with 1 navigation pattern is flagged."""
+        text = "Vai al menu principale. Breve testo."
+        assert len(text) < 300
+        assert chunk_contains_navigation(text) is True
+
+    def test_single_pattern_long_chunk_not_detected(self):
+        """Long chunk (>=300 chars) with only 1 navigation pattern is NOT flagged."""
+        text = "Cookie policy. " + "Questo documento contiene informazioni importanti. " * 20
+        assert len(text) >= 300
+        assert chunk_contains_navigation(text) is False
+
+    def test_no_patterns_clean_text(self):
+        """Clean text without any navigation patterns is NOT flagged."""
+        text = (
+            "L'articolo 42 del decreto legislativo stabilisce le modalità "
+            "di calcolo dei contributi previdenziali per l'anno corrente."
+        )
+        assert chunk_contains_navigation(text) is False
+
+    def test_case_insensitive(self):
+        """Detection is case-insensitive."""
+        text = "VAI AL MENU principale. COOKIE POLICY applicata."
+        assert chunk_contains_navigation(text) is True
+
+    def test_threshold_parameter(self):
+        """Custom threshold is respected."""
+        text = "Vai al menu. Cookie policy. Privacy policy. " + "x" * 300
+        # 3 matches, default threshold=2 should flag
+        assert chunk_contains_navigation(text, threshold=2) is True
+        # But threshold=4 should not flag (only 3 matches, and text is long)
+        assert chunk_contains_navigation(text, threshold=4) is False

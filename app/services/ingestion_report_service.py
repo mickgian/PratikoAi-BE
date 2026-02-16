@@ -43,6 +43,12 @@ class AlertType(str, Enum):
     HIGH_JUNK_RATE = "HIGH_JUNK_RATE"  # >25% junk detection rate
     ZERO_DOCUMENTS = "ZERO_DOCUMENTS"  # No documents from any source in 24h
 
+    # DEV-258: Data quality audit alerts
+    DQ_DUPLICATES = "DQ_DUPLICATES"  # Duplicate URL groups detected
+    DQ_MISSING_EMBEDDINGS = "DQ_MISSING_EMBEDDINGS"  # Items/chunks without embeddings
+    DQ_NAV_CONTAMINATION = "DQ_NAV_CONTAMINATION"  # Navigation boilerplate in chunks
+    DQ_LOW_QUALITY = "DQ_LOW_QUALITY"  # >5% of chunks have quality_score < 0.5
+
 
 class AlertSeverity(str, Enum):
     """Alert severity levels."""
@@ -230,6 +236,9 @@ class DailyIngestionReport:
     # DEV-247: Filtered content samples for review
     filtered_content_samples: list[FilteredContentSample] = field(default_factory=list)
 
+    # DEV-258: Data quality audit summary
+    data_quality: Any | None = None
+
     @property
     def total_documents_processed(self) -> int:
         """Total documents processed across all sources."""
@@ -348,6 +357,17 @@ class IngestionReportService:
 
         # DEV-247: Get filtered content samples for review
         report.filtered_content_samples = await self._get_filtered_content_samples()
+
+        # DEV-258: Run data quality audit (non-fatal)
+        try:
+            from app.services.data_quality_audit_service import DataQualityAuditService
+
+            audit_service = DataQualityAuditService(self.db)
+            report.data_quality = await audit_service.run_summary()
+            quality_alerts = DataQualityAuditService.check_thresholds(report.data_quality)
+            report.alerts.extend(quality_alerts)
+        except Exception as e:
+            self.logger.warning(f"Data quality audit failed (non-fatal): {e}")
 
         self.logger.info(
             f"Report generated: {report.total_documents_processed} processed, "
@@ -1186,6 +1206,11 @@ class IngestionReportService:
             </div>
             """
 
+        # DEV-258: Generate data quality section
+        data_quality_html = ""
+        if report.data_quality:
+            data_quality_html = self._generate_data_quality_html(report.data_quality)
+
         # Overall status color
         overall_color = (
             "#28a745"
@@ -1314,6 +1339,8 @@ class IngestionReportService:
 
                 {filtered_html}
 
+                {data_quality_html}
+
                 <div class="footer">
                     <p>This is an automated report from PratikoAI Ingestion Monitoring System.</p>
                     <p>Environment: {env_color["name"]} | Contact DevOps team for questions.</p>
@@ -1324,6 +1351,73 @@ class IngestionReportService:
         """
 
         return html
+
+    def _generate_data_quality_html(self, dq) -> str:
+        """DEV-258: Generate HTML section for data quality metrics.
+
+        Args:
+            dq: DataQualitySummary instance
+
+        Returns:
+            HTML string for the data quality section
+        """
+
+        def _status(value: int, threshold: int = 0) -> str:
+            if value <= threshold:
+                return '<span style="color: #28a745;">OK</span>'
+            return f'<span style="color: #dc3545;">{value}</span>'
+
+        chunk_info = ""
+        if dq.chunk_stats:
+            cs = dq.chunk_stats
+            chunk_info = (
+                f"min={cs.get('min', '?')}, avg={cs.get('avg', '?')}, "
+                f"median={cs.get('median', '?')}, p95={cs.get('p95', '?')}, "
+                f"max={cs.get('max', '?')}"
+            )
+        else:
+            chunk_info = "N/A"
+
+        rows = f"""
+            <tr><td>Total Items</td><td>{dq.total_items}</td><td>-</td></tr>
+            <tr><td>Total Chunks</td><td>{dq.total_chunks}</td><td>-</td></tr>
+            <tr><td>URL Duplicate Groups</td><td>{dq.url_duplicate_groups}</td><td>{_status(dq.url_duplicate_groups)}</td></tr>
+            <tr><td>Title Duplicate Groups</td><td>{dq.title_duplicate_groups}</td><td>{_status(dq.title_duplicate_groups)}</td></tr>
+            <tr><td>Navigation Contaminated Chunks</td><td>{dq.navigation_contaminated_chunks}</td><td>{_status(dq.navigation_contaminated_chunks, 10)}</td></tr>
+            <tr><td>HTML Artifact Items</td><td>{dq.html_artifact_items}</td><td>{_status(dq.html_artifact_items)}</td></tr>
+            <tr><td>RSS Fallback Docs</td><td>{dq.rss_fallback_docs}</td><td>{_status(dq.rss_fallback_docs)}</td></tr>
+            <tr><td>Broken Hyphenation Chunks</td><td>{dq.broken_hyphenation_chunks}</td><td>{_status(dq.broken_hyphenation_chunks)}</td></tr>
+            <tr><td>Chunk Token Distribution</td><td colspan="2" style="font-size: 12px;">{chunk_info}</td></tr>
+            <tr><td>Junk Chunks Stored</td><td>{dq.junk_chunks_stored}</td><td>{_status(dq.junk_chunks_stored)}</td></tr>
+            <tr><td>Low Quality Chunks (&lt;0.5)</td><td>{dq.low_quality_chunks}</td><td>{_status(dq.low_quality_chunks)}</td></tr>
+            <tr><td>Items Missing Embedding</td><td>{dq.items_missing_embedding}</td><td>{_status(dq.items_missing_embedding)}</td></tr>
+            <tr><td>Chunks Missing Embedding</td><td>{dq.chunks_missing_embedding}</td><td>{_status(dq.chunks_missing_embedding)}</td></tr>
+            <tr><td>Old Active Docs (&gt;1yr)</td><td>{dq.old_active_documents}</td><td>{_status(dq.old_active_documents)}</td></tr>
+            <tr><td>No Publication Date</td><td>{dq.no_publication_date}</td><td>{_status(dq.no_publication_date)}</td></tr>
+            <tr><td>NULL text_quality</td><td>{dq.null_text_quality}</td><td>{_status(dq.null_text_quality)}</td></tr>
+            <tr><td>NFD Unicode Chunks</td><td>{dq.nfd_unicode_chunks}</td><td>{_status(dq.nfd_unicode_chunks)}</td></tr>
+        """
+
+        return f"""
+            <div class="section">
+                <h2>Data Quality</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Count</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows}
+                    </tbody>
+                </table>
+                <p style="font-size: 12px; color: #999; margin-top: 10px;">
+                    Full audit: <code>python scripts/audit_data_quality.py</code>
+                </p>
+            </div>
+        """
 
     async def _send_email(self, recipients: list[str], subject: str, html_content: str) -> bool:
         """Send email via SMTP.

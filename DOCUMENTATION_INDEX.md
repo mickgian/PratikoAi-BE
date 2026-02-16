@@ -1,7 +1,7 @@
 # Master Documentation Index
 
-**Auto-generated:** 2026-02-12 15:57:36
-**Total Documents:** 344 markdown files
+**Auto-generated:** 2026-02-16 11:30:15
+**Total Documents:** 346 markdown files
 
 > 💡 This index is automatically generated. To update, run: `python scripts/generate_docs_index.py`
 
@@ -50,7 +50,7 @@
 | Subsystem | Documents | Primary Index |
 |-----------|-----------|---------------|
 | **RAG Architecture** | 138 steps | [docs/architecture/](docs/architecture/INDEX.md) |
-| **Core Docs** | 31 docs | [docs/](docs/INDEX.md) |
+| **Core Docs** | 32 docs | [docs/](docs/INDEX.md) |
 | **Monitoring** | 11 docs | [monitoring/](monitoring/INDEX.md) |
 | **Deployment** | 3 docs | [deployment-orchestration/](deployment-orchestration/INDEX.md) |
 | **MCP Servers** | 5 docs | [mcp-servers/](mcp-servers/INDEX.md) |
@@ -78,8 +78,8 @@
   - ✅ **Completed**: - Created Alembic migrations for pgvector enablement
 
 ### Operations (1 docs)
-- **[Daily Ingestion Collection Email Report](docs/operations/DAILY_REPORTS.md)** ✅ Current
-  - **Task:** DEV-BE-70 **Status:** Implemented
+- **[Daily Email Reports](docs/operations/DAILY_REPORTS.md)** ✅ Current
+  - This document covers the two automated daily email reports: 1. [Daily Cost Spending Report](#daily-cost-spending-report-dev-246) — LLM and third-pa...
 
 ### Meta Documentation (2 docs)
 - **[Documentation Cleanup Summary](docs/meta/DOCUMENTATION_CLEANUP_SUMMARY.md)** ✅ Current

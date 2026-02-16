@@ -1,4 +1,132 @@
-# Daily Ingestion Collection Email Report
+# Daily Email Reports
+
+This document covers the two automated daily email reports:
+1. [Daily Cost Spending Report](#daily-cost-spending-report-dev-246) — LLM and third-party API costs
+2. [Daily Ingestion Collection Report](#daily-ingestion-collection-email-report-dev-be-70) — RSS/scraper health
+
+---
+
+# Daily Cost Spending Report (DEV-246)
+
+**Task:** DEV-246
+**Status:** Implemented
+**Last Updated:** 2026-02-13
+
+## Overview
+
+The Daily Cost Spending Report provides visibility into LLM inference and third-party API costs, broken down by environment, user, and API type. Designed to maintain the **target of under €2/user/month**.
+
+## Data Sources
+
+- **UsageEvent** table — records every LLM call and third-party API request with cost
+- **User** table — provides human-readable `account_code` for the report
+
+## Configuration
+
+### Environment Variables
+
+```env
+# Recipients (comma-separated)
+DAILY_COST_REPORT_RECIPIENTS=your-email@pratikoai.com
+
+# Time to send report in HH:MM format (Europe/Rome timezone)
+DAILY_COST_REPORT_TIME=07:00
+
+# Enable/disable the report
+DAILY_COST_REPORT_ENABLED=true
+```
+
+## Report Structure
+
+### 1. Header with Environment Badge
+- Same color coding as ingestion report (DEV/QA/PROD)
+- Report date
+
+### 2. Summary Cards
+- **Total Cost** (€, :.2f)
+- **Total Requests**
+- **Unique Users**
+
+### 3. Cost Breakdown by Category
+- **LLM Inference** (€, :.2f)
+- **Third-Party APIs** (€, :.4f — higher precision for small per-request costs)
+- **Total Tokens**
+
+### 4. Cost by Environment (Table)
+| Environment | Total Cost | LLM Cost | Third-Party | Requests | Users |
+
+### 5. Top Users by Cost (Table)
+| User ID (account_code) | Total Cost | % of Total | Requests | Tokens |
+
+- Displays `account_code` (e.g., "MIC40048-1") instead of raw DB integer ID
+- Falls back to raw ID when `account_code` is NULL
+
+### 6. Third-Party API Costs (Table)
+| API Type | Total Cost (:.4f) | Requests | Avg/Request (:.4f) |
+
+### 7. Cost Alerts
+| Alert Type | Condition | Severity |
+|------------|-----------|----------|
+| DAILY_THRESHOLD_EXCEEDED | Environment daily cost > threshold | HIGH |
+| USER_THRESHOLD_EXCEEDED | User daily cost > €2/day | MEDIUM |
+
+**Thresholds by environment:**
+| Environment | Daily Total | Per User |
+|-------------|-------------|----------|
+| Development | €10 | €1 |
+| QA | €25 | €2 |
+| Production | €50 | €2 |
+| Test | €5 | €5 |
+
+## Decimal Precision
+
+| Cost Type | Format | Rationale |
+|-----------|--------|-----------|
+| Total, LLM costs | :.2f | Amounts typically > €0.01 |
+| Third-party costs | :.4f | Per-request costs like Brave (€0.003) would show €0.00 with :.2f |
+| Avg/request | :.4f | Same rationale |
+
+## Scheduler Task
+
+```python
+# Task name: daily_cost_report
+# Interval: DAILY
+# Default time: 07:00 Europe/Rome
+# Function: send_daily_cost_report_task
+```
+
+## Testing
+
+```bash
+uv run pytest tests/services/test_daily_cost_report_service.py -v
+```
+
+Current test coverage: 19 tests covering:
+- Dataclass defaults and calculations
+- Environment breakdown aggregation
+- User breakdown with account_code display
+- Third-party breakdown aggregation
+- HTML report generation (with data and empty)
+- Full report generation pipeline
+- Email sending
+- Cost alert thresholds
+
+## Files
+
+- `app/services/daily_cost_report_service.py` — Report generation, HTML rendering, email sending
+- `app/services/scheduler_service.py` — Daily task registration
+- `tests/services/test_daily_cost_report_service.py` — Unit tests
+
+## Change Log
+
+| Date | Change |
+|------|--------|
+| 2026-01-24 | Initial implementation (DEV-246) |
+| 2026-02-13 | Fix: :.2f → :.4f for third-party costs; JOIN with User table for account_code display |
+
+---
+
+# Daily Ingestion Collection Email Report (DEV-BE-70)
 
 **Task:** DEV-BE-70
 **Status:** Implemented

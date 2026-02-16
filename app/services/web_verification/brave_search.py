@@ -348,15 +348,22 @@ class BraveSearchClient:
         try:
             from app.services.usage_tracker import usage_tracker
 
-            # Use defaults if user context not available
-            effective_user_id = user_id or "system"
+            # DEV-257: Skip tracking if no valid user_id (UsageEvent.user_id is FK to user.id)
+            if not user_id:
+                logger.debug(
+                    "BRAVE_usage_tracking_skipped",
+                    reason="no_user_id",
+                    api_calls=api_calls,
+                )
+                return
+
             effective_session_id = session_id or "web_verification"
 
             # Calculate cost (Brave free tier is 2000/month, then $3/1000)
             cost_eur = api_calls * self.BRAVE_COST_PER_QUERY_EUR
 
             await usage_tracker.track_third_party_api(
-                user_id=effective_user_id,
+                user_id=user_id,
                 session_id=effective_session_id,
                 api_type="brave_search",
                 cost_eur=cost_eur,
@@ -367,7 +374,7 @@ class BraveSearchClient:
 
             logger.debug(
                 "BRAVE_usage_tracked",
-                user_id=effective_user_id,
+                user_id=user_id,
                 api_calls=api_calls,
                 cost_eur=cost_eur,
             )

@@ -75,14 +75,14 @@ class CostMonitoringDashboard:
                 query = select(UsageEvent).where(
                     and_(
                         UsageEvent.event_type == UsageType.LLM_QUERY,
-                        UsageEvent.cost_eur.isnot(None),
+                        UsageEvent.cost_eur.isnot(None),  # type: ignore[union-attr]
                     )
                 )
 
                 if user_id:
-                    query = query.where(UsageEvent.user_id == user_id)
+                    query = query.where(UsageEvent.user_id == user_id)  # type: ignore[arg-type,comparison-overlap]
 
-                query = query.order_by(UsageEvent.timestamp.desc()).limit(limit).offset(offset)
+                query = query.order_by(UsageEvent.timestamp.desc()).limit(limit).offset(offset)  # type: ignore[union-attr,attr-defined]
 
                 result = await db.execute(query)
                 events = result.scalars().all()
@@ -170,7 +170,7 @@ class CostMonitoringDashboard:
                             UsageEvent.event_type == UsageType.LLM_QUERY,
                             UsageEvent.timestamp >= start_date,
                             UsageEvent.timestamp <= end_date,
-                            UsageEvent.model.isnot(None),
+                            UsageEvent.model.isnot(None),  # type: ignore[union-attr]
                         )
                     )
                     .group_by(UsageEvent.model)
@@ -311,7 +311,7 @@ class CostMonitoringDashboard:
                 )
 
                 if user_id:
-                    query = query.where(UsageEvent.user_id == user_id)
+                    query = query.where(UsageEvent.user_id == user_id)  # type: ignore[arg-type,comparison-overlap]
 
                 result = await db.execute(query)
                 rows = result.all()
@@ -383,7 +383,7 @@ class CostMonitoringDashboard:
                 )
 
                 if user_id:
-                    query = query.where(UsageEvent.user_id == user_id)
+                    query = query.where(UsageEvent.user_id == user_id)  # type: ignore[arg-type,comparison-overlap]
 
                 result = await db.execute(query)
                 rows = result.all()

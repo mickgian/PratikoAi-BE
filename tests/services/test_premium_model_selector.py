@@ -4,12 +4,19 @@ Tests the dynamic model selection for synthesis step per Section 13.10.4.
 """
 
 import asyncio
+import os
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.core.llm.model_config import LLMModelConfig, ModelTier
+
+# Clear env vars that may interfere with tier resolution
+_CLEAR_ENV = {
+    "LLM_MODEL_BASIC": "",
+    "LLM_MODEL_PREMIUM": "",
+}
 
 
 class TestSynthesisContext:
@@ -544,38 +551,29 @@ class TestPremiumModelSelectorExecute:
 
 
 class TestPremiumModelSelectorWithRealConfig:
-    """Integration tests with real LLMModelConfig."""
+    """Integration tests with real LLMModelConfig (DEV-257: uses registry)."""
+
+    @pytest.fixture(autouse=True)
+    def _reset_singletons(self):
+        """Reset singletons before each test to prevent leakage."""
+        from app.core.llm.model_config import reset_model_config
+        from app.core.llm.model_registry import reset_model_registry
+
+        reset_model_config()
+        reset_model_registry()
+        yield
+        reset_model_config()
+        reset_model_registry()
 
     @pytest.fixture
-    def real_config(self, tmp_path):
-        """Create a real LLMModelConfig with test file."""
-        import yaml  # type: ignore[import-untyped]
-
-        config_file = tmp_path / "llm_models.yaml"
-        config_data = {
-            "version": "1.0",
-            "tiers": {
-                "premium": {
-                    "provider": "openai",
-                    "model": "gpt-4o",
-                    "fallback": {
-                        "provider": "anthropic",
-                        "model": "claude-3-5-sonnet-20241022",
-                    },
-                },
-            },
-            "known_models": {
-                "openai": ["gpt-4o", "gpt-4o-mini"],
-                "anthropic": ["claude-3-5-sonnet-20241022"],
-            },
-        }
-        with open(config_file, "w") as f:
-            yaml.dump(config_data, f)
-
-        config = LLMModelConfig(config_path=config_file)
+    @patch.dict(os.environ, _CLEAR_ENV)
+    def real_config(self):
+        """Create a real LLMModelConfig backed by registry."""
+        config = LLMModelConfig()
         config.load()
         return config
 
+    @patch.dict(os.environ, _CLEAR_ENV)
     def test_selector_with_real_config(self, real_config):
         """Test selector works with real LLMModelConfig."""
         from app.services.premium_model_selector import (

@@ -249,6 +249,15 @@ class Settings:
             os.getenv("PRIVACY_PII_CONFIDENCE_THRESHOLD", "0.7")
         )  # PII detection threshold
 
+        # Billing Configuration (DEV-257)
+        self.BILLING_DEFAULT_PLAN = os.getenv("BILLING_DEFAULT_PLAN", "base")
+        self.BILLING_CREDIT_RECHARGE_AMOUNTS = [5, 10, 25, 50, 100]
+
+        # System test user ID for E2E test cost tracking (DEV-257)
+        # Non-numeric user_ids (e.g., "e2e_test_abc") are mapped to this ID.
+        # Must match the seeded user in migration 20260213_seed_system_test_user.
+        self.SYSTEM_TEST_USER_ID: int = 50000
+
         # Stripe Payment Configuration
         self.STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
         self.STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
@@ -536,10 +545,10 @@ SOURCE_AUTHORITY_WEIGHTS = {
 HF_INTENT_MODEL = os.getenv("HF_INTENT_MODEL", "mdeberta")
 
 # HyDE-specific Model Configuration (DEV-251 Phase 5b)
+# Uses provider:model format via resolve_model_from_env().
 # Separate from BASIC tier to allow HyDE to use faster Haiku while other
 # BASIC operations remain on GPT-4o-mini. This reduces HyDE latency from ~20s to ~3-5s.
-HYDE_PROVIDER = os.getenv("HYDE_PROVIDER", "anthropic")
-HYDE_MODEL = os.getenv("HYDE_MODEL", "claude-3-haiku-20240307")
+HYDE_MODEL = os.getenv("HYDE_MODEL", "anthropic:claude-3-haiku-20240307")
 
 # Map short names to full HuggingFace model names
 HF_MODEL_MAP = {

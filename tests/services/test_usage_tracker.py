@@ -92,10 +92,23 @@ class TestTrackLlmUsageUserIdConversion:
             assert isinstance(result.user_id, int)
 
     @pytest.mark.asyncio
-    async def test_track_llm_usage_with_invalid_string_user_id(self, tracker, mock_llm_response):
-        """Test that invalid string user_id raises ValueError."""
-        with pytest.raises(ValueError, match="Invalid user_id"):
-            await tracker.track_llm_usage(
+    async def test_track_llm_usage_with_non_numeric_string_user_id_maps_to_test(self, tracker, mock_llm_response):
+        """Test that non-numeric string user_id maps to SYSTEM_TEST_USER_ID."""
+        with (
+            patch.object(tracker, "_update_user_quota", new_callable=AsyncMock),
+            patch.object(tracker, "_update_daily_summary", new_callable=AsyncMock),
+            patch.object(tracker, "_check_cost_alerts", new_callable=AsyncMock),
+            patch("app.services.usage_tracker.database_service") as mock_db_service,
+        ):
+            mock_db = AsyncMock()
+            mock_db.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_db.__aexit__ = AsyncMock(return_value=None)
+            mock_db.add = MagicMock()
+            mock_db.commit = AsyncMock()
+            mock_db.refresh = AsyncMock()
+            mock_db_service.get_db.return_value = mock_db
+
+            result = await tracker.track_llm_usage(
                 user_id="not-a-number",
                 session_id="session-1",
                 provider="openai",
@@ -104,11 +117,27 @@ class TestTrackLlmUsageUserIdConversion:
                 response_time_ms=500,
             )
 
+            assert result.user_id == 50000
+            assert result.environment == "test"
+
     @pytest.mark.asyncio
-    async def test_track_llm_usage_with_empty_string_user_id(self, tracker, mock_llm_response):
-        """Test that empty string user_id raises ValueError."""
-        with pytest.raises(ValueError, match="Invalid user_id"):
-            await tracker.track_llm_usage(
+    async def test_track_llm_usage_with_empty_string_user_id_maps_to_test(self, tracker, mock_llm_response):
+        """Test that empty string user_id maps to SYSTEM_TEST_USER_ID."""
+        with (
+            patch.object(tracker, "_update_user_quota", new_callable=AsyncMock),
+            patch.object(tracker, "_update_daily_summary", new_callable=AsyncMock),
+            patch.object(tracker, "_check_cost_alerts", new_callable=AsyncMock),
+            patch("app.services.usage_tracker.database_service") as mock_db_service,
+        ):
+            mock_db = AsyncMock()
+            mock_db.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_db.__aexit__ = AsyncMock(return_value=None)
+            mock_db.add = MagicMock()
+            mock_db.commit = AsyncMock()
+            mock_db.refresh = AsyncMock()
+            mock_db_service.get_db.return_value = mock_db
+
+            result = await tracker.track_llm_usage(
                 user_id="",
                 session_id="session-1",
                 provider="openai",
@@ -116,6 +145,9 @@ class TestTrackLlmUsageUserIdConversion:
                 llm_response=mock_llm_response,
                 response_time_ms=500,
             )
+
+            assert result.user_id == 50000
+            assert result.environment == "test"
 
 
 class TestTrackLlmUsageTokenExtraction:
@@ -277,16 +309,27 @@ class TestTrackThirdPartyApiUserIdConversion:
             assert isinstance(result.user_id, int)
 
     @pytest.mark.asyncio
-    async def test_track_third_party_api_with_invalid_user_id(self, tracker):
-        """Test that invalid user_id raises ValueError."""
-        with pytest.raises(ValueError, match="Invalid user_id"):
-            await tracker.track_third_party_api(
+    async def test_track_third_party_api_with_non_numeric_user_id_maps_to_test(self, tracker):
+        """Test that non-numeric user_id maps to SYSTEM_TEST_USER_ID with environment='test'."""
+        with patch("app.services.usage_tracker.database_service") as mock_db_service:
+            mock_db = AsyncMock()
+            mock_db.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_db.__aexit__ = AsyncMock(return_value=None)
+            mock_db.add = MagicMock()
+            mock_db.commit = AsyncMock()
+            mock_db.refresh = AsyncMock()
+            mock_db_service.get_db.return_value = mock_db
+
+            result = await tracker.track_third_party_api(
                 user_id="invalid",
                 session_id="session-1",
                 api_type="brave_search",
                 cost_eur=0.001,
                 response_time_ms=200,
             )
+
+            assert result.user_id == 50000
+            assert result.environment == "test"
 
 
 class TestTrackApiRequestUserIdConversion:

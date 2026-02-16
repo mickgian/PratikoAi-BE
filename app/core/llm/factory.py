@@ -36,49 +36,44 @@ class LLMFactory:
     def _get_provider_configs(self) -> dict[str, dict]:
         """Get provider configurations from settings.
 
+        DEV-257: Model lists are now sourced from the centralized registry
+        instead of being hardcoded per provider.
+
         Returns:
             Dictionary of provider configurations
         """
+        from app.core.llm.model_registry import get_model_registry
+
+        registry = get_model_registry()
         configs = {}
 
-        # OpenAI configuration
-        if hasattr(settings, "LLM_API_KEY") and settings.LLM_API_KEY:
-            configs["openai"] = {
-                "api_key": settings.LLM_API_KEY,
-                "default_model": getattr(settings, "LLM_MODEL", "gpt-4o-mini"),
-                "models": ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
-            }
+        # Provider API key mapping
+        provider_key_map = {
+            "openai": (
+                getattr(settings, "LLM_API_KEY", "") or "",
+                getattr(settings, "LLM_MODEL", "gpt-4o-mini"),
+            ),
+            "anthropic": (
+                getattr(settings, "ANTHROPIC_API_KEY", "") or "",
+                getattr(settings, "ANTHROPIC_MODEL", "claude-3-haiku-20240307"),
+            ),
+            "gemini": (
+                getattr(settings, "GOOGLE_API_KEY", "") or "",
+                getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash"),
+            ),
+            "mistral": (
+                getattr(settings, "MISTRAL_API_KEY", "") or "",
+                getattr(settings, "MISTRAL_MODEL", "mistral-small-latest"),
+            ),
+        }
 
-        # Anthropic configuration
-        if hasattr(settings, "ANTHROPIC_API_KEY") and settings.ANTHROPIC_API_KEY:
-            configs["anthropic"] = {
-                "api_key": settings.ANTHROPIC_API_KEY,
-                "default_model": getattr(settings, "ANTHROPIC_MODEL", "claude-3-haiku-20240307"),
-                "models": [
-                    "claude-3-haiku-20240307",
-                    "claude-3-sonnet-20241022",
-                    "claude-3-5-sonnet-20241022",
-                    "claude-3-opus-20240229",
-                    "claude-sonnet-4-5-20250929",
-                    "claude-opus-4-5-20251101",
-                ],
-            }
-
-        # Gemini configuration (DEV-256)
-        if hasattr(settings, "GOOGLE_API_KEY") and settings.GOOGLE_API_KEY:
-            configs["gemini"] = {
-                "api_key": settings.GOOGLE_API_KEY,
-                "default_model": getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash"),
-                "models": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
-            }
-
-        # Mistral configuration (DEV-256)
-        if hasattr(settings, "MISTRAL_API_KEY") and settings.MISTRAL_API_KEY:
-            configs["mistral"] = {
-                "api_key": settings.MISTRAL_API_KEY,
-                "default_model": getattr(settings, "MISTRAL_MODEL", "mistral-small-latest"),
-                "models": ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
-            }
+        for provider, (api_key, default_model) in provider_key_map.items():
+            if api_key:
+                configs[provider] = {
+                    "api_key": api_key,
+                    "default_model": default_model,
+                    "models": registry.get_model_list_for_provider(provider),
+                }
 
         return configs
 

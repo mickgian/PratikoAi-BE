@@ -18,7 +18,7 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from app.core.llm.model_config import LLMModelConfig, ModelTier
+from app.core.llm.model_config import LLMModelConfig, ModelTier, resolve_model_from_env
 from app.core.logging import logger
 from app.schemas.chat import Message
 from app.schemas.router import ExtractedEntity
@@ -186,8 +186,7 @@ class MultiQueryGeneratorService:
             config: LLM model configuration for accessing model settings
         """
         self._config = config
-        self._model = config.get_model(ModelTier.BASIC)  # Use GPT-4o-mini
-        self._provider = config.get_provider(ModelTier.BASIC)
+        self._provider, self._model = resolve_model_from_env("LLM_MODEL_MULTI_QUERY", config)
         self._timeout_ms = config.get_timeout(ModelTier.BASIC)
         self._temperature = config.get_temperature(ModelTier.BASIC)
 

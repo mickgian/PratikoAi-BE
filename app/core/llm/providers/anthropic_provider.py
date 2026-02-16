@@ -24,7 +24,6 @@ from langfuse import get_client
 
 from app.core.llm.base import (
     LLMCostInfo,
-    LLMModelTier,
     LLMProvider,
     LLMProviderType,
     LLMResponse,
@@ -71,49 +70,11 @@ class AnthropicProvider(LLMProvider):
 
     @property
     def supported_models(self) -> dict[str, LLMCostInfo]:
-        """Get supported Anthropic models and their cost information.
+        """Get supported Anthropic models from the centralized registry (DEV-257)."""
+        from app.core.llm.model_registry import get_model_registry
 
-        Costs are in USD per 1K tokens (vendor pricing).
-        """
-        return {
-            "claude-3-haiku-20240307": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00025,  # $0.25/1M tokens
-                output_cost_per_1k_tokens=0.00125,  # $1.25/1M tokens
-                model_name="claude-3-haiku-20240307",
-                tier=LLMModelTier.BASIC,
-            ),
-            "claude-3-sonnet-20241022": LLMCostInfo(
-                input_cost_per_1k_tokens=0.003,  # $3.00/1M tokens
-                output_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
-                model_name="claude-3-sonnet-20241022",
-                tier=LLMModelTier.STANDARD,
-            ),
-            "claude-3-5-sonnet-20241022": LLMCostInfo(
-                input_cost_per_1k_tokens=0.003,  # $3.00/1M tokens
-                output_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
-                model_name="claude-3-5-sonnet-20241022",
-                tier=LLMModelTier.ADVANCED,
-            ),
-            "claude-3-opus-20240229": LLMCostInfo(
-                input_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
-                output_cost_per_1k_tokens=0.075,  # $75.00/1M tokens
-                model_name="claude-3-opus-20240229",
-                tier=LLMModelTier.PREMIUM,
-            ),
-            # Claude 4.5 family (November 2025)
-            "claude-sonnet-4-5-20250929": LLMCostInfo(
-                input_cost_per_1k_tokens=0.003,  # $3.00/1M tokens
-                output_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
-                model_name="claude-sonnet-4-5-20250929",
-                tier=LLMModelTier.ADVANCED,
-            ),
-            "claude-opus-4-5-20251101": LLMCostInfo(
-                input_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
-                output_cost_per_1k_tokens=0.075,  # $75.00/1M tokens
-                model_name="claude-opus-4-5-20251101",
-                tier=LLMModelTier.PREMIUM,
-            ),
-        }
+        registry = get_model_registry()
+        return {m.model_name: m.to_cost_info() for m in registry.get_models_by_provider("anthropic")}
 
     def _convert_messages_to_anthropic(self, messages: list[Message]) -> tuple[str, list[dict[str, Any]]]:
         """Convert messages to Anthropic format.

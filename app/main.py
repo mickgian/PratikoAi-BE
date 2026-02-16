@@ -108,6 +108,17 @@ async def lifespan(app: FastAPI):
         context_top_k=CONTEXT_TOP_K,
     )
 
+    # DEV-257: Validate model registry at startup
+    from app.core.llm.model_registry import get_model_registry
+
+    registry = get_model_registry()
+    registry.validate_startup()
+
+    # DEV-257: Sync billing plans from config YAML
+    from app.services.billing_plan_service import billing_plan_service
+
+    await billing_plan_service.sync_plans_from_config()
+
     # Start the scheduler service for RSS feed collection
     from app.services.scheduler_service import (
         start_scheduler,
@@ -206,6 +217,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 # Set up middleware
+# NOTE: Starlette processes middleware in REVERSE order of addition.
+# CORS must be added LAST so it is the OUTERMOST middleware,
+# ensuring CORS headers are present on ALL responses (including 500s).
+app.add_middleware(PrometheusMiddleware)
+app.add_middleware(CostOptimizationMiddleware)
+app.add_middleware(CostLimiterMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -213,11 +230,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Add cost limiter middleware for payment enforcement
-app.add_middleware(CostLimiterMiddleware)
-app.add_middleware(CostOptimizationMiddleware)
-app.add_middleware(PrometheusMiddleware)
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)

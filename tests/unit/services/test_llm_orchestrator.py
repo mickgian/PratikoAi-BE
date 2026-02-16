@@ -14,6 +14,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.llm.base import LLMModelTier
+
 # These imports will fail initially (RED phase) until implementation exists
 from app.services.llm_orchestrator import (
     ComplexityContext,
@@ -1055,19 +1057,49 @@ class TestProductionLLMModelConfig:
         # Model should be just the model name, not the full provider:model
         assert ":" not in config.model
 
-    @patch("app.services.llm_orchestrator.settings")
-    def test_model_config_respects_custom_env(self, mock_settings):
-        """ModelConfig should respect custom PRODUCTION_LLM_MODEL values."""
-        mock_settings.PRODUCTION_LLM_MODEL = "anthropic:claude-3-5-sonnet-20241022"
+    @patch("app.core.llm.model_registry.get_model_registry")
+    def test_model_config_respects_custom_env(self, mock_get_registry):
+        """ModelConfig should respect custom model via registry."""
+        from app.core.llm.model_registry import ModelEntry
+
+        mock_entry = ModelEntry(
+            model_id="anthropic:claude-3-5-sonnet-20241022",
+            provider="anthropic",
+            model_name="claude-3-5-sonnet-20241022",
+            display_name="Claude 3.5 Sonnet",
+            tier=LLMModelTier.PREMIUM,
+            status="active",
+            context_window=200000,
+            input_cost_per_1k=0.003,
+            output_cost_per_1k=0.015,
+        )
+        mock_registry = MagicMock()
+        mock_registry.resolve_production_model.return_value = mock_entry
+        mock_get_registry.return_value = mock_registry
 
         config = ModelConfig.for_complexity(QueryComplexity.SIMPLE)
 
         assert config.model == "claude-3-5-sonnet-20241022"
 
-    @patch("app.services.llm_orchestrator.settings")
-    def test_model_config_handles_model_without_prefix(self, mock_settings):
-        """ModelConfig should handle legacy model format without provider prefix."""
-        mock_settings.PRODUCTION_LLM_MODEL = "gpt-4o-mini"
+    @patch("app.core.llm.model_registry.get_model_registry")
+    def test_model_config_handles_model_without_prefix(self, mock_get_registry):
+        """ModelConfig should handle model name returned by registry."""
+        from app.core.llm.model_registry import ModelEntry
+
+        mock_entry = ModelEntry(
+            model_id="openai:gpt-4o-mini",
+            provider="openai",
+            model_name="gpt-4o-mini",
+            display_name="GPT-4o Mini",
+            tier=LLMModelTier.BASIC,
+            status="active",
+            context_window=128000,
+            input_cost_per_1k=0.00015,
+            output_cost_per_1k=0.0006,
+        )
+        mock_registry = MagicMock()
+        mock_registry.resolve_production_model.return_value = mock_entry
+        mock_get_registry.return_value = mock_registry
 
         config = ModelConfig.for_complexity(QueryComplexity.SIMPLE)
 

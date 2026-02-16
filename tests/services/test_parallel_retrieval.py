@@ -1282,9 +1282,7 @@ class TestAuthoritySearchSemanticExpansion:
 
         # At least one query should contain the semantic expansions
         has_expansion = any("definizione agevolata" in q or "pace fiscale" in q for q in all_queries)
-        assert has_expansion, (
-            f"Authority search should expand query with semantic terms. " f"Queries used: {all_queries}"
-        )
+        assert has_expansion, f"Authority search should expand query with semantic terms. Queries used: {all_queries}"
 
     @pytest.mark.asyncio
     async def test_authority_search_no_expansion_when_semantic_expansions_none(self):
@@ -1348,3 +1346,244 @@ class TestAuthoritySearchSemanticExpansion:
             for q in all_queries:
                 # Query should just be the original (no extra terms appended)
                 assert q == "rottamazione quinquies"
+
+
+class TestBraveCostTracking:
+    """DEV-257: Tests for Brave Search cost tracking in _search_brave."""
+
+    @pytest.mark.asyncio
+    async def test_search_brave_tracks_cost_when_user_id_provided(self):
+        """DEV-257: _search_brave should track Brave API costs via usage_tracker."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService(
+            search_service=MagicMock(),
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="test",
+            vector_query="test",
+            entity_query="test",
+            original_query="rottamazione quinquies",
+        )
+
+        # Mock httpx response for Brave API
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "web": {
+                "results": [
+                    {"title": "Result 1", "description": "Snippet 1", "url": "https://example.com/1"},
+                ]
+            },
+            "summarizer": {},  # No summary key → 1 API call
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.core.config.settings") as mock_settings,
+            patch("httpx.AsyncClient", return_value=mock_client),
+            patch.object(service, "_track_brave_cost", new_callable=AsyncMock) as mock_track,
+        ):
+            mock_settings.BRAVE_SEARCH_API_KEY = "test-key"  # pragma: allowlist secret
+            mock_settings.BRAVE_SEARCH_WEIGHT = 0.3
+
+            await service._search_brave(
+                queries,
+                user_id="42",
+                session_id="sess-123",
+            )
+
+            # _track_brave_cost should be called with correct params
+            mock_track.assert_called_once()
+            call_kwargs = mock_track.call_args.kwargs
+            assert call_kwargs["user_id"] == "42"
+            assert call_kwargs["session_id"] == "sess-123"
+            assert call_kwargs["api_calls"] == 1  # No AI summary → 1 call
+            assert call_kwargs["latency_ms"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_search_brave_skips_tracking_when_no_user_id(self):
+        """DEV-257: _search_brave should skip cost tracking when user_id is None."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService(
+            search_service=MagicMock(),
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="test",
+            vector_query="test",
+            entity_query="test",
+            original_query="rottamazione quinquies",
+        )
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "web": {"results": []},
+            "summarizer": {},
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.core.config.settings") as mock_settings,
+            patch("httpx.AsyncClient", return_value=mock_client),
+            patch.object(service, "_track_brave_cost", new_callable=AsyncMock) as mock_track,
+        ):
+            mock_settings.BRAVE_SEARCH_API_KEY = "test-key"  # pragma: allowlist secret
+            mock_settings.BRAVE_SEARCH_WEIGHT = 0.3
+
+            # No user_id → should skip tracking
+            await service._search_brave(queries, user_id=None, session_id=None)
+
+            mock_track.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_search_brave_counts_ai_summary_as_extra_api_call(self):
+        """DEV-257: AI summary response should count as 2 API calls."""
+        from app.services.multi_query_generator import QueryVariants
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService(
+            search_service=MagicMock(),
+            embedding_service=None,
+        )
+
+        queries = QueryVariants(
+            bm25_query="test",
+            vector_query="test",
+            entity_query="test",
+            original_query="test query",
+        )
+
+        # First response: search with summarizer key
+        search_response = MagicMock()
+        search_response.status_code = 200
+        search_response.json.return_value = {
+            "web": {"results": [{"title": "R1", "description": "S1", "url": "https://example.com"}]},
+            "summarizer": {"key": "sum-key-123"},
+        }
+        search_response.raise_for_status = MagicMock()
+
+        # Second response: summarizer
+        summary_response = MagicMock()
+        summary_response.status_code = 200
+        summary_response.json.return_value = {
+            "status": "complete",
+            "summary": {"text": "AI summary of results"},
+        }
+        summary_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get.side_effect = [search_response, summary_response]
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.core.config.settings") as mock_settings,
+            patch("httpx.AsyncClient", return_value=mock_client),
+            patch.object(service, "_track_brave_cost", new_callable=AsyncMock) as mock_track,
+        ):
+            mock_settings.BRAVE_SEARCH_API_KEY = "test-key"  # pragma: allowlist secret
+            mock_settings.BRAVE_SEARCH_WEIGHT = 0.3
+
+            docs = await service._search_brave(
+                queries,
+                user_id="42",
+                session_id="sess-123",
+            )
+
+            # Should have AI summary doc
+            assert any(d.get("metadata", {}).get("is_ai_synthesis") for d in docs)
+
+            # Should count 2 API calls (search + summarizer)
+            mock_track.assert_called_once()
+            assert mock_track.call_args.kwargs["api_calls"] == 2
+
+    @pytest.mark.asyncio
+    async def test_track_brave_cost_calls_usage_tracker(self):
+        """DEV-257: _track_brave_cost should delegate to usage_tracker.track_third_party_api."""
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService(
+            search_service=MagicMock(),
+            embedding_service=None,
+        )
+
+        with patch("app.services.usage_tracker.usage_tracker") as mock_tracker:
+            mock_tracker.track_third_party_api = AsyncMock()
+
+            await service._track_brave_cost(
+                user_id="42",
+                session_id="sess-123",
+                api_calls=2,
+                latency_ms=150,
+            )
+
+            mock_tracker.track_third_party_api.assert_called_once_with(
+                user_id="42",
+                session_id="sess-123",
+                api_type="brave_search",
+                cost_eur=2 * 0.003,
+                response_time_ms=150,
+                request_count=2,
+                error_occurred=False,
+            )
+
+    @pytest.mark.asyncio
+    async def test_track_brave_cost_skips_when_no_user_id(self):
+        """DEV-257: _track_brave_cost should skip when user_id is None."""
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService(
+            search_service=MagicMock(),
+            embedding_service=None,
+        )
+
+        with patch("app.services.usage_tracker.usage_tracker") as mock_tracker:
+            mock_tracker.track_third_party_api = AsyncMock()
+
+            await service._track_brave_cost(
+                user_id=None,
+                session_id="sess-123",
+                api_calls=1,
+                latency_ms=100,
+            )
+
+            mock_tracker.track_third_party_api.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_track_brave_cost_does_not_raise_on_failure(self):
+        """DEV-257: _track_brave_cost should swallow errors to not break search."""
+        from app.services.parallel_retrieval import ParallelRetrievalService
+
+        service = ParallelRetrievalService(
+            search_service=MagicMock(),
+            embedding_service=None,
+        )
+
+        with patch("app.services.usage_tracker.usage_tracker") as mock_tracker:
+            mock_tracker.track_third_party_api = AsyncMock(side_effect=RuntimeError("DB connection failed"))
+
+            # Should NOT raise
+            await service._track_brave_cost(
+                user_id="42",
+                session_id="sess-123",
+                api_calls=1,
+                latency_ms=100,
+            )

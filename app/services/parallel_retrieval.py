@@ -240,6 +240,8 @@ class ParallelRetrievalService:
         top_k: int = DEFAULT_TOP_K,
         messages: list[dict] | None = None,
         topic_keywords: list[str] | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
     ) -> RetrievalResult:
         """Execute parallel retrieval and fuse results.
 
@@ -260,6 +262,8 @@ class ParallelRetrievalService:
             top_k: Number of top documents to return
             messages: Conversation history for context-aware keyword ordering
             topic_keywords: Pre-extracted topic keywords from state (Phase 5.3)
+            user_id: DEV-257: User ID for Brave API cost tracking
+            session_id: DEV-257: Session ID for Brave API cost tracking
 
         Returns:
             RetrievalResult with ranked documents
@@ -290,7 +294,10 @@ class ParallelRetrievalService:
             # Execute all searches in parallel
             # DEV-245 Phase 3.9: Pass messages for context-aware keyword ordering
             # DEV-245 Phase 5.3: Pass topic_keywords for long conversation support
-            search_results = await self._execute_parallel_searches(queries, hyde, messages, topic_keywords)
+            # DEV-257: Pass user_id/session_id for Brave cost tracking
+            search_results = await self._execute_parallel_searches(
+                queries, hyde, messages, topic_keywords, user_id, session_id
+            )
 
             # Combine using RRF
             fused = self._rrf_fusion(search_results)
@@ -392,6 +399,8 @@ class ParallelRetrievalService:
         hyde: HyDEResult,
         messages: list[dict] | None = None,
         topic_keywords: list[str] | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
     ) -> list[list[dict[str, Any]]]:
         """Execute searches with KB sequential, Brave parallel.
 
@@ -404,12 +413,15 @@ class ParallelRetrievalService:
 
         DEV-245 Phase 3.9: Passes messages to Brave search for context-aware keyword ordering.
         DEV-245 Phase 5.3: Passes topic_keywords for long conversation support.
+        DEV-257: Passes user_id/session_id for Brave API cost tracking.
 
         Args:
             queries: Query variants
             hyde: HyDE result
             messages: Conversation history for context-aware keyword ordering
             topic_keywords: Pre-extracted topic keywords from state (Phase 5.3)
+            user_id: DEV-257: User ID for Brave API cost tracking
+            session_id: DEV-257: Session ID for Brave API cost tracking
 
         Returns:
             List of search results [bm25, vector, hyde, authority, brave]
@@ -429,7 +441,12 @@ class ParallelRetrievalService:
         # Start Brave search in background (doesn't use DB session)
         # DEV-245 Phase 3.9: Pass messages for context-aware keyword ordering
         # DEV-245 Phase 5.3: Pass topic_keywords for long conversation support
-        brave_task = asyncio.create_task(self._search_brave(queries, messages=messages, topic_keywords=topic_keywords))
+        # DEV-257: Pass user_id/session_id for cost tracking
+        brave_task = asyncio.create_task(
+            self._search_brave(
+                queries, messages=messages, topic_keywords=topic_keywords, user_id=user_id, session_id=session_id
+            )
+        )
 
         # Run KB searches sequentially
         source_counts: dict[str, int] = {}
@@ -941,6 +958,8 @@ class ParallelRetrievalService:
         max_results: int = 5,
         messages: list[dict] | None = None,
         topic_keywords: list[str] | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Search the web using Brave Search API for Parallel Hybrid RAG.
 
@@ -951,11 +970,14 @@ class ParallelRetrievalService:
         KB remains authoritative while web provides recent/practical context.
 
         DEV-245 Phase 5.3: Added topic_keywords for long conversation support.
+        DEV-257: Added user_id/session_id for Brave API cost tracking.
 
         Args:
             queries: Query variants containing original_query
             max_results: Maximum number of web results to return
             topic_keywords: Pre-extracted topic keywords from state (Phase 5.3)
+            user_id: DEV-257: User ID for cost tracking
+            session_id: DEV-257: Session ID for cost tracking
 
         Returns:
             List of web search results in standard document format
@@ -1082,11 +1104,23 @@ class ParallelRetrievalService:
 
             # DEV-245: Log API latency and results for monitoring
             api_latency_ms = (time.perf_counter() - api_start_time) * 1000
+
+            # DEV-257: Track Brave API cost
+            has_ai_summary = any(d.get("metadata", {}).get("is_ai_synthesis") for d in docs)
+            api_calls = 1 + (1 if has_ai_summary else 0)
+            if user_id:
+                await self._track_brave_cost(
+                    user_id=user_id,
+                    session_id=session_id,
+                    api_calls=api_calls,
+                    latency_ms=round(api_latency_ms),
+                )
+
             logger.info(
                 "brave_parallel_search_complete",
                 query=query[:50],
                 results_count=len(docs),
-                has_ai_summary=any(d.get("metadata", {}).get("is_ai_synthesis") for d in docs),
+                has_ai_summary=has_ai_summary,
                 latency_ms=round(api_latency_ms, 2),
             )
 
@@ -1099,6 +1133,65 @@ class ParallelRetrievalService:
                 error_type=type(e).__name__,
             )
             return []
+
+    # DEV-257: Brave Search API cost per query (~$3/1000 queries)
+    BRAVE_COST_PER_QUERY_EUR = 0.003
+
+    async def _track_brave_cost(
+        self,
+        user_id: str | None,
+        session_id: str | None,
+        api_calls: int,
+        latency_ms: int,
+    ) -> None:
+        """Track Brave Search API cost for usage reporting.
+
+        DEV-257: Mirrors BraveSearchClient._track_brave_api_usage() pattern.
+        Wraps in try/except so tracking failures don't break search.
+
+        Args:
+            user_id: User ID (skips if None)
+            session_id: Session ID
+            api_calls: Number of API calls (1 for search, +1 if AI summary)
+            latency_ms: Total API response time in milliseconds
+        """
+        if not user_id:
+            logger.debug(
+                "brave_parallel_cost_tracking_skipped",
+                reason="no_user_id",
+                api_calls=api_calls,
+            )
+            return
+
+        try:
+            from app.services.usage_tracker import usage_tracker
+
+            cost_eur = api_calls * self.BRAVE_COST_PER_QUERY_EUR
+            effective_session_id = session_id or "parallel_retrieval"
+
+            await usage_tracker.track_third_party_api(
+                user_id=user_id,
+                session_id=effective_session_id,
+                api_type="brave_search",
+                cost_eur=cost_eur,
+                response_time_ms=latency_ms,
+                request_count=api_calls,
+                error_occurred=False,
+            )
+
+            logger.debug(
+                "brave_parallel_cost_tracked",
+                user_id=user_id,
+                api_calls=api_calls,
+                cost_eur=cost_eur,
+            )
+
+        except Exception as e:
+            logger.warning(
+                "brave_parallel_cost_tracking_failed",
+                error=str(e),
+                user_id=user_id,
+            )
 
     def _rrf_fusion(
         self,

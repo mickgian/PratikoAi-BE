@@ -15,7 +15,6 @@ from langfuse import get_client
 
 from app.core.llm.base import (
     LLMCostInfo,
-    LLMModelTier,
     LLMProvider,
     LLMProviderType,
     LLMResponse,
@@ -61,48 +60,11 @@ class MistralProvider(LLMProvider):
 
     @property
     def supported_models(self) -> dict[str, LLMCostInfo]:
-        """Get supported Mistral models and their cost information.
+        """Get supported Mistral models from the centralized registry (DEV-257)."""
+        from app.core.llm.model_registry import get_model_registry
 
-        Costs are in USD per 1K tokens (vendor pricing).
-        """
-        return {
-            "mistral-small-latest": LLMCostInfo(
-                input_cost_per_1k_tokens=0.0002,  # $0.20/1M tokens
-                output_cost_per_1k_tokens=0.0006,  # $0.60/1M tokens
-                model_name="mistral-small-latest",
-                tier=LLMModelTier.BASIC,
-            ),
-            "mistral-medium-latest": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00275,  # $2.75/1M tokens
-                output_cost_per_1k_tokens=0.00825,  # $8.25/1M tokens
-                model_name="mistral-medium-latest",
-                tier=LLMModelTier.STANDARD,
-            ),
-            "mistral-large-latest": LLMCostInfo(
-                input_cost_per_1k_tokens=0.003,  # $3.00/1M tokens
-                output_cost_per_1k_tokens=0.009,  # $9.00/1M tokens
-                model_name="mistral-large-latest",
-                tier=LLMModelTier.ADVANCED,
-            ),
-            "open-mistral-7b": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00025,  # $0.25/1M tokens
-                output_cost_per_1k_tokens=0.00025,  # $0.25/1M tokens
-                model_name="open-mistral-7b",
-                tier=LLMModelTier.BASIC,
-            ),
-            "open-mixtral-8x7b": LLMCostInfo(
-                input_cost_per_1k_tokens=0.0007,  # $0.70/1M tokens
-                output_cost_per_1k_tokens=0.0007,  # $0.70/1M tokens
-                model_name="open-mixtral-8x7b",
-                tier=LLMModelTier.STANDARD,
-            ),
-            "codestral-latest": LLMCostInfo(
-                input_cost_per_1k_tokens=0.0003,  # $0.30/1M tokens
-                output_cost_per_1k_tokens=0.0009,  # $0.90/1M tokens
-                model_name="codestral-latest",
-                tier=LLMModelTier.STANDARD,
-            ),
-        }
+        registry = get_model_registry()
+        return {m.model_name: m.to_cost_info() for m in registry.get_models_by_provider("mistral")}
 
     def _convert_messages_to_mistral(self, messages: list[Message]) -> list[dict[str, str]]:
         """Convert messages to Mistral format.
@@ -192,7 +154,7 @@ class MistralProvider(LLMProvider):
                 content=content,
                 model=self.model,
                 provider=self.provider_type.value,
-                tokens_used={"input": input_tokens, "output": output_tokens} if input_tokens else None,
+                tokens_used={"input": input_tokens, "output": output_tokens} if input_tokens else None,  # type: ignore[dict-item]
                 cost_estimate=cost_estimate,
                 finish_reason=choice.finish_reason,
             )
@@ -207,7 +169,7 @@ class MistralProvider(LLMProvider):
             )
             raise
 
-    async def stream_completion(
+    async def stream_completion(  # type: ignore[override]
         self,
         messages: list[Message],
         tools: list[Any] | None = None,
@@ -339,7 +301,7 @@ class MistralProvider(LLMProvider):
             {
                 "supports_json_mode": True,
                 "supports_function_calling": "large" in self.model,
-                "max_context_length": context_lengths.get(self.model, 32000),
+                "max_context_length": context_lengths.get(self.model, 32000),  # type: ignore[dict-item]
                 "supports_vision": False,
             }
         )

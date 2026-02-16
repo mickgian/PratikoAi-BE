@@ -1,59 +1,332 @@
-# LLM Model Configuration for PratikoAI
-# Reference: PRATIKO_1.5_REFERENCE.md Section 13.10
+# LLM Model Registry for PratikoAI
+# Version 2.0 - Centralized model catalog (DEV-257)
 #
-# This file configures tiered LLM model selection:
-# - BASIC tier: For routing, query expansion, HyDE (cost-optimized)
-# - PREMIUM tier: For critical synthesis (quality-optimized)
+# Single source of truth for all LLM model metadata:
+# - Model costs, tiers, capabilities
+# - Aliases for stable env var references
+# - Pipeline tier configurations
+# - Provider settings
 #
-# Environment variables override these values:
-# - LLM_MODEL_BASIC: Override basic tier model
-# - LLM_MODEL_PREMIUM: Override premium tier model
-# - LLM_PROVIDER_BASIC: Override basic tier provider
-# - LLM_PROVIDER_PREMIUM: Override premium tier provider
+# Environment variable overrides:
+# - PRODUCTION_LLM_MODEL: Alias or model_id for production chat
+# - LLM_MODEL_BASIC: Override basic pipeline tier
+# - LLM_MODEL_PREMIUM: Override premium pipeline tier
 
-version: "1.0"
+version: "2.0"
 
-# Tier configurations
-tiers:
-  # BASIC tier: Used for routing, query expansion, HyDE
-  # Lower cost, faster response times
-  basic:
+# =============================================================================
+# Full Model Catalog
+# =============================================================================
+# Keys are model_id in format "provider:model_name"
+# Costs are USD per 1K tokens (matching provider pricing pages)
+
+models:
+  # --- OpenAI ---
+  openai:gpt-4o-mini:
     provider: openai
-    model: gpt-4o-mini
+    display_name: "GPT-4o Mini"
+    tier: basic
+    status: active
+    context_window: 128000
+    costs:
+      input_per_1k_tokens: 0.00015
+      output_per_1k_tokens: 0.0006
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  openai:gpt-4o:
+    provider: openai
+    display_name: "GPT-4o"
+    tier: advanced
+    status: active
+    context_window: 128000
+    costs:
+      input_per_1k_tokens: 0.005
+      output_per_1k_tokens: 0.015
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  openai:gpt-4-turbo:
+    provider: openai
+    display_name: "GPT-4 Turbo"
+    tier: premium
+    status: active
+    context_window: 128000
+    costs:
+      input_per_1k_tokens: 0.01
+      output_per_1k_tokens: 0.03
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  openai:gpt-3.5-turbo:
+    provider: openai
+    display_name: "GPT-3.5 Turbo"
+    tier: basic
+    status: active
+    context_window: 16385
+    costs:
+      input_per_1k_tokens: 0.0005
+      output_per_1k_tokens: 0.0015
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  # --- Anthropic ---
+  anthropic:claude-3-haiku-20240307:
+    provider: anthropic
+    display_name: "Claude 3 Haiku"
+    tier: basic
+    status: active
+    context_window: 200000
+    costs:
+      input_per_1k_tokens: 0.00025
+      output_per_1k_tokens: 0.00125
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  anthropic:claude-3-sonnet-20241022:
+    provider: anthropic
+    display_name: "Claude 3 Sonnet"
+    tier: standard
+    status: active
+    context_window: 200000
+    costs:
+      input_per_1k_tokens: 0.003
+      output_per_1k_tokens: 0.015
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  anthropic:claude-3-5-sonnet-20241022:
+    provider: anthropic
+    display_name: "Claude 3.5 Sonnet"
+    tier: advanced
+    status: active
+    context_window: 200000
+    costs:
+      input_per_1k_tokens: 0.003
+      output_per_1k_tokens: 0.015
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  anthropic:claude-3-opus-20240229:
+    provider: anthropic
+    display_name: "Claude 3 Opus"
+    tier: premium
+    status: active
+    context_window: 200000
+    costs:
+      input_per_1k_tokens: 0.015
+      output_per_1k_tokens: 0.075
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  anthropic:claude-sonnet-4-5-20250929:
+    provider: anthropic
+    display_name: "Claude 4.5 Sonnet"
+    tier: advanced
+    status: active
+    context_window: 200000
+    costs:
+      input_per_1k_tokens: 0.003
+      output_per_1k_tokens: 0.015
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  anthropic:claude-opus-4-5-20251101:
+    provider: anthropic
+    display_name: "Claude 4.5 Opus"
+    tier: premium
+    status: active
+    context_window: 200000
+    costs:
+      input_per_1k_tokens: 0.015
+      output_per_1k_tokens: 0.075
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  # --- Gemini ---
+  gemini:gemini-2.5-flash:
+    provider: gemini
+    display_name: "Gemini 2.5 Flash"
+    tier: basic
+    status: disabled  # DEV-256: Deprecated SDK - needs migration to google.genai
+    context_window: 1048576
+    costs:
+      input_per_1k_tokens: 0.000075
+      output_per_1k_tokens: 0.0003
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  gemini:gemini-2.5-pro:
+    provider: gemini
+    display_name: "Gemini 2.5 Pro"
+    tier: advanced
+    status: disabled
+    context_window: 1048576
+    costs:
+      input_per_1k_tokens: 0.00125
+      output_per_1k_tokens: 0.005
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  gemini:gemini-2.0-flash:
+    provider: gemini
+    display_name: "Gemini 2.0 Flash"
+    tier: standard
+    status: disabled
+    context_window: 1048576
+    costs:
+      input_per_1k_tokens: 0.000075
+      output_per_1k_tokens: 0.0003
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  # --- Mistral ---
+  mistral:mistral-small-latest:
+    provider: mistral
+    display_name: "Mistral Small"
+    tier: basic
+    status: active
+    context_window: 128000
+    costs:
+      input_per_1k_tokens: 0.0002
+      output_per_1k_tokens: 0.0006
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  mistral:mistral-medium-latest:
+    provider: mistral
+    display_name: "Mistral Medium"
+    tier: standard
+    status: active
+    context_window: 128000
+    costs:
+      input_per_1k_tokens: 0.00275
+      output_per_1k_tokens: 0.00825
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  mistral:mistral-large-latest:
+    provider: mistral
+    display_name: "Mistral Large"
+    tier: advanced
+    status: active
+    context_window: 128000
+    costs:
+      input_per_1k_tokens: 0.003
+      output_per_1k_tokens: 0.009
+    capabilities:
+      supports_tools: true
+      supports_streaming: true
+
+  mistral:open-mistral-7b:
+    provider: mistral
+    display_name: "Mistral 7B"
+    tier: basic
+    status: active
+    context_window: 32000
+    costs:
+      input_per_1k_tokens: 0.00025
+      output_per_1k_tokens: 0.00025
+    capabilities:
+      supports_tools: false
+      supports_streaming: true
+
+  mistral:open-mixtral-8x7b:
+    provider: mistral
+    display_name: "Mixtral 8x7B"
+    tier: standard
+    status: active
+    context_window: 32000
+    costs:
+      input_per_1k_tokens: 0.0007
+      output_per_1k_tokens: 0.0007
+    capabilities:
+      supports_tools: false
+      supports_streaming: true
+
+  mistral:codestral-latest:
+    provider: mistral
+    display_name: "Codestral"
+    tier: standard
+    status: active
+    context_window: 32000
+    costs:
+      input_per_1k_tokens: 0.0003
+      output_per_1k_tokens: 0.0009
+    capabilities:
+      supports_tools: false
+      supports_streaming: true
+
+# =============================================================================
+# Aliases - Logical names for stable env var references
+# =============================================================================
+# Format: alias_name -> model_id
+
+aliases:
+  production-chat: "mistral:mistral-large-latest"
+  basic-routing: "openai:gpt-4o-mini"
+  premium-synthesis: "openai:gpt-4o"
+  hyde-generation: "anthropic:claude-3-haiku-20240307"
+  comparison-best-openai: "openai:gpt-4-turbo"
+  comparison-best-anthropic: "anthropic:claude-opus-4-5-20251101"
+  comparison-best-mistral: "mistral:mistral-large-latest"
+
+# =============================================================================
+# Pipeline Tiers - Used by LLMModelConfig for tiered model selection
+# =============================================================================
+# Replaces old "tiers" section from v1.0
+
+pipeline_tiers:
+  basic:
+    alias: "basic-routing"
     timeout_ms: 30000
     temperature: 0.3
     max_tokens: 2000
 
-  # PREMIUM tier: Used for critical synthesis (Step 64)
-  # Higher quality, supports complex reasoning
   premium:
-    provider: openai
-    model: gpt-4o
+    alias: "premium-synthesis"
     timeout_ms: 60000
     temperature: 0.2
     max_tokens: 4000
-    # Fallback to Anthropic if OpenAI fails
     fallback:
-      provider: anthropic
-      model: claude-3-5-sonnet-20241022
+      alias: "anthropic:claude-3-5-sonnet-20241022"
       timeout_ms: 90000
 
-# Default values for any missing tier configuration
+# =============================================================================
+# Provider Settings
+# =============================================================================
+
+provider_settings:
+  best_models:
+    openai: "openai:gpt-4-turbo"
+    anthropic: "anthropic:claude-opus-4-5-20251101"
+    mistral: "mistral:mistral-large-latest"
+
+  disabled_providers:
+    - gemini  # DEV-256: Deprecated SDK - needs migration to google.genai
+
+# =============================================================================
+# Defaults (fallback when config is missing)
+# =============================================================================
+
 defaults:
   provider: openai
   model: gpt-4o-mini
   timeout_ms: 30000
   temperature: 0.3
   max_tokens: 2000
-
-# Known valid models for validation
-known_models:
-  openai:
-    - gpt-4o-mini
-    - gpt-4o
-    - gpt-4-turbo
-    - gpt-3.5-turbo
-  anthropic:
-    - claude-3-5-sonnet-20241022
-    - claude-3-haiku-20240307
-    - claude-3-opus-20240229

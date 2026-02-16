@@ -81,23 +81,27 @@ class UsageTracker:
         """Convert user_id to int for database FK constraint.
 
         DEV-257: UsageEvent.user_id is FK to user.id (int), but callers often
-        pass string user_ids from session data.
+        pass string user_ids from session data. Non-numeric IDs (e.g.,
+        "e2e_test_abc" from E2E tests) are mapped to SYSTEM_TEST_USER_ID
+        so costs are tracked instead of silently lost.
 
         Args:
             user_id: User identifier as string or int
 
         Returns:
-            int: User ID as integer
-
-        Raises:
-            ValueError: If user_id cannot be converted to int
+            int: User ID as integer (SYSTEM_TEST_USER_ID for non-numeric)
         """
         if isinstance(user_id, int):
             return user_id
         try:
             return int(user_id)
-        except (ValueError, TypeError) as e:
-            raise ValueError(f"Invalid user_id: {user_id!r} - must be numeric") from e
+        except (ValueError, TypeError):
+            logger.info(
+                "non_numeric_user_id_mapped_to_test",
+                original_user_id=user_id,
+                mapped_to=settings.SYSTEM_TEST_USER_ID,
+            )
+            return settings.SYSTEM_TEST_USER_ID
 
     async def track_llm_usage(
         self,
@@ -136,6 +140,8 @@ class UsageTracker:
         """
         # DEV-257: Convert user_id to int (UsageEvent.user_id is FK to user.id)
         user_id_int = self._convert_user_id(user_id)
+        is_test_event = user_id_int == settings.SYSTEM_TEST_USER_ID
+        event_environment = "test" if is_test_event else settings.ENVIRONMENT.value
 
         try:
             # Extract token information
@@ -154,7 +160,7 @@ class UsageTracker:
                 user_id=user_id_int,
                 session_id=session_id,
                 event_type=UsageType.LLM_QUERY,
-                environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
+                environment=event_environment,
                 provider=provider,
                 model=model,
                 input_tokens=input_tokens if not cache_hit else 0,
@@ -172,19 +178,33 @@ class UsageTracker:
             )
 
             # Save to database
-            async with database_service.get_db() as db:  # type: ignore[attr-defined]  # type: ignore[attr-defined]
+            async with database_service.get_db() as db:
                 db.add(usage_event)
                 await db.commit()
                 await db.refresh(usage_event)
 
-            # Update quotas and check limits
-            await self._update_user_quota(user_id_int, cost_eur, total_tokens)
+            # DEV-257: Skip billing/quota updates for test events
+            if not is_test_event:
+                await self._update_user_quota(user_id_int, cost_eur, total_tokens)
+                await self._update_daily_summary(user_id_int, usage_event)
+                await self._check_cost_alerts(user_id_int, cost_eur)
 
-            # Update daily summary
-            await self._update_daily_summary(user_id_int, usage_event)
+                # Dual-write to rolling windows for billing
+                if cost_eur > 0:
+                    try:
+                        from app.services.rolling_window_service import rolling_window_service
 
-            # Check for alerts
-            await self._check_cost_alerts(user_id_int, cost_eur)
+                        await rolling_window_service.record_usage(
+                            user_id=user_id_int,
+                            cost_eur=cost_eur,
+                            usage_event_id=usage_event.id,
+                        )
+                    except Exception as rw_err:
+                        logger.warning(
+                            "rolling_window_write_failed",
+                            user_id=user_id_int,
+                            error=str(rw_err),
+                        )
 
             logger.info(
                 "usage_tracked",
@@ -195,6 +215,7 @@ class UsageTracker:
                 tokens=total_tokens,
                 cache_hit=cache_hit,
                 response_time_ms=response_time_ms,
+                environment=event_environment,
             )
 
             return usage_event
@@ -206,7 +227,7 @@ class UsageTracker:
                 user_id=user_id_int,
                 session_id=session_id,
                 event_type=UsageType.LLM_QUERY,
-                environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
+                environment=event_environment,
                 error_occurred=True,
                 error_type=str(e),
             )
@@ -244,12 +265,14 @@ class UsageTracker:
         """
         # DEV-257: Convert user_id to int (UsageEvent.user_id is FK to user.id)
         user_id_int = self._convert_user_id(user_id)
+        is_test_event = user_id_int == settings.SYSTEM_TEST_USER_ID
+        event_environment = "test" if is_test_event else settings.ENVIRONMENT.value
 
         usage_event = UsageEvent(
             user_id=user_id_int,
             session_id=session_id,
             event_type=UsageType.API_REQUEST,
-            environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
+            environment=event_environment,
             response_time_ms=response_time_ms,
             request_size=request_size,
             response_size=response_size,
@@ -258,7 +281,7 @@ class UsageTracker:
             cost_category=CostCategory.COMPUTE,
         )
 
-        async with database_service.get_db() as db:  # type: ignore[attr-defined]  # type: ignore[attr-defined]
+        async with database_service.get_db() as db:
             db.add(usage_event)
             await db.commit()
 
@@ -295,24 +318,26 @@ class UsageTracker:
         Raises:
             ValueError: If user_id cannot be converted to int
         """
-        # DEV-257: Convert user_id to int (UsageEvent.user_id is FK to user.id)
-        user_id_int = self._convert_user_id(user_id)
-
-        usage_event = UsageEvent(
-            user_id=user_id_int,
-            session_id=session_id,
-            event_type=UsageType.API_REQUEST,
-            environment=settings.ENVIRONMENT.value,  # DEV-246: Track environment
-            api_type=api_type,  # DEV-246: Track API type for third-party breakdown
-            cost_eur=cost_eur,
-            cost_category=CostCategory.THIRD_PARTY,
-            response_time_ms=response_time_ms,
-            error_occurred=error_occurred,
-            error_type=error_type,
-        )
-
         try:
-            async with database_service.get_db() as db:  # type: ignore[attr-defined]
+            # DEV-257: Convert user_id to int (UsageEvent.user_id is FK to user.id)
+            user_id_int = self._convert_user_id(user_id)
+            is_test_event = user_id_int == settings.SYSTEM_TEST_USER_ID
+            event_environment = "test" if is_test_event else settings.ENVIRONMENT.value
+
+            usage_event = UsageEvent(
+                user_id=user_id_int,
+                session_id=session_id,
+                event_type=UsageType.API_REQUEST,
+                environment=event_environment,
+                api_type=api_type,
+                cost_eur=cost_eur,
+                cost_category=CostCategory.THIRD_PARTY,
+                response_time_ms=response_time_ms,
+                error_occurred=error_occurred,
+                error_type=error_type,
+            )
+
+            async with database_service.get_db() as db:
                 db.add(usage_event)
                 await db.commit()
                 await db.refresh(usage_event)
@@ -322,7 +347,7 @@ class UsageTracker:
                 user_id=user_id_int,
                 api_type=api_type,
                 cost_eur=cost_eur,
-                environment=settings.ENVIRONMENT.value,
+                environment=event_environment,
             )
 
             return usage_event
@@ -330,12 +355,18 @@ class UsageTracker:
         except Exception as e:
             logger.error(
                 "third_party_api_tracking_failed",
-                user_id=user_id_int,
+                user_id=user_id,
                 api_type=api_type,
                 error=str(e),
             )
-            # Return event even on error (not persisted)
-            return usage_event
+            # Return minimal event on error (not persisted)
+            return UsageEvent(
+                user_id=0,
+                session_id=session_id,
+                event_type=UsageType.API_REQUEST,
+                error_occurred=True,
+                error_type=str(e),
+            )
 
     async def get_user_metrics(
         self, user_id: str, start_date: datetime | None = None, end_date: datetime | None = None
@@ -355,7 +386,7 @@ class UsageTracker:
         if not end_date:
             end_date = datetime.utcnow()
 
-        async with database_service.get_db() as db:  # type: ignore[attr-defined]  # type: ignore[attr-defined]
+        async with database_service.get_db() as db:
             # Get usage events
             query = select(UsageEvent).where(
                 and_(
@@ -423,7 +454,7 @@ class UsageTracker:
         if not end_date:
             end_date = datetime.utcnow()
 
-        async with database_service.get_db() as db:  # type: ignore[attr-defined]
+        async with database_service.get_db() as db:
             query = (
                 select(UsageEvent.cost_category, func.sum(UsageEvent.cost_eur))
                 .where(
@@ -463,7 +494,7 @@ class UsageTracker:
 
             return breakdown
 
-    async def get_user_quota(self, user_id: str) -> UsageQuota:
+    async def get_user_quota(self, user_id: str | int) -> UsageQuota:
         """Get or create user quota.
 
         Args:
@@ -472,7 +503,7 @@ class UsageTracker:
         Returns:
             UsageQuota: User's quota information
         """
-        async with database_service.get_db() as db:  # type: ignore[attr-defined]
+        async with database_service.get_db() as db:
             query = select(UsageQuota).where(UsageQuota.user_id == user_id)  # type: ignore[comparison-overlap]
             result = await db.execute(query)
             quota = result.scalar_one_or_none()
@@ -545,7 +576,7 @@ class UsageTracker:
 
         return True, None
 
-    async def _update_user_quota(self, user_id: str, cost_eur: float, tokens: int):
+    async def _update_user_quota(self, user_id: str | int, cost_eur: float, tokens: int):
         """Update user quota with new usage.
 
         Args:
@@ -553,7 +584,7 @@ class UsageTracker:
             cost_eur: Cost in EUR
             tokens: Number of tokens used
         """
-        async with database_service.get_db() as db:  # type: ignore[attr-defined]  # type: ignore[attr-defined]
+        async with database_service.get_db() as db:
             quota = await self.get_user_quota(user_id)
 
             quota.current_daily_requests += 1
@@ -575,7 +606,7 @@ class UsageTracker:
                     percentage=quota.current_monthly_cost_eur / quota.monthly_cost_limit_eur * 100,
                 )
 
-    async def _update_daily_summary(self, user_id: str, event: UsageEvent):
+    async def _update_daily_summary(self, user_id: str | int, event: UsageEvent):
         """Update daily usage summary.
 
         Args:
@@ -584,7 +615,7 @@ class UsageTracker:
         """
         today = date.today()
 
-        async with database_service.get_db() as db:  # type: ignore[attr-defined]
+        async with database_service.get_db() as db:
             # Get or create summary
             query = select(UserUsageSummary).where(
                 and_(
@@ -645,7 +676,7 @@ class UsageTracker:
 
             await db.commit()
 
-    async def _check_cost_alerts(self, user_id: str, new_cost: float):
+    async def _check_cost_alerts(self, user_id: str | int, new_cost: float):
         """Check if cost alerts should be triggered.
 
         Args:
@@ -673,7 +704,7 @@ class UsageTracker:
                 current_cost_eur=quota.current_monthly_cost_eur,
             )
 
-    async def _create_alert(self, user_id: str, alert_type: str, threshold_eur: float, current_cost_eur: float):
+    async def _create_alert(self, user_id: str | int, alert_type: str, threshold_eur: float, current_cost_eur: float):
         """Create a cost alert.
 
         Args:
@@ -682,7 +713,7 @@ class UsageTracker:
             threshold_eur: Threshold that was exceeded
             current_cost_eur: Current cost
         """
-        async with database_service.get_db() as db:  # type: ignore[attr-defined]
+        async with database_service.get_db() as db:
             # Check if similar alert already exists today
             today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
             query = select(CostAlert).where(
@@ -727,7 +758,7 @@ class UsageTracker:
         Returns:
             List of optimization suggestions
         """
-        async with database_service.get_db() as db:  # type: ignore[attr-defined]
+        async with database_service.get_db() as db:
             query = select(CostOptimizationSuggestion).where(CostOptimizationSuggestion.status == "pending")
 
             if user_id:
@@ -789,7 +820,7 @@ class UsageTracker:
             )
 
         # Save suggestions
-        async with database_service.get_db() as db:  # type: ignore[attr-defined]  # type: ignore[attr-defined]
+        async with database_service.get_db() as db:
             for suggestion in suggestions:
                 db.add(suggestion)
             await db.commit()
@@ -813,7 +844,7 @@ class UsageTracker:
         if not end_date:
             end_date = datetime.utcnow()
 
-        async with database_service.get_db() as db:  # type: ignore[attr-defined]
+        async with database_service.get_db() as db:
             # Total users
             user_query = select(func.count(func.distinct(UsageEvent.user_id))).where(
                 and_(UsageEvent.timestamp >= start_date, UsageEvent.timestamp <= end_date)

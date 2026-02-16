@@ -60,38 +60,11 @@ def _truncate_error_message(error: str) -> str:
     return error[: MAX_ERROR_MESSAGE_LENGTH - 3] + "..."
 
 
-# DEV-256: Providers temporarily disabled (shown in UI as disabled)
-# Gemini disabled due to deprecated SDK - needs migration to google.genai
-DISABLED_PROVIDERS: set[str] = {"gemini"}
+def _get_registry():
+    """Lazy import to avoid circular dependencies."""
+    from app.core.llm.model_registry import get_model_registry
 
-# Best models for comparison (one per provider, highest tier)
-# These are the premium/advanced models that will be used in comparisons
-BEST_MODELS_BY_PROVIDER: dict[str, str] = {
-    "anthropic": "anthropic:claude-opus-4-5-20251101",
-    "openai": "openai:gpt-4-turbo",
-    # "gemini": "gemini:gemini-2.5-pro",  # DEV-256: Disabled - deprecated SDK
-    "mistral": "mistral:mistral-large-latest",
-}
-
-# Model display names
-MODEL_DISPLAY_NAMES = {
-    "openai:gpt-4o": "GPT-4o",
-    "openai:gpt-4o-mini": "GPT-4o Mini",
-    "openai:gpt-4-turbo": "GPT-4 Turbo",
-    "openai:gpt-3.5-turbo": "GPT-3.5 Turbo",
-    "anthropic:claude-3-haiku-20240307": "Claude 3 Haiku",
-    "anthropic:claude-3-sonnet-20241022": "Claude 3 Sonnet",
-    "anthropic:claude-3-5-sonnet-20241022": "Claude 3.5 Sonnet",
-    "anthropic:claude-3-opus-20240229": "Claude 3 Opus",
-    "anthropic:claude-sonnet-4-5-20250929": "Claude 4.5 Sonnet",
-    "anthropic:claude-opus-4-5-20251101": "Claude 4.5 Opus",
-    "gemini:gemini-2.5-flash": "Gemini 2.5 Flash",
-    "gemini:gemini-2.5-pro": "Gemini 2.5 Pro",
-    "gemini:gemini-2.0-flash": "Gemini 2.0 Flash",
-    "mistral:mistral-small-latest": "Mistral Small",
-    "mistral:mistral-medium-latest": "Mistral Medium",
-    "mistral:mistral-large-latest": "Mistral Large",
-}
+    return get_model_registry()
 
 
 class ComparisonService:
@@ -120,7 +93,7 @@ class ComparisonService:
 
     def _get_model_display_name(self, model_id: str) -> str:
         """Get display name for a model."""
-        return MODEL_DISPLAY_NAMES.get(model_id, model_id)
+        return _get_registry().get_display_name(model_id)
 
     @staticmethod
     def _get_user_account_code(user_id: int) -> str | None:
@@ -171,7 +144,7 @@ class ComparisonService:
         model_ids = [current_model]
 
         # Add best models from each available provider (skip if same as current)
-        for provider, model_id in BEST_MODELS_BY_PROVIDER.items():
+        for provider, model_id in _get_registry().get_best_models().items():
             if model_id != current_model:
                 model_ids.append(model_id)
 
@@ -502,7 +475,7 @@ class ComparisonService:
             model_ids = await self._get_enabled_model_ids(user_id, db)
 
         # DEV-256: Filter out disabled providers
-        model_ids = [m for m in model_ids if m.split(":")[0] not in DISABLED_PROVIDERS]
+        model_ids = [m for m in model_ids if m.split(":")[0] not in _get_registry().get_disabled_providers()]
 
         # Validate model count
         if len(model_ids) < MIN_MODELS_PER_COMPARISON:
@@ -540,7 +513,7 @@ class ComparisonService:
         # Process responses
         response_infos: list[ModelResponseInfo] = []
         for resp in responses:
-            if isinstance(resp, Exception):
+            if isinstance(resp, BaseException):
                 logger.error("comparison_task_exception", error=str(resp))
                 continue
             response_infos.append(resp)
@@ -630,19 +603,20 @@ class ComparisonService:
 
         # DEV-257: Use user-selected models if provided, otherwise use default best models
         current_model_id = existing_response.model_id
+        disabled_providers = _get_registry().get_disabled_providers()
         if model_ids:
             # User selected models from chat - filter out current model and disabled providers
             other_model_ids = [
                 model_id
                 for model_id in model_ids
-                if model_id != current_model_id and model_id.split(":")[0] not in DISABLED_PROVIDERS
+                if model_id != current_model_id and model_id.split(":")[0] not in disabled_providers
             ]
         else:
             # Default behavior: use best models from each provider
             other_model_ids = [
                 model_id
                 for model_id in self.get_default_comparison_model_ids()
-                if model_id != current_model_id and model_id.split(":")[0] not in DISABLED_PROVIDERS
+                if model_id != current_model_id and model_id.split(":")[0] not in disabled_providers
             ]
 
         # Generate batch ID
@@ -695,7 +669,7 @@ class ComparisonService:
         # Combine: existing + new responses
         response_infos: list[ModelResponseInfo] = [existing_info]
         for resp in other_responses:
-            if isinstance(resp, Exception):
+            if isinstance(resp, BaseException):
                 logger.error("comparison_task_exception", error=str(resp))
                 continue
             response_infos.append(resp)
@@ -936,7 +910,7 @@ class ComparisonService:
         models: list[AvailableModel] = []
 
         # Get best model IDs and current model for flagging
-        best_model_ids = set(BEST_MODELS_BY_PROVIDER.values())
+        best_model_ids = set(_get_registry().get_best_models().values())
         current_model_id = self.get_current_model_id()
 
         # Get all configured providers
@@ -971,7 +945,7 @@ class ComparisonService:
                     pref = result.scalar_one_or_none()
 
                     # DEV-256: Check if provider is globally disabled
-                    is_provider_disabled = provider_type.value in DISABLED_PROVIDERS
+                    is_provider_disabled = provider_type.value in _get_registry().get_disabled_providers()
                     # User preference only applies if provider is not globally disabled
                     is_enabled = False if is_provider_disabled else (pref.is_enabled if pref else True)
 
@@ -1070,7 +1044,7 @@ class ComparisonService:
         Returns:
             List of model rankings
         """
-        result = await db.execute(select(ModelEloRating).order_by(ModelEloRating.elo_rating.desc()).limit(limit))
+        result = await db.execute(select(ModelEloRating).order_by(ModelEloRating.elo_rating.desc()).limit(limit))  # type: ignore[attr-defined]
         ratings = result.scalars().all()
 
         rankings = []
@@ -1117,7 +1091,7 @@ class ComparisonService:
         result = await db.execute(
             select(func.count(ModelComparisonSession.id)).where(
                 ModelComparisonSession.user_id == user_id,
-                ModelComparisonSession.winner_model.isnot(None),
+                ModelComparisonSession.winner_model.isnot(None),  # type: ignore[union-attr]
             )
         )
         total_votes = result.scalar() or 0
@@ -1136,7 +1110,7 @@ class ComparisonService:
         result = await db.execute(
             select(func.count(ModelComparisonSession.id)).where(
                 ModelComparisonSession.user_id == user_id,
-                ModelComparisonSession.winner_model.isnot(None),
+                ModelComparisonSession.winner_model.isnot(None),  # type: ignore[union-attr]
                 ModelComparisonSession.created_at >= week_ago,
             )
         )
@@ -1150,7 +1124,7 @@ class ComparisonService:
             )
             .where(
                 ModelComparisonSession.user_id == user_id,
-                ModelComparisonSession.winner_model.isnot(None),
+                ModelComparisonSession.winner_model.isnot(None),  # type: ignore[union-attr]
             )
             .group_by(ModelComparisonSession.winner_model)
             .order_by(func.count(ModelComparisonSession.id).desc())

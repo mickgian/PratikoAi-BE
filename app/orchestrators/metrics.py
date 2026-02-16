@@ -173,10 +173,11 @@ def _extract_usage_fields(
     # DEV-254 Bug 1: model field — step_064 stores as "model_used", not "model"
     model = kwargs.get("model") or _ctx.get("model") or _ctx.get("model_used") or llm_dict.get("model_used")
 
-    # DEV-254 Bug 2: provider — step_064 stores as dict with "selected" key
+    # DEV-254 Bug 2: provider — stored as dict with "selected" or "provider_type" key
+    # DEV-257: CheapProvider (step_051) uses "provider_type", SelectProvider uses "selected"
     provider = kwargs.get("provider") or _ctx.get("provider")
     if isinstance(provider, dict):
-        provider = provider.get("selected")
+        provider = provider.get("selected") or provider.get("provider_type") or provider.get("name")
 
     # DEV-254 Bug 3: llm_response — step_064 stores as dict, not LLMResponse
     llm_response = kwargs.get("llm_response") or _ctx.get("llm_response")

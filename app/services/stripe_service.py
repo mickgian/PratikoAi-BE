@@ -533,6 +533,12 @@ class StripeService:
             elif event_type == "payment_intent.succeeded":
                 await self.create_payment_from_stripe(event_data)
 
+            elif event_type == "checkout.session.completed":
+                # DEV-257: Handle credit recharge checkout completion
+                metadata = event_data.get("metadata", {})
+                if metadata.get("type") == "credit_recharge":
+                    await self._handle_credit_recharge(event_data, metadata)
+
             else:
                 logger.info("webhook_event_not_handled", event_type=event_type, event_id=event["id"])
 
@@ -547,6 +553,39 @@ class StripeService:
                 exc_info=True,
             )
             return False
+
+    async def _handle_credit_recharge(self, session_data: dict, metadata: dict) -> None:
+        """Handle credit recharge checkout completion (DEV-257).
+
+        Args:
+            session_data: Stripe checkout session data
+            metadata: Session metadata with user_id and amount
+        """
+        try:
+            from app.services.usage_credit_service import usage_credit_service
+
+            user_id = int(metadata["user_id"])
+            amount_eur = int(metadata["amount_eur"])
+            payment_intent_id = session_data.get("payment_intent")
+
+            await usage_credit_service.recharge(
+                user_id=user_id,
+                amount_eur=amount_eur,
+                stripe_payment_intent_id=payment_intent_id,
+            )
+
+            logger.info(
+                "credit_recharge_completed",
+                user_id=user_id,
+                amount_eur=amount_eur,
+                payment_intent_id=payment_intent_id,
+            )
+        except Exception as e:
+            logger.error(
+                "credit_recharge_failed",
+                error=str(e),
+                metadata=metadata,
+            )
 
     async def get_user_subscription(self, user_id: str) -> Subscription | None:
         """Get user's active subscription.

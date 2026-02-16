@@ -295,7 +295,7 @@ npm run lint                            # ESLint
 | **008** | Context API | NO Redux/Zustand |
 | **009** | Radix UI | NO Material-UI, headless + Tailwind |
 
-### Domain Architecture (ADR-017 to ADR-021)
+### Domain Architecture (ADR-017 to ADR-027)
 
 | ADR | Decision | Key Rule |
 |-----|----------|----------|
@@ -304,6 +304,12 @@ npm run lint                            # ESLint
 | **019** | Communication generation | Outreach features |
 | **020** | Suggested actions | Template-based, YAML-driven, <50ms |
 | **021** | Interactive questions | User engagement, follow-up suggestions |
+| **022** | LLM document identification | AI-powered document type detection |
+| **023** | Tiered document ingestion | Priority-based document processing |
+| **024** | Workflow automation | Automated business workflows |
+| **025** | LLM model inventory & tiering | BASIC/PREMIUM/LOCAL model strategy |
+| **026** | Exchange rate service | EUR cost calculations for LLM usage |
+| **027** | Usage-based billing | YAML config, rolling windows, 60% margin |
 
 **Full ADRs:** `docs/architecture/decisions/`
 

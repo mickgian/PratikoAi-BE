@@ -23,7 +23,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from app.core.config import settings
 from app.core.logging import logger
 from app.schemas.chat import Message
 from app.services.prompt_loader import PromptLoader, get_prompt_loader
@@ -115,8 +114,8 @@ class ModelConfig:
     def for_complexity(cls, complexity: QueryComplexity) -> "ModelConfig":
         """Get the model configuration for a given complexity level.
 
-        Uses PRODUCTION_LLM_MODEL env variable to determine the model.
-        Format: "provider:model" (e.g., "openai:gpt-4o")
+        DEV-257: Uses the centralized ModelRegistry to resolve the production
+        model and its cost information.
 
         Args:
             complexity: The query complexity level
@@ -124,42 +123,39 @@ class ModelConfig:
         Returns:
             ModelConfig for the specified complexity
         """
-        # DEV-256: Read model from PRODUCTION_LLM_MODEL env variable
-        production_model = settings.PRODUCTION_LLM_MODEL
-        if ":" in production_model:
-            _, model_name = production_model.split(":", 1)
-        else:
-            model_name = production_model
+        from app.core.llm.model_registry import get_model_registry
 
-        # DEV-242 Phase 13A: Upgraded SIMPLE to gpt-4o and doubled all max_tokens
-        # for detailed regulatory responses with specific values (dates, rates, etc.)
+        registry = get_model_registry()
+        entry = registry.resolve_production_model()
+        model_name = entry.model_name
+
         configs = {
             QueryComplexity.SIMPLE: cls(
-                model=model_name,  # DEV-256: From PRODUCTION_LLM_MODEL env
+                model=model_name,
                 temperature=0.3,
-                max_tokens=4500,  # DEV-242 Phase 44: Increased from 3000 for complete responses with sources
-                cost_input_per_1k=0.005,  # DEV-242: Updated for gpt-4o
-                cost_output_per_1k=0.015,  # DEV-242: Updated for gpt-4o
+                max_tokens=4500,
+                cost_input_per_1k=entry.input_cost_per_1k,
+                cost_output_per_1k=entry.output_cost_per_1k,
                 prompt_template="unified_response_simple",
                 reasoning_type="cot",
                 timeout_seconds=30,
             ),
             QueryComplexity.COMPLEX: cls(
-                model=model_name,  # DEV-256: From PRODUCTION_LLM_MODEL env
+                model=model_name,
                 temperature=0.4,
-                max_tokens=6500,  # DEV-242 Phase 44: Increased from 5000 for complete responses with sources
-                cost_input_per_1k=0.005,
-                cost_output_per_1k=0.015,
+                max_tokens=6500,
+                cost_input_per_1k=entry.input_cost_per_1k,
+                cost_output_per_1k=entry.output_cost_per_1k,
                 prompt_template="tree_of_thoughts",
                 reasoning_type="tot",
                 timeout_seconds=45,
             ),
             QueryComplexity.MULTI_DOMAIN: cls(
-                model=model_name,  # DEV-256: From PRODUCTION_LLM_MODEL env
+                model=model_name,
                 temperature=0.5,
-                max_tokens=9000,  # DEV-242 Phase 44: Increased from 7000 for complete responses with sources
-                cost_input_per_1k=0.005,
-                cost_output_per_1k=0.015,
+                max_tokens=9000,
+                cost_input_per_1k=entry.input_cost_per_1k,
+                cost_output_per_1k=entry.output_cost_per_1k,
                 prompt_template="tree_of_thoughts_multi_domain",
                 reasoning_type="tot_multi_domain",
                 timeout_seconds=60,
@@ -514,26 +510,16 @@ class LLMOrchestrator:
             Tuple of (response_text, tokens_input, tokens_output)
         """
         # Import here to avoid circular imports
-        from app.core.llm.base import LLMProviderType
         from app.core.llm.factory import get_llm_factory
+        from app.core.llm.model_registry import get_model_registry
 
         factory = get_llm_factory()
+        registry = get_model_registry()
 
-        # DEV-256: Detect provider from PRODUCTION_LLM_MODEL env variable
-        production_model = settings.PRODUCTION_LLM_MODEL
-        if ":" in production_model:
-            provider_name, _ = production_model.split(":", 1)
-            try:
-                provider_type = LLMProviderType(provider_name)
-            except ValueError:
-                # Fallback to model name heuristic
-                provider_type = LLMProviderType.OPENAI if "gpt" in model else LLMProviderType.ANTHROPIC
-        else:
-            # Legacy fallback: determine provider based on model name
-            provider_type = LLMProviderType.OPENAI if "gpt" in model else LLMProviderType.ANTHROPIC
-
+        # DEV-257: Use registry to resolve production model provider
+        entry = registry.resolve_production_model()
         provider = factory.create_provider(
-            provider_type=provider_type,
+            provider_type=entry.provider,
             model=model,
         )
 

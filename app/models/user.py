@@ -65,6 +65,9 @@ class User(BaseModel, table=True):  # type: ignore[call-arg]
     # Human-readable account code for Langfuse analytics (DEV-255)
     account_code: str | None = Field(default=None, max_length=20, unique=True, index=True)
 
+    # Billing plan slug for usage-based billing (DEV-257)
+    billing_plan_slug: str = Field(default="base", max_length=50, index=True)
+
     sessions: list["Session"] = Relationship(back_populates="user")
 
     def verify_password(self, password: str) -> bool:

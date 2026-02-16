@@ -25,7 +25,6 @@ from openai import (
 
 from app.core.llm.base import (
     LLMCostInfo,
-    LLMModelTier,
     LLMProvider,
     LLMProviderType,
     LLMResponse,
@@ -82,36 +81,11 @@ class OpenAIProvider(LLMProvider):
 
     @property
     def supported_models(self) -> dict[str, LLMCostInfo]:
-        """Get supported OpenAI models and their cost information.
+        """Get supported OpenAI models from the centralized registry (DEV-257)."""
+        from app.core.llm.model_registry import get_model_registry
 
-        Costs are in USD per 1K tokens (vendor pricing).
-        """
-        return {
-            "gpt-4o-mini": LLMCostInfo(
-                input_cost_per_1k_tokens=0.00015,  # $0.15/1M tokens
-                output_cost_per_1k_tokens=0.0006,  # $0.60/1M tokens
-                model_name="gpt-4o-mini",
-                tier=LLMModelTier.BASIC,
-            ),
-            "gpt-4o": LLMCostInfo(
-                input_cost_per_1k_tokens=0.005,  # $5.00/1M tokens
-                output_cost_per_1k_tokens=0.015,  # $15.00/1M tokens
-                model_name="gpt-4o",
-                tier=LLMModelTier.ADVANCED,
-            ),
-            "gpt-4-turbo": LLMCostInfo(
-                input_cost_per_1k_tokens=0.01,  # $10.00/1M tokens
-                output_cost_per_1k_tokens=0.03,  # $30.00/1M tokens
-                model_name="gpt-4-turbo",
-                tier=LLMModelTier.PREMIUM,
-            ),
-            "gpt-3.5-turbo": LLMCostInfo(
-                input_cost_per_1k_tokens=0.0005,  # $0.50/1M tokens
-                output_cost_per_1k_tokens=0.0015,  # $1.50/1M tokens
-                model_name="gpt-3.5-turbo",
-                tier=LLMModelTier.BASIC,
-            ),
-        }
+        registry = get_model_registry()
+        return {m.model_name: m.to_cost_info() for m in registry.get_models_by_provider("openai")}
 
     def _convert_messages_to_openai(self, messages: list[Message]) -> list[dict[str, Any]]:
         """Convert messages to OpenAI format.

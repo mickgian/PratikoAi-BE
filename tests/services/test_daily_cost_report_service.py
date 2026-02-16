@@ -249,9 +249,9 @@ class TestDailyCostReportService:
         # Mock database result
         mock_result = MagicMock()
         mock_result.all.return_value = [
-            ("user_1", 5.00, 4.50, 0.50, 200, 45000),
-            ("user_2", 3.00, 2.80, 0.20, 100, 30000),
-            ("user_3", 2.00, 1.90, 0.10, 75, 20000),
+            ("user_1", "ACC-001", 5.00, 4.50, 0.50, 200, 45000),
+            ("user_2", "ACC-002", 3.00, 2.80, 0.20, 100, 30000),
+            ("user_3", None, 2.00, 1.90, 0.10, 75, 20000),
         ]
         mock_db_session.execute = AsyncMock(return_value=mock_result)
 
@@ -260,9 +260,10 @@ class TestDailyCostReportService:
         breakdowns = await service._get_user_breakdown(date(2026, 1, 24), limit=10)
 
         assert len(breakdowns) == 3
-        assert breakdowns[0].user_id == "user_1"
+        assert breakdowns[0].user_id == "ACC-001"
         assert breakdowns[0].total_cost_eur == 5.00
-        assert breakdowns[1].user_id == "user_2"
+        assert breakdowns[1].user_id == "ACC-002"
+        # user_3 has no account_code, falls back to raw user_id
         assert breakdowns[2].user_id == "user_3"
 
     @pytest.mark.asyncio
@@ -383,7 +384,7 @@ class TestDailyCostReportService:
 
         # Mock user breakdown
         mock_users = MagicMock()
-        mock_users.all.return_value = [("user_1", 5.00, 4.50, 0.50, 200, 45000)]
+        mock_users.all.return_value = [("user_1", "MIC40048-1", 5.00, 4.50, 0.50, 200, 45000)]
 
         # Mock third-party breakdown
         mock_third_party = MagicMock()

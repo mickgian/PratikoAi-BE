@@ -31,10 +31,10 @@ class TestDatabaseServiceGetDb:
         mock_settings.ENVIRONMENT.value = "development"
 
         mock_session = AsyncMock(spec=AsyncSession)
-        mock_context = AsyncMock()
-        mock_context.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_context.__aexit__ = AsyncMock(return_value=None)
-        mock_async_session_local.return_value = mock_context
+        # AsyncSessionLocal() is used as `async with AsyncSessionLocal() as session:`
+        # so the return value itself must be an async context manager
+        mock_async_session_local.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_async_session_local.return_value.__aexit__ = AsyncMock(return_value=None)
 
         service = DatabaseService()
 
@@ -57,10 +57,8 @@ class TestDatabaseServiceGetDb:
         mock_settings.ENVIRONMENT.value = "development"
 
         mock_session = AsyncMock(spec=AsyncSession)
-        mock_context = AsyncMock()
-        mock_context.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_context.__aexit__ = AsyncMock(return_value=None)
-        mock_async_session_local.return_value = mock_context
+        mock_async_session_local.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_async_session_local.return_value.__aexit__ = AsyncMock(return_value=None)
 
         service = DatabaseService()
 
@@ -68,6 +66,7 @@ class TestDatabaseServiceGetDb:
             async with service.get_db() as _db:
                 raise ValueError("test error")
 
+        # Session close is called in the finally block of get_db()
         mock_session.close.assert_awaited_once()
 
     @pytest.mark.asyncio

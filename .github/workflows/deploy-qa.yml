@@ -38,8 +38,8 @@ jobs:
             set -e
             cd /opt/pratikoai
 
-            # Load environment variables for docker compose interpolation
-            set -a && source .env.qa && set +a
+            # Shorthand for docker compose with QA config and env file
+            DC="docker compose --env-file .env.qa -f docker-compose.yml -f docker-compose.qa.yml"
 
             # Login to GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -48,22 +48,22 @@ jobs:
             export IMAGE_TAG=${{ needs.build.outputs.image_tag }}
 
             # Pull new images
-            docker compose -f docker-compose.yml -f docker-compose.qa.yml pull app frontend
+            $DC pull app frontend
 
             # Deploy backend first (expand-contract: BE always deploys before FE)
-            docker compose -f docker-compose.yml -f docker-compose.qa.yml up -d db redis app flagsmith
+            $DC up -d db redis app flagsmith
             echo "Waiting for backend health..."
             sleep 10
 
             # Check backend health (retry up to 30 times, 5s apart = 2.5 min)
             for i in $(seq 1 30); do
-              if docker compose -f docker-compose.yml -f docker-compose.qa.yml exec -T app curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              if $DC exec -T app curl -sf http://localhost:8000/health > /dev/null 2>&1; then
                 echo "Backend healthy!"
                 break
               fi
               if [ "$i" -eq 30 ]; then
                 echo "Backend health check failed after 30 attempts"
-                docker compose -f docker-compose.yml -f docker-compose.qa.yml logs app --tail=50
+                $DC logs app --tail=50
                 exit 1
               fi
               echo "Waiting for backend... (attempt $i/30)"
@@ -71,7 +71,7 @@ jobs:
             done
 
             # Deploy frontend
-            docker compose -f docker-compose.yml -f docker-compose.qa.yml up -d frontend caddy
+            $DC up -d frontend caddy
 
             # Clean up old images
             docker image prune -f

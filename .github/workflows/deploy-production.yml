@@ -38,8 +38,8 @@ jobs:
             set -e
             cd /opt/pratikoai
 
-            # Load environment variables for docker compose interpolation
-            set -a && source .env.production && set +a
+            # Shorthand for docker compose with production config and env file
+            DC="docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml"
 
             # Login to GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -48,21 +48,21 @@ jobs:
             export IMAGE_TAG=${{ needs.build.outputs.image_tag }}
 
             # Pull new images
-            docker compose -f docker-compose.yml -f docker-compose.production.yml pull app frontend
+            $DC pull app frontend
 
             # Deploy backend first
-            docker compose -f docker-compose.yml -f docker-compose.production.yml up -d db redis app flagsmith
+            $DC up -d db redis app flagsmith
             echo "Waiting for backend health..."
             sleep 15
 
             for i in $(seq 1 30); do
-              if docker compose -f docker-compose.yml -f docker-compose.production.yml exec -T app curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              if $DC exec -T app curl -sf http://localhost:8000/health > /dev/null 2>&1; then
                 echo "Backend healthy!"
                 break
               fi
               if [ "$i" -eq 30 ]; then
                 echo "Backend health check failed"
-                docker compose -f docker-compose.yml -f docker-compose.production.yml logs app --tail=50
+                $DC logs app --tail=50
                 exit 1
               fi
               echo "Waiting for backend... (attempt $i/30)"
@@ -70,8 +70,8 @@ jobs:
             done
 
             # Deploy frontend + monitoring
-            docker compose -f docker-compose.yml -f docker-compose.production.yml up -d frontend caddy
-            docker compose -f docker-compose.yml -f docker-compose.production.yml up -d prometheus grafana
+            $DC up -d frontend caddy
+            $DC up -d prometheus grafana
 
             docker image prune -f
 

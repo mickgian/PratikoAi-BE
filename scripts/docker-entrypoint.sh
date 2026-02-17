@@ -84,8 +84,12 @@ fi
 echo "LLM Model: ${LLM_MODEL:-Not set}"
 echo "Debug Mode: ${DEBUG:-false}"
 
-# Run database migrations if necessary
-# e.g., alembic upgrade head
+# Run database migrations for non-development environments
+if [ "$APP_ENV" != "development" ]; then
+    echo "Running database migrations..."
+    /app/.venv/bin/alembic upgrade head
+    echo "Migrations complete."
+fi
 
 # Execute the CMD
 exec "$@"

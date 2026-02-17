@@ -1,0 +1,80 @@
+# PromptFoo Model Comparison Configuration
+#
+# Triggered when config/llm_models.yaml changes to compare candidate models.
+# Run: npx promptfoo eval --config promptfooconfig.yaml
+#
+# See ADR-032 for benchmarking strategy.
+
+description: "PratikoAI LLM Model Comparison - Italian Labor Law RAG"
+
+providers:
+  - id: openai:gpt-4o-mini
+    label: "GPT-4o-mini (Current BASIC)"
+    config:
+      temperature: 0.2
+
+  - id: openai:gpt-4o
+    label: "GPT-4o (Current PREMIUM)"
+    config:
+      temperature: 0.2
+
+  - id: anthropic:messages:claude-3-haiku-20240307
+    label: "Claude 3 Haiku"
+    config:
+      temperature: 0.2
+
+  - id: anthropic:messages:claude-sonnet-4-5-20250929
+    label: "Claude Sonnet 4.5"
+    config:
+      temperature: 0.2
+
+prompts:
+  - |
+    Sei un assistente esperto in diritto del lavoro e fiscalita' italiana.
+    Rispondi in modo preciso e conciso alla seguente domanda, citando le fonti normative quando possibile.
+
+    Domanda: {{query}}
+
+tests:
+  - vars:
+      query: "Qual e' il periodo di preavviso per un impiegato del CCNL Metalmeccanici con 5 anni di anzianita'?"
+    assert:
+      - type: llm-rubric
+        value: "The response should mention the specific notice period (preavviso) for a metalworker employee with 5 years seniority, citing CCNL Metalmeccanici provisions. Response must be in Italian."
+      - type: latency
+        threshold: 5000
+
+  - vars:
+      query: "Come si calcola il TFR per un dipendente a tempo determinato?"
+    assert:
+      - type: llm-rubric
+        value: "The response should explain TFR (Trattamento di Fine Rapporto) calculation for fixed-term employees, including the formula and relevant legal references. Response must be in Italian."
+      - type: latency
+        threshold: 5000
+
+  - vars:
+      query: "Quali sono le aliquote IRPEF vigenti e come si applicano agli scaglioni di reddito?"
+    assert:
+      - type: llm-rubric
+        value: "The response should list current IRPEF tax brackets with correct percentages and income ranges. Response must be in Italian."
+      - type: latency
+        threshold: 5000
+
+  - vars:
+      query: "Cosa prevede la rottamazione quater per le cartelle esattoriali e quali sono le scadenze?"
+    assert:
+      - type: llm-rubric
+        value: "The response should explain rottamazione quater provisions including installment payment deadlines and eligibility criteria. Response must be in Italian."
+      - type: latency
+        threshold: 5000
+
+  - vars:
+      query: "Qual e' la procedura corretta per il licenziamento per giusta causa secondo lo Statuto dei Lavoratori?"
+    assert:
+      - type: llm-rubric
+        value: "The response should describe the correct procedure for dismissal for just cause, including notice requirements, disciplinary procedure steps, and relevant articles from Statuto dei Lavoratori. Response must be in Italian."
+      - type: latency
+        threshold: 5000
+
+# Output configuration
+outputPath: tests/evals/promptfoo-results.json

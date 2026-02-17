@@ -1,39 +1,62 @@
-FROM python:3.13.2-slim
+# =============================================================================
+# PratikoAI Backend - Multi-stage Docker Build
+# =============================================================================
+# Stage 1 (builder): Install system deps + Python deps + build wheels
+# Stage 2 (runtime): Slim image with only runtime deps + app code
+# Target: ~800MB (down from ~2GB+ single-stage)
+# =============================================================================
 
-# Set working directory
+# ---------------------------------------------------------------------------
+# Stage 1: Builder
+# ---------------------------------------------------------------------------
+FROM python:3.13.2-slim AS builder
+
 WORKDIR /app
 
-# Set non-sensitive environment variables
+# Install build-time system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && pip install --no-cache-dir uv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency manifest first (Docker layer cache)
+COPY pyproject.toml .
+
+# Create venv and install all dependencies
+RUN uv venv && . .venv/bin/activate && uv pip install -e .
+
+# Copy application code
+COPY . .
+
+# ---------------------------------------------------------------------------
+# Stage 2: Runtime
+# ---------------------------------------------------------------------------
+FROM python:3.13.2-slim AS runtime
+
 ARG APP_ENV=production
-ARG POSTGRES_URL
 ARG HF_INTENT_MODEL=mdeberta
 
 ENV APP_ENV=${APP_ENV} \
     PYTHONFAULTHANDLER=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONHASHSEED=random \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100 \
-    POSTGRES_URL=${POSTGRES_URL}
+    PIP_NO_CACHE_DIR=1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
+WORKDIR /app
+
+# Install only runtime system dependencies (no build-essential)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
     libmagic1 \
-    && pip install --upgrade pip \
-    && pip install uv \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy pyproject.toml first to leverage Docker cache
-COPY pyproject.toml .
-RUN uv venv && . .venv/bin/activate && uv pip install -e .
+# Copy virtualenv and app code from builder
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app /app
 
-# Copy the application
-COPY . .
-
-# Make entrypoint script executable - do this before changing user
+# Make entrypoint script executable
 RUN chmod +x /app/scripts/docker-entrypoint.sh
 
 # Create a non-root user
@@ -44,22 +67,19 @@ USER appuser
 RUN mkdir -p /app/logs
 
 # DEV-251: Pre-download HuggingFace mDeBERTa model during build
-# This prevents 30-120s model download on first query after container start
-# Model is cached in /home/appuser/.cache/huggingface (can be volume-mounted)
-RUN . /app/.venv/bin/activate && python -c "from transformers import pipeline; pipeline('zero-shot-classification', model='MoritzLaurer/mDeBERTa-v3-base-mnli-xnli')"
+# Prevents 30-120s model download on first query after container start
+RUN . /app/.venv/bin/activate && python -c \
+    "from transformers import pipeline; pipeline('zero-shot-classification', model='MoritzLaurer/mDeBERTa-v3-base-mnli-xnli')"
 
-# DEV-253: Optionally pre-download a fine-tuned model if HF_INTENT_MODEL is set
-# to a HuggingFace Hub path (not "mdeberta" or "bart" which are already handled above)
+# DEV-253: Optionally pre-download a fine-tuned model from HF Hub
 RUN if [ "${HF_INTENT_MODEL}" != "mdeberta" ] && [ "${HF_INTENT_MODEL}" != "bart" ]; then \
-      . /app/.venv/bin/activate && python -c "from transformers import AutoTokenizer, AutoModelForSequenceClassification; AutoTokenizer.from_pretrained('${HF_INTENT_MODEL}'); AutoModelForSequenceClassification.from_pretrained('${HF_INTENT_MODEL}')" 2>/dev/null || true; \
+      . /app/.venv/bin/activate && python -c \
+        "from transformers import AutoTokenizer, AutoModelForSequenceClassification; \
+         AutoTokenizer.from_pretrained('${HF_INTENT_MODEL}'); \
+         AutoModelForSequenceClassification.from_pretrained('${HF_INTENT_MODEL}')" 2>/dev/null || true; \
     fi
 
-# Default port
 EXPOSE 8000
 
-# Log the environment we're using
-RUN echo "Using ${APP_ENV} environment"
-
-# Command to run the application
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
 CMD ["/app/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

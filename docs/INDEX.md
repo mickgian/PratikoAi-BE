@@ -1,8 +1,8 @@
 # Documentation Directory Index
 
-**Auto-generated:** 2026-02-16 11:30:15
+**Auto-generated:** 2026-02-17 13:57:12
 
-> 💡 This directory contains 32 technical documentation files plus 173 architecture documents.
+> 💡 This directory contains 32 technical documentation files plus 178 architecture documents.
 
 ---
 
@@ -13,7 +13,7 @@
 - **[Architecture Overview](architecture/INDEX.md)** - Main architecture index
   - RAG flow implementation documents
   - Policy gated autonomy
-  - 173 total architecture documents including 135 detailed steps
+  - 178 total architecture documents including 135 detailed steps
 
 ---
 
@@ -81,7 +81,7 @@
 - **[Database Backup System](DATABASE_BACKUP_SYSTEM.md)** ✅ Current
   - **Purpose**: Prevent data loss by maintaining automated daily backups of the PostgreSQL database.
 - **[Documentation Directory Index](INDEX.md)** ✅ Current
-  - **Auto-generated:** 2026-02-16 11:29:15
+  - **Auto-generated:** 2026-02-17 13:56:20
 - **[Environment Inventory Report](env-inventory.md)** ✅ Current
   - **Generated**: 2025-09-11 **Version**: 1.0.0
 - **[Hugging Face Models for PratikoAI - Analysis Report](HUGGINGFACE_MODELS_ANALYSIS.md)** ✅ Current
@@ -102,9 +102,9 @@
 - **Feature Docs:** 9
 - **Database/Search:** 9
 - **Operations:** 3
-- **Architecture:** 173
-- **Total:** 205
+- **Architecture:** 178
+- **Total:** 210
 
 ---
 
-**Last Updated:** 2026-02-16 11:30:15
+**Last Updated:** 2026-02-17 13:57:12

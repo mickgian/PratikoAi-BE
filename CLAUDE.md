@@ -18,9 +18,11 @@ This file provides guidelines for Claude Code when working on the PratikoAI code
 
 ## Environment
 
-**Status:** DEVELOPMENT ONLY
+**Status:** DEVELOPMENT + QA
 
-This project has never been deployed to QA or Production environments. All development and testing is local.
+- **Development:** Local Docker Compose (`docker-compose.yml`)
+- **QA:** Hetzner CX33, auto-deploys on merge to `develop` (see `docs/deployment/DEPLOYMENT_RUNBOOK.md`)
+- **Production:** Hetzner CX43, manual approval on merge to `master` (not yet provisioned)
 
 ---
 
@@ -198,6 +200,30 @@ src/
 - **Components:** Single responsibility, props-only dependencies
 - **Hooks:** One concern per hook, return typed values
 - **Context:** useReducer pattern for complex state
+
+---
+
+## Deployment Rules
+
+### Expand-Contract Pattern (Mandatory for Breaking API Changes)
+
+All API changes affecting the frontend MUST follow the Expand-Contract pattern:
+
+```
+EXPAND:   Backend adds NEW endpoint alongside old one (both coexist)
+MIGRATE:  Frontend updates to call new endpoint
+CONTRACT: Backend removes old endpoint (after all clients migrated)
+```
+
+- **Backend ALWAYS deploys before frontend** (enforced in CI/CD)
+- Never introduce a breaking change in a single deploy
+- Already using `/api/v1/`; when breaking changes are needed, create `/api/v2/` alongside
+
+### Deployment Ordering
+1. Backend deploys first (db, redis, app, flagsmith)
+2. Wait for backend health check
+3. Frontend deploys second (frontend, caddy)
+4. Smoke tests run against both
 
 ---
 

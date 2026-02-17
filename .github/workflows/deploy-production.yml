@@ -38,6 +38,9 @@ jobs:
             set -e
             cd /opt/pratikoai
 
+            # Load environment variables for docker compose interpolation
+            set -a && source .env.production && set +a
+
             # Login to GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 

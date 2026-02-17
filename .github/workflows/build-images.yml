@@ -40,8 +40,10 @@ jobs:
           ref: ${{ github.ref_name == 'master' && 'main' || github.ref_name }}
           token: ${{ secrets.GH_PAT }}
 
-      - name: Set up QEMU for multi-platform builds
+      - name: Set up QEMU for ARM64 builds
         uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -66,7 +68,7 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           tags: |
             ${{ env.BE_IMAGE }}:${{ steps.meta.outputs.sha_short }}
             ${{ env.BE_IMAGE }}:${{ steps.meta.outputs.branch }}
@@ -91,7 +93,7 @@ jobs:
         with:
           context: ./frontend
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           tags: |
             ${{ env.FE_IMAGE }}:${{ steps.meta.outputs.sha_short }}
             ${{ env.FE_IMAGE }}:${{ steps.meta.outputs.branch }}

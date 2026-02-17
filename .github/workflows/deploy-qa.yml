@@ -1,0 +1,162 @@
+name: Deploy to QA
+
+on:
+  push:
+    branches:
+      - develop
+
+concurrency:
+  group: deploy-qa
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Images
+    uses: ./.github/workflows/build-images.yml
+    permissions:
+      contents: read
+      packages: write
+
+  deploy:
+    name: Deploy to QA Server
+    needs: build
+    runs-on: ubuntu-latest
+    environment: qa
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Hetzner QA
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_QA_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_QA_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/pratikoai
+
+            # Login to GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Set image tag
+            export IMAGE_TAG=${{ needs.build.outputs.image_tag }}
+
+            # Pull new images
+            docker compose -f docker-compose.yml -f docker-compose.qa.yml pull app frontend
+
+            # Deploy backend first (expand-contract: BE always deploys before FE)
+            docker compose -f docker-compose.yml -f docker-compose.qa.yml up -d db redis app flagsmith
+            echo "Waiting for backend health..."
+            sleep 10
+
+            # Check backend health (retry up to 30 times, 5s apart = 2.5 min)
+            for i in $(seq 1 30); do
+              if docker compose -f docker-compose.yml -f docker-compose.qa.yml exec -T app curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+                echo "Backend healthy!"
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "Backend health check failed after 30 attempts"
+                docker compose -f docker-compose.yml -f docker-compose.qa.yml logs app --tail=50
+                exit 1
+              fi
+              echo "Waiting for backend... (attempt $i/30)"
+              sleep 5
+            done
+
+            # Deploy frontend
+            docker compose -f docker-compose.yml -f docker-compose.qa.yml up -d frontend caddy
+
+            # Clean up old images
+            docker image prune -f
+
+      - name: Smoke tests
+        if: success()
+        run: |
+          echo "Running smoke tests against QA..."
+          sleep 15
+
+          # Health check
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "https://api-qa.pratiko.app/health" || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed with status: $STATUS"
+            exit 1
+          fi
+          echo "Health check passed"
+
+          # Frontend check
+          FE_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "https://app-qa.pratiko.app" || echo "000")
+          if [ "$FE_STATUS" != "200" ]; then
+            echo "Frontend check failed with status: $FE_STATUS"
+            exit 1
+          fi
+          echo "Frontend check passed"
+
+          echo "All smoke tests passed!"
+
+  test:
+    name: Run Tests Against QA
+    needs: deploy
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: '.python-version'
+
+      - name: Run smoke test script
+        run: |
+          chmod +x scripts/smoke_test.sh
+          ./scripts/smoke_test.sh https://api-qa.pratiko.app https://app-qa.pratiko.app
+
+  notify:
+    name: Notify Stakeholders
+    needs: [deploy, test]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send deployment notification
+        uses: dawidd6/action-send-mail@v3
+        if: ${{ vars.STAKEHOLDER_EMAIL != '' }}
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: |
+            [PratikoAI QA] Deploy #${{ github.run_number }} - ${{ needs.deploy.result == 'success' && 'SUCCESS' || 'FAILED' }}
+          to: ${{ vars.STAKEHOLDER_EMAIL }}
+          from: PratikoAI CI <ci@pratiko.app>
+          body: |
+            PratikoAI QA Deployment Report
+            ==============================
+
+            Status: ${{ needs.deploy.result == 'success' && 'SUCCESS' || 'FAILED' }}
+            Tests:  ${{ needs.test.result == 'success' && 'PASSED' || needs.test.result }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+
+            URLs:
+            - API:  https://api-qa.pratiko.app
+            - App:  https://app-qa.pratiko.app
+
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Post summary
+        run: |
+          echo "## QA Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY

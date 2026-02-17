@@ -1,0 +1,109 @@
+name: Benchmarks
+
+on:
+  workflow_run:
+    workflows: ["Deploy to QA"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Target URL for benchmarks"
+        default: "https://api-qa.pratiko.app"
+        type: string
+
+jobs:
+  quality-evals:
+    name: RAG Quality Evaluation
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: '.python-version'
+
+      - name: Install uv and dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          uv venv --python 3.11
+          uv sync --all-groups
+          uv pip install deepeval
+
+      - name: Run RAG quality evals
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          uv run pytest tests/evals/test_rag_quality.py \
+            -v --tb=short \
+            -m eval \
+            --no-header \
+            --junitxml=eval-results.xml \
+            || true
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: eval-results.xml
+          retention-days: 30
+
+  load-test:
+    name: Performance Load Test
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D68
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run load test
+        run: |
+          k6 run tests/load/chatbot_load_test.js \
+            --env BASE_URL=${{ inputs.base_url || 'https://api-qa.pratiko.app' }} \
+            --out json=load-test-results.json \
+            || true
+
+      - name: Upload load test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: |
+            load-test-results.json
+            tests/load/results.json
+          retention-days: 30
+
+  summary:
+    name: Post Benchmark Summary
+    needs: [quality-evals, load-test]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Post summary
+        run: |
+          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Benchmark | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| RAG Quality | ${{ needs.quality-evals.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Load Test | ${{ needs.load-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Triggered by: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY

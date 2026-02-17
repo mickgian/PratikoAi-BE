@@ -93,7 +93,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════
   # Pre-deployment Validation
   # ═══════════════════════════════════════════════════════════════════
-  
+
   pre-deployment:
     name: "🔍 Pre-deployment Validation"
     runs-on: ubuntu-latest
@@ -101,53 +101,53 @@ jobs:
       can_proceed: ${{ steps.validation.outputs.can_proceed }}
       compatibility_status: ${{ steps.compatibility.outputs.status }}
       previous_version: ${{ steps.version_check.outputs.previous_version }}
-    
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Install Dependencies
       run: |
         pip install -r version-management/requirements.txt
         pip install requests pyyaml
-    
+
     - name: Validate Input Parameters
       id: validation
       run: |
         python -c "
         import sys
         import re
-        
+
         version = '${{ inputs.version }}'
         environment = '${{ inputs.environment }}'
         deployment_id = '${{ inputs.deployment_id }}'
-        
+
         # Validate version format
         if not re.match(r'^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$', version):
             print(f'Invalid version format: {version}')
             sys.exit(1)
-        
+
         # Validate environment
         if environment not in ['development', 'staging', 'production']:
             print(f'Invalid environment: {environment}')
             sys.exit(1)
-        
+
         # Validate deployment ID
         if not deployment_id or len(deployment_id) < 10:
             print(f'Invalid deployment ID: {deployment_id}')
             sys.exit(1)
-        
+
         print('✅ Input validation passed')
         print('::set-output name=can_proceed::true')
         "
-    
+
     - name: Check Current Deployment Status
       id: version_check
       run: |
@@ -159,17 +159,17 @@ jobs:
         else
           HEALTH_URL="http://localhost:8000/health"
         fi
-        
+
         # Try to get current version from health endpoint
         CURRENT_VERSION=$(curl -s "$HEALTH_URL" | jq -r '.version // "unknown"' || echo "unknown")
         echo "Current deployed version: $CURRENT_VERSION"
         echo "::set-output name=previous_version::$CURRENT_VERSION"
-        
+
         # Check if we're trying to deploy the same version
         if [ "$CURRENT_VERSION" = "${{ inputs.version }}" ]; then
           echo "⚠️ Warning: Attempting to deploy the same version that's currently deployed"
         fi
-    
+
     - name: Run Compatibility Check
       id: compatibility
       run: |
@@ -181,7 +181,7 @@ jobs:
           --output compatibility-report.json \
           --registry-url "${{ secrets.VERSION_REGISTRY_URL }}" \
           --db-url "${{ secrets.VERSION_REGISTRY_DB_URL }}"
-        
+
         # Check the result
         if [ $? -eq 0 ]; then
           echo "✅ Compatibility check passed"
@@ -189,19 +189,19 @@ jobs:
         else
           echo "❌ Compatibility check failed"
           echo "::set-output name=status::incompatible"
-          
+
           # Upload compatibility report as artifact
           if [ -f compatibility-report.json ]; then
             echo "Uploading compatibility report..."
           fi
-          
+
           exit 1
         fi
       env:
         VERSION_REGISTRY_URL: ${{ secrets.VERSION_REGISTRY_URL }}
         VERSION_REGISTRY_TOKEN: ${{ secrets.VERSION_REGISTRY_TOKEN }}
         VERSION_REGISTRY_DB_URL: ${{ secrets.VERSION_REGISTRY_DB_URL }}
-    
+
     - name: Upload Compatibility Report
       if: always()
       uses: actions/upload-artifact@v4
@@ -209,7 +209,7 @@ jobs:
         name: compatibility-report-${{ inputs.version }}
         path: compatibility-report.json
         retention-days: 30
-    
+
     - name: Notify Orchestrator - Pre-deployment Complete
       if: inputs.orchestrated == 'true'
       run: |
@@ -229,7 +229,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════
   # Build and Test
   # ═══════════════════════════════════════════════════════════════════
-  
+
   build:
     name: "🔨 Build & Test Backend"
     runs-on: ubuntu-latest
@@ -238,41 +238,41 @@ jobs:
     outputs:
       image_tag: ${{ steps.build.outputs.image_tag }}
       build_info: ${{ steps.build.outputs.build_info }}
-    
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
-    
+
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Setup Docker Buildx
       uses: docker/setup-buildx-action@v3
-    
+
     - name: Log in to Container Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.DOCKER_REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    
+
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest pytest-cov pytest-asyncio
-    
+
     - name: Run Tests
       run: |
         pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
-        
+
         # Generate test report
         echo "Test Results:" > test-report.txt
         echo "=============" >> test-report.txt
         pytest tests/ --tb=short >> test-report.txt 2>&1 || true
-    
+
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
       with:
@@ -282,13 +282,13 @@ jobs:
           coverage.xml
           test-report.txt
         retention-days: 30
-    
+
     - name: Build Docker Image
       id: build
       run: |
         IMAGE_TAG="${{ env.IMAGE_NAME }}:${{ inputs.version }}"
         LATEST_TAG="${{ env.IMAGE_NAME }}:latest"
-        
+
         # Build image with build args
         docker buildx build \
           --platform linux/amd64,linux/arm64 \
@@ -300,9 +300,9 @@ jobs:
           --build-arg DEPLOYMENT_ID="${{ inputs.deployment_id }}" \
           --push \
           .
-        
+
         echo "::set-output name=image_tag::$IMAGE_TAG"
-        
+
         # Create build info
         BUILD_INFO="{
           \"image_tag\": \"$IMAGE_TAG\",
@@ -313,17 +313,17 @@ jobs:
           \"deployment_id\": \"${{ inputs.deployment_id }}\",
           \"environment\": \"${{ inputs.environment }}\"
         }"
-        
+
         echo "$BUILD_INFO" > build-info.json
         echo "::set-output name=build_info::$BUILD_INFO"
-    
+
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: build-info-${{ inputs.version }}
         path: build-info.json
         retention-days: 30
-    
+
     - name: Security Scan
       if: inputs.environment == 'production'
       run: |
@@ -332,7 +332,7 @@ jobs:
           aquasec/trivy image --severity HIGH,CRITICAL \
           --format json --output security-scan.json \
           "${{ steps.build.outputs.image_tag }}" || true
-    
+
     - name: Upload Security Scan
       if: inputs.environment == 'production'
       uses: actions/upload-artifact@v4
@@ -344,7 +344,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════
   # Deploy Backend Service
   # ═══════════════════════════════════════════════════════════════════
-  
+
   deploy:
     name: "🚀 Deploy Backend Service"
     runs-on: ubuntu-latest
@@ -353,34 +353,34 @@ jobs:
       status: ${{ steps.deployment.outputs.status }}
       health_url: ${{ steps.deployment.outputs.health_url }}
       deployment_info: ${{ steps.deployment.outputs.deployment_info }}
-    
+
     environment: ${{ inputs.environment }}
-    
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
-    
+
     - name: Download Build Artifacts
       uses: actions/download-artifact@v4
       with:
         name: build-info-${{ inputs.version }}
         path: ./artifacts/
-    
+
     - name: Setup Deployment Tools
       run: |
         # Install deployment tools (AWS CLI, kubectl, etc.)
         pip install awscli boto3
-        
+
         # Configure AWS credentials for the environment
         aws configure set aws_access_key_id "${{ secrets.AWS_ACCESS_KEY_ID }}"
         aws configure set aws_secret_access_key "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
         aws configure set default.region "${{ secrets.AWS_REGION }}"
-    
+
     - name: Deploy to Environment
       id: deployment
       run: |
         echo "🚀 Starting deployment of backend v${{ inputs.version }} to ${{ inputs.environment }}"
-        
+
         # Set environment-specific variables
         case "${{ inputs.environment }}" in
           "production")
@@ -405,9 +405,9 @@ jobs:
             MAX_REPLICAS=2
             ;;
         esac
-        
+
         echo "::set-output name=health_url::$HEALTH_URL"
-        
+
         # Create deployment configuration
         cat > deployment-config.json << EOF
         {
@@ -431,14 +431,14 @@ jobs:
           }
         }
         EOF
-        
+
         # Execute deployment using your deployment script
         python scripts/deploy.py \
           --config deployment-config.json \
           --strategy ${{ inputs.environment == 'production' && 'blue-green' || 'rolling' }} \
           --timeout 600 \
           --health-check-retries 5
-        
+
         if [ $? -eq 0 ]; then
           echo "✅ Deployment successful"
           echo "::set-output name=status::success"
@@ -447,7 +447,7 @@ jobs:
           echo "::set-output name=status::failed"
           exit 1
         fi
-        
+
         # Create deployment info
         DEPLOYMENT_INFO="{
           \"deployment_id\": \"${{ inputs.deployment_id }}\",
@@ -461,52 +461,52 @@ jobs:
           \"git_commit\": \"${{ github.sha }}\",
           \"previous_version\": \"${{ needs.pre-deployment.outputs.previous_version }}\"
         }"
-        
+
         echo "$DEPLOYMENT_INFO" > deployment-info.json
         echo "::set-output name=deployment_info::$DEPLOYMENT_INFO"
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_REGION: ${{ secrets.AWS_REGION }}
-    
+
     - name: Wait for Service Readiness
       if: steps.deployment.outputs.status == 'success'
       run: |
         HEALTH_URL="${{ steps.deployment.outputs.health_url }}"
         echo "🔍 Waiting for service to be ready at $HEALTH_URL"
-        
+
         # Wait up to 5 minutes for service to be ready
         for i in {1..30}; do
           echo "Health check attempt $i/30..."
-          
+
           if curl -f -s "$HEALTH_URL" | jq -e '.status == "healthy"' > /dev/null 2>&1; then
             echo "✅ Service is healthy!"
             break
           fi
-          
+
           if [ $i -eq 30 ]; then
             echo "❌ Service failed to become healthy within timeout"
             exit 1
           fi
-          
+
           sleep 10
         done
-    
+
     - name: Run Post-deployment Tests
       if: steps.deployment.outputs.status == 'success'
       run: |
         # Run integration tests against deployed service
         HEALTH_URL="${{ steps.deployment.outputs.health_url }}"
-        
+
         echo "🧪 Running post-deployment tests..."
-        
+
         # Basic API tests
         python -c "
         import requests
         import sys
-        
+
         health_url = '$HEALTH_URL'
-        
+
         try:
             # Health check
             response = requests.get(health_url, timeout=30)
@@ -514,7 +514,7 @@ jobs:
             health_data = response.json()
             assert health_data.get('status') == 'healthy'
             print('✅ Health check passed')
-            
+
             # Version check
             deployed_version = health_data.get('version')
             expected_version = '${{ inputs.version }}'
@@ -522,14 +522,14 @@ jobs:
                 print(f'⚠️ Warning: Expected version {expected_version}, got {deployed_version}')
             else:
                 print('✅ Version check passed')
-            
+
             print('✅ All post-deployment tests passed')
-            
+
         except Exception as e:
             print(f'❌ Post-deployment tests failed: {e}')
             sys.exit(1)
         "
-    
+
     - name: Upload Deployment Artifacts
       if: always()
       uses: actions/upload-artifact@v4
@@ -539,7 +539,7 @@ jobs:
           deployment-config.json
           deployment-info.json
         retention-days: 30
-    
+
     - name: Update Version Registry
       if: steps.deployment.outputs.status == 'success'
       run: |
@@ -567,13 +567,13 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════
   # Trigger Frontend Deployment
   # ═══════════════════════════════════════════════════════════════════
-  
+
   trigger-frontend:
     name: "📱 Trigger Frontend Deployment"
     runs-on: ubuntu-latest
     needs: [deploy]
     if: needs.deploy.outputs.status == 'success' && inputs.frontend_trigger == true && inputs.orchestrated == 'true'
-    
+
     steps:
     - name: Get Frontend Version Requirements
       id: frontend_versions
@@ -584,7 +584,7 @@ jobs:
           "${{ secrets.VERSION_REGISTRY_URL }}/api/v1/compatibility/backend/${{ inputs.version }}" | \
           jq -r '.compatibility_matrix | to_entries[] | select(.value == "fully_compatible" or .value == "backward_compatible") | .key' | \
           grep "frontend-" || echo "")
-        
+
         if [ -z "$COMPATIBLE_VERSIONS" ]; then
           echo "No compatible frontend versions found, using latest"
           FRONTEND_VERSIONS='{"android": "latest", "ios": "latest", "web": "latest"}'
@@ -603,13 +603,13 @@ jobs:
           print(json.dumps(versions))
           ")
         fi
-        
+
         echo "Frontend versions to deploy: $FRONTEND_VERSIONS"
         echo "::set-output name=versions::$FRONTEND_VERSIONS"
       env:
         VERSION_REGISTRY_URL: ${{ secrets.VERSION_REGISTRY_URL }}
         VERSION_REGISTRY_TOKEN: ${{ secrets.VERSION_REGISTRY_TOKEN }}
-    
+
     - name: Trigger Frontend Repository Workflow
       uses: actions/github-script@v7
       with:
@@ -617,7 +617,7 @@ jobs:
         script: |
           const frontendRepo = 'mickgian/PratikoAi-KMP';
           const workflowFile = 'orchestrated-frontend-deployment.yml';
-          
+
           const response = await github.rest.actions.createWorkflowDispatch({
             owner: 'mickgian',
             repo: 'PratikoAi-KMP',
@@ -632,10 +632,10 @@ jobs:
               orchestrated: 'true'
             }
           });
-          
+
           console.log('Triggered frontend deployment workflow');
           console.log('Response:', response.status);
-    
+
     - name: Notify Orchestrator - Frontend Triggered
       run: |
         curl -X POST "${{ secrets.ORCHESTRATOR_WEBHOOK_URL }}/deployment-status" \
@@ -654,55 +654,55 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════
   # Rollback on Failure
   # ═══════════════════════════════════════════════════════════════════
-  
+
   rollback:
     name: "🔄 Rollback on Failure"
     runs-on: ubuntu-latest
     needs: [pre-deployment, deploy]
     if: failure() && inputs.rollback_version != '' && needs.pre-deployment.outputs.previous_version != 'unknown'
-    
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
-    
+
     - name: Perform Rollback
       run: |
         ROLLBACK_VERSION="${{ inputs.rollback_version }}"
         if [ -z "$ROLLBACK_VERSION" ]; then
           ROLLBACK_VERSION="${{ needs.pre-deployment.outputs.previous_version }}"
         fi
-        
+
         echo "🔄 Rolling back to version $ROLLBACK_VERSION"
-        
+
         # Use the same deployment script with rollback flag
         python scripts/deploy.py \
           --rollback \
           --version "$ROLLBACK_VERSION" \
           --environment "${{ inputs.environment }}" \
           --deployment-id "${{ inputs.deployment_id }}-rollback"
-    
+
     - name: Verify Rollback
       run: |
         HEALTH_URL="${{ needs.deploy.outputs.health_url }}"
-        
+
         # Wait for rollback to complete
         sleep 30
-        
+
         # Check service health
         for i in {1..10}; do
           if curl -f -s "$HEALTH_URL" | jq -e '.status == "healthy"' > /dev/null 2>&1; then
             echo "✅ Rollback successful - service is healthy"
             break
           fi
-          
+
           if [ $i -eq 10 ]; then
             echo "❌ Rollback verification failed"
             exit 1
           fi
-          
+
           sleep 10
         done
-    
+
     - name: Notify Orchestrator - Rollback Complete
       if: inputs.orchestrated == 'true'
       run: |
@@ -721,13 +721,13 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════
   # Notification and Cleanup
   # ═══════════════════════════════════════════════════════════════════
-  
+
   notify:
     name: "📢 Send Notifications"
     runs-on: ubuntu-latest
     needs: [pre-deployment, build, deploy, trigger-frontend]
     if: always() && inputs.orchestrated == 'true'
-    
+
     steps:
     - name: Determine Overall Status
       id: status
@@ -742,7 +742,7 @@ jobs:
           echo "::set-output name=overall::cancelled"
           echo "::set-output name=message::Backend deployment was cancelled"
         fi
-    
+
     - name: Send Slack Notification
       uses: 8398a7/action-slack@v3
       with:
@@ -765,7 +765,7 @@ jobs:
             }]
           }
       if: always()
-    
+
     - name: Create GitHub Issue on Failure
       if: needs.deploy.result == 'failure'
       uses: actions/github-script@v7
@@ -774,30 +774,30 @@ jobs:
           const title = `🚨 Backend Deployment Failed: v${{ inputs.version }} to ${{ inputs.environment }}`;
           const body = `
           # Backend Deployment Failure Report
-          
+
           **Deployment ID:** ${{ inputs.deployment_id }}
           **Version:** ${{ inputs.version }}
           **Environment:** ${{ inputs.environment }}
           **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          
+
           ## Failure Details
           - **Pre-deployment:** ${{ needs.pre-deployment.result }}
           - **Build:** ${{ needs.build.result }}
           - **Deploy:** ${{ needs.deploy.result }}
-          
+
           ## Next Steps
           1. Review the workflow logs
           2. Check service health and compatibility
           3. Consider manual rollback if needed
           4. Update version dependencies if required
-          
+
           ## Artifacts
           Check the workflow run for deployment artifacts and logs.
-          
+
           ---
           *This issue was automatically created by the deployment workflow.*
           `;
-          
+
           await github.rest.issues.create({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -805,8 +805,8 @@ jobs:
             body: body,
             labels: ['deployment-failure', 'backend', '${{ inputs.environment }}']
           });
-    
-    - name: Final Orchestrator Notification  
+
+    - name: Final Orchestrator Notification
       run: |
         curl -X POST "${{ secrets.ORCHESTRATOR_WEBHOOK_URL }}/deployment-status" \
           -H "Content-Type: application/json" \

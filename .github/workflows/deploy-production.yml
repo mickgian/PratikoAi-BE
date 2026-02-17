@@ -1,0 +1,126 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Images
+    uses: ./.github/workflows/build-images.yml
+    permissions:
+      contents: read
+      packages: write
+
+  deploy:
+    name: Deploy to Production
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production  # Requires manual approval via GitHub Environments
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Hetzner Production
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_PROD_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_PROD_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/pratikoai
+
+            # Login to GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Set image tag
+            export IMAGE_TAG=${{ needs.build.outputs.image_tag }}
+
+            # Pull new images
+            docker compose -f docker-compose.yml -f docker-compose.production.yml pull app frontend
+
+            # Deploy backend first
+            docker compose -f docker-compose.yml -f docker-compose.production.yml up -d db redis app flagsmith
+            echo "Waiting for backend health..."
+            sleep 15
+
+            for i in $(seq 1 30); do
+              if docker compose -f docker-compose.yml -f docker-compose.production.yml exec -T app curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+                echo "Backend healthy!"
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "Backend health check failed"
+                docker compose -f docker-compose.yml -f docker-compose.production.yml logs app --tail=50
+                exit 1
+              fi
+              echo "Waiting for backend... (attempt $i/30)"
+              sleep 5
+            done
+
+            # Deploy frontend + monitoring
+            docker compose -f docker-compose.yml -f docker-compose.production.yml up -d frontend caddy
+            docker compose -f docker-compose.yml -f docker-compose.production.yml up -d prometheus grafana
+
+            docker image prune -f
+
+      - name: Smoke tests
+        run: |
+          echo "Running production smoke tests..."
+          sleep 15
+
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "https://api.pratiko.app/health" || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed: $STATUS"
+            exit 1
+          fi
+          echo "All production smoke tests passed!"
+
+  release:
+    name: Create GitHub Release
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            NOTES=$(git log --oneline --no-merges -20)
+          else
+            NOTES=$(git log --oneline --no-merges ${PREV_TAG}..HEAD)
+          fi
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
+          body: |
+            ## Changes
+
+            ${{ steps.notes.outputs.notes }}
+
+            ---
+            Deployed to production from commit ${{ github.sha }}
+          draft: false
+          prerelease: false

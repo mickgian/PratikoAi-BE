@@ -1,0 +1,137 @@
+# =============================================================================
+# PratikoAI Docker Compose - Production Environment Override
+# =============================================================================
+# Usage: docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
+#
+# Production-hardened configuration:
+# - Multiple uvicorn workers
+# - Monitoring stack enabled
+# - Higher memory limits for CX43 (16GB RAM)
+# =============================================================================
+
+services:
+  db:
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aifinance}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: ${POSTGRES_DB:-aifinance}
+    deploy:
+      resources:
+        limits:
+          memory: 3072M
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  app:
+    image: ghcr.io/mickgian/pratikoai-backend:${IMAGE_TAG:-latest}
+    build: !override
+      context: .
+      args:
+        APP_ENV: production
+        HF_INTENT_MODEL: ${HF_INTENT_MODEL:-mdeberta}
+    volumes:
+      - hf_cache:/home/appuser/.cache/huggingface
+    env_file:
+      - .env.production
+    environment:
+      - APP_ENV=production
+      - POSTGRES_URL=postgresql://${POSTGRES_USER:-aifinance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-aifinance}
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOWED_ORIGINS=https://app.pratiko.app
+    ports: []
+    command:
+      - /app/.venv/bin/uvicorn
+      - app.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --workers
+      - "${UVICORN_WORKERS:-4}"
+    deploy:
+      resources:
+        limits:
+          memory: 4096M
+
+  frontend:
+    image: ghcr.io/mickgian/pratikoai-frontend:${IMAGE_TAG:-latest}
+    restart: on-failure
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=https://api.pratiko.app
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - API_DOMAIN=${API_DOMAIN:-api.pratiko.app}
+      - APP_DOMAIN=${APP_DOMAIN:-app.pratiko.app}
+      - FLAGS_DOMAIN=${FLAGS_DOMAIN:-flags.pratiko.app}
+    depends_on:
+      - app
+      - frontend
+    networks:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  flagsmith:
+    image: flagsmith/flagsmith:latest
+    restart: on-failure
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-aifinance}:${POSTGRES_PASSWORD}@db:5432/flagsmith
+      - DJANGO_ALLOWED_HOSTS=*
+    depends_on:
+      - db
+    networks:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # Monitoring enabled on production (has RAM headroom)
+  prometheus:
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+
+  grafana:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  caddy_data:
+  caddy_config:

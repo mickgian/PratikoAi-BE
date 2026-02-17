@@ -1,0 +1,153 @@
+# =============================================================================
+# PratikoAI Docker Compose - QA Environment Override
+# =============================================================================
+# Usage: docker compose -f docker-compose.yml -f docker-compose.qa.yml up -d
+#
+# Extends base docker-compose.yml with:
+# - Caddy reverse proxy (HTTPS via Let's Encrypt)
+# - Frontend (Next.js standalone)
+# - Flagsmith (feature flags)
+# - QA-specific configuration
+# - No dev volume mounts
+# - Memory limits for CX33 (8GB RAM)
+# =============================================================================
+
+services:
+  # --- Override base services for QA ---
+
+  db:
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aifinance}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: ${POSTGRES_DB:-aifinance}
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  app:
+    image: ghcr.io/mickgian/pratikoai-backend:${IMAGE_TAG:-latest}
+    build: !override
+      context: .
+      args:
+        APP_ENV: qa
+        HF_INTENT_MODEL: ${HF_INTENT_MODEL:-mdeberta}
+    volumes:
+      - hf_cache:/home/appuser/.cache/huggingface
+    env_file:
+      - .env.qa
+    environment:
+      - APP_ENV=qa
+      - POSTGRES_URL=postgresql://${POSTGRES_USER:-aifinance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-aifinance}
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOWED_ORIGINS=https://app-qa.pratiko.app
+    ports: []
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+
+  # --- New QA services ---
+
+  frontend:
+    image: ghcr.io/mickgian/pratikoai-frontend:${IMAGE_TAG:-latest}
+    restart: on-failure
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=https://api-qa.pratiko.app
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - API_DOMAIN=${API_DOMAIN:-api-qa.pratiko.app}
+      - APP_DOMAIN=${APP_DOMAIN:-app-qa.pratiko.app}
+      - FLAGS_DOMAIN=${FLAGS_DOMAIN:-flags-qa.pratiko.app}
+    depends_on:
+      - app
+      - frontend
+    networks:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  flagsmith:
+    image: flagsmith/flagsmith:latest
+    restart: on-failure
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-aifinance}:${POSTGRES_PASSWORD}@db:5432/flagsmith
+      - DJANGO_ALLOWED_HOSTS=*
+    depends_on:
+      - db
+    networks:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # --- Disable monitoring services on QA ---
+  # Langfuse handles LLM observability, Hetzner Dashboard handles infra
+
+  prometheus:
+    profiles:
+      - monitoring
+
+  redis-exporter:
+    profiles:
+      - monitoring
+
+  postgres-exporter:
+    profiles:
+      - monitoring
+
+  node-exporter:
+    profiles:
+      - monitoring
+
+  alertmanager:
+    profiles:
+      - monitoring
+
+  grafana:
+    profiles:
+      - monitoring
+
+  cadvisor:
+    profiles:
+      - monitoring
+
+volumes:
+  caddy_data:
+  caddy_config:

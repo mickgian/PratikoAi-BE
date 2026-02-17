@@ -63,6 +63,7 @@ EXCLUDED_PATTERNS = [
     r"\.env$",  # Actual .env files (not .env.example)
     r"\.env\.\w+$",  # .env.development, .env.production, etc.
     r"\.github/workflows/",  # GitHub Actions workflows (contain test credentials for CI)
+    r"docker-compose.*\.yml$",  # Docker Compose files use env var references, not real secrets
     r"__pycache__",
     r"\.git/",
     r"node_modules/",

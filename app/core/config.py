@@ -180,7 +180,10 @@ class Settings:
 
         # Production LLM model (format: provider:model, e.g., "openai:gpt-4o")
         # Used in normal chat and marked as "Modello Corrente" in comparison feature
-        self.PRODUCTION_LLM_MODEL = os.getenv("PRODUCTION_LLM_MODEL", "openai:gpt-4o")
+        # Runtime-tunable via Flagsmith (ADR-031)
+        from app.core.remote_config import get_config
+
+        self.PRODUCTION_LLM_MODEL = get_config("PRODUCTION_LLM_MODEL", "openai:gpt-4o")
 
         # LLM routing configuration
         self.LLM_ROUTING_STRATEGY = os.getenv(
@@ -195,7 +198,8 @@ class Settings:
         self.QUERY_NORMALIZATION_CACHE_TTL = int(os.getenv("QUERY_NORMALIZATION_CACHE_TTL", "3600"))  # 1 hour
 
         # General LLM settings
-        self.DEFAULT_LLM_TEMPERATURE = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.2"))
+        # Runtime-tunable via Flagsmith (ADR-031)
+        self.DEFAULT_LLM_TEMPERATURE = float(get_config("DEFAULT_LLM_TEMPERATURE", "0.2"))
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
         self.MAX_LLM_CALL_RETRIES = int(os.getenv("MAX_LLM_CALL_RETRIES", "3"))
 
@@ -477,7 +481,9 @@ def get_settings() -> Settings:
 
 # ==============================================================================
 # Hybrid RAG Configuration
+# Runtime-tunable values use Flagsmith fallback chain (ADR-031)
 # ==============================================================================
+from app.core.remote_config import get_config as _rc_get_config
 
 # Embedding Model Configuration
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")  # 1536-d
@@ -490,7 +496,7 @@ CHUNK_OVERLAP = float(os.getenv("CHUNK_OVERLAP", "0.12"))  # 12% overlap
 # PDF Extraction Configuration
 EXTRACTOR_PRIMARY = os.getenv("EXTRACTOR_PRIMARY", "pdfplumber")  # "pdfplumber" (MIT)
 PDF_EXTRACTOR = os.getenv("PDF_EXTRACTOR", "pdfplumber")  # Feature flag for extraction method
-OCR_ENABLED = os.getenv("OCR_ENABLED", "true").lower() in ("true", "1", "yes")
+OCR_ENABLED = _rc_get_config("OCR_ENABLED", "true").lower() in ("true", "1", "yes")
 OCR_LANGUAGES = os.getenv("OCR_LANGUAGES", "ita")  # Tesseract language codes
 OCR_PAGE_SAMPLE = int(os.getenv("OCR_PAGE_SAMPLE", "3"))  # Pages to sample for quality check
 OCR_MAX_PAGES = int(os.getenv("OCR_MAX_PAGES", "12"))  # Max pages to OCR per document
@@ -512,11 +518,12 @@ QUALITY_MIN_DOC = float(os.getenv("QUALITY_MIN_DOC", "0.60"))  # Min quality thr
 # DEV-BE-78: Rebalanced weights to include quality and source authority
 # Original: FTS=0.50, Vec=0.35, Recency=0.15
 # New: FTS=0.45, Vec=0.30, Recency=0.10, Quality=0.10, Source=0.05
-HYBRID_WEIGHT_FTS = float(os.getenv("HYBRID_WEIGHT_FTS", "0.45"))
-HYBRID_WEIGHT_VEC = float(os.getenv("HYBRID_WEIGHT_VEC", "0.30"))
-HYBRID_WEIGHT_RECENCY = float(os.getenv("HYBRID_WEIGHT_RECENCY", "0.10"))
-HYBRID_WEIGHT_QUALITY = float(os.getenv("HYBRID_WEIGHT_QUALITY", "0.10"))
-HYBRID_WEIGHT_SOURCE = float(os.getenv("HYBRID_WEIGHT_SOURCE", "0.05"))
+# Runtime-tunable via Flagsmith (ADR-031)
+HYBRID_WEIGHT_FTS = float(_rc_get_config("HYBRID_WEIGHT_FTS", "0.45"))
+HYBRID_WEIGHT_VEC = float(_rc_get_config("HYBRID_WEIGHT_VEC", "0.30"))
+HYBRID_WEIGHT_RECENCY = float(_rc_get_config("HYBRID_WEIGHT_RECENCY", "0.10"))
+HYBRID_WEIGHT_QUALITY = float(_rc_get_config("HYBRID_WEIGHT_QUALITY", "0.10"))
+HYBRID_WEIGHT_SOURCE = float(_rc_get_config("HYBRID_WEIGHT_SOURCE", "0.05"))
 
 # Source Authority Weights for official Italian sources
 # Used by ranking_utils.get_source_authority_boost()
@@ -563,7 +570,7 @@ HF_MODEL_MAP = {
 # DEV-242 Phase 36: Was 22 to capture AdER chunks (5-day grace period info)
 # DEV-244: Reduced to 18 - hard char limit in context_builder_merge.py now prevents overflow
 # DEV-245: Increased from 18 to 25 for more complete responses
-CONTEXT_TOP_K = int(os.getenv("CONTEXT_TOP_K", "25"))
+CONTEXT_TOP_K = int(_rc_get_config("CONTEXT_TOP_K", "25"))
 
 # USE_GENERIC_EXTRACTION: Use generic extraction principles instead of topic-specific rules
 # DEV-XXX: When True, replaces ~17KB of rottamazione-specific rules with ~4KB of generic patterns

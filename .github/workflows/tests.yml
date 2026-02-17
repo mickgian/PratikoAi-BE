@@ -118,3 +118,12 @@ jobs:
             htmlcov/
             coverage.xml
           retention-days: 30
+
+      - name: Post coverage comment on PR
+        if: github.event_name == 'pull_request' && (success() || failure())
+        uses: orgoro/coverage@v3.2
+        with:
+          coverageFile: coverage.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          thresholdAll: 0.30
+          thresholdNew: 0.70

@@ -305,6 +305,7 @@ exclude = [
     "evals/",
     "failure-recovery-system/",
     "deployment-orchestration/",
+    "scripts/\\.archive/",
 ]
 
 # Per-module configuration
@@ -544,3 +545,21 @@ module = [
     "archived.*",
 ]
 ignore_errors = true
+
+# ============================================================================
+# Semantic Release Configuration
+# ============================================================================
+# Automated versioning and changelog generation from conventional commits.
+# Parses: feat() -> minor, fix() -> patch, BREAKING CHANGE -> major
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "master"
+commit_message = "chore(release): v{version}"
+build_command = ""
+changelog_file = "CHANGELOG.md"
+upload_to_pypi = false
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["feat", "fix", "perf", "refactor", "docs", "style", "test", "build", "ci", "chore"]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf", "refactor"]

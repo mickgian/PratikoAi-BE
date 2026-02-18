@@ -52,6 +52,9 @@ fi
 
 # Check required sensitive environment variables
 required_vars=("JWT_SECRET_KEY" "LLM_API_KEY")
+if [ "$APP_ENV" != "development" ]; then
+    required_vars+=("POSTGRES_URL")
+fi
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -84,8 +87,27 @@ fi
 echo "LLM Model: ${LLM_MODEL:-Not set}"
 echo "Debug Mode: ${DEBUG:-false}"
 
-# Run database migrations for non-development environments
+# Wait for database to be ready before running migrations
 if [ "$APP_ENV" != "development" ]; then
+    echo "Waiting for database..."
+    # Extract host and port from POSTGRES_URL
+    DB_HOST=$(echo "$POSTGRES_URL" | sed -n 's|.*@\([^:/]*\).*|\1|p')
+    DB_PORT=$(echo "$POSTGRES_URL" | sed -n 's|.*:\([0-9]*\)/.*|\1|p')
+    DB_PORT=${DB_PORT:-5432}
+
+    for i in $(seq 1 15); do
+        if pg_isready -h "$DB_HOST" -p "$DB_PORT" -q 2>/dev/null; then
+            echo "Database is ready."
+            break
+        fi
+        if [ "$i" -eq 15 ]; then
+            echo "ERROR: Database not ready after 30s"
+            exit 1
+        fi
+        echo "Database not ready, retrying in 2s... ($i/15)"
+        sleep 2
+    done
+
     echo "Running database migrations..."
     /app/.venv/bin/alembic upgrade head
     echo "Migrations complete."

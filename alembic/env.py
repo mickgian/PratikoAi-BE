@@ -166,9 +166,11 @@ from app.models.user import User
 # access to the values within the .ini file in use.
 config = context.config
 
-# Override sqlalchemy.url with DATABASE_URL environment variable if available
-if os.getenv("DATABASE_URL"):
-    config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+# Override sqlalchemy.url with DATABASE_URL (or POSTGRES_URL fallback)
+_db_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
+if _db_url:
+    # Alembic requires a sync driver — replace asyncpg if present
+    config.set_main_option("sqlalchemy.url", _db_url.replace("+asyncpg", ""))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

@@ -29,6 +29,9 @@ RUN uv venv && . .venv/bin/activate && uv pip install -e .
 # Copy application code
 COPY . .
 
+# Reinstall editable link now that code is present so uv discovers app packages
+RUN . .venv/bin/activate && uv pip install --no-deps -e .
+
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime
 # ---------------------------------------------------------------------------

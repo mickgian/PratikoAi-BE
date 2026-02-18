@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+.env*
+.vercel
+.claude
+.idea
+coverage
+playwright-report
+test-results
+*.md
+docs
+e2e
+__mocks__
+__tests__

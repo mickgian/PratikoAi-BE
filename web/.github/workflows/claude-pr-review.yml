@@ -1,0 +1,145 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+  id-token: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    # Skip if PR has 'skip-ai-review' label
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-ai-review') }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Review PR with Claude
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          direct_prompt: |
+            You are reviewing a pull request for PratikoAI Frontend (Next.js 15/React 19/TypeScript).
+
+            ## PR Details
+            - **Number:** #${{ github.event.pull_request.number }}
+            - **Title:** "${{ github.event.pull_request.title }}"
+            - **Author:** @${{ github.event.pull_request.user.login }}
+            - **Branch:** ${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}
+            - **Description:**
+            ${{ github.event.pull_request.body }}
+
+            ## Review Process
+
+            ### 1. Analyze Changes
+            First, get the diff to understand what changed:
+            ```bash
+            git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} --stat
+            git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}
+            ```
+
+            ### 2. Read CLAUDE.md Guidelines
+            Read the project guidelines:
+            ```bash
+            cat CLAUDE.md
+            ```
+
+            ### 3. Check for Violations
+
+            #### Code Size Limits
+            - Page files: max 100 lines
+            - React components: max 150 lines
+            - Custom hooks: max 50 lines
+            - API clients: max 100 lines
+            - Context providers: max 100 lines
+
+            #### Critical Rules (ADRs)
+            - **Context API ONLY** - NO Redux/Zustand (ADR-008)
+            - **Radix UI ONLY** - NO Material-UI (ADR-009)
+            - **TDD Required** - Tests should exist for new code
+            - **Italian Text** - ALL user-facing text must be in Italian
+            - **No TODOs** - Code must be complete
+
+            #### Patterns to Flag
+            ```bash
+            # Check for forbidden state management
+            grep -rn --include="*.tsx" --include="*.ts" "from 'redux\|from 'zustand\|from '@reduxjs" src/ || true
+
+            # Check for forbidden UI libraries
+            grep -rn --include="*.tsx" --include="*.ts" "from '@mui\|from 'material-ui" src/ || true
+
+            # Check for English text in components (common patterns)
+            grep -rn --include="*.tsx" -E "<(Button|Label|p|span|h[1-6])>[A-Z][a-z]+" src/components/ src/app/ 2>/dev/null | head -20 || true
+
+            # Check for TODO comments
+            grep -rn --include="*.tsx" --include="*.ts" "// TODO\|// FIXME\|// XXX" src/ || true
+            ```
+
+            #### React/Next.js Best Practices
+            - Server Components used where possible
+            - 'use client' only when needed
+            - Proper error boundaries
+            - Loading states handled
+            - Accessibility (ARIA labels, keyboard nav)
+
+            ### 4. Check Test Coverage
+            Look for corresponding test files:
+            - `Component.tsx` should have `Component.test.tsx`
+            - New hooks should have tests
+            - API changes should have integration tests
+
+            ### 5. Post Review Comment
+            Create a review comment with findings. Format:
+
+            ```markdown
+            ## 🤖 Claude Code Review
+
+            ### Summary
+            [Brief summary of changes and overall assessment]
+
+            ### ✅ What Looks Good
+            - [Positive aspects]
+
+            ### ⚠️ Suggestions
+            - [Non-blocking suggestions for improvement]
+
+            ### ❌ Issues to Address
+            - [Critical issues that should be fixed]
+
+            ### 🇮🇹 Italian Text Check
+            - [Confirm UI text is in Italian or flag English text]
+
+            ### 📊 Code Quality Metrics
+            - Files changed: X
+            - Lines added: X
+            - Lines removed: X
+            - Components affected: X
+
+            ---
+            *This is an advisory review. The PR can be merged at maintainer discretion.*
+            ```
+
+            Use:
+            ```bash
+            gh pr comment ${{ github.event.pull_request.number }} --body "Your review here"
+            ```
+
+            ## Review Mode: ADVISORY
+            This review is advisory only. Do NOT request changes or block the PR.
+            Focus on helpful suggestions rather than blocking issues.
+            Be constructive and professional.
+
+            ## Special Attention
+            - Verify all user-facing text is in Italian
+            - Check for proper TypeScript types (no 'any')
+            - Ensure components use Tailwind + Radix UI patterns
+            - Look for accessibility issues
+          allowed_tools: "Bash,Read,Glob,Grep"
+          timeout_minutes: 10

@@ -1,0 +1,631 @@
+@import 'tailwindcss';
+@import './chat/styles/typing-effect.css';
+
+/* Raw Markdown Display Styles */
+.raw-markdown {
+  font-family: 'Monaco', 'Courier New', 'Consolas', monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1e293b;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+
+  /* PratikoAI Color Palette */
+  --avorio: #f8f5f1;
+  --blu-petrolio: #2a5d67;
+  --verde-salvia: #a9c1b7;
+  --verde-salvia-light: #a9c1b780; /* 50% opacity */
+  --sabbia-calda: #dcc7a1; /* Only for decorative elements */
+  --oro-antico: #d4a574; /* New color for better visibility */
+  --grigio-tortora: #c4bdb4;
+  --dark-slate: #1e293b;
+
+  /* Semantic Colors */
+  --background: #ffffff;
+  --foreground: var(--dark-slate);
+  --card: #ffffff;
+  --card-foreground: var(--dark-slate);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--dark-slate);
+  --primary: var(--blu-petrolio);
+  --primary-foreground: #ffffff;
+  --secondary: var(--avorio);
+  --secondary-foreground: var(--blu-petrolio);
+  --muted: var(--grigio-tortora);
+  --muted-foreground: var(--grigio-tortora);
+  --accent: var(--oro-antico); /* Changed from sabbia-calda */
+  --accent-foreground: var(--dark-slate);
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #f3f3f5;
+  --switch-background: #cbced4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #030213;
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Typography Scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* PratikoAI Custom Colors */
+  --color-avorio: var(--avorio);
+  --color-blu-petrolio: var(--blu-petrolio);
+  --color-verde-salvia: var(--verde-salvia);
+  --color-verde-salvia-light: var(--verde-salvia-light);
+  --color-sabbia-calda: var(--sabbia-calda);
+  --color-oro-antico: var(--oro-antico);
+  --color-grigio-tortora: var(--grigio-tortora);
+  --color-dark-slate: var(--dark-slate);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family:
+      'Inter',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      'Roboto',
+      sans-serif;
+  }
+}
+
+/* Custom animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(42, 93, 103, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(42, 93, 103, 0.6);
+  }
+}
+
+@keyframes draw-line {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes typing-dots {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+/* Utility classes for animations */
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-draw-line {
+  stroke-dasharray: 100;
+  animation: draw-line 2s ease-in-out forwards;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-typing-dots {
+  animation: typing-dots 1.4s infinite;
+}
+
+/**
+ * Base typography with PratikoAI specifications
+ */
+@layer base {
+  :where(:not(:has([class*=' text-']), :not(:has([class^='text-'])))) {
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--blu-petrolio);
+    }
+
+    h2 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      line-height: 1.2;
+      color: var(--blu-petrolio);
+    }
+
+    h3 {
+      font-size: 1.875rem;
+      font-weight: 600;
+      line-height: 1.3;
+      color: var(--dark-slate);
+    }
+
+    h4 {
+      font-size: var(--text-xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.4;
+      color: var(--dark-slate);
+    }
+
+    p {
+      font-size: 1.125rem;
+      font-weight: var(--font-weight-normal);
+      line-height: 1.6;
+      color: var(--dark-slate);
+    }
+
+    label {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+      color: var(--dark-slate);
+    }
+
+    button {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    input {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+  }
+}
+
+html {
+  font-size: var(--font-size);
+  scroll-behavior: smooth;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--avorio);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--grigio-tortora);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--blu-petrolio);
+}
+
+/* Backend HTML Content Styling for AI Messages */
+/* Implements CHAT_REQUIREMENTS.md Section 14.6 CSS classes */
+@layer components {
+  /* Tax calculation containers */
+  .calculation {
+    background: var(--avorio);
+    padding: 12px;
+    border-radius: 8px;
+    margin: 8px 0;
+    border: 1px solid color-mix(in srgb, var(--grigio-tortora) 30%, transparent);
+  }
+
+  .calculation .formula {
+    color: var(--dark-slate);
+    font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .calculation .result {
+    color: var(--blu-petrolio);
+    font-weight: 700;
+    font-size: 1rem;
+  }
+
+  /* Calculation step-by-step breakdown */
+  .calculation-step {
+    margin: 4px 0;
+    padding-left: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+  }
+
+  .calculation-step::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--grigio-tortora);
+    font-weight: bold;
+  }
+
+  .calculation-total {
+    border-top: 1px solid var(--grigio-tortora);
+    margin-top: 8px;
+    padding-top: 8px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: color-mix(in srgb, var(--blu-petrolio) 5%, transparent);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin: 8px -4px 0 -4px;
+  }
+
+  /* Legal references */
+  .legal-ref {
+    font-style: italic;
+    color: var(--blu-petrolio);
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--grigio-tortora);
+    font-size: 0.875rem;
+    margin-top: 12px;
+    display: inline-block;
+    transition: color 0.2s ease;
+  }
+
+  .legal-ref:hover {
+    color: var(--dark-slate);
+    text-decoration-color: var(--blu-petrolio);
+  }
+
+  /* Value labels and amounts */
+  .label {
+    font-weight: 600;
+    color: var(--dark-slate);
+    font-size: 0.875rem;
+  }
+
+  .amount {
+    font-weight: 600;
+    color: var(--blu-petrolio);
+    font-size: 1rem;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', monospace;
+  }
+
+  .percentage {
+    color: var(--oro-antico);
+    font-weight: 600;
+    font-size: 0.875rem;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', monospace;
+  }
+
+  /* Enhanced table styling for tax calculations */
+  .calculation table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+  }
+
+  .calculation table th,
+  .calculation table td {
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid
+      color-mix(in srgb, var(--grigio-tortora) 30%, transparent);
+  }
+
+  .calculation table th {
+    background: color-mix(in srgb, var(--blu-petrolio) 10%, transparent);
+    font-weight: 600;
+    color: var(--dark-slate);
+    font-size: 0.875rem;
+  }
+
+  .calculation table .amount {
+    text-align: right;
+  }
+
+  /* Responsive adjustments for calculations */
+  @media (max-width: 640px) {
+    .calculation {
+      padding: 8px;
+      margin: 6px 0;
+    }
+
+    .calculation-step {
+      font-size: 0.875rem;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+
+    .calculation-total {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+
+    .amount,
+    .percentage {
+      font-size: 0.875rem;
+    }
+  }
+
+  /* Backend List Formatting with Bold Blu Petrolio */
+  /* Ordered and unordered lists with PratikoAI styling */
+  ol,
+  ul {
+    margin: 12px 0;
+    padding-left: 20px;
+    line-height: 1.6;
+  }
+
+  /* Numbered list items with bold Blu Petrolio numbers */
+  ol > li {
+    position: relative;
+    margin: 8px 0;
+    padding-left: 8px;
+    color: var(--dark-slate);
+  }
+
+  /* Reset counter once at prose container level to maintain continuity across fragmented <ol> elements */
+  .prose {
+    counter-reset: list-counter;
+  }
+
+  ol {
+    /* counter-reset moved to .prose to fix numbering bug (1,1,1,2 instead of 1,2,3,4) */
+    list-style: none;
+  }
+
+  ol > li {
+    counter-increment: list-counter;
+  }
+
+  ol > li::before {
+    content: counter(list-counter) '.';
+    position: absolute;
+    left: -20px;
+    top: 0;
+    font-weight: 700;
+    color: var(--blu-petrolio);
+    font-size: 1rem;
+  }
+
+  /* Bullet list items with Blu Petrolio bullets */
+  ul {
+    list-style: none;
+  }
+
+  ul > li {
+    position: relative;
+    margin: 8px 0;
+    padding-left: 8px;
+    color: var(--dark-slate);
+  }
+
+  ul > li::before {
+    content: '•';
+    position: absolute;
+    left: -16px;
+    top: 0;
+    font-weight: 700;
+    color: var(--blu-petrolio);
+    font-size: 1.2rem;
+    line-height: 1.5;
+  }
+
+  /* Nested lists with lighter styling */
+  ol ol,
+  ul ul,
+  ol ul,
+  ul ol {
+    margin: 4px 0;
+    padding-left: 16px;
+  }
+
+  ol ol > li::before,
+  ul ul > li::before {
+    color: var(--grigio-tortora);
+    font-weight: 600;
+  }
+
+  /* Bold text in chat messages - teal color for visual hierarchy */
+  .prose strong,
+  .prose b,
+  li strong,
+  li b {
+    color: var(--blu-petrolio);
+    font-weight: 700;
+  }
+
+  /* Compact list styling for dense content */
+  .compact-list {
+    margin: 8px 0;
+  }
+
+  .compact-list > li {
+    margin: 4px 0;
+    font-size: 0.95rem;
+  }
+}
+
+/* Animation for message entrance */
+@keyframes fade-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-slide-up {
+  animation: fade-slide-up 0.4s ease-out;
+}
+
+/* Animation delay utilities */
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-400 {
+  animation-delay: 400ms;
+}

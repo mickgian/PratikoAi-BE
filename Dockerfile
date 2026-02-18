@@ -24,13 +24,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml .
 
 # Create venv and install all dependencies
-RUN uv venv && . .venv/bin/activate && uv pip install -e .
+# Create a minimal package skeleton so setuptools discovers the `app` package
+# and installs all its dependencies (the real code is copied in the next step)
+RUN mkdir -p app && touch app/__init__.py \
+    && uv venv && . .venv/bin/activate && uv pip install -e .
 
 # Copy application code
 COPY . .
 
-# Reinstall editable link now that code is present so uv discovers app packages
-RUN . .venv/bin/activate && uv pip install --no-deps -e .
+# Force-reinstall editable link so metadata reflects all sub-packages
+RUN . .venv/bin/activate && uv pip install --no-deps --reinstall -e .
 
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime

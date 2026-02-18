@@ -32,11 +32,11 @@ RUN mkdir -p app && touch app/__init__.py \
 # Copy application code
 COPY . .
 
-# Build proper wheel and install into site-packages (non-editable).
-# Replaces the skeleton editable install with a real package containing
-# all discovered sub-packages. PYTHONPATH=/app in runtime stage means
-# source tree still takes precedence for dev volume mounts.
-RUN . .venv/bin/activate && uv pip install --no-deps .
+# Build proper wheel, then strip large dev-only artefacts from torch
+# (C++ headers, CMake configs, static libs) — saves ~300 MB in the image.
+RUN . .venv/bin/activate && uv pip install --no-deps . \
+    && rm -rf .venv/lib/python*/site-packages/torch/{include,share,test} \
+    && find .venv -name "*.a" -path "*/torch/*" -delete 2>/dev/null; true
 
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime
@@ -63,8 +63,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy virtualenv and app code from builder
-COPY --from=builder /app/.venv /app/.venv
+# Copy virtualenv and app code from builder (single COPY to avoid
+# duplicating .venv content across two layers)
 COPY --from=builder /app /app
 
 # Make entrypoint script executable

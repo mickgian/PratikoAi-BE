@@ -241,6 +241,12 @@ def run_migrations_online() -> None:
         )
         connection.commit()
 
+        # Create any base tables that are defined in SQLModel models but
+        # not created by migrations (e.g. knowledge_items, users).
+        # checkfirst=True (default) skips tables that already exist.
+        target_metadata.create_all(connection)
+        connection.commit()
+
         context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():

@@ -31,7 +31,7 @@ That's it! You now have OS-level security protecting your credentials.
 
 **Allowed directories:**
 - `/Users/micky/PycharmProjects/PratikoAi-BE/` (backend repo)
-- `/Users/micky/WebstormProjects/PratikoAiWebApp/` (frontend repo)
+- `/Users/micky/PycharmProjects/PratikoAi-BE/web/` (frontend repo)
 - `/tmp/` (temporary files)
 - `~/.cache/uv/`, `~/.cache/npm/` (package caches)
 - `/usr/local/bin/`, `/opt/homebrew/bin/` (system binaries)

@@ -5,7 +5,7 @@
 **Branch:** `DEV-FE-005-chat-history-migration`
 **Date:** 2025-11-29
 **Developer:** Frontend Expert (@Livia)
-**Repository:** `/Users/micky/WebstormProjects/PratikoAiWebApp`
+**Repository:** `/Users/micky/PycharmProjects/PratikoAi-BE/web`
 
 ---
 
@@ -451,7 +451,7 @@ PHASE_2_FRONTEND_IMPLEMENTATION_SUMMARY.md
 2. **Stage Changes**
 
    ```bash
-   cd /Users/micky/WebstormProjects/PratikoAiWebApp
+   cd /Users/micky/PycharmProjects/PratikoAi-BE/web
 
    # Stage Phase 3 files
    git add src/app/chat/hooks/useChatSessionsV2.ts
@@ -540,6 +540,6 @@ Phase 3 successfully completes the chat history storage migration project. The i
 **Phase 3 Complete** ✅
 **Ready for Human Review** ✅
 
-**Repository:** `/Users/micky/WebstormProjects/PratikoAiWebApp`
+**Repository:** `/Users/micky/PycharmProjects/PratikoAi-BE/web`
 **Branch:** `DEV-FE-005-chat-history-migration`
 **Developer:** Frontend Expert (@Livia)

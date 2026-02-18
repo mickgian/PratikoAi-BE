@@ -200,7 +200,7 @@ Sprint on track: [YES ✅ / RISK 🟡 / DELAYED 🔴]
 
 ### Reference Documentation
 4. **`/docs/architecture/decisions.md`** - Architectural constraints (consult before assignments)
-5. **Frontend Roadmap:** `/Users/micky/WebstormProjects/PratikoAiWebApp/ARCHITECTURE_ROADMAP.md` (for frontend task coordination)
+5. **Frontend Roadmap:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/ARCHITECTURE_ROADMAP.md` (for frontend task coordination)
 
 ### Update Responsibilities
 - **Real-time:** Update `subagent-assignments.md` on every assignment/completion

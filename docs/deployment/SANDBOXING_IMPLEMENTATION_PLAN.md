@@ -95,7 +95,7 @@ Context: Running curl command from config.yaml line 2847
   "sandboxing": {
     "allowedDirectories": [
       "/Users/micky/PycharmProjects/PratikoAi-BE/",
-      "/Users/micky/WebstormProjects/PratikoAiWebApp/",
+      "/Users/micky/PycharmProjects/PratikoAi-BE/web/",
       "/tmp/",
       "~/.cache/uv/",
       "~/.cache/npm/",
@@ -104,7 +104,7 @@ Context: Running curl command from config.yaml line 2847
     ],
     "deniedDirectories": [
       "/Users/micky/PycharmProjects/PratikoAi-BE/.env*",
-      "/Users/micky/WebstormProjects/PratikoAiWebApp/.env*",
+      "/Users/micky/PycharmProjects/PratikoAi-BE/web/.env*",
       "~/.env*",
       "~/.ssh/",
       "~/.aws/",
@@ -743,7 +743,7 @@ Watchman uses inotify (Linux) or FSEvents (macOS) that conflict with sandbox fil
 - **Backend:** Uses pytest (no watchman) → No issue
 
 **Action Required:**
-Update `/Users/micky/WebstormProjects/PratikoAiWebApp/package.json`
+Update `/Users/micky/PycharmProjects/PratikoAi-BE/web/package.json`
 
 #### Tip 4: Escape Hatch Usage (Already Documented)
 
@@ -1028,7 +1028,7 @@ Subprocesses spawned: {subprocess_count}
 
 ### 2.2 Frontend Roadmap Updates
 
-**File:** `/Users/micky/WebstormProjects/PratikoAiWebApp/ARCHITECTURE_ROADMAP.md`
+**File:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/ARCHITECTURE_ROADMAP.md`
 
 #### DEV-005: Deploy QA
 **Update Phase 2:**
@@ -1115,9 +1115,9 @@ cat .env.development               # ❌ Should BLOCK
 **Cross-repo:**
 ```bash
 # Backend can read frontend code
-cat /Users/micky/WebstormProjects/PratikoAiWebApp/src/app/api/client.ts  # ✅ Works
+cat /Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/api/client.ts  # ✅ Works
 # But NOT frontend credentials
-cat /Users/micky/WebstormProjects/PratikoAiWebApp/.env.development        # ❌ BLOCKS
+cat /Users/micky/PycharmProjects/PratikoAi-BE/web/.env.development        # ❌ BLOCKS
 ```
 
 ### 3.2 RSS Feed Testing
@@ -1144,8 +1144,8 @@ python -c "
 import smtplib
 smtp = smtplib.SMTP('smtp.gmail.com', 587)
 smtp.starttls()
-smtp.login('your-email@gmail.com', 'app-password')
-smtp.sendmail('from@gmail.com', 'to@gmail.com', 'Test')
+smtp.login('your-email@example.com', 'app-password')
+smtp.sendmail('sender@example.com', 'recipient@example.com', 'Test')
 "  # ✅ Should work
 ```
 
@@ -1178,7 +1178,7 @@ time uv run pytest tests/
 **Test 2: Frontend Build**
 ```bash
 # Baseline
-cd /Users/micky/WebstormProjects/PratikoAiWebApp
+cd /Users/micky/PycharmProjects/PratikoAi-BE/web
 time npm run build
 # Expected: ~30 seconds (Next.js 15 with Turbopack)
 

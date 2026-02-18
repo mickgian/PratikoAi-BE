@@ -3,7 +3,7 @@
   "sandboxing": {
     "allowedDirectories": [
       "/Users/micky/PycharmProjects/PratikoAi-BE/",
-      "/Users/micky/WebstormProjects/PratikoAiWebApp/",
+      "/Users/micky/PycharmProjects/PratikoAi-BE/web/",
       "/tmp/",
       "~/.cache/uv/",
       "~/.cache/npm/",
@@ -12,7 +12,7 @@
     ],
     "deniedDirectories": [
       "/Users/micky/PycharmProjects/PratikoAi-BE/.env*",
-      "/Users/micky/WebstormProjects/PratikoAiWebApp/.env*",
+      "/Users/micky/PycharmProjects/PratikoAi-BE/web/.env*",
       "~/.env*",
       "~/.ssh/",
       "~/.aws/",

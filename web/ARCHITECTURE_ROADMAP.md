@@ -700,7 +700,7 @@ Users need to attach documents (PDF, Excel, images, etc.) to their chat question
 
 ## Frontend Implementation
 
-**Frontend Repo:** `/Users/micky/WebstormProjects/PratikoAiWebApp`
+**Frontend Repo:** `/Users/micky/PycharmProjects/PratikoAi-BE/web`
 
 **Files to Modify:**
 

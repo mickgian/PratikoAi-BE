@@ -163,7 +163,7 @@ user_id: int = Field(
 
 ### 4.1 Planned E2E Test Suites
 
-**Location:** `/Users/micky/WebstormProjects/PratikoAiWebApp/tests/e2e/`
+**Location:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/tests/e2e/`
 
 #### Test Suite 1: Multi-Device Sync ❌ TODO
 **File:** `chat-history-multi-device.spec.ts`
@@ -342,7 +342,7 @@ PGPASSWORD=devpass psql -h localhost -p 5433 -U aifinance -d aifinance_test -c "
 ### Frontend E2E Tests (When Created)
 ```bash
 # Run all E2E tests
-cd /Users/micky/WebstormProjects/PratikoAiWebApp
+cd /Users/micky/PycharmProjects/PratikoAi-BE/web
 npm run test:e2e
 
 # Run specific test suite

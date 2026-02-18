@@ -308,7 +308,7 @@ Needed production hosting. Requirements:
 
 **Date**: 2024-11
 **Status**: ✅ Active
-**Repository**: Frontend (`/Users/micky/WebstormProjects/PratikoAiWebApp`)
+**Repository**: Frontend (`/Users/micky/PycharmProjects/PratikoAi-BE/web`)
 
 **Context**:
 Frontend framework choice. Requirements:
@@ -632,7 +632,7 @@ Example: DEV-BE-72 (backend) + DEV-FE-004 (frontend) - Expert Feedback System
 
 **Lock Files (Separate per Repository):**
 - Backend: `/Users/micky/PycharmProjects/PratikoAi-BE/.claude/locks/branch-locks.json`
-- Frontend: `/Users/micky/WebstormProjects/PratikoAiWebApp/.claude/locks/branch-locks.json`
+- Frontend: `/Users/micky/PycharmProjects/PratikoAi-BE/web/.claude/locks/branch-locks.json`
 
 **5. Conflict Prevention Rules**
 

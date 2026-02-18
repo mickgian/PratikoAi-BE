@@ -66,3 +66,18 @@ backups/*.sql.gz
 
 # MCP configuration (contains credentials)
 .mcp.json
+
+# Frontend (web/) — Node.js / Next.js
+web/node_modules/
+web/.next/
+web/out/
+web/.vercel
+web/.env.local
+web/.env.development.local
+web/.env.test.local
+web/.env.production.local
+web/coverage/
+web/playwright-report/
+web/test-results/
+web/.turbo/
+web/*.tsbuildinfo

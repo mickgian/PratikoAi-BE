@@ -15,7 +15,7 @@ Successfully implemented Phase 2 of the chat history storage migration, transiti
 
 ### Task 1: Backend API Client ✅
 
-**File:** `/Users/micky/WebstormProjects/PratikoAiWebApp/src/lib/api/chat-history.ts` (211 lines)
+**File:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/lib/api/chat-history.ts` (211 lines)
 
 **Features Implemented:**
 
@@ -65,8 +65,8 @@ export interface ImportChatHistoryResponse {
 
 **Files:**
 
-- `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/hooks/useChatStorageV2.ts` (228 lines)
-- `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/hooks/useChatStorageV2.utils.ts` (74 lines)
+- `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/hooks/useChatStorageV2.ts` (228 lines)
+- `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/hooks/useChatStorageV2.utils.ts` (74 lines)
 
 **Hybrid Storage Strategy:**
 
@@ -115,7 +115,7 @@ export interface UseChatStorageV2Return {
 
 ### Task 3: Migration UI Banner ✅
 
-**File:** `/Users/micky/WebstormProjects/PratikoAiWebApp/src/components/MigrationBanner.tsx` (161 lines)
+**File:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/components/MigrationBanner.tsx` (161 lines)
 
 **Features Implemented:**
 

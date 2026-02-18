@@ -38,9 +38,9 @@ Real-time dashboard to monitor all 9 PratikoAI development agents:
 
 ### Key Principles
 - **Concise Overview**: High-level status, NOT detailed logs
-- **Mobile-Friendly**: Responsive design matching PratikoAiWebApp
+- **Mobile-Friendly**: Responsive design matching PratikoAi-BE/web
 - **Real-Time**: WebSocket streaming for live updates
-- **Design Consistency**: Exact color palette, icons, and components from PratikoAiWebApp
+- **Design Consistency**: Exact color palette, icons, and components from PratikoAi-BE/web
 
 ### Data Philosophy
 - **UI Shows**: Agent status, current task, progress, errors, key metrics
@@ -51,7 +51,7 @@ Real-time dashboard to monitor all 9 PratikoAI development agents:
 
 ## Design System Specifications
 
-### Color Palette (from PratikoAiWebApp)
+### Color Palette (from PratikoAi-BE/web)
 
 ```typescript
 // Primary Colors
@@ -78,7 +78,7 @@ const colors = {
 
 ```typescript
 // Font: Inter
-// Location: /Users/micky/WebstormProjects/PratikoAiWebApp/src/app/layout.tsx
+// Location: /Users/micky/WebstormProjects/PratikoAi-BE/web/src/app/layout.tsx
 
 import { Inter } from "next/font/google";
 
@@ -99,7 +99,7 @@ font-black    // 900
 ### Icons (Lucide React)
 
 ```typescript
-// Source: /Users/micky/WebstormProjects/PratikoAiWebApp/src/app/(protected)/dashboard/page.tsx
+// Source: /Users/micky/WebstormProjects/PratikoAi-BE/web/src/app/(protected)/dashboard/page.tsx
 
 import {
   Activity,      // Agent activity, live status
@@ -124,8 +124,8 @@ import {
 ### Component Library
 
 ```typescript
-// Source: PratikoAiWebApp uses Radix UI + shadcn/ui pattern
-// Location: /Users/micky/WebstormProjects/PratikoAiWebApp/src/components/ui/
+// Source: PratikoAi-BE/web uses Radix UI + shadcn/ui pattern
+// Location: /Users/micky/WebstormProjects/PratikoAi-BE/web/src/components/ui/
 
 // Core Components
 - Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter
@@ -416,7 +416,7 @@ CREATE INDEX idx_agent_metrics_date ON agent_metrics(date DESC);
 
 **Purpose**: Display all 9 agents with real-time status
 
-**Location**: `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/(protected)/dashboard/agents/page.tsx`
+**Location**: `/Users/micky/WebstormProjects/PratikoAi-BE/web/src/app/(protected)/dashboard/agents/page.tsx`
 
 **Code Example**:
 
@@ -1057,7 +1057,7 @@ echo "$TASK_DATA" >> "$LOG_FILE"
 ### Page Structure
 
 ```
-/Users/micky/WebstormProjects/PratikoAiWebApp/
+/Users/micky/WebstormProjects/PratikoAi-BE/web/
 └── src/
     └── app/
         └── (protected)/
@@ -1390,7 +1390,7 @@ export default function AgentDashboardPage() {
 - `/Users/micky/PycharmProjects/PratikoAi-BE/WORKFLOW_IMPROVEMENT_PROPOSAL.md`
 - `/Users/micky/PycharmProjects/PratikoAi-BE/.claude/agents/business-analyst.md`
 - `/Users/micky/PycharmProjects/PratikoAi-BE/docs/project/subagent-assignments.md`
-- `/Users/micky/WebstormProjects/PratikoAiWebApp/tailwind.config.ts`
+- `/Users/micky/WebstormProjects/PratikoAi-BE/web/tailwind.config.ts`
 
 ---
 

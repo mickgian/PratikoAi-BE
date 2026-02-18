@@ -46,7 +46,7 @@ User Approval → Expand to Month → Expand to Year → Create Canva Designs
 | Project | Path | Status |
 |---------|------|--------|
 | **Backend** | `/Users/micky/PycharmProjects/PratikoAi-BE` | Existing FastAPI |
-| **Frontend** | `/Users/micky/WebstormProjects/PratikoAiWebApp` | Existing Next.js 15 |
+| **Frontend** | `/Users/micky/PycharmProjects/PratikoAi-BE/web` | Existing Next.js 15 |
 | **Desktop** | `/Users/micky/AndroidStudioProjects/PratikoAi-KMP` | Existing KMP project |
 
 ---
@@ -733,7 +733,7 @@ data class FolderPermission(
 
 ## Phase 3: Frontend Next.js (~8h)
 
-**Location:** `/Users/micky/WebstormProjects/PratikoAiWebApp`
+**Location:** `/Users/micky/PycharmProjects/PratikoAi-BE/web`
 
 ---
 

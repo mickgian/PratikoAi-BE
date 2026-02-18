@@ -420,7 +420,7 @@ Simplified SUPER_USER-only expert feedback system with automatic task generation
 **Frontend Integration:**
 This backend task is linked to **DEV-BE-004** in frontend roadmap:
 - **Frontend Task:** DEV-BE-004: Implement Super Users Feedback on Answers (Expert Feedback System)
-- **Location:** `/Users/micky/WebstormProjects/PratikoAiWebApp/ARCHITECTURE_ROADMAP.md`
+- **Location:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/ARCHITECTURE_ROADMAP.md`
 - **Coordination Required:** Backend APIs must be completed BEFORE frontend implementation
 - **API Endpoints:** Frontend will consume `/api/v1/expert-feedback/*` endpoints created in this task
 
@@ -1083,7 +1083,7 @@ Complete subscription management system with Stripe integration, usage tracking,
 **Frontend Integration:**
 This backend task is linked to **DEV-BE-009** in frontend roadmap:
 - **Frontend Task:** DEV-BE-009: Integrate User Subscription Payment (Stripe)
-- **Location:** `/Users/micky/WebstormProjects/PratikoAiWebApp/ARCHITECTURE_ROADMAP.md`
+- **Location:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/ARCHITECTURE_ROADMAP.md`
 - **Coordination Required:** Backend APIs must be completed BEFORE frontend implementation
 
 **Problem:**

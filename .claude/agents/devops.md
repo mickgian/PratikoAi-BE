@@ -378,7 +378,33 @@ PratikoAI has decided NOT to use Terraform. This is a deliberate architectural c
 
 ---
 
-### 6. GitHub CLI (`gh`) Expertise
+### 6. Deployment Procedures
+
+**Monorepo:** Backend and frontend live in a single repo. The frontend is under `web/`. Any push to `develop` or `master` deploys everything — no manual triggers, no merge ordering, no cross-repo coordination.
+
+**Deployment Trigger Matrix:**
+
+| Scenario | Action | Trigger |
+|----------|--------|---------|
+| Any change (BE, FE, or both) | Merge PR to `develop` | Automatic |
+| Production | Merge `develop` → `master` | Automatic (requires approval) |
+| Hotfix | Branch from `master`, fix, merge | Automatic |
+**Key Workflow Files:**
+- `.github/workflows/build-images.yml` — Builds both BE+FE Docker images (ARM64, `ubuntu-24.04-arm` runner)
+- `.github/workflows/deploy-qa.yml` — Auto-deploys on push to `develop`
+- `.github/workflows/deploy-production.yml` — Auto-deploys on push to `master` (requires environment approval)
+- `.github/workflows/feature-flag-testing.yml` — Feature flag integration tests
+
+**Architecture:**
+- Images: GHCR (`ghcr.io/mickgian/pratikoai-backend`, `ghcr.io/mickgian/pratikoai-frontend`)
+- Runner: `ubuntu-24.04-arm` (native ARM64, no QEMU)
+- Platform: `linux/arm64` only
+- Deploy: SSH → `docker compose --env-file .env.{env}` on Hetzner
+- Backend always deploys before frontend (expand-contract)
+
+---
+
+### 7. GitHub CLI (`gh`) Expertise
 
 **Primary Tool:** GitHub CLI (`gh`) for ALL GitHub operations
 
@@ -552,17 +578,20 @@ gh issue list --label bug
 ## Context Files & Knowledge Base
 
 ### Primary Context Files (Read on Activation)
-1. **`.github/workflows/ci.yml`** - CI/CD pipeline configuration
-2. **`docker-compose.yml`** - Development environment setup
-3. **`docker-compose.prod.yml`** - Production environment setup
-4. **`Dockerfile`** - Application container build
-5. **`docs/deployment/`** - Deployment runbooks (if exists)
+1. **`.github/workflows/build-images.yml`** - Build pipeline (BE+FE Docker images from monorepo)
+2. **`.github/workflows/deploy-qa.yml`** - QA deployment pipeline
+3. **`.github/workflows/deploy-production.yml`** - Production deployment pipeline
+4. **`docker-compose.yml`** - Development environment setup
+5. **`docker-compose.qa.yml`** - QA environment overlay
+6. **`Dockerfile`** - Backend container build
+7. **`web/Dockerfile`** - Frontend container build
+8. **`docs/deployment/DEPLOYMENT_RUNBOOK.md`** - Deployment procedures
 
 ### Reference Documentation
-6. **`docs/architecture/decisions.md`** - ADR-006 (Hetzner over AWS)
-7. **`pyproject.toml`** - Python dependencies
-8. **`package.json`** (Frontend) - Node.js dependencies
-9. **`ARCHITECTURE_ROADMAP.md`** - Infrastructure tasks (DEV-BE-75, DEV-BE-90)
+1. **`docs/architecture/decisions.md`** - ADR-006 (Hetzner over AWS)
+2. **`pyproject.toml`** - Python dependencies
+3. **`package.json`** (Frontend) - Node.js dependencies
+4. **`ARCHITECTURE_ROADMAP.md`** - Infrastructure tasks (DEV-BE-75, DEV-BE-90)
 
 ### GitHub Resources
 - **`gh` CLI documentation**: https://cli.github.com/manual/

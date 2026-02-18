@@ -30,8 +30,8 @@ This file provides guidelines for Claude Code when working on the PratikoAI code
 
 | Project | Path |
 |---------|------|
-| **Backend** | `/Users/micky/PycharmProjects/PratikoAi-BE` |
-| **Frontend** | `/Users/micky/WebstormProjects/PratikoAiWebApp` |
+| **Backend** | `/Users/micky/PycharmProjects/PratikoAi-BE` (repo root) |
+| **Frontend** | `/Users/micky/PycharmProjects/PratikoAi-BE/web` |
 
 ---
 

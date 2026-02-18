@@ -21,8 +21,8 @@ This file provides guidelines for Claude Code when working on the PratikoAI fron
 
 | Project      | Path                                            |
 | ------------ | ----------------------------------------------- |
-| **Frontend** | `/Users/micky/WebstormProjects/PratikoAiWebApp` |
-| **Backend**  | `/Users/micky/PycharmProjects/PratikoAi-BE`     |
+| **Frontend** | `/Users/micky/PycharmProjects/PratikoAi-BE/web` |
+| **Backend**  | `/Users/micky/PycharmProjects/PratikoAi-BE`      |
 
 ---
 

@@ -140,7 +140,7 @@ Migrate to a **hybrid architecture** with PostgreSQL as the primary storage and 
 
 #### 1. Frontend Layer
 
-**File:** `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/hooks/useChatStorageV2.ts`
+**File:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/hooks/useChatStorageV2.ts`
 
 ```typescript
 export function useChatStorageV2(sessionId: string) {

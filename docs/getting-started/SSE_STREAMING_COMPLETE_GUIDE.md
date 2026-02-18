@@ -278,7 +278,7 @@ return {
 pytest tests/api/test_sse_*.py tests/unit/core/test_sse_write_helper.py -v
 
 # Frontend tests
-cd ../PratikoAiWebApp
+cd web
 npm test -- --testPathPattern=streaming
 
 # E2E tests

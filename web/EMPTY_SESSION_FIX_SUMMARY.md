@@ -13,14 +13,14 @@ Empty sessions were being created too early and polluting the chat history sideb
 
 ### 1. Sidebar Displaying All Sessions (Even Empty Ones)
 
-**File:** `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/components/ChatSidebar.tsx`
+**File:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/components/ChatSidebar.tsx`
 **Lines:** 313, 327
 
 **Problem:** Sidebar was displaying ALL sessions from backend, including empty ones with `message_count === 0`
 
 ### 2. Auto-Creating Session After Deletion
 
-**File:** `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/hooks/useChatSessions.ts`
+**File:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/hooks/useChatSessions.ts`
 **Lines:** 565-584
 
 **Problem:** After deleting a session, `deleteSession()` automatically called `createNewSession()`, creating an empty "Nuova conversazione"
@@ -134,8 +134,8 @@ if (currentSession?.id === sessionId) {
 
 ### Files Modified:
 
-1. `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/components/ChatSidebar.tsx` - Filter empty sessions from display
-2. `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/hooks/useChatSessions.ts` - Remove auto-creation after delete
+1. `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/components/ChatSidebar.tsx` - Filter empty sessions from display
+2. `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/hooks/useChatSessions.ts` - Remove auto-creation after delete
 
 ### Files NOT Modified (Already Correct):
 

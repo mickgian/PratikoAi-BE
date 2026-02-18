@@ -131,13 +131,25 @@ docker compose -f docker-compose.yml -f docker-compose.qa.yml up -d
 
 ---
 
-## Routine Deployments
+## Release & Deployment Procedures
+
+### Monorepo Structure
+
+Backend and frontend live in a single repository (`PratikoAi-BE`). The frontend code is under `web/`. Any push to `develop` or `master` triggers a full deploy of both services — no manual triggers, no merge ordering, no cross-repo coordination.
+
+### Deployment Trigger Matrix
+
+| Scenario | What to do | Deploy trigger |
+|----------|-----------|----------------|
+| **Any change** (BE, FE, or both) | Merge PR to `develop` | Automatic (push to `develop`) |
+| **Production release** | Merge `develop` → `master` | Automatic (push to `master`, requires manual approval in GitHub Environment) |
+| **Hotfix** | Create branch from `master`, fix, merge to `master` | Automatic (push to `master`) |
 
 ### Deploy to QA (Automatic)
 
 1. Merge PR to `develop` branch
 2. GitHub Actions automatically:
-   - Builds backend + frontend Docker images
+   - Builds backend + frontend Docker images (ARM64) from the monorepo
    - Pushes to GHCR
    - SSHs into QA server
    - Deploys backend first, waits for health check

@@ -34,7 +34,7 @@ The Context file was **never created** during implementation. AIMessageV2.tsx wa
 - **Task tracking:** Not explicitly tracked in todo list
 
 ### Fix Applied
-Created `/Users/micky/WebstormProjects/PratikoAiWebApp/src/contexts/ExpertStatusContext.tsx`:
+Created `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/contexts/ExpertStatusContext.tsx`:
 - React Context Provider for expert status
 - Single API call cached for entire page
 - Graceful degradation for non-experts

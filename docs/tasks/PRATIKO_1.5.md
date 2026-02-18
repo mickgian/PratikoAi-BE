@@ -1674,7 +1674,7 @@ Created React component for rendering suggested action buttons after AI response
 The frontend needed a component to render suggested action buttons after AI responses with keyboard navigation support.
 
 **Solution:**
-Created SuggestedActionsBar React component in `/Users/micky/WebstormProjects/PratikoAiWebApp` with full TDD approach.
+Created SuggestedActionsBar React component in `/Users/micky/PycharmProjects/PratikoAi-BE/web` with full TDD approach.
 
 **Files Created:**
 - `src/app/chat/components/SuggestedActionsBar.tsx` - Main component (265 lines)
@@ -1739,7 +1739,7 @@ Created React component for inline interactive questions, Claude Code style.
 The frontend needed a component to render interactive questions inline in the chat with keyboard navigation.
 
 **Solution:**
-Created InteractiveQuestionInline React component in `/Users/micky/WebstormProjects/PratikoAiWebApp` with full TDD approach.
+Created InteractiveQuestionInline React component in `/Users/micky/PycharmProjects/PratikoAi-BE/web` with full TDD approach.
 
 **Files Created:**
 - `src/app/chat/components/InteractiveQuestionInline.tsx` - Main component (215 lines)
@@ -1807,7 +1807,7 @@ Created reusable keyboard navigation hook for lists and option selection.
 Both action buttons and interactive questions need keyboard navigation, requiring a reusable hook.
 
 **Solution:**
-Created useKeyboardNavigation custom hook in `/Users/micky/WebstormProjects/PratikoAiWebApp` with full TDD approach.
+Created useKeyboardNavigation custom hook in `/Users/micky/PycharmProjects/PratikoAi-BE/web` with full TDD approach.
 
 **Files Created:**
 - `src/lib/hooks/useKeyboardNavigation.ts` - Custom hook (115 lines)
@@ -2664,7 +2664,7 @@ TDD approach in DEV-174 to DEV-180 already created all required tests. DEV-181 v
 This section provides comprehensive styling guidance for Phase 3 frontend components to ensure consistency with the existing PratikoAI frontend design system.
 
 ### Frontend Repository
-**Location:** `/Users/micky/WebstormProjects/PratikoAiWebApp`
+**Location:** `/Users/micky/PycharmProjects/PratikoAi-BE/web`
 
 ### Component Library
 - **Framework:** Radix UI + CVA (class-variance-authority) - Shadcn pattern

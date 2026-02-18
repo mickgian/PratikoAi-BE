@@ -92,7 +92,7 @@ All tasks requiring user action marked with **⚠️ MANUAL**
 ## Prerequisites
 
 - [ ] Git branch from develop: `git checkout develop && git pull && git checkout -b feature/sandboxing`
-- [ ] Frontend path confirmed: `/Users/micky/WebstormProjects/PratikoAiWebApp/`
+- [ ] Frontend path confirmed: `/Users/micky/PycharmProjects/PratikoAi-BE/web/`
 
 ---
 
@@ -362,7 +362,7 @@ Start Phase 2 when: You're ready to update deployment documentation (not blockin
 ### TASK-SB-011: Update Frontend Roadmap
 **Type:** AUTOMATED | **Effort:** 30 min | **Status:** ❌ NOT STARTED
 
-**File:** `/Users/micky/WebstormProjects/PratikoAiWebApp/ARCHITECTURE_ROADMAP.md`
+**File:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/ARCHITECTURE_ROADMAP.md`
 
 **Add sandbox phases to:**
 - DEV-005 (QA): Phase 2 - Environment Configuration & Sandbox
@@ -372,7 +372,7 @@ Start Phase 2 when: You're ready to update deployment documentation (not blockin
 - [ ] Frontend deployment tasks updated
 - [ ] Jest watchman fix documented (if applicable)
 
-**Rollback:** `cd /Users/micky/WebstormProjects/PratikoAiWebApp && git checkout ARCHITECTURE_ROADMAP.md`
+**Rollback:** `cd /Users/micky/PycharmProjects/PratikoAi-BE/web && git checkout ARCHITECTURE_ROADMAP.md`
 
 ---
 
@@ -438,12 +438,12 @@ Start Phase 2 when: You're ready to update deployment documentation (not blockin
 **Steps:**
 1. From backend, read frontend code:
    ```bash
-   cat /Users/micky/WebstormProjects/PratikoAiWebApp/src/app/api/client.ts
+   cat /Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/api/client.ts
    ```
    Should ALLOW
 2. From backend, attempt to read frontend credentials:
    ```bash
-   cat /Users/micky/WebstormProjects/PratikoAiWebApp/.env.local
+   cat /Users/micky/PycharmProjects/PratikoAi-BE/web/.env.local
    ```
    Should BLOCK
 

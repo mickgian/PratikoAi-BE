@@ -31,7 +31,7 @@
 
 ## Files Modified
 
-### 1. `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/components/ChatSidebar.tsx`
+### 1. `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/components/ChatSidebar.tsx`
 
 **Before (Buggy):**
 
@@ -100,7 +100,7 @@ const handleNewChat = async () => {
 
 ## Tests Created
 
-### 1. `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/components/__tests__/ChatSidebar.newchat.test.tsx`
+### 1. `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/components/__tests__/ChatSidebar.newchat.test.tsx`
 
 - **Lines:** 291
 - **Tests:** 9 passing
@@ -111,7 +111,7 @@ const handleNewChat = async () => {
   - Placeholder name verification
   - Multiple session creation
 
-### 2. `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/components/__tests__/ChatSidebar.integration.test.tsx`
+### 2. `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/components/__tests__/ChatSidebar.integration.test.tsx`
 
 - **Lines:** 394
 - **Tests:** 4 passing
@@ -121,7 +121,7 @@ const handleNewChat = async () => {
   - Error handling (network failure)
   - Null response handling
 
-### 3. `/Users/micky/WebstormProjects/PratikoAiWebApp/src/app/chat/components/__tests__/ChatSidebar.test.tsx` (Updated)
+### 3. `/Users/micky/PycharmProjects/PratikoAi-BE/web/src/app/chat/components/__tests__/ChatSidebar.test.tsx` (Updated)
 
 - **Tests:** 3 passing (updated from failing)
 - **Changes:**

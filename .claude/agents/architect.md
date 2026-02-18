@@ -418,8 +418,8 @@ This decision requires human stakeholder review to override veto.
 ### Reference Documentation
 - **`pyproject.toml`** - Python dependencies and tool configurations
 - **`docker-compose.yml`** - Infrastructure setup
-- **Frontend:** `/Users/micky/WebstormProjects/PratikoAiWebApp/package.json` - Frontend dependencies
-- **Frontend:** `/Users/micky/WebstormProjects/PratikoAiWebApp/tailwind.config.ts` - Styling configuration
+- **Frontend:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/package.json` - Frontend dependencies
+- **Frontend:** `/Users/micky/PycharmProjects/PratikoAi-BE/web/tailwind.config.ts` - Styling configuration
 
 ### Update Cadence
 - **Daily:** Review `sprint-plan.md` and `subagent-assignments.md` for new technical decisions

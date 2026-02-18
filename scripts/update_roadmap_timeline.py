@@ -28,7 +28,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Load environment variables from .env.development
 try:
@@ -230,7 +230,7 @@ class TimelineCalculator:
         # Store task IDs in roadmap order for sequential calculation
         self.task_order = list(tasks.keys())
 
-    def calculate_deployment_timelines(self) -> dict[str, dict[str, any]]:
+    def calculate_deployment_timelines(self) -> dict[str, dict[str, Any]]:
         """
         Calculate timeline estimates for QA and Production deployments.
 
@@ -416,7 +416,7 @@ class TimelineCalculator:
 
         return total_effort
 
-    def identify_blockers(self) -> list[dict[str, any]]:
+    def identify_blockers(self) -> list[dict[str, Any]]:
         """Identify critical blocker tasks."""
         blockers = []
 
@@ -628,7 +628,7 @@ def record_email_sent() -> None:
         print(f"⚠️  Failed to record email send time: {e}")
 
 
-def detect_changes(old_data: dict | None, new_data: dict) -> dict[str, any]:
+def detect_changes(old_data: dict | None, new_data: dict) -> dict[str, Any]:
     """
     Detect changes between old and new timeline data.
 
@@ -637,7 +637,7 @@ def detect_changes(old_data: dict | None, new_data: dict) -> dict[str, any]:
         - removed_tasks: List of removed task IDs
         - timeline_changes: Dict of timeline changes per environment
     """
-    changes = {"new_tasks": [], "removed_tasks": [], "timeline_changes": {}}
+    changes: dict[str, Any] = {"new_tasks": [], "removed_tasks": [], "timeline_changes": {}}
 
     if not old_data:
         return changes
@@ -695,8 +695,8 @@ def main():
 
     # Find backend and frontend roadmap files
     backend_roadmap_path = Path(__file__).parent.parent / "ARCHITECTURE_ROADMAP.md"
-    # Frontend path: /Users/micky/WebstormProjects/PratikoAiWebApp/ARCHITECTURE_ROADMAP.md
-    frontend_roadmap_path = Path("/Users/micky/WebstormProjects/PratikoAiWebApp/ARCHITECTURE_ROADMAP.md")
+    # Frontend path: /Users/micky/PycharmProjects/PratikoAi-BE/web/ARCHITECTURE_ROADMAP.md
+    frontend_roadmap_path = Path("/Users/micky/PycharmProjects/PratikoAi-BE/web/ARCHITECTURE_ROADMAP.md")
 
     if not backend_roadmap_path.exists():
         print(f"ERROR: Backend roadmap not found at {backend_roadmap_path}", file=sys.stderr)

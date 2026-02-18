@@ -96,7 +96,7 @@
 - Context API + useReducer
 
 **Candidate Tasks (Future):**
-- Frontend integration tasks from `/Users/micky/WebstormProjects/PratikoAiWebApp`
+- Frontend integration tasks from `/Users/micky/PycharmProjects/PratikoAi-BE/web`
 - Cross-repository coordination with backend
 
 ---
@@ -414,7 +414,7 @@ After backend implementation completes:
 
 ### Cross-Repository Work
 - **Backend:** `/Users/micky/PycharmProjects/PratikoAi-BE`
-- **Frontend:** `/Users/micky/WebstormProjects/PratikoAiWebApp`
+- **Frontend:** `/Users/micky/PycharmProjects/PratikoAi-BE/web`
 
 **Linked Tasks Requiring Coordination:**
 1. DEV-BE-72 (Backend) → DEV-FE-004 (Frontend): Expert Feedback System

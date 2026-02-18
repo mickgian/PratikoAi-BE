@@ -137,7 +137,7 @@ git checkout -b TICKET-NUMBER-descriptive-name
 git add .
 
 # Frontend
-cd /Users/micky/WebstormProjects/PratikoAiWebApp
+cd /Users/micky/PycharmProjects/PratikoAi-BE/web
 git checkout develop && git pull origin develop
 git checkout -b TICKET-NUMBER-descriptive-name
 # Make changes
@@ -172,7 +172,7 @@ git commit -m "TICKET-NUMBER: Backend changes..."
 git push -u origin TICKET-NUMBER-descriptive-name
 
 # Frontend
-cd /Users/micky/WebstormProjects/PratikoAiWebApp
+cd /Users/micky/PycharmProjects/PratikoAi-BE/web
 git commit -m "TICKET-NUMBER: Frontend changes..."
 git push -u origin TICKET-NUMBER-descriptive-name
 ```

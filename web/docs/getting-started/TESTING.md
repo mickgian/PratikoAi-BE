@@ -53,7 +53,7 @@ npm run lint
 ### Directory Structure
 
 ```
-PratikoAiWebApp/
+web/
 ├── __tests__/
 │   ├── fixtures/           # Mock data and test fixtures
 │   │   └── mockData.ts     # Centralized mock data

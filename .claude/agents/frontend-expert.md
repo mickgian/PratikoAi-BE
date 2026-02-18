@@ -19,7 +19,7 @@ color: purple
 **Type:** Specialized Subagent (Activated on Demand)
 **Status:** ⚪ CONFIGURED - NOT ACTIVE
 **Max Parallel:** 2 specialized subagents total
-**Repository:** `/Users/micky/WebstormProjects/PratikoAiWebApp`
+**Repository:** `/Users/micky/PycharmProjects/PratikoAi-BE/web` (monorepo subdirectory)
 **Italian Name:** Livia (@Livia)
 
 ---
@@ -250,7 +250,7 @@ When assigned a task classified as **MODIFYING** or **RESTRUCTURING**, follow th
 
 ### Directory Structure
 ```
-/Users/micky/WebstormProjects/PratikoAiWebApp/
+/Users/micky/PycharmProjects/PratikoAi-BE/web/
 ├── src/app/               # Next.js App Router pages
 │   ├── layout.tsx         # Root layout
 │   ├── page.tsx           # Home page
@@ -667,48 +667,35 @@ gh pr create --base master --head DEV-FE-002-ui-source-citations
 
 **Note:** Livia does NOT create PRs. Silvano (DevOps) creates PRs after Mick commits/pushes.
 
-### Multi-Repository Tasks
+### Monorepo Workflow
 
-**For tasks affecting BOTH frontend and backend:**
+Backend and frontend live in a single repository. For tasks affecting both:
 
-1. **Create matching branches in BOTH repos:**
+1. **Create a single branch:**
    ```bash
-   # Frontend
-   cd /Users/micky/WebstormProjects/PratikoAiWebApp
-   git checkout develop && git pull origin develop
-   git checkout -b TICKET-NUMBER-descriptive-name
-   # Make changes, run tests
-   git add .
-
-   # Backend
    cd /Users/micky/PycharmProjects/PratikoAi-BE
    git checkout develop && git pull origin develop
    git checkout -b TICKET-NUMBER-descriptive-name
-   # Make changes, run tests
+   # Make BE changes in app/, FE changes in web/
    git add .
    ```
 
-2. **Signal completion for BOTH repos:**
+2. **Signal completion:**
    ```
-   Changes staged, ready for commit (multi-repo):
+   Changes staged, ready for commit:
 
-   Frontend: TICKET-NUMBER-descriptive-name
+   Branch: TICKET-NUMBER-descriptive-name
    Staged:
-   - src/components/ui/source-citation.tsx
-   - src/components/ui/__tests__/source-citation.test.tsx
+   - app/services/some_service.py (backend)
+   - web/src/components/SomeComponent.tsx (frontend)
 
-   Backend: TICKET-NUMBER-descriptive-name
-   Staged:
-   - app/core/prompts/system.md
-   - app/services/context_builder_merge.py
+   Tests: All passing (both BE and FE)
 
-   Tests: ✅ All passing (both repos)
-
-   Waiting for Mick to commit and push both repositories.
+   Waiting for Mick to commit and push.
    ```
 
-3. **Wait for Mick to commit/push BOTH repos**
-4. **Wait for Silvano to create PRs for BOTH repos**
+3. **Wait for Mick to commit/push**
+4. **Wait for Silvano to create PR (single PR covers both BE + FE)**
 
 ---
 
@@ -1106,5 +1093,5 @@ When migrating from IndexedDB to PostgreSQL:
 ---
 
 **Configuration Status:** ⚪ CONFIGURED - NOT ACTIVE
-**Repository:** /Users/micky/WebstormProjects/PratikoAiWebApp
+**Repository:** /Users/micky/PycharmProjects/PratikoAi-BE/web (monorepo subdirectory)
 **Maintained By:** PratikoAI System Administrator

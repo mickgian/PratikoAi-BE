@@ -19,7 +19,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 # Load environment variables from .env.development
 try:
@@ -36,7 +36,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def send_timeline_notification(combined_data: dict[str, any], recipient_email: str | None = None) -> bool:
+def send_timeline_notification(combined_data: dict[str, Any], recipient_email: str | None = None) -> bool:
     """
     Send email notification about updated roadmap timeline (both frontend and backend).
 
@@ -94,7 +94,7 @@ def send_timeline_notification(combined_data: dict[str, any], recipient_email: s
 
         # Create message
         message = MIMEMultipart("alternative")
-        message["Subject"] = Header(subject, "utf-8")
+        message["Subject"] = Header(subject, "utf-8").encode()
         message["From"] = from_email
         message["To"] = ", ".join(recipients)
 
@@ -130,7 +130,7 @@ def send_timeline_notification(combined_data: dict[str, any], recipient_email: s
         return False
 
 
-def _generate_email_html(combined_data: dict[str, any]) -> str:
+def _generate_email_html(combined_data: dict[str, Any]) -> str:
     """Generate unified HTML email content for frontend + backend timeline updates."""
 
     backend_data = combined_data.get("backend", {})
@@ -451,7 +451,7 @@ def _generate_email_html(combined_data: dict[str, any]) -> str:
         <div class="footer">
             <p>This is an automated notification from the PratikoAI roadmap timeline tracker.</p>
             <p>Backend: /Users/micky/PycharmProjects/PratikoAi-BE/ARCHITECTURE_ROADMAP.md</p>
-            <p>Frontend: /Users/micky/WebstormProjects/PratikoAiWebApp/ARCHITECTURE_ROADMAP.md</p>
+            <p>Frontend: /Users/micky/PycharmProjects/PratikoAi-BE/web/ARCHITECTURE_ROADMAP.md</p>
         </div>
     </div>
 </body>

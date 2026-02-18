@@ -10,6 +10,7 @@ from sqlalchemy import (
 from sqlmodel import SQLModel
 
 from alembic import context  # type: ignore[attr-defined]
+from alembic.script import ScriptDirectory
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env.development"))
 from app.models.cassazione import CassazioneDecision
@@ -241,16 +242,27 @@ def run_migrations_online() -> None:
         )
         connection.commit()
 
-        # Create any base tables that are defined in SQLModel models but
-        # not created by migrations (e.g. knowledge_items, users).
-        # checkfirst=True (default) skips tables that already exist.
-        target_metadata.create_all(connection)
-        connection.commit()
+        # Check if this is a fresh database (no migrations have ever run).
+        result = connection.execute(text("SELECT COUNT(*) FROM alembic_version"))
+        is_fresh_db = result.scalar() == 0
 
-        context.configure(connection=connection, target_metadata=target_metadata)
-
-        with context.begin_transaction():
-            context.run_migrations()
+        if is_fresh_db:
+            # Fresh database: create all tables from current SQLModel models
+            # and stamp to head (skip migrations — schema is already current).
+            target_metadata.create_all(connection)
+            script = ScriptDirectory.from_config(config)
+            head_rev = script.get_current_head()
+            if head_rev:
+                connection.execute(
+                    text("INSERT INTO alembic_version (version_num) VALUES (:rev)"),
+                    {"rev": head_rev},
+                )
+            connection.commit()
+        else:
+            # Existing database: run migrations normally.
+            context.configure(connection=connection, target_metadata=target_metadata)
+            with context.begin_transaction():
+                context.run_migrations()
 
 
 if context.is_offline_mode():

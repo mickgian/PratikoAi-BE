@@ -1,0 +1,137 @@
+/* Typing Effect Styles */
+
+/* Blinking cursor animation */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.2; }
+}
+
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background-color: #2A5D67;
+  animation: blink 1s infinite;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+}
+
+/* Tax calculation styles */
+.calculation {
+  background: #F8F5F1;
+  padding: 12px;
+  border-radius: 8px;
+  margin: 8px 0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.calculation .formula {
+  color: #1E293B;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95em;
+}
+
+.calculation .result {
+  color: #2A5D67;
+  font-weight: bold;
+  font-size: 1.05em;
+}
+
+.calculation-step {
+  margin: 4px 0;
+  padding-left: 16px;
+}
+
+.calculation-total {
+  border-top: 1px solid #C4BDB4;
+  margin-top: 8px;
+  padding-top: 8px;
+  font-weight: bold;
+}
+
+/* Specific calculation types */
+.tax-brackets {
+  background: linear-gradient(135deg, #F8F5F1 0%, #F0EDE9 100%);
+}
+
+.forfettario-calculation {
+  border-left: 3px solid #D4A574;
+}
+
+.vat-calculation {
+  border-left: 3px solid #A9C1B7;
+}
+
+.comparison-calculation {
+  display: grid;
+  gap: 8px;
+}
+
+/* Legal references */
+.legal-ref {
+  font-style: italic;
+  color: #2A5D67;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: help;
+}
+
+.legal-ref:hover {
+  text-decoration-style: solid;
+  color: #1E293B;
+}
+
+/* Abbreviations */
+abbr {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: help;
+  position: relative;
+}
+
+abbr:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: #1E293B;
+  color: white;
+  font-size: 12px;
+  white-space: nowrap;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Values and labels */
+.label {
+  font-weight: 600;
+  color: #1E293B;
+  margin-right: 8px;
+}
+
+.amount {
+  font-weight: 500;
+  color: #2A5D67;
+  font-family: 'Courier New', monospace;
+}
+
+.percentage {
+  color: #D4A574;
+  font-weight: 500;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

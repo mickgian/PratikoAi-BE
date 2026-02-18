@@ -1,0 +1,49 @@
+# Figma Code Connect ignore patterns
+
+# Dependencies
+node_modules/
+.pnpm/
+.yarn/
+
+# Build outputs  
+.next/
+dist/
+build/
+out/
+
+# Cache directories
+.figma-cache/
+.turbo/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Test files
+**/*.test.*
+**/*.spec.*
+**/*.stories.*
+__tests__/
+__mocks__/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Figma
+.figmaignore

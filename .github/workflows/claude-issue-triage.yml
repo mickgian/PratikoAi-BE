@@ -1,0 +1,86 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+  id-token: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Triage issue with Claude
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          direct_prompt: |
+            You are triaging a GitHub issue for PratikoAI Frontend (Next.js/React/TypeScript).
+
+            ## Issue Details
+            - **Number:** #${{ github.event.issue.number }}
+            - **Title:** "${{ github.event.issue.title }}"
+            - **Body:**
+            ${{ github.event.issue.body }}
+
+            ## Your Tasks
+
+            ### 1. Categorize the Issue
+            Determine the type:
+            - `tipo: bug` - Something is broken or not working as expected
+            - `tipo: feature` - New functionality request
+            - `tipo: domanda` - Question about usage or functionality
+            - `tipo: docs` - Documentation improvement needed
+            - `tipo: ui/ux` - User interface or experience issue
+            - `tipo: a11y` - Accessibility issue
+
+            ### 2. Assign Priority
+            - `priorità: critica` - App unusable, major UI broken
+            - `priorità: alta` - Feature broken, poor user experience
+            - `priorità: media` - Important but workaround exists
+            - `priorità: bassa` - Nice to have, cosmetic issues
+
+            ### 3. Identify Area
+            - `area: chat` - Chat interface, messages, streaming
+            - `area: auth` - Login, logout, session management
+            - `area: ui` - Components, styling, layout
+            - `area: api` - API integration, data fetching
+            - `area: performance` - Loading, rendering, optimization
+            - `area: testing` - Jest tests, Playwright E2E
+
+            ### 4. Add Labels
+            Use the gh CLI to add the appropriate labels:
+            ```bash
+            gh issue edit ${{ github.event.issue.number }} --add-label "tipo: <type>" --add-label "priorità: <priority>" --add-label "area: <area>"
+            ```
+
+            ### 5. Post Response (IN ITALIAN)
+            Post a helpful first response in Italian that:
+            - Acknowledges the issue was received
+            - Confirms the categorization
+            - For UI bugs, ask for browser/device info if not provided
+            - For features, acknowledge and mention it will be reviewed
+            - Is professional and friendly
+
+            Use:
+            ```bash
+            gh issue comment ${{ github.event.issue.number }} --body "Your Italian response here"
+            ```
+
+            ## Frontend-Specific Guidelines
+            - For visual bugs, ask for screenshots if not provided
+            - For responsiveness issues, ask for screen size/device
+            - For browser-specific issues, identify browser and version
+            - Keep responses concise but helpful
+
+            ## Label Validation
+            Before adding labels, verify they exist. If a label doesn't exist, skip it rather than failing.
+          allowed_tools: "Bash,Read,Glob,Grep"
+          timeout_minutes: 5

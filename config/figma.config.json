@@ -1,0 +1,99 @@
+{
+  "codeConnect": {
+    "parser": "react",
+    "include": [
+      "src/components/**/*.{tsx,ts}",
+      "src/app/**/*.{tsx,ts}"
+    ],
+    "exclude": [
+      "**/*.test.{tsx,ts}",
+      "**/*.spec.{tsx,ts}",
+      "**/*.stories.{tsx,ts}",
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/dist/**"
+    ],
+    "importPaths": {
+      "@/components": "./src/components",
+      "@/lib": "./src/lib",
+      "@/app": "./src/app",
+      "@/ui": "./src/components/ui"
+    },
+    "outDir": ".figma",
+    "figmaFileId": "${FIGMA_FILE_ID}",
+    "accessToken": "${FIGMA_ACCESS_TOKEN}",
+    "interactive": {
+      "enabled": true,
+      "port": 3001,
+      "host": "localhost"
+    },
+    "components": {
+      "baseDir": "src/components",
+      "patterns": [
+        {
+          "pattern": "src/components/ui/*.tsx",
+          "figmaNodeType": "COMPONENT",
+          "category": "UI Components"
+        },
+        {
+          "pattern": "src/components/*.tsx",
+          "figmaNodeType": "COMPONENT_SET",
+          "category": "Page Components"
+        }
+      ]
+    },
+    "designTokens": {
+      "enabled": true,
+      "tokensFile": "./tokens.json",
+      "syncEnabled": true,
+      "categories": [
+        "color",
+        "typography",
+        "spacing",
+        "borderRadius",
+        "shadows",
+        "effects"
+      ]
+    },
+    "typescript": {
+      "enabled": true,
+      "strict": true,
+      "generateTypes": true,
+      "typesOutputPath": "./src/types/figma.d.ts"
+    },
+    "build": {
+      "format": "esm",
+      "target": "es2020",
+      "sourcemap": true
+    },
+    "documentation": {
+      "generateReadme": true,
+      "includeProps": true,
+      "includeExamples": true,
+      "outputPath": "./docs/components"
+    },
+    "validation": {
+      "strictMode": true,
+      "checkMissingComponents": true,
+      "checkUnusedComponents": true
+    }
+  },
+  "plugins": [
+    {
+      "name": "react-docgen",
+      "enabled": true,
+      "options": {
+        "propFilter": {
+          "skipPropsWithoutDoc": false
+        }
+      }
+    },
+    {
+      "name": "typescript-resolver",
+      "enabled": true,
+      "options": {
+        "configPath": "./tsconfig.json"
+      }
+    }
+  ]
+}

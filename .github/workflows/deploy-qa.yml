@@ -47,6 +47,11 @@ jobs:
             # Set image tag
             export IMAGE_TAG=${{ needs.build.outputs.image_tag }}
 
+            # Free disk space before pulling new images
+            docker image prune -af --filter "until=24h" || true
+            docker builder prune -af 2>/dev/null || true
+            echo "Disk space before pull:" && df -h /
+
             # Pull new images
             $DC pull app frontend
 
@@ -73,8 +78,8 @@ jobs:
             # Deploy frontend
             $DC up -d frontend caddy
 
-            # Clean up old images
-            docker image prune -f
+            # Clean up dangling images left after deploy
+            docker image prune -f || true
 
       - name: Smoke tests
         if: success()

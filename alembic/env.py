@@ -249,6 +249,10 @@ def run_migrations_online() -> None:
         if is_fresh_db:
             # Fresh database: create all tables from current SQLModel models
             # and stamp to head (skip migrations — schema is already current).
+            # Install extensions that migrations would normally create.
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+            connection.commit()
             target_metadata.create_all(connection)
             script = ScriptDirectory.from_config(config)
             head_rev = script.get_current_head()

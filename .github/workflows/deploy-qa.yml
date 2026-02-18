@@ -47,9 +47,15 @@ jobs:
             # Set image tag
             export IMAGE_TAG=${{ needs.build.outputs.image_tag }}
 
-            # Free disk space before pulling new images
-            docker image prune -af --filter "until=24h" || true
-            docker builder prune -af 2>/dev/null || true
+            # Remove old pratikoai images to free disk before pulling.
+            # Keeps only the currently-running tag; removes all other SHA tags.
+            RUNNING_BE=$($DC images app --format '{{.Tag}}' | head -1)
+            RUNNING_FE=$($DC images frontend --format '{{.Tag}}' | head -1)
+            docker images --format '{{.Repository}}:{{.Tag}}' \
+              | grep 'pratikoai-' \
+              | grep -v -E "(latest|develop|${RUNNING_BE:-none}|${RUNNING_FE:-none})" \
+              | xargs -r docker rmi 2>/dev/null || true
+            docker image prune -f || true
             echo "Disk space before pull:" && df -h /
 
             # Pull new images

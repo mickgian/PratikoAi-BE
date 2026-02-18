@@ -32,8 +32,11 @@ RUN mkdir -p app && touch app/__init__.py \
 # Copy application code
 COPY . .
 
-# Force-reinstall editable link so metadata reflects all sub-packages
-RUN . .venv/bin/activate && uv pip install --no-deps --reinstall -e .
+# Build proper wheel and install into site-packages (non-editable).
+# Replaces the skeleton editable install with a real package containing
+# all discovered sub-packages. PYTHONPATH=/app in runtime stage means
+# source tree still takes precedence for dev volume mounts.
+RUN . .venv/bin/activate && uv pip install --no-deps .
 
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime

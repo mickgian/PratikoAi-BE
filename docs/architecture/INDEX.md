@@ -1,6 +1,6 @@
 # RAG Architecture Documentation
 
-**Auto-generated:** 2026-02-18 12:56:29
+**Auto-generated:** 2026-02-19 14:16:39
 
 > 💡 Complete documentation of the RAG (Retrieval-Augmented Generation) system architecture.
 
@@ -51,7 +51,7 @@ This directory contains comprehensive documentation of the RAG system, including
 - **[Prompt Engineering Knowledge Base](PROMPT_ENGINEERING_KNOWLEDGE_BASE.md)** ✅ Current
   - **Purpose:** Senior-level prompt engineering patterns for PratikoAI **Audience:** Developers, architects, and agents working on prompts
 - **[RAG Architecture Documentation](INDEX.md)** 📚 Historical
-  - **Auto-generated:** 2026-02-18 12:56:03
+  - **Auto-generated:** 2026-02-19 14:16:07
 - **[RAG Conformance Dashboard](rag_conformance.md)** ✅ Current
   - This dashboard tracks the implementation status of each step in the PratikoAI RAG blueprint. It is automatically generated from the Mermaid diagram...
 - **[RAG Implementation Sprint Plan](rag_sprint_plan.md)** ✅ Current
@@ -85,4 +85,4 @@ The steps directory contains detailed documentation for every step in the RAG pi
 
 ---
 
-**Last Updated:** 2026-02-18 12:56:29
+**Last Updated:** 2026-02-19 14:16:39

@@ -13,6 +13,7 @@ This roadmap tracks planned architectural improvements and enhancements for the 
 **Current Architecture:** See `docs/DATABASE_ARCHITECTURE.md` for detailed documentation of the production system.
 
 **Recent Completed Work:**
+- DEV-BE-75: Deploy QA Environment (via DEV-260) (2026-02-19)
 - DEV-BE-93: Unified Input Security Hardening (2024-12-19)
 - DEV-BE-70: Daily Ingestion Collection Email Report (2024-12-18)
 - DEV-BE-69: Expand RSS Feed Sources (2024-12-10)
@@ -22,11 +23,9 @@ This roadmap tracks planned architectural improvements and enhancements for the 
 
 **Deployment Timeline Estimates:**
 
-📅 **Time to QA Environment (DEV-BE-75):**
-- **Optimistic (parallel work):** ~7-8 weeks (26 Nov - 21 Gen)
-- **Conservative (sequential):** ~9-10 weeks (26 Nov - 5 Feb)
-- **Prerequisites:** DEV-BE-70, DEV-BE-69, DEV-BE-67, DEV-BE-71, DEV-BE-72...
-- **Total effort (sequential):** 49 days (7.0 weeks)
+📅 **QA Environment (DEV-BE-75):** ✅ DEPLOYED (via DEV-260, 2026-02-19)
+- Hetzner CX33, auto-deploys on merge to `develop`
+- See `docs/deployment/DEPLOYMENT_RUNBOOK.md`
 
 📅 **Time to Production Environment (DEV-BE-90):**
 - **Optimistic:** ~17-18.3 weeks from now (26 Nov - 3 Apr)
@@ -719,17 +718,17 @@ Phase 1 exceeded the target by 2x (66.7% vs 30%). The remaining precision gap is
 
 ---
 
-## Planned Tasks (Ordered by Implementation Priority)
+### ✅ Completed Tasks (continued)
 
 <details>
 <summary>
 <h3>DEV-BE-75: Deploy QA Environment (Hetzner VPS)</h3>
-<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1 week (mostly waiting for Hetzner approval) | <strong>Dependencies:</strong> None | <strong>Status:</strong> ❌ NOT STARTED<br>
+<strong>Priority:</strong> HIGH | <strong>Effort:</strong> 1 week (mostly waiting for Hetzner approval) | <strong>Dependencies:</strong> None | <strong>Status:</strong> ✅ COMPLETED (via DEV-260)<br>
 Deploy complete PratikoAI backend to Hetzner VPS using existing docker-compose.yml configuration.
 </summary>
 
 ### DEV-BE-75: Deploy QA Environment (Hetzner VPS)
-**Priority:** HIGH | **Effort:** 1 week (mostly waiting for Hetzner approval) | **Dependencies:** None
+**Priority:** HIGH | **Effort:** 1 week (mostly waiting for Hetzner approval) | **Dependencies:** None | **Status:** ✅ COMPLETED (via DEV-260)
 
 **⚠️ IMPORTANT:** Contact Hetzner support first - they have a strict onboarding process for new clients.
 
@@ -741,40 +740,38 @@ Deploy complete PratikoAI backend to Hetzner VPS using existing docker-compose.y
 
 **Implementation Tasks:**
 
+**Completed via DEV-260: Deploy to QA**
+
+All tasks completed as part of DEV-260, which implemented automated CI/CD deployment to Hetzner QA server.
+
 **Week 1: Hetzner Account & VPS Setup**
-- [ ] **Contact Hetzner support** for account approval (can take 1-3 days)
-- [ ] Provision Hetzner CX21 VPS (2 vCPU, 4GB RAM, 40GB SSD)
-  - Region: Germany (Falkenstein or Nuremberg)
-  - OS: Ubuntu 22.04 LTS
-  - Cost: ~€6.50/month (~$7/month)
-- [ ] Configure SSH access with key-based authentication
-- [ ] Set up firewall rules
-- [ ] Install Docker and Docker Compose on VPS
+- [x] **Contact Hetzner support** for account approval
+- [x] Provision Hetzner CX33 VPS
+- [x] Configure SSH access with key-based authentication
+- [x] Set up firewall rules
+- [x] Install Docker and Docker Compose on VPS
 
 **Week 2: Deployment & Configuration**
-- [ ] Copy docker-compose.yml to VPS
-- [ ] Create `.env.qa` with QA-specific configuration
-- [ ] Deploy stack: `docker-compose --env-file .env.qa up -d`
-- [ ] Run database migrations
-- [ ] Set up DNS: `api-qa.pratikoai.com`
-- [ ] Configure SSL with Let's Encrypt
-- [ ] Set up automated backups (Hetzner snapshots)
+- [x] Copy docker-compose files to VPS
+- [x] Create QA-specific configuration
+- [x] Deploy stack via CI/CD pipeline
+- [x] Run database migrations
+- [x] Set up DNS: `api-qa.pratikoai.com`
+- [x] Configure SSL with Let's Encrypt (via Caddy)
+- [x] Set up automated backups
 
-**Acceptance Criteria:**
+**Acceptance Criteria (All Met):**
 - ✅ QA environment accessible at `https://api-qa.pratikoai.com`
-- ✅ All services running (PostgreSQL, Redis, Backend, Prometheus, Grafana)
+- ✅ All services running (PostgreSQL, Redis, Backend, Caddy)
 - ✅ Database migrations run successfully
 - ✅ All API endpoints responding (health check passes)
-- ✅ Automated daily backups configured
-
-**Infrastructure Cost (QA):**
-- Hetzner CX21 VPS: ~$7/month
-- Snapshots/backups: ~$1/month
-- **Total: ~$8/month**
+- ✅ CI/CD auto-deploys on merge to `develop`
 
 </details>
 
 ---
+
+## Planned Tasks (Ordered by Implementation Priority)
 
 <details>
 <summary>
@@ -1988,7 +1985,7 @@ After production launch with paying customers, when:
 - [x] **Daily RSS email reports:** Automated feed monitoring (DEV-BE-70) ✅
 - [x] **Input security hardening:** XSS, injection, export sanitization (DEV-BE-93) ✅
 - [x] **Retrieval ranking optimized:** 66.7% official source precision, Phase 1 complete (DEV-BE-78) ✅
-- [ ] **QA environment deployed:** On Hetzner (DEV-BE-75)
+- [x] **QA environment deployed:** On Hetzner (DEV-BE-75, completed via DEV-260) ✅
 
 ---
 

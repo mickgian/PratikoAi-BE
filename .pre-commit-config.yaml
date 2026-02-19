@@ -87,6 +87,33 @@ repos:
         files: ^pyproject.toml$
         always_run: false
 
+  # Frontend code quality: lint, format, and type-check
+  - repo: local
+    hooks:
+      - id: frontend-lint-staged
+        name: Frontend lint and format (lint-staged)
+        entry: bash -c 'test -d web/node_modules || { echo "Skipping - web/node_modules not installed"; exit 0; }; cd web && npx lint-staged'
+        language: system
+        pass_filenames: false
+        files: ^web/.*\.(js|jsx|ts|tsx|json|css|md)$
+        stages: [pre-commit]
+
+      - id: frontend-type-check
+        name: Frontend TypeScript type check
+        entry: bash -c 'test -d web/node_modules || { echo "Skipping - web/node_modules not installed"; exit 0; }; cd web && npm run type-check'
+        language: system
+        pass_filenames: false
+        files: ^web/.*\.(ts|tsx)$
+        stages: [pre-commit]
+
+      - id: frontend-test-coverage
+        name: Frontend tests with coverage threshold
+        entry: bash -c 'test -d web/node_modules || { echo "Skipping - web/node_modules not installed"; exit 0; }; cd web && npm test -- --coverage --watchAll=false --passWithNoTests --silent'
+        language: system
+        pass_filenames: false
+        files: ^web/.*\.(js|jsx|ts|tsx)$
+        stages: [pre-push]
+
   # Run critical streaming tests before commit (only when SSE-related files change)
   - repo: local
     hooks:

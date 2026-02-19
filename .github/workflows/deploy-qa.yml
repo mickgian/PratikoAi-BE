@@ -10,8 +10,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  tests:
+    name: Run Tests
+    uses: ./.github/workflows/tests.yml
+    secrets: inherit
+
   build:
     name: Build Images
+    needs: tests
     uses: ./.github/workflows/build-images.yml
     permissions:
       contents: read

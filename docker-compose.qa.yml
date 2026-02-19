@@ -38,7 +38,7 @@ services:
       args:
         APP_ENV: qa
         HF_INTENT_MODEL: ${HF_INTENT_MODEL:-mdeberta}
-    volumes:
+    volumes: !override
       - hf_cache:/home/appuser/.cache/huggingface
     env_file:
       - .env.qa

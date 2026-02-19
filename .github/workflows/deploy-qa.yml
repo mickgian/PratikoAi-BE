@@ -59,8 +59,12 @@ jobs:
 
             # Remove old pratikoai images to free disk before pulling.
             # Keeps only the currently-running tag; removes all other SHA tags.
-            RUNNING_BE=$($DC images app --format '{{.Tag}}' | head -1)
-            RUNNING_FE=$($DC images frontend --format '{{.Tag}}' | head -1)
+            # Get tags of currently-running containers (docker compose images
+            # does NOT support Go templates, so we use docker inspect instead).
+            _be_id=$($DC ps -q app 2>/dev/null)
+            _fe_id=$($DC ps -q frontend 2>/dev/null)
+            RUNNING_BE=${_be_id:+$(docker inspect --format '{{.Config.Image}}' "$_be_id" 2>/dev/null | sed 's/.*://')}
+            RUNNING_FE=${_fe_id:+$(docker inspect --format '{{.Config.Image}}' "$_fe_id" 2>/dev/null | sed 's/.*://')}
             docker images --format '{{.Repository}}:{{.Tag}}' \
               | grep 'pratikoai-' \
               | grep -v -E "(latest|develop|${RUNNING_BE:-none}|${RUNNING_FE:-none})" \

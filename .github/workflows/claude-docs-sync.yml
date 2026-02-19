@@ -2,7 +2,7 @@ name: Claude Documentation Sync
 
 on:
   push:
-    branches: [develop, main, master]
+    branches: [master]
     paths:
       - 'app/api/**'
       - 'app/models/**'
@@ -28,6 +28,7 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           direct_prompt: |
             You are keeping documentation in sync with code changes for PratikoAI backend.
 

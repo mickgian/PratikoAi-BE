@@ -2,13 +2,13 @@ name: Claude Security Analysis
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [master]
     paths:
       - 'app/**'
       - 'tests/**'
       - '*.py'
   pull_request:
-    branches: [main, master, develop]
+    branches: [master]
     paths:
       - 'app/**'
       - 'tests/**'
@@ -34,6 +34,7 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           direct_prompt: |
             You are performing a security analysis on PratikoAI backend code changes.
 

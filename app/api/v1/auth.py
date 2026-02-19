@@ -4,6 +4,7 @@ This module provides endpoints for user registration, login, session management,
 and token verification.
 """
 
+import asyncio
 import os
 import uuid
 from typing import List
@@ -35,6 +36,7 @@ from app.schemas.auth import (
     UserResponse,
 )
 from app.services.database import DatabaseService
+from app.services.email_service import email_service
 from app.services.google_oauth_service import google_oauth_service
 from app.services.linkedin_oauth_service import linkedin_oauth_service
 from app.utils.auth import (
@@ -211,6 +213,9 @@ async def register_user(request: Request, user_data: UserCreate):
         await db_service.update_user_refresh_token(user.id, refresh_token.access_token)
 
         logger.info("user_registration_success", user_id=user.id, email=sanitized_email)
+
+        # Fire-and-forget: send welcome email (registration succeeds even if SMTP fails)
+        asyncio.create_task(email_service.send_welcome_email(sanitized_email, password))
 
         return UserResponse(
             id=user.id,

@@ -6,6 +6,7 @@ Supports HTML email templates, scheduled reports, and multi-environment monitori
 
 import asyncio
 import logging
+import os
 import smtplib
 from dataclasses import asdict
 from datetime import datetime
@@ -263,6 +264,67 @@ class EmailService:
             return "health-good"
         else:
             return "health-poor"
+
+    async def send_welcome_email(self, recipient_email: str, password: str) -> bool:
+        """Send welcome email with credentials after registration."""
+        try:
+            login_url = os.getenv("FRONTEND_URL", "http://localhost:3000") + "/login"
+            subject = "Benvenuto su PratikoAI - Le tue credenziali"
+            html_content = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:8px;
+              box-shadow:0 2px 4px rgba(0,0,0,.1);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                color:#fff;padding:30px;text-align:center;">
+      <h1 style="margin:0;">Benvenuto su PratikoAI</h1>
+    </div>
+    <div style="padding:30px;">
+      <p>Ciao,</p>
+      <p>Il tuo account è stato creato con successo. Ecco le tue credenziali di accesso:</p>
+      <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+        <tr>
+          <td style="padding:10px;border:1px solid #ddd;font-weight:bold;background:#f8f9fa;">
+            Email (username)
+          </td>
+          <td style="padding:10px;border:1px solid #ddd;">{recipient_email}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px;border:1px solid #ddd;font-weight:bold;background:#f8f9fa;">
+            Password
+          </td>
+          <td style="padding:10px;border:1px solid #ddd;">{password}</td>
+        </tr>
+      </table>
+      <p style="text-align:center;margin:30px 0;">
+        <a href="{login_url}"
+           style="background:#667eea;color:#fff;padding:12px 30px;border-radius:6px;
+                  text-decoration:none;font-weight:bold;">Accedi a PratikoAI</a>
+      </p>
+      <p style="color:#6c757d;font-size:13px;">
+        Ti consigliamo di conservare questa email e di cambiare la password al primo accesso.
+      </p>
+    </div>
+    <div style="text-align:center;color:#6c757d;font-size:12px;padding:15px;
+                border-top:1px solid #dee2e6;">
+      PratikoAI - Il tuo assistente fiscale intelligente
+    </div>
+  </div>
+</body>
+</html>"""
+            return await self._send_email(
+                recipient_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+            )
+        except Exception as e:
+            self.logger.error(
+                "welcome_email_failed recipient=%s error=%s",
+                recipient_email,
+                str(e),
+            )
+            return False
 
     async def _send_email(self, recipient_email: str, subject: str, html_content: str) -> bool:
         """Send HTML email using SMTP."""

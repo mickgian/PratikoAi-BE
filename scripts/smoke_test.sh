@@ -23,7 +23,7 @@ check() {
     local url="$2"
     local expected_status="${3:-200}"
 
-    STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 15 "$url" 2>/dev/null || echo "000")
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$url" 2>/dev/null || echo "000")
     if [ "$STATUS" = "$expected_status" ]; then
         echo "  PASS: $name (HTTP $STATUS)"
         PASSED=$((PASSED + 1))
@@ -71,7 +71,7 @@ check "API docs" "$API_URL/docs"
 check_json "Health body" "$API_URL/health" "assert data.get('status') in ('healthy', 'ok')"
 
 # Auth flow - login should return 422 without body (validation error, not 500)
-STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 15 \
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
     -X POST "$API_URL/api/v1/auth/login" \
     -H "Content-Type: application/json" \
     -d '{}' 2>/dev/null || echo "000")

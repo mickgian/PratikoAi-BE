@@ -92,7 +92,7 @@ echo ""
 if [ -n "$FE_URL" ]; then
     echo "Frontend:"
     check "Home page" "$FE_URL"
-    check "Login page" "$FE_URL/login"
+    check "Login page" "$FE_URL/signin"
     echo ""
 fi
 

@@ -18,10 +18,160 @@ Test Requirements:
 """
 
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.models.regulatory_documents import FeedStatus
+
+# Feed definitions matching migration 20251204_add_expanded_rss_feeds
+_FEEDS = [
+    {
+        "feed_url": "https://www.agenziaentrate.gov.it/portale/c/portal/rss/entrate?idrss=0753fcb1-1a42-4f8c-f40d-02793c6aefb4",
+        "source": "agenzia_entrate",
+        "feed_type": "normativa_prassi",
+        "parser": "agenzia_normativa",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.agenziaentrate.gov.it/portale/c/portal/rss/entrate?idrss=79b071d0-a537-4a3d-86cc-7a7d5a36f2a9",
+        "source": "agenzia_entrate",
+        "feed_type": "news",
+        "parser": "agenzia_normativa",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.inps.it/it/it.rss.news.xml",
+        "source": "inps",
+        "feed_type": "news",
+        "parser": "inps",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.inps.it/it/it.rss.circolari.xml",
+        "source": "inps",
+        "feed_type": "circolari",
+        "parser": "inps",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.inps.it/it/it.rss.messaggi.xml",
+        "source": "inps",
+        "feed_type": "messaggi",
+        "parser": "inps",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.inps.it/it/it.rss.sentenze.xml",
+        "source": "inps",
+        "feed_type": "sentenze",
+        "parser": "inps",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.inps.it/it/it.rss.comunicati.xml",
+        "source": "inps",
+        "feed_type": "comunicati",
+        "parser": "inps",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.lavoro.gov.it/_layouts/15/Lavoro.Web/AppPages/RSS",
+        "source": "ministero_lavoro",
+        "feed_type": "news",
+        "parser": "generic",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.mef.gov.it/rss/rss.asp?t=5",
+        "source": "ministero_economia",
+        "feed_type": "documenti",
+        "parser": "generic",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.finanze.gov.it/it/rss.xml",
+        "source": "ministero_economia",
+        "feed_type": "aggiornamenti",
+        "parser": "generic",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.inail.it/portale/it.rss.news.xml",
+        "source": "inail",
+        "feed_type": "news",
+        "parser": "generic",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.inail.it/portale/it.rss.eventi.xml",
+        "source": "inail",
+        "feed_type": "eventi",
+        "parser": "generic",
+        "check_interval_minutes": 240,
+    },
+    {
+        "feed_url": "https://www.gazzettaufficiale.it/rss/SG",
+        "source": "gazzetta_ufficiale",
+        "feed_type": "serie_generale",
+        "parser": "gazzetta_ufficiale",
+        "check_interval_minutes": 1440,
+    },
+    {
+        "feed_url": "https://www.gazzettaufficiale.it/rss/S1",
+        "source": "gazzetta_ufficiale",
+        "feed_type": "corte_costituzionale",
+        "parser": "gazzetta_ufficiale",
+        "check_interval_minutes": 1440,
+    },
+    {
+        "feed_url": "https://www.gazzettaufficiale.it/rss/S2",
+        "source": "gazzetta_ufficiale",
+        "feed_type": "unione_europea",
+        "parser": "gazzetta_ufficiale",
+        "check_interval_minutes": 1440,
+    },
+    {
+        "feed_url": "https://www.gazzettaufficiale.it/rss/S3",
+        "source": "gazzetta_ufficiale",
+        "feed_type": "regioni",
+        "parser": "gazzetta_ufficiale",
+        "check_interval_minutes": 1440,
+    },
+]
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def seed_feeds(db_session: AsyncSession):
+    """Seed the 16 RSS feed rows before each test, clean up after."""
+    from sqlalchemy import text
+
+    for f in _FEEDS:
+        await db_session.execute(
+            text(
+                """
+                INSERT INTO feed_status (
+                    feed_url, source, feed_type, parser, status, enabled,
+                    consecutive_errors, errors, check_interval_minutes
+                )
+                VALUES (
+                    :feed_url, :source, :feed_type, :parser, 'pending', true,
+                    0, 0, :check_interval_minutes
+                )
+                ON CONFLICT (feed_url) DO NOTHING
+                """
+            ),
+            f,
+        )
+    await db_session.commit()
+    yield
+    # Clean up seeded feeds
+    for f in _FEEDS:
+        await db_session.execute(
+            text("DELETE FROM feed_status WHERE feed_url = :feed_url"),
+            {"feed_url": f["feed_url"]},
+        )
+    await db_session.commit()
 
 
 @pytest.mark.asyncio
@@ -34,9 +184,7 @@ class TestRSSFeedConfiguration:
         result = await db_session.execute(statement)
         feeds = result.scalars().all()
 
-        assert len(feeds) == 16, (
-            f"Expected 16 total feeds, found {len(feeds)}. " f"Feeds: {[f.feed_url for f in feeds]}"
-        )
+        assert len(feeds) == 16, f"Expected 16 total feeds, found {len(feeds)}. Feeds: {[f.feed_url for f in feeds]}"
 
     async def test_inps_feeds_exist(self, db_session: AsyncSession):
         """Test that all 5 INPS feeds are configured."""
@@ -65,9 +213,7 @@ class TestRSSFeedConfiguration:
         inps_feeds = result.scalars().all()
 
         for feed in inps_feeds:
-            assert feed.parser == "inps", (
-                f"INPS feed {feed.feed_url} should use 'inps' parser, " f"found '{feed.parser}'"
-            )
+            assert feed.parser == "inps", f"INPS feed {feed.feed_url} should use 'inps' parser, found '{feed.parser}'"
 
     async def test_ministero_lavoro_feed_exists(self, db_session: AsyncSession):
         """Test that Ministero del Lavoro feed is configured."""
@@ -107,7 +253,7 @@ class TestRSSFeedConfiguration:
 
         for feed in mef_feeds:
             assert feed.parser == "generic", (
-                f"MEF feed {feed.feed_url} should use 'generic' parser, " f"found '{feed.parser}'"
+                f"MEF feed {feed.feed_url} should use 'generic' parser, found '{feed.parser}'"
             )
 
     async def test_inail_feeds_exist(self, db_session: AsyncSession):
@@ -135,7 +281,7 @@ class TestRSSFeedConfiguration:
 
         for feed in inail_feeds:
             assert feed.parser == "generic", (
-                f"INAIL feed {feed.feed_url} should use 'generic' parser, " f"found '{feed.parser}'"
+                f"INAIL feed {feed.feed_url} should use 'generic' parser, found '{feed.parser}'"
             )
 
     async def test_all_feeds_enabled(self, db_session: AsyncSession):
@@ -172,9 +318,7 @@ class TestRSSFeedConfiguration:
             if f.check_interval_minutes != expected:
                 wrong_interval.append((f.feed_url, f.check_interval_minutes, expected))
 
-        assert len(wrong_interval) == 0, (
-            f"Feeds with wrong check_interval_minutes: " f"{list(wrong_interval)}"
-        )
+        assert len(wrong_interval) == 0, f"Feeds with wrong check_interval_minutes: {list(wrong_interval)}"
 
     async def test_feed_source_values(self, db_session: AsyncSession):
         """Test that feed source values are correct."""
@@ -223,9 +367,9 @@ class TestRSSFeedConfiguration:
         urls = [feed.feed_url for feed in feeds]
         unique_urls = set(urls)
 
-        assert len(urls) == len(
-            unique_urls
-        ), f"Found duplicate feed URLs. Total: {len(urls)}, Unique: {len(unique_urls)}"
+        assert len(urls) == len(unique_urls), (
+            f"Found duplicate feed URLs. Total: {len(urls)}, Unique: {len(unique_urls)}"
+        )
 
     async def test_feed_type_values_present(self, db_session: AsyncSession):
         """Test that all feeds have feed_type set."""
@@ -262,8 +406,7 @@ class TestRSSFeedConfiguration:
 
         for feed in ae_feeds:
             assert feed.parser == "agenzia_normativa", (
-                f"Agenzia Entrate feed {feed.feed_url} should use 'agenzia_normativa' parser, "
-                f"found '{feed.parser}'"
+                f"Agenzia Entrate feed {feed.feed_url} should use 'agenzia_normativa' parser, found '{feed.parser}'"
             )
 
     async def test_gazzetta_ufficiale_feeds_exist(self, db_session: AsyncSession):
@@ -298,7 +441,7 @@ class TestRSSFeedConfiguration:
 
         for feed in gazzetta_feeds:
             assert feed.parser == "gazzetta_ufficiale", (
-                f"Gazzetta feed {feed.feed_url} should use 'gazzetta_ufficiale' parser, " f"found '{feed.parser}'"
+                f"Gazzetta feed {feed.feed_url} should use 'gazzetta_ufficiale' parser, found '{feed.parser}'"
             )
 
     async def test_gazzetta_ufficiale_feeds_check_interval(self, db_session: AsyncSession):

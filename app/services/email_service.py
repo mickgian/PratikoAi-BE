@@ -268,8 +268,8 @@ class EmailService:
     async def send_welcome_email(self, recipient_email: str, password: str) -> bool:
         """Send welcome email with credentials after registration."""
         try:
-            login_url = os.getenv("FRONTEND_URL", "http://localhost:3000") + "/login"
-            subject = "Benvenuto su PratikoAI - Le tue credenziali"
+            login_url = os.getenv("FRONTEND_URL", "http://localhost:3000") + "/signin"
+            subject = "Benvenuto su PratikoAI QA - Test environment - Le tue credenziali"
             html_content = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -278,7 +278,7 @@ class EmailService:
               box-shadow:0 2px 4px rgba(0,0,0,.1);overflow:hidden;">
     <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
                 color:#fff;padding:30px;text-align:center;">
-      <h1 style="margin:0;">Benvenuto su PratikoAI</h1>
+      <h1 style="margin:0;">Benvenuto su PratikoAI QA - Test environment</h1>
     </div>
     <div style="padding:30px;">
       <p>Ciao,</p>
@@ -302,13 +302,10 @@ class EmailService:
            style="background:#667eea;color:#fff;padding:12px 30px;border-radius:6px;
                   text-decoration:none;font-weight:bold;">Accedi a PratikoAI</a>
       </p>
-      <p style="color:#6c757d;font-size:13px;">
-        Ti consigliamo di conservare questa email e di cambiare la password al primo accesso.
-      </p>
     </div>
     <div style="text-align:center;color:#6c757d;font-size:12px;padding:15px;
                 border-top:1px solid #dee2e6;">
-      PratikoAI - Il tuo assistente fiscale intelligente
+      PratikoAI
     </div>
   </div>
 </body>

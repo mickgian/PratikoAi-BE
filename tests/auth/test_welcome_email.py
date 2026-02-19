@@ -25,7 +25,7 @@ class TestSendWelcomeEmail:
         self.service._send_email.assert_called_once()
         call_kwargs = self.service._send_email.call_args
         assert call_kwargs[1]["recipient_email"] == "user@example.com"
-        assert call_kwargs[1]["subject"] == "Benvenuto su PratikoAI - Le tue credenziali"
+        assert call_kwargs[1]["subject"] == "Benvenuto su PratikoAI QA - Test environment - Le tue credenziali"
 
     @pytest.mark.asyncio
     async def test_html_contains_credentials(self):
@@ -46,7 +46,7 @@ class TestSendWelcomeEmail:
         await self.service.send_welcome_email("u@ex.com", "pw")
 
         html = self.service._send_email.call_args[1]["html_content"]
-        assert "/login" in html
+        assert "/signin" in html
 
     @pytest.mark.asyncio
     async def test_returns_false_on_smtp_failure(self):

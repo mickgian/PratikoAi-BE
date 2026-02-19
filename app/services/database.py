@@ -26,6 +26,7 @@ from app.core.config import (
 )
 from app.core.logging import logger
 from app.models.database import AsyncSessionLocal
+from app.models.quality_analysis import ExpertProfile
 from app.models.session import Session as ChatSession
 from app.models.user import User
 from app.utils.account_code import generate_account_code
@@ -71,7 +72,7 @@ class DatabaseService:
             if settings.ENVIRONMENT != Environment.PRODUCTION:
                 raise
 
-    async def create_user(self, email: str, password: str) -> User:
+    async def create_user(self, email: str, password: str, role: str | None = None) -> User:
         """Create a new user with a unique account_code.
 
         Generates a human-readable account code ({3_letters}{hundreds}{2_random}-{sequence})
@@ -80,6 +81,7 @@ class DatabaseService:
         Args:
             email: User's email address
             password: Hashed password
+            role: Optional role override (defaults to UserRole.REGULAR_USER)
 
         Returns:
             User: The created user
@@ -90,6 +92,8 @@ class DatabaseService:
             try:
                 with Session(self.engine) as session:
                     user = User(email=email, hashed_password=password, account_code=account_code)
+                    if role:
+                        user.role = role
                     session.add(user)
                     session.commit()
                     session.refresh(user)
@@ -106,6 +110,33 @@ class DatabaseService:
                     continue
                 raise
         raise RuntimeError(f"Impossibile generare account_code unico dopo {max_retries} tentativi")
+
+    async def create_expert_profile(self, user_id: int) -> ExpertProfile:
+        """Create an ExpertProfile for a user with sensible defaults.
+
+        Used when a QA elevated-role user registers so the expert-feedback
+        endpoints work immediately (empty arrays instead of NULL).
+
+        Args:
+            user_id: The ID of the user to create a profile for
+
+        Returns:
+            ExpertProfile: The created expert profile
+        """
+        with Session(self.engine) as session:
+            profile = ExpertProfile(
+                user_id=user_id,
+                is_verified=True,
+                is_active=True,
+                credentials=[],
+                credential_types=[],
+                specializations=[],
+            )
+            session.add(profile)
+            session.commit()
+            session.refresh(profile)
+            logger.info("expert_profile_created", user_id=user_id, profile_id=str(profile.id))
+            return profile
 
     async def get_user(self, user_id: int) -> User | None:
         """Get a user by ID.

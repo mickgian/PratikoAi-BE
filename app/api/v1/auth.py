@@ -25,7 +25,7 @@ from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logging import logger
 from app.models.session import Session
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.auth import (
     OAuthLoginResponse,
     OAuthTokenResponse,
@@ -178,6 +178,27 @@ async def get_current_session(
         )
 
 
+def _build_qa_role_map() -> dict[str, str]:
+    """Build QA role map from environment variables."""
+    role_map: dict[str, str] = {}
+    stakeholder = os.getenv("STAKEHOLDER_EMAIL")
+    stakeholdress = os.getenv("STAKEHOLDRESS_EMAIL")
+    if stakeholder:
+        role_map[stakeholder] = UserRole.ADMIN.value
+    if stakeholdress:
+        role_map[stakeholdress] = UserRole.SUPER_USER.value
+    return role_map
+
+
+def _get_qa_role(email: str) -> str | None:
+    """Return an elevated role for known QA emails, or None for default."""
+    from app.core.config import Environment
+
+    if settings.ENVIRONMENT != Environment.QA:
+        return None
+    return _build_qa_role_map().get(email)
+
+
 @router.post("/register", response_model=UserResponse)
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["register"][0])
 async def register_user(request: Request, user_data: UserCreate):
@@ -202,8 +223,16 @@ async def register_user(request: Request, user_data: UserCreate):
         if await db_service.get_user_by_email(sanitized_email):
             raise HTTPException(status_code=400, detail="Email already registered")
 
+        # Assign elevated roles for specific QA emails
+        role = _get_qa_role(sanitized_email)
+
         # Create user
-        user = await db_service.create_user(email=sanitized_email, password=User.hash_password(password))
+        user = await db_service.create_user(email=sanitized_email, password=User.hash_password(password), role=role)
+
+        # Auto-create ExpertProfile for QA elevated-role users so expert-feedback
+        # endpoints work immediately (avoids NULL array fields → 500 errors).
+        if role is not None:
+            await db_service.create_expert_profile(user.id)
 
         # Create both access and refresh tokens for new user
         access_token = create_access_token(str(user.id))

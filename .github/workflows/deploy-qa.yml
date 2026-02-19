@@ -28,6 +28,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Sync compose files to QA
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_QA_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_QA_SSH_KEY }}
+          source: "docker-compose.yml,docker-compose.qa.yml"
+          target: /opt/pratikoai
+          overwrite: true
+
       - name: Deploy to Hetzner QA
         uses: appleboy/ssh-action@v1
         with:

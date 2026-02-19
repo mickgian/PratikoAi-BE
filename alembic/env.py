@@ -13,6 +13,7 @@ from alembic import context  # type: ignore[attr-defined]
 from alembic.script import ScriptDirectory
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env.development"))
+from app.models.billing import BillingPlan, CreditTransaction, UsageWindow, UserCredit
 from app.models.cassazione import CassazioneDecision
 
 # Phase 2: CCNL Database Models
@@ -40,6 +41,7 @@ from app.models.comparison import (
     ModelComparisonResponse,
     ModelComparisonSession,
     ModelEloRating,
+    PendingComparison,
     UserModelPreference,
 )
 
@@ -82,6 +84,7 @@ from app.models.faq_automation import (
     QueryCluster,
     RSSFAQImpact,
 )
+from app.models.intent_labeling import LabeledQuery
 from app.models.italian_data import (
     ComplianceCheck,
     ItalianKnowledgeSource,
@@ -112,6 +115,7 @@ from app.models.proactivity_analytics import (
 
 # Phase 3: Expert Feedback & Quality Analysis Models
 from app.models.quality_analysis import (
+    ExpertFAQCandidate,
     ExpertFeedback,
     ExpertGeneratedTask,
     ExpertProfile,

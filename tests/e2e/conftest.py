@@ -13,6 +13,8 @@ catching integration bugs that mocked tests miss.
 DEV-BE-69 Phase 6: E2E Testing for RSS Feeds and Scrapers
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
 from datetime import datetime

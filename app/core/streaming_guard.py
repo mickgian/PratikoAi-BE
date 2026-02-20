@@ -4,6 +4,8 @@ This module provides protection against accidentally iterating
 a stream twice, which could cause duplicate content.
 """
 
+from __future__ import annotations
+
 from collections.abc import AsyncGenerator
 from typing import TypeVar
 

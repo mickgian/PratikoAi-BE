@@ -3,7 +3,15 @@
 import { useState } from 'react';
 import { exportTrainingData } from '@/lib/api/intentLabeling';
 
-export function ExportButton() {
+interface ExportButtonProps {
+  newSinceExport?: number;
+  onExportComplete?: () => void;
+}
+
+export function ExportButton({
+  newSinceExport = 0,
+  onExportComplete,
+}: ExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,6 +22,7 @@ export function ExportButton() {
       setError(null);
       setShowMenu(false);
       await exportTrainingData(format);
+      onExportComplete?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore nell'esportazione");
     } finally {
@@ -28,10 +37,20 @@ export function ExportButton() {
         disabled={isExporting}
         className="px-3 py-1.5 rounded-lg text-sm font-medium text-[#2A5D67]
                  border border-[#2A5D67] hover:bg-[#2A5D67]/10 transition-all
-                 disabled:opacity-50 disabled:cursor-not-allowed"
+                 disabled:opacity-50 disabled:cursor-not-allowed relative"
         data-testid="export-btn"
       >
         {isExporting ? 'Esportazione...' : 'Esporta Dati'}
+        {newSinceExport > 0 && !isExporting && (
+          <span
+            className="absolute -top-2 -right-2 inline-flex items-center justify-center
+                     min-w-[20px] h-5 px-1 rounded-full bg-[#06ac2e] text-white
+                     text-[10px] font-bold"
+            data-testid="export-badge"
+          >
+            {newSinceExport}
+          </span>
+        )}
       </button>
 
       {showMenu && (

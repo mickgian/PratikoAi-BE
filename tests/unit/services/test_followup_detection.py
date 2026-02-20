@@ -136,12 +136,12 @@ class TestHfResultToDecisionDict:
         from unittest.mock import MagicMock
 
         mock_result = MagicMock()
-        mock_result.intent = "golden_set"
+        mock_result.intent = "normative_reference"
         mock_result.confidence = 0.92
 
         result = hf_result_to_decision_dict(mock_result, query="e l'IMU?")
 
-        assert result["route"] == "golden_set"
+        assert result["route"] == "normative_reference"
         assert result["confidence"] == 0.92
         assert result["needs_retrieval"] is True
         assert result["is_followup"] is True

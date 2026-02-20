@@ -8,6 +8,7 @@ import { useLabelSubmission } from '../hooks/useLabelSubmission';
 import { LabelingStatsBar } from './LabelingStatsBar';
 import { LabelingQueue } from './LabelingQueue';
 import { ExportButton } from './ExportButton';
+import { LabelingInstructions } from './LabelingInstructions';
 
 export function LabelingDashboard() {
   const { isSuperUser, isLoading: isAuthLoading } = useExpertStatus();
@@ -84,12 +85,16 @@ export function LabelingDashboard() {
               classificatore
             </p>
           </div>
-          <ExportButton />
+          <ExportButton
+            newSinceExport={stats?.new_since_export ?? 0}
+            onExportComplete={refetchStats}
+          />
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 py-6">
+        <LabelingInstructions />
         <LabelingStatsBar stats={stats} isLoading={isStatsLoading} />
 
         {submitError && (

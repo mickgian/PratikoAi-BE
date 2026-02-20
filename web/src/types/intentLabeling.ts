@@ -12,7 +12,7 @@ export const INTENT_LABELS = [
   'theoretical_definition',
   'technical_research',
   'calculator',
-  'golden_set',
+  'normative_reference',
 ] as const;
 
 export type IntentLabel = (typeof INTENT_LABELS)[number];
@@ -22,7 +22,7 @@ export const INTENT_DISPLAY_NAMES: Record<IntentLabel, string> = {
   theoretical_definition: 'Definizione Teorica',
   technical_research: 'Ricerca Tecnica',
   calculator: 'Calcolatore',
-  golden_set: 'Golden Set',
+  normative_reference: 'Riferimento Normativo',
 };
 
 export const INTENT_COLORS: Record<IntentLabel, string> = {
@@ -30,7 +30,7 @@ export const INTENT_COLORS: Record<IntentLabel, string> = {
   theoretical_definition: '#8B5CF6',
   technical_research: '#2A5D67',
   calculator: '#D4A574',
-  golden_set: '#d4183d',
+  normative_reference: '#d4183d',
 };
 
 /**
@@ -97,4 +97,5 @@ export interface LabelingStatsResponse {
   pending_queries: number;
   completion_percentage: number;
   labels_by_intent: Record<string, number>;
+  new_since_export: number;
 }

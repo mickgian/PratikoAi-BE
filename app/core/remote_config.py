@@ -9,6 +9,10 @@ thresholds without redeployment when Flagsmith is configured.
 When Flagsmith is not available (no FLAGSMITH_SERVER_KEY), falls back
 gracefully to environment variables and defaults.
 
+Uses local evaluation mode for sub-ms latency (~425 req/s vs ~60 req/s
+with remote evaluation). The full environment document is downloaded
+once and refreshed every 60 seconds.
+
 See ADR-031 for architecture decision.
 """
 
@@ -23,8 +27,29 @@ _flagsmith_client = None
 _flagsmith_initialized = False
 
 
+def _default_flag_handler(feature_name: str):
+    """Handle unknown flags gracefully by returning None.
+
+    This is called when a flag key is not found in the local environment
+    document. Returns None so the caller falls through to env var / default.
+
+    Args:
+        feature_name: The flag key that was not found.
+
+    Returns:
+        A default Flag with no value.
+    """
+    from flagsmith.models import DefaultFlag
+
+    logger.debug("flagsmith_unknown_flag feature=%s", feature_name)
+    return DefaultFlag(enabled=False, value=None)
+
+
 def _init_flagsmith_client():
     """Initialize Flagsmith client if server key is configured.
+
+    Uses local evaluation mode to avoid per-request HTTP calls.
+    The environment document is fetched once, then refreshed every 60s.
 
     Returns:
         Flagsmith client instance, or None if not configured.
@@ -41,8 +66,11 @@ def _init_flagsmith_client():
         client = Flagsmith(
             environment_key=server_key,
             api_url=api_url,
+            enable_local_evaluation=True,
+            environment_refresh_interval_seconds=60,
+            default_flag_handler=_default_flag_handler,
         )
-        logger.info("flagsmith_initialized api_url=%s", api_url)
+        logger.info("flagsmith_initialized api_url=%s local_eval=True", api_url)
         return client
     except ImportError:
         logger.warning("flagsmith_sdk_not_installed")

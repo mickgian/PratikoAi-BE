@@ -393,13 +393,15 @@ class TestBestModelsConfiguration:
         """Set up test fixtures."""
         self.service = ComparisonService()
 
-    def test_get_current_model_id_returns_env_value(self):
-        """Test get_current_model_id reads from settings."""
-        from app.core.config import settings
+    def test_get_current_model_id_returns_resolved_model_id(self):
+        """Test get_current_model_id returns canonical provider:model format."""
+        from app.core.llm.model_registry import get_model_registry
 
         result = self.service.get_current_model_id()
 
-        assert result == settings.PRODUCTION_LLM_MODEL
+        # Should resolve via model registry to canonical provider:model format
+        expected = get_model_registry().resolve_production_model().model_id
+        assert result == expected
 
     def test_get_current_model_id_format(self):
         """Test current model ID has provider:model format."""

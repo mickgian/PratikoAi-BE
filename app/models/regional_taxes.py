@@ -42,19 +42,21 @@ class Regione(SQLModel, table=True):
     has_special_statute: bool = Field(default=False)
 
     # Geographic information
-    area_kmq: Optional[int] = Field(default=None)  # Area in square kilometers
-    popolazione: Optional[int] = Field(default=None)  # Population
+    area_kmq: int | None = Field(default=None)  # Area in square kilometers
+    popolazione: int | None = Field(default=None)  # Population
 
     # Administrative details
-    capoluogo: Optional[str] = Field(default=None, max_length=50)  # Regional capital
+    capoluogo: str | None = Field(default=None, max_length=50)  # Regional capital
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     )
 
     # Relationships
-    comuni: List["Comune"] = Relationship(back_populates="regione", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    tax_rates: List["RegionalTaxRate"] = Relationship(
+    comuni: list["Comune"] = Relationship(
+        back_populates="regione", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    tax_rates: list["RegionalTaxRate"] = Relationship(
         back_populates="regione", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
@@ -95,7 +97,7 @@ class Comune(SQLModel, table=True):
     regione_id: UUID = Field(foreign_key="regioni.id")
 
     # Postal codes (multiple CAPs per comune)
-    cap_codes: List[str] = Field(sa_column=Column(ARRAY(String(5)), nullable=False, index=True))
+    cap_codes: list[str] = Field(sa_column=Column(ARRAY(String(5)), nullable=False, index=True))
 
     # Administrative classification
     is_capoluogo: bool = Field(default=False)
@@ -103,31 +105,31 @@ class Comune(SQLModel, table=True):
     is_metropolitan_city: bool = Field(default=False)
 
     # Population and area
-    popolazione: Optional[int] = Field(default=None)
-    area_kmq: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(8, 2), nullable=True))
-    densita_abitativa: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(8, 2), nullable=True))
+    popolazione: int | None = Field(default=None)
+    area_kmq: Decimal | None = Field(default=None, sa_column=Column(Numeric(8, 2), nullable=True))
+    densita_abitativa: Decimal | None = Field(default=None, sa_column=Column(Numeric(8, 2), nullable=True))
 
     # Geographic coordinates
-    latitudine: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(10, 7), nullable=True))
-    longitudine: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(10, 7), nullable=True))
-    altitudine: Optional[int] = Field(default=None)  # Meters above sea level
+    latitudine: Decimal | None = Field(default=None, sa_column=Column(Numeric(10, 7), nullable=True))
+    longitudine: Decimal | None = Field(default=None, sa_column=Column(Numeric(10, 7), nullable=True))
+    altitudine: int | None = Field(default=None)  # Meters above sea level
 
     # Administrative details
-    sindaco: Optional[str] = Field(default=None, max_length=100)  # Current mayor
-    telefono: Optional[str] = Field(default=None, max_length=20)
-    email: Optional[str] = Field(default=None, max_length=100)
-    pec: Optional[str] = Field(default=None, max_length=100)  # Certified email
-    sito_web: Optional[str] = Field(default=None, max_length=200)
+    sindaco: str | None = Field(default=None, max_length=100)  # Current mayor
+    telefono: str | None = Field(default=None, max_length=20)
+    email: str | None = Field(default=None, max_length=100)
+    pec: str | None = Field(default=None, max_length=100)  # Certified email
+    sito_web: str | None = Field(default=None, max_length=200)
 
     # Timestamps
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     )
 
     # Relationships
     regione: "Regione" = Relationship(back_populates="comuni")
-    tax_rates: List["ComunalTaxRate"] = Relationship(
+    tax_rates: list["ComunalTaxRate"] = Relationship(
         back_populates="comune", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
@@ -141,7 +143,7 @@ class Comune(SQLModel, table=True):
     def __repr__(self):
         return f"<Comune(nome='{self.nome}', provincia='{self.provincia}')>"
 
-    def get_primary_cap(self) -> Optional[str]:
+    def get_primary_cap(self) -> str | None:
         """Get the primary postal code for this comune"""
         return self.cap_codes[0] if self.cap_codes else None
 
@@ -187,30 +189,30 @@ class RegionalTaxRate(SQLModel, table=True):
 
     # Different rates by business category (for IRAP)
     rate_standard: Decimal = Field(sa_column=Column(Numeric(5, 2), nullable=False))  # Standard business rate
-    rate_banks: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
-    rate_insurance: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
-    rate_agriculture: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
-    rate_cooperatives: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_banks: Decimal | None = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_insurance: Decimal | None = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_agriculture: Decimal | None = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_cooperatives: Decimal | None = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
 
     # Validity period
     valid_from: date = Field(sa_column=Column(Date, nullable=False, index=True))
-    valid_to: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True, index=True))
+    valid_to: date | None = Field(default=None, sa_column=Column(Date, nullable=True, index=True))
 
     # Additional parameters
-    minimum_tax: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(10, 2), nullable=True))
-    maximum_tax: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(12, 2), nullable=True))
-    exemption_threshold: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(12, 2), nullable=True))
+    minimum_tax: Decimal | None = Field(default=None, sa_column=Column(Numeric(10, 2), nullable=True))
+    maximum_tax: Decimal | None = Field(default=None, sa_column=Column(Numeric(12, 2), nullable=True))
+    exemption_threshold: Decimal | None = Field(default=None, sa_column=Column(Numeric(12, 2), nullable=True))
 
     # Calculation parameters stored as JSON
-    calculation_parameters: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    calculation_parameters: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Legislative reference
-    legislative_reference: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    legislative_reference: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Timestamps
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     )
 
@@ -286,24 +288,24 @@ class ComunalTaxRate(SQLModel, table=True):
 
     # Basic rate information
     rate: Decimal = Field(sa_column=Column(Numeric(5, 2), nullable=False))  # Standard rate percentage
-    rate_prima_casa: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
-    rate_altri_immobili: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
-    rate_commerciale: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
-    rate_industriale: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
-    rate_agricolo: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_prima_casa: Decimal | None = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_altri_immobili: Decimal | None = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_commerciale: Decimal | None = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_industriale: Decimal | None = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
+    rate_agricolo: Decimal | None = Field(default=None, sa_column=Column(Numeric(5, 2), nullable=True))
 
     # Exemptions and special provisions
     esenzione_prima_casa: bool = Field(default=False)
-    esenzione_giovani_coppie: Optional[bool] = Field(default=None)  # Young couples exemption
-    esenzione_over_65: Optional[bool] = Field(default=None)  # Elderly exemption
+    esenzione_giovani_coppie: bool | None = Field(default=None)  # Young couples exemption
+    esenzione_over_65: bool | None = Field(default=None)  # Elderly exemption
 
     # Validity period
     valid_from: date = Field(sa_column=Column(Date, nullable=False, index=True))
-    valid_to: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True, index=True))
+    valid_to: date | None = Field(default=None, sa_column=Column(Date, nullable=True, index=True))
 
     # Deductions and thresholds
-    detrazioni: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB, nullable=True))
-    soglie: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    detrazioni: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    soglie: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Examples of detrazioni structure:
     # {
@@ -320,18 +322,18 @@ class ComunalTaxRate(SQLModel, table=True):
     # }
 
     # Additional municipal provisions
-    maggiorazioni: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB, nullable=True))
-    agevolazioni: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    maggiorazioni: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    agevolazioni: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     # Legislative reference
-    delibera_comunale: Optional[str] = Field(default=None, max_length=50)
-    data_delibera: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
-    legislative_reference: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    delibera_comunale: str | None = Field(default=None, max_length=50)
+    data_delibera: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
+    legislative_reference: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # Timestamps
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     )
 
@@ -378,7 +380,7 @@ class ComunalTaxRate(SQLModel, table=True):
         threshold = self.soglie.get("no_tax_under")
         return bool(threshold and income < Decimal(str(threshold)))
 
-    def get_reduced_rate_if_applicable(self, income: Decimal) -> Optional[Decimal]:
+    def get_reduced_rate_if_applicable(self, income: Decimal) -> Decimal | None:
         """Get reduced rate if income qualifies"""
         if not self.soglie:
             return None

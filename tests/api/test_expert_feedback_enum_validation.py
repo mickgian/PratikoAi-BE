@@ -31,6 +31,7 @@ if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
 
 from datetime import datetime
 from uuid import uuid4
+
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -61,7 +62,7 @@ async def test_user_super(db_session):
     # Create test user with naive datetime to avoid timezone issues
     user = User(
         email=f"expert-enum-test-{id(db_session)}@test.com",
-        hashed_password="hashed",
+        hashed_password="hashed",  # pragma: allowlist secret
         role=UserRole.SUPER_USER.value,
         name="Test Expert",
         created_at=datetime.now(),  # Naive datetime to bypass timezone issue

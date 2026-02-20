@@ -20,6 +20,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-aifinance}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
       POSTGRES_DB: ${POSTGRES_DB:-aifinance}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/init-flagsmith-db.sh:/docker-entrypoint-initdb.d/init-flagsmith-db.sh:ro
     deploy:
       resources:
         limits:
@@ -47,6 +50,8 @@ services:
       - POSTGRES_URL=postgresql://${POSTGRES_USER:-aifinance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-aifinance}
       - REDIS_URL=redis://redis:6379/0
       - ALLOWED_ORIGINS=https://app-qa.pratiko.app
+      - FLAGSMITH_SERVER_KEY=${FLAGSMITH_SERVER_KEY:-}
+      - FLAGSMITH_API_URL=http://flagsmith:8000/api/v1/
     ports: []
     deploy:
       resources:
@@ -61,6 +66,7 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=https://api-qa.pratiko.app
+      - NEXT_PUBLIC_FLAGSMITH_UI_URL=https://flags-qa.pratiko.app
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
@@ -107,7 +113,10 @@ services:
     restart: on-failure
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-aifinance}:${POSTGRES_PASSWORD}@db:5432/flagsmith
-      - DJANGO_ALLOWED_HOSTS=*
+      - DJANGO_ALLOWED_HOSTS=${FLAGS_DOMAIN:-flags-qa.pratiko.app}
+      - DJANGO_SECRET_KEY=${FLAGSMITH_DJANGO_SECRET:-changeme}
+      - FLAGSMITH_DOMAIN=${FLAGS_DOMAIN:-flags-qa.pratiko.app}
+      - ALLOW_REGISTRATION_WITHOUT_INVITE=false
     depends_on:
       - db
     networks:

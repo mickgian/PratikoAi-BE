@@ -26,6 +26,7 @@ export function ComparisonDashboard() {
     fetchStats,
     runWithExisting,
     vote,
+    restoreComparison,
     setError,
   } = useComparison();
   const {
@@ -53,6 +54,75 @@ export function ComparisonDashboard() {
       fetchStats();
     }
   }, [isSuperUser, fetchStats]);
+
+  // Restore cached comparison results on mount (survives navigation away and back)
+  // Uses a stable key so results persist even when URL has no ?pending= param
+  useEffect(() => {
+    if (!isBrowser) return;
+
+    // If there's a new pending ID that hasn't been processed yet,
+    // don't restore stale results - the pending data effect will handle it
+    if (pendingId) {
+      try {
+        if (!sessionStorage.getItem(`processed_${pendingId}`)) {
+          return; // New comparison incoming, skip restore
+        }
+      } catch {
+        // sessionStorage may be disabled
+      }
+    }
+
+    // Try pendingId-specific key first, then fall back to latest results
+    const keys = pendingId
+      ? [`comparison_results_${pendingId}`, 'latest_comparison_results']
+      : ['latest_comparison_results'];
+
+    for (const key of keys) {
+      try {
+        const cached = sessionStorage.getItem(key);
+        if (cached) {
+          const data = JSON.parse(cached);
+          restoreComparison({
+            comparison: data.comparison,
+            voteResult: data.voteResult ?? null,
+          });
+          setCurrentModelId(data.currentModelId);
+          setQuery(data.query);
+          console.log(
+            `🔄 [ComparisonDashboard] Restored cached comparison results from ${key}`
+          );
+          return;
+        }
+      } catch {
+        // Ignore parse errors, try next key
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingId]);
+
+  // Cache comparison results when they change (for navigation persistence)
+  // Stores under both a pendingId-specific key and a stable "latest" key
+  useEffect(() => {
+    if (!isBrowser || !comparison) return;
+
+    const payload = JSON.stringify({
+      comparison,
+      currentModelId,
+      query,
+      voteResult,
+    });
+
+    try {
+      // Always cache under the stable key (works when navigating back without params)
+      sessionStorage.setItem('latest_comparison_results', payload);
+      // Also cache under pendingId key if available (for URL-specific restore)
+      if (pendingId) {
+        sessionStorage.setItem(`comparison_results_${pendingId}`, payload);
+      }
+    } catch {
+      // Ignore sessionStorage errors
+    }
+  }, [comparison, voteResult, pendingId, currentModelId, query]);
 
   // DEV-256: Handle incoming response from main chat via backend database
   // Uses backend storage instead of sessionStorage to avoid race conditions with hydration

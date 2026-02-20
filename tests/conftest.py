@@ -130,7 +130,6 @@ async def db_session():
     Creates a fresh engine and session for each test to avoid
     event loop conflicts between tests.
     """
-    from app.core.config import settings
     from app.models.database import get_async_database_url
 
     # Create a fresh engine for this test to avoid event loop issues
@@ -177,7 +176,7 @@ pytest.assume_mock_database = assume_mock_database
 # ============================================================================
 
 # Test database URL - use the same Docker PostgreSQL instance but different database
-TEST_DATABASE_URL = "postgresql+asyncpg://aifinance:devpass@localhost:5433/aifinance_test"
+TEST_DATABASE_URL = "postgresql+asyncpg://aifinance:devpass@localhost:5433/aifinance_test"  # pragma: allowlist secret
 
 
 @pytest_asyncio.fixture

@@ -1473,15 +1473,22 @@ async def chat_stream(
                             # Validate both query and response are non-empty before saving
                             if user_query and user_query.strip() and ai_response and ai_response.strip():
                                 # Use "golden_set" if response came from Golden Set FAQ,
-                                # otherwise use the LLM model identifier
-                                model_used = "golden_set" if golden_hit else "gpt-4-turbo"
+                                # otherwise use the actual model from collected_metrics
+                                history_model = "golden_set" if golden_hit else (model_used or "unknown")
+                                # Sum input+output tokens for total (tokens_used is dict: {input: N, output: M})
+                                total_tokens: int | None = None
+                                if tokens_used:
+                                    total_tokens = (tokens_used.get("input") or 0) + (tokens_used.get("output") or 0)
                                 await chat_history_service.save_chat_interaction(
                                     user_id=session.user_id,
                                     session_id=session.id,
                                     user_query=user_query.strip(),
                                     ai_response=ai_response.strip(),
-                                    model_used=model_used,
-                                    italian_content=True,  # TODO: Detect from query content
+                                    model_used=history_model,
+                                    tokens_used=total_tokens,
+                                    cost_cents=cost_cents,
+                                    response_time_ms=response_time_ms,
+                                    italian_content=True,
                                     kb_sources_metadata=collected_kb_sources_metadata,  # DEV-244
                                     web_verification_metadata=collected_web_verification_data,  # DEV-245
                                 )

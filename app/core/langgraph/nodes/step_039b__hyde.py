@@ -59,7 +59,8 @@ def _route_to_category(route: str) -> RoutingCategory:
         "calculator": RoutingCategory.CALCULATOR,
         "theoretical_definition": RoutingCategory.THEORETICAL_DEFINITION,
         "technical_research": RoutingCategory.TECHNICAL_RESEARCH,
-        "golden_set": RoutingCategory.GOLDEN_SET,
+        "normative_reference": RoutingCategory.NORMATIVE_REFERENCE,
+        "golden_set": RoutingCategory.NORMATIVE_REFERENCE,  # backward compat
     }
     return route_map.get(route, RoutingCategory.TECHNICAL_RESEARCH)
 
@@ -110,7 +111,7 @@ async def node_step_39b(state: RAGState) -> RAGState:
             if hyde_result["skipped"]:
                 logger.info(f"Step {NODE_LABEL}: HyDE skipped - {hyde_result['skip_reason']}")
             else:
-                logger.info(f"Step {NODE_LABEL}: Generated HyDE document - " f"{hyde_result['word_count']} words")
+                logger.info(f"Step {NODE_LABEL}: Generated HyDE document - {hyde_result['word_count']} words")
 
         except Exception as e:
             logger.warning(f"Step {NODE_LABEL}: HyDE error, skipping: {e}")

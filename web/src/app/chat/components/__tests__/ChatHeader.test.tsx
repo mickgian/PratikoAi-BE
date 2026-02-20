@@ -354,4 +354,54 @@ describe('ChatHeader', () => {
       expect(mockPush).toHaveBeenCalledWith('/expert/model-comparison');
     });
   });
+
+  describe('Configurazione Menu Item', () => {
+    it('should show Configurazione link when user is a super user', async () => {
+      (useExpertStatus as jest.Mock).mockReturnValue({
+        isSuperUser: true,
+        isExpert: true,
+        isLoading: false,
+        error: null,
+      });
+
+      const user = userEvent.setup();
+      render(<ChatHeader />);
+
+      await user.click(screen.getByTestId('user-menu-button'));
+
+      const configItem = screen.getByTestId('flagsmith-menu-item');
+      expect(configItem).toBeInTheDocument();
+      expect(configItem).toHaveTextContent('Configurazione');
+    });
+
+    it('should not show Configurazione link when user is not a super user', async () => {
+      const user = userEvent.setup();
+      render(<ChatHeader />);
+
+      await user.click(screen.getByTestId('user-menu-button'));
+
+      expect(
+        screen.queryByTestId('flagsmith-menu-item')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should have correct external link attributes', async () => {
+      (useExpertStatus as jest.Mock).mockReturnValue({
+        isSuperUser: true,
+        isExpert: true,
+        isLoading: false,
+        error: null,
+      });
+
+      const user = userEvent.setup();
+      render(<ChatHeader />);
+
+      await user.click(screen.getByTestId('user-menu-button'));
+
+      const configItem = screen.getByTestId('flagsmith-menu-item');
+      expect(configItem).toHaveAttribute('target', '_blank');
+      expect(configItem).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(configItem).toHaveAttribute('href');
+    });
+  });
 });

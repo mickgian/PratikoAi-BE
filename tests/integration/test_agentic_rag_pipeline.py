@@ -42,7 +42,7 @@ def create_mock_routing_decision(route: str = "technical_research") -> dict[str,
         "entities": [],
         "requires_freshness": False,
         "suggested_sources": ["kb", "golden"],
-        "needs_retrieval": route in ["technical_research", "golden_set", "theoretical_definition"],
+        "needs_retrieval": route in ["technical_research", "normative_reference", "theoretical_definition"],
     }
 
 
@@ -170,7 +170,19 @@ class TestAgenticRAGPipeline:
         # Use mock routing decision to verify helper works
         _ = create_mock_routing_decision("technical_research")
 
+        # Mock HF classifier to force GPT fallback (HF runs first in node)
+        mock_hf = MagicMock()
+        mock_hf.classify_async = AsyncMock(
+            return_value=MagicMock(intent="technical_research", confidence=0.3, all_scores={})
+        )
+        mock_hf.should_fallback_to_gpt.return_value = True
+        mock_hf.confidence_threshold = 0.6
+
         with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=mock_hf,
+            ),
             patch(
                 "app.services.llm_router_service.LLMRouterService.route",
                 new_callable=AsyncMock,
@@ -338,7 +350,7 @@ class TestGoldenSetKBRegression:
 
     @pytest.mark.asyncio
     async def test_golden_set_fast_path_not_broken(self):
-        """Verify Golden Set fast-path still works after Agentic RAG changes."""
+        """Verify Normative Reference fast-path still works after rename."""
         from app.core.langgraph.nodes.step_034a__llm_router import node_step_34a
 
         state = {
@@ -347,9 +359,17 @@ class TestGoldenSetKBRegression:
             "messages": [{"role": "user", "content": "Qual è il limite di fatturato?"}],
         }
 
-        # Simulate routing to GOLDEN_SET
+        # Mock HF classifier to force GPT fallback
+        mock_hf = MagicMock()
+        mock_hf.classify_async = AsyncMock(
+            return_value=MagicMock(intent="normative_reference", confidence=0.3, all_scores={})
+        )
+        mock_hf.should_fallback_to_gpt.return_value = True
+        mock_hf.confidence_threshold = 0.6
+
+        # Simulate routing to NORMATIVE_REFERENCE (renamed from GOLDEN_SET)
         mock_route = MagicMock()
-        mock_route.value = "golden_set"
+        mock_route.value = "normative_reference"
 
         mock_router_instance = MagicMock()
         mock_router_instance.route = AsyncMock(
@@ -360,11 +380,15 @@ class TestGoldenSetKBRegression:
                 entities=[],
                 requires_freshness=False,
                 suggested_sources=["golden"],
-                needs_retrieval=True,  # Golden set still needs lookup
+                needs_retrieval=True,
             )
         )
 
         with (
+            patch(
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
+                return_value=mock_hf,
+            ),
             patch(
                 "app.services.llm_router_service.LLMRouterService",
                 return_value=mock_router_instance,
@@ -376,8 +400,8 @@ class TestGoldenSetKBRegression:
         ):
             result = await node_step_34a(state)
 
-            # Golden set should be routed correctly
-            assert result["routing_decision"]["route"] == "golden_set"
+            # Normative reference should be routed correctly
+            assert result["routing_decision"]["route"] == "normative_reference"
             assert result["routing_decision"]["needs_retrieval"] is True
 
     @pytest.mark.asyncio

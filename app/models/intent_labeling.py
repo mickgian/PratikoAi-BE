@@ -28,7 +28,7 @@ class IntentLabel(str, Enum):
     THEORETICAL_DEFINITION = "theoretical_definition"
     TECHNICAL_RESEARCH = "technical_research"
     CALCULATOR = "calculator"
-    GOLDEN_SET = "golden_set"
+    NORMATIVE_REFERENCE = "normative_reference"
 
 
 class LabeledQuery(SQLModel, table=True):
@@ -78,6 +78,9 @@ class LabeledQuery(SQLModel, table=True):
     # Soft delete and skip tracking
     is_deleted: bool = Field(default=False, index=True)
     skip_count: int = Field(default=0)
+
+    # Export tracking
+    exported_at: datetime | None = Field(default=None)
 
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)

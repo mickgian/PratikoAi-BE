@@ -52,7 +52,7 @@ describe('IntentSelector', () => {
     expect(mockOnSelect).toHaveBeenCalledWith('technical_research');
 
     fireEvent.keyDown(window, { key: '5' });
-    expect(mockOnSelect).toHaveBeenCalledWith('golden_set');
+    expect(mockOnSelect).toHaveBeenCalledWith('normative_reference');
   });
 
   it('should not respond to keyboard when disabled', () => {

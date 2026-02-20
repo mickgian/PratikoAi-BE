@@ -25,17 +25,30 @@ jest.mock('next/server', () => ({
 }));
 
 /**
+ * Create a URL with clone() to simulate NextURL behaviour
+ */
+function createCloneableUrl(base: string): URL & { clone: () => URL } {
+  const url = new URL(base) as URL & { clone: () => URL };
+  url.clone = () => createCloneableUrl(url.toString());
+  return url;
+}
+
+/**
  * Create a mock NextRequest object
  */
 function createMockRequest(
   path: string,
-  options: { cookies?: Record<string, string> } = {}
+  options: {
+    cookies?: Record<string, string>;
+    origin?: string;
+  } = {}
 ): NextRequest {
-  const url = new URL(path, 'http://localhost:3000');
+  const origin = options.origin ?? 'http://localhost:3000';
+  const nextUrl = createCloneableUrl(`${origin}${path}`);
 
   return {
-    nextUrl: url,
-    url: url.toString(),
+    nextUrl,
+    url: nextUrl.toString(),
     cookies: {
       get: (name: string) => {
         const value = options.cookies?.[name];
@@ -203,6 +216,25 @@ describe('middleware', () => {
       middleware(request);
 
       expect(mockRedirect).toHaveBeenCalled();
+    });
+  });
+
+  describe('Reverse proxy (QA/Production)', () => {
+    it('should redirect to the external host, not localhost, behind a reverse proxy', () => {
+      // Simulate a request arriving through Caddy reverse proxy where
+      // nextUrl reflects the real origin (trustHostHeader: true)
+      const request = createMockRequest('/chat', {
+        origin: 'https://app-qa.pratiko.app',
+      });
+
+      middleware(request);
+
+      expect(mockRedirect).toHaveBeenCalled();
+      const redirectUrl = mockRedirect.mock.calls[0][0];
+      expect(redirectUrl.toString()).toContain('https://app-qa.pratiko.app');
+      expect(redirectUrl.toString()).not.toContain('localhost');
+      expect(redirectUrl.pathname).toBe('/signin');
+      expect(redirectUrl.searchParams.get('returnUrl')).toBe('/chat');
     });
   });
 

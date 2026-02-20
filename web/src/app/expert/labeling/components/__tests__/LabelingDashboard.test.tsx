@@ -114,6 +114,88 @@ describe('LabelingDashboard', () => {
     expect(screen.getByTestId('export-btn')).toBeInTheDocument();
   });
 
+  it('should show export badge when new_since_export > 0', () => {
+    mockUseExpertStatus.mockReturnValue({
+      isSuperUser: true,
+      isExpert: true,
+      isLoading: false,
+      error: null,
+    });
+    mockUseLabelingStats.mockReturnValue({
+      stats: {
+        total_queries: 100,
+        labeled_queries: 50,
+        pending_queries: 50,
+        completion_percentage: 50.0,
+        labels_by_intent: {},
+        new_since_export: 15,
+      },
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    render(<LabelingDashboard />);
+
+    expect(screen.getByTestId('export-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('export-badge')).toHaveTextContent('15');
+  });
+
+  it('should not show export badge when new_since_export is 0', () => {
+    mockUseExpertStatus.mockReturnValue({
+      isSuperUser: true,
+      isExpert: true,
+      isLoading: false,
+      error: null,
+    });
+    mockUseLabelingStats.mockReturnValue({
+      stats: {
+        total_queries: 100,
+        labeled_queries: 50,
+        pending_queries: 50,
+        completion_percentage: 50.0,
+        labels_by_intent: {},
+        new_since_export: 0,
+      },
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    render(<LabelingDashboard />);
+
+    expect(screen.queryByTestId('export-badge')).not.toBeInTheDocument();
+  });
+
+  it('should display Nuove da Esportare stat card', () => {
+    mockUseExpertStatus.mockReturnValue({
+      isSuperUser: true,
+      isExpert: true,
+      isLoading: false,
+      error: null,
+    });
+    mockUseLabelingStats.mockReturnValue({
+      stats: {
+        total_queries: 100,
+        labeled_queries: 50,
+        pending_queries: 50,
+        completion_percentage: 50.0,
+        labels_by_intent: {},
+        new_since_export: 25,
+      },
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    render(<LabelingDashboard />);
+
+    expect(screen.getByText('Nuove da Esportare')).toBeInTheDocument();
+    // The stat card value and the badge both show 25, so check within the stats bar
+    const statsBar = screen.getByTestId('stats-bar');
+    expect(statsBar).toHaveTextContent('Nuove da Esportare');
+  });
+
   it('should display submission errors', () => {
     mockUseExpertStatus.mockReturnValue({
       isSuperUser: true,

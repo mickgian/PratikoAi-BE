@@ -101,8 +101,11 @@ export function middleware(request: NextRequest) {
   if (isProtectedRoute(pathname)) {
     // Check for auth cookie
     if (!hasAuthCookie(request)) {
-      // Build redirect URL with returnUrl parameter
-      const signinUrl = new URL('/signin', request.url);
+      // Build redirect URL using nextUrl.clone() to preserve the real host/protocol
+      // behind a reverse proxy (avoids redirecting to localhost:3000)
+      const signinUrl = request.nextUrl.clone();
+      signinUrl.pathname = '/signin';
+      signinUrl.search = '';
 
       // Add return URL if valid
       if (isValidReturnUrl(pathname)) {

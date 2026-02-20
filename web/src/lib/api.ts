@@ -328,7 +328,7 @@ class ApiClient {
         error.message.includes('Failed to fetch')
       ) {
         throw new Error(
-          'Impossibile connettersi al server. Verifica che il backend sia in funzione su http://localhost:8000'
+          `Impossibile connettersi al server. Verifica che il backend sia in funzione su ${this.baseUrl}`
         );
       }
       throw error;
@@ -433,7 +433,7 @@ class ApiClient {
         error.message.includes('Failed to fetch')
       ) {
         throw new Error(
-          'Impossibile connettersi al server. Verifica che il backend sia in funzione su http://localhost:8000'
+          `Impossibile connettersi al server. Verifica che il backend sia in funzione su ${this.baseUrl}`
         );
       }
       throw error;
@@ -471,7 +471,7 @@ class ApiClient {
         error.message.includes('Failed to fetch')
       ) {
         throw new Error(
-          'Impossibile connettersi al server. Verifica che il backend sia in funzione su http://localhost:8000'
+          `Impossibile connettersi al server. Verifica che il backend sia in funzione su ${this.baseUrl}`
         );
       }
       throw error;
@@ -626,7 +626,7 @@ class ApiClient {
         error.message.includes('Failed to fetch')
       ) {
         throw new Error(
-          'Impossibile connettersi al server. Verifica che il backend sia in funzione su http://localhost:8000'
+          `Impossibile connettersi al server. Verifica che il backend sia in funzione su ${this.baseUrl}`
         );
       }
       throw error;
@@ -648,7 +648,7 @@ class ApiClient {
         error.message.includes('Failed to fetch')
       ) {
         throw new Error(
-          'Impossibile connettersi al server. Verifica che il backend sia in funzione su http://localhost:8000'
+          `Impossibile connettersi al server. Verifica che il backend sia in funzione su ${this.baseUrl}`
         );
       }
       throw error;
@@ -685,7 +685,7 @@ class ApiClient {
         error.message.includes('Failed to fetch')
       ) {
         throw new Error(
-          'Impossibile connettersi al server. Verifica che il backend sia in funzione su http://localhost:8000'
+          `Impossibile connettersi al server. Verifica che il backend sia in funzione su ${this.baseUrl}`
         );
       }
       throw error;

@@ -14,8 +14,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Dict, List, Optional
 
-from app.core.config import settings
-from app.services.metrics_service import Environment, MetricsReport, MetricsService, MetricStatus
+from app.core.config import Environment, settings
+from app.services.metrics_service import MetricsReport, MetricsService, MetricStatus
 
 logger = logging.getLogger(__name__)
 
@@ -269,7 +269,11 @@ class EmailService:
         """Send welcome email with credentials after registration."""
         try:
             login_url = os.getenv("FRONTEND_URL", "http://localhost:3000") + "/signin"
-            subject = "Benvenuto su PratikoAI QA - Test environment - Le tue credenziali"
+            env_label = {
+                Environment.QA: " QA - Test environment",
+                Environment.DEVELOPMENT: " DEV",
+            }.get(settings.ENVIRONMENT, "")
+            subject = f"Benvenuto su PratikoAI{env_label} - Le tue credenziali"
             html_content = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -278,7 +282,7 @@ class EmailService:
               box-shadow:0 2px 4px rgba(0,0,0,.1);overflow:hidden;">
     <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
                 color:#fff;padding:30px;text-align:center;">
-      <h1 style="margin:0;">Benvenuto su PratikoAI QA - Test environment</h1>
+      <h1 style="margin:0;">Benvenuto su PratikoAI{env_label}</h1>
     </div>
     <div style="padding:30px;">
       <p>Ciao,</p>

@@ -29,6 +29,7 @@ if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
     )
 
 from datetime import datetime
+
 from sqlalchemy import select
 
 from app.models.database import AsyncSessionLocal
@@ -50,7 +51,7 @@ async def test_user(db_session):
     """Create test user with SUPER_USER role."""
     user = User(
         email=f"credential-enum-test-{id(db_session)}@test.com",
-        hashed_password="hashed",
+        hashed_password="hashed",  # pragma: allowlist secret
         role=UserRole.SUPER_USER.value,
         name="Test User",
         created_at=datetime.now(),  # Naive datetime

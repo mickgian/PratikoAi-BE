@@ -129,14 +129,14 @@ class TestLLMRouterServiceRouting:
         assert result.needs_retrieval is False
 
     @pytest.mark.asyncio
-    async def test_route_golden_set_query(self, mock_config):
-        """Test routing a golden set query (specific law reference)."""
+    async def test_route_normative_reference_query(self, mock_config):
+        """Test routing a normative reference query (specific law reference)."""
         from app.services.llm_router_service import LLMRouterService
 
         service = LLMRouterService(config=mock_config)
 
         mock_response = RouterDecision(
-            route=RoutingCategory.GOLDEN_SET,
+            route=RoutingCategory.NORMATIVE_REFERENCE,
             confidence=0.98,
             reasoning="Query references specific law Legge 104/1992",
             entities=[
@@ -152,7 +152,7 @@ class TestLLMRouterServiceRouting:
 
             result = await service.route("Cosa dice l'Art. 3 della Legge 104/1992?", [])
 
-        assert result.route == RoutingCategory.GOLDEN_SET
+        assert result.route == RoutingCategory.NORMATIVE_REFERENCE
         assert result.confidence >= 0.95
         assert result.needs_retrieval is True
         assert len(result.entities) == 2
@@ -269,7 +269,7 @@ class TestLLMRouterServiceEntities:
         service = LLMRouterService(config=mock_config)
 
         mock_response = RouterDecision(
-            route=RoutingCategory.GOLDEN_SET,
+            route=RoutingCategory.NORMATIVE_REFERENCE,
             confidence=0.95,
             reasoning="Query mentions specific legal references",
             entities=[
@@ -394,7 +394,7 @@ class TestLLMRouterServicePromptBuilding:
         assert "technical_research" in ROUTER_SYSTEM_PROMPT.lower()
         assert "theoretical_definition" in ROUTER_SYSTEM_PROMPT.lower()
         assert "calculator" in ROUTER_SYSTEM_PROMPT.lower()
-        assert "golden_set" in ROUTER_SYSTEM_PROMPT.lower()
+        assert "normative_reference" in ROUTER_SYSTEM_PROMPT.lower()
 
     def test_build_prompt_with_history(self, mock_config):
         """Test that built prompt includes conversation history."""

@@ -233,12 +233,12 @@ class TestHyDEGeneratorServiceSkipping:
         service = HyDEGeneratorService(config=mock_config)
         assert service.should_generate(RoutingCategory.THEORETICAL_DEFINITION) is True
 
-    def test_should_generate_for_golden_set(self, mock_config):
-        """Test that HyDE is generated for GOLDEN_SET."""
+    def test_should_generate_for_normative_reference(self, mock_config):
+        """Test that HyDE is generated for NORMATIVE_REFERENCE."""
         from app.services.hyde_generator import HyDEGeneratorService
 
         service = HyDEGeneratorService(config=mock_config)
-        assert service.should_generate(RoutingCategory.GOLDEN_SET) is True
+        assert service.should_generate(RoutingCategory.NORMATIVE_REFERENCE) is True
 
     def test_skip_for_chitchat(self, mock_config):
         """Test that HyDE is skipped for CHITCHAT."""

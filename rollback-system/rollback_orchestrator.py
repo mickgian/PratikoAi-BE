@@ -23,13 +23,14 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
-import docker
 import httpx
 import psycopg2
 import requests
-import yaml
+import yaml  # type: ignore[import-untyped]
 from kubernetes import client, config
 from sqlalchemy import create_engine, text
+
+import docker
 
 logger = logging.getLogger(__name__)
 
@@ -114,9 +115,9 @@ class DatabaseRollback:
         self.db_url = db_url
         self.engine = create_engine(db_url)
 
-    async def create_data_snapshot(self, snapshot_id: str, tables: list[str] = None) -> dict[str, Any]:
+    async def create_data_snapshot(self, snapshot_id: str, tables: list[str] | None = None) -> dict[str, Any]:
         """Create a data snapshot before rollback."""
-        snapshot_info = {
+        snapshot_info: dict[str, Any] = {
             "snapshot_id": snapshot_id,
             "created_at": datetime.now(UTC).isoformat(),
             "tables": {},
@@ -309,7 +310,7 @@ class BackendRollback:
 
     def __init__(self, environment: str):
         self.environment = environment
-        self.docker_client = docker.from_env()
+        self.docker_client = docker.from_env()  # type: ignore[attr-defined]
 
         # Initialize Kubernetes client if available
         try:
@@ -759,7 +760,7 @@ class FrontendRollback:
 class RollbackOrchestrator:
     """Main orchestrator for coordinated rollback operations."""
 
-    def __init__(self, environment: str, db_url: str = None):
+    def __init__(self, environment: str, db_url: str | None = None):
         self.environment = environment
         self.db_rollback = DatabaseRollback(db_url) if db_url else None
         self.backend_rollback = BackendRollback(environment)

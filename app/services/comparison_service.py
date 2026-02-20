@@ -119,14 +119,17 @@ class ComparisonService:
         return hashlib.sha256(query.encode()).hexdigest()
 
     def get_current_model_id(self) -> str:
-        """Get the current production model ID from environment config.
+        """Get the current production model ID in canonical provider:model format.
 
-        Reads from PRODUCTION_LLM_MODEL env variable.
+        Resolves PRODUCTION_LLM_MODEL via model registry to ensure the returned
+        value always has the provider prefix (e.g., "mistral:mistral-large-latest"
+        even if the env var is just "mistral-large-latest").
 
         Returns:
-            Model ID in format "provider:model" (e.g., "openai:gpt-4o")
+            Model ID in format "provider:model" (e.g., "mistral:mistral-large-latest")
         """
-        return settings.PRODUCTION_LLM_MODEL
+        entry = _get_registry().resolve(settings.PRODUCTION_LLM_MODEL)
+        return entry.model_id
 
     def get_default_comparison_model_ids(self) -> list[str]:
         """Get default models for comparison: current + best from each provider.
@@ -1178,11 +1181,15 @@ class ComparisonService:
         Returns:
             UUID string of the pending comparison
         """
+        # Always use the resolved production model ID (canonical provider:model format)
+        # The frontend may send a stale or incorrect model_id
+        resolved_model_id = self.get_current_model_id()
+
         pending = PendingComparison(
             user_id=user_id,
             query=query,
             response=response,
-            model_id=model_id,
+            model_id=resolved_model_id,
             enriched_prompt=enriched_prompt,
             latency_ms=latency_ms,
             cost_eur=cost_eur,
@@ -1199,7 +1206,8 @@ class ComparisonService:
             "pending_comparison_created",
             pending_id=str(pending.id),
             user_id=user_id,
-            model_id=model_id,
+            model_id=resolved_model_id,
+            original_model_id=model_id,
             has_enriched_prompt=enriched_prompt is not None,
             has_metrics=latency_ms is not None,
         )

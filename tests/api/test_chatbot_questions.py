@@ -53,8 +53,9 @@ class TestQuestionAnswerRequestSchema:
 
     def test_request_requires_question_id(self):
         """Test that question_id is required."""
-        from app.schemas.proactivity import QuestionAnswerRequest
         from pydantic import ValidationError
+
+        from app.schemas.proactivity import QuestionAnswerRequest
 
         with pytest.raises(ValidationError):
             QuestionAnswerRequest(
@@ -81,8 +82,9 @@ class TestQuestionAnswerRequestSchema:
 
     def test_request_requires_session_id(self):
         """Test that session_id is required."""
-        from app.schemas.proactivity import QuestionAnswerRequest
         from pydantic import ValidationError
+
+        from app.schemas.proactivity import QuestionAnswerRequest
 
         with pytest.raises(ValidationError):
             QuestionAnswerRequest(

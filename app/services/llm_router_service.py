@@ -32,7 +32,7 @@ CATEGORIE:
 2. **theoretical_definition** - Richieste di definizioni, spiegazioni di concetti
 3. **technical_research** - Domande tecniche complesse che richiedono ricerca documentale
 4. **calculator** - Richieste di calcoli (tasse, contributi, stipendi)
-5. **golden_set** - Riferimenti specifici a leggi, articoli, normative (es. "Legge 104", "Art. 18")
+5. **normative_reference** - Riferimenti specifici a leggi, articoli, normative (es. "Legge 104", "Art. 18")
 
 ISTRUZIONI:
 1. Analizza la domanda dell'utente

@@ -79,7 +79,7 @@ class QueueItem(BaseModel):
                     "theoretical_definition": 0.30,
                     "calculator": 0.15,
                     "chitchat": 0.05,
-                    "golden_set": 0.05,
+                    "normative_reference": 0.05,
                 },
                 "expert_intent": None,
                 "skip_count": 0,
@@ -126,6 +126,7 @@ class LabelingStatsResponse(BaseModel):
     pending_queries: int = Field(..., description="Number of queries awaiting labels")
     completion_percentage: float = Field(..., description="Percentage of queries labeled (0.0-100.0)")
     labels_by_intent: dict[str, int] = Field(default_factory=dict, description="Count of labels per intent category")
+    new_since_export: int = Field(..., description="Labeled queries not yet exported")
 
     class Config:
         json_schema_extra = {
@@ -139,8 +140,9 @@ class LabelingStatsResponse(BaseModel):
                     "technical_research": 45,
                     "calculator": 25,
                     "theoretical_definition": 15,
-                    "golden_set": 10,
+                    "normative_reference": 10,
                 },
+                "new_since_export": 50,
             }
         }
 

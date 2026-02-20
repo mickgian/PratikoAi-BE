@@ -132,7 +132,7 @@ def hf_result_to_decision_dict(
     route = hf_result.intent
 
     # Determine if retrieval is needed based on route
-    retrieval_routes = {"technical_research", "theoretical_definition", "golden_set"}
+    retrieval_routes = {"technical_research", "theoretical_definition", "normative_reference"}
     needs_retrieval = route in retrieval_routes
 
     # DEV-251 Part 3.1: Detect follow-ups from query pattern

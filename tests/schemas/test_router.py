@@ -20,7 +20,7 @@ class TestRoutingCategory:
         assert RoutingCategory.THEORETICAL_DEFINITION == "theoretical_definition"
         assert RoutingCategory.TECHNICAL_RESEARCH == "technical_research"
         assert RoutingCategory.CALCULATOR == "calculator"
-        assert RoutingCategory.GOLDEN_SET == "golden_set"
+        assert RoutingCategory.NORMATIVE_REFERENCE == "normative_reference"
 
     def test_routing_category_count(self):
         """Test exactly 5 routing categories exist."""
@@ -114,9 +114,7 @@ class TestRouterDecision:
             route=RoutingCategory.TECHNICAL_RESEARCH,
             confidence=0.92,
             reasoning="Query asks about P.IVA forfettaria opening procedure",
-            entities=[
-                ExtractedEntity(text="P.IVA forfettaria", type="ente", confidence=0.9)
-            ],
+            entities=[ExtractedEntity(text="P.IVA forfettaria", type="ente", confidence=0.9)],
             requires_freshness=False,
             suggested_sources=["agenzia_entrate", "inps"],
         )
@@ -200,7 +198,7 @@ class TestRouterDecision:
         ]
 
         decision = RouterDecision(
-            route=RoutingCategory.GOLDEN_SET,
+            route=RoutingCategory.NORMATIVE_REFERENCE,
             confidence=0.88,
             reasoning="Query references specific law and article",
             entities=entities,
@@ -225,14 +223,14 @@ class TestRouterDecision:
 
         assert decision.needs_retrieval is True
 
-    def test_needs_retrieval_computed_golden_set(self):
-        """Test needs_retrieval is True for GOLDEN_SET."""
+    def test_needs_retrieval_computed_normative_reference(self):
+        """Test needs_retrieval is True for NORMATIVE_REFERENCE."""
         from app.schemas.router import RouterDecision, RoutingCategory
 
         decision = RouterDecision(
-            route=RoutingCategory.GOLDEN_SET,
+            route=RoutingCategory.NORMATIVE_REFERENCE,
             confidence=0.9,
-            reasoning="Golden set query",
+            reasoning="Normative reference query",
             entities=[],
             requires_freshness=False,
             suggested_sources=[],
@@ -293,9 +291,7 @@ class TestRouterDecision:
             route=RoutingCategory.TECHNICAL_RESEARCH,
             confidence=0.88,
             reasoning="Test reasoning",
-            entities=[
-                ExtractedEntity(text="Test", type="legge", confidence=0.9)
-            ],
+            entities=[ExtractedEntity(text="Test", type="legge", confidence=0.9)],
             requires_freshness=True,
             suggested_sources=["source1", "source2"],
         )
@@ -316,19 +312,17 @@ class TestRouterDecision:
         from app.schemas.router import RouterDecision
 
         json_data = {
-            "route": "golden_set",
+            "route": "normative_reference",
             "confidence": 0.95,
             "reasoning": "References specific law",
-            "entities": [
-                {"text": "Legge 104", "type": "legge", "confidence": 0.9}
-            ],
+            "entities": [{"text": "Legge 104", "type": "legge", "confidence": 0.9}],
             "requires_freshness": False,
             "suggested_sources": ["normattiva"],
         }
 
         decision = RouterDecision.model_validate(json_data)
 
-        assert decision.route.value == "golden_set"
+        assert decision.route.value == "normative_reference"
         assert decision.confidence == 0.95
         assert len(decision.entities) == 1
         assert decision.needs_retrieval is True

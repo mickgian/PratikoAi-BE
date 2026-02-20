@@ -33,10 +33,10 @@ export function LabelingStatsBar({ stats, isLoading }: LabelingStatsBarProps) {
   if (isLoading) {
     return (
       <div
-        className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6"
+        className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6"
         data-testid="stats-loading"
       >
-        {[...Array(4)].map((_, i) => (
+        {[...Array(3)].map((_, i) => (
           <div
             key={i}
             className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse"
@@ -51,11 +51,17 @@ export function LabelingStatsBar({ stats, isLoading }: LabelingStatsBarProps) {
 
   if (!stats) return null;
 
+  const completionPct =
+    stats.labeled_queries + stats.pending_queries > 0
+      ? (stats.labeled_queries /
+          (stats.labeled_queries + stats.pending_queries)) *
+        100
+      : 0;
+
   return (
     <div className="space-y-4 mb-6" data-testid="stats-bar">
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Totale Query" value={stats.total_queries} />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatCard
           label="Etichettate"
           value={stats.labeled_queries}
@@ -67,9 +73,9 @@ export function LabelingStatsBar({ stats, isLoading }: LabelingStatsBarProps) {
           color="text-[#D4A574]"
         />
         <StatCard
-          label="Completamento"
-          value={`${stats.completion_percentage.toFixed(1)}%`}
-          color="text-[#2A5D67]"
+          label="Nuove da Esportare"
+          value={stats.new_since_export}
+          color="text-[#06ac2e]"
         />
       </div>
 
@@ -78,13 +84,14 @@ export function LabelingStatsBar({ stats, isLoading }: LabelingStatsBarProps) {
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-gray-500">Progresso Complessivo</span>
           <span className="text-xs font-medium text-[#2A5D67]">
-            {stats.labeled_queries} / {stats.total_queries}
+            {stats.labeled_queries} /{' '}
+            {stats.labeled_queries + stats.pending_queries}
           </span>
         </div>
         <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
           <div
             className="h-full bg-[#2A5D67] rounded-full transition-all duration-500"
-            style={{ width: `${stats.completion_percentage}%` }}
+            style={{ width: `${completionPct}%` }}
           />
         </div>
 

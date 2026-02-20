@@ -29,7 +29,7 @@ def classifier():
 def mock_pipeline_result():
     """Mock HuggingFace pipeline result for testing without model download."""
     return {
-        "labels": ["technical_research", "chitchat", "theoretical_definition", "calculator", "golden_set"],
+        "labels": ["technical_research", "chitchat", "theoretical_definition", "calculator", "normative_reference"],
         "scores": [0.85, 0.05, 0.04, 0.03, 0.03],
     }
 
@@ -65,7 +65,13 @@ class TestChitchatDetection:
         """'Ciao, come stai?' should be classified as chitchat."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["chitchat", "theoretical_definition", "technical_research", "calculator", "golden_set"],
+            "labels": [
+                "chitchat",
+                "theoretical_definition",
+                "technical_research",
+                "calculator",
+                "normative_reference",
+            ],
             "scores": [0.92, 0.03, 0.02, 0.02, 0.01],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -79,7 +85,13 @@ class TestChitchatDetection:
         """Casual small talk should be chitchat."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["chitchat", "theoretical_definition", "technical_research", "calculator", "golden_set"],
+            "labels": [
+                "chitchat",
+                "theoretical_definition",
+                "technical_research",
+                "calculator",
+                "normative_reference",
+            ],
             "scores": [0.88, 0.05, 0.04, 0.02, 0.01],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -96,7 +108,13 @@ class TestTechnicalResearchDetection:
         """Complex fiscal questions should be technical_research."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["technical_research", "theoretical_definition", "calculator", "golden_set", "chitchat"],
+            "labels": [
+                "technical_research",
+                "theoretical_definition",
+                "calculator",
+                "normative_reference",
+                "chitchat",
+            ],
             "scores": [0.85, 0.08, 0.04, 0.02, 0.01],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -112,7 +130,13 @@ class TestTechnicalResearchDetection:
         """Procedural questions requiring research should be technical_research."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["technical_research", "theoretical_definition", "golden_set", "calculator", "chitchat"],
+            "labels": [
+                "technical_research",
+                "theoretical_definition",
+                "normative_reference",
+                "calculator",
+                "chitchat",
+            ],
             "scores": [0.82, 0.10, 0.04, 0.03, 0.01],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -123,35 +147,47 @@ class TestTechnicalResearchDetection:
         assert result.intent == "technical_research"
 
 
-class TestGoldenSetDetection:
-    """Test golden_set intent detection for specific law references."""
+class TestNormativeReferenceDetection:
+    """Test normative_reference intent detection for specific law references."""
 
     @patch("app.services.hf_intent_classifier.pipeline")
     def test_specific_article_reference(self, mock_pipeline, classifier):
-        """Specific article references should be golden_set."""
+        """Specific article references should be normative_reference."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["golden_set", "technical_research", "theoretical_definition", "calculator", "chitchat"],
+            "labels": [
+                "normative_reference",
+                "technical_research",
+                "theoretical_definition",
+                "calculator",
+                "chitchat",
+            ],
             "scores": [0.90, 0.05, 0.03, 0.01, 0.01],
         }
         mock_pipeline.return_value = mock_pipeline_instance
 
         result = classifier.classify("Art. 7-ter DPR 633/72")
-        assert result.intent == "golden_set"
+        assert result.intent == "normative_reference"
         assert result.confidence >= 0.7
 
     @patch("app.services.hf_intent_classifier.pipeline")
     def test_law_reference_lookup(self, mock_pipeline, classifier):
-        """Law reference lookup should be golden_set."""
+        """Law reference lookup should be normative_reference."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["golden_set", "technical_research", "theoretical_definition", "calculator", "chitchat"],
+            "labels": [
+                "normative_reference",
+                "technical_research",
+                "theoretical_definition",
+                "calculator",
+                "chitchat",
+            ],
             "scores": [0.87, 0.07, 0.04, 0.01, 0.01],
         }
         mock_pipeline.return_value = mock_pipeline_instance
 
         result = classifier.classify("Legge 104/92 art. 33")
-        assert result.intent == "golden_set"
+        assert result.intent == "normative_reference"
 
 
 class TestCalculatorDetection:
@@ -162,7 +198,13 @@ class TestCalculatorDetection:
         """IVA calculation requests should be calculator."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["calculator", "technical_research", "theoretical_definition", "golden_set", "chitchat"],
+            "labels": [
+                "calculator",
+                "technical_research",
+                "theoretical_definition",
+                "normative_reference",
+                "chitchat",
+            ],
             "scores": [0.89, 0.06, 0.03, 0.01, 0.01],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -176,7 +218,13 @@ class TestCalculatorDetection:
         """Salary/contribution calculations should be calculator."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["calculator", "technical_research", "theoretical_definition", "golden_set", "chitchat"],
+            "labels": [
+                "calculator",
+                "technical_research",
+                "theoretical_definition",
+                "normative_reference",
+                "chitchat",
+            ],
             "scores": [0.85, 0.08, 0.04, 0.02, 0.01],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -193,7 +241,13 @@ class TestTheoreticalDefinitionDetection:
         """Definition questions should be theoretical_definition."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["theoretical_definition", "technical_research", "golden_set", "calculator", "chitchat"],
+            "labels": [
+                "theoretical_definition",
+                "technical_research",
+                "normative_reference",
+                "calculator",
+                "chitchat",
+            ],
             "scores": [0.88, 0.07, 0.03, 0.01, 0.01],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -211,7 +265,13 @@ class TestFallbackThreshold:
         """Low confidence results should trigger GPT fallback."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["technical_research", "chitchat", "theoretical_definition", "calculator", "golden_set"],
+            "labels": [
+                "technical_research",
+                "chitchat",
+                "theoretical_definition",
+                "calculator",
+                "normative_reference",
+            ],
             "scores": [0.35, 0.30, 0.20, 0.10, 0.05],  # Low confidence
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -224,7 +284,13 @@ class TestFallbackThreshold:
         """High confidence results should NOT trigger fallback."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["chitchat", "technical_research", "theoretical_definition", "calculator", "golden_set"],
+            "labels": [
+                "chitchat",
+                "technical_research",
+                "theoretical_definition",
+                "calculator",
+                "normative_reference",
+            ],
             "scores": [0.95, 0.02, 0.02, 0.005, 0.005],  # High confidence
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -251,7 +317,13 @@ class TestAsyncClassification:
         reset_hf_intent_classifier()
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["chitchat", "technical_research", "theoretical_definition", "calculator", "golden_set"],
+            "labels": [
+                "chitchat",
+                "technical_research",
+                "theoretical_definition",
+                "calculator",
+                "normative_reference",
+            ],
             "scores": [0.85, 0.08, 0.04, 0.02, 0.01],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -272,7 +344,13 @@ class TestAsyncClassification:
         reset_hf_intent_classifier()
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["technical_research", "chitchat", "theoretical_definition", "calculator", "golden_set"],
+            "labels": [
+                "technical_research",
+                "chitchat",
+                "theoretical_definition",
+                "calculator",
+                "normative_reference",
+            ],
             "scores": [0.80, 0.10, 0.05, 0.03, 0.02],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -304,7 +382,7 @@ class TestIntentResult:
                 "chitchat": 0.05,
                 "theoretical_definition": 0.05,
                 "calculator": 0.03,
-                "golden_set": 0.02,
+                "normative_reference": 0.02,
             },
         )
         assert result.intent == "technical_research"
@@ -421,7 +499,13 @@ class TestPerformance:
 
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["technical_research", "chitchat", "theoretical_definition", "calculator", "golden_set"],
+            "labels": [
+                "technical_research",
+                "chitchat",
+                "theoretical_definition",
+                "calculator",
+                "normative_reference",
+            ],
             "scores": [0.85, 0.05, 0.04, 0.03, 0.03],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -446,7 +530,13 @@ class TestEdgeCases:
         """Empty query should still return a result."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["chitchat", "technical_research", "theoretical_definition", "calculator", "golden_set"],
+            "labels": [
+                "chitchat",
+                "technical_research",
+                "theoretical_definition",
+                "calculator",
+                "normative_reference",
+            ],
             "scores": [0.5, 0.2, 0.15, 0.1, 0.05],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -459,7 +549,13 @@ class TestEdgeCases:
         """Very long query should handle gracefully."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["technical_research", "chitchat", "theoretical_definition", "calculator", "golden_set"],
+            "labels": [
+                "technical_research",
+                "chitchat",
+                "theoretical_definition",
+                "calculator",
+                "normative_reference",
+            ],
             "scores": [0.80, 0.08, 0.06, 0.04, 0.02],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -473,7 +569,13 @@ class TestEdgeCases:
         """Special characters should not break classification."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.return_value = {
-            "labels": ["calculator", "technical_research", "theoretical_definition", "golden_set", "chitchat"],
+            "labels": [
+                "calculator",
+                "technical_research",
+                "theoretical_definition",
+                "normative_reference",
+                "chitchat",
+            ],
             "scores": [0.75, 0.12, 0.08, 0.03, 0.02],
         }
         mock_pipeline.return_value = mock_pipeline_instance
@@ -498,7 +600,7 @@ class TestFinetunedModelDetection:
                 1: "theoretical_definition",
                 2: "technical_research",
                 3: "calculator",
-                4: "golden_set",
+                4: "normative_reference",
             }
             mock_config_cls.from_pretrained.return_value = mock_config
 
@@ -582,7 +684,7 @@ class TestFinetunedClassification:
                 1: "theoretical_definition",
                 2: "technical_research",
                 3: "calculator",
-                4: "golden_set",
+                4: "normative_reference",
             }
             mock_config_cls.from_pretrained.return_value = mock_config
 
@@ -592,7 +694,7 @@ class TestFinetunedClassification:
                 {"label": "technical_research", "score": 0.04},
                 {"label": "theoretical_definition", "score": 0.02},
                 {"label": "chitchat", "score": 0.01},
-                {"label": "golden_set", "score": 0.01},
+                {"label": "normative_reference", "score": 0.01},
             ]
             mock_pipeline.return_value = mock_pipeline_instance
 
@@ -616,7 +718,7 @@ class TestFinetunedClassification:
                 1: "theoretical_definition",
                 2: "technical_research",
                 3: "calculator",
-                4: "golden_set",
+                4: "normative_reference",
             }
             mock_config_cls.from_pretrained.return_value = mock_config
 

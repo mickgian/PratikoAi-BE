@@ -36,7 +36,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import logger
@@ -310,6 +310,19 @@ class IntentLabelingService:
         pending_queries = total_queries - labeled_queries
         completion_percentage = (labeled_queries / total_queries * 100) if total_queries > 0 else 0.0
 
+        # New since last export (labeled but not yet exported)
+        new_since_export_query = (
+            select(func.count())
+            .select_from(LabeledQuery)
+            .where(
+                LabeledQuery.is_deleted == False,  # noqa: E712
+                LabeledQuery.expert_intent.is_not(None),  # type: ignore[union-attr]
+                LabeledQuery.exported_at.is_(None),  # type: ignore[union-attr]
+            )
+        )
+        new_since_export_result = await db.execute(new_since_export_query)
+        new_since_export = new_since_export_result.scalar() or 0
+
         # Labels by intent (count for each intent)
         labels_by_intent: dict[str, int] = {}
         for intent in IntentLabel:
@@ -332,6 +345,7 @@ class IntentLabelingService:
             pending_queries=pending_queries,
             completion_percentage=round(completion_percentage, 2),
             labels_by_intent=labels_by_intent,
+            new_since_export=new_since_export,
         )
 
     async def export_training_data(
@@ -379,6 +393,13 @@ class IntentLabelingService:
 
         else:
             raise ValueError(f"Formato non supportato: {format}")
+
+        # Stamp exported_at on all exported records
+        query_ids = [q.id for q in queries]
+        await db.execute(
+            update(LabeledQuery).where(LabeledQuery.id.in_(query_ids)).values(exported_at=datetime.utcnow())  # type: ignore[attr-defined]  # type: ignore[union-attr]
+        )
+        await db.commit()
 
         logger.info(
             "intent_labeling_export",

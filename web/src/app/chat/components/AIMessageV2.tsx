@@ -433,29 +433,37 @@ export function AIMessageV2({
     // Convert cost_cents to cost_eur (cents -> euros)
     const cost_eur =
       metadata.cost_cents != null ? metadata.cost_cents / 100 : undefined;
-    // Note: Chat only has total tokens, not split into input/output
-    const output_tokens = metadata.tokens_used ?? undefined;
+    // StreamingHandler dispatches input_tokens and output_tokens separately.
+    // History-loaded messages have tokens_used (total) as fallback.
+    const input_tokens = metadata.input_tokens ?? undefined;
+    const output_tokens =
+      metadata.output_tokens ?? metadata.tokens_used ?? undefined;
+    // Use model_used from streaming response metadata (backend resolves to canonical format)
+    const modelUsed = metadata.model_used || 'current';
 
     console.log('📤 [AIMessageV2] Creating pending comparison:', {
       queryLength: userQuery.length,
       responseLength: message.content.length,
-      model_id: 'openai:gpt-4o',
+      model_id: modelUsed,
       hasEnrichedPrompt: !!message.enriched_prompt,
       latency_ms,
       cost_eur,
+      input_tokens,
       output_tokens,
     });
 
     try {
       // Store in backend database (avoids sessionStorage race conditions)
       // DEV-256: Include enriched_prompt and metrics so comparison shows actual values
+      // Note: backend normalizes model_id to the resolved production model
       const { pending_id } = await createPendingComparison({
         query: userQuery,
         response: message.content,
-        model_id: 'openai:gpt-4o', // Current production model
+        model_id: modelUsed,
         enriched_prompt: message.enriched_prompt,
         latency_ms,
         cost_eur,
+        input_tokens,
         output_tokens,
       });
 

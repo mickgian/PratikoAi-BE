@@ -44,22 +44,15 @@ class CCNLSectorDB(SQLModel, table=True):
     # Core fields
     italian_name: str = Field(max_length=200)
     priority_level: int = Field(default=2)
-    worker_coverage_percentage: Decimal = Field(
-        default=Decimal("0.0"),
-        sa_column=Column(Numeric(5, 2), default=0.0)
-    )
+    worker_coverage_percentage: Decimal = Field(default=Decimal("0.0"), sa_column=Column(Numeric(5, 2), default=0.0))
     active: bool = Field(default=True)
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow))
+    updated_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow))
 
     # Relationships
-    agreements: List["CCNLAgreementDB"] = Relationship(back_populates="sector")
+    agreements: list["CCNLAgreementDB"] = Relationship(back_populates="sector")
 
     # Indexes and constraints
     __table_args__ = (
@@ -93,63 +86,44 @@ class CCNLAgreementDB(SQLModel, table=True):
     # Core fields
     name: str = Field(max_length=500)
     valid_from: date = Field(sa_column=Column(Date, nullable=False))
-    valid_to: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    valid_to: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
 
     # JSON fields (requires sa_column override)
-    signatory_unions: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(JSON, default=list)
-    )
-    signatory_employers: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(JSON, default=list)
-    )
+    signatory_unions: list[str] = Field(default_factory=list, sa_column=Column(JSON, default=list))
+    signatory_employers: list[str] = Field(default_factory=list, sa_column=Column(JSON, default=list))
 
     # Status fields
     renewal_status: str = Field(default="vigente", max_length=20)  # vigente, scaduto, in_rinnovo
-    last_updated: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    data_source: Optional[str] = Field(default=None, max_length=500)
-    verification_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    last_updated: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow))
+    data_source: str | None = Field(default=None, max_length=500)
+    verification_date: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
 
     # Metadata
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow))
+    updated_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow))
 
     # Relationships
     sector: "CCNLSectorDB" = Relationship(back_populates="agreements")
-    job_levels: List["JobLevelDB"] = Relationship(
-        back_populates="agreement",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    job_levels: list["JobLevelDB"] = Relationship(
+        back_populates="agreement", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    salary_tables: List["SalaryTableDB"] = Relationship(
-        back_populates="agreement",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    salary_tables: list["SalaryTableDB"] = Relationship(
+        back_populates="agreement", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    working_hours: List["WorkingHoursDB"] = Relationship(
-        back_populates="agreement",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    working_hours: list["WorkingHoursDB"] = Relationship(
+        back_populates="agreement", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    overtime_rules: List["OvertimeRulesDB"] = Relationship(
-        back_populates="agreement",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    overtime_rules: list["OvertimeRulesDB"] = Relationship(
+        back_populates="agreement", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    leave_entitlements: List["LeaveEntitlementDB"] = Relationship(
-        back_populates="agreement",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    leave_entitlements: list["LeaveEntitlementDB"] = Relationship(
+        back_populates="agreement", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    notice_periods: List["NoticePeriodsDB"] = Relationship(
-        back_populates="agreement",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    notice_periods: list["NoticePeriodsDB"] = Relationship(
+        back_populates="agreement", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    special_allowances: List["SpecialAllowanceDB"] = Relationship(
-        back_populates="agreement",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    special_allowances: list["SpecialAllowanceDB"] = Relationship(
+        back_populates="agreement", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
     # Indexes
@@ -200,29 +174,19 @@ class JobLevelDB(SQLModel, table=True):
     level_code: str = Field(max_length=10)
     level_name: str = Field(max_length=200)
     worker_category: str = Field(max_length=20)  # operaio, impiegato, quadro, dirigente
-    description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    description: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     minimum_experience_months: int = Field(default=0)
 
     # JSON fields
-    required_qualifications: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(JSON, default=list)
-    )
-    typical_tasks: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(JSON, default=list)
-    )
+    required_qualifications: list[str] = Field(default_factory=list, sa_column=Column(JSON, default=list))
+    typical_tasks: list[str] = Field(default_factory=list, sa_column=Column(JSON, default=list))
 
-    decision_making_level: Optional[str] = Field(default=None, max_length=50)
+    decision_making_level: str | None = Field(default=None, max_length=50)
     supervision_responsibilities: bool = Field(default=False)
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow))
+    updated_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow))
 
     # Relationships
     agreement: "CCNLAgreementDB" = Relationship(back_populates="job_levels")
@@ -260,32 +224,20 @@ class SalaryTableDB(SQLModel, table=True):
 
     # Core fields
     level_code: str = Field(max_length=10)
-    base_monthly_salary: Decimal = Field(
-        sa_column=Column(Numeric(10, 2), nullable=False)
-    )
+    base_monthly_salary: Decimal = Field(sa_column=Column(Numeric(10, 2), nullable=False))
     geographic_area: str = Field(default="nazionale", max_length=20)  # nazionale, nord, centro, sud, sud_isole
-    valid_from: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
-    valid_to: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    valid_from: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
+    valid_to: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
     thirteenth_month: bool = Field(default=True)
     fourteenth_month: bool = Field(default=False)
 
     # JSON fields
-    additional_allowances: Dict[str, Any] = Field(
-        default_factory=dict,
-        sa_column=Column(JSON, default=dict)
-    )
-    company_size_adjustments: Dict[str, Any] = Field(
-        default_factory=dict,
-        sa_column=Column(JSON, default=dict)
-    )
+    additional_allowances: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, default=dict))
+    company_size_adjustments: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, default=dict))
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow))
+    updated_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow))
 
     # Relationships
     agreement: "CCNLAgreementDB" = Relationship(back_populates="salary_tables")
@@ -341,32 +293,22 @@ class WorkingHoursDB(SQLModel, table=True):
     daily_rest_hours: int = Field(default=11)
     weekly_rest_hours: int = Field(default=24)
     flexible_hours_allowed: bool = Field(default=False)
-    flexible_hours_range_min: Optional[int] = Field(default=None)
-    flexible_hours_range_max: Optional[int] = Field(default=None)
-    core_hours_start: Optional[str] = Field(default=None, max_length=5)  # "09:00"
-    core_hours_end: Optional[str] = Field(default=None, max_length=5)  # "17:00"
+    flexible_hours_range_min: int | None = Field(default=None)
+    flexible_hours_range_max: int | None = Field(default=None)
+    core_hours_start: str | None = Field(default=None, max_length=5)  # "09:00"
+    core_hours_end: str | None = Field(default=None, max_length=5)  # "17:00"
     part_time_allowed: bool = Field(default=True)
-    minimum_part_time_hours: Optional[int] = Field(default=None)
+    minimum_part_time_hours: int | None = Field(default=None)
     shift_work_allowed: bool = Field(default=False)
 
     # JSON field
-    shift_patterns: List[Any] = Field(
-        default_factory=list,
-        sa_column=Column(JSON, default=list)
-    )
+    shift_patterns: list[Any] = Field(default_factory=list, sa_column=Column(JSON, default=list))
 
-    night_shift_allowance: Optional[Decimal] = Field(
-        default=None,
-        sa_column=Column(Numeric(6, 2), nullable=True)
-    )
+    night_shift_allowance: Decimal | None = Field(default=None, sa_column=Column(Numeric(6, 2), nullable=True))
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow))
+    updated_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow))
 
     # Relationships
     agreement: "CCNLAgreementDB" = Relationship(back_populates="working_hours")
@@ -398,29 +340,18 @@ class OvertimeRulesDB(SQLModel, table=True):
     daily_threshold_hours: int = Field(default=8)
     weekly_threshold_hours: int = Field(default=40)
     daily_overtime_rate: Decimal = Field(
-        default=Decimal("1.25"),
-        sa_column=Column(Numeric(4, 2), default=Decimal("1.25"))
+        default=Decimal("1.25"), sa_column=Column(Numeric(4, 2), default=Decimal("1.25"))
     )
-    weekend_rate: Decimal = Field(
-        default=Decimal("1.50"),
-        sa_column=Column(Numeric(4, 2), default=Decimal("1.50"))
-    )
-    holiday_rate: Decimal = Field(
-        default=Decimal("2.00"),
-        sa_column=Column(Numeric(4, 2), default=Decimal("2.00"))
-    )
-    maximum_daily_overtime: Optional[int] = Field(default=None)
-    maximum_weekly_overtime: Optional[int] = Field(default=None)
-    maximum_monthly_overtime: Optional[int] = Field(default=None)
-    maximum_annual_overtime: Optional[int] = Field(default=None)
+    weekend_rate: Decimal = Field(default=Decimal("1.50"), sa_column=Column(Numeric(4, 2), default=Decimal("1.50")))
+    holiday_rate: Decimal = Field(default=Decimal("2.00"), sa_column=Column(Numeric(4, 2), default=Decimal("2.00")))
+    maximum_daily_overtime: int | None = Field(default=None)
+    maximum_weekly_overtime: int | None = Field(default=None)
+    maximum_monthly_overtime: int | None = Field(default=None)
+    maximum_annual_overtime: int | None = Field(default=None)
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow))
+    updated_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow))
 
     # Relationships
     agreement: "CCNLAgreementDB" = Relationship(back_populates="overtime_rules")
@@ -455,32 +386,24 @@ class LeaveEntitlementDB(SQLModel, table=True):
 
     # Core fields
     leave_type: str = Field(max_length=50)  # ferie, permessi_retribuiti, etc.
-    base_annual_days: Optional[int] = Field(default=None)
-    base_annual_hours: Optional[int] = Field(default=None)
+    base_annual_days: int | None = Field(default=None)
+    base_annual_hours: int | None = Field(default=None)
 
     # JSON field
-    seniority_bonus_schedule: Dict[str, Any] = Field(
-        default_factory=dict,
-        sa_column=Column(JSON, default=dict)
-    )
+    seniority_bonus_schedule: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, default=dict))
 
     calculation_method: str = Field(default="annual", max_length=20)
-    minimum_usage_hours: Optional[int] = Field(default=None)
-    advance_notice_hours: Optional[int] = Field(default=None)
+    minimum_usage_hours: int | None = Field(default=None)
+    advance_notice_hours: int | None = Field(default=None)
     compensation_percentage: Decimal = Field(
-        default=Decimal("1.00"),
-        sa_column=Column(Numeric(4, 2), default=Decimal("1.00"))
+        default=Decimal("1.00"), sa_column=Column(Numeric(4, 2), default=Decimal("1.00"))
     )
     mandatory_period: bool = Field(default=False)
-    additional_optional_days: Optional[int] = Field(default=None)
+    additional_optional_days: int | None = Field(default=None)
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow))
+    updated_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow))
 
     # Relationships
     agreement: "CCNLAgreementDB" = Relationship(back_populates="leave_entitlements")
@@ -531,12 +454,8 @@ class NoticePeriodsDB(SQLModel, table=True):
     termination_by: str = Field(default="both", max_length=10)  # employer, employee, both
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow))
+    updated_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow))
 
     # Relationships
     agreement: "CCNLAgreementDB" = Relationship(back_populates="notice_periods")
@@ -566,36 +485,18 @@ class SpecialAllowanceDB(SQLModel, table=True):
 
     # Core fields
     allowance_type: str = Field(max_length=50)  # buoni_pasto, indennita_trasporto, etc.
-    amount: Decimal = Field(
-        sa_column=Column(Numeric(8, 2), nullable=False)
-    )
+    amount: Decimal = Field(sa_column=Column(Numeric(8, 2), nullable=False))
     frequency: str = Field(max_length=10)  # daily, monthly, annual
 
     # JSON fields
-    conditions: List[Any] = Field(
-        default_factory=list,
-        sa_column=Column(JSON, default=list)
-    )
-    applicable_job_levels: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(JSON, default=list)
-    )
-    geographic_areas: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(JSON, default=list)
-    )
-    company_sizes: List[str] = Field(
-        default_factory=list,
-        sa_column=Column(JSON, default=list)
-    )
+    conditions: list[Any] = Field(default_factory=list, sa_column=Column(JSON, default=list))
+    applicable_job_levels: list[str] = Field(default_factory=list, sa_column=Column(JSON, default=list))
+    geographic_areas: list[str] = Field(default_factory=list, sa_column=Column(JSON, default=list))
+    company_sizes: list[str] = Field(default_factory=list, sa_column=Column(JSON, default=list))
 
     # Timestamps
-    created_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow)
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    )
+    created_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow))
+    updated_at: datetime = Field(sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow))
 
     # Relationships
     agreement: "CCNLAgreementDB" = Relationship(back_populates="special_allowances")

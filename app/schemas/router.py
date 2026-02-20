@@ -40,8 +40,8 @@ class RoutingCategory(str, Enum):
     CALCULATOR = "calculator"
     """Calculation requests (tax, contributions, etc.)."""
 
-    GOLDEN_SET = "golden_set"
-    """Queries matching known high-value patterns (specific laws, articles)."""
+    NORMATIVE_REFERENCE = "normative_reference"
+    """Queries referencing specific laws, articles, or regulations."""
 
 
 class ExtractedEntity(BaseModel):
@@ -123,6 +123,6 @@ class RouterDecision(BaseModel):
         retrieval_routes = {
             RoutingCategory.TECHNICAL_RESEARCH,
             RoutingCategory.THEORETICAL_DEFINITION,
-            RoutingCategory.GOLDEN_SET,
+            RoutingCategory.NORMATIVE_REFERENCE,
         }
         return self.route in retrieval_routes

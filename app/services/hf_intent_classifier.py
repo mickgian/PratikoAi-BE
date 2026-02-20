@@ -88,7 +88,14 @@ def _is_finetuned_model(model_name: str) -> bool:
             return False
 
         # Check if at least one of our intent labels is present
-        our_intents = {"chitchat", "theoretical_definition", "technical_research", "calculator", "golden_set"}
+        our_intents = {
+            "chitchat",
+            "theoretical_definition",
+            "technical_research",
+            "calculator",
+            "normative_reference",
+            "golden_set",  # golden_set for backward compat with old models
+        }
         return bool(model_labels & our_intents)
     except Exception:
         logger.debug("hf_config_check_failed", model=model_name)
@@ -113,8 +120,11 @@ class HFIntentClassifier:
         "theoretical_definition": "richiesta di definizione o spiegazione di un concetto",
         "technical_research": "domanda tecnica complessa che richiede ricerca e analisi",
         "calculator": "richiesta di calcolo numerico o computazione",
-        "golden_set": "riferimento specifico a legge, articolo, normativa o regolamento",
+        "normative_reference": "riferimento specifico a legge, articolo, normativa o regolamento",
     }
+
+    # Backward compat: old HF models may still output "golden_set"
+    _LABEL_COMPAT: dict[str, str] = {"golden_set": "normative_reference"}
 
     def __init__(
         self,
@@ -248,6 +258,9 @@ class HFIntentClassifier:
             result = self._classify_finetuned(query)
         else:
             result = self._classify_zero_shot(query)
+
+        # Backward compat: map old model labels to new names
+        result.intent = self._LABEL_COMPAT.get(result.intent, result.intent)
 
         logger.info(
             "hf_classification_complete",

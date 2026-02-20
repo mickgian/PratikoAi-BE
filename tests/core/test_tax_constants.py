@@ -1,30 +1,31 @@
 """Tests for Italian tax constants and configuration."""
 
-import pytest
 from datetime import date
 from decimal import Decimal
 
+import pytest
+
 from app.core.tax_constants import (
-    TaxRegime,
-    EmploymentType,
-    BusinessType,
-    VatCategory,
-    IRPEF_BRACKETS_2024,
-    REGIONAL_IRPEF_SURCHARGE_2024,
-    MUNICIPAL_IRPEF_CONFIG,
-    INPS_RATES_2024,
-    VAT_RATES_2024,
-    CORPORATE_TAX_RATES_2024,
-    IMU_CONFIG_2024,
     CAPITAL_GAINS_TAX_2024,
+    CORPORATE_TAX_RATES_2024,
+    ERROR_MESSAGES,
     FLAT_RATE_REGIME_2024,
-    TAX_DEDUCTIONS_2024,
-    WITHHOLDING_TAX_2024,
-    TAX_CALENDAR_2024,
+    IMU_CONFIG_2024,
+    INPS_RATES_2024,
+    IRPEF_BRACKETS_2024,
+    MUNICIPAL_IRPEF_CONFIG,
+    REGIONAL_IRPEF_SURCHARGE_2024,
     REGIONAL_SPECIAL_PROVISIONS,
+    TAX_CALENDAR_2024,
+    TAX_DEDUCTIONS_2024,
     TAX_OPTIMIZATION_THRESHOLDS,
     VALIDATION_LIMITS,
-    ERROR_MESSAGES,
+    VAT_RATES_2024,
+    WITHHOLDING_TAX_2024,
+    BusinessType,
+    EmploymentType,
+    TaxRegime,
+    VatCategory,
 )
 
 

@@ -12,7 +12,7 @@ const mockItem: QueueItem = {
     theoretical_definition: 0.3,
     calculator: 0.15,
     chitchat: 0.05,
-    golden_set: 0.05,
+    normative_reference: 0.05,
   },
   expert_intent: null,
   skip_count: 0,

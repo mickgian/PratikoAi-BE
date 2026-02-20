@@ -120,7 +120,7 @@ def sample_labeled_query():
         "theoretical_definition": 0.30,
         "calculator": 0.15,
         "chitchat": 0.05,
-        "golden_set": 0.05,
+        "normative_reference": 0.05,
     }
     query.expert_intent = None
     query.labeled_by = None
@@ -591,17 +591,21 @@ class TestLabelingStats:
         app.dependency_overrides[get_db] = get_mock_db
 
         try:
-            # Mock expert profile check + count queries
+            # Mock expert profile check + count queries + new_since_export
             mock_total = MagicMock()
             mock_total.scalar.return_value = 100
 
             mock_labeled = MagicMock()
             mock_labeled.scalar.return_value = 45
 
+            mock_new_since = MagicMock()
+            mock_new_since.scalar.return_value = 15
+
             mock_db.execute.side_effect = [
                 mock_expert_profile_result(expert_profile),
                 mock_total,
                 mock_labeled,
+                mock_new_since,
             ]
 
             with TestClient(app) as client:
@@ -613,6 +617,7 @@ class TestLabelingStats:
                 assert data["labeled_queries"] == 45
                 assert data["pending_queries"] == 55
                 assert data["completion_percentage"] == 45.0
+                assert data["new_since_export"] == 15
         finally:
             app.dependency_overrides.clear()
 
@@ -672,6 +677,44 @@ class TestLabelingExport:
 
                 # Experts cannot export, only admins
                 assert response.status_code == 403
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_export_marks_records_with_exported_at(self, admin_user):
+        """Export should stamp exported_at on all exported records."""
+        mock_db = create_mock_db()
+
+        async def get_mock_db():
+            return mock_db
+
+        app.dependency_overrides[get_current_user] = lambda: admin_user
+        app.dependency_overrides[get_db] = get_mock_db
+
+        try:
+            mock_queries = [
+                MagicMock(
+                    id=uuid4(),
+                    query="Test query",
+                    expert_intent="chitchat",
+                    confidence=0.45,
+                    labeled_at=datetime.utcnow(),
+                    exported_at=None,
+                ),
+            ]
+
+            mock_result = MagicMock()
+            mock_result.scalars.return_value.all.return_value = mock_queries
+            # First call: SELECT queries, second call: UPDATE exported_at
+            mock_db.execute.side_effect = [mock_result, MagicMock()]
+
+            with TestClient(app) as client:
+                response = client.get("/api/v1/labeling/export?format=jsonl")
+
+                assert response.status_code == 200
+                # Verify the bulk UPDATE was executed (second execute call)
+                assert mock_db.execute.call_count == 2
+                mock_db.commit.assert_called_once()
         finally:
             app.dependency_overrides.clear()
 

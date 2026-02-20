@@ -11,7 +11,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # =============================================================================
 # Sample Test Data
 # =============================================================================
@@ -303,10 +302,11 @@ class TestDashboardSummary:
 
         dashboard = CostMonitoringDashboard()
 
-        with patch.object(dashboard, "get_cost_by_model") as mock_model, \
-             patch.object(dashboard, "get_cost_by_complexity") as mock_complexity, \
-             patch.object(dashboard, "get_daily_aggregates") as mock_daily:
-
+        with (
+            patch.object(dashboard, "get_cost_by_model") as mock_model,
+            patch.object(dashboard, "get_cost_by_complexity") as mock_complexity,
+            patch.object(dashboard, "get_daily_aggregates") as mock_daily,
+        ):
             mock_model.return_value = {"gpt-4o": {"total_cost": 1.0}}
             mock_complexity.return_value = {"simple": {"total_cost": 0.5}}
             mock_daily.return_value = [{"date": "2025-01-05", "total_cost": 1.0}]
@@ -328,10 +328,11 @@ class TestDashboardSummary:
         with patch.object(dashboard, "_calculate_total_cost") as mock_total:
             mock_total.return_value = 15.50
 
-            with patch.object(dashboard, "get_cost_by_model") as mock_model, \
-                 patch.object(dashboard, "get_cost_by_complexity") as mock_complexity, \
-                 patch.object(dashboard, "get_daily_aggregates") as mock_daily:
-
+            with (
+                patch.object(dashboard, "get_cost_by_model") as mock_model,
+                patch.object(dashboard, "get_cost_by_complexity") as mock_complexity,
+                patch.object(dashboard, "get_daily_aggregates") as mock_daily,
+            ):
                 mock_model.return_value = {}
                 mock_complexity.return_value = {}
                 mock_daily.return_value = []
@@ -356,11 +357,12 @@ class TestAPIResponseFormat:
 
         dashboard = CostMonitoringDashboard()
 
-        with patch.object(dashboard, "_calculate_total_cost") as mock_total, \
-             patch.object(dashboard, "get_cost_by_model") as mock_model, \
-             patch.object(dashboard, "get_cost_by_complexity") as mock_complexity, \
-             patch.object(dashboard, "get_daily_aggregates") as mock_daily:
-
+        with (
+            patch.object(dashboard, "_calculate_total_cost") as mock_total,
+            patch.object(dashboard, "get_cost_by_model") as mock_model,
+            patch.object(dashboard, "get_cost_by_complexity") as mock_complexity,
+            patch.object(dashboard, "get_daily_aggregates") as mock_daily,
+        ):
             mock_total.return_value = 0.0
             mock_model.return_value = {}
             mock_complexity.return_value = {}

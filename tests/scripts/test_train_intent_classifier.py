@@ -29,9 +29,9 @@ def sample_training_data():
         {"text": "Calcola IVA su 1000 euro", "label": "calculator"},
         {"text": "Quanto netto da 2500 lordi?", "label": "calculator"},
         {"text": "Calcolo contributi INPS", "label": "calculator"},
-        {"text": "Art. 7-ter DPR 633/72", "label": "golden_set"},
-        {"text": "Legge 104/92 art. 33", "label": "golden_set"},
-        {"text": "D.Lgs. 81/2008 articolo 37", "label": "golden_set"},
+        {"text": "Art. 7-ter DPR 633/72", "label": "normative_reference"},
+        {"text": "Legge 104/92 art. 33", "label": "normative_reference"},
+        {"text": "D.Lgs. 81/2008 articolo 37", "label": "normative_reference"},
     ]
     return data
 
@@ -65,7 +65,7 @@ class TestDataLoading:
     def test_all_labels_present(self, sample_training_data):
         """Training data should contain all 5 intent labels."""
         labels = set(item["label"] for item in sample_training_data)
-        expected = {"chitchat", "theoretical_definition", "technical_research", "calculator", "golden_set"}
+        expected = {"chitchat", "theoretical_definition", "technical_research", "calculator", "normative_reference"}
         assert labels == expected
 
     def test_minimum_examples_per_label(self, sample_training_data):
@@ -88,7 +88,13 @@ class TestDataLoading:
 
     def test_invalid_label_detected(self, sample_training_data):
         """Invalid labels should be detectable."""
-        valid_labels = {"chitchat", "theoretical_definition", "technical_research", "calculator", "golden_set"}
+        valid_labels = {
+            "chitchat",
+            "theoretical_definition",
+            "technical_research",
+            "calculator",
+            "normative_reference",
+        }
         data_with_invalid = sample_training_data + [{"text": "test", "label": "invalid_label"}]
 
         invalid = [item for item in data_with_invalid if item["label"] not in valid_labels]
@@ -140,16 +146,16 @@ class TestLabelMapping:
 
     def test_label2id_mapping(self):
         """label2id should map all intents to sequential integers."""
-        labels = ["chitchat", "theoretical_definition", "technical_research", "calculator", "golden_set"]
+        labels = ["chitchat", "theoretical_definition", "technical_research", "calculator", "normative_reference"]
         label2id = {label: idx for idx, label in enumerate(labels)}
 
         assert len(label2id) == 5
         assert label2id["chitchat"] == 0
-        assert label2id["golden_set"] == 4
+        assert label2id["normative_reference"] == 4
 
     def test_id2label_mapping(self):
         """id2label should be inverse of label2id."""
-        labels = ["chitchat", "theoretical_definition", "technical_research", "calculator", "golden_set"]
+        labels = ["chitchat", "theoretical_definition", "technical_research", "calculator", "normative_reference"]
         label2id = {label: idx for idx, label in enumerate(labels)}
         id2label = {idx: label for label, idx in label2id.items()}
 
@@ -159,7 +165,7 @@ class TestLabelMapping:
 
     def test_label_mapping_roundtrip(self):
         """Converting label → id → label should return original."""
-        labels = ["chitchat", "theoretical_definition", "technical_research", "calculator", "golden_set"]
+        labels = ["chitchat", "theoretical_definition", "technical_research", "calculator", "normative_reference"]
         label2id = {label: idx for idx, label in enumerate(labels)}
         id2label = {idx: label for label, idx in label2id.items()}
 

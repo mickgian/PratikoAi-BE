@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.config import Environment
 from app.services.email_service import EmailService
 
 
@@ -17,15 +18,29 @@ class TestSendWelcomeEmail:
 
     @pytest.mark.asyncio
     async def test_sends_email_with_correct_subject(self):
-        """Happy path: email is sent with Italian subject line."""
+        """Happy path: email is sent with Italian subject line (QA env)."""
         self.service._send_email = AsyncMock(return_value=True)
 
-        await self.service.send_welcome_email("user@example.com", "Secret123!")
+        with patch("app.services.email_service.settings") as mock_settings:
+            mock_settings.ENVIRONMENT = Environment.QA
+            await self.service.send_welcome_email("user@example.com", "Secret123!")
 
         self.service._send_email.assert_called_once()
         call_kwargs = self.service._send_email.call_args
         assert call_kwargs[1]["recipient_email"] == "user@example.com"
         assert call_kwargs[1]["subject"] == "Benvenuto su PratikoAI QA - Test environment - Le tue credenziali"
+
+    @pytest.mark.asyncio
+    async def test_subject_has_no_env_label_in_production(self):
+        """In production the subject has no environment suffix."""
+        self.service._send_email = AsyncMock(return_value=True)
+
+        with patch("app.services.email_service.settings") as mock_settings:
+            mock_settings.ENVIRONMENT = Environment.PRODUCTION
+            await self.service.send_welcome_email("user@example.com", "Secret123!")
+
+        call_kwargs = self.service._send_email.call_args
+        assert call_kwargs[1]["subject"] == "Benvenuto su PratikoAI - Le tue credenziali"
 
     @pytest.mark.asyncio
     async def test_html_contains_credentials(self):

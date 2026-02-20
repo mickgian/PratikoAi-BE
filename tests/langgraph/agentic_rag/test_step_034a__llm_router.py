@@ -179,11 +179,11 @@ class TestNodeStep34aLLMRouter:
             assert result["routing_decision"]["needs_retrieval"] is False
 
     @pytest.mark.asyncio
-    async def test_successful_routing_golden_set(self):
-        """Test successful routing to GOLDEN_SET category via GPT fallback."""
+    async def test_successful_routing_normative_reference(self):
+        """Test successful routing to NORMATIVE_REFERENCE category via GPT fallback."""
         mock_service = AsyncMock()
         mock_service.route.return_value = RouterDecision(
-            route=RoutingCategory.GOLDEN_SET,
+            route=RoutingCategory.NORMATIVE_REFERENCE,
             confidence=0.96,
             reasoning="Query matches known legal reference pattern",
             entities=[
@@ -191,7 +191,7 @@ class TestNodeStep34aLLMRouter:
                 ExtractedEntity(text="Costituzione", type="legge", confidence=0.90),
             ],
             requires_freshness=False,
-            suggested_sources=["golden_set", "normattiva"],
+            suggested_sources=["normative_reference", "normattiva"],
         )
 
         # DEV-251: Mock HF classifier to return low confidence, forcing GPT fallback
@@ -218,7 +218,7 @@ class TestNodeStep34aLLMRouter:
 
             result = await node_step_34a(state)
 
-            assert result["routing_decision"]["route"] == "golden_set"
+            assert result["routing_decision"]["route"] == "normative_reference"
             assert result["routing_decision"]["confidence"] == 0.96
             assert result["routing_decision"]["needs_retrieval"] is True
             assert len(result["routing_decision"]["entities"]) == 2
@@ -568,7 +568,7 @@ class TestNodeStep34aIntegration:
         """Test that routing_decision.needs_retrieval is available for conditional edges.
 
         This is critical for the graph to route to either:
-        - Retrieval lane (for TECHNICAL_RESEARCH, THEORETICAL_DEFINITION, GOLDEN_SET)
+        - Retrieval lane (for TECHNICAL_RESEARCH, THEORETICAL_DEFINITION, NORMATIVE_REFERENCE)
         - Direct response lane (for CHITCHAT, CALCULATOR)
         """
         mock_service = AsyncMock()

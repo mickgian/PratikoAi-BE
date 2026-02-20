@@ -360,7 +360,7 @@ class Subscription(SQLModel, table=True):
 
         return True, "Plan change allowed"
 
-    def calculate_proration_credit(self, change_date: Optional[datetime] = None) -> Decimal:
+    def calculate_proration_credit(self, change_date: datetime | None = None) -> Decimal:
         """Calculate proration credit for current plan.
 
         Args:

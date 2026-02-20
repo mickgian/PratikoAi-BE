@@ -28,7 +28,7 @@ from app.models.database import get_async_database_url
 
 
 @pytest_asyncio.fixture
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
+async def db_session() -> AsyncGenerator[AsyncSession]:
     """Create database session for E2E tests.
 
     Creates a fresh engine and session for each test to avoid
@@ -265,7 +265,7 @@ def mock_llm_response():
 
 
 @pytest_asyncio.fixture
-async def db_session_committed() -> AsyncGenerator[AsyncSession, None]:
+async def db_session_committed() -> AsyncGenerator[AsyncSession]:
     """Create database session that COMMITS data for E2E tests.
 
     IMPORTANT: This fixture commits transactions, allowing the golden set

@@ -61,7 +61,7 @@ class DocumentMetadata:
     document_type: str
     hierarchy_level: int
     reference_code: str
-    url: Optional[str]
+    url: str | None
     relevance_score: float
     text_excerpt: str
 
@@ -113,9 +113,7 @@ class MetadataExtractor:
         title = metadata.get("title") or ranked_doc.source_name
 
         # Get source entity from metadata
-        source_entity = metadata.get("source_entity") or self._derive_source_entity(
-            ranked_doc.source_type
-        )
+        source_entity = metadata.get("source_entity") or self._derive_source_entity(ranked_doc.source_type)
 
         # Get hierarchy level
         hierarchy_level = self.get_hierarchy_level(ranked_doc.source_type)
@@ -154,9 +152,7 @@ class MetadataExtractor:
         """
         return [self.extract(doc) for doc in retrieval_result.documents]
 
-    def sort_by_date(
-        self, docs: list[DocumentMetadata], reverse: bool = True
-    ) -> list[DocumentMetadata]:
+    def sort_by_date(self, docs: list[DocumentMetadata], reverse: bool = True) -> list[DocumentMetadata]:
         """Sort documents by publication date.
 
         Args:
@@ -223,9 +219,7 @@ class MetadataExtractor:
         else:
             return source_name
 
-    def format_context_for_synthesis(
-        self, retrieval_result: RetrievalResult
-    ) -> str:
+    def format_context_for_synthesis(self, retrieval_result: RetrievalResult) -> str:
         """Format context for the synthesis LLM.
 
         Creates formatted context per Section 13.9.3 with:

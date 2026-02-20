@@ -32,7 +32,7 @@ async def node_step_34a(state: RAGState) -> RAGState:
     - CALCULATOR: Calculation requests, routed to calculator tools
     - THEORETICAL_DEFINITION: Definition requests, RAG retrieval
     - TECHNICAL_RESEARCH: Complex queries, full RAG retrieval
-    - GOLDEN_SET: Known high-value patterns, golden set lookup
+    - NORMATIVE_REFERENCE: Specific law/regulation references
     """
     user_query = state.get("user_query", "")
     messages = state.get("messages", [])

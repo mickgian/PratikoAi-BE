@@ -48,7 +48,7 @@ def sample_low_confidence_prediction():
             "theoretical_definition": 0.30,
             "calculator": 0.15,
             "chitchat": 0.05,
-            "golden_set": 0.05,
+            "normative_reference": 0.05,
         },
         "source_query_id": uuid4(),
     }
@@ -66,7 +66,7 @@ def sample_high_confidence_prediction():
             "technical_research": 0.03,
             "theoretical_definition": 0.02,
             "calculator": 0.02,
-            "golden_set": 0.01,
+            "normative_reference": 0.01,
         },
         "source_query_id": uuid4(),
     }
@@ -358,14 +358,17 @@ class TestStats:
     @pytest.mark.asyncio
     async def test_stats_calculation_accuracy(self, labeling_service, mock_db):
         """Stats should accurately calculate labeling progress."""
-        # get_stats makes: 1 total count + 1 labeled count + 5 per-intent counts = 7 calls
+        # get_stats makes: 1 total + 1 labeled + 1 new_since_export + 5 per-intent = 8 calls
         mock_total = MagicMock()
         mock_total.scalar.return_value = 100
 
         mock_labeled = MagicMock()
         mock_labeled.scalar.return_value = 45
 
-        # Per-intent counts (5 intents: chitchat, theoretical_definition, technical_research, calculator, golden_set)
+        mock_new_since = MagicMock()
+        mock_new_since.scalar.return_value = 10
+
+        # Per-intent counts (5 intents: chitchat, theoretical_definition, technical_research, calculator, normative_reference)
         intent_counts = [10, 5, 20, 8, 2]
         intent_mocks = []
         for count in intent_counts:
@@ -373,7 +376,7 @@ class TestStats:
             m.scalar.return_value = count
             intent_mocks.append(m)
 
-        mock_db.execute.side_effect = [mock_total, mock_labeled, *intent_mocks]
+        mock_db.execute.side_effect = [mock_total, mock_labeled, mock_new_since, *intent_mocks]
 
         stats = await labeling_service.get_stats(db=mock_db)
 
@@ -381,6 +384,7 @@ class TestStats:
         assert stats.labeled_queries == 45
         assert stats.pending_queries == 55
         assert stats.completion_percentage == 45.0
+        assert stats.new_since_export == 10
 
     @pytest.mark.asyncio
     async def test_stats_handles_zero_total(self, labeling_service, mock_db):
@@ -391,6 +395,9 @@ class TestStats:
         mock_labeled = MagicMock()
         mock_labeled.scalar.return_value = 0
 
+        mock_new_since = MagicMock()
+        mock_new_since.scalar.return_value = 0
+
         # Per-intent counts (all zero)
         intent_mocks = []
         for _ in range(5):
@@ -398,13 +405,14 @@ class TestStats:
             m.scalar.return_value = 0
             intent_mocks.append(m)
 
-        mock_db.execute.side_effect = [mock_total, mock_labeled, *intent_mocks]
+        mock_db.execute.side_effect = [mock_total, mock_labeled, mock_new_since, *intent_mocks]
 
         stats = await labeling_service.get_stats(db=mock_db)
 
         assert stats.total_queries == 0
         assert stats.labeled_queries == 0
         assert stats.completion_percentage == 0.0
+        assert stats.new_since_export == 0
 
 
 class TestExport:
@@ -488,6 +496,127 @@ class TestExport:
 
         assert count == 0
         assert content == ""
+
+
+class TestExportStampsExportedAt:
+    """Test that export stamps exported_at on all records."""
+
+    @pytest.mark.asyncio
+    async def test_export_sets_exported_at_on_all_records(self, labeling_service, mock_db):
+        """Export should stamp exported_at on every exported record."""
+        query_ids = [uuid4(), uuid4()]
+        mock_queries = [
+            MagicMock(
+                id=query_ids[0],
+                query="Come si calcola l'IVA?",
+                expert_intent="calculator",
+            ),
+            MagicMock(
+                id=query_ids[1],
+                query="Ciao, buongiorno!",
+                expert_intent="chitchat",
+            ),
+        ]
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = mock_queries
+        mock_db.execute.side_effect = [mock_result, MagicMock()]
+
+        await labeling_service.export_training_data(format="jsonl", db=mock_db)
+
+        # Second execute call should be the bulk UPDATE
+        assert mock_db.execute.call_count == 2
+        # commit should be called to persist the exported_at stamps
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_export_returns_all_labeled_data_including_previously_exported(self, labeling_service, mock_db):
+        """Export should return ALL labeled data, not just new ones."""
+        mock_queries = [
+            MagicMock(
+                id=uuid4(),
+                query="Previously exported",
+                expert_intent="chitchat",
+                exported_at=datetime.utcnow(),
+            ),
+            MagicMock(
+                id=uuid4(),
+                query="Newly labeled",
+                expert_intent="calculator",
+                exported_at=None,
+            ),
+        ]
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = mock_queries
+        mock_db.execute.side_effect = [mock_result, MagicMock()]
+
+        content, count = await labeling_service.export_training_data(format="jsonl", db=mock_db)
+
+        assert count == 2  # Both records included
+
+    @pytest.mark.asyncio
+    async def test_export_empty_does_not_stamp(self, labeling_service, mock_db):
+        """Export with no labeled data should not attempt bulk update."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute.return_value = mock_result
+
+        content, count = await labeling_service.export_training_data(format="jsonl", db=mock_db)
+
+        assert count == 0
+        assert content == ""
+        # No UPDATE should have been attempted
+        mock_db.commit.assert_not_called()
+
+
+class TestStatsNewSinceExport:
+    """Test new_since_export count in stats."""
+
+    @pytest.mark.asyncio
+    async def test_stats_includes_new_since_export_count(self, labeling_service, mock_db):
+        """Stats should include count of labeled queries not yet exported."""
+        mock_total = MagicMock()
+        mock_total.scalar.return_value = 100
+
+        mock_labeled = MagicMock()
+        mock_labeled.scalar.return_value = 45
+
+        mock_new_since = MagicMock()
+        mock_new_since.scalar.return_value = 20
+
+        # Per-intent counts (5 intents)
+        intent_mocks = [MagicMock() for _ in range(5)]
+        for m in intent_mocks:
+            m.scalar.return_value = 0
+
+        mock_db.execute.side_effect = [mock_total, mock_labeled, mock_new_since, *intent_mocks]
+
+        stats = await labeling_service.get_stats(db=mock_db)
+
+        assert stats.new_since_export == 20
+
+    @pytest.mark.asyncio
+    async def test_stats_new_since_export_zero_when_all_exported(self, labeling_service, mock_db):
+        """new_since_export should be 0 when all labeled queries have been exported."""
+        mock_total = MagicMock()
+        mock_total.scalar.return_value = 50
+
+        mock_labeled = MagicMock()
+        mock_labeled.scalar.return_value = 30
+
+        mock_new_since = MagicMock()
+        mock_new_since.scalar.return_value = 0
+
+        intent_mocks = [MagicMock() for _ in range(5)]
+        for m in intent_mocks:
+            m.scalar.return_value = 0
+
+        mock_db.execute.side_effect = [mock_total, mock_labeled, mock_new_since, *intent_mocks]
+
+        stats = await labeling_service.get_stats(db=mock_db)
+
+        assert stats.new_since_export == 0
 
 
 class TestSkipQuery:

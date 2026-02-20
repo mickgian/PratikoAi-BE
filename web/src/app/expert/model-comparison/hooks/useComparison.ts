@@ -183,6 +183,19 @@ export function useComparison() {
     setError(null);
   }, []);
 
+  const restoreComparison = useCallback(
+    (data: {
+      comparison: ComparisonResponse;
+      voteResult?: VoteResponse | null;
+    }) => {
+      setComparison(data.comparison);
+      if (data.voteResult !== undefined) {
+        setVoteResult(data.voteResult);
+      }
+    },
+    []
+  );
+
   return {
     comparison,
     models,
@@ -200,6 +213,7 @@ export function useComparison() {
     vote,
     savePreferences,
     clearComparison,
+    restoreComparison,
     setError,
   };
 }

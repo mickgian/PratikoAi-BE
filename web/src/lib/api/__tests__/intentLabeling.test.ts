@@ -56,7 +56,7 @@ describe('intentLabeling API', () => {
             theoretical_definition: 0.3,
             calculator: 0.15,
             chitchat: 0.05,
-            golden_set: 0.05,
+            normative_reference: 0.05,
           },
           expert_intent: null,
           skip_count: 0,
@@ -227,8 +227,9 @@ describe('intentLabeling API', () => {
         technical_research: 45,
         calculator: 25,
         theoretical_definition: 15,
-        golden_set: 10,
+        normative_reference: 10,
       },
+      new_since_export: 50,
     };
 
     it('should fetch stats successfully', async () => {

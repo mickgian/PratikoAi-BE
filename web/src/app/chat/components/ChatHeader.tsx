@@ -9,6 +9,7 @@ import {
   Tag,
   GitCompare,
   CreditCard,
+  Sliders,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -178,6 +179,20 @@ export function ChatHeader() {
                     <GitCompare className="w-4 h-4" />
                     <span>Confronta Modelli</span>
                   </button>
+                  <a
+                    data-testid="flagsmith-menu-item"
+                    href={
+                      process.env.NEXT_PUBLIC_FLAGSMITH_UI_URL ||
+                      'https://flags-qa.pratiko.app'
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="w-full px-4 py-2 text-left text-sm text-[#2A5D67] hover:bg-[#F8F5F1] flex items-center space-x-2"
+                  >
+                    <Sliders className="w-4 h-4" />
+                    <span>Configurazione</span>
+                  </a>
                   <div className="border-t border-[#C4BDB4]/20 my-1" />
                 </>
               )}

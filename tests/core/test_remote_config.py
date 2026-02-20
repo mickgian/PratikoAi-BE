@@ -70,3 +70,70 @@ class TestInitFlagsmith:
             os.environ.pop("FLAGSMITH_SERVER_KEY", None)
             client = _init_flagsmith_client()
             assert client is None
+
+    def test_init_with_local_evaluation_mode(self) -> None:
+        """Flagsmith client uses local evaluation with 60s refresh."""
+        from app.core.remote_config import _init_flagsmith_client
+
+        mock_flagsmith_cls = MagicMock()
+        mock_client = MagicMock()
+        mock_flagsmith_cls.return_value = mock_client
+
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "FLAGSMITH_SERVER_KEY": "ser.test-key",
+                    "FLAGSMITH_API_URL": "http://flagsmith:8000/api/v1/",
+                },
+            ),
+            patch("app.core.remote_config.Flagsmith", mock_flagsmith_cls, create=True),
+            patch.dict("sys.modules", {"flagsmith": MagicMock(Flagsmith=mock_flagsmith_cls)}),
+        ):
+            # Re-import to pick up the mock
+            import importlib
+
+            import app.core.remote_config as rc
+
+            importlib.reload(rc)
+
+            result = rc._init_flagsmith_client()
+
+            # Verify the Flagsmith constructor was called with local eval params
+            mock_flagsmith_cls.assert_called_once()
+            call_kwargs = mock_flagsmith_cls.call_args
+            assert call_kwargs.kwargs["enable_local_evaluation"] is True
+            assert call_kwargs.kwargs["environment_refresh_interval_seconds"] == 60
+            assert call_kwargs.kwargs["default_flag_handler"] is not None
+            assert call_kwargs.kwargs["environment_key"] == "ser.test-key"
+            assert result is mock_client
+
+
+class TestDefaultFlagHandler:
+    """Tests for the default_flag_handler used when a flag key is unknown."""
+
+    def test_default_flag_handler_returns_disabled_flag(self) -> None:
+        """Unknown flags return a DefaultFlag with enabled=False and value=None."""
+        from unittest.mock import patch as mock_patch
+
+        mock_default_flag_cls = MagicMock()
+        mock_flag = MagicMock()
+        mock_default_flag_cls.return_value = mock_flag
+
+        with mock_patch.dict(
+            "sys.modules",
+            {
+                "flagsmith": MagicMock(),
+                "flagsmith.models": MagicMock(DefaultFlag=mock_default_flag_cls),
+            },
+        ):
+            import importlib
+
+            import app.core.remote_config as rc
+
+            importlib.reload(rc)
+
+            result = rc._default_flag_handler("UNKNOWN_KEY")
+
+            mock_default_flag_cls.assert_called_once_with(enabled=False, value=None)
+            assert result is mock_flag

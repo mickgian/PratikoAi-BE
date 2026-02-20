@@ -72,6 +72,8 @@ dependencies = [
     "reportlab>=4.4.3",
     # Vector database dependencies
     "pgvector>=0.2.0",
+    # Feature flags / runtime config (ADR-031)
+    "flagsmith>=5.1.0",
 ]
 
 [project.optional-dependencies]

@@ -180,7 +180,7 @@ class TestAgenticRAGPipeline:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_034a__llm_router.get_hf_intent_classifier",
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
                 return_value=mock_hf,
             ),
             patch(
@@ -386,7 +386,7 @@ class TestGoldenSetKBRegression:
 
         with (
             patch(
-                "app.core.langgraph.nodes.step_034a__llm_router.get_hf_intent_classifier",
+                "app.services.hf_intent_classifier.get_hf_intent_classifier",
                 return_value=mock_hf,
             ),
             patch(

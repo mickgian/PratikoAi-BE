@@ -19,11 +19,12 @@ from app.api.v1.expert_feedback import router as expert_feedback_router
 from app.api.v1.features import router as features_router
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.financial_validation import router as financial_validation_router
+
+# from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router
+from app.api.v1.gdpr_audit import router as gdpr_audit_router
 from app.api.v1.health import router as health_router
 from app.api.v1.intent_labeling import router as intent_labeling_router
 from app.api.v1.italian import router as italian_router
-
-# from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router
 from app.api.v1.model_comparison import router as model_comparison_router
 
 # TEMPORARY: Commented out due to duplicate Subscription model conflict
@@ -72,6 +73,7 @@ api_router.include_router(regional_taxes_router, prefix="/taxes", tags=["regiona
 api_router.include_router(documents_router, tags=["documents"])
 api_router.include_router(demo_router, tags=["demo"])
 # api_router.include_router(gdpr_cleanup_router, tags=["gdpr-compliance"])
+api_router.include_router(gdpr_audit_router, tags=["gdpr-audit"])
 api_router.include_router(financial_validation_router, prefix="/financial", tags=["financial-validation"])
 api_router.include_router(ccnl_calculations_router, tags=["ccnl-calculations"])
 api_router.include_router(ccnl_search_router, tags=["ccnl-search"])

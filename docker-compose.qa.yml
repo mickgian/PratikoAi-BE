@@ -117,7 +117,7 @@ services:
     restart: on-failure
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-aifinance}:${POSTGRES_PASSWORD}@db:5432/flagsmith
-      - DJANGO_ALLOWED_HOSTS=${FLAGS_DOMAIN:-flags-qa.pratiko.app}
+      - DJANGO_ALLOWED_HOSTS=localhost,flagsmith,${FLAGS_DOMAIN:-flags-qa.pratiko.app}
       - DJANGO_SECRET_KEY=${FLAGSMITH_DJANGO_SECRET:-changeme}
       - FLAGSMITH_DOMAIN=${FLAGS_DOMAIN:-flags-qa.pratiko.app}
       - ALLOW_REGISTRATION_WITHOUT_INVITE=false

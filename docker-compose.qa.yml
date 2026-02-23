@@ -117,6 +117,12 @@ services:
       - DJANGO_SECRET_KEY=${FLAGSMITH_DJANGO_SECRET:-changeme}
       - FLAGSMITH_DOMAIN=${FLAGS_DOMAIN:-flags-qa.pratiko.app}
       - ALLOW_REGISTRATION_WITHOUT_INVITE=false
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     depends_on:
       - db
     networks:

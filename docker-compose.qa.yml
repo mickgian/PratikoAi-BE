@@ -99,8 +99,12 @@ services:
       - APP_DOMAIN=${APP_DOMAIN:-app-qa.pratiko.app}
       - FLAGS_DOMAIN=${FLAGS_DOMAIN:-flags-qa.pratiko.app}
     depends_on:
-      - app
-      - frontend
+      app:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+      flagsmith:
+        condition: service_healthy
     networks:
       - monitoring
     deploy:

@@ -124,7 +124,8 @@ services:
       retries: 10
       start_period: 30s
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - monitoring
     deploy:

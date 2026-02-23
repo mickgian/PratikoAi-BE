@@ -43,7 +43,7 @@ jobs:
           host: ${{ secrets.HETZNER_QA_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_QA_SSH_KEY }}
-          source: "docker-compose.yml,docker-compose.qa.yml,scripts/seed_flagsmith_qa.sh"
+          source: "docker-compose.yml,docker-compose.qa.yml,scripts/seed_flagsmith_qa.sh,docker/init-flagsmith-db.sh,caddy/Caddyfile"
           target: /opt/pratikoai
           overwrite: true
 
@@ -107,6 +107,14 @@ jobs:
               echo "Waiting for backend... (attempt $i/30)"
               sleep 5
             done
+
+            # Ensure flagsmith database exists (init script only runs on first volume creation)
+            echo "Ensuring flagsmith database exists..."
+            $DC exec -T db psql -U "${POSTGRES_USER:-aifinance}" -tc \
+              "SELECT 1 FROM pg_database WHERE datname = 'flagsmith'" \
+              | grep -q 1 \
+              || $DC exec -T db psql -U "${POSTGRES_USER:-aifinance}" -c "CREATE DATABASE flagsmith"
+            echo "Flagsmith database ready"
 
             # Seed Flagsmith (idempotent, non-blocking)
             echo "Seeding Flagsmith..."

@@ -100,8 +100,33 @@ jobs:
             # Pull new images
             $DC pull app frontend
 
-            # Deploy backend first (expand-contract: BE always deploys before FE)
-            $DC up -d db redis app flagsmith
+            # Start infra services first
+            $DC up -d db redis
+            echo "Waiting for database to be ready..."
+            for i in $(seq 1 30); do
+              if $DC exec -T db pg_isready -U "${POSTGRES_USER:-aifinance}" > /dev/null 2>&1; then
+                echo "Database ready!"
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "Database not ready after 150s"
+                $DC logs db --tail=30
+                exit 1
+              fi
+              echo "Waiting for database... (attempt $i/30)"
+              sleep 5
+            done
+
+            # Ensure flagsmith database exists BEFORE starting Flagsmith
+            echo "Ensuring flagsmith database exists..."
+            $DC exec -T db psql -U "${POSTGRES_USER:-aifinance}" -tc \
+              "SELECT 1 FROM pg_database WHERE datname = 'flagsmith'" \
+              | grep -q 1 \
+              || $DC exec -T db psql -U "${POSTGRES_USER:-aifinance}" -c "CREATE DATABASE flagsmith"
+            echo "Flagsmith database ready"
+
+            # Deploy backend + flagsmith (expand-contract: BE always deploys before FE)
+            $DC up -d app flagsmith
             echo "Waiting for backend health..."
             sleep 10
 
@@ -120,14 +145,6 @@ jobs:
               sleep 5
             done
 
-            # Ensure flagsmith database exists (init script only runs on first volume creation)
-            echo "Ensuring flagsmith database exists..."
-            $DC exec -T db psql -U "${POSTGRES_USER:-aifinance}" -tc \
-              "SELECT 1 FROM pg_database WHERE datname = 'flagsmith'" \
-              | grep -q 1 \
-              || $DC exec -T db psql -U "${POSTGRES_USER:-aifinance}" -c "CREATE DATABASE flagsmith"
-            echo "Flagsmith database ready"
-
             # Seed Flagsmith (idempotent, non-blocking)
             echo "Seeding Flagsmith..."
             chmod +x /opt/pratikoai/scripts/seed_flagsmith_qa.sh
@@ -142,6 +159,23 @@ jobs:
                 break
               fi
               [ "$i" -eq 20 ] && echo "WARNING: Backend health check failed after restart"
+              sleep 5
+            done
+
+            # Check Flagsmith health before starting Caddy
+            echo "Checking Flagsmith health..."
+            for i in $(seq 1 30); do
+              if $DC exec -T app curl -sf http://flagsmith:8000/health > /dev/null 2>&1; then
+                echo "Flagsmith healthy!"
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "WARNING: Flagsmith not healthy after 150s, restarting..."
+                $DC logs flagsmith --tail=30
+                $DC restart flagsmith
+                sleep 15
+              fi
+              echo "Waiting for Flagsmith... (attempt $i/30)"
               sleep 5
             done
 

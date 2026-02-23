@@ -37,6 +37,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Clean stale paths on QA
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_QA_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_QA_SSH_KEY }}
+          script: |
+            # Remove if a previous deploy created these as directories by mistake
+            [ -d /opt/pratikoai/docker/init-flagsmith-db.sh ] && rm -rf /opt/pratikoai/docker/init-flagsmith-db.sh
+            [ -d /opt/pratikoai/caddy/Caddyfile ] && rm -rf /opt/pratikoai/caddy/Caddyfile
+            true
+
       - name: Sync compose files to QA
         uses: appleboy/scp-action@v0.1.7
         with:

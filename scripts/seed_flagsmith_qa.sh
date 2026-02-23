@@ -60,8 +60,8 @@ echo "[1/7] Creating Flagsmith superuser..."
 $DC exec -T \
     -e DJANGO_SUPERUSER_EMAIL="$FLAGSMITH_ADMIN_EMAIL" \
     -e DJANGO_SUPERUSER_PASSWORD="$FLAGSMITH_ADMIN_PASSWORD" \
-    flagsmith python manage.py createsuperuser --noinput 2>&1 \
-    | grep -v "^$" || true
+    flagsmith python manage.py createsuperuser --noinput \
+    --first_name Admin --last_name PratikoAI 2>&1 || true
 echo "  Superuser ready (created or already exists)"
 
 # --- [2/7] Login via API ---
@@ -120,17 +120,25 @@ fi
 
 # --- [5/7] Get environment server-side key ---
 echo "[5/7] Getting environment server-side key..."
-ENVS_RESPONSE=$(api -H "$AUTH_HEADER" "${FLAGSMITH_URL}/api/v1/environments/?project=${PROJECT_ID}")
-SERVER_KEY=$(echo "$ENVS_RESPONSE" | pyjson "
+SERVER_KEY=""
+for attempt in $(seq 1 5); do
+    ENVS_RESPONSE=$(api -H "$AUTH_HEADER" "${FLAGSMITH_URL}/api/v1/environments/?project=${PROJECT_ID}" 2>/dev/null || echo "")
+    SERVER_KEY=$(echo "$ENVS_RESPONSE" | pyjson "
 envs = data if isinstance(data, list) else data.get('results', [])
 dev = [e for e in envs if e['name'] == 'Development']
 print(dev[0]['api_key'] if dev else '')
-")
+" 2>/dev/null || echo "")
 
-if [ -z "$SERVER_KEY" ]; then
-    echo "  ERROR: No 'Development' environment found"
-    exit 1
-fi
+    if [ -n "$SERVER_KEY" ]; then
+        break
+    fi
+    if [ "$attempt" -eq 5 ]; then
+        echo "  ERROR: No 'Development' environment found after 5 attempts"
+        exit 1
+    fi
+    echo "  Environment not ready yet, retrying... (attempt $attempt/5)"
+    sleep 3
+done
 echo "  Server key: ${SERVER_KEY:0:8}..."
 
 # --- [6/7] Seed feature flags ---

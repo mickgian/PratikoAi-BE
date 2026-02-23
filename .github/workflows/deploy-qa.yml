@@ -149,7 +149,7 @@ jobs:
             # Seed Flagsmith (idempotent, non-blocking)
             echo "Seeding Flagsmith..."
             chmod +x /opt/pratikoai/scripts/seed_flagsmith_qa.sh
-            cd /opt/pratikoai && bash scripts/seed_flagsmith_qa.sh || echo "WARNING: Flagsmith seeding failed (non-blocking)"
+            cd /opt/pratikoai && bash scripts/seed_flagsmith_qa.sh || echo "WARNING: Flagsmith seeding failed (non-blocking, app falls back to env vars)"
 
             # Restart app to pick up FLAGSMITH_SERVER_KEY if updated
             $DC restart app
@@ -163,22 +163,41 @@ jobs:
               sleep 5
             done
 
-            # Check Flagsmith health before starting Caddy
+            # Check Flagsmith health (two-phase: wait, then restart+wait if needed)
             echo "Checking Flagsmith health..."
+            FLAGSMITH_HEALTHY=false
+
+            # Phase 1: wait up to 150s
             for i in $(seq 1 30); do
               if $DC exec -T app curl -sf http://flagsmith:8000/health > /dev/null 2>&1; then
+                FLAGSMITH_HEALTHY=true
                 echo "Flagsmith healthy!"
                 break
-              fi
-              if [ "$i" -eq 30 ]; then
-                echo "WARNING: Flagsmith not healthy after 150s, restarting..."
-                $DC logs flagsmith --tail=30
-                $DC restart flagsmith
-                sleep 15
               fi
               echo "Waiting for Flagsmith... (attempt $i/30)"
               sleep 5
             done
+
+            # Phase 2: if still unhealthy, restart and wait another 120s
+            if [ "$FLAGSMITH_HEALTHY" = "false" ]; then
+              echo "WARNING: Flagsmith not healthy after 150s, restarting..."
+              $DC logs flagsmith --tail=30
+              $DC restart flagsmith
+              for i in $(seq 1 24); do
+                if $DC exec -T app curl -sf http://flagsmith:8000/health > /dev/null 2>&1; then
+                  FLAGSMITH_HEALTHY=true
+                  echo "Flagsmith healthy after restart!"
+                  break
+                fi
+                echo "Waiting for Flagsmith after restart... (attempt $i/24)"
+                sleep 5
+              done
+            fi
+
+            if [ "$FLAGSMITH_HEALTHY" = "false" ]; then
+              echo "WARNING: Flagsmith still unhealthy after restart. App falls back to env vars, Caddy uses service_started."
+              $DC logs flagsmith --tail=50
+            fi
 
             # Deploy frontend
             $DC up -d frontend caddy

@@ -99,7 +99,7 @@ User Query
 | Web sources section | **DYNAMIC** | Brave Search JSON | 0-1,000 tokens |
 | Conversation messages | **DYNAMIC** | Session history | Varies |
 
-#### Auxiliary LLM Calls
+#### Auxiliary LLM Calls (6 additional call sites in the pipeline)
 
 | Call | Model | System Prompt | Dynamic Content |
 |------|-------|---------------|-----------------|
@@ -107,6 +107,11 @@ User Query
 | Complexity classification | GPT-4o-mini | `complexity_classifier.md` template (STATIC) | Query + domains + flags |
 | HyDE generation | Claude 3 Haiku | `hyde_conversational.md` template (STATIC) | Conversation history + query |
 | Domain classification | varies | Hardcoded prompt in `domain_action_classifier.py` | Query text |
+| Query normalization | QUERY_NORMALIZATION_MODEL env | Dynamic via `_get_system_prompt()` | Query + conversation context |
+| Query reformulation | LLM_MODEL_REFORMULATION env | Embedded in prompt string (STATIC) | Short query + last assistant msg |
+| Document analysis | GPT-4o (ChatOpenAI) | Dynamic via `_build_system_prompt(analysis_type)` | Document content + analysis type |
+
+**Note on fallback path:** The production fallback at `app/orchestrators/providers.py:1589` (`_execute_llm_api_call`) calls `provider.chat_completion(messages=messages, **llm_params)` using the message array assembled by Steps 41-47. This is the actual API invocation point for the message-based path, and it does pass tools via `llm_params` when present.
 
 ### A.3 Current Ordering of Prompt Components
 
@@ -447,9 +452,14 @@ Important Anthropic prompt caching characteristics to be aware of:
 | `app/services/cache.py` | Redis `CacheService` — LLM responses, conversations, HyDE, MultiQuery | 1-766 |
 | `app/core/decorators/cache.py` | Caching decorator | — |
 
-### Router & Classification Files
+### Router, Classification, & Auxiliary LLM Call Files
 | File | Purpose | Lines |
 |------|---------|-------|
 | `app/services/llm_router_service.py` | LLM-based query routing (GPT-4o-mini) | 1-80+ |
 | `app/services/domain_action_classifier.py` | Domain/action classification | — |
 | `app/services/local_classifier.py` | Local rule-based complexity classifier | — |
+| `app/services/query_normalizer.py` | Document reference extraction (direct OpenAI) | Line 62 |
+| `app/services/query_reformulation/llm_reformulator.py` | Short query expansion (direct OpenAI) | Line 85 |
+| `app/services/italian_document_analyzer.py` | Document analysis (LangChain ChatOpenAI) | Line 278 |
+| `app/services/hyde_generator.py` | HyDE hypothetical document generation | Lines 497, 561 |
+| `app/orchestrators/providers.py` | Fallback LLM API call (`_execute_llm_api_call`) | Line 1589 |

@@ -48,7 +48,7 @@ jobs:
             # Docker creates bind-mount sources as root, so `deploy` user cannot
             # rm them directly. Use a throwaway container (runs as root) instead.
             docker run --rm -v /opt/pratikoai:/workspace alpine sh -c \
-              "rm -rf /workspace/docker/init-flagsmith-db.sh /workspace/caddy/Caddyfile 2>/dev/null; true"
+              "rm -rf /workspace/docker /workspace/caddy 2>/dev/null; true"
 
       - name: Sync compose files to QA
         uses: appleboy/scp-action@v0.1.7

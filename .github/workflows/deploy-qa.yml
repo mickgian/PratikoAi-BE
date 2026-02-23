@@ -43,16 +43,20 @@ jobs:
           host: ${{ secrets.HETZNER_QA_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_QA_SSH_KEY }}
-          source: "docker-compose.yml,docker-compose.qa.yml"
+          source: "docker-compose.yml,docker-compose.qa.yml,scripts/seed_flagsmith_qa.sh"
           target: /opt/pratikoai
           overwrite: true
 
       - name: Deploy to Hetzner QA
         uses: appleboy/ssh-action@v1
+        env:
+          FLAGSMITH_ADMIN_EMAIL: ${{ secrets.FLAGSMITH_ADMIN_EMAIL }}
+          FLAGSMITH_ADMIN_PASSWORD: ${{ secrets.FLAGSMITH_ADMIN_PASSWORD }}
         with:
           host: ${{ secrets.HETZNER_QA_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_QA_SSH_KEY }}
+          envs: FLAGSMITH_ADMIN_EMAIL,FLAGSMITH_ADMIN_PASSWORD
           script: |
             set -e
             cd /opt/pratikoai
@@ -101,6 +105,23 @@ jobs:
                 exit 1
               fi
               echo "Waiting for backend... (attempt $i/30)"
+              sleep 5
+            done
+
+            # Seed Flagsmith (idempotent, non-blocking)
+            echo "Seeding Flagsmith..."
+            chmod +x /opt/pratikoai/scripts/seed_flagsmith_qa.sh
+            cd /opt/pratikoai && bash scripts/seed_flagsmith_qa.sh || echo "WARNING: Flagsmith seeding failed (non-blocking)"
+
+            # Restart app to pick up FLAGSMITH_SERVER_KEY if updated
+            $DC restart app
+            sleep 10
+            for i in $(seq 1 20); do
+              if $DC exec -T app curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+                echo "Backend healthy after restart!"
+                break
+              fi
+              [ "$i" -eq 20 ] && echo "WARNING: Backend health check failed after restart"
               sleep 5
             done
 

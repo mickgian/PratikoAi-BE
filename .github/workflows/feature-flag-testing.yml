@@ -149,15 +149,16 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: web/package-lock.json
 
     - name: Install Python Dependencies
       run: |
         pip install click httpx pyyaml pygithub
-        pip install -r requirements.txt
         pip install -r feature-flags/requirements.txt
 
     - name: Install Node Dependencies
       run: npm ci
+      working-directory: web
 
     - name: Create Flag Backup
       run: |
@@ -194,12 +195,14 @@ jobs:
       run: |
         export FEATURE_FLAG_SCENARIO="${{ matrix.scenario }}"
         npm test -- --coverage --watchAll=false
+      working-directory: web
       continue-on-error: true
 
     - name: Run E2E Tests
       run: |
         export FEATURE_FLAG_SCENARIO="${{ matrix.scenario }}"
         npm run test:e2e
+      working-directory: web
       continue-on-error: true
 
     - name: Verify Flag States

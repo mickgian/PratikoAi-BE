@@ -401,6 +401,94 @@ Important Anthropic prompt caching characteristics to be aware of:
 
 ---
 
+## Section F: Provider Prompt Caching Compatibility
+
+### F.1 Feature Comparison Across Providers
+
+| Feature | Anthropic | OpenAI | Mistral |
+|---------|-----------|--------|---------|
+| **Native prompt caching** | Yes | Yes | **No** |
+| **Activation** | Explicit (`cache_control` markers) | Automatic (no code changes) | N/A |
+| **Cached input token discount** | **90%** off input price | **50%** off input price | N/A |
+| **Cache write cost** | ~25% premium on first write | None | N/A |
+| **Minimum cacheable prefix** | 1,024 tokens | 1,024 tokens | N/A |
+| **Cache granularity increment** | Per `cache_control` breakpoint | 128-token increments after 1,024 | N/A |
+| **Cache TTL** | 5 minutes | 5-10 minutes (up to 24h with extended caching) | N/A |
+| **Cache scope** | Per-model, per-organization | Per-model, routing-based | N/A |
+| **Max breakpoints** | 4 per request | N/A (automatic) | N/A |
+| **Multi-turn benefit** | Yes (prior turns form stable prefix) | Yes (especially with Responses API) | N/A |
+
+### F.2 Provider-Specific Implementation Notes
+
+#### Anthropic (Claude models)
+
+Anthropic's prompt caching requires **explicit opt-in** via `cache_control` breakpoints on message blocks:
+
+```json
+{
+  "system": [
+    {"type": "text", "text": "...", "cache_control": {"type": "ephemeral"}}
+  ],
+  "messages": [...]
+}
+```
+
+- Up to 4 `cache_control` breakpoints per request
+- Best applied to: system prompts, tool definitions, large static context blocks
+- Cache hits return `cache_read_input_tokens` in the usage response
+- Cache misses return `cache_creation_input_tokens` (write premium applies)
+- The 90% discount makes even 2 cache hits within the 5-minute window cost-effective
+
+#### OpenAI (GPT models)
+
+OpenAI's prompt caching is **fully automatic** — no code changes required:
+
+- Caches the longest matching prefix starting at 1,024 tokens, in 128-token increments
+- Returns `cached_tokens` in `usage.prompt_tokens_details` for monitoring
+- Extended caching (`retention_policy: "24h"`) available for longer cache lifetimes
+- `prompt_cache_key` parameter available as a routing hint (not a breakpoint)
+- Responses API achieves 40-80% better cache utilization than Chat Completions due to persisting chain-of-thought tokens via `previous_response_id`
+
+#### Mistral
+
+**Mistral does not offer native prompt caching** as an API feature (as of February 2026):
+
+- No `cache_control` parameter or equivalent in the Chat Completion API
+- No automatic prefix caching at the API level
+- KV caching exists at the model architecture level (Sliding Window Attention) but is an internal optimization not exposed to API callers
+- Mistral Studio provides infrastructure-level caching/routing, but this is deployment optimization, not per-prompt token caching
+- Mistral's own cost optimization guidance recommends application-level response caching (i.e., what PratikoAI already does with Redis)
+
+### F.3 Mapping to PratikoAI Pipeline Call Sites
+
+| Pipeline Stage | Current Model | Provider | Caching Support | Caching Benefit |
+|----------------|--------------|----------|-----------------|-----------------|
+| Query routing (Step 4) | GPT-4o-mini | **OpenAI** | Automatic | Low — short prompts (~500 token system prompt) may fall below 1,024 minimum |
+| Complexity classification | GPT-4o-mini | **OpenAI** | Automatic | Low — same reason as above |
+| HyDE generation | Claude 3 Haiku | **Anthropic** | Explicit | **Medium** — `hyde_conversational.md` template is ~500 tokens; with conversation context may exceed 1,024 threshold |
+| Query normalization | env-configured | **Varies** | Depends on provider | Low — short prompts |
+| Query reformulation | env-configured | **Varies** | Depends on provider | Low — short prompts |
+| Document analysis | GPT-4o (ChatOpenAI) | **OpenAI** | Automatic | **Medium** — system prompt from `_build_system_prompt()` + document content; large prompts benefit |
+| **Main response (primary path)** | **Mistral Large** | **Mistral** | **None** | **Zero** — no prompt caching available |
+| **Main response (fallback)** | Mistral Large / Claude 3.5 Sonnet | **Varies** | Anthropic: explicit; Mistral: none | **High for Anthropic fallback** — system prompt + tools can be cached |
+| Premium fallback | Claude 3.5 Sonnet | **Anthropic** | Explicit | **High** — large system prompt + tool definitions are cacheable |
+
+### F.4 Strategic Implications
+
+1. **Current production model (Mistral Large) gets zero benefit from prompt caching.** The single most impactful change for cost reduction via caching is switching the production model to Anthropic or ensuring OpenAI is used, where caching is available.
+
+2. **OpenAI calls already benefit passively.** GPT-4o-mini routing/classification calls and GPT-4o document analysis calls get automatic caching with no code changes. However, the benefit is limited because these prompts are often below the 1,024-token minimum.
+
+3. **Anthropic calls need explicit markers.** The HyDE generation (Haiku) and premium fallback (Claude 3.5 Sonnet) paths require adding `cache_control` breakpoints to benefit. This is Quick Win #2 and #4 from Section D.4.
+
+4. **If the production model switches to Anthropic (Phase 3, item #8),** the refactoring work in Phase 2 (system/user message separation, template restructuring) becomes critical. The 90% cached token discount on Anthropic would yield significantly higher savings than OpenAI's 50% discount, making Anthropic the preferred target for caching optimization.
+
+5. **If the production model switches to OpenAI instead,** prompt caching would work automatically with no code changes beyond the template restructuring (static content first, dynamic content last). The 50% discount is lower but requires zero implementation effort for the caching itself.
+
+6. **Mistral remains a valid choice for non-caching reasons** (cost, quality, EU data residency, GDPR). If Mistral is retained as the production model, the caching investment should focus narrowly on the Anthropic auxiliary calls (HyDE, premium fallback) and rely on the existing Redis response cache for the main path.
+
+---
+
 ## Appendix: File Reference
 
 ### Prompt Construction Files

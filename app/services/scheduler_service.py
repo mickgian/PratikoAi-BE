@@ -823,6 +823,95 @@ async def send_daily_eval_report_task() -> None:
         logger.error(f"Error running daily evaluation report: {e}")
 
 
+async def backfill_missing_embeddings_task() -> None:
+    """Scheduled task to backfill missing embeddings for knowledge items and chunks.
+
+    Queries for items/chunks with NULL embedding and generates embeddings
+    using the OpenAI API in batches. This handles cases where embedding
+    generation failed during initial ingestion (API errors, rate limits, etc.).
+
+    Runs daily after ingestion to ensure all content is searchable.
+    """
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.core.embed import generate_embeddings_batch
+
+    if not getattr(settings, "EMBEDDING_BACKFILL_ENABLED", True):
+        logger.info("Embedding backfill is disabled via EMBEDDING_BACKFILL_ENABLED")
+        return
+
+    try:
+        postgres_url = settings.POSTGRES_URL
+        if postgres_url.startswith("postgresql://"):
+            postgres_url = postgres_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        engine = create_async_engine(postgres_url, echo=False, pool_pre_ping=True)
+        async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session_maker() as session:
+            # --- Backfill items ---
+            result = await session.execute(
+                text(
+                    "SELECT id, content FROM knowledge_items WHERE embedding IS NULL AND status = 'active' ORDER BY id"
+                )
+            )
+            item_rows = result.fetchall()
+
+            if item_rows:
+                logger.info(f"Backfilling embeddings for {len(item_rows)} items")
+                for i in range(0, len(item_rows), 20):
+                    batch = item_rows[i : i + 20]
+                    texts = [row[1] if row[1] else "" for row in batch]
+                    embeddings = await generate_embeddings_batch(texts, batch_size=20)
+
+                    for (item_id, _), emb in zip(batch, embeddings, strict=False):
+                        if emb is not None:
+                            await session.execute(
+                                text("UPDATE knowledge_items SET embedding = :emb WHERE id = :id"),
+                                {"emb": str(emb), "id": item_id},
+                            )
+
+                    await session.commit()
+                    logger.info(
+                        f"Backfilled items batch {i // 20 + 1} ({min(i + 20, len(item_rows))}/{len(item_rows)})"
+                    )
+
+            # --- Backfill chunks ---
+            result = await session.execute(
+                text("SELECT id, chunk_text FROM knowledge_chunks WHERE embedding IS NULL ORDER BY id")
+            )
+            chunk_rows = result.fetchall()
+
+            if chunk_rows:
+                logger.info(f"Backfilling embeddings for {len(chunk_rows)} chunks")
+                for i in range(0, len(chunk_rows), 20):
+                    batch = chunk_rows[i : i + 20]
+                    texts = [row[1] if row[1] else "" for row in batch]
+                    embeddings = await generate_embeddings_batch(texts, batch_size=20)
+
+                    for (chunk_id, _), emb in zip(batch, embeddings, strict=False):
+                        if emb is not None:
+                            await session.execute(
+                                text("UPDATE knowledge_chunks SET embedding = :emb WHERE id = :id"),
+                                {"emb": str(emb), "id": chunk_id},
+                            )
+
+                    await session.commit()
+                    logger.info(
+                        f"Backfilled chunks batch {i // 20 + 1} ({min(i + 20, len(chunk_rows))}/{len(chunk_rows)})"
+                    )
+
+            if not item_rows and not chunk_rows:
+                logger.info("No missing embeddings found, backfill not needed")
+
+        await engine.dispose()
+
+    except Exception as e:
+        logger.error(f"Error in embedding backfill task: {e}", exc_info=True)
+
+
 def setup_default_tasks() -> None:
     """Setup default scheduled tasks."""
     # Add 12-hour metrics report task
@@ -928,8 +1017,21 @@ def setup_default_tasks() -> None:
     scheduler_service.add_task(eval_report_task)
     logger.info(f"Registered daily_eval_report task at {eval_report_time} (enabled={eval_report_enabled})")
 
+    # Embedding backfill task: repairs missing embeddings from failed API calls
+    # Runs daily at 03:00 Europe/Rome (after RSS ingestion at 01:00, before reports at 06:00)
+    embedding_backfill_enabled = getattr(settings, "EMBEDDING_BACKFILL_ENABLED", True)
+    embedding_backfill_time = getattr(settings, "EMBEDDING_BACKFILL_TIME", "03:00")
+    embedding_backfill_task = ScheduledTask(
+        name="embedding_backfill_daily",
+        interval=ScheduleInterval.DAILY,
+        function=backfill_missing_embeddings_task,
+        enabled=embedding_backfill_enabled,
+        target_time=embedding_backfill_time,
+    )
+    scheduler_service.add_task(embedding_backfill_task)
+
     logger.info(
-        f"Default scheduled tasks configured (metrics reports + RSS feeds + Gazzetta scraper + Cassazione scraper + AdER scraper + daily ingestion report [enabled={ingestion_report_enabled}] + daily cost report [enabled={cost_report_enabled}] + daily eval report [enabled={eval_report_enabled}])"
+        f"Default scheduled tasks configured (metrics reports + RSS feeds + Gazzetta scraper + Cassazione scraper + AdER scraper + daily ingestion report [enabled={ingestion_report_enabled}] + daily cost report [enabled={cost_report_enabled}] + daily eval report [enabled={eval_report_enabled}] + embedding backfill [enabled={embedding_backfill_enabled}])"
     )
 
 

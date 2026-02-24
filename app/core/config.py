@@ -337,6 +337,18 @@ class Settings:
             "yes",
         )
 
+        # Embedding Backfill Configuration
+        # Automatically repairs missing embeddings from failed API calls during ingestion
+        self.EMBEDDING_BACKFILL_ENABLED = os.getenv("EMBEDDING_BACKFILL_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+        # Time to run backfill in HH:MM format (Europe/Rome timezone)
+        # Default: 03:00 (after RSS ingestion at 01:00, before reports at 06:00)
+        self.EMBEDDING_BACKFILL_TIME = os.getenv("EMBEDDING_BACKFILL_TIME", "03:00")
+
         # Daily Cost Report Configuration (DEV-246)
         # Recipients (comma-separated) for cost spending reports
         self.DAILY_COST_REPORT_RECIPIENTS = os.getenv("DAILY_COST_REPORT_RECIPIENTS", "")

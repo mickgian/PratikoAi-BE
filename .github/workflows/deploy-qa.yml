@@ -203,7 +203,7 @@ jobs:
             $DC up -d frontend
             echo "Waiting for frontend to be healthy..."
             for i in $(seq 1 20); do
-              if $DC exec -T frontend wget --quiet --tries=1 --spider http://localhost:3000 2>/dev/null; then
+              if $DC exec -T frontend node -e "require('http').get('http://localhost:3000',r=>{process.exit(r.statusCode<400?0:1)}).on('error',()=>process.exit(1))" 2>/dev/null; then
                 echo "Frontend healthy!"
                 break
               fi

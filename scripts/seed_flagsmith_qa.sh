@@ -137,6 +137,7 @@ print(dev[0]['api_key'] if dev else '')
         exit 1
     fi
     echo "  Environment not ready yet, retrying... (attempt $attempt/5)"
+    echo "  DEBUG response: ${ENVS_RESPONSE:0:200}"
     sleep 3
 done
 echo "  Server key: ${SERVER_KEY:0:8}..."

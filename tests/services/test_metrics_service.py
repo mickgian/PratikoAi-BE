@@ -5,7 +5,7 @@ was incorrectly awaited, causing System Uptime to always report 0%.
 """
 
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -106,15 +106,42 @@ class TestPerformanceMonitorUptimeTracking:
 
 
 class TestCollectBusinessMetricsUptime:
-    """Tests for uptime metric in business metrics collection."""
+    """Tests for uptime metric in business metrics collection.
+
+    These tests mock the global performance_monitor so they are not affected
+    by error counters accumulated from other tests in the same process.
+    """
+
+    @staticmethod
+    def _healthy_summary() -> dict:
+        """Return a performance summary representing a healthy process."""
+        return {
+            "monitoring_status": "active",
+            "timestamp": "2026-01-01T00:00:00",
+            "uptime_percentage": 99.9,
+            "system_metrics": {},
+            "request_metrics": {
+                "total_requests": 100,
+                "total_errors": 0,
+                "error_rate": 0,
+                "avg_response_time": 0.05,
+            },
+            "performance_thresholds": {},
+            "top_endpoints": [],
+            "slowest_endpoints": [],
+            "recent_alerts": [],
+        }
 
     @pytest.mark.asyncio
     async def test_system_uptime_metric_not_zero_for_running_app(self):
         """System Uptime metric should not report 0% for a running application."""
         from app.services.metrics_service import Environment, MetricsService
 
-        service = MetricsService()
-        metrics = await service.collect_business_metrics(Environment.DEVELOPMENT)
+        with patch("app.services.metrics_service.performance_monitor") as mock_monitor:
+            mock_monitor.get_performance_summary.return_value = self._healthy_summary()
+
+            service = MetricsService()
+            metrics = await service.collect_business_metrics(Environment.DEVELOPMENT)
 
         uptime_metric = next((m for m in metrics if m.name == "System Uptime"), None)
         assert uptime_metric is not None, "System Uptime metric must be present"
@@ -125,8 +152,11 @@ class TestCollectBusinessMetricsUptime:
         """System Uptime status should not be FAIL when the process is healthy."""
         from app.services.metrics_service import Environment, MetricsService, MetricStatus
 
-        service = MetricsService()
-        metrics = await service.collect_business_metrics(Environment.DEVELOPMENT)
+        with patch("app.services.metrics_service.performance_monitor") as mock_monitor:
+            mock_monitor.get_performance_summary.return_value = self._healthy_summary()
+
+            service = MetricsService()
+            metrics = await service.collect_business_metrics(Environment.DEVELOPMENT)
 
         uptime_metric = next((m for m in metrics if m.name == "System Uptime"), None)
         assert uptime_metric is not None

@@ -45,6 +45,79 @@ from app.core.text.extract_pdf import text_metrics
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# E.14: Common PDF ligature characters → ASCII equivalents
+# ---------------------------------------------------------------------------
+_LIGATURE_MAP: dict[str, str] = {
+    "\ufb00": "ff",  # ff ligature
+    "\ufb01": "fi",  # fi ligature
+    "\ufb02": "fl",  # fl ligature
+    "\ufb03": "ffi",  # ffi ligature
+    "\ufb04": "ffl",  # ffl ligature
+}
+
+# ---------------------------------------------------------------------------
+# E.12: Page number / running header patterns
+# ---------------------------------------------------------------------------
+# "- 15 -" style (standalone, not part of dates like "15 - 03 - 2024")
+_DASH_PAGE_NUM_RE = re.compile(r"(?<!\d )- \d{1,4} -(?! \d)")
+# "Pagina N di M" or "Pag. N di M"
+_PAGINA_RE = re.compile(r"(?i)(?:Pagina|Pag\.)\s+\d+\s+di\s+\d+")
+# Standalone number on its own line (page number artifact)
+_STANDALONE_NUM_RE = re.compile(r"(?m)^\s*\d{1,4}\s*$")
+# Gazzetta Ufficiale running headers
+_GU_HEADER_RE = re.compile(r"(?i)Gazzetta\s+Ufficiale\s+della\s+Repubblica\s+Italiana[^\n]*")
+# "Serie generale - n. 123" running header
+_SERIE_GENERALE_RE = re.compile(r"(?i)Serie\s+generale\s+-\s+n\.\s*\d+[^\n]*")
+
+
+def normalize_ligatures(text: str) -> str:
+    """Replace common PDF ligature characters with ASCII equivalents.
+
+    PDF extraction frequently produces Unicode ligatures (fi, fl, ff, ffi, ffl)
+    that break text search and matching.
+
+    Args:
+        text: Text possibly containing ligature characters.
+
+    Returns:
+        Text with ligatures replaced by their ASCII equivalents.
+    """
+    if not text:
+        return text
+    for lig, replacement in _LIGATURE_MAP.items():
+        text = text.replace(lig, replacement)
+    return text
+
+
+def strip_page_numbers(text: str) -> str:
+    """Remove page numbers and running headers from PDF-extracted text.
+
+    Strips:
+    - "- 15 -" dash-enclosed page numbers
+    - "Pagina N di M" / "Pag. N di M"
+    - Standalone numbers on their own line
+    - Gazzetta Ufficiale running headers
+    - "Serie generale - n. 123" headers
+
+    Preserves numeric content in legal context (penalty amounts, dates).
+
+    Args:
+        text: PDF-extracted text.
+
+    Returns:
+        Text with page numbers and running headers removed.
+    """
+    text = _DASH_PAGE_NUM_RE.sub("", text)
+    text = _PAGINA_RE.sub("", text)
+    text = _GU_HEADER_RE.sub("", text)
+    text = _SERIE_GENERALE_RE.sub("", text)
+    text = _STANDALONE_NUM_RE.sub("", text)
+    # Clean up residual blank lines from removals
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 # Try to import PDF processing dependencies
 try:
     import pdfplumber
@@ -83,7 +156,7 @@ class PageOutput:
 
 
 def _clean_text(text: str) -> str:
-    """Clean extracted text by normalizing whitespace.
+    """Clean extracted text by normalizing whitespace, ligatures, and page artifacts.
 
     Args:
         text: Raw text
@@ -93,11 +166,15 @@ def _clean_text(text: str) -> str:
     """
     if not text:
         return ""
+    # E.14: Replace PDF ligatures before any other processing
+    text = normalize_ligatures(text)
     # Repair broken hyphenation BEFORE collapsing whitespace so the
     # "letter- letter" pattern is still visible.
     from app.core.text.hyphenation import repair_broken_hyphenation
 
     text = repair_broken_hyphenation(text)
+    # E.12: Remove page numbers and running headers before collapsing whitespace
+    text = strip_page_numbers(text)
     # Normalize multiple spaces/newlines to single space
     text = re.sub(r"\s+", " ", text)
     return text.strip()

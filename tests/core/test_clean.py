@@ -6,8 +6,11 @@ from app.core.text.clean import (
     chunk_contains_navigation,
     clean_html,
     clean_italian_text,
+    detect_toc_section,
     is_valid_text,
     normalize_whitespace,
+    strip_preamble,
+    strip_signature_block,
     validate_extracted_content,
 )
 
@@ -426,3 +429,177 @@ class TestChunkContainsNavigation:
         assert chunk_contains_navigation(text, threshold=2) is True
         # But threshold=4 should not flag (only 3 matches, and text is long)
         assert chunk_contains_navigation(text, threshold=4) is False
+
+
+class TestStripPreamble:
+    """E.7: Tests for preamble removal from Italian legal documents."""
+
+    def test_strip_dispone_preamble(self):
+        """Happy path: standard DISPONE preamble is stripped."""
+        text = (
+            "IL DIRETTORE DELL'AGENZIA\n"
+            "In base alle attribuzioni conferitegli dalle norme riportate\n"
+            "nel seguito del presente provvedimento\n"
+            "DISPONE\n"
+            "Art. 1\n"
+            "Le modalità di versamento sono le seguenti."
+        )
+        result = strip_preamble(text)
+
+        assert "IL DIRETTORE" not in result
+        assert "DISPONE" not in result
+        assert "Art. 1" in result
+        assert "modalità di versamento" in result
+
+    def test_strip_decreta_preamble(self):
+        """DECRETA preamble variant is also stripped."""
+        text = (
+            "IL PRESIDENTE DELLA REPUBBLICA\n"
+            "Visti gli articoli 76 e 87 della Costituzione\n"
+            "Vista la legge 23 ottobre 1992\n"
+            "DECRETA\n"
+            "Capo I\n"
+            "Disposizioni generali."
+        )
+        result = strip_preamble(text)
+
+        assert "IL PRESIDENTE" not in result
+        assert "DECRETA" not in result
+        assert "Capo I" in result
+
+    def test_strip_emana_preamble(self):
+        """EMANA variant is stripped."""
+        text = (
+            "IL MINISTRO DELL'ECONOMIA\n"
+            "Visto il decreto legislativo\n"
+            "EMANA\nil seguente regolamento:\n"
+            "Art. 1\n"
+            "Contenuto sostanziale."
+        )
+        result = strip_preamble(text)
+
+        assert "IL MINISTRO" not in result
+        assert "Contenuto sostanziale" in result
+
+    def test_preserve_substantive_content_in_preamble(self):
+        """Content after DISPONE is preserved even when preamble contains legal refs."""
+        text = (
+            "IL DIRETTORE GENERALE\n"
+            "Visto il D.Lgs. 33/2013\n"
+            "DISPONE\n"
+            "1. I soggetti indicati nell'articolo 3 del D.Lgs. 33/2013 "
+            "devono adempiere agli obblighi di pubblicazione."
+        )
+        result = strip_preamble(text)
+
+        assert "D.Lgs. 33/2013" in result
+        assert "obblighi di pubblicazione" in result
+
+    def test_multiple_preamble_patterns_in_document(self):
+        """Document with multiple preamble patterns removes all of them."""
+        text = "IL DIRETTORE\nVisti gli atti\nDISPONE\nArt. 1\nPrima disposizione."
+        result = strip_preamble(text)
+
+        assert "IL DIRETTORE" not in result
+        assert "Prima disposizione" in result
+
+    def test_no_preamble_returns_unchanged(self):
+        """Document without preamble patterns is returned unchanged."""
+        text = "Art. 1\nLe disposizioni del presente decreto si applicano a tutti i soggetti indicati."
+        result = strip_preamble(text)
+
+        assert result == text
+
+    def test_entirely_preamble_returns_empty(self):
+        """Document that is entirely preamble returns empty string."""
+        text = "IL DIRETTORE DELL'AGENZIA\nIn base alle attribuzioni conferitegli\nDISPONE"
+        result = strip_preamble(text)
+
+        assert result.strip() == ""
+
+
+class TestStripSignatureBlock:
+    """E.7: Tests for signature block removal."""
+
+    def test_strip_signature_block(self):
+        """Signature block at end of document is removed."""
+        text = (
+            "Art. 1\n"
+            "Le disposizioni si applicano a tutti.\n"
+            "Art. 2\n"
+            "Entrata in vigore immediata.\n"
+            "Roma, 15 gennaio 2024\n"
+            "IL DIRETTORE DELL'AGENZIA\n"
+            "Ernesto Maria Ruffini"
+        )
+        result = strip_signature_block(text)
+
+        assert "Le disposizioni" in result
+        assert "Ernesto Maria Ruffini" not in result
+        assert "IL DIRETTORE" not in result
+
+    def test_strip_firmato_signature(self):
+        """'Firmato digitalmente' variant is detected and removed."""
+        text = (
+            "Contenuto sostanziale del documento.\n"
+            "Firmato digitalmente da\n"
+            "Il Responsabile del Procedimento\n"
+            "Dott. Mario Rossi"
+        )
+        result = strip_signature_block(text)
+
+        assert "Contenuto sostanziale" in result
+        assert "Firmato digitalmente" not in result
+
+    def test_no_signature_returns_unchanged(self):
+        """Document without signature block is returned unchanged."""
+        text = "Art. 1\nLe disposizioni del presente decreto."
+        result = strip_signature_block(text)
+
+        assert result == text
+
+
+class TestDetectTocSection:
+    """E.11: Tests for Table of Contents detection."""
+
+    def test_detect_toc_section(self):
+        """Happy path: a TOC-like block is detected."""
+        text = (
+            "INDICE\n"
+            "Art. 1 - Disposizioni generali ......... 3\n"
+            "Art. 2 - Ambito di applicazione ......... 5\n"
+            "Art. 3 - Definizioni ......... 7\n"
+            "Art. 4 - Obblighi ......... 10"
+        )
+        assert detect_toc_section(text) is True
+
+    def test_no_false_positive_toc_in_body(self):
+        """Numbered list in body text is NOT flagged as TOC."""
+        text = (
+            "Le seguenti disposizioni si applicano:\n"
+            "1. I soggetti passivi devono presentare la dichiarazione.\n"
+            "2. Il termine di presentazione è fissato al 30 settembre.\n"
+            "3. Le sanzioni per omessa presentazione sono previste.\n"
+            "4. Il responsabile del procedimento è individuato."
+        )
+        assert detect_toc_section(text) is False
+
+    def test_toc_with_dotted_leaders(self):
+        """TOC with dotted leaders ('Art. 1 ......... 3') is detected."""
+        text = (
+            "SOMMARIO\n"
+            "Capitolo 1 .................. 1\n"
+            "Capitolo 2 .................. 15\n"
+            "Capitolo 3 .................. 28"
+        )
+        assert detect_toc_section(text) is True
+
+    def test_toc_with_indice_header(self):
+        """TOC starting with 'Indice' header is detected."""
+        text = "Indice\nPremessa ............ 2\nArt. 1 ............ 4\nArt. 2 ............ 8"
+        assert detect_toc_section(text) is True
+
+    def test_short_text_not_toc(self):
+        """Short text without TOC indicators is not flagged."""
+        text = "Art. 1\nContenuto breve dell'articolo."
+        assert detect_toc_section(text) is False

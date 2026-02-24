@@ -5,7 +5,9 @@ Splits long documents into smaller chunks suitable for:
 - FTS indexing
 - Retrieval
 
-Uses token-based chunking with overlap to preserve context.
+Uses section-aware chunking for Italian legal documents (splitting at
+Art./Titolo/Capo boundaries) with sentence-based fallback for
+documents without structural markers.
 
 Quality gates: Computes quality metrics for each chunk and optionally
 drops junk chunks based on JUNK_DROP_CHUNK config.
@@ -29,6 +31,20 @@ from app.core.text.clean import chunk_contains_navigation
 from app.core.text.extract_pdf import text_metrics
 
 logger = logging.getLogger(__name__)
+
+# Regex for Italian legal section boundaries: Art., Titolo, Capo, Sezione
+# Matches at the start of a line (after optional whitespace).
+_SECTION_BOUNDARY_RE = re.compile(
+    r"(?m)^[ \t]*("
+    r"Art\.\s+\d+(?:-(?:bis|ter|quater|quinquies|sexies|septies|octies|novies|decies))?"
+    r"|TITOLO\s+[IVXLCDM]+"
+    r"|Titolo\s+[IVXLCDM]+"
+    r"|CAPO\s+[IVXLCDM]+"
+    r"|Capo\s+[IVXLCDM]+"
+    r"|SEZIONE\s+[IVXLCDM]+"
+    r"|Sezione\s+[IVXLCDM]+"
+    r")\b"
+)
 
 
 @dataclass
@@ -58,6 +74,139 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 4
 
 
+def split_at_section_boundaries(text: str) -> list[str]:
+    """Split Italian legal text at structural boundaries.
+
+    Detects Art., Titolo, Capo, and Sezione markers and splits text into
+    sections. Text before the first marker (preamble) is returned as the
+    first section.
+
+    Args:
+        text: Document text possibly containing legal section markers.
+
+    Returns:
+        List of section strings. Empty list if no section markers found
+        (caller should fall back to sentence splitting).
+    """
+    matches = list(_SECTION_BOUNDARY_RE.finditer(text))
+    if not matches:
+        return []
+
+    sections: list[str] = []
+
+    # Text before the first marker (preamble)
+    preamble = text[: matches[0].start()].strip()
+    if preamble:
+        sections.append(preamble)
+
+    # Each section runs from its marker to the start of the next marker
+    for i, match in enumerate(matches):
+        start = match.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        section_text = text[start:end].strip()
+        if section_text:
+            sections.append(section_text)
+
+    return sections
+
+
+def _extract_section_heading(section: str) -> str:
+    """Extract the heading line from a section (e.g. 'Art. 5').
+
+    Returns the first line up to the first newline, or the matched
+    section marker.
+    """
+    first_line_end = section.find("\n")
+    if first_line_end == -1:
+        return section.strip()
+    return section[:first_line_end].strip()
+
+
+def _chunk_section_with_context(
+    section: str,
+    heading: str,
+    max_chars: int,
+    overlap_chars: int,
+    chunk_index_start: int,
+    char_offset: int,
+) -> list[TextChunk]:
+    """Sub-chunk a single section, prepending heading context to each sub-chunk.
+
+    If the section fits within max_chars, returns it as a single chunk.
+    Otherwise, splits on sentence boundaries and prepends the heading to
+    each sub-chunk.
+    """
+    if len(section) <= max_chars:
+        return [
+            TextChunk(
+                text=section,
+                chunk_index=chunk_index_start,
+                token_count=estimate_tokens(section),
+                start_char=char_offset,
+                end_char=char_offset + len(section),
+            )
+        ]
+
+    # Need to sub-split: extract body (everything after heading line)
+    heading_line = _extract_section_heading(section)
+    body_start = section.find("\n")
+    body = section[body_start:].strip() if body_start != -1 else section
+
+    # Split body into sentences for sub-chunking
+    sentences = split_into_sentences(body)
+    prefix = f"[{heading_line}] "
+    prefix_len = len(prefix)
+    effective_max = max_chars - prefix_len
+
+    chunks: list[TextChunk] = []
+    current_sentences: list[str] = []
+    current_length = 0
+
+    for sentence in sentences:
+        sent_len = len(sentence)
+        if current_length + sent_len > effective_max and current_sentences:
+            chunk_body = " ".join(current_sentences)
+            chunk_content = prefix + chunk_body
+            chunks.append(
+                TextChunk(
+                    text=chunk_content,
+                    chunk_index=chunk_index_start + len(chunks),
+                    token_count=estimate_tokens(chunk_content),
+                    start_char=char_offset,
+                    end_char=char_offset + len(chunk_body),
+                )
+            )
+            # Overlap: keep last sentences that fit
+            overlap_sents: list[str] = []
+            overlap_len = 0
+            for s in reversed(current_sentences):
+                if overlap_len + len(s) <= overlap_chars:
+                    overlap_sents.insert(0, s)
+                    overlap_len += len(s) + 1
+                else:
+                    break
+            current_sentences = overlap_sents
+            current_length = overlap_len
+
+        current_sentences.append(sentence)
+        current_length += sent_len + 1
+
+    if current_sentences:
+        chunk_body = " ".join(current_sentences)
+        chunk_content = prefix + chunk_body
+        chunks.append(
+            TextChunk(
+                text=chunk_content,
+                chunk_index=chunk_index_start + len(chunks),
+                token_count=estimate_tokens(chunk_content),
+                start_char=char_offset,
+                end_char=char_offset + len(chunk_body),
+            )
+        )
+
+    return chunks
+
+
 def chunk_text(text: str, max_tokens: int | None = None, overlap_tokens: int | None = None) -> list[TextChunk]:
     """Chunk text into smaller pieces with overlap.
 
@@ -84,7 +233,46 @@ def chunk_text(text: str, max_tokens: int | None = None, overlap_tokens: int | N
     max_chars = max_tokens * 4
     overlap_chars = overlap_tokens * 4
 
-    # Split text into sentences (Italian-aware)
+    # Try section-aware splitting first (Italian legal documents)
+    sections = split_at_section_boundaries(text)
+    if sections:
+        return _chunk_sections(sections, max_chars, overlap_chars)
+
+    # Fallback: sentence-based splitting for non-structured documents
+    return _chunk_by_sentences(text, max_chars, overlap_chars)
+
+
+def _chunk_sections(
+    sections: list[str],
+    max_chars: int,
+    overlap_chars: int,
+) -> list[TextChunk]:
+    """Chunk pre-split sections, sub-splitting oversized ones with heading context."""
+    chunks: list[TextChunk] = []
+    char_offset = 0
+
+    for section in sections:
+        heading = _extract_section_heading(section)
+        section_chunks = _chunk_section_with_context(
+            section=section,
+            heading=heading,
+            max_chars=max_chars,
+            overlap_chars=overlap_chars,
+            chunk_index_start=len(chunks),
+            char_offset=char_offset,
+        )
+        chunks.extend(section_chunks)
+        char_offset += len(section) + 1  # +1 for separator
+
+    return chunks
+
+
+def _chunk_by_sentences(
+    text: str,
+    max_chars: int,
+    overlap_chars: int,
+) -> list[TextChunk]:
+    """Original sentence-based chunking (fallback for non-structured text)."""
     sentences = split_into_sentences(text)
 
     chunks: list[TextChunk] = []
@@ -97,7 +285,6 @@ def chunk_text(text: str, max_tokens: int | None = None, overlap_tokens: int | N
 
         # If adding this sentence would exceed max, create a chunk
         if current_length + sentence_length > max_chars and current_chunk:
-            # Create chunk
             chunk_content = " ".join(current_chunk)
             chunks.append(
                 TextChunk(
@@ -109,8 +296,6 @@ def chunk_text(text: str, max_tokens: int | None = None, overlap_tokens: int | N
                 )
             )
 
-            # Start new chunk with overlap
-            # Keep last few sentences for context
             overlap_sentences: list[str] = []
             overlap_length = 0
             for s in reversed(current_chunk):
@@ -124,11 +309,9 @@ def chunk_text(text: str, max_tokens: int | None = None, overlap_tokens: int | N
             current_length = overlap_length
             chunk_start = chunk_start + len(chunk_content) - overlap_length
 
-        # Add sentence to current chunk
         current_chunk.append(sentence)
-        current_length += sentence_length + 1  # +1 for space
+        current_length += sentence_length + 1
 
-    # Add final chunk if any
     if current_chunk:
         chunk_content = " ".join(current_chunk)
         chunks.append(

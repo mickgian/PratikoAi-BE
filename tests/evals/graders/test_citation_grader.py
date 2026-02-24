@@ -338,3 +338,83 @@ class TestCitationGrader:
         result = grader.grade(test_case, response, source_docs)
         assert result.metrics is not None
         assert result.metrics["valid_citation_ratio"] == 1.0
+
+    def test_decomposed_number_matching(self, grader: CitationGrader) -> None:
+        """Test that 'Legge 104/1992' matches source with 'n. 104' and '1992' separately."""
+        test_case = TestCase(
+            id="CITATION-014",
+            category=TestCaseCategory.RESPONSE,
+            query="Test query",
+        )
+        response = {
+            "citations": [
+                {"text": "Legge 104/1992", "source_id": "DOC-001"},
+            ],
+        }
+        source_docs = [
+            {"id": "DOC-001", "content": "Legge 5 febbraio 1992, n. 104 - Legge-quadro"},
+        ]
+        result = grader.grade(test_case, response, source_docs)
+        assert result.metrics is not None
+        assert result.metrics["valid_citation_ratio"] == 1.0
+
+    def test_codice_civile_abbreviation_matching(self, grader: CitationGrader) -> None:
+        """Test that 'Art. 2120 c.c.' matches source with 'codice civile'."""
+        test_case = TestCase(
+            id="CITATION-015",
+            category=TestCaseCategory.RESPONSE,
+            query="Test query",
+        )
+        response = {
+            "citations": [
+                {"text": "Art. 2120 c.c.", "source_id": "DOC-001"},
+            ],
+        }
+        source_docs = [
+            {"id": "DOC-001", "content": "Art. 2120 Codice Civile - Disciplina del TFR"},
+        ]
+        result = grader.grade(test_case, response, source_docs)
+        assert result.metrics is not None
+        assert result.metrics["valid_citation_ratio"] == 1.0
+
+    def test_article_reference_matching(self, grader: CitationGrader) -> None:
+        """Test that standalone 'Art. 3' matches source containing 'Art. 3'."""
+        test_case = TestCase(
+            id="CITATION-016",
+            category=TestCaseCategory.RESPONSE,
+            query="Test query",
+        )
+        response = {
+            "citations": [
+                {"text": "Art. 3", "source_id": "DOC-001"},
+            ],
+        }
+        source_docs = [
+            {"id": "DOC-001", "content": "Secondo l'Art. 3 della presente legge, i soggetti aventi diritto..."},
+        ]
+        result = grader.grade(test_case, response, source_docs)
+        assert result.metrics is not None
+        assert result.metrics["valid_citation_ratio"] == 1.0
+
+    def test_regression_response_reg_001_pattern(self, grader: CitationGrader) -> None:
+        """Regression test: RESPONSE-REG-001 pattern with expanded source docs."""
+        test_case = TestCase(
+            id="REG-PATTERN-001",
+            category=TestCaseCategory.RESPONSE,
+            query="Quali sono i benefici della Legge 104/1992?",
+            expected_citations=["Legge 104/1992", "Art. 3"],
+        )
+        response = {
+            "text": "La Legge 104/1992 prevede diversi benefici.",
+            "citations": [
+                {"text": "Legge 104/1992", "source_id": "LEGGE-104-1992"},
+                {"text": "Art. 3", "source_id": "LEGGE-104-1992-ART3"},
+            ],
+        }
+        source_docs = [
+            {"id": "LEGGE-104-1992", "content": "Legge 104/1992 - Legge 5 febbraio 1992, n. 104."},
+            {"id": "LEGGE-104-1992-ART3", "content": "Art. 3 - Legge 104/1992. Soggetti aventi diritto."},
+        ]
+        result = grader.grade(test_case, response, source_docs)
+        assert result.passed is True
+        assert result.score >= 0.7

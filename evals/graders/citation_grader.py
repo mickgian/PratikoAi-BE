@@ -341,7 +341,9 @@ class CitationGrader:
     def _citation_in_content(self, citation: str, content: str) -> bool:
         """Check if a citation reference appears in content.
 
-        Uses fuzzy matching for Italian legal citations.
+        Uses fuzzy matching for Italian legal citations, handling
+        common format variations (e.g., "Legge 104/1992" vs "n. 104"
+        + "1992", "c.c." vs "codice civile").
 
         Args:
             citation: Lowercase citation text
@@ -364,7 +366,34 @@ class CitationGrader:
         # Extract key identifiers (numbers, law types)
         # e.g., "legge 104/1992" -> check for "104/1992"
         numbers = re.findall(r"\d+/\d{4}", citation)
-        return any(num in content for num in numbers)
+        if any(num in content for num in numbers):
+            return True
+
+        # Decomposed number matching: "104/1992" -> check both "104" and "1992"
+        # Handles Italian format "n. 104" + "1992" in source content
+        for num in numbers:
+            law_num, year = num.split("/")
+            if law_num in content and year in content:
+                return True
+
+        # Handle "c.c." / "codice civile" / "cod. civ." equivalence
+        cc_variants = ("c.c.", "codice civile", "cod. civ.")
+        citation_has_cc = any(v in citation for v in cc_variants)
+        content_has_cc = any(v in content for v in cc_variants)
+        if citation_has_cc and content_has_cc:
+            # Extract article number and check if it appears in content
+            art_match = re.search(r"art\.?\s*(\d+)", citation)
+            if art_match and art_match.group(1) in content:
+                return True
+
+        # Handle standalone article references: "art. N" in both citation and content
+        art_match = re.search(r"art\.?\s*(\d+)", citation)
+        if art_match:
+            art_pattern = rf"art\.?\s*{re.escape(art_match.group(1))}\b"
+            if re.search(art_pattern, content):
+                return True
+
+        return False
 
     def _normalize_citation(self, text: str) -> str:
         """Normalize citation text for comparison.

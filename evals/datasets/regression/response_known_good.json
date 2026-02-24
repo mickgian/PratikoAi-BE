@@ -13,7 +13,8 @@
         ]
       },
       "source_docs": [
-        {"id": "LEGGE-104-1992", "content": "Legge 5 febbraio 1992, n. 104 - Legge-quadro per l'assistenza, l'integrazione sociale e i diritti delle persone handicappate."}
+        {"id": "LEGGE-104-1992", "content": "Legge 104/1992 - Legge 5 febbraio 1992, n. 104. Legge-quadro per l'assistenza, l'integrazione sociale e i diritti delle persone handicappate. La presente legge detta i principi dell'ordinamento in materia di diritti, integrazione sociale e assistenza della persona handicappata."},
+        {"id": "LEGGE-104-1992-ART3", "content": "Art. 3 - Legge 104/1992. Soggetti aventi diritto. È persona handicappata colui che presenta una minorazione fisica, psichica o sensoriale che è causa di difficoltà di apprendimento, di relazione o di integrazione lavorativa."}
       ]
     },
     "grader_type": "code",
@@ -35,7 +36,8 @@
         ]
       },
       "source_docs": [
-        {"id": "L-190-2014", "content": "Legge 23 dicembre 2014, n. 190 - Disposizioni per la formazione del bilancio annuale e pluriennale dello Stato."}
+        {"id": "L-190-2014", "content": "L. 190/2014 - Legge 23 dicembre 2014, n. 190. Disposizioni per la formazione del bilancio annuale e pluriennale dello Stato (Legge di stabilità 2015). Art. 1, commi 54-89: regime forfettario per contribuenti persone fisiche esercenti attività d'impresa, arti e professioni."},
+        {"id": "L-190-2014-ART1", "content": "Art. 1 comma 54 - L. 190/2014. I contribuenti persone fisiche esercenti attività d'impresa, arti o professioni applicano il regime forfetario di cui al presente comma e ai commi da 55 a 89 del presente articolo, se nell'anno precedente hanno conseguito ricavi o percepito compensi non superiori a 85.000 euro."}
       ]
     },
     "grader_type": "code",
@@ -56,7 +58,7 @@
         ]
       },
       "source_docs": [
-        {"id": "DLGS-81-2008", "content": "Decreto Legislativo 9 aprile 2008, n. 81 - Testo unico sulla salute e sicurezza sul lavoro."}
+        {"id": "DLGS-81-2008", "content": "D.Lgs. 81/2008 - Decreto Legislativo 9 aprile 2008, n. 81. Attuazione dell'articolo 1 della legge 3 agosto 2007, n. 123, in materia di tutela della salute e della sicurezza nei luoghi di lavoro. Testo unico sulla salute e sicurezza sul lavoro."}
       ]
     },
     "grader_type": "code",
@@ -77,7 +79,7 @@
         ]
       },
       "source_docs": [
-        {"id": "CC-ART-2120", "content": "Art. 2120 Codice Civile - Disciplina del trattamento di fine rapporto."}
+        {"id": "CC-ART-2120", "content": "Art. 2120 c.c. - Codice Civile, Articolo 2120. Disciplina del trattamento di fine rapporto. In ogni caso di cessazione del rapporto di lavoro subordinato, il prestatore di lavoro ha diritto ad un trattamento di fine rapporto."}
       ]
     },
     "grader_type": "code",
@@ -99,7 +101,8 @@
         ]
       },
       "source_docs": [
-        {"id": "TUIR-ART-15", "content": "Art. 15 D.P.R. 917/1986 - Detrazioni per oneri."}
+        {"id": "TUIR-ART-15", "content": "Art. 15 TUIR - D.P.R. 917/1986, Articolo 15. Detrazione per oneri. Dall'imposta lorda si detrae un importo pari al 19 per cento dei seguenti oneri sostenuti dal contribuente, se non deducibili nella determinazione dei singoli redditi."},
+        {"id": "DPR-917-1986", "content": "D.P.R. 917/1986 - Decreto del Presidente della Repubblica 22 dicembre 1986, n. 917. Approvazione del testo unico delle imposte sui redditi (TUIR). Art. 15: Detrazione per oneri."}
       ]
     },
     "grader_type": "code",

@@ -410,8 +410,8 @@ class MetricsService:
     async def _get_api_response_time_p95(self) -> float:
         """Get 95th percentile API response time in milliseconds."""
         try:
-            # Get performance summary from performance monitor
-            summary = await performance_monitor.get_performance_summary()  # type: ignore[misc]
+            # get_performance_summary() is synchronous - do not await
+            summary = performance_monitor.get_performance_summary()
 
             # Calculate P95 from request metrics
             response_times = []
@@ -490,9 +490,9 @@ class MetricsService:
     async def _get_system_uptime(self) -> float:
         """Get system uptime percentage over last 30 days."""
         try:
-            # Get uptime data from performance monitor
-            summary = await performance_monitor.get_performance_summary()  # type: ignore[misc]
-            return cast(float, summary.get("uptime_percentage", 99.9))  # Default to high uptime
+            # get_performance_summary() is synchronous - do not await
+            summary = performance_monitor.get_performance_summary()
+            return cast(float, summary.get("uptime_percentage", 0.0))
         except Exception as e:
             self.logger.error(f"Error getting system uptime: {e}")
             return 0.0

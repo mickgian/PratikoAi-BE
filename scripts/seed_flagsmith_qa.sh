@@ -173,7 +173,18 @@ FLAGS_JSON=$(cat <<'FLAGSEOF'
   {"name": "HYBRID_WEIGHT_RECENCY", "default_enabled": true, "initial_value": "0.10"},
   {"name": "HYBRID_WEIGHT_QUALITY", "default_enabled": true, "initial_value": "0.10"},
   {"name": "HYBRID_WEIGHT_SOURCE", "default_enabled": true, "initial_value": "0.05"},
-  {"name": "CONTEXT_TOP_K", "default_enabled": true, "initial_value": "25"}
+  {"name": "CONTEXT_TOP_K", "default_enabled": true, "initial_value": "25"},
+  {"name": "DEBUG", "default_enabled": false, "initial_value": ""},
+  {"name": "LOG_LEVEL", "default_enabled": true, "initial_value": "INFO"},
+  {"name": "SLACK_ENABLED", "default_enabled": false, "initial_value": ""},
+  {"name": "INGESTION_REPORT_ENABLED", "default_enabled": true, "initial_value": ""},
+  {"name": "DAILY_COST_REPORT_ENABLED", "default_enabled": true, "initial_value": ""},
+  {"name": "EVAL_REPORT_ENABLED", "default_enabled": true, "initial_value": ""},
+  {"name": "LLM_MODEL_INTENT", "default_enabled": true, "initial_value": ""},
+  {"name": "LLM_MODEL_REFORMULATION", "default_enabled": true, "initial_value": ""},
+  {"name": "LLM_MODEL_MULTI_QUERY", "default_enabled": true, "initial_value": ""},
+  {"name": "HYDE_MODEL", "default_enabled": true, "initial_value": "anthropic:claude-3-haiku-20240307"},
+  {"name": "HF_INTENT_MODEL", "default_enabled": true, "initial_value": "mdeberta"}
 ]
 FLAGSEOF
 )

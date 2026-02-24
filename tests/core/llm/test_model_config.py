@@ -162,6 +162,42 @@ class TestModelTierEnum:
             ModelTier("invalid_tier")
 
 
+class TestResolveModelFromEnvFlagsmith:
+    """Tests for resolve_model_from_env with Flagsmith integration."""
+
+    @patch.dict(os.environ, _CLEAR_ENV)
+    @patch("app.core.remote_config.get_config")
+    def test_resolve_uses_flagsmith_value(self, mock_get_config):
+        """resolve_model_from_env should use Flagsmith via get_config."""
+        from app.core.llm.model_config import resolve_model_from_env
+
+        mock_get_config.return_value = "anthropic:claude-3-haiku-20240307"
+
+        config = LLMModelConfig()
+        config.load()
+        provider, model = resolve_model_from_env("LLM_MODEL_INTENT", config, ModelTier.BASIC)
+
+        assert provider == "anthropic"
+        assert model == "claude-3-haiku-20240307"
+        mock_get_config.assert_called_with("LLM_MODEL_INTENT", "")
+
+    @patch.dict(os.environ, _CLEAR_ENV)
+    @patch("app.core.remote_config.get_config")
+    def test_resolve_falls_back_to_tier_when_empty(self, mock_get_config):
+        """When get_config returns empty string, falls back to tier config."""
+        from app.core.llm.model_config import resolve_model_from_env
+
+        mock_get_config.return_value = ""
+
+        config = LLMModelConfig()
+        config.load()
+        provider, model = resolve_model_from_env("LLM_MODEL_INTENT", config, ModelTier.BASIC)
+
+        # Should fall back to BASIC tier defaults
+        assert provider == "openai"
+        assert model == "gpt-4o-mini"
+
+
 class TestModelConfigSingleton:
     """Tests for singleton behavior."""
 

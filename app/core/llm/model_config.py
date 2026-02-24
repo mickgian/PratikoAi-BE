@@ -124,7 +124,9 @@ def resolve_model_from_env(
     Checks env var first, falls back to tier config.
     Supports provider:model format, bare model names, and aliases.
     """
-    value = os.getenv(env_var)
+    from app.core.remote_config import get_config
+
+    value = get_config(env_var, "")
     if value:
         from app.core.llm.model_registry import get_model_registry
 

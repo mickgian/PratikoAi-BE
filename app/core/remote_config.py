@@ -89,6 +89,28 @@ def _get_flagsmith():
     return _flagsmith_client
 
 
+def _flagsmith_has_key(key: str) -> bool:
+    """Check if Flagsmith has an explicit value for this key (no env fallback).
+
+    Used by apply_environment_settings() to avoid overwriting Flagsmith-sourced values.
+
+    Args:
+        key: The Flagsmith feature key to check.
+
+    Returns:
+        True if Flagsmith is configured and has a non-None value for this key.
+    """
+    client = _get_flagsmith()
+    if client is None:
+        return False
+    try:
+        flags = client.get_environment_flags()
+        value = flags.get_feature_value(key)
+        return value is not None
+    except Exception:
+        return False
+
+
 def get_config(key: str, default: str) -> str:
     """Get a configuration value with Flagsmith -> env var -> default fallback.
 

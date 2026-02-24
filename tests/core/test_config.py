@@ -302,6 +302,61 @@ class TestSettings:
         assert settings.DEFAULT_LLM_TEMPERATURE == 0.2
 
 
+class TestFlagsmithIntegration:
+    """Test Flagsmith integration with Settings."""
+
+    @patch("app.core.config.get_environment")
+    @patch("app.core.config.load_env_file")
+    @patch("app.core.remote_config.get_feature_flag")
+    def test_cache_enabled_uses_flagsmith(self, mock_flag, mock_load_env, mock_get_env):
+        """CACHE_ENABLED should be set via get_feature_flag."""
+        mock_get_env.return_value = Environment.DEVELOPMENT
+        mock_flag.return_value = False
+
+        Settings()
+
+        # get_feature_flag should have been called with CACHE_ENABLED
+        calls = [c for c in mock_flag.call_args_list if c[0][0] == "CACHE_ENABLED"]
+        assert len(calls) >= 1
+        assert calls[0] == ((("CACHE_ENABLED",), {"default": True}))
+
+    @patch("app.core.config.get_environment")
+    @patch("app.core.config.load_env_file")
+    @patch("app.core.remote_config.get_feature_flag")
+    def test_debug_uses_flagsmith(self, mock_flag, mock_load_env, mock_get_env):
+        """DEBUG should be set via get_feature_flag."""
+        mock_get_env.return_value = Environment.QA
+        mock_flag.return_value = True
+
+        Settings()
+
+        # get_feature_flag should have been called with DEBUG
+        calls = [c for c in mock_flag.call_args_list if c[0][0] == "DEBUG"]
+        assert len(calls) >= 1
+
+    @patch("app.core.config.get_environment")
+    @patch("app.core.config.load_env_file")
+    @patch("app.core.remote_config._flagsmith_has_key")
+    @patch.dict(os.environ, {}, clear=True)
+    def test_apply_env_settings_respects_flagsmith(self, mock_has_key, mock_load_env, mock_get_env):
+        """apply_environment_settings should not override values that come from Flagsmith."""
+        mock_get_env.return_value = Environment.PRODUCTION
+
+        # Simulate Flagsmith providing DEBUG and LOG_LEVEL
+        def has_key_side_effect(key):
+            return key in ("DEBUG", "LOG_LEVEL")
+
+        mock_has_key.side_effect = has_key_side_effect
+
+        Settings()
+
+        # Flagsmith-sourced values should NOT be overwritten by env-specific defaults
+        # _flagsmith_has_key was called for the env_settings keys
+        flagsmith_checked_keys = [c[0][0] for c in mock_has_key.call_args_list]
+        assert "DEBUG" in flagsmith_checked_keys
+        assert "LOG_LEVEL" in flagsmith_checked_keys
+
+
 class TestApplyEnvironmentSettings:
     """Test apply_environment_settings method."""
 

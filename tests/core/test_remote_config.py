@@ -109,6 +109,52 @@ class TestInitFlagsmith:
             assert result is mock_client
 
 
+class TestFlagsmithHasKey:
+    """Tests for _flagsmith_has_key() helper."""
+
+    def test_returns_false_when_flagsmith_unavailable(self) -> None:
+        """When Flagsmith is not configured, always returns False."""
+        from app.core.remote_config import _flagsmith_has_key
+
+        # No FLAGSMITH_SERVER_KEY → client is None → returns False
+        assert _flagsmith_has_key("ANY_KEY") is False
+
+    def test_returns_false_for_unknown_key(self) -> None:
+        """Returns False when Flagsmith client raises or returns None value."""
+        from app.core.remote_config import _flagsmith_has_key
+
+        mock_client = MagicMock()
+        mock_flags = MagicMock()
+        mock_flags.get_feature_value.return_value = None
+        mock_client.get_environment_flags.return_value = mock_flags
+
+        with patch("app.core.remote_config._get_flagsmith", return_value=mock_client):
+            assert _flagsmith_has_key("UNKNOWN_KEY") is False
+            mock_flags.get_feature_value.assert_called_once_with("UNKNOWN_KEY")
+
+    def test_returns_true_when_key_exists(self) -> None:
+        """Returns True when Flagsmith has a non-None value for the key."""
+        from app.core.remote_config import _flagsmith_has_key
+
+        mock_client = MagicMock()
+        mock_flags = MagicMock()
+        mock_flags.get_feature_value.return_value = "some_value"
+        mock_client.get_environment_flags.return_value = mock_flags
+
+        with patch("app.core.remote_config._get_flagsmith", return_value=mock_client):
+            assert _flagsmith_has_key("EXISTING_KEY") is True
+
+    def test_returns_false_on_exception(self) -> None:
+        """Returns False when Flagsmith raises an exception."""
+        from app.core.remote_config import _flagsmith_has_key
+
+        mock_client = MagicMock()
+        mock_client.get_environment_flags.side_effect = Exception("connection error")
+
+        with patch("app.core.remote_config._get_flagsmith", return_value=mock_client):
+            assert _flagsmith_has_key("ANY_KEY") is False
+
+
 class TestDefaultFlagHandler:
     """Tests for the default_flag_handler used when a flag key is unknown."""
 

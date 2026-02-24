@@ -135,7 +135,9 @@ class Settings:
             "DESCRIPTION", "A production-ready FastAPI template with LangGraph and Langfuse integration"
         )
         self.API_V1_STR = os.getenv("API_V1_STR", "/api/v1")
-        self.DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "t", "yes")
+        from app.core.remote_config import get_config, get_feature_flag
+
+        self.DEBUG = get_feature_flag("DEBUG", default=False)
 
         # Base URL configuration
         self.BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
@@ -181,7 +183,6 @@ class Settings:
         # Production LLM model (format: provider:model, e.g., "openai:gpt-4o")
         # Used in normal chat and marked as "Modello Corrente" in comparison feature
         # Runtime-tunable via Flagsmith (ADR-031)
-        from app.core.remote_config import get_config
 
         self.PRODUCTION_LLM_MODEL = get_config("PRODUCTION_LLM_MODEL", "openai:gpt-4o")
 
@@ -215,7 +216,7 @@ class Settings:
 
         # Logging Configuration
         self.LOG_DIR = Path(os.getenv("LOG_DIR", "logs"))
-        self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+        self.LOG_LEVEL = get_config("LOG_LEVEL", "INFO")
         self.LOG_FORMAT = os.getenv("LOG_FORMAT", "json")  # "json" or "console"
 
         # Postgres Configuration
@@ -231,7 +232,7 @@ class Settings:
         self.REDIS_MAX_CONNECTIONS = int(os.getenv("REDIS_MAX_CONNECTIONS", "10"))
 
         # Caching Configuration
-        self.CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() in ("true", "1", "t", "yes")
+        self.CACHE_ENABLED = get_feature_flag("CACHE_ENABLED", default=True)
         self.CACHE_DEFAULT_TTL = int(os.getenv("CACHE_DEFAULT_TTL", "3600"))  # 1 hour
         self.CACHE_CONVERSATION_TTL = int(os.getenv("CACHE_CONVERSATION_TTL", "7200"))  # 2 hours
         self.CACHE_LLM_RESPONSE_TTL = int(os.getenv("CACHE_LLM_RESPONSE_TTL", "86400"))  # 24 hours
@@ -330,12 +331,7 @@ class Settings:
         # Time to send report in HH:MM format (Europe/Rome timezone)
         self.INGESTION_REPORT_TIME = os.getenv("INGESTION_REPORT_TIME", "06:00")
         # Enable/disable the daily ingestion report
-        self.INGESTION_REPORT_ENABLED = os.getenv("INGESTION_REPORT_ENABLED", "true").lower() in (
-            "true",
-            "1",
-            "t",
-            "yes",
-        )
+        self.INGESTION_REPORT_ENABLED = get_feature_flag("INGESTION_REPORT_ENABLED", default=True)
 
         # Embedding Backfill Configuration
         # Automatically repairs missing embeddings from failed API calls during ingestion
@@ -355,12 +351,7 @@ class Settings:
         # Time to send report in HH:MM format (Europe/Rome timezone)
         self.DAILY_COST_REPORT_TIME = os.getenv("DAILY_COST_REPORT_TIME", "07:00")
         # Enable/disable the daily cost report
-        self.DAILY_COST_REPORT_ENABLED = os.getenv("DAILY_COST_REPORT_ENABLED", "true").lower() in (
-            "true",
-            "1",
-            "t",
-            "yes",
-        )
+        self.DAILY_COST_REPORT_ENABLED = get_feature_flag("DAILY_COST_REPORT_ENABLED", default=True)
 
         # Evaluation Report Configuration (DEV-252)
         # Recipients (comma-separated) for nightly/weekly evaluation reports
@@ -368,12 +359,7 @@ class Settings:
         # Time to run daily evaluation report in HH:MM format (Europe/Rome timezone)
         self.EVAL_REPORT_TIME = os.getenv("EVAL_REPORT_TIME", "06:00")
         # Enable/disable evaluation report emails
-        self.EVAL_REPORT_ENABLED = os.getenv("EVAL_REPORT_ENABLED", "true").lower() in (
-            "true",
-            "1",
-            "t",
-            "yes",
-        )
+        self.EVAL_REPORT_ENABLED = get_feature_flag("EVAL_REPORT_ENABLED", default=True)
 
         # RSS Collection Configuration
         # Time to run daily RSS collection in HH:MM format (Europe/Rome timezone)
@@ -383,7 +369,7 @@ class Settings:
         # Modern Slack webhooks require separate webhooks for each channel
         self.SLACK_WEBHOOK_URL_ARCHITECT = os.getenv("SLACK_WEBHOOK_URL_ARCHITECT", "")
         self.SLACK_WEBHOOK_URL_SCRUM = os.getenv("SLACK_WEBHOOK_URL_SCRUM", "")
-        self.SLACK_ENABLED = os.getenv("SLACK_ENABLED", "false").lower() in ("true", "1", "t", "yes")
+        self.SLACK_ENABLED = get_feature_flag("SLACK_ENABLED", default=False)
 
         # Security and Antivirus Settings
         self.ENABLE_EXTERNAL_AV_SCAN = os.getenv("ENABLE_EXTERNAL_AV_SCAN", "false").lower() in (
@@ -408,12 +394,7 @@ class Settings:
 
         # Web Verification Settings (DEV-245)
         self.BRAVE_SEARCH_API_KEY: str | None = os.getenv("BRAVE_SEARCH_API_KEY") or None
-        self.WEB_VERIFICATION_ENABLED = os.getenv("WEB_VERIFICATION_ENABLED", "true").lower() in (
-            "true",
-            "1",
-            "t",
-            "yes",
-        )
+        self.WEB_VERIFICATION_ENABLED = get_feature_flag("WEB_VERIFICATION_ENABLED", default=True)
         # DEV-245: Configurable Brave search weight for Parallel Hybrid RAG
         # Equal to BM25 (0.3) for balanced KB + web influence
         # Range: 0.0 (disabled) to 0.4 (max recommended)
@@ -474,11 +455,13 @@ class Settings:
         # Get settings for current environment
         current_env_settings = env_settings.get(self.ENVIRONMENT, {})
 
-        # Apply settings if not explicitly set in environment variables
+        # Apply settings if not explicitly set in environment variables or Flagsmith
+        from app.core.remote_config import _flagsmith_has_key
+
         for key, value in current_env_settings.items():
             env_var_name = key.upper()
-            # Only override if environment variable wasn't explicitly set
-            if env_var_name not in os.environ:
+            # Only override if neither environment variable nor Flagsmith provides this value
+            if env_var_name not in os.environ and not _flagsmith_has_key(env_var_name):
                 setattr(self, key, value)
 
 
@@ -561,13 +544,13 @@ SOURCE_AUTHORITY_WEIGHTS = {
 # Zero-shot: "mdeberta" (default), "bart"
 # Fine-tuned: any HuggingFace Hub path, e.g. "pratikoai/intent-classifier-v1"
 # The classifier auto-detects pipeline type from the model config.
-HF_INTENT_MODEL = os.getenv("HF_INTENT_MODEL", "mdeberta")
+HF_INTENT_MODEL = _rc_get_config("HF_INTENT_MODEL", "mdeberta")
 
 # HyDE-specific Model Configuration (DEV-251 Phase 5b)
 # Uses provider:model format via resolve_model_from_env().
 # Separate from BASIC tier to allow HyDE to use faster Haiku while other
 # BASIC operations remain on GPT-4o-mini. This reduces HyDE latency from ~20s to ~3-5s.
-HYDE_MODEL = os.getenv("HYDE_MODEL", "anthropic:claude-3-haiku-20240307")
+HYDE_MODEL = _rc_get_config("HYDE_MODEL", "anthropic:claude-3-haiku-20240307")
 
 # Map short names to full HuggingFace model names
 HF_MODEL_MAP = {

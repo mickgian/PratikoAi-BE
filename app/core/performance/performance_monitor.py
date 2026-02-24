@@ -543,9 +543,18 @@ class PerformanceMonitor:
                 if datetime.fromisoformat(alert["timestamp"]) >= current_time - timedelta(hours=1)
             ]
 
+            # A self-reporting system is up whenever it can execute this code.
+            # Historical downtime tracking requires external monitoring (e.g.
+            # Prometheus "up" metric).  For this internal metric we report 100%
+            # when the process is healthy, and degrade only if recent error
+            # rates indicate instability.
+            error_rate = request_summary.get("error_rate", 0)
+            uptime_percentage = max(100.0 - error_rate, 0.0)
+
             summary = {
                 "monitoring_status": "active" if self.enabled else "inactive",
                 "timestamp": current_time.isoformat(),
+                "uptime_percentage": round(uptime_percentage, 2),
                 "system_metrics": system_summary,
                 "request_metrics": request_summary,
                 "performance_thresholds": self.thresholds,

@@ -369,3 +369,118 @@ def is_valid_text(text: str, min_length: int = 50) -> bool:
     # Check for actual content (not just special characters)
     alphanumeric = re.sub(r"[^a-zA-Z0-9À-ÿ]", "", text)
     return not len(alphanumeric) < min_length // 2
+
+
+# ---------------------------------------------------------------------------
+# E.7: Preamble / signature removal for Italian legal documents
+# ---------------------------------------------------------------------------
+
+# Matches the dispositional keyword that ends a preamble block.
+# The preamble runs from the start of text (or from an institutional header
+# like "IL DIRETTORE...") up to and including one of these keywords.
+_PREAMBLE_END_RE = re.compile(
+    r"(?m)^[ \t]*(?:DISPONE|DECRETA|DETERMINA|DELIBERA|ORDINA|EMANA)\b[^\n]*\n?",
+)
+
+# Institutional header that typically starts a preamble.
+_INSTITUTIONAL_HEADER_RE = re.compile(
+    r"(?m)^[ \t]*IL\s+(?:DIRETTORE|PRESIDENTE|MINISTRO|SEGRETARIO|CAPO|COMMISSARIO)\b"
+)
+
+
+def strip_preamble(text: str) -> str:
+    """Remove institutional preamble from Italian legal documents.
+
+    Strips the block from "IL DIRETTORE/PRESIDENTE/..." through the
+    dispositional keyword (DISPONE/DECRETA/EMANA/...), keeping everything
+    after that keyword.
+
+    Args:
+        text: Full document text.
+
+    Returns:
+        Text with preamble removed. Unchanged if no preamble detected.
+    """
+    match = _PREAMBLE_END_RE.search(text)
+    if not match:
+        return text
+
+    # Only strip if an institutional header precedes the keyword
+    header = _INSTITUTIONAL_HEADER_RE.search(text[: match.start()])
+    if not header:
+        return text
+
+    return text[match.end() :].strip()
+
+
+# Signature block patterns (appear at the end of documents).
+_SIGNATURE_BLOCK_RE = re.compile(
+    r"(?m)"
+    r"(?:"
+    r"(?:Roma|Milano|Napoli|Torino|Firenze|Bologna|Palermo),\s+\d{1,2}\s+\w+\s+\d{4}\s*\n"
+    r"[ \t]*IL\s+(?:DIRETTORE|PRESIDENTE|MINISTRO|SEGRETARIO|CAPO|RESPONSABILE)\b"
+    r"|Firmato\s+digitalmente(?:\s+da)?"
+    r")"
+    r"[\s\S]*$"
+)
+
+
+def strip_signature_block(text: str) -> str:
+    """Remove trailing signature block from Italian legal documents.
+
+    Detects patterns like:
+        Roma, 15 gennaio 2024
+        IL DIRETTORE DELL'AGENZIA
+        Ernesto Maria Ruffini
+    or:
+        Firmato digitalmente da ...
+
+    Args:
+        text: Full document text.
+
+    Returns:
+        Text with signature block removed. Unchanged if not detected.
+    """
+    result = _SIGNATURE_BLOCK_RE.sub("", text)
+    return result.strip()
+
+
+# ---------------------------------------------------------------------------
+# E.11: Table of Contents detection
+# ---------------------------------------------------------------------------
+
+# Dotted leader pattern: "something ......... 123"
+_DOTTED_LEADER_RE = re.compile(r"\.{3,}\s*\d+")
+
+# TOC header keywords
+_TOC_HEADERS = ["indice", "sommario", "table of contents"]
+
+
+def detect_toc_section(text: str) -> bool:
+    """Detect whether a text block is a Table of Contents.
+
+    A TOC is identified by:
+    - A header keyword (INDICE, SOMMARIO) AND dotted leaders, OR
+    - Multiple lines with dotted leaders (>=3 lines)
+
+    Args:
+        text: Text block to check.
+
+    Returns:
+        True if the text looks like a TOC section.
+    """
+    lines = text.strip().split("\n")
+    if not lines:
+        return False
+
+    first_line_lower = lines[0].strip().lower()
+    has_toc_header = any(h in first_line_lower for h in _TOC_HEADERS)
+
+    dotted_lines = sum(1 for line in lines if _DOTTED_LEADER_RE.search(line))
+
+    # TOC header + at least one dotted leader
+    if has_toc_header and dotted_lines >= 1:
+        return True
+
+    # No header but many dotted leaders (standalone TOC)
+    return dotted_lines >= 3

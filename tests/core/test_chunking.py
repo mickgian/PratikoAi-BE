@@ -9,6 +9,7 @@ from app.core.chunking import (
     chunk_document,
     chunk_text,
     estimate_tokens,
+    split_at_section_boundaries,
     split_into_sentences,
     validate_chunks,
 )
@@ -346,6 +347,138 @@ class TestValidateChunksConfigDefault:
             ),
         ]
         assert validate_chunks(chunks_over) is False
+
+
+class TestSplitAtSectionBoundaries:
+    """Test section-aware splitting for Italian legal documents (E.4)."""
+
+    def test_split_at_article_boundaries(self):
+        """Happy path: text with Art. markers splits at article boundaries."""
+        text = (
+            "Art. 1\n"
+            "Primo articolo con contenuto sostanziale. "
+            "Questo articolo stabilisce le regole generali.\n"
+            "Art. 2\n"
+            "Secondo articolo con ulteriori disposizioni. "
+            "Le modalità di applicazione sono definite qui.\n"
+            "Art. 3\n"
+            "Terzo articolo finale. Disposizioni transitorie."
+        )
+        sections = split_at_section_boundaries(text)
+
+        assert len(sections) == 3
+        assert "Art. 1" in sections[0]
+        assert "regole generali" in sections[0]
+        assert "Art. 2" in sections[1]
+        assert "modalità di applicazione" in sections[1]
+        assert "Art. 3" in sections[2]
+
+    def test_split_at_titolo_boundaries(self):
+        """Text with Titolo markers splits correctly."""
+        text = (
+            "TITOLO I\nDisposizioni generali\n"
+            "Contenuto del primo titolo.\n"
+            "TITOLO II\nNorme specifiche\n"
+            "Contenuto del secondo titolo."
+        )
+        sections = split_at_section_boundaries(text)
+
+        assert len(sections) == 2
+        assert "TITOLO I" in sections[0]
+        assert "primo titolo" in sections[0]
+        assert "TITOLO II" in sections[1]
+
+    def test_split_at_capo_boundaries(self):
+        """Text with Capo markers splits correctly."""
+        text = (
+            "Capo I\nPrincipi fondamentali\n"
+            "Contenuto del primo capo con dettagli.\n"
+            "Capo II\nAmbito di applicazione\n"
+            "Contenuto del secondo capo."
+        )
+        sections = split_at_section_boundaries(text)
+
+        assert len(sections) == 2
+        assert "Capo I" in sections[0]
+        assert "Capo II" in sections[1]
+
+    def test_fallback_to_empty_when_no_markers(self):
+        """Document with no section markers returns empty list (caller falls back to sentence splitting)."""
+        text = (
+            "Questo è un documento senza marcatori di sezione. "
+            "Non contiene Art., Titolo o Capo. "
+            "Dovrebbe restituire una lista vuota."
+        )
+        sections = split_at_section_boundaries(text)
+
+        assert sections == []
+
+    def test_heading_context_prepended_to_subchunks(self):
+        """When a section is sub-chunked, the heading context is preserved in each piece."""
+        # Create an article long enough to require sub-chunking at 50 tokens (~200 chars)
+        long_body = "Disposizione dettagliata numero uno. " * 30  # ~1110 chars
+        text = f"Art. 5\n{long_body}\nArt. 6\nBreve articolo."
+        # Use chunk_text which should now delegate to section-aware splitting
+        chunks = chunk_text(text, max_tokens=50, overlap_tokens=5)
+
+        # At least one chunk from the long Art. 5 body should reference "Art. 5"
+        art5_chunks = [c for c in chunks if "Disposizione dettagliata" in c.text]
+        assert len(art5_chunks) >= 2, "Long article should produce multiple sub-chunks"
+        # All sub-chunks of Art. 5 should have the heading context
+        for c in art5_chunks:
+            assert "Art. 5" in c.text, f"Sub-chunk missing heading context: {c.text[:80]}"
+
+    def test_oversized_article_subsplit(self):
+        """Article exceeding max chunk size is sub-split within article boundaries."""
+        long_body = "Questa norma stabilisce requisiti specifici. " * 40
+        text = f"Art. 10\n{long_body}"
+
+        chunks = chunk_text(text, max_tokens=50, overlap_tokens=5)
+
+        assert len(chunks) >= 2, "Oversized article should be sub-split"
+        # All chunks should retain the Art. 10 context
+        for c in chunks:
+            assert "Art. 10" in c.text
+
+    def test_article_shorter_than_min_chunk(self):
+        """Short articles are NOT merged — each section stays independent."""
+        text = "Art. 1\nBreve.\nArt. 2\nAnche breve.\nArt. 3\nTerzo breve."
+        sections = split_at_section_boundaries(text)
+
+        # Each article should be its own section, even if short
+        assert len(sections) == 3
+
+    def test_mixed_section_types(self):
+        """Document with mixed Titolo, Capo, Art. markers splits at all boundaries."""
+        text = (
+            "TITOLO I\nDisposizioni generali\n"
+            "Art. 1\nPrimo articolo.\n"
+            "Art. 2\nSecondo articolo.\n"
+            "TITOLO II\nNorme specifiche\n"
+            "Capo I\nAmbito\n"
+            "Art. 3\nTerzo articolo."
+        )
+        sections = split_at_section_boundaries(text)
+
+        # Should split at each structural marker
+        assert len(sections) >= 5
+
+    def test_art_with_ordinal_suffix(self):
+        """Article references with ordinal suffixes (bis, ter) are detected."""
+        text = "Art. 1\nPrimo articolo.\nArt. 1-bis\nArticolo aggiuntivo.\nArt. 2\nSecondo articolo."
+        sections = split_at_section_boundaries(text)
+
+        assert len(sections) == 3
+        assert "Art. 1-bis" in sections[1]
+
+    def test_preamble_before_first_article(self):
+        """Text before the first section marker is included as a separate section."""
+        text = "Premessa del documento con contesto generale.\nArt. 1\nPrimo articolo.\nArt. 2\nSecondo articolo."
+        sections = split_at_section_boundaries(text)
+
+        assert len(sections) == 3
+        assert "Premessa" in sections[0]
+        assert "Art. 1" in sections[1]
 
 
 class TestChunkDocumentNavigationFilter:

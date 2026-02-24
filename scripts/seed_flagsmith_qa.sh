@@ -118,7 +118,7 @@ else
     echo "  Exists: ${PROJECT_NAME} (id=${PROJECT_ID})"
 fi
 
-# --- [5/7] Get environment server-side key ---
+# --- [5/7] Get or create environment, get server-side key ---
 echo "[5/7] Getting environment server-side key..."
 SERVER_KEY=""
 for attempt in $(seq 1 5); do
@@ -132,12 +132,28 @@ print(dev[0]['api_key'] if dev else '')
     if [ -n "$SERVER_KEY" ]; then
         break
     fi
+
+    # No Development environment found — create one
+    if [ "$attempt" -eq 1 ]; then
+        echo "  No 'Development' environment found, creating..."
+        CREATE_ENV=$(api -X POST -H "$AUTH_HEADER" \
+            -H "Content-Type: application/json" \
+            -d "{\"name\":\"Development\",\"project\":${PROJECT_ID}}" \
+            "${FLAGSMITH_URL}/api/v1/environments/" 2>/dev/null || echo "")
+        SERVER_KEY=$(echo "$CREATE_ENV" | pyjson "print(data.get('api_key', ''))" 2>/dev/null || echo "")
+        if [ -n "$SERVER_KEY" ]; then
+            echo "  Created 'Development' environment"
+            break
+        fi
+        echo "  DEBUG create response: ${CREATE_ENV:0:200}"
+    fi
+
     if [ "$attempt" -eq 5 ]; then
         echo "  ERROR: No 'Development' environment found after 5 attempts"
+        echo "  DEBUG response: ${ENVS_RESPONSE:0:200}"
         exit 1
     fi
     echo "  Environment not ready yet, retrying... (attempt $attempt/5)"
-    echo "  DEBUG response: ${ENVS_RESPONSE:0:200}"
     sleep 3
 done
 echo "  Server key: ${SERVER_KEY:0:8}..."

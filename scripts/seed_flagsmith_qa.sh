@@ -122,7 +122,7 @@ fi
 echo "[5/7] Getting environment server-side key..."
 SERVER_KEY=""
 for attempt in $(seq 1 5); do
-    ENVS_RESPONSE=$(api -H "$AUTH_HEADER" "${FLAGSMITH_URL}/api/v1/environments/?project=${PROJECT_ID}" 2>/dev/null || echo "")
+    ENVS_RESPONSE=$(api -H "$AUTH_HEADER" "${FLAGSMITH_URL}/api/v1/projects/${PROJECT_ID}/environments/" 2>/dev/null || echo "")
     SERVER_KEY=$(echo "$ENVS_RESPONSE" | pyjson "
 envs = data if isinstance(data, list) else data.get('results', [])
 dev = [e for e in envs if e['name'] == 'Development']

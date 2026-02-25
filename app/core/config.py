@@ -319,11 +319,16 @@ class Settings:
         # Stakeholder Configuration
         self.STAKEHOLDER_EMAIL = os.getenv("STAKEHOLDER_EMAIL", "admin@pratikoai.com")
 
-        # Metrics Report Recipients (comma-separated)
+        # Metrics Report Configuration
+        # Recipients (comma-separated)
         self.METRICS_REPORT_RECIPIENTS = os.getenv("METRICS_REPORT_RECIPIENTS", "admin@pratikoai.com")
         self.METRICS_REPORT_RECIPIENTS_ADMIN = os.getenv("METRICS_REPORT_RECIPIENTS_ADMIN", "")
         self.METRICS_REPORT_RECIPIENTS_TECH = os.getenv("METRICS_REPORT_RECIPIENTS_TECH", "")
         self.METRICS_REPORT_RECIPIENTS_BUSINESS = os.getenv("METRICS_REPORT_RECIPIENTS_BUSINESS", "")
+        # Time to send report in HH:MM format (Europe/Rome timezone)
+        self.METRICS_REPORT_TIME = os.getenv("METRICS_REPORT_TIME", "06:00")
+        # Enable/disable the metrics report
+        self.METRICS_REPORT_ENABLED = get_feature_flag("METRICS_REPORT_ENABLED", default=True)
 
         # Daily Ingestion Report Configuration
         # Recipients (comma-separated) - same recipients receive reports from ALL environments

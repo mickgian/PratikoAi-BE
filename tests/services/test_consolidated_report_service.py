@@ -641,6 +641,8 @@ class TestConsolidatedSchedulerIntegration:
             mock_settings.EVAL_REPORT_TIME = "06:00"
             mock_settings.EMBEDDING_BACKFILL_ENABLED = False
             mock_settings.EMBEDDING_BACKFILL_TIME = "03:00"
+            mock_settings.METRICS_REPORT_ENABLED = True
+            mock_settings.METRICS_REPORT_TIME = "06:00"
             mock_settings.METRICS_REPORT_RECIPIENTS = "admin@test.com"
 
             setup_default_tasks()

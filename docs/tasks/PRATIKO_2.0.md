@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-26
 **Status:** Active Development
-**Task ID Range:** DEV-300 to DEV-401
+**Task ID Range:** DEV-300 to DEV-405
 **Timeline:** 10-12 weeks (~96 tasks, accelerated with Claude Code)
 **Target:** MVP Launch
 
@@ -24,7 +24,7 @@ PratikoAI 2.0 is a major evolution from a Q&A assistant to a **professional enga
 
 | ID | Feature | Description | Priority |
 |----|---------|-------------|----------|
-| FR-001 | Interactive Procedural Guides | Step-by-step workflows for administrative procedures | HIGH |
+| FR-001 | Procedure Interattive | Step-by-step workflows with `/procedura` consultation + `@client` tracking | HIGH |
 | FR-002 | Studio Client Database | Import and manage up to 100 clients per studio | CRITICAL |
 | FR-003 | Automatic Normative Matching | Match clients to regulations automatically | CRITICAL |
 | FR-004 | Proactive Suggestions & Communications | AI-generated messages with approval workflow | HIGH |
@@ -169,7 +169,7 @@ The following patterns were established during Response Quality improvements and
 - **Pattern:** Store `conversation_topic` + `topic_keywords` in RAGState with reducers
 - **Benefit:** Maintains context across 4+ conversation turns
 - **Files:** `app/core/langgraph/types.py`
-- **Use for:** Phase 4 (Guides) context persistence
+- **Use for:** Phase 4 (Procedure) context persistence
 
 ### 3. Generic Extraction Principles (DEV-245 Phase 4)
 - **Pattern:** Universal extraction rules instead of topic-specific rules
@@ -197,15 +197,16 @@ The following patterns were established during Response Quality improvements and
 | DEV-2.0-009 to DEV-2.0-020 | DEV-308 to DEV-319 | Phase 1: Service Layer |
 | DEV-2.0-021 to DEV-2.0-030 | DEV-320 to DEV-329 | Phase 2: Matching Engine |
 | DEV-2.0-031 to DEV-2.0-040 | DEV-330 to DEV-339 | Phase 3: Communications |
-| DEV-2.0-041 to DEV-2.0-048 | DEV-340 to DEV-347 | Phase 4: Guides |
+| DEV-2.0-041 to DEV-2.0-048 | DEV-340 to DEV-347 | Phase 4: Procedure (original) |
 | DEV-2.0-049 to DEV-2.0-054 | DEV-348 to DEV-353 | Phase 5: Tax Calculations |
 | DEV-2.0-055 to DEV-2.0-060 | DEV-354 to DEV-359 | Phase 6: Dashboard |
-| DEV-2.0-061 to DEV-2.0-066 | DEV-360 to DEV-365 | Phase 7: Documents |
+| DEV-2.0-061 to DEV-2.0-064 | DEV-360, DEV-361, DEV-363, DEV-365 | Phase 7: Documents (4 tasks — DEV-362, DEV-364 removed: persistent client doc storage contradicts FR-008 temp-only policy) |
 | DEV-2.0-067 to DEV-2.0-072 | DEV-366 to DEV-371 | Phase 8: Frontend Integration |
 | DEV-2.0-073 to DEV-2.0-080 | DEV-372 to DEV-379 | Phase 9: GDPR Compliance |
 | NEW | DEV-380 to DEV-387 | Phase 10: Deadline System |
 | NEW | DEV-388 to DEV-395 | Phase 11: Infrastructure & Quality |
 | NEW | DEV-396 to DEV-401 | Phase 12: Pre-Launch Compliance |
+| NEW | DEV-402 to DEV-405 | Phase 4: Procedure (/procedura + @client) |
 
 ---
 
@@ -247,7 +248,7 @@ DEV-301 (Client Model)
 DEV-303 (MatchingRule) ─── DEV-321 (Pre-configured Rules)
 DEV-304 (ClientMatch) ─── DEV-320 (MatchingService)
 DEV-305 (Communication) ─── DEV-330 (CommunicationService)
-DEV-306 (ProceduralGuide) ─── DEV-340 (GuideService)
+DEV-306 (Procedura) ─── DEV-340 (ProceduraService)
 
 DEV-307 (Alembic Migration) ← BLOCKS ALL Phase 1
 ```
@@ -291,7 +292,7 @@ DEV-380 (Deadline Model)
 |-----------------|----------------|
 | DEV-323 (LangGraph Node) | DEV-320, DEV-322 |
 | DEV-337 (Response Formatter) | DEV-323, DEV-330 |
-| DEV-363 (Document Context) | DEV-360 (Document Parser) |
+| DEV-363 (Document Context) | DEV-360 (Document Parser), Existing context_builder_node |
 | DEV-371 (E2E Tests) | All Phase 0-8 tasks |
 | DEV-387 (Deadline E2E) | All Phase 10 tasks |
 
@@ -765,23 +766,23 @@ Create `Communication` model with status workflow (DRAFT → PENDING_REVIEW → 
 
 ---
 
-### DEV-305: Create ProceduralGuide SQLModel
+### DEV-305: Create Procedura SQLModel
 
-**Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
 
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
-Professionals follow complex multi-step procedures (e.g., opening P.IVA, hiring employee). Currently they rely on memory or external checklists. PratikoAI should provide interactive step-by-step guides.
+Professionals follow complex multi-step procedures (e.g., opening P.IVA, hiring employee). Currently they rely on memory or external checklists. PratikoAI should provide interactive step-by-step procedure.
 
 **Solution:**
-Create `ProceduralGuide` model with JSONB steps array containing checklists, documents, and notes. Support versioning for guide updates.
+Create `Procedura` model with JSONB steps array containing checklists, documents, and notes. Support versioning for procedura updates.
 
-**Agent Assignment:** @Primo (primary), @Mario (guide definitions), @Clelia (tests)
+**Agent Assignment:** @Primo (primary), @Mario (procedura definitions), @Clelia (tests)
 
 **Dependencies:**
 - **Blocking:** None (standalone model)
-- **Unlocks:** DEV-306 (GuideProgress), DEV-340 (GuideService), DEV-307 (Migration)
+- **Unlocks:** DEV-306 (ProceduraProgress), DEV-340 (ProceduraService), DEV-307 (Migration)
 
 **Change Classification:** ADDITIVE
 
@@ -806,7 +807,7 @@ Create `ProceduralGuide` model with JSONB steps array containing checklists, doc
 - **Boundaries:** Test boundary conditions (limits, max values)
 - **Concurrency:** Consider concurrent access scenarios
 
-**File:** `app/models/procedural_guide.py`
+**File:** `app/models/procedura.py`
 
 **Fields:**
 - `id`: UUID (primary key)
@@ -821,13 +822,13 @@ Create `ProceduralGuide` model with JSONB steps array containing checklists, doc
 - `last_updated`: date
 
 **Testing Requirements:**
-- **TDD:** Write `tests/models/test_procedural_guide.py` FIRST
+- **TDD:** Write `tests/models/test_procedura.py` FIRST
 - **Unit Tests:**
-  - `test_guide_creation` - valid guide creation
-  - `test_guide_code_uniqueness` - unique code constraint
-  - `test_guide_steps_jsonb` - JSONB steps validation
-  - `test_guide_category_enum` - category values
-  - `test_guide_versioning` - version increment
+  - `test_procedura_creation` - valid procedura creation
+  - `test_procedura_code_uniqueness` - unique code constraint
+  - `test_procedura_steps_jsonb` - JSONB steps validation
+  - `test_procedura_category_enum` - category values
+  - `test_procedura_versioning` - version increment
 - **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:** Run `pytest tests/models/` to ensure no conflicts
 - **Coverage Target:** 80%+ for new model code
@@ -836,7 +837,7 @@ Create `ProceduralGuide` model with JSONB steps array containing checklists, doc
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | JSONB schema changes | MEDIUM | Version field for migrations |
-| Stale guides | LOW | last_updated tracking |
+| Stale procedure | LOW | last_updated tracking |
 
 **Code Structure:**
 - Max function: 50 lines, extract helpers if larger
@@ -853,23 +854,23 @@ Create `ProceduralGuide` model with JSONB steps array containing checklists, doc
 
 ---
 
-### DEV-306: Create GuideProgress SQLModel
+### DEV-306: Create ProceduraProgress SQLModel
 
-**Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
 
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
-Users need to track their progress through procedural guides, resume where they left off, and optionally associate guide progress with a specific client.
+Users need to track their progress through procedure, resume where they left off, and optionally associate procedura progress with a specific client.
 
 **Solution:**
-Create `GuideProgress` model linking user, studio, guide, and optionally client. Track current step and completed steps array.
+Create `ProceduraProgress` model linking user, studio, procedura, and optionally client. Track current step and completed steps array.
 
 **Agent Assignment:** @Primo (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-300 (Studio), DEV-301 (Client), DEV-305 (ProceduralGuide)
-- **Unlocks:** DEV-340 (GuideService), DEV-307 (Migration)
+- **Blocking:** DEV-300 (Studio), DEV-301 (Client), DEV-305 (Procedura)
+- **Unlocks:** DEV-340 (ProceduraService), DEV-307 (Migration)
 
 **Change Classification:** ADDITIVE
 
@@ -894,14 +895,14 @@ Create `GuideProgress` model linking user, studio, guide, and optionally client.
 - **Boundaries:** Test boundary conditions (limits, max values)
 - **Concurrency:** Consider concurrent access scenarios
 
-**File:** `app/models/guide_progress.py`
+**File:** `app/models/procedura_progress.py`
 
 **Fields:**
 - `id`: UUID (primary key)
 - `user_id`: int (FK)
 - `studio_id`: UUID (FK)
-- `guide_id`: UUID (FK to ProceduralGuide)
-- `client_id`: int (FK, nullable - guide can be for specific client)
+- `procedura_id`: UUID (FK to Procedura)
+- `client_id`: int (FK, nullable - procedura can be for specific client)
 - `current_step`: int
 - `completed_steps`: JSONB (array of completed step numbers)
 - `started_at`: datetime
@@ -909,10 +910,10 @@ Create `GuideProgress` model linking user, studio, guide, and optionally client.
 - `notes`: text (nullable)
 
 **Testing Requirements:**
-- **TDD:** Write `tests/models/test_guide_progress.py` FIRST
+- **TDD:** Write `tests/models/test_procedura_progress.py` FIRST
 - **Unit Tests:**
   - `test_progress_creation` - valid progress creation
-  - `test_progress_fk_constraints` - user, studio, guide FKs
+  - `test_progress_fk_constraints` - user, studio, procedura FKs
   - `test_progress_completed_steps_jsonb` - JSONB array handling
   - `test_progress_resume` - current_step tracking
   - `test_progress_client_optional` - nullable client_id
@@ -923,7 +924,7 @@ Create `GuideProgress` model linking user, studio, guide, and optionally client.
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Orphaned progress | LOW | CASCADE on guide delete |
+| Orphaned progress | LOW | CASCADE on procedura delete |
 | Concurrent updates | LOW | Optimistic locking via version |
 
 **Code Structure:**
@@ -933,7 +934,7 @@ Create `GuideProgress` model linking user, studio, guide, and optionally client.
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
-- [ ] Track progress per user per guide
+- [ ] Track progress per user per procedura
 - [ ] Optional client association
 - [ ] Completion timestamp
 - [ ] Resume capability
@@ -1007,8 +1008,8 @@ Create single Alembic migration creating all Phase 0 tables with HNSW vector ind
 3. `client_profiles`
 4. `matching_rules`
 5. `communications`
-6. `procedural_guides`
-7. `guide_progress`
+6. `procedure`
+7. `procedura_progress`
 
 **Indexes:**
 - HNSW on `client_profiles.profile_vector` (m=16, ef_construction=64)
@@ -1074,6 +1075,22 @@ Need service layer to manage Studio lifecycle (create, read, update, delete) wit
 
 **Solution:**
 Create `StudioService` with async CRUD methods following existing service patterns in `app/services/`.
+
+> **Navigation:** When implementing the frontend, add "Clienti" menu item (Users icon, route `/clients`) to the user menu dropdown in `web/src/app/chat/components/ChatHeader.tsx`. Insert as the first item in the feature links section above "Il mio Account". Target menu layout:
+> ```
+> ┌──────────────────────┐
+> │  Clienti             │  (DEV-308)
+> │  Comunicazioni       │  (DEV-330)
+> │  Procedure           │  (DEV-340)
+> │  Dashboard           │  (DEV-354)
+> │  Scadenze Fiscali    │  (DEV-385)
+> │ ──────────────────── │
+> │  Il mio Account      │
+> │  [superuser items]   │
+> │ ──────────────────── │
+> │  Esci                │
+> └──────────────────────┘
+> ```
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
@@ -1479,6 +1496,8 @@ Create Studio router with CRUD endpoints following FastAPI patterns.
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
 
+**Figma Reference:** `ClientListPage.tsx` + `ClientDetailPage.tsx` — Source: [`docs/figma-make-references/ClientListPage.tsx`](../figma-make-references/ClientListPage.tsx), [`docs/figma-make-references/ClientDetailPage.tsx`](../figma-make-references/ClientDetailPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
@@ -1584,6 +1603,8 @@ Create Client router with CRUD endpoints and list with pagination.
 ### DEV-313: Client Import from Excel/PDF
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
+
+**Figma Reference:** `ClientImportPage.tsx` (3-step wizard) — Source: [`docs/figma-make-references/ClientImportPage.tsx`](../figma-make-references/ClientImportPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** HIGH | **Effort:** 6h | **Status:** NOT STARTED
 
@@ -1714,6 +1735,8 @@ Create import service supporting both Excel (openpyxl) and PDF (using existing d
 ### DEV-314: Client Export to Excel
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
+
+**Figma Reference:** `ClientListPage.tsx` (export button in bulk actions) — Source: [`docs/figma-make-references/ClientListPage.tsx`](../figma-make-references/ClientListPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
@@ -1997,6 +2020,8 @@ Create middleware that extracts `studio_id` from JWT and sets it in request stat
 ### DEV-317: Client GDPR Deletion
 
 **Reference:** [FR-002: Database Clienti dello Studio](./PRATIKO_2.0_REFERENCE.md#fr-002-database-clienti-dello-studio)
+
+**Figma Reference:** `ClientDetailPage.tsx` (delete action) — Source: [`docs/figma-make-references/ClientDetailPage.tsx`](../figma-make-references/ClientDetailPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -2914,6 +2939,8 @@ Create background job using FastAPI BackgroundTasks. Run after RSS ingestion com
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
+**Figma Reference:** `MatchingNormativoPage.tsx` + `RisultatiMatchingNormativoPanel.tsx` — Source: [`docs/figma-make-references/MatchingNormativoPage.tsx`](../figma-make-references/MatchingNormativoPage.tsx), [`docs/figma-make-references/RisultatiMatchingNormativoPanel.tsx`](../figma-make-references/RisultatiMatchingNormativoPanel.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
@@ -3306,6 +3333,8 @@ Create unit tests for NormativeMatchingService, ProfileEmbeddingService, and rel
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
+**Figma Reference:** `GestioneComunicazioniPage.tsx` — Source: [`docs/figma-make-references/GestioneComunicazioniPage.tsx`](../figma-make-references/GestioneComunicazioniPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
 
 **Problem:**
@@ -3313,6 +3342,15 @@ Professionals need to send communications to clients about relevant regulations.
 
 **Solution:**
 Create `CommunicationService` with draft/review/approve/send workflow state machine.
+
+> **Navigation:** Add "Comunicazioni" menu item (Mail icon, route `/comunicazioni`) to the user menu dropdown in `web/src/app/chat/components/ChatHeader.tsx`. Insert above "Il mio Account", with a divider separating feature links from account/settings. Create the Next.js route at `web/src/app/comunicazioni/page.tsx`. Target menu layout:
+> ```
+> Clienti | Comunicazioni | Procedure | Dashboard | Scadenze Fiscali
+> ─────────────
+> Il mio Account | [superuser items]
+> ─────────────
+> Esci
+> ```
 
 **Agent Assignment:** @Ezio (primary), @Severino (workflow review), @Clelia (tests)
 
@@ -3496,6 +3534,8 @@ Create LangGraph tool for generating communication content using LLM. Consider u
 ### DEV-332: Communication API Endpoints
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
+
+**Figma Reference:** `GestioneComunicazioniPage.tsx` — Source: [`docs/figma-make-references/GestioneComunicazioniPage.tsx`](../figma-make-references/GestioneComunicazioniPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
@@ -3787,6 +3827,8 @@ WhatsApp Business API integration is deferred to post-MVP. The wa.me approach pr
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
+**Figma Reference:** `GestioneComunicazioniPage.tsx` (bulk actions) — Source: [`docs/figma-make-references/GestioneComunicazioniPage.tsx`](../figma-make-references/GestioneComunicazioniPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
@@ -3889,6 +3931,8 @@ Add bulk creation endpoint that creates draft communications for multiple client
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
+**Figma Reference:** `GestioneComunicazioniPage.tsx` (template selector) — Source: [`docs/figma-make-references/GestioneComunicazioniPage.tsx`](../figma-make-references/GestioneComunicazioniPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
@@ -3987,6 +4031,8 @@ Create template model and service for managing communication templates.
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
+**Figma Reference:** `ChatPage.tsx` (suggestion cards) in [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
@@ -4080,6 +4126,8 @@ Modify `response_formatter_node.py` to append suggestions when matched_clients e
 ### DEV-338: Communication Audit Logging
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
+
+**Figma Reference:** `GestioneComunicazioniPage.tsx` (audit trail) — Source: [`docs/figma-make-references/GestioneComunicazioniPage.tsx`](../figma-make-references/GestioneComunicazioniPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
 
@@ -4249,79 +4297,104 @@ Create comprehensive E2E tests for communication flow.
 
 ---
 
-## Phase 4: Procedural Guides (Week 9-10) - 8 Tasks
+## Phase 4: Procedure Interattive (Week 9-10) - 12 Tasks
 
-### DEV-340: GuideService with Progress Tracking
+### DEV-340: ProceduraService with Progress Tracking
 
-**Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
+
+**Figma Reference:** `ProceduraInterattivaPage.tsx` — Source: [`docs/figma-make-references/ProceduraInterattivaPage.tsx`](../figma-make-references/ProceduraInterattivaPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
-Users need to track progress through multi-step procedural guides, resume where they left off, and associate guides with specific clients.
+Users need to track progress through multi-step procedure, resume where they left off, and associate procedure with specific clients.
 
 **Solution:**
-Create `GuideService` for guide management and progress tracking.
+Create `ProceduraService` with two operational modes:
+- **Generic consultation** (`get_reference(procedura_id)`): Read-only access to procedura content. No side effects, no ProceduraProgress created. Used by `/procedura` slash command.
+- **Client-specific tracking** (`start_for_client(user_id, procedura_id, client_id)`): Requires `client_id`, creates ProceduraProgress record, enables step tracking and notes. Used by `@NomeCliente` mention system.
+
+> **Navigation:** When implementing the frontend, add "Procedure" menu item (ClipboardList icon, route `/procedure`) to the user menu dropdown in `web/src/app/chat/components/ChatHeader.tsx`. Insert in the feature links section above "Il mio Account". Target menu layout:
+> ```
+> ┌──────────────────────┐
+> │  Clienti             │  (DEV-308)
+> │  Comunicazioni       │  (DEV-330)
+> │  Procedure           │  (DEV-340)
+> │  Dashboard           │  (DEV-354)
+> │  Scadenze Fiscali    │  (DEV-385)
+> │ ──────────────────── │
+> │  Il mio Account      │
+> │  [superuser items]   │
+> │ ──────────────────── │
+> │  Esci                │
+> └──────────────────────┘
+> ```
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-306 (ProceduralGuide model), DEV-307 (GuideProgress model), DEV-307 (Migration)
-- **Unlocks:** DEV-342 (Guide API), DEV-343 (Checklist), DEV-345 (Chat Context), DEV-346 (Analytics)
+- **Blocking:** DEV-306 (Procedura model), DEV-307 (ProceduraProgress model), DEV-307 (Migration)
+- **Unlocks:** DEV-342 (Procedura API), DEV-343 (Checklist), DEV-345 (Chat Context), DEV-346 (Analytics), DEV-402 (/procedura command), DEV-403 (@client mention), DEV-404 (Generic vs Client-Specific split)
 **Error Handling:**
-- Guide not found: HTTP 404, `"Guida non trovata"`
+- Procedura not found: HTTP 404, `"Procedura non trovata"`
 - Progress not found: HTTP 404, `"Progresso non trovato"`
 - Invalid step number: HTTP 400, `"Numero step non valido"`
 - Step out of order: HTTP 400, `"Completa prima i passi precedenti"`
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
 **Performance Requirements:**
-- List guides: <100ms
-- Start guide: <200ms
+- List procedure: <100ms
+- Start procedura: <200ms
 - Complete step: <100ms
 
 **Edge Cases:**
-- **Guide Already Started:** start_guide when progress exists → return existing progress (idempotent)
+- **Procedura Already Started:** start_procedura when progress exists → return existing progress (idempotent)
 - **Skip Steps:** complete_step(3) when step 1 incomplete → HTTP 400, list missing steps
 - **Complete Twice:** complete_step on already-completed step → HTTP 200 (idempotent)
-- **Client Deleted:** Guide progress on deleted client → orphan allowed, display warning
-- **Guide Updated:** Guide content updated after user started → continue with old structure
-- **Zero Steps:** Guide with 0 steps → rejected during admin creation
-- **Resume Completed:** Resume on completed guide → HTTP 400, `"Guida già completata"`
-- **Concurrent Progress:** Same user starts same guide twice → single progress record
+- **Client Deleted:** Procedura progress on deleted client → orphan allowed, display warning
+- **Procedura Updated:** Procedura content updated after user started → continue with old structure
+- **Zero Steps:** Procedura with 0 steps → rejected during admin creation
+- **Resume Completed:** Resume on completed procedura → HTTP 400, `"Procedura già completata"`
+- **Concurrent Progress:** Same user starts same procedura twice → single progress record
+- **Generic Consultation Must NOT Create Progress:** `get_reference()` is read-only, must NOT create ProceduraProgress records
 
-**File:** `app/services/guide_service.py`
+**File:** `app/services/procedura_service.py`
 
 **Methods:**
-- `list_guides(category)` - List available guides
-- `start_guide(user_id, guide_id, client_id)` - Start a guide
-- `complete_step(progress_id, step_number)` - Mark step complete
-- `get_progress(user_id, guide_id)` - Get current progress
-- `resume_guide(progress_id)` - Resume from last step
+- `list_procedure(category)` - List available procedure
+- `get_reference(procedura_id)` - Read-only access for generic consultation (NO progress record)
+- `start_for_client(user_id, procedura_id, client_id)` - Start procedure for specific client (REQUIRES client_id, creates ProceduraProgress)
+- `complete_step(progress_id, step_number)` - Mark step complete (client-specific mode only)
+- `get_progress(user_id, procedura_id)` - Get current progress
+- `resume_procedura(progress_id)` - Resume from last step
 
 **Testing Requirements:**
-- **TDD:** Write `tests/services/test_guide_service.py` FIRST
+- **TDD:** Write `tests/services/test_procedura_service.py` FIRST
 - **Unit Tests:**
-  - `test_list_guides_by_category` - filtering works
-  - `test_start_guide_new_progress` - creates progress record
-  - `test_start_guide_with_client` - associates client
+  - `test_list_procedure_by_category` - filtering works
+  - `test_start_procedura_new_progress` - creates progress record
+  - `test_start_procedura_with_client` - associates client
   - `test_complete_step` - updates progress
   - `test_complete_step_order` - enforces step order
-  - `test_resume_guide` - returns current state
-  - `test_complete_guide` - marks completed_at
-- **Integration Tests:** `tests/services/test_guide_service_integration.py`
+  - `test_resume_procedura` - returns current state
+  - `test_complete_procedura` - marks completed_at
+- **Integration Tests:** `tests/services/test_procedura_service_integration.py`
 - **E2E Tests:** Part of DEV-347
 - **Edge Case Tests:**
-  - `test_start_guide_already_started_idempotent` - returns existing
+  - `test_start_procedura_already_started_idempotent` - returns existing
   - `test_complete_step_skip_rejected` - skip steps blocked
   - `test_complete_step_twice_idempotent` - re-complete ok
   - `test_progress_deleted_client_warning` - orphan handled
-  - `test_guide_updated_old_structure` - version locking
-  - `test_resume_completed_rejected` - completed guide blocked
+  - `test_procedura_updated_old_structure` - version locking
+  - `test_resume_completed_rejected` - completed procedura blocked
   - `test_concurrent_start_single_record` - no duplicates
+  - `test_get_reference_readonly` - no progress record created
+  - `test_start_for_client_requires_client_id` - client_id mandatory
+  - `test_generic_consultation_no_side_effects` - get_reference is pure read
 - **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:** Run `pytest tests/services/`
-- **Coverage Target:** 80%+ for guide code
+- **Coverage Target:** 80%+ for procedura code
 
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
@@ -4336,36 +4409,36 @@ Create `GuideService` for guide management and progress tracking.
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
-- [ ] Progress tracking per user per guide
+- [ ] Progress tracking per user per procedura
 - [ ] Optional client association
 - [ ] Step completion tracking
 - [ ] Resume functionality
 - [ ] 80%+ test coverage achieved
 
 **Methods:**
-- `load_guides()` - Load guides from JSON file
-- `validate_guide(guide)` - Validate guide structure and steps
-- `seed_guides(session)` - Insert guides into database via migration
+- `load_procedure()` - Load procedure from JSON file
+- `validate_procedura(procedura)` - Validate procedura structure and steps
+- `seed_procedure(session)` - Insert procedure into database via migration
 
 ---
 
-### DEV-341: 10-15 Pre-configured Guides
+### DEV-341: 9 Pre-configured Procedure
 
-**Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
 
 **Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
 
 **Problem:**
-Need procedural guides for common administrative tasks. These should be pre-configured with steps, documents, and checklists.
+Need procedure for common administrative tasks. These should be pre-configured with steps, documents, and checklists.
 
 **Solution:**
-Define 10-15 guides and seed via migration.
+Define 9 procedure and seed via migration. Note: "Apertura P.IVA Persona Fisica" and "Apertura P.IVA Ditta Individuale" are merged into a single "Apertura P.IVA" procedure with a conditional branching step at step 1 to distinguish PF vs DI.
 
 **Agent Assignment:** @Mario (primary), @Primo (migration)
 
 **Dependencies:**
-- **Blocking:** DEV-306 (ProceduralGuide model), DEV-307 (Migration)
-- **Unlocks:** DEV-340 (GuideService - needs guides to operate on)
+- **Blocking:** DEV-306 (Procedura model), DEV-307 (Migration)
+- **Unlocks:** DEV-340 (ProceduraService - needs procedure to operate on)
 
 **Change Classification:** ADDITIVE
 
@@ -4376,15 +4449,15 @@ Define 10-15 guides and seed via migration.
 **Error Handling:**
 - Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
 **Error Handling:**
-- Invalid JSON schema: Migration aborted, `"Schema guide non valido"`
-- Duplicate guide code: Migration aborted, `"Codice guida duplicato: {code}"`
+- Invalid JSON schema: Migration aborted, `"Schema procedura non valido"`
+- Duplicate procedura code: Migration aborted, `"Codice procedura duplicato: {code}"`
 - Missing required steps: Migration aborted, `"Step obbligatori mancanti"`
 - **Logging:** All errors MUST be logged with context at ERROR level
 
 **Performance Requirements:**
 - Migration execution: <30s
-- Guide loading at startup: <500ms
-- Guide validation: <100ms per guide
+- Procedura loading at startup: <500ms
+- Procedura validation: <100ms per procedura
 - **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
 
 **Edge Cases:**
@@ -4394,31 +4467,30 @@ Define 10-15 guides and seed via migration.
 - **Boundaries:** Test boundary conditions (limits, max values)
 - **Concurrency:** Consider concurrent access scenarios
 
-**File:** `app/data/procedural_guides.json`
+**File:** `app/data/procedure.json`
 
-**Guides:**
-1. **Apertura P.IVA Persona Fisica**
-2. **Apertura P.IVA Ditta Individuale**
-3. **Costituzione SRL**
-4. **Assunzione Dipendente**
-5. **Licenziamento Dipendente**
-6. **Trasformazione Regime Fiscale**
-7. **Cessazione Attività**
-8. **Iscrizione INPS Artigiani**
-9. **Richiesta DURC**
-10. **Dichiarazione IVA Annuale**
+**Procedure:**
+1. **Apertura P.IVA** (merged: Persona Fisica + Ditta Individuale, conditional branching at step 1)
+2. **Costituzione SRL**
+3. **Assunzione Dipendente**
+4. **Licenziamento Dipendente**
+5. **Trasformazione Regime Fiscale**
+6. **Cessazione Attività**
+7. **Iscrizione INPS Artigiani**
+8. **Richiesta DURC**
+9. **Dichiarazione IVA Annuale**
 
 **Testing Requirements:**
-- **TDD:** Write guide tests FIRST
-- **Unit Tests:** `tests/data/test_procedural_guides.py`
-  - `test_guides_json_valid` - JSON schema valid
-  - `test_guides_all_have_steps` - all guides have steps
-  - `test_guides_steps_have_content` - steps have required fields
-  - `test_guide_apertura_piva` - specific guide structure
-- **Integration Tests:** Test guide loading
+- **TDD:** Write procedura tests FIRST
+- **Unit Tests:** `tests/data/test_procedure.py`
+  - `test_procedure_json_valid` - JSON schema valid
+  - `test_procedure_all_have_steps` - all procedure have steps
+  - `test_procedure_steps_have_content` - steps have required fields
+  - `test_procedura_apertura_piva` - specific procedura structure
+- **Integration Tests:** Test procedura loading
 - **Edge Case Tests:** See Edge Cases section above
-- **Regression Tests:** Run `pytest tests/services/test_guide_service.py`
-- **Coverage Target:** 100% for guide definitions
+- **Regression Tests:** Run `pytest tests/services/test_procedura_service.py`
+- **Coverage Target:** 100% for procedura definitions
 
 **Risks & Mitigations:**
 | Risk | Impact | Mitigation |
@@ -4433,29 +4505,31 @@ Define 10-15 guides and seed via migration.
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
-- [ ] 10-15 guides defined
-- [ ] Each guide has step-by-step instructions
+- [ ] 9 procedure defined
+- [ ] Each procedura has step-by-step instructions
 - [ ] Each step has checklist items
-- [ ] Migration seeds guides
+- [ ] Migration seeds procedure
 
 ---
 
-### DEV-342: Guide API Endpoints
+### DEV-342: Procedura API Endpoints
 
-**Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
+
+**Figma Reference:** `ProceduraInterattivaPage.tsx` — Source: [`docs/figma-make-references/ProceduraInterattivaPage.tsx`](../figma-make-references/ProceduraInterattivaPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
-Frontend needs API to list guides, start progress, and track completion.
+Frontend needs API to list procedure, start progress, and track completion.
 
 **Solution:**
-Create Guides router with endpoints.
+Create Procedure router with endpoints.
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-340 (GuideService), DEV-341 (Pre-configured Guides)
+- **Blocking:** DEV-340 (ProceduraService), DEV-341 (Pre-configured Procedure)
 - **Unlocks:** DEV-347 (E2E Tests), Frontend integration
 
 **Change Classification:** ADDITIVE
@@ -4475,36 +4549,37 @@ Create Guides router with endpoints.
 - All endpoints: <200ms
 
 **Edge Cases:**
-- **Invalid Step Number:** step_num > guide.total_steps → HTTP 400, `"Step non valido"`
+- **Invalid Step Number:** step_num > procedura.total_steps → HTTP 400, `"Step non valido"`
 - **Progress Not Found:** Complete step on non-existent progress → HTTP 404
-- **Guide Not Found:** Start non-existent guide → HTTP 404
+- **Procedura Not Found:** Start non-existent procedura → HTTP 404
 - **Pagination Empty:** page=10 on 2-page list → empty items, correct total
 - **Category Filter Empty:** ?category=NONEXISTENT → empty list (not 404)
 - **Complete Zero Steps:** POST complete with step_num=0 → HTTP 400
 
-**File:** `app/api/v1/guides.py`
+**File:** `app/api/v1/procedure.py`
 
 **Endpoints:**
-- `GET /api/v1/guides` - List guides
-- `GET /api/v1/guides/{id}` - Get guide details
-- `POST /api/v1/guides/{id}/start` - Start guide
-- `GET /api/v1/guides/progress` - List user's progress
-- `POST /api/v1/guides/progress/{id}/step/{step_num}` - Complete step
+- `GET /api/v1/procedure` - List procedure
+- `GET /api/v1/procedure/{id}` - Get procedura details
+- `GET /api/v1/procedure/{id}/reference` - Read-only view for `/procedura` command (no progress created)
+- `POST /api/v1/procedure/{id}/start` - Start procedura for client (requires client_id)
+- `GET /api/v1/procedure/progress` - List user's progress
+- `POST /api/v1/procedure/progress/{id}/step/{step_num}` - Complete step
 
 **Testing Requirements:**
-- **TDD:** Write `tests/api/test_guides_api.py` FIRST
+- **TDD:** Write `tests/api/test_procedure_api.py` FIRST
 - **Integration Tests:**
-  - `test_list_guides_200` - returns guides
-  - `test_list_guides_filtered` - category filter
-  - `test_get_guide_200` - returns guide with steps
-  - `test_start_guide_201` - creates progress
+  - `test_list_procedure_200` - returns procedure
+  - `test_list_procedure_filtered` - category filter
+  - `test_get_procedura_200` - returns procedura with steps
+  - `test_start_procedura_201` - creates progress
   - `test_complete_step_200` - updates progress
   - `test_list_progress_200` - returns user's progress
 - **E2E Tests:** Part of DEV-347
 - **Edge Case Tests:**
   - `test_invalid_step_number_400` - step beyond total rejected
   - `test_progress_not_found_404` - non-existent progress
-  - `test_guide_not_found_404` - non-existent guide
+  - `test_procedura_not_found_404` - non-existent procedura
   - `test_pagination_empty_items` - beyond results empty
   - `test_category_filter_empty_list` - unknown category empty
   - `test_complete_step_zero_400` - step 0 rejected
@@ -4525,16 +4600,18 @@ Create Guides router with endpoints.
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
-- [ ] List guides with filtering
-- [ ] Start guide for user
+- [ ] List procedure with filtering
+- [ ] Start procedura for user
 - [ ] Track step completion
 - [ ] 80%+ test coverage achieved
 
 ---
 
-### DEV-343: Guide Step Checklist Tracking
+### DEV-343: Procedura Step Checklist Tracking
 
-**Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
+
+**Figma Reference:** `ProceduraInterattivaPage.tsx` (step checklist) — Source: [`docs/figma-make-references/ProceduraInterattivaPage.tsx`](../figma-make-references/ProceduraInterattivaPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
@@ -4547,23 +4624,23 @@ Extend progress tracking to include checklist item completion.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-340 (GuideService), DEV-307 (GuideProgress model)
+- **Blocking:** DEV-340 (ProceduraService), DEV-307 (ProceduraProgress model)
 - **Unlocks:** DEV-347 (E2E Tests)
 
 **Change Classification:** MODIFYING
 
 **Impact Analysis:**
-- **Primary File:** `app/models/guide_progress.py`
+- **Primary File:** `app/models/procedura_progress.py`
 - **Affected Files:**
-  - `app/services/guide_service.py` (uses GuideProgress model)
+  - `app/services/procedura_service.py` (uses ProceduraProgress model)
 - **Related Tests:**
-  - `tests/models/test_guide_progress.py` (direct)
-  - `tests/services/test_guide_service.py` (consumer)
-- **Baseline Command:** `pytest tests/models/test_guide_progress.py -v`
+  - `tests/models/test_procedura_progress.py` (direct)
+  - `tests/services/test_procedura_service.py` (consumer)
+- **Baseline Command:** `pytest tests/models/test_procedura_progress.py -v`
 
 **Pre-Implementation Verification:**
 - [ ] Baseline tests pass
-- [ ] Existing GuideProgress model reviewed
+- [ ] Existing ProceduraProgress model reviewed
 - [ ] Checklist structure designed
 
 **Error Handling:**
@@ -4590,7 +4667,7 @@ Extend progress tracking to include checklist item completion.
 - **Boundaries:** Test boundary conditions (limits, max values)
 - **Concurrency:** Consider concurrent access scenarios
 
-**File:** `app/models/guide_progress.py` (extend)
+**File:** `app/models/procedura_progress.py` (extend)
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
@@ -4623,39 +4700,41 @@ Extend progress tracking to include checklist item completion.
 
 ---
 
-### DEV-344: Guide Notes and Attachments
+### DEV-344: Procedura Notes and Attachments
 
-**Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
+
+**Figma Reference:** `ProceduraInterattivaPage.tsx` (notes/attachments section) — Source: [`docs/figma-make-references/ProceduraInterattivaPage.tsx`](../figma-make-references/ProceduraInterattivaPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
-Users need to add notes and attachments to guide progress for their reference.
+Users need to add notes and attachments to procedura progress for their reference.
 
 **Solution:**
-Add notes field to GuideProgress and document attachment support.
+Add notes field to ProceduraProgress and document attachment support.
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-340 (GuideService), DEV-307 (GuideProgress model)
+- **Blocking:** DEV-340 (ProceduraService), DEV-307 (ProceduraProgress model)
 - **Unlocks:** DEV-347 (E2E Tests)
 
 **Change Classification:** MODIFYING
 
 **Impact Analysis:**
-- **Primary File:** `app/models/guide_progress.py`
+- **Primary File:** `app/models/procedura_progress.py`
 - **Affected Files:**
-  - `app/services/guide_service.py` (uses GuideProgress model)
-  - `app/api/v1/guides.py` (notes endpoint)
+  - `app/services/procedura_service.py` (uses ProceduraProgress model)
+  - `app/api/v1/procedure.py` (notes endpoint)
 - **Related Tests:**
-  - `tests/models/test_guide_progress.py` (direct)
-  - `tests/services/test_guide_service.py` (consumer)
-- **Baseline Command:** `pytest tests/models/test_guide_progress.py -v`
+  - `tests/models/test_procedura_progress.py` (direct)
+  - `tests/services/test_procedura_service.py` (consumer)
+- **Baseline Command:** `pytest tests/models/test_procedura_progress.py -v`
 
 **Pre-Implementation Verification:**
 - [ ] Baseline tests pass
-- [ ] Existing GuideProgress model reviewed
+- [ ] Existing ProceduraProgress model reviewed
 - [ ] Notes storage approach designed
 
 **Edge Cases:**
@@ -4682,7 +4761,7 @@ Add notes field to GuideProgress and document attachment support.
 - **Boundaries:** Test boundary conditions (limits, max values)
 - **Concurrency:** Consider concurrent access scenarios
 
-**File:** `app/models/guide_progress.py` (extend)
+**File:** `app/models/procedura_progress.py` (extend)
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
@@ -4715,22 +4794,24 @@ Add notes field to GuideProgress and document attachment support.
 
 ---
 
-### DEV-345: Guide Context in Chat
+### DEV-345: Procedura Context in Chat
 
-**Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
+
+**Figma Reference:** `ChatPage.tsx` in [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
-When user is working through a guide and asks a question, the AI should know which guide step they're on.
+When user is working through a procedura and asks a question, the AI should know which procedura step they're on. Additionally, `@NomeCliente` mentions in chat should inject both client context AND active/relevant procedures into the conversation.
 
 **Solution:**
-Add guide context to RAGState when user has active guide progress.
+Add procedura context to RAGState when user has active procedura progress. When `@NomeCliente` is mentioned, inject client profile (regime fiscale, ATECO, posizione) and any active or suggested procedures for that client into RAGState via `procedura_context` field.
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-340 (GuideService), Existing context_builder_node
+- **Blocking:** DEV-340 (ProceduraService), DEV-403 (@client mention system), Existing context_builder_node
 - **Unlocks:** DEV-347 (E2E Tests)
 
 **Change Classification:** MODIFYING
@@ -4739,7 +4820,7 @@ Add guide context to RAGState when user has active guide progress.
 - **Primary File:** `app/core/langgraph/nodes/context_builder_node.py`
 - **Affected Files:**
   - `app/core/langgraph/graph.py` (node consumer)
-  - `app/schemas/rag_state.py` (adds guide_context field)
+  - `app/schemas/rag_state.py` (adds procedura_context field)
 - **Related Tests:**
   - `tests/langgraph/test_context_builder_node.py` (direct)
   - `tests/integration/test_rag_pipeline.py` (consumer)
@@ -4748,12 +4829,12 @@ Add guide context to RAGState when user has active guide progress.
 **Pre-Implementation Verification:**
 - [ ] Baseline tests pass
 - [ ] Existing context_builder_node.py reviewed
-- [ ] Guide context structure designed
+- [ ] Procedura context structure designed
 
 **Error Handling:**
-- Guide service unavailable: Skip context injection, continue pipeline
-- Invalid guide progress: Log warning, continue without guide context
-- Context too large: Truncate guide context, prioritize current step
+- Procedura service unavailable: Skip context injection, continue pipeline
+- Invalid procedura progress: Log warning, continue without procedura context
+- Context too large: Truncate procedura context, prioritize current step
 - **Logging:** All errors MUST be logged with context at ERROR level
 
 **Edge Cases:**
@@ -4780,9 +4861,9 @@ Add guide context to RAGState when user has active guide progress.
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
 - **Unit Tests:**
-  - `test_context_includes_guide` - guide in context
+  - `test_context_includes_procedura` - procedura in context
   - `test_context_current_step` - current step included
-  - `test_context_no_active_guide` - normal context
+  - `test_context_no_active_procedura` - normal context
 - **Integration Tests:** Test with RAGState
 - **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:** Run `pytest tests/langgraph/`
@@ -4801,44 +4882,44 @@ Add guide context to RAGState when user has active guide progress.
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
-- [ ] Include guide context in RAGState
+- [ ] Include procedura context in RAGState
 - [ ] Current step awareness
-- [ ] No change when no active guide
+- [ ] No change when no active procedura
 - [ ] 80%+ test coverage achieved
 
 ---
 
-### DEV-346: Guide Completion Analytics
+### DEV-346: Procedura Completion Analytics
 
-**Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
 
 **Priority:** LOW | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
-Need to track guide usage for analytics: how many started, completed, average time.
+Need to track procedura usage for analytics: how many started, completed, average time.
 
 **Solution:**
-Add analytics methods to GuideService.
+Add analytics methods to ProceduraService.
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-340 (GuideService), DEV-307 (GuideProgress model)
+- **Blocking:** DEV-340 (ProceduraService), DEV-307 (ProceduraProgress model)
 - **Unlocks:** Dashboard analytics (post-MVP)
 
 **Change Classification:** MODIFYING
 
 **Impact Analysis:**
-- **Primary File:** `app/services/guide_service.py`
+- **Primary File:** `app/services/procedura_service.py`
 - **Affected Files:**
-  - `app/api/v1/guides.py` (analytics endpoint)
+  - `app/api/v1/procedure.py` (analytics endpoint)
 - **Related Tests:**
-  - `tests/services/test_guide_service.py` (direct)
-- **Baseline Command:** `pytest tests/services/test_guide_service.py -v`
+  - `tests/services/test_procedura_service.py` (direct)
+- **Baseline Command:** `pytest tests/services/test_procedura_service.py -v`
 
 **Pre-Implementation Verification:**
 - [ ] Baseline tests pass
-- [ ] Existing GuideService reviewed
+- [ ] Existing ProceduraService reviewed
 - [ ] Analytics metrics defined
 
 **Error Handling:**
@@ -4854,10 +4935,10 @@ Add analytics methods to GuideService.
 - Historical data (30 days): <500ms
 
 **Methods:**
-- `get_started_count(studio_id, guide_id, period)` - Count started guides
-- `get_completed_count(studio_id, guide_id, period)` - Count completed guides
-- `get_completion_rate(studio_id, guide_id, period)` - Calculate completion rate
-- `get_average_time(studio_id, guide_id)` - Calculate average completion time
+- `get_started_count(studio_id, procedura_id, period)` - Count started procedure
+- `get_completed_count(studio_id, procedura_id, period)` - Count completed procedure
+- `get_completion_rate(studio_id, procedura_id, period)` - Calculate completion rate
+- `get_average_time(studio_id, procedura_id)` - Calculate average completion time
 
 **Edge Cases:**
 - **Nulls/Empty:** Handle null or empty input values gracefully
@@ -4866,7 +4947,7 @@ Add analytics methods to GuideService.
 - **Boundaries:** Test boundary conditions (limits, max values)
 - **Concurrency:** Consider concurrent access scenarios
 
-**File:** `app/services/guide_service.py` (extend)
+**File:** `app/services/procedura_service.py` (extend)
 
 **Testing Requirements:**
 - **TDD:** Write tests FIRST
@@ -4892,29 +4973,29 @@ Add analytics methods to GuideService.
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
-- [ ] Track guide starts
+- [ ] Track procedura starts
 - [ ] Track completions
 - [ ] Calculate completion rate
 - [ ] 80%+ test coverage achieved
 
 ---
 
-### DEV-347: E2E Tests for Guide Flow
+### DEV-347: E2E Tests for Procedura Flow
 
-**Reference:** [FR-001: Guide Procedurali Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-guide-procedurali-interattive)
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
 
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
-Need end-to-end tests verifying the complete guide workflow.
+Need end-to-end tests verifying the complete procedura workflow.
 
 **Solution:**
-Create comprehensive E2E tests for guide flow.
+Create comprehensive E2E tests for procedura flow.
 
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-340 (GuideService), DEV-341 (Guides), DEV-342 (API), DEV-343 (Checklist), DEV-344 (Notes), DEV-345 (Chat Context)
+- **Blocking:** DEV-340 (ProceduraService), DEV-341 (Procedure), DEV-342 (API), DEV-343 (Checklist), DEV-344 (Notes), DEV-345 (Chat Context)
 - **Unlocks:** Phase 5 start (all Phase 4 complete)
 
 **Change Classification:** ADDITIVE
@@ -4944,13 +5025,15 @@ Create comprehensive E2E tests for guide flow.
 - **Boundaries:** Test boundary conditions (limits, max values)
 - **Concurrency:** Consider concurrent access scenarios
 
-**File:** `tests/e2e/test_guide_flow.py`
+**File:** `tests/e2e/test_procedura_flow.py`
 
 **Methods:**
-- `test_list_start_complete_guide_flow()` - Full guide workflow
-- `test_resume_guide_flow()` - Resume from progress
-- `test_guide_with_client_flow()` - Client-specific guide
-- `test_guide_chat_context_flow()` - Chat during guide
+- `test_list_start_complete_procedura_flow()` - Full procedura workflow
+- `test_resume_procedura_flow()` - Resume from progress
+- `test_procedura_with_client_flow()` - Client-specific procedura
+- `test_procedura_chat_context_flow()` - Chat during procedura
+- `test_procedura_generic_consultation_flow()` - Generic read-only consultation via `/procedura`
+- `test_client_mention_procedura_flow()` - `@NomeCliente` triggers client context + procedures in RAGState
 
 **Testing Requirements:**
 
@@ -4965,10 +5048,12 @@ Create comprehensive E2E tests for guide flow.
 
 - **This IS the testing task**
 - **E2E Tests:**
-  - `test_list_start_complete_guide_flow` - full flow
-  - `test_resume_guide_flow` - resume from progress
-  - `test_guide_with_client_flow` - client-specific guide
-  - `test_guide_chat_context_flow` - chat during guide
+  - `test_list_start_complete_procedura_flow` - full flow
+  - `test_resume_procedura_flow` - resume from progress
+  - `test_procedura_with_client_flow` - client-specific procedura
+  - `test_procedura_chat_context_flow` - chat during procedura
+  - `test_procedura_generic_consultation_flow` - generic read-only consultation
+  - `test_client_mention_procedura_flow` - @client mention triggers context injection
 - **Coverage Target:** Full workflow coverage
 
 **Risks & Mitigations:**
@@ -4983,7 +5068,7 @@ Create comprehensive E2E tests for guide flow.
 - Max file: 400 lines, create submodules
 
 **Acceptance Criteria:**
-- [ ] Guide listing tested
+- [ ] Procedura listing tested
 - [ ] Start and progress tested
 - [ ] Step completion tested
 - [ ] Resume functionality tested
@@ -5545,6 +5630,8 @@ Create exhaustive test suite for all calculation scenarios.
 
 **Reference:** [FR-005: Dashboard ROI e Analytics](./PRATIKO_2.0_REFERENCE.md#fr-005-dashboard-roi-e-analytics)
 
+**Figma Reference:** `DashboardPage.tsx` — Source: [`docs/figma-make-references/DashboardPage.tsx`](../figma-make-references/DashboardPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
@@ -5553,10 +5640,26 @@ Professionals want to see the value PratikoAI provides: time saved, communicatio
 **Solution:**
 Create metrics service calculating ROI and usage statistics.
 
+> **Navigation:** When implementing the frontend, add "Dashboard" menu item (BarChart3 icon, route `/dashboard`) to the user menu dropdown in `web/src/app/chat/components/ChatHeader.tsx`. Insert in the feature links section above "Il mio Account". Target menu layout:
+> ```
+> ┌──────────────────────┐
+> │  Clienti             │  (DEV-308)
+> │  Comunicazioni       │  (DEV-330)
+> │  Procedure           │  (DEV-340)
+> │  Dashboard           │  (DEV-354)
+> │  Scadenze Fiscali    │  (DEV-385)
+> │ ──────────────────── │
+> │  Il mio Account      │
+> │  [superuser items]   │
+> │ ──────────────────── │
+> │  Esci                │
+> └──────────────────────┘
+> ```
+
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-309 (ClientService), DEV-330 (CommunicationService), DEV-340 (GuideService)
+- **Blocking:** DEV-309 (ClientService), DEV-330 (CommunicationService), DEV-340 (ProceduraService)
 - **Unlocks:** DEV-355 (Dashboard Aggregation), DEV-356 (Dashboard API)
 
 **Change Classification:** ADDITIVE
@@ -5639,10 +5742,12 @@ Create metrics service calculating ROI and usage statistics.
 
 **Reference:** [FR-005: Dashboard ROI e Analytics](./PRATIKO_2.0_REFERENCE.md#fr-005-dashboard-roi-e-analytics)
 
+**Figma Reference:** `DashboardPage.tsx` — Source: [`docs/figma-make-references/DashboardPage.tsx`](../figma-make-references/DashboardPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
-Dashboard needs aggregated data: client count, active guides, pending communications, recent matches.
+Dashboard needs aggregated data: client count, active procedure, pending communications, recent matches.
 
 **Solution:**
 Create dashboard service aggregating data from multiple sources.
@@ -5675,7 +5780,7 @@ Create dashboard service aggregating data from multiple sources.
 - Concurrent requests: Handle 100 concurrent requests
 
 **Edge Cases:**
-- **New Studio:** No clients/comms/guides → return all zeros, not null
+- **New Studio:** No clients/comms/procedure → return all zeros, not null
 - **Partial Data:** Some stats unavailable → return available, flag `"incomplete": true`
 - **Large Dataset:** 100 clients × 1000 activities → use pagination/limits internally
 - **Concurrent Updates:** Client added during aggregation → eventual consistency OK
@@ -5688,7 +5793,7 @@ Create dashboard service aggregating data from multiple sources.
 **Methods:**
 - `aggregate_client_stats(studio_id)` - Aggregate client counts and status
 - `aggregate_communication_stats(studio_id, period)` - Aggregate communication metrics
-- `aggregate_guide_stats(studio_id)` - Aggregate guide progress statistics
+- `aggregate_procedura_stats(studio_id)` - Aggregate procedura progress statistics
 - `aggregate_match_stats(studio_id, period)` - Aggregate recent match statistics
 - `build_dashboard_response(studio_id, period)` - Build complete dashboard data
 
@@ -5697,7 +5802,7 @@ Create dashboard service aggregating data from multiple sources.
 - **Unit Tests:**
   - `test_dashboard_client_stats` - client counts
   - `test_dashboard_communication_stats` - comm stats
-  - `test_dashboard_guide_stats` - guide progress
+  - `test_dashboard_procedura_stats` - procedura progress
   - `test_dashboard_match_stats` - recent matches
 - **Edge Case Tests:**
   - `test_new_studio_returns_zeros` - empty studio handled
@@ -5734,6 +5839,8 @@ Create dashboard service aggregating data from multiple sources.
 ### DEV-356: Dashboard API Endpoint
 
 **Reference:** [FR-005: Dashboard ROI e Analytics](./PRATIKO_2.0_REFERENCE.md#fr-005-dashboard-roi-e-analytics)
+
+**Figma Reference:** `DashboardPage.tsx` — Source: [`docs/figma-make-references/DashboardPage.tsx`](../figma-make-references/DashboardPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
 
@@ -5829,7 +5936,7 @@ Create dashboard endpoint returning aggregated data.
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
-Dashboard needs activity timeline showing recent actions (communications, guides, matches).
+Dashboard needs activity timeline showing recent actions (communications, procedure, matches).
 
 **Solution:**
 Create activity model or view aggregating actions.
@@ -5871,8 +5978,8 @@ Create activity model or view aggregating actions.
 - `id`: UUID (primary key)
 - `studio_id`: UUID (FK to Studio)
 - `user_id`: int (FK to User, nullable for system activities)
-- `activity_type`: enum (CLIENT_CREATED, COMMUNICATION_SENT, GUIDE_COMPLETED, MATCH_FOUND, etc.)
-- `entity_type`: str (client, communication, guide, match)
+- `activity_type`: enum (CLIENT_CREATED, COMMUNICATION_SENT, PROCEDURA_COMPLETED, MATCH_FOUND, etc.)
+- `entity_type`: str (client, communication, procedura, match)
 - `entity_id`: str (ID of the related entity)
 - `description`: str (human-readable description)
 - `metadata`: JSONB (additional context)
@@ -6132,7 +6239,7 @@ Create bilancio parser using existing document parsing infrastructure.
 
 **Dependencies:**
 - **Blocking:** Existing document parsing infrastructure
-- **Unlocks:** DEV-362 (Client Document Association), DEV-363 (Chat Context), DEV-365 (Integration Tests)
+- **Unlocks:** DEV-363 (Chat Context), DEV-365 (Integration Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -6231,7 +6338,7 @@ Create CU parser for extracting income and withholding data.
 
 **Dependencies:**
 - **Blocking:** Existing document parsing infrastructure
-- **Unlocks:** DEV-362 (Client Document Association), DEV-365 (Integration Tests)
+- **Unlocks:** DEV-365 (Integration Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -6314,99 +6421,9 @@ Create CU parser for extracting income and withholding data.
 
 ---
 
-### DEV-362: Client Document Association
+### ~~DEV-362: Client Document Association~~ REMOVED
 
-**Reference:** [FR-008: Upload e Analisi Documenti](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti)
-
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
-
-**Problem:**
-Uploaded documents need to be associated with specific clients for context.
-
-**Solution:**
-Create client-document linking with automatic CF matching.
-
-**Agent Assignment:** @Ezio (primary), @Clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-309 (ClientService), DEV-360 (Bilancio Parser), DEV-361 (CU Parser)
-- **Unlocks:** DEV-363 (Chat Context), DEV-364 (API), DEV-365 (Integration Tests)
-
-**Change Classification:** ADDITIVE
-
-**Impact Analysis:** N/A (new code only)
-
-**Pre-Implementation Verification:** N/A (ADDITIVE)
-
-**Error Handling:**
-- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
-
-**Error Handling:**
-- Invalid input: HTTP 400, `"Dati non validi"`
-- Not found: HTTP 404, `"Risorsa non trovata"`
-- Unauthorized: HTTP 403, `"Accesso non autorizzato"`
-- Server error: HTTP 500, `"Errore interno del server"`
-- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
-
-**Edge Cases:**
-- **CF Not Found:** Document CF doesn't match any client → prompt manual association
-- **Multiple CF Matches:** Duplicate CF in studio → reject with list of candidates
-- **Manual Override:** User associates to different client than auto-match → log override
-- **Document Already Associated:** Re-upload same file → update timestamp, keep association
-- **Client Deleted:** Associated client soft-deleted → preserve doc, flag `"client_deleted": true`
-- **Cross-Studio Upload:** Document CF matches client in different studio → no cross-tenant leak
-- **Orphan Document:** Association removed → document remains, `client_id: null`
-
-**File:** `app/services/client_document_service.py`
-
-**Methods:**
-- `associate_document(document_id, client_id, studio_id)` - Link document to client
-- `auto_match_by_cf(document_id, studio_id)` - Automatically match document to client by CF
-- `list_client_documents(client_id, studio_id)` - List all documents for a client
-- `disassociate_document(document_id)` - Remove client association from document
-
-**Performance Requirements:**
-- Document association: <100ms
-- CF auto-match: <200ms
-- Document listing: <200ms (paginated)
-- Database queries: <50ms (p95)
-
-**Testing Requirements:**
-- **TDD:** Write `tests/services/test_client_document_service.py` FIRST
-- **Unit Tests:**
-  - `test_associate_document` - links to client
-  - `test_auto_match_by_cf` - matches by CF
-  - `test_list_client_documents` - retrieves docs
-  - `test_tenant_isolation` - isolated by studio
-- **Edge Case Tests:**
-  - `test_cf_not_found_manual_prompt` - unknown CF prompts user
-  - `test_duplicate_cf_rejected` - multiple matches fail
-  - `test_manual_override_logged` - override recorded
-  - `test_reupload_updates_timestamp` - duplicate handled
-  - `test_deleted_client_preserved` - orphan doc kept
-  - `test_cross_studio_no_leak` - tenant isolation enforced
-  - `test_orphan_document_null_client` - disassociation works
-- **Edge Case Tests:** See Edge Cases section above
-- **Regression Tests:** Run `pytest tests/services/`
-- **Coverage Target:** 80%+ for association code
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Implementation complexity | MEDIUM | Follow existing service patterns |
-| Test coverage gaps | LOW | TDD approach with edge case tests |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Link documents to clients
-- [ ] Auto-match by CF
-- [ ] Tenant isolation
-- [ ] 80%+ test coverage achieved
+> **Removed:** This task described persistent client-document storage (linking uploaded files to clients permanently). This contradicts FR-008's explicit GDPR policy: documents are **temporary only** (session-scoped, 48h max, no persistence). Document upload and analysis is already implemented via the existing `/api/v1/documents/upload` and `/api/v1/documents/{id}/analyze` endpoints. No persistent "client file cabinet" is needed.
 
 ---
 
@@ -6425,8 +6442,10 @@ Include client documents in RAGState context.
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-362 (Client Document Association), Existing context_builder_node
+- **Blocking:** DEV-360 (Bilancio Parser), Existing context_builder_node
 - **Unlocks:** DEV-365 (Integration Tests)
+
+> **Note:** Documents in chat context come from temporary uploads (FR-008 session-scoped), not from persistent client-document associations (DEV-362 was removed).
 
 **Change Classification:** MODIFYING
 
@@ -6505,99 +6524,9 @@ Include client documents in RAGState context.
 
 ---
 
-### DEV-364: Document API Endpoints
+### ~~DEV-364: Document API Endpoints~~ REMOVED
 
-**Reference:** [FR-008: Upload e Analisi Documenti](./PRATIKO_2.0_REFERENCE.md#fr-008-upload-e-analisi-documenti)
-
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
-
-**Problem:**
-Frontend needs API to upload, list, and manage client documents.
-
-**Solution:**
-Create document router with endpoints.
-
-**Agent Assignment:** @Ezio (primary), @Clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-362 (Client Document Association)
-- **Unlocks:** DEV-365 (Integration Tests), Frontend integration
-
-**Change Classification:** ADDITIVE
-
-**Impact Analysis:** N/A (new code only)
-
-**Pre-Implementation Verification:** N/A (ADDITIVE)
-
-**Error Handling:**
-- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
-
-**Error Handling:**
-- Invalid input: HTTP 400, `"Dati non validi"`
-- Not found: HTTP 404, `"Risorsa non trovata"`
-- Unauthorized: HTTP 403, `"Accesso non autorizzato"`
-- Server error: HTTP 500, `"Errore interno del server"`
-- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
-
-**Performance Requirements:**
-- Response time: <200ms (p95)
-- Database queries: <50ms (p95)
-- Concurrent requests: Handle 100 concurrent requests
-
-**Edge Cases:**
-- **File Too Large:** >10MB upload → HTTP 413, `"File troppo grande (max 10MB)"`
-- **Invalid File Type:** .exe, .js uploads → HTTP 415, `"Tipo file non supportato"`
-- **Empty File:** 0 bytes → HTTP 400, `"File vuoto"`
-- **Duplicate Filename:** Same name exists → append timestamp suffix
-- **Client Not Found:** Upload to non-existent client → HTTP 404
-- **Download Deleted:** File was soft-deleted → HTTP 410 Gone
-- **Concurrent Upload:** Same file twice → idempotent, second wins
-- **Malformed UUID:** Invalid document ID → HTTP 400, `"ID non valido"`
-
-**File:** `app/api/v1/documents.py`
-
-**Endpoints:**
-- `POST /api/v1/clients/{id}/documents` - Upload document
-- `GET /api/v1/clients/{id}/documents` - List documents
-- `GET /api/v1/documents/{id}` - Download document
-- `DELETE /api/v1/documents/{id}` - Delete document
-
-**Testing Requirements:**
-- **TDD:** Write `tests/api/test_documents_api.py` FIRST
-- **Integration Tests:**
-  - `test_upload_document_201` - upload works
-  - `test_list_documents_200` - returns list
-  - `test_download_document_200` - file returned
-  - `test_delete_document_204` - soft delete
-  - `test_tenant_isolation` - isolated access
-- **Edge Case Tests:**
-  - `test_file_too_large_413` - >10MB rejected
-  - `test_invalid_file_type_415` - .exe rejected
-  - `test_empty_file_400` - 0 bytes rejected
-  - `test_duplicate_filename_suffixed` - timestamp added
-  - `test_client_not_found_404` - unknown client fails
-  - `test_deleted_file_410` - soft-deleted returns Gone
-  - `test_malformed_uuid_400` - bad ID rejected
-- **Edge Case Tests:** See Edge Cases section above
-- **Regression Tests:** Run `pytest tests/api/`
-- **Coverage Target:** 80%+ for API code
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Implementation complexity | MEDIUM | Follow existing service patterns |
-| Test coverage gaps | LOW | TDD approach with edge case tests |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Upload, list, download, delete
-- [ ] Tenant isolation
-- [ ] 80%+ test coverage achieved
+> **Removed:** This task described client-scoped document CRUD endpoints (`POST /clients/{id}/documents`, etc.) for persistent document management. This contradicts FR-008's GDPR policy. Document upload/analysis API already exists at `app/api/v1/documents.py` with temporary storage (48h expiry, encrypted, auto-cleanup). No additional persistent endpoints needed.
 
 ---
 
@@ -6616,7 +6545,7 @@ Create integration tests with sample PDFs.
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-360 (Bilancio Parser), DEV-361 (CU Parser), DEV-362 (Association), DEV-363 (Chat Context), DEV-364 (API)
+- **Blocking:** DEV-360 (Bilancio Parser), DEV-361 (CU Parser), DEV-363 (Chat Context)
 - **Unlocks:** Phase 8 start (all Phase 7 complete)
 
 **Change Classification:** ADDITIVE
@@ -6710,7 +6639,7 @@ Add schema validation and generate TypeScript types.
 **Agent Assignment:** @Ezio (primary), @Livia (frontend)
 
 **Dependencies:**
-- **Blocking:** All API endpoints (DEV-311, DEV-312, DEV-326, DEV-332, DEV-342, DEV-356, DEV-364)
+- **Blocking:** All API endpoints (DEV-311, DEV-312, DEV-326, DEV-332, DEV-342, DEV-356)
 - **Unlocks:** DEV-370 (Frontend SDK Types)
 
 **Change Classification:** ADDITIVE
@@ -6958,6 +6887,8 @@ Standardize pagination across all list endpoints.
 
 **Reference:** [Non-Functional Requirements](./PRATIKO_2.0_REFERENCE.md#4-requisiti-non-funzionali)
 
+**Figma Reference:** `ChatPage.tsx` (real-time patterns) in [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
@@ -7007,7 +6938,7 @@ Create WebSocket endpoint for real-time events.
 **Event Types:**
 - `MATCH_FOUND` - New normative match discovered
 - `COMMUNICATION_STATUS` - Communication status changed
-- `GUIDE_PROGRESS` - Guide progress updated
+- `PROCEDURA_PROGRESS` - Procedura progress updated
 - `DEADLINE_REMINDER` - Upcoming deadline notification
 
 **Testing Requirements:**
@@ -7133,6 +7064,8 @@ Set up automatic type generation from OpenAPI.
 
 **Reference:** [Non-Functional Requirements](./PRATIKO_2.0_REFERENCE.md#4-requisiti-non-funzionali)
 
+**Figma Reference:** `SignUpPage.tsx` → `ChatPage.tsx` → `ClientListPage.tsx` (full journey) — Source: [`docs/figma-make-references/ClientListPage.tsx`](../figma-make-references/ClientListPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** CRITICAL | **Effort:** 4h | **Status:** NOT STARTED
 
 **Problem:**
@@ -7146,7 +7079,7 @@ Create complete E2E test from registration to dashboard.
 **Dependencies:**
 - **Blocking:** All Phase 0-8 tasks (this tests the complete system)
   - DEV-300-207 (Models), DEV-308-219 (Services), DEV-320-229 (Matching)
-  - DEV-330-239 (Communications), DEV-340-253 (Guides/Calculations)
+  - DEV-330-239 (Communications), DEV-340-253 (Procedure/Calculations)
   - DEV-354-265 (Document Analysis), DEV-366-270 (API Quality)
 - **Unlocks:** Production deployment gate (must pass)
 
@@ -7824,6 +7757,8 @@ Create data rights API for client self-service.
 
 **Reference:** [GDPR e Gestione Dati Clienti](./PRATIKO_2.0_REFERENCE.md#11-gdpr-e-gestione-dati-clienti)
 
+**Figma Reference:** `GDPRCompliancePage.tsx` — Source: [`docs/figma-make-references/GDPRCompliancePage.tsx`](../figma-make-references/GDPRCompliancePage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
@@ -8438,6 +8373,8 @@ Create DeadlineMatchingService that matches deadlines to clients using the same 
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
+**Figma Reference:** `NotificationsDropdown.tsx` (dropdown in ChatPage) — Source: [`docs/figma-make-references/NotificationsDropdown.tsx`](../figma-make-references/NotificationsDropdown.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
 
 **Problem:**
@@ -8542,6 +8479,8 @@ Create background job that runs daily and sends notifications for upcoming deadl
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
+**Figma Reference:** `NotificationsDropdown.tsx` (dropdown in ChatPage) — Source: [`docs/figma-make-references/NotificationsDropdown.tsx`](../figma-make-references/NotificationsDropdown.tsx) + `ScadenzeFiscaliPage.tsx` — Source: [`docs/figma-make-references/ScadenzeFiscaliPage.tsx`](../figma-make-references/ScadenzeFiscaliPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
@@ -8549,6 +8488,22 @@ Frontend needs API to fetch upcoming deadlines for display in dashboard and cale
 
 **Solution:**
 Create REST endpoints for deadline management and queries.
+
+> **Navigation:** When implementing the frontend, add "Scadenze Fiscali" menu item (Calendar icon, route `/scadenze`) to the user menu dropdown in `web/src/app/chat/components/ChatHeader.tsx`. Insert in the feature links section above "Il mio Account". Target menu layout:
+> ```
+> ┌──────────────────────┐
+> │  Clienti             │  (DEV-308)
+> │  Comunicazioni       │  (DEV-330)
+> │  Procedure           │  (DEV-340)
+> │  Dashboard           │  (DEV-354)
+> │  Scadenze Fiscali    │  (DEV-385)
+> │ ──────────────────── │
+> │  Il mio Account      │
+> │  [superuser items]   │
+> │ ──────────────────── │
+> │  Esci                │
+> └──────────────────────┘
+> ```
 
 **Agent Assignment:** @Ezio (primary), @Livia (frontend contract), @Clelia (tests)
 
@@ -8657,6 +8612,8 @@ class DeadlineResponse(BaseModel):
 ### DEV-386: Deadline Calendar Widget (Frontend)
 
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
+
+**Figma Reference:** `ScadenzeFiscaliPage.tsx` — Source: [`docs/figma-make-references/ScadenzeFiscaliPage.tsx`](../figma-make-references/ScadenzeFiscaliPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** MEDIUM | **Effort:** 4h | **Status:** NOT STARTED
 
@@ -8878,7 +8835,7 @@ This phase adds missing infrastructure components identified in the gap analysis
 **Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
 
 **Problem:**
-Multiple features need PDF export capability (guides, calculations, dashboard reports, communications).
+Multiple features need PDF export capability (procedure, calculations, dashboard reports, communications).
 
 **Solution:**
 Create shared PDF generation service using WeasyPrint or ReportLab.
@@ -8887,7 +8844,7 @@ Create shared PDF generation service using WeasyPrint or ReportLab.
 
 **Dependencies:**
 - **Blocking:** None (independent utility service)
-- **Unlocks:** Guide export, calculation export, dashboard reports, communication archive
+- **Unlocks:** Procedura export, calculation export, dashboard reports, communication archive
 
 **Change Classification:** ADDITIVE
 
@@ -8923,7 +8880,7 @@ Create shared PDF generation service using WeasyPrint or ReportLab.
 
 **Methods:**
 - `generate_pdf(content, template, options)` - Generate PDF from content
-- `export_guide(guide_id, progress)` - Export guide with progress
+- `export_procedura(procedura_id, progress)` - Export procedura with progress
 - `export_calculation(calculation_result)` - Export tax calculation
 - `export_dashboard_report(studio_id, date_range)` - Export report
 - `export_communication(communication_id)` - Export for archive
@@ -8932,7 +8889,7 @@ Create shared PDF generation service using WeasyPrint or ReportLab.
 - **TDD:** Write `tests/services/test_pdf_export_service.py` FIRST
 - **Unit Tests:**
   - `test_generate_pdf_basic` - basic generation
-  - `test_export_guide_with_progress` - guide export
+  - `test_export_procedura_with_progress` - procedura export
   - `test_export_calculation_formatted` - calculation export
   - `test_pdf_headers_footers` - consistent branding
 - **Edge Case Tests:**
@@ -9864,6 +9821,347 @@ This phase covers the **legal and operational compliance prerequisites** that mu
 
 ---
 
+### DEV-402: `/procedura` Slash Command Handler
+
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Professionals need a quick way to consult procedures as generic reference without starting a tracked workflow. The `/procedura` slash command (same pattern as existing `/utilizzo`) provides this.
+
+**Solution:**
+Parse `/procedura [query]` from chat input. Show a searchable procedure list or render a specific procedure in read-only mode. No ProceduraProgress record is created — this is purely informational.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-340 (ProceduraService), DEV-341 (Pre-configured Procedure)
+- **Unlocks:** DEV-405 (E2E Tests)
+
+**Change Classification:** ADDITIVE
+
+**Figma Reference:** `ProcedureSelector.tsx` (inline procedure picker + CommandPopover) — Source: [`docs/figma-make-references/ProcedureSelector.tsx`](../figma-make-references/ProcedureSelector.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
+**Error Handling:**
+- Unknown command: Ignore, pass to normal chat flow
+- No matching procedure: Return `"Nessuna procedura trovata per: {query}"`
+- Service unavailable: Fallback to chat response, log at ERROR level
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation) at ERROR level
+
+**Performance Requirements:**
+- Command parsing: <50ms
+- Procedure list render: <200ms
+- Specific procedure render: <300ms
+
+**Edge Cases:**
+- **Empty Query:** `/procedura` with no args → show full searchable list
+- **Partial Match:** `/procedura apertura` → show filtered list of matching procedures
+- **Exact Match:** `/procedura apertura-piva` → render specific procedure detail
+- **No Match:** `/procedura xyzabc` → friendly "no results" message
+
+**File:** `app/services/slash_command_handler.py` (new) + `app/api/v1/chat.py` (extend)
+
+**Methods:**
+- `parse_slash_command(message)` - Detect and parse `/procedura` command from chat input
+- `handle_procedura_command(query, studio_id)` - Route to list or detail view
+- `render_procedura_list(procedures, query)` - Format searchable procedure list for chat
+- `render_procedura_detail(procedura)` - Format read-only procedure detail for chat
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_slash_command_handler.py` FIRST
+- **Unit Tests:**
+  - `test_parse_procedura_command` - recognizes `/procedura` in message
+  - `test_parse_procedura_with_query` - extracts query param
+  - `test_handle_empty_query_returns_list` - shows all procedures
+  - `test_handle_query_filters_results` - filters by query
+  - `test_no_progress_record_created` - verify no ProceduraProgress side effect
+- **Integration Tests:** `tests/api/test_chat_slash_commands.py`
+- **Regression Tests:** Run `pytest tests/api/test_chat*.py`
+- **Coverage Target:** 80%+ for slash command code
+
+**Code Completeness:** (MANDATORY)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All integrations complete and functional
+- [ ] No "will implement later" patterns
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] `/procedura` recognized in chat input
+- [ ] Searchable procedure list rendered
+- [ ] Specific procedure rendered in read-only mode
+- [ ] NO ProceduraProgress records created
+- [ ] 80%+ test coverage achieved
+
+---
+
+### DEV-403: `@client` Mention System with Autocomplete
+
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
+
+**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Professionals need to quickly reference a specific client in chat to start tracked procedures or get client-contextual responses. The `@` mention pattern is familiar from messaging apps and provides a natural interaction model.
+
+**Solution:**
+When user types `@` in chat, trigger an autocomplete dropdown with client names (debounced 300ms). After selecting `@NomeCliente`, show an **action picker** with 4 options:
+1. **Domanda generica** — Injects client context (regime, ATECO, posizione) into RAGState, user types free-form question
+2. **Domanda sul cliente** — Focused client query mode (e.g., "ha pagamenti in scadenza?", "possiede un secondo immobile?"), queries client data directly
+3. **Scheda cliente** — Renders full client info card inline in chat (anagrafica, regime, ATECO, posizione contributiva, procedure attive)
+4. **Avvia procedura guidata** — Opens procedure selector (reuses ProcedureSelector from DEV-402) filtered/contextualized for this client, then starts tracked workflow via DEV-404
+
+**Agent Assignment:** @Ezio (primary), @Livia (frontend autocomplete), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-309 (ClientService), DEV-340 (ProceduraService), DEV-345 (Procedura Context)
+- **Unlocks:** DEV-405 (E2E Tests)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- No matching client: Show `"Nessun cliente trovato per: {query}"`
+- Ambiguous match (same name): Append CF suffix for disambiguation (e.g., `@Mario Rossi (RSSMRA80...)`)
+- Deleted client mentioned: Show warning `"Cliente non più attivo"`, no context injection
+- Special characters in name: Handle apostrophes (`@D'Angelo`), accents (`@André`), spaces
+- Action picker timeout: If no action selected within 60s, collapse picker and show hint "Digita @ per riprovare"
+- Client card data incomplete: Show available fields, gray out missing ones with "Dato non disponibile"
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, client_id) at ERROR level
+
+**Performance Requirements:**
+- Autocomplete search: <100ms (debounced 300ms on frontend)
+- Client context injection: <200ms
+- Full mention resolution: <500ms
+
+**Edge Cases:**
+- **Special Characters:** `@D'Angelo`, `@André Müller` → handle apostrophes, accents
+- **Same-Name Disambiguation:** Multiple "Mario Rossi" → append CF suffix
+- **Deleted Client:** `@` mentions deleted client → warning, no context injection
+- **Empty Client DB:** `@` typed but no clients → show "Importa clienti per usare le menzioni"
+- **Null Tenant:** `@` without valid studio_id → HTTP 403
+- **Cross-Tenant:** Client from different studio → not shown in autocomplete
+
+**File:** `app/services/client_mention_service.py` (new) + `app/api/v1/chat.py` (extend)
+
+**Methods:**
+- `search_clients_for_autocomplete(query, studio_id)` - Debounced search returning client list with CF, regime badge
+- `resolve_client_mention(mention_text, studio_id)` - Map `@NomeCliente` → client_id
+- `get_client_action_options(client_id)` - Return available actions for the selected client (all 4 by default, may vary if client has no procedures)
+- `handle_client_action(client_id, action, rag_state)` - Route to appropriate handler based on selected action:
+  - `generic_question`: inject client context into RAGState
+  - `client_question`: inject client context + set query_mode to "client_focused"
+  - `client_card`: return full client profile card data
+  - `start_procedure`: delegate to ProcedureSelector + DEV-404 start_for_client
+- `format_client_mention_tag(client)` - Format as styled mention tag (blue pill) for frontend
+- `get_client_card(client_id, studio_id)` - Return full client info (anagrafica, regime, ATECO, posizione, active procedures)
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_client_mention_service.py` FIRST
+- **Unit Tests:**
+  - `test_search_clients_returns_matches` - basic autocomplete
+  - `test_search_clients_debounce_ready` - search returns within 100ms
+  - `test_resolve_mention_exact_match` - single match resolution
+  - `test_resolve_mention_disambiguation` - same-name CF suffix
+  - `test_resolve_mention_special_chars` - apostrophes, accents
+  - `test_resolve_mention_deleted_client` - warning returned
+  - `test_get_client_action_options_all_available` - all 4 actions returned
+  - `test_handle_action_generic_question` - context injected into RAGState
+  - `test_handle_action_client_question` - client-focused query mode set
+  - `test_handle_action_client_card` - full profile returned
+  - `test_handle_action_start_procedure` - delegates to procedure selector
+  - `test_get_client_card_complete` - all fields populated
+  - `test_get_client_card_partial` - missing fields handled gracefully
+- **Integration Tests:** `tests/services/test_client_mention_integration.py`
+- **Security Tests:**
+  - `test_cross_tenant_mention_blocked` - no cross-studio leakage
+  - `test_null_tenant_mention_rejected` - 403 on missing studio
+- **Regression Tests:** Run `pytest tests/services/test_client*.py`
+- **Coverage Target:** 80%+ for mention code
+
+**Code Completeness:** (MANDATORY)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All integrations complete and functional
+- [ ] No "will implement later" patterns
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] `@` triggers autocomplete with client names
+- [ ] Autocomplete debounced at 300ms
+- [ ] Same-name disambiguation with CF suffix
+- [ ] Special characters handled (apostrophes, accents)
+- [ ] Deleted client warning displayed
+- [ ] Action picker shows 4 options after client selection
+- [ ] "Domanda generica" injects context and allows free-form input
+- [ ] "Domanda sul cliente" sets client-focused query mode
+- [ ] "Scheda cliente" renders full client info card inline
+- [ ] "Avvia procedura guidata" opens procedure selector for client
+- [ ] Action picker collapses after selection
+- [ ] Cross-tenant isolation enforced
+- [ ] 80%+ test coverage achieved
+
+---
+
+### DEV-404: Generic vs Client-Specific Procedure Logic Split
+
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
+
+**Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+ProceduraService needs an explicit, clean separation between generic consultation mode (read-only, no side effects) and client-specific tracking mode (creates ProceduraProgress, enables step tracking). This separation must be enforced at the service layer to prevent accidental progress creation during consultation.
+
+**Solution:**
+Refine `ProceduraService` to have clearly separated code paths:
+- `get_reference(procedura_id)` — returns procedure content, raises if not found, NO database writes
+- `start_for_client(user_id, procedura_id, client_id)` — validates client exists and belongs to studio, creates ProceduraProgress, returns trackable progress object
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-340 (ProceduraService)
+- **Unlocks:** DEV-405 (E2E Tests)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Primary File:** `app/services/procedura_service.py`
+- **Affected Files:**
+  - `app/api/v1/procedure.py` (routes call correct service method)
+- **Related Tests:**
+  - `tests/services/test_procedura_service.py` (direct)
+- **Baseline Command:** `pytest tests/services/test_procedura_service.py -v`
+
+**Pre-Implementation Verification:**
+- [ ] Baseline tests pass
+- [ ] Existing ProceduraService reviewed
+- [ ] Code paths clearly identified
+
+**Error Handling:**
+- `get_reference` on non-existent procedura: HTTP 404, `"Procedura non trovata"`
+- `start_for_client` without client_id: HTTP 400, `"client_id obbligatorio per avviare una procedura"`
+- `start_for_client` with deleted client: HTTP 400, `"Cliente non più attivo"`
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, procedura_id) at ERROR level
+
+**Performance Requirements:**
+- `get_reference`: <100ms (read-only, no writes)
+- `start_for_client`: <200ms (includes ProceduraProgress creation)
+
+**Edge Cases:**
+- **get_reference Never Writes:** Verify with DB transaction inspection that no INSERT/UPDATE occurs
+- **start_for_client Validates Client:** Client must exist, be active, and belong to same studio
+- **Idempotent Start:** If progress already exists for same user+procedura+client → return existing
+
+**File:** `app/services/procedura_service.py` (refine)
+
+**Testing Requirements:**
+- **TDD:** Write tests FIRST
+- **Unit Tests:**
+  - `test_get_reference_returns_content` - returns procedura details
+  - `test_get_reference_no_db_writes` - verify no ProceduraProgress created
+  - `test_start_for_client_creates_progress` - creates ProceduraProgress
+  - `test_start_for_client_requires_client_id` - rejects None client_id
+  - `test_start_for_client_validates_client_active` - rejects deleted client
+  - `test_start_for_client_validates_tenant` - rejects cross-tenant client
+  - `test_start_for_client_idempotent` - returns existing progress
+- **Regression Tests:** Run `pytest tests/services/test_procedura_service.py -v`
+- **Coverage Target:** 90%+ for split logic
+
+**Code Completeness:** (MANDATORY)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All integrations complete and functional
+- [ ] No "will implement later" patterns
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] `get_reference` is purely read-only (no DB writes)
+- [ ] `start_for_client` requires and validates client_id
+- [ ] Clear separation in code paths
+- [ ] Idempotent start behavior
+- [ ] 90%+ test coverage for split logic
+
+---
+
+### DEV-405: E2E Tests for `/procedura` and `@client` Features
+
+**Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+Need end-to-end tests verifying the new `/procedura` slash command and `@client` mention system work correctly together and independently.
+
+**Solution:**
+Create comprehensive E2E tests covering both features and their interaction.
+
+**Agent Assignment:** @Clelia (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-402 (/procedura command), DEV-403 (@client mention), DEV-404 (Logic split)
+- **Unlocks:** None (final validation task)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Test environment setup failure: Mark test as ERROR, log setup issue
+- External service unavailable: Skip test with SKIP, log reason
+- **Logging:** All test failures MUST be logged at ERROR level
+
+**Performance Requirements:**
+- E2E test suite: <60s total runtime
+- Individual flow test: <15s
+- Setup/teardown: <5s
+
+**File:** `tests/e2e/test_procedura_commands_flow.py`
+
+**Methods:**
+- `test_procedura_slash_command_list()` - `/procedura` shows all procedures in read-only mode
+- `test_procedura_slash_command_search()` - `/procedura apertura` filters results
+- `test_procedura_slash_command_detail()` - `/procedura apertura-piva` shows specific procedure
+- `test_procedura_slash_command_no_progress()` - Verify no ProceduraProgress records created
+- `test_client_mention_autocomplete()` - `@` triggers autocomplete with client names
+- `test_client_mention_resolve()` - `@NomeCliente` resolves to client context
+- `test_client_mention_start_procedura()` - `@NomeCliente` + procedure selection starts tracked workflow
+- `test_combined_flow()` - `/procedura` consultation → then `@NomeCliente` to start tracked version
+- `test_client_mention_cross_tenant_blocked()` - Security: no cross-studio client access
+- `test_client_mention_action_picker_shown()` - After `@NomeCliente`, action picker with 4 options appears
+- `test_client_mention_action_generic_question()` - "Domanda generica" injects context, allows question
+- `test_client_mention_action_client_question()` - "Domanda sul cliente" enables focused query
+- `test_client_mention_action_client_card()` - "Scheda cliente" renders inline card
+- `test_client_mention_action_start_procedure()` - "Avvia procedura guidata" opens procedure selector
+
+**Testing Requirements:**
+- **This IS the testing task**
+- **E2E Tests:**
+  - `test_procedura_slash_command_list` - full list consultation
+  - `test_procedura_slash_command_search` - filtered consultation
+  - `test_procedura_slash_command_no_progress` - read-only verified
+  - `test_client_mention_autocomplete` - autocomplete works
+  - `test_client_mention_resolve` - context injection works
+  - `test_client_mention_start_procedura` - tracked workflow started
+  - `test_combined_flow` - consultation then tracking
+  - `test_client_mention_cross_tenant_blocked` - security verified
+- **Coverage Target:** Full workflow coverage
+
+**Code Completeness:** (MANDATORY)
+- [ ] No TODO comments for required functionality
+- [ ] No hardcoded placeholder values
+- [ ] All integrations complete and functional
+- [ ] No "will implement later" patterns
+
+**Acceptance Criteria:**
+- [ ] `/procedura` consultation flow tested
+- [ ] `@client` mention flow tested
+- [ ] Combined flow tested
+- [ ] No ProceduraProgress in read-only mode verified
+- [ ] Cross-tenant isolation verified
+- [ ] Action picker flow tested for all 4 actions
+- [ ] All tests passing
+
+---
+
 ## Critical E2E Test Flows
 
 ### Flow 1: Client Management
@@ -9884,10 +10182,10 @@ tests/e2e/test_communication_flow.py
 1. Create Draft → 2. Submit Review → 3. Approve → 4. Send → 5. Verify Delivery
 ```
 
-### Flow 4: Guide Progress
+### Flow 4: Procedura Progress
 ```
-tests/e2e/test_guide_flow.py
-1. Start Guide → 2. Complete Steps → 3. Resume → 4. Complete → 5. View History
+tests/e2e/test_procedura_flow.py
+1. Start Procedura → 2. Complete Steps → 3. Resume → 4. Complete → 5. View History
 ```
 
 ### Flow 5: Full User Journey (DEV-371)
@@ -9902,7 +10200,7 @@ tests/e2e/test_pratikoai_2_0_flow.py
 ## Success Criteria
 
 - [ ] 100 clients per studio functional
-- [ ] 10-15 procedural guides available
+- [ ] 9 procedure available
 - [ ] Matching suggestions appear in chat
 - [ ] Communications workflow complete (draft → approve → send)
 - [ ] All fiscal calculations working with client context
@@ -9926,3 +10224,130 @@ tests/e2e/test_pratikoai_2_0_flow.py
 | Feature creep | Strict MVP scope, defer complex features |
 | Migration failure | Test on staging, full backup, **migration tests** |
 | Pipeline regression | Feature flags, **extensive LangGraph tests**, **E2E tests** |
+
+---
+
+## ChatPage Integration Guidelines
+
+> **IMPORTANT:** The Figma Make `ChatPage.tsx` reference file (`docs/figma-make-references/ChatPage.tsx`) is a 108KB standalone prototype that includes features and UI patterns we do NOT implement in our codebase. When implementing tasks that reference ChatPage.tsx, follow these rules:
+
+### What to extract from Figma's ChatPage.tsx
+
+- **Only the specific Screen feature** described in the task's `**Figma Reference:**` section
+- Component interaction patterns (e.g., how @mention triggers autocomplete, how /command opens a popover)
+- Color values, spacing, and styling tokens that match our existing design system
+- Italian text/labels for UI elements
+
+### What NOT to change in the existing ChatPage
+
+The following aspects of our chat implementation are FINAL and must NOT be modified to match Figma's ChatPage.tsx:
+
+- **Navigation:** We use a user menu dropdown in `ChatHeader.tsx` (top-right User icon), NOT a sidebar nav. Do not add sidebar navigation, tab bars, or header navigation links from Figma.
+- **Sidebar:** Our sidebar (`ChatSidebar.tsx`) shows chat sessions only. Do not replace it with Figma's multi-section sidebar (Modelli, Scadenze, Normative, Aggiornamenti, FAQ links).
+- **Input modes:** We have a single chat input mode. Do not add Figma's input mode switcher (simple/complex/interactive/document).
+- **Notifications:** The notification dropdown (Screen 6) is a separate task (DEV-384/385). Do not add it when implementing other screens.
+- **Message rendering:** Do not change AIMessageV2, FeedbackButtons, or InteractiveQuestionInline unless the task specifically requires it.
+- **State management:** Keep existing Context API patterns (ChatStateProvider, ChatSessionsProvider). Do not introduce new providers from Figma.
+
+### User Menu in ChatHeader
+
+New PRATIKO_2.0 pages add their menu item to the existing user menu dropdown in `web/src/app/chat/components/ChatHeader.tsx`. Each task adds its item progressively when its page is implemented. The target layout:
+
+```
+┌──────────────────────┐
+│  Clienti             │  (DEV-308, Users icon, /clients)
+│  Comunicazioni       │  (DEV-330, Mail icon, /comunicazioni)
+│  Procedure           │  (DEV-340, ClipboardList icon, /procedure)
+│  Dashboard           │  (DEV-354, BarChart3 icon, /dashboard)
+│  Scadenze Fiscali    │  (DEV-385, Calendar icon, /scadenze)
+│ ──────────────────── │
+│  Il mio Account      │  (existing)
+│  [superuser items]   │  (existing — Etichettatura, Confronta Modelli, Configurazione)
+│ ──────────────────── │
+│  Esci                │  (existing)
+└──────────────────────┘
+```
+
+Each menu item is added ONLY when its corresponding page/route is created. Do not add menu items for pages that don't exist yet.
+
+---
+
+## Appendix: Figma Make Prompts for Missing Screens
+
+All screens have been implemented in the [Figma Make project](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page). Screen 5 was removed (contradicted FR-008 GDPR temp-only policy). The `ChatPage.tsx` reference is a full standalone prototype — see [ChatPage Integration Guidelines](#chatpage-integration-guidelines) for what to use and what to ignore from it.
+
+### Screen 1: Communication Dashboard (`GestioneComunicazioniPage.tsx`) ✅ IMPLEMENTED
+
+**Used by:** DEV-330, DEV-332, DEV-335, DEV-336, DEV-338
+
+**Source:** [`docs/figma-make-references/GestioneComunicazioniPage.tsx`](../figma-make-references/GestioneComunicazioniPage.tsx)
+
+**Key UI Elements:** Stats bar (Bozze/In Revisione/Approvate/Inviate), filter tabs, communication list with status-based action buttons, bulk select/approve/send, editor modal (client/template/channel/subject/body).
+
+---
+
+### Screen 2: Procedura Interattiva (`ProceduraInterattivaPage.tsx`) ✅ IMPLEMENTED
+
+**Used by:** DEV-340, DEV-342, DEV-343, DEV-344
+
+**Source:** [`docs/figma-make-references/ProceduraInterattivaPage.tsx`](../figma-make-references/ProceduraInterattivaPage.tsx)
+
+**Key UI Elements:** Left sidebar with procedure list (progress bars, category badges), stepper with step numbers/checkmarks, current step content (checklist, required documents, notes/attachments), two modes (Modalità consultazione vs client-specific tracking with "Avvia per un cliente" button), client selector modal.
+
+---
+
+### Screen 3: ROI Dashboard & Analytics (`DashboardPage.tsx`) ✅ IMPLEMENTED
+
+**Used by:** DEV-354, DEV-355, DEV-356
+
+**Source:** [`docs/figma-make-references/DashboardPage.tsx`](../figma-make-references/DashboardPage.tsx)
+
+**Key UI Elements:** Top row KPI cards (Clienti Attivi, Ore Risparmiate, Comunicazioni Inviate, Normative Monitorate), ROI "Valore Generato" area chart with savings breakdown, matching stats panel, activity timeline, upcoming deadlines (next 7 days), client distribution charts (pie by regime fiscale, bar by ATECO sector, donut by status).
+
+---
+
+### Screen 4: Matching Results Panel (`MatchingNormativoPage.tsx` + `RisultatiMatchingNormativoPanel.tsx`) ✅ IMPLEMENTED
+
+**Used by:** DEV-326
+
+**Source:** [`docs/figma-make-references/MatchingNormativoPage.tsx`](../figma-make-references/MatchingNormativoPage.tsx) (page wrapper), [`docs/figma-make-references/RisultatiMatchingNormativoPanel.tsx`](../figma-make-references/RisultatiMatchingNormativoPanel.tsx) (panel)
+
+**Key UI Elements:** Header with client name and match count badge, search bar with collapsible filters (type: NORMATIVA/SCADENZA/OPPORTUNITA, urgency: Critica/Alta/Media/Informativa, status), expandable match cards with color-coded urgency borders, circular relevance score indicator (%), matched attributes badges, deadline countdown, source links, bulk actions bar (Genera Comunicazione, Segna come Gestito, Ignora), select-all checkbox, embeddable mode support.
+
+---
+
+### ~~Screen 5: Client Documents Tab (`ClientDocumentsTab.tsx`)~~ REMOVED
+
+> **Removed:** This screen described a persistent "Documenti Cliente" file cabinet with drag & drop upload, document list per client, fiscal year association, and download/preview. This contradicts FR-008's explicit GDPR policy: documents are **temporary only** (session-scoped, 48h max, no persistence, no server-side storage). Document upload for AI analysis is already handled via the chat interface. DEV-362 and DEV-364 (which referenced this screen) have also been removed.
+
+---
+
+### Screen 6: Notification Panel (`NotificationsDropdown.tsx`) ✅ IMPLEMENTED
+
+**Used by:** DEV-384, DEV-385
+
+**Source:** [`docs/figma-make-references/NotificationsDropdown.tsx`](../figma-make-references/NotificationsDropdown.tsx)
+
+**Key UI Elements:** Bell icon dropdown (entry point in ChatPage), gradient header with unread count badge, notifications grouped by Oggi/Ieri/Questa Settimana, four notification types color-coded (Scadenza Imminente red, Nuovo Match orange, Comunicazione Approvata green, Aggiornamento Normativo blue), mark-as-read per item + "Segna tutte come lette" bulk action, "Vedi tutte le notifiche" footer link, empty state.
+
+---
+
+### Screen 7: Slash Command Procedure Selector (`ProcedureSelector.tsx`) ✅ IMPLEMENTED
+
+**Used by:** DEV-402
+
+**Source:** [`docs/figma-make-references/ProcedureSelector.tsx`](../figma-make-references/ProcedureSelector.tsx)
+
+**Key UI Elements:** CommandPopover (Slack/Notion-style `/` command list, triggered in chat input), inline ProcedureSelector card with search bar + category chips (Tutte/Apertura/Chiusura/Lavoro/Fiscale), scrollable procedure cards (name, category badge, step count, estimated time), read-only detail view (step list with numbered circles, documents grid, stats cards), "Modalità consultazione" badge, "Avvia per un cliente" CTA button. 6 mock procedures covering apertura/chiusura/lavoro/fiscale categories.
+
+---
+
+### Screen 8: Client Mention Autocomplete (`ClientMentionAutocomplete.tsx` + `ClientActionPicker.tsx`) ✅ IMPLEMENTED
+
+**Used by:** DEV-403
+
+**Source:** [`docs/figma-make-references/ClientMentionAutocomplete.tsx`](../figma-make-references/ClientMentionAutocomplete.tsx) (autocomplete dropdown + mention pill + context card), [`docs/figma-make-references/ClientActionPicker.tsx`](../figma-make-references/ClientActionPicker.tsx) (action picker + client profile card), [`docs/figma-make-references/ChatPage.tsx`](../figma-make-references/ChatPage.tsx) (entry point with mentions integration)
+
+**Key UI Elements:** `@` trigger autocomplete dropdown with search filtering by name/CF, client rows with Building2/User icon + name + codice fiscale + regime badge (Forfettario green/Ordinario blue/Semplificato orange), same-name disambiguation via CF prefix, keyboard nav hint footer. Blue pill `ClientMentionPill` tag in chat input with `@Name` and X remove button. `ClientActionPicker` 2x2 grid card (Domanda generica, Domanda sul cliente, Scheda cliente, Avvia procedura) with gradient header showing client name/regime/posizione. `ClientProfileCard` full detail view with sections: Anagrafica (nome, CF, P.IVA), Regime Fiscale (badge + law reference), Codice ATECO (code + description), Posizione Contributiva (INPS matricola + INAIL PAT), Procedure Attive (progress bars), Procedure Suggerite (hover-to-reveal PlayCircle). `ClientContextCard` compact version for AI response context. Empty state: "Importa i tuoi clienti per usare le menzioni @". 8 mock clients with full Italian fiscal data.
+
+> **ChatPage.tsx usage note:** Only use `ChatPage.tsx` for the `@mention` interaction pattern (how typing `@` triggers the autocomplete, how client selection shows the action picker, how actions route to different flows). Do NOT implement ChatPage.tsx's sidebar navigation, notification dropdown, input mode switcher, or any other features unrelated to the @mention system. See [ChatPage Integration Guidelines](#chatpage-integration-guidelines) above.

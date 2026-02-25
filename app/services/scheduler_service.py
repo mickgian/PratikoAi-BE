@@ -375,24 +375,84 @@ def get_metrics_report_recipients() -> list[str]:
     return unique_recipients
 
 
+async def _acquire_scheduler_lock(task_name: str, ttl_seconds: int = 300) -> bool:
+    """Acquire a Redis-based distributed lock to prevent duplicate task execution.
+
+    When multiple workers run (e.g. production with 4 uvicorn workers), each worker
+    starts its own scheduler. This lock ensures only one worker executes each task.
+
+    Args:
+        task_name: Unique task identifier used as lock key.
+        ttl_seconds: Lock expiry in seconds (safety net if worker crashes).
+
+    Returns:
+        True if this worker acquired the lock, False if another worker already holds it.
+    """
+    try:
+        from app.services.cache import cache_service
+
+        redis_client = await cache_service._get_redis()
+        if redis_client is None:
+            # Redis unavailable — allow execution to avoid silent task loss
+            logger.warning(
+                "scheduler_lock_redis_unavailable",
+                task_name=task_name,
+                message="Redis not available, allowing task execution without lock",
+            )
+            return True
+
+        lock_key = f"scheduler:lock:{task_name}"
+        # SET NX (only if not exists) with TTL — atomic operation
+        acquired = await redis_client.set(lock_key, "1", nx=True, ex=ttl_seconds)
+        if not acquired:
+            logger.info(
+                "scheduler_lock_already_held",
+                task_name=task_name,
+                message="Another worker is already executing this task",
+            )
+        return bool(acquired)
+    except Exception as e:
+        logger.warning(
+            "scheduler_lock_error",
+            task_name=task_name,
+            error=str(e),
+            message="Lock acquisition failed, allowing task execution",
+        )
+        return True
+
+
 async def send_metrics_report_task() -> None:
-    """Scheduled task to send metrics reports."""
+    """Scheduled task to send metrics reports.
+
+    Only reports on the current environment (the one this instance is running in).
+    Uses a Redis distributed lock to prevent duplicate sends across workers.
+    """
+    task_name = "metrics_report"
+    if not await _acquire_scheduler_lock(task_name, ttl_seconds=600):
+        return
+
     try:
         # Get recipient emails from environment configuration
         recipient_emails = get_metrics_report_recipients()
 
-        # Define environments to monitor
-        environments = [Environment.DEVELOPMENT, Environment.QA, Environment.PRODUCTION]
+        # Only report on the environment this instance is actually running in
+        current_env = settings.ENVIRONMENT
+        environments = [current_env]
 
         # Send the report
         success = await email_service.send_metrics_report(recipient_emails, environments)
 
         if success:
             logger.info(
-                f"Metrics report sent successfully to {len(recipient_emails)} recipients: {', '.join(recipient_emails)}"
+                "metrics_report_sent",
+                recipients=len(recipient_emails),
+                environment=current_env.value,
             )
         else:
-            logger.error(f"Failed to send metrics report to some or all recipients: {', '.join(recipient_emails)}")
+            logger.error(
+                "metrics_report_send_failed",
+                recipients=", ".join(recipient_emails),
+            )
 
     except Exception as e:
         logger.error(f"Error in metrics report task: {e}")
@@ -1031,12 +1091,15 @@ async def send_consolidated_cost_report_task() -> None:
 
 def setup_default_tasks() -> None:
     """Setup default scheduled tasks."""
-    # Add 12-hour metrics report task
+    # Daily metrics report task (previously EVERY_12_HOURS which caused duplicate emails)
+    metrics_report_enabled = getattr(settings, "METRICS_REPORT_ENABLED", True)
+    metrics_report_time = getattr(settings, "METRICS_REPORT_TIME", "06:00")
     metrics_report_task = ScheduledTask(
-        name="metrics_report_12h",
-        interval=ScheduleInterval.EVERY_12_HOURS,
+        name="metrics_report_daily",
+        interval=ScheduleInterval.DAILY,
         function=send_metrics_report_task,
-        enabled=True,
+        enabled=metrics_report_enabled,
+        target_time=metrics_report_time,
     )
     scheduler_service.add_task(metrics_report_task)
 
@@ -1177,7 +1240,8 @@ def setup_default_tasks() -> None:
     logger.info(
         f"Default scheduled tasks configured ({report_mode} reports, "
         f"ingestion={ingestion_report_enabled}, cost={cost_report_enabled}, "
-        f"eval={eval_report_enabled}, backfill={embedding_backfill_enabled})"
+        f"eval={eval_report_enabled}, backfill={embedding_backfill_enabled}, "
+        f"metrics={metrics_report_enabled})"
     )
 
 

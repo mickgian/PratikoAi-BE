@@ -943,6 +943,8 @@ These depend on Wave 3-5 services. Can run in parallel.
 
 **What to build:** IVA calculator supporting: (1) scorporo IVA (from gross to net + VAT), (2) IVA liquidation (sales VAT - purchase VAT = balance), (3) forfettario regime coefficient calculation. Required by PRD FR-007 §3.7.3 and MVP scope §6.1 ("Calcoli fiscali base: IRPEF, IVA, contributi").
 
+**Note:** `app/services/italian_tax_calculator.py` already has `calculate_vat()` / `calculate_reverse_vat()` methods. Consolidate or deprecate those in favor of this dedicated service (the existing file is 1300+ lines, well over the 200-line service limit).
+
 **File:** `app/services/iva_calculator_service.py`
 
 **Tests:** `tests/services/test_iva_calculator.py` — scorporo 4%/10%/22%, liquidation positive/negative balance, forfettario coefficient, edge cases (zero amounts, negative values)

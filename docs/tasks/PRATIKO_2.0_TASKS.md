@@ -1450,7 +1450,7 @@ Wave 9 (final validation):
 | **Phase 8: Frontend Integration** | DEV-366 to DEV-371 (6 tasks) | 7, 8, 9 | 14 |
 | **Phase 9: GDPR Compliance** | DEV-372 to DEV-379 (8 tasks) | 3, 4, 5, 7, 8 | 15 |
 | **Phase 10: Deadline System** | DEV-380 to DEV-387 (8 tasks) | 3, 4, 5, 7, 8 | 16-17 |
-| **Phase 11: Infrastructure** | DEV-388 to DEV-395 (7+1 tasks) | 0, 6 | 18 |
+| **Phase 11: Infrastructure** | DEV-388 to DEV-395 (8 tasks) | 0, 6 | 18 |
 | **Phase 12: Pre-Launch** | DEV-396 to DEV-401 (6 tasks) | 0, 1, 4, 5 | Pre-launch |
 
 ---

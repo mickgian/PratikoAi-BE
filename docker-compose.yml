@@ -23,10 +23,12 @@ services:
     image: redis:7-alpine
     restart: always
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"  # Localhost only — Docker bypasses UFW, never use 0.0.0.0
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-devpass}
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-devpass}  # For healthcheck redis-cli auth
     networks:
       - monitoring
     healthcheck:
@@ -63,6 +65,7 @@ services:
       # - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
       # - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-supersecretkeythatshouldbechangedforproduction}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-devpass}
       # Override database URL for Docker (use service name instead of localhost)
       - POSTGRES_URL=postgresql://aifinance:devpass@db:5432/aifinance  # pragma: allowlist secret
       # Ensure CORS is configured for frontend
@@ -106,10 +109,10 @@ services:
   redis-exporter:
     image: oliver006/redis_exporter:v1.55.0
     ports:
-      - "9121:9121"
+      - "127.0.0.1:9121:9121"  # Localhost only — never expose metrics to internet
     environment:
       - REDIS_ADDR=redis://redis:6379
-      - REDIS_PASSWORD=
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-devpass}
       - REDIS_EXPORTER_CHECK_KEYS=*
       - REDIS_EXPORTER_CHECK_KEY_GROUPS=llm_responses:*,conversations:*,embeddings:*
       - REDIS_EXPORTER_INCL_SYSTEM_METRICS=true

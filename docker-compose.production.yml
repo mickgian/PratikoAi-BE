@@ -24,6 +24,10 @@ services:
           memory: 3072M
 
   redis:
+    ports: []  # No external port mapping — app connects via Docker network
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD required}
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
     deploy:
       resources:
         limits:
@@ -44,6 +48,7 @@ services:
       - APP_ENV=production
       - POSTGRES_URL=postgresql://${POSTGRES_USER:-aifinance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-aifinance}
       - REDIS_URL=redis://redis:6379/0
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD required}
       - ALLOWED_ORIGINS=https://app.pratiko.app
       - FLAGSMITH_SERVER_KEY=${FLAGSMITH_SERVER_KEY:-}
       - FLAGSMITH_API_URL=http://flagsmith:8000/api/v1/

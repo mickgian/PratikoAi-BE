@@ -61,15 +61,41 @@ sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_c
 sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
 systemctl restart ssh
 
-# --- 5. UFW Firewall ---
+# --- 5. Firewall (iptables-persistent) ---
+# NOTE: UFW does NOT protect Docker-published ports. Docker inserts its own
+# iptables rules in the nat/PREROUTING chain that bypass UFW entirely.
+# We use iptables-persistent instead and explicitly block internal service ports.
 echo "[5/8] Configuring firewall..."
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow 22/tcp    # SSH
-ufw allow 80/tcp    # HTTP (Caddy redirect)
-ufw allow 443/tcp   # HTTPS
-ufw --force enable
-echo "Firewall enabled. Allowed: SSH (22), HTTP (80), HTTPS (443)."
+apt-get install -y iptables-persistent
+
+# Block internal service ports from external access (Docker bypasses UFW)
+# Redis - internal only, app connects via Docker network
+iptables -C INPUT -p tcp --dport 6379 ! -s 127.0.0.1 -j DROP 2>/dev/null || \
+    iptables -I INPUT -p tcp --dport 6379 ! -s 127.0.0.1 -j DROP
+iptables -C FORWARD -i eth0 -p tcp --dport 6379 -j DROP 2>/dev/null || \
+    iptables -I FORWARD -i eth0 -p tcp --dport 6379 -j DROP
+
+# Redis exporter - internal only
+iptables -C INPUT -p tcp --dport 9121 ! -s 127.0.0.1 -j DROP 2>/dev/null || \
+    iptables -I INPUT -p tcp --dport 9121 ! -s 127.0.0.1 -j DROP
+iptables -C FORWARD -i eth0 -p tcp --dport 9121 -j DROP 2>/dev/null || \
+    iptables -I FORWARD -i eth0 -p tcp --dport 9121 -j DROP
+
+# PostgreSQL - internal only
+iptables -C INPUT -p tcp --dport 5432 ! -s 127.0.0.1 -j DROP 2>/dev/null || \
+    iptables -I INPUT -p tcp --dport 5432 ! -s 127.0.0.1 -j DROP
+iptables -C INPUT -p tcp --dport 5433 ! -s 127.0.0.1 -j DROP 2>/dev/null || \
+    iptables -I INPUT -p tcp --dport 5433 ! -s 127.0.0.1 -j DROP
+
+# Monitoring stack - internal only
+for port in 9090 9187 9100 9093 8081; do
+    iptables -C INPUT -p tcp --dport $port ! -s 127.0.0.1 -j DROP 2>/dev/null || \
+        iptables -I INPUT -p tcp --dport $port ! -s 127.0.0.1 -j DROP
+done
+
+# Persist rules across reboots
+netfilter-persistent save
+echo "Firewall configured. Blocked internal service ports from external access."
 
 # --- 6. fail2ban ---
 echo "[6/8] Configuring fail2ban..."

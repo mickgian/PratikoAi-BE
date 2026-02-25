@@ -1,9 +1,9 @@
 # PratikoAI 2.0 - Professional Engagement Platform
 
-**Last Updated:** 2026-01-26
+**Last Updated:** 2026-02-25
 **Status:** Active Development
-**Task ID Range:** DEV-300 to DEV-405
-**Timeline:** 10-12 weeks (~96 tasks, accelerated with Claude Code)
+**Task ID Range:** DEV-300 to DEV-441
+**Timeline:** 10-12 weeks (~140 tasks, accelerated with Claude Code)
 **Target:** MVP Launch
 
 ---
@@ -207,6 +207,32 @@ The following patterns were established during Response Quality improvements and
 | NEW | DEV-388 to DEV-395 | Phase 11: Infrastructure & Quality |
 | NEW | DEV-396 to DEV-401 | Phase 12: Pre-Launch Compliance |
 | NEW | DEV-402 to DEV-405 | Phase 4: Procedure (/procedura + @client) |
+| NEW | DEV-406 to DEV-410 | Phase 5: Tax Calculations (IVA, Ritenuta, Cedolare, TFR, Payroll) |
+| NEW | DEV-411 | Phase 7: Documents (Fattura XML Parser) |
+| NEW | DEV-412 | Phase 3: Communications (Email Tracking) |
+| NEW | DEV-413 | Phase 5: Tax (Regional Data Population) |
+| NEW | DEV-414 | Phase 10: Deadlines (Calendar Sync) |
+| NEW | DEV-415 | Phase 3: Communications (Unsubscribe) |
+| NEW | DEV-416 | Phase 11: Infrastructure (Tiered Ingestion Verification) |
+| NEW | DEV-417 | Phase 11: Infrastructure (Billing Studio Integration) |
+| NEW | DEV-418 | Phase 11: Infrastructure (Monitoring/Alerting) |
+| NEW | DEV-419 | Phase 3: Communications (Retention Policy) |
+| NEW | DEV-420 | Phase 1: Service Layer (JSON Export) |
+| NEW | DEV-421 | Phase 7: Documents (Document Type Detection) |
+| NEW | DEV-422 to DEV-427 | Phase 13: In-App Notifications |
+| NEW | DEV-428 | Phase 1: Service Layer (ClientProfile INPS/INAIL fields) |
+| NEW | DEV-429 | Phase 4: Procedure (Procedure Suggestions per Client) |
+| NEW | DEV-430 | Phase 6: Dashboard (Quick Action Counts API) |
+| NEW | DEV-431 to DEV-432 | Phase 13: Modelli e Formulari Library |
+| NEW | DEV-433 | Phase 13: Chat Feedback Persistent Storage |
+| NEW | DEV-434 | Phase 6: Dashboard (Client Distribution Charts) — extends DEV-355 |
+| NEW | DEV-435 | Phase 6: Dashboard (Matching Statistics) — extends DEV-355 |
+| NEW | DEV-436 | Phase 6: Dashboard (Period Selector) — extends DEV-356 |
+| NEW | DEV-437 | Phase 10: Deadlines (Amount & Penalties fields) — extends DEV-380 |
+| NEW | DEV-438 | Phase 10: Deadlines (Per-Deadline User Reminders) |
+| NEW | DEV-439 | Phase 13: Interactive Question Templates Activation |
+| NEW | DEV-440 | Phase 13: Full Notifications Page |
+| NEW | DEV-441 | Phase 13: Settings Page (Studio Preferences UI) |
 
 ---
 
@@ -225,6 +251,8 @@ The following patterns were established during Response Quality improvements and
 | DEV-397 | CRITICAL | Infrastructure | Encryption at rest + DPA with Hetzner |
 | DEV-398 | CRITICAL | Legal/Compliance | LLM transfer safeguards required |
 | DEV-399 | HIGH | Legal/Compliance | 30-day Garante notification period |
+| DEV-425 | HIGH | Multi-Service Modification | Notification triggers modify 4 existing services (fire-and-forget pattern) |
+| DEV-428 | MEDIUM | DB Schema Extension | Adds columns to existing client model, migration required |
 
 ---
 
@@ -286,6 +314,30 @@ DEV-380 (Deadline Model)
     └── DEV-384 (Notifications) ← DEV-333 (Email)
 ```
 
+### Phase 13 (Figma Gap Coverage) Dependencies
+
+```
+DEV-422 (Notification Model)
+    └── DEV-423 (NotificationService) ─── DEV-424 (API)
+    └── DEV-425 (Triggers) ← DEV-383, DEV-320, DEV-335
+    └── DEV-426 (Frontend Dropdown) ← DEV-424
+    └── DEV-427 (E2E Tests) ← DEV-422-426
+    └── DEV-440 (Full Page) ← DEV-424, DEV-426
+
+DEV-431 (Formulario Model)
+    └── DEV-432 (Formulario API)
+    └── DEV-430 (Quick Action Counts) ← DEV-381
+
+DEV-355 (Dashboard Aggregation)
+    └── DEV-434 (Distribution Charts)
+    └── DEV-435 (Matching Stats)
+    └── DEV-436 (Period Selector) ← DEV-356
+
+DEV-380 (Deadline Model)
+    └── DEV-437 (Amount/Penalties fields)
+    └── DEV-438 (User Reminders) ← DEV-422
+```
+
 ### Cross-Phase Critical Dependencies
 
 | Downstream Task | Blocking Tasks |
@@ -295,6 +347,7 @@ DEV-380 (Deadline Model)
 | DEV-363 (Document Context) | DEV-360 (Document Parser), Existing context_builder_node |
 | DEV-371 (E2E Tests) | All Phase 0-8 tasks |
 | DEV-387 (Deadline E2E) | All Phase 10 tasks |
+| DEV-427 (Notification E2E) | All Phase 13 notification tasks (DEV-422 to DEV-426) |
 
 ---
 
@@ -5746,6 +5799,8 @@ Create metrics service calculating ROI and usage statistics.
 
 **Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
 
+> **Figma Gap Note (2026-02-25):** Figma's DashboardPage.tsx shows 3 distribution charts (clients per regime fiscale, per ATECO settore, per stato) and a matching statistics card (total matches, conversion rate, pending reviews) not originally scoped here. These are now covered by DEV-434 (Client Distribution Charts) and DEV-435 (Matching Statistics) which extend this task's aggregation service.
+
 **Problem:**
 Dashboard needs aggregated data: client count, active procedure, pending communications, recent matches.
 
@@ -5843,6 +5898,8 @@ Create dashboard service aggregating data from multiple sources.
 **Figma Reference:** `DashboardPage.tsx` — Source: [`docs/figma-make-references/DashboardPage.tsx`](../figma-make-references/DashboardPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
 **Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+> **Figma Gap Note (2026-02-25):** Figma's DashboardPage.tsx shows a Week/Month/Year period selector that filters all dashboard data. This API should accept a `period` query parameter (see DEV-436).
 
 **Problem:**
 Frontend needs single endpoint to fetch all dashboard data.
@@ -7953,6 +8010,8 @@ This phase implements FR-006 - the proactive deadline system that tracks tax dea
 **Reference:** [FR-006: Sistema Scadenze Proattivo](./PRATIKO_2.0_REFERENCE.md#fr-006-sistema-scadenze-proattivo)
 
 **Priority:** CRITICAL | **Effort:** 3h | **Status:** NOT STARTED
+
+> **Figma Gap Note (2026-02-25):** Figma's ScadenzeFiscaliPage.tsx shows each deadline with "Importo: €X" and "Sanzioni: percentuale + importo" fields not included in the original field list below. DEV-437 adds these fields as an extension to this model.
 
 **Problem:**
 The system needs to track deadlines from multiple sources (regulatory, tax, client-specific) and match them to relevant clients.
@@ -10162,6 +10221,1282 @@ Create comprehensive E2E tests covering both features and their interaction.
 
 ---
 
+## Phase 13: Figma Gap Coverage (20 Tasks)
+
+> **Added:** 2026-02-25 — Gap analysis of 15 Figma reference files (11,478 lines) against PRATIKO_2.0_TASKS.md revealed 16 gaps across Significant, Moderate, and Minor severity levels. This phase closes those gaps. Tasks that extend existing phases are cross-referenced here but numbered in the DEV-422–441 range for traceability.
+
+### Figma Gap Coverage Summary
+
+| Gap # | Severity | Description | Task(s) | Extends |
+|-------|----------|-------------|---------|---------|
+| 1 | SIGNIFICANT | In-App Notification System | DEV-422 to DEV-427 | — |
+| 2 | SIGNIFICANT | INPS/INAIL Fields on ClientProfile | DEV-428 | DEV-302 |
+| 3 | SIGNIFICANT | Procedure Suggestions per Client | DEV-429 | — |
+| 4 | SIGNIFICANT | Quick Action Counts API | DEV-430 | — |
+| 5 | SIGNIFICANT | Modelli e Formulari Library | DEV-431, DEV-432 | — |
+| 6 | MODERATE | Chat Feedback Persistent Storage | DEV-433 | — |
+| 7 | MODERATE | Dashboard Client Distribution Charts | DEV-434 | DEV-355 |
+| 8 | MODERATE | Dashboard Matching Statistics | DEV-435 | DEV-355 |
+| 9 | MODERATE | Dashboard Period Selector | DEV-436 | DEV-356 |
+| 10 | MODERATE | Deadline Amount & Penalties Fields | DEV-437 | DEV-380 |
+| 11 | MODERATE | Per-Deadline User Reminders | DEV-438 | — |
+| 12 | MODERATE | Interactive Question Templates Activation | DEV-439 | — |
+| 13 | MINOR | Figma README Update | — | (housekeeping, done inline) |
+| 14 | MINOR | Domande Pronte / FAQ Libraries | (deferred — content curation, no code task) | — |
+| 15 | MINOR | Full Notifications Page | DEV-440 | DEV-422 |
+| 16 | MINOR | Settings Page (Studio Preferences) | DEV-441 | DEV-300 |
+
+> **Gap 13 (Figma README):** Resolved inline — the 6 missing "Used By" mappings have been added to `docs/figma-make-references/README.md` and the Appendix below.
+>
+> **Gap 14 (Domande Pronte / FAQ):** Deferred — these are content curation tasks (populating a question/FAQ library), not code tasks. They can be served by the existing Knowledge Base once content is authored. No new DEV task needed.
+
+---
+
+### DEV-422: Notification SQLModel & Migration
+
+**Reference:** [NotificationsDropdown.tsx](../figma-make-references/NotificationsDropdown.tsx)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma NotificationsDropdown shows a full in-app notification system with 4 types (scadenza, match, comunicazione, normativa), time-grouped display, unread badges, and mark-as-read. The existing `ccnl_notification_service.py` uses in-memory mock data with no persistence. There is no Notification SQLModel, no API endpoint, and no database storage.
+
+**Solution:**
+Create a `Notification` SQLModel for persistent storage of in-app notifications. Include type, priority, read status, and timestamps for time-grouped display.
+
+**Agent Assignment:** @Primo (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-300 (Studio model), DEV-307 (Migration infrastructure)
+- **Unlocks:** DEV-423 (NotificationService), DEV-424 (API), DEV-425 (Triggers), DEV-426 (Frontend), DEV-440 (Full Page)
+
+**Change Classification:** ADDITIVE
+
+**Impact Analysis:** N/A (new code only)
+
+**Pre-Implementation Verification:** N/A (ADDITIVE)
+
+**Figma Reference:** `NotificationsDropdown.tsx` — Source: [`docs/figma-make-references/NotificationsDropdown.tsx`](../figma-make-references/NotificationsDropdown.tsx)
+
+**Error Handling:**
+- Invalid notification_type: HTTP 422, `"Tipo notifica non valido"`
+- Invalid priority: HTTP 422, `"Priorità non valida"`
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
+**Performance Requirements:**
+- Notification creation: <50ms
+- Bulk insert (100 notifications): <500ms
+
+**Edge Cases:**
+- **Nulls:** null title → HTTP 422; null description → allowed (some notification types are title-only)
+- **Enum Validation:** Invalid type/priority → HTTP 422 with valid options listed
+- **Timestamp:** created_at auto-set; read_at null until explicitly marked
+- **Tenant Isolation:** All queries must include user_id + studio_id filter
+- **Soft Delete:** Dismissed notifications soft-deleted, excluded from unread count
+
+**File:** `app/models/notification.py`
+
+**Notification Fields:**
+- `id`: UUID (primary key)
+- `user_id`: UUID (FK to User)
+- `studio_id`: UUID (FK to Studio, for tenant isolation)
+- `notification_type`: enum (SCADENZA, MATCH, COMUNICAZIONE, NORMATIVA)
+- `priority`: enum (LOW, MEDIUM, HIGH, URGENT)
+- `title`: str (max 200)
+- `description`: text (nullable)
+- `reference_id`: UUID (nullable — FK to related entity: deadline, match, communication, or regulation)
+- `reference_type`: str (nullable — "deadline", "match", "communication", "regulation")
+- `is_read`: bool (default: false)
+- `read_at`: datetime (nullable)
+- `dismissed`: bool (default: false)
+- `created_at`: datetime
+- `updated_at`: datetime
+
+**Testing Requirements:**
+- **TDD:** Write `tests/models/test_notification.py` FIRST
+- **Unit Tests:**
+  - `test_notification_creation_valid` - valid notification with all fields
+  - `test_notification_type_enum` - all 4 type values
+  - `test_notification_priority_enum` - all 4 priority values
+  - `test_notification_default_unread` - is_read defaults to false
+  - `test_notification_studio_isolation` - tenant isolation via studio_id
+- **Edge Case Tests:**
+  - `test_notification_null_description_allowed` - nullable description
+  - `test_notification_reference_polymorphic` - reference_id + reference_type combos
+- **Coverage Target:** 80%+
+
+**Risks & Mitigations:**
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| High notification volume | MEDIUM | Index on (user_id, is_read, created_at), pagination |
+| Cross-tenant leak | CRITICAL | Always filter by studio_id |
+
+**Code Structure:**
+- Max function: 50 lines, extract helpers if larger
+- Max class: 200 lines, split into focused services
+- Max file: 400 lines, create submodules
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Notification model with all 4 types from Figma
+- [ ] Polymorphic reference (reference_id + reference_type) for linking to source entity
+- [ ] Tenant isolation via studio_id
+- [ ] Migration runs cleanly
+- [ ] All existing tests still pass
+
+---
+
+### DEV-423: NotificationService CRUD
+
+**Reference:** [NotificationsDropdown.tsx](../figma-make-references/NotificationsDropdown.tsx)
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Need a service layer to create, list, mark-as-read, and manage notifications. The Figma shows grouped display (Oggi/Ieri/Questa Settimana), unread badge count, mark-as-read per item, and bulk "Segna tutte come lette".
+
+**Solution:**
+Create `NotificationService` with CRUD methods, time-grouped listing, unread count, and bulk operations.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-422 (Notification model)
+- **Unlocks:** DEV-424 (API), DEV-425 (Triggers)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Notification not found: HTTP 404, `"Notifica non trovata"`
+- Already read: Idempotent (no error, return success)
+- Unauthorized: HTTP 403, `"Accesso non autorizzato a questa notifica"`
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
+**Performance Requirements:**
+- List notifications (50): <100ms
+- Unread count: <50ms
+- Mark as read: <50ms
+- Mark all as read: <200ms
+
+**Edge Cases:**
+- **Empty List:** No notifications → return empty array, unread_count=0
+- **Already Read:** Mark-as-read on already-read notification → idempotent, no error
+- **Pagination:** page=0 → page=1; page>max → empty list
+- **Time Grouping:** Notifications from today, yesterday, this week, and older → grouped correctly
+- **Bulk Mark Read:** Mark-all only affects current user's unread notifications in current studio
+- **Concurrent Reads:** Two sessions mark-as-read simultaneously → both succeed (idempotent)
+
+**File:** `app/services/notification_service.py`
+
+**Methods:**
+- `create_notification(user_id, studio_id, type, title, description, reference_id, reference_type, priority)` - Create notification
+- `list_notifications(user_id, studio_id, page, size, unread_only)` - List with time grouping
+- `get_unread_count(user_id, studio_id)` - Count for badge
+- `mark_as_read(notification_id, user_id, studio_id)` - Mark single as read
+- `mark_all_as_read(user_id, studio_id)` - Bulk mark as read
+- `dismiss_notification(notification_id, user_id, studio_id)` - Soft delete
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_notification_service.py` FIRST
+- **Unit Tests:**
+  - `test_create_notification` - creates with correct fields
+  - `test_list_notifications_grouped` - time-grouped output
+  - `test_unread_count` - accurate count
+  - `test_mark_as_read` - sets is_read and read_at
+  - `test_mark_all_as_read` - bulk update
+  - `test_dismiss_notification` - soft delete
+  - `test_list_unread_only` - filter by unread
+- **Edge Case Tests:**
+  - `test_mark_as_read_idempotent` - already-read notification
+  - `test_list_empty` - no notifications
+  - `test_cross_tenant_blocked` - wrong studio_id returns 404
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Time-grouped listing (Oggi/Ieri/Questa Settimana/Precedenti)
+- [ ] Unread count for badge display
+- [ ] Single and bulk mark-as-read
+- [ ] Tenant isolation enforced
+- [ ] 80%+ test coverage
+
+---
+
+### DEV-424: Notification API Endpoints
+
+**Reference:** [NotificationsDropdown.tsx](../figma-make-references/NotificationsDropdown.tsx)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+Frontend needs API endpoints to fetch, display, and manage notifications shown in the NotificationsDropdown component.
+
+**Solution:**
+Create notification REST endpoints: list (with time grouping), unread count, mark-as-read, mark-all-as-read.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-423 (NotificationService)
+- **Unlocks:** DEV-426 (Frontend dropdown), DEV-440 (Full page)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Notification not found: HTTP 404, `"Notifica non trovata"`
+- Unauthorized: HTTP 403, `"Accesso non autorizzato"`
+- Invalid input: HTTP 422, `"Dati non validi"`
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
+**Performance Requirements:**
+- GET /notifications: <200ms (p95)
+- GET /notifications/unread-count: <50ms (p95)
+- PUT /notifications/:id/read: <100ms
+- PUT /notifications/mark-all-read: <300ms
+
+**File:** `app/api/v1/notifications.py`
+
+**Endpoints:**
+- `GET /api/v1/notifications` - List notifications (query params: page, size, unread_only)
+- `GET /api/v1/notifications/unread-count` - Unread badge count
+- `PUT /api/v1/notifications/{id}/read` - Mark single as read
+- `PUT /api/v1/notifications/mark-all-read` - Bulk mark as read
+- `DELETE /api/v1/notifications/{id}` - Dismiss notification
+
+**Testing Requirements:**
+- **TDD:** Write `tests/api/v1/test_notifications.py` FIRST
+- **Unit Tests:**
+  - `test_list_notifications_200` - successful list
+  - `test_list_notifications_unread_filter` - unread_only param
+  - `test_unread_count_200` - badge count
+  - `test_mark_as_read_200` - mark single
+  - `test_mark_all_as_read_200` - bulk mark
+  - `test_dismiss_notification_200` - soft delete
+  - `test_notification_not_found_404` - invalid ID
+  - `test_cross_tenant_403` - wrong studio
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] All endpoints follow existing API patterns (thin handlers, delegate to service)
+- [ ] Pagination support
+- [ ] Tenant isolation in all endpoints
+- [ ] OpenAPI schema complete
+
+---
+
+### DEV-425: Notification Creation Triggers
+
+**Reference:** [NotificationsDropdown.tsx](../figma-make-references/NotificationsDropdown.tsx)
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Notifications must be created automatically when relevant events occur: deadline approaching, match found, communication approved, normativa updated. Currently no trigger wiring exists.
+
+**Solution:**
+Add notification creation calls to existing service methods for the 4 trigger types. Use the NotificationService.create_notification() method from DEV-423.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-423 (NotificationService), DEV-383 (Deadline Matching), DEV-320 (NormativeMatching), DEV-335 (Communication Approval)
+- **Unlocks:** DEV-427 (E2E Tests)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- `app/services/deadline_service.py` — add notification on approaching deadline
+- `app/services/matching_service.py` — add notification on new match found
+- `app/services/communication_service.py` — add notification on communication approved
+- `app/services/rss_feed_service.py` or KB ingestion — add notification on normativa update
+
+**Pre-Implementation Verification:**
+- Verify each service exists and has the right hook point
+- Confirm NotificationService is importable
+
+**Error Handling:**
+- Notification creation failure: Log at ERROR, do NOT fail the parent operation (fire-and-forget pattern)
+- Missing reference entity: Log warning, create notification without reference_id
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
+**Performance Requirements:**
+- Notification creation must not add >50ms to parent operation
+- Use background task or fire-and-forget for bulk notifications
+
+**Edge Cases:**
+- **Duplicate Triggers:** Same event triggers twice → deduplicate by reference_id + type within 1 hour window
+- **Missing User:** Notification for deleted/deactivated user → skip silently, log warning
+- **Bulk Events:** Regulation update affects 50 clients → batch-create notifications, not 50 individual creates
+- **Service Down:** NotificationService unavailable → parent operation succeeds, notification silently skipped
+
+**File:** Multiple files (see Impact Analysis)
+
+**Trigger Map:**
+- **SCADENZA:** When `DeadlineService` detects deadline within notification_days_before threshold → create SCADENZA notification for each affected client's studio user
+- **MATCH:** When `MatchingService` creates a new match → create MATCH notification
+- **COMUNICAZIONE:** When `CommunicationService` approves a communication → create COMUNICAZIONE notification
+- **NORMATIVA:** When RSS/KB ingestion detects a new or updated regulation → create NORMATIVA notification
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_notification_triggers.py` FIRST
+- **Unit Tests:**
+  - `test_deadline_approaching_creates_notification` - scadenza trigger
+  - `test_match_found_creates_notification` - match trigger
+  - `test_communication_approved_creates_notification` - comunicazione trigger
+  - `test_normativa_updated_creates_notification` - normativa trigger
+  - `test_trigger_failure_does_not_fail_parent` - fire-and-forget
+  - `test_duplicate_trigger_deduplicated` - deduplication
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] All 4 notification types triggered by real events
+- [ ] Fire-and-forget: parent operations never fail due to notification errors
+- [ ] Deduplication within 1-hour window
+- [ ] All existing tests still pass
+
+---
+
+### DEV-426: Notification Dropdown Frontend Component
+
+**Reference:** [NotificationsDropdown.tsx](../figma-make-references/NotificationsDropdown.tsx)
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+The frontend needs a bell icon dropdown in `ChatHeader.tsx` showing notifications grouped by time period, with unread badge, mark-as-read, and "Vedi tutte" link.
+
+**Solution:**
+Implement `NotificationsDropdown` component using the Figma reference for layout/styling, integrated into the existing ChatHeader. Uses the API from DEV-424.
+
+**Agent Assignment:** @Livia (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-424 (Notification API)
+- **Unlocks:** DEV-440 (Full Notifications Page)
+
+**Change Classification:** ADDITIVE (new component) + MODIFYING (ChatHeader integration)
+
+**Figma Reference:** `NotificationsDropdown.tsx` — Source: [`docs/figma-make-references/NotificationsDropdown.tsx`](../figma-make-references/NotificationsDropdown.tsx)
+
+**Error Handling:**
+- API failure: Show "Errore nel caricamento delle notifiche" with retry button
+- Empty state: Show "Nessuna nuova notifica" message
+
+**File:** `web/src/app/chat/components/NotificationsDropdown.tsx` (new) + `web/src/app/chat/components/ChatHeader.tsx` (modify)
+
+**UI Elements (from Figma):**
+- Bell icon with unread count badge (red dot with number)
+- Dropdown panel with gradient header
+- Time-grouped sections: Oggi, Ieri, Questa Settimana
+- 4 notification types color-coded: Scadenza (red), Match (orange), Comunicazione (green), Normativa (blue)
+- Per-item mark-as-read button
+- "Segna tutte come lette" bulk action in header
+- "Vedi tutte le notifiche" footer link → DEV-440
+
+**Testing Requirements:**
+- **TDD:** Write `web/src/app/chat/components/__tests__/NotificationsDropdown.test.tsx` FIRST
+- **Unit Tests:**
+  - `test_renders_bell_icon` - icon visible in header
+  - `test_shows_unread_badge` - badge with count
+  - `test_opens_dropdown_on_click` - dropdown toggles
+  - `test_groups_by_time_period` - Oggi/Ieri/Questa Settimana grouping
+  - `test_color_codes_notification_types` - 4 colors
+  - `test_mark_as_read` - calls API
+  - `test_mark_all_as_read` - bulk action
+  - `test_empty_state` - no notifications message
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Bell icon in ChatHeader with unread badge
+- [ ] Dropdown with time-grouped notifications
+- [ ] 4 notification types with correct colors
+- [ ] Mark-as-read (single + bulk)
+- [ ] "Vedi tutte le notifiche" link present
+- [ ] Italian text throughout
+
+---
+
+### DEV-427: Notification System E2E Tests
+
+**Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+End-to-end validation that the full notification pipeline works: trigger → storage → API → frontend display.
+
+**Solution:**
+Write E2E test covering the complete notification flow.
+
+**Agent Assignment:** @Clelia (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-422 to DEV-426 (all notification tasks)
+- **Unlocks:** None (validation task)
+
+**Change Classification:** ADDITIVE
+
+**File:** `tests/e2e/test_notification_flow.py`
+
+**Testing Requirements:**
+- `test_deadline_notification_flow` - deadline approaching → notification created → appears in API → mark as read
+- `test_match_notification_flow` - match found → notification created → appears in dropdown
+- `test_mark_all_read_flow` - create multiple → mark all read → unread count = 0
+- `test_cross_tenant_isolation` - notifications from studio A not visible to studio B
+- **Coverage Target:** Full workflow coverage
+
+**Acceptance Criteria:**
+- [ ] All 4 notification types tested end-to-end
+- [ ] Tenant isolation verified
+- [ ] Mark-as-read verified
+- [ ] All tests passing
+
+---
+
+### DEV-428: ClientProfile INPS/INAIL Extension
+
+**Reference:** [ClientActionPicker.tsx](../figma-make-references/ClientActionPicker.tsx)
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma ClientProfileCard (in ClientActionPicker.tsx) shows a "Posizione Contributiva" section with INPS data (status, matricola, ultimo pagamento) and INAIL data (status, PAT number). The current ClientProfile model (DEV-302) has `posizione_agenzia_entrate` but no INPS/INAIL fields. These fields don't exist in any model.
+
+**Solution:**
+Extend the Client or ClientProfile model with INPS and INAIL fields. Add migration. Update the ClientService (DEV-309) to handle these fields in CRUD operations.
+
+**Agent Assignment:** @Primo (primary), @Ezio (service update), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-301 (Client model), DEV-302 (ClientProfile), DEV-307 (Migration)
+- **Unlocks:** DEV-403 (Client mention — profile card shows these fields)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- `app/models/client.py` or `app/models/client_profile.py` — add fields
+- `app/services/client_service.py` — update CRUD for new fields
+- `app/schemas/client.py` — update request/response schemas
+- Migration file — new columns
+
+**Pre-Implementation Verification:**
+- Read DEV-302's current model definition to determine correct placement
+
+**Figma Reference:** `ClientActionPicker.tsx` — Source: [`docs/figma-make-references/ClientActionPicker.tsx`](../figma-make-references/ClientActionPicker.tsx) (ClientProfileCard section)
+
+**Error Handling:**
+- Invalid INPS status: HTTP 422, `"Stato INPS non valido"`
+- Invalid INAIL PAT format: HTTP 422, `"Numero PAT INAIL non valido"`
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
+**Edge Cases:**
+- **Nulls:** All INPS/INAIL fields nullable (not all clients have these)
+- **INPS Matricola Format:** Validate format if provided (numeric, 10 digits)
+- **INAIL PAT Format:** Validate format if provided (numeric, 8-10 digits)
+- **Status Enum:** REGOLARE, IRREGOLARE, NON_ISCRITTO, SOSPESO
+- **Date Validation:** inps_ultimo_pagamento must be ≤ today
+
+**New Fields:**
+- `inps_matricola`: str (nullable, max 10, indexed)
+- `inps_status`: enum (REGOLARE, IRREGOLARE, NON_ISCRITTO, SOSPESO) (nullable)
+- `inps_ultimo_pagamento`: date (nullable)
+- `inail_pat`: str (nullable, max 10)
+- `inail_status`: enum (REGOLARE, IRREGOLARE, NON_ISCRITTO, SOSPESO) (nullable)
+
+**Testing Requirements:**
+- **TDD:** Write `tests/models/test_client_inps_inail.py` FIRST
+- **Unit Tests:**
+  - `test_client_inps_fields_nullable` - all fields accept null
+  - `test_client_inps_status_enum` - valid enum values
+  - `test_client_inail_pat_format` - PAT validation
+  - `test_client_inps_matricola_format` - matricola validation
+  - `test_client_service_crud_with_inps_inail` - CRUD operations include new fields
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] INPS/INAIL fields added to model
+- [ ] Migration runs cleanly
+- [ ] ClientService CRUD handles new fields
+- [ ] Schemas updated for API request/response
+- [ ] All existing tests still pass
+
+---
+
+### DEV-429: Procedure Suggestions per Client
+
+**Reference:** [ClientActionPicker.tsx](../figma-make-references/ClientActionPicker.tsx)
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma ClientProfileCard and ClientContextCard show "Procedure Suggerite" — procedures recommended for a specific client based on their profile (regime fiscale, codice ATECO, situation). No task generates these suggestions. DEV-320 (NormativeMatchingService) matches regulations, not procedures. The archived suggested_actions were quick actions, not full procedure recommendations.
+
+**Solution:**
+Create a `ProcedureSuggestionService` that, given a client profile, returns relevant procedures from the P001-P010 library. Use rule-based matching on regime fiscale, ATECO code, and client status (e.g., "Apertura P.IVA" for a prospect, "Trasformazione regime" for a forfettario approaching revenue limits).
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-301 (Client model), DEV-341 (Pre-configured Procedures)
+- **Unlocks:** DEV-403 (Client mention — shows suggested procedures on profile card)
+
+**Change Classification:** ADDITIVE
+
+**Figma Reference:** `ClientActionPicker.tsx` — Source: [`docs/figma-make-references/ClientActionPicker.tsx`](../figma-make-references/ClientActionPicker.tsx) (Procedure Suggerite section)
+
+**Error Handling:**
+- Client not found: HTTP 404, `"Cliente non trovato"`
+- No matching procedures: Return empty array (not an error)
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
+**Performance Requirements:**
+- Suggestion generation: <200ms (rule-based, no LLM)
+- Cache suggestions per client for 1 hour (invalidate on profile update)
+
+**Edge Cases:**
+- **Incomplete Profile:** Missing regime_fiscale or ATECO → return generic procedures only
+- **No Matches:** Profile doesn't match any rule → return empty array
+- **Deactivated Client:** Soft-deleted client → return empty array
+- **Multiple Matches:** Client matches 5+ procedures → return all, sorted by relevance score
+
+**File:** `app/services/procedure_suggestion_service.py`
+
+**Methods:**
+- `suggest_procedures(client_id, studio_id)` - Return list of suggested procedures with relevance scores
+- `_match_by_regime(regime_fiscale)` - Match procedures by tax regime
+- `_match_by_ateco(codice_ateco)` - Match procedures by ATECO sector
+- `_match_by_status(client_status)` - Match procedures by client lifecycle status
+
+**Matching Rules (examples):**
+- Prospect with no P.IVA → suggest "Apertura P.IVA" (P001)
+- Forfettario near €85k limit → suggest "Trasformazione Regime" (P003)
+- New employee hired → suggest "Assunzione Dipendente" (P005)
+- Regime ordinario, ATECO construction → suggest "DURC Renewal" (P008)
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_procedure_suggestion_service.py` FIRST
+- **Unit Tests:**
+  - `test_suggest_apertura_piva_for_prospect` - prospect gets apertura
+  - `test_suggest_trasformazione_for_forfettario` - near-limit forfettario
+  - `test_no_suggestions_for_generic_client` - no matches returns empty
+  - `test_multiple_suggestions_sorted` - relevance sorting
+  - `test_incomplete_profile_generic_only` - missing fields
+  - `test_cache_invalidation_on_profile_update` - cache works correctly
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Rule-based matching on regime, ATECO, status
+- [ ] Returns relevant procedures from P001-P010 library
+- [ ] Cached per client (1 hour TTL)
+- [ ] Integrates with ClientProfileCard display
+- [ ] 80%+ test coverage
+
+---
+
+### DEV-430: Quick Action Counts API
+
+**Reference:** [ChatPage.tsx](../figma-make-references/ChatPage.tsx)
+
+**Priority:** LOW | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma ChatPage shows 6 Quick Action cards with live counts: "Modelli e Formulari (245)", "Scadenze Fiscali (12)", "Aggiornamenti Urgenti (3)", "Normative Recenti (28)", "Domande Pronte (89)", "FAQ (127)". No backend endpoint supplies these counts.
+
+**Solution:**
+Create a lightweight aggregation endpoint that returns counts from existing services: deadlines, KB/RSS for normative/aggiornamenti, and future content stores for FAQ/questions. Return 0 for categories not yet populated.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-381 (DeadlineService — for deadline count), DEV-300 (Studio — for tenant context)
+- **Unlocks:** Frontend Quick Actions widget
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Service unavailable: Return 0 for that category, log at WARNING
+- Unauthorized: HTTP 403, `"Accesso non autorizzato"`
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation) at ERROR level
+
+**Performance Requirements:**
+- Total response: <300ms (parallel queries to each source)
+- Cache counts for 5 minutes (studio-scoped)
+
+**Edge Cases:**
+- **No Data:** All counts return 0 (valid for new studio)
+- **Partial Failure:** One source unavailable → return 0 for that category, other counts still populated
+- **Cache Stale:** Counts may be up to 5 minutes stale (acceptable for dashboard display)
+
+**File:** `app/api/v1/quick_actions.py` (new) + `app/services/quick_action_counts_service.py` (new)
+
+**Endpoint:**
+- `GET /api/v1/quick-actions/counts` → `{ modelli_formulari: int, scadenze_fiscali: int, aggiornamenti_urgenti: int, normative_recenti: int, domande_pronte: int, faq: int }`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/api/v1/test_quick_actions.py` FIRST
+- **Unit Tests:**
+  - `test_quick_action_counts_200` - returns all 6 counts
+  - `test_quick_action_counts_empty_studio` - all zeros for new studio
+  - `test_quick_action_counts_partial_failure` - one service down → 0 for that, others populated
+  - `test_quick_action_counts_cached` - second call uses cache
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Returns all 6 count categories
+- [ ] Graceful degradation on partial failures
+- [ ] Cached for 5 minutes per studio
+- [ ] Tenant isolation enforced
+
+---
+
+### DEV-431: Formulari SQLModel & Service
+
+**Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma ChatPage Quick Actions show "Modelli e Formulari — 245 modelli". No task covers a forms/templates library. This is distinct from Communication Templates (DEV-336) — it's a document templates/forms repository (e.g., Modello AA9/12, F24, CU, Modello Unico).
+
+**Solution:**
+Create a `Formulario` SQLModel for document templates with categories, and a `FormularioService` with listing and search. Templates are reference data (pre-seeded), not user-generated.
+
+**Agent Assignment:** @Primo (model), @Ezio (service), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-300 (Studio model), DEV-307 (Migration)
+- **Unlocks:** DEV-432 (API), DEV-430 (Quick Action Counts — modelli_formulari count)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Formulario not found: HTTP 404, `"Modello non trovato"`
+- Invalid category: HTTP 422, `"Categoria non valida"`
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
+**File:** `app/models/formulario.py` (new) + `app/services/formulario_service.py` (new)
+
+**Formulario Fields:**
+- `id`: UUID (primary key)
+- `code`: str (unique, e.g., "AA9-12", "F24", "CU")
+- `name`: str (e.g., "Modello AA9/12 — Apertura P.IVA")
+- `description`: text
+- `category`: enum (APERTURA, DICHIARAZIONI, VERSAMENTI, LAVORO, PREVIDENZA, ALTRO)
+- `issuing_authority`: str (e.g., "Agenzia delle Entrate", "INPS")
+- `external_url`: str (nullable — link to official form download)
+- `is_active`: bool (default: true)
+- `created_at`, `updated_at`
+
+**Methods:**
+- `list_formulari(category, search_query, page, size)` - Paginated list with optional filters
+- `get_formulario(formulario_id)` - Single form detail
+- `count_formulari()` - Total count for Quick Actions widget
+- `seed_formulari()` - Seed initial reference data
+
+**Testing Requirements:**
+- **TDD:** Write `tests/models/test_formulario.py` and `tests/services/test_formulario_service.py` FIRST
+- **Unit Tests:**
+  - `test_formulario_creation` - valid creation
+  - `test_formulario_category_enum` - all categories
+  - `test_list_formulari_paginated` - pagination
+  - `test_list_formulari_by_category` - filter by category
+  - `test_search_formulari_by_name` - text search
+  - `test_count_formulari` - total count
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Formulario model with categories
+- [ ] Service with list, search, count
+- [ ] Seed data for common Italian tax forms
+- [ ] Migration runs cleanly
+
+---
+
+### DEV-432: Formulari API Endpoint
+
+**Priority:** LOW | **Effort:** 1h | **Status:** NOT STARTED
+
+**Problem:**
+Frontend needs API to list and search document templates for the "Modelli e Formulari" Quick Action.
+
+**Solution:**
+Create thin API endpoint delegating to FormularioService.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-431 (FormularioService)
+- **Unlocks:** Frontend Formulari page
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/api/v1/formulari.py`
+
+**Endpoints:**
+- `GET /api/v1/formulari` - List with pagination + category filter + search
+- `GET /api/v1/formulari/{id}` - Single form detail
+- `GET /api/v1/formulari/count` - Total count
+
+**Testing Requirements:**
+- **TDD:** Write `tests/api/v1/test_formulari.py` FIRST
+- **Unit Tests:**
+  - `test_list_formulari_200` - successful list
+  - `test_list_formulari_by_category` - category filter
+  - `test_get_formulario_200` - single detail
+  - `test_get_formulario_404` - not found
+  - `test_count_formulari_200` - count endpoint
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Thin handlers (<30 lines), delegate to service
+- [ ] OpenAPI schema complete
+- [ ] All endpoints paginated where appropriate
+
+---
+
+### DEV-433: Chat Feedback Persistent Storage
+
+**Reference:** [ChatPage.tsx](../figma-make-references/ChatPage.tsx)
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma ChatPage shows a rich feedback system with 3 types (correct/incomplete/wrong) and 13 Italian categories (normativa obsoleta, calcolo sbagliato, etc.). The existing `app/api/v1/feedback.py` only sends thumbs up/down to Langfuse (no database persistence). The `expert_feedback_collector.py` has the right category schema but is only wired for expert review flows, not standard user chat feedback. User feedback is lost if Langfuse is unavailable and cannot be queried for analytics.
+
+**Solution:**
+Create a `ChatFeedback` SQLModel that persists user feedback in the app database alongside the Langfuse integration. Wire the existing Italian categories from `expert_feedback_collector.py` into the standard user feedback flow. Keep the existing Langfuse integration as a secondary destination.
+
+> **Note:** The frontend FeedbackButtons component (`web/src/app/chat/components/FeedbackButtons.tsx`) is already implemented with its own design (thumbs up/down + copy) and must NOT be restyled to match Figma. This task is backend-only: add persistence and optionally extend the API to accept richer feedback categories.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-300 (Studio model), DEV-307 (Migration)
+- **Unlocks:** Analytics on feedback quality, feedback-driven KB improvement
+
+**Change Classification:** ADDITIVE (new model) + MODIFYING (existing feedback endpoint)
+
+**Impact Analysis:**
+- `app/models/chat_feedback.py` — new SQLModel
+- `app/api/v1/feedback.py` — extend to persist to DB alongside Langfuse
+- `app/services/expert_feedback_collector.py` — reuse category definitions
+
+**Error Handling:**
+- Invalid feedback_type: HTTP 422, `"Tipo feedback non valido"`
+- Invalid category: HTTP 422, `"Categoria non valida"`
+- DB persistence failure: Log error, still send to Langfuse (graceful degradation)
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
+**Edge Cases:**
+- **Langfuse Down:** Feedback still persists to DB
+- **DB Down:** Feedback still sent to Langfuse, log error
+- **Both Down:** Return HTTP 503, `"Servizio feedback temporaneamente non disponibile"`
+- **Duplicate Feedback:** Same user + same message → upsert (update existing feedback)
+- **Anonymous User:** Allow feedback without user_id (set to null)
+
+**File:** `app/models/chat_feedback.py` (new)
+
+**ChatFeedback Fields:**
+- `id`: UUID (primary key)
+- `user_id`: UUID (nullable — FK to User)
+- `studio_id`: UUID (nullable — FK to Studio)
+- `trace_id`: str (Langfuse trace ID for correlation)
+- `message_id`: str (chat message identifier)
+- `feedback_type`: enum (CORRECT, INCOMPLETE, INCORRECT)
+- `category`: str (nullable — one of the 13 Italian categories)
+- `comment`: text (nullable, max 1000 chars)
+- `score`: int (0 or 1, for backward compat with existing thumbs up/down)
+- `created_at`: datetime
+
+**Testing Requirements:**
+- **TDD:** Write `tests/models/test_chat_feedback.py` and `tests/api/v1/test_feedback_persistence.py` FIRST
+- **Unit Tests:**
+  - `test_chat_feedback_creation` - valid creation with all fields
+  - `test_chat_feedback_type_enum` - 3 feedback types
+  - `test_chat_feedback_categories` - valid Italian categories
+  - `test_feedback_endpoint_persists_to_db` - DB write on feedback submit
+  - `test_feedback_endpoint_still_sends_langfuse` - Langfuse integration unchanged
+  - `test_feedback_upsert_on_duplicate` - same user+message updates
+  - `test_feedback_langfuse_down_db_still_works` - graceful degradation
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] ChatFeedback model with type + category + comment
+- [ ] Existing feedback endpoint extended (not replaced)
+- [ ] Dual-write: DB + Langfuse
+- [ ] Backward compatible with existing thumbs up/down
+- [ ] Italian categories reused from expert_feedback_collector
+- [ ] Frontend FeedbackButtons NOT modified
+
+---
+
+### DEV-434: Dashboard Client Distribution Charts
+
+**Reference:** [DashboardPage.tsx](../figma-make-references/DashboardPage.tsx)
+
+**Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma DashboardPage shows 3 distribution charts not covered by DEV-355: clients per regime fiscale (pie), clients per settore ATECO (bar), clients per stato (donut). DEV-355 only mentions "client count, active procedure, pending communications, recent matches".
+
+**Solution:**
+Extend the dashboard aggregation service (DEV-355) to include client distribution queries grouped by regime_fiscale, codice_ateco sector, and status.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-355 (Dashboard Aggregation), DEV-301 (Client model with regime/ATECO)
+- **Unlocks:** DEV-356 (Dashboard API — include distribution data in response)
+
+**Change Classification:** MODIFYING (extends DEV-355's service)
+
+**Impact Analysis:**
+- `app/services/dashboard_service.py` — add distribution aggregation methods
+
+**Figma Reference:** `DashboardPage.tsx` — Source: [`docs/figma-make-references/DashboardPage.tsx`](../figma-make-references/DashboardPage.tsx)
+
+**Error Handling:**
+- No clients: Return empty distributions (valid for new studio)
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation) at ERROR level
+
+**Performance Requirements:**
+- Distribution queries: <100ms each (indexed GROUP BY)
+- Cacheable for 5 minutes per studio
+
+**File:** `app/services/dashboard_service.py` (extend)
+
+**Methods:**
+- `get_client_distribution_by_regime(studio_id)` → `[{ regime: str, count: int }]`
+- `get_client_distribution_by_ateco(studio_id)` → `[{ settore: str, count: int }]`
+- `get_client_distribution_by_status(studio_id)` → `[{ status: str, count: int }]`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_dashboard_distributions.py` FIRST
+- **Unit Tests:**
+  - `test_distribution_by_regime` - groups clients by regime fiscale
+  - `test_distribution_by_ateco` - groups clients by ATECO sector
+  - `test_distribution_by_status` - groups clients by active/pending/inactive
+  - `test_distribution_empty_studio` - returns empty arrays
+  - `test_distribution_tenant_isolation` - only counts studio's clients
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] 3 distribution queries matching Figma charts
+- [ ] Tenant-isolated (studio_id filter)
+- [ ] Cached for 5 minutes
+- [ ] All existing tests still pass
+
+---
+
+### DEV-435: Dashboard Matching Statistics
+
+**Reference:** [DashboardPage.tsx](../figma-make-references/DashboardPage.tsx)
+
+**Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma DashboardPage shows a "Statistiche Matching" card with: Total Matches (342), Conversion Rate (73.2%), Pending Reviews (18), and a "Rivedi match" action button. DEV-355 mentions "recent matches" but not conversion rate or pending review counts.
+
+**Solution:**
+Extend the dashboard aggregation service to include matching statistics: total matches, conversion rate (actioned/total), and pending review count.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-355 (Dashboard Aggregation), DEV-320 (NormativeMatching — for match data)
+- **Unlocks:** DEV-356 (Dashboard API — include matching stats in response)
+
+**Change Classification:** MODIFYING (extends DEV-355's service)
+
+**Figma Reference:** `DashboardPage.tsx` — Source: [`docs/figma-make-references/DashboardPage.tsx`](../figma-make-references/DashboardPage.tsx)
+
+**Performance Requirements:**
+- Matching stats query: <100ms
+- Cacheable for 5 minutes per studio
+
+**File:** `app/services/dashboard_service.py` (extend)
+
+**Methods:**
+- `get_matching_statistics(studio_id)` → `{ total_matches: int, conversion_rate: float, pending_reviews: int }`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_dashboard_matching_stats.py` FIRST
+- **Unit Tests:**
+  - `test_matching_stats_total` - correct total count
+  - `test_matching_stats_conversion_rate` - actioned / total ratio
+  - `test_matching_stats_pending_reviews` - unresolved matches count
+  - `test_matching_stats_empty` - no matches → total=0, rate=0.0, pending=0
+  - `test_matching_stats_tenant_isolation` - only studio's matches
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Total matches, conversion rate, pending reviews
+- [ ] Tenant-isolated
+- [ ] Cached for 5 minutes
+- [ ] All existing tests still pass
+
+---
+
+### DEV-436: Dashboard Period Selector
+
+**Reference:** [DashboardPage.tsx](../figma-make-references/DashboardPage.tsx)
+
+**Priority:** LOW | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma DashboardPage shows a Week/Month/Year toggle that filters all dashboard data. DEV-355/356 don't mention period-based filtering.
+
+**Solution:**
+Extend the Dashboard API (DEV-356) to accept a `period` query parameter (WEEK, MONTH, YEAR) and apply date range filtering to all aggregation queries.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-356 (Dashboard API)
+- **Unlocks:** Frontend period toggle
+
+**Change Classification:** MODIFYING (extends DEV-356)
+
+**Impact Analysis:**
+- `app/api/v1/dashboard.py` — add `period` query param
+- `app/services/dashboard_service.py` — add date range filtering to all queries
+
+**Figma Reference:** `DashboardPage.tsx` — Source: [`docs/figma-make-references/DashboardPage.tsx`](../figma-make-references/DashboardPage.tsx)
+
+**Performance Requirements:**
+- Filtered queries: <200ms (indexed on created_at/date columns)
+
+**Edge Cases:**
+- **No Period:** Default to MONTH
+- **Invalid Period:** HTTP 422, `"Periodo non valido. Valori accettati: WEEK, MONTH, YEAR"`
+- **No Data in Period:** Return zeros (valid result)
+
+**File:** `app/api/v1/dashboard.py` (extend) + `app/services/dashboard_service.py` (extend)
+
+**Testing Requirements:**
+- **TDD:** Write `tests/api/v1/test_dashboard_period.py` FIRST
+- **Unit Tests:**
+  - `test_dashboard_period_week` - last 7 days
+  - `test_dashboard_period_month` - last 30 days
+  - `test_dashboard_period_year` - last 365 days
+  - `test_dashboard_period_default` - no param → MONTH
+  - `test_dashboard_period_invalid` - HTTP 422
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] `period` query parameter on dashboard endpoint
+- [ ] WEEK/MONTH/YEAR filtering
+- [ ] Default to MONTH
+- [ ] All existing dashboard tests still pass
+
+---
+
+### DEV-437: Deadline Amount & Penalties Fields
+
+**Reference:** [ScadenzeFiscaliPage.tsx](../figma-make-references/ScadenzeFiscaliPage.tsx)
+
+**Priority:** MEDIUM | **Effort:** 1h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma ScadenzeFiscaliPage shows each deadline with "Importo: €X" and "Sanzioni: percentuale + importo" fields. DEV-380's Deadline model doesn't include amount or penalty information.
+
+**Solution:**
+Add `importo` (decimal, nullable) and `sanzioni` (JSONB, nullable) fields to the Deadline model (DEV-380). The JSONB sanzioni field stores `{ percentuale: float, importo_fisso: decimal, descrizione: str }`.
+
+**Agent Assignment:** @Primo (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-380 (Deadline model)
+- **Unlocks:** DEV-385 (Deadline API — include amount/penalties in response)
+
+**Change Classification:** MODIFYING (extends DEV-380)
+
+**Impact Analysis:**
+- `app/models/deadline.py` — add fields
+- Migration file — add columns
+- `app/services/deadline_service.py` — update CRUD
+- `app/schemas/deadline.py` — update schemas
+
+**Error Handling:**
+- Negative importo: HTTP 422, `"L'importo non può essere negativo"`
+- Invalid sanzioni format: HTTP 422, `"Formato sanzioni non valido"`
+
+**Edge Cases:**
+- **Null Amount:** Many deadlines have no fixed amount (e.g., "Dichiarazione Redditi") → null allowed
+- **Null Penalties:** Some deadlines have no defined penalties → null allowed
+- **Zero Amount:** Valid (some deadlines are zero-cost but time-sensitive)
+- **Multiple Penalties:** sanzioni JSONB can be an array of penalty tiers
+
+**New Fields on Deadline:**
+- `importo`: Numeric(12, 2) (nullable — deadline amount in EUR)
+- `sanzioni`: JSONB (nullable — penalty info: `{ percentuale: float, importo_fisso: str, descrizione: str }` or array of penalty tiers)
+
+**Testing Requirements:**
+- **TDD:** Write `tests/models/test_deadline_amounts.py` FIRST
+- **Unit Tests:**
+  - `test_deadline_importo_nullable` - null allowed
+  - `test_deadline_importo_valid` - decimal value stored correctly
+  - `test_deadline_importo_negative_rejected` - validation
+  - `test_deadline_sanzioni_jsonb` - JSON structure stored/retrieved
+  - `test_deadline_sanzioni_nullable` - null allowed
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] importo and sanzioni fields added
+- [ ] Migration runs cleanly
+- [ ] Existing deadline tests still pass
+- [ ] Schemas updated
+
+---
+
+### DEV-438: Per-Deadline User Reminders
+
+**Reference:** [ScadenzeFiscaliPage.tsx](../figma-make-references/ScadenzeFiscaliPage.tsx)
+
+**Priority:** LOW | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma ScadenzeFiscaliPage shows a bell icon on each deadline card letting users set a personal reminder. DEV-384 (Deadline Notification Background Job) sends automatic notifications at fixed intervals (30/7/1 day), but users cannot configure per-deadline custom reminders.
+
+**Solution:**
+Create a `DeadlineReminder` SQLModel and API to let users opt-in to specific deadline notifications at a custom time. Integrate with the notification system (DEV-422-427).
+
+**Agent Assignment:** @Primo (model), @Ezio (service + API), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-380 (Deadline model), DEV-422 (Notification model), DEV-384 (Background job)
+- **Unlocks:** Frontend bell icon on deadline cards
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Deadline not found: HTTP 404, `"Scadenza non trovata"`
+- Reminder in past: HTTP 422, `"La data del promemoria deve essere futura"`
+- Duplicate reminder: HTTP 409, `"Promemoria già impostato per questa scadenza"`
+- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
+
+**Edge Cases:**
+- **Already Passed:** remind_at in the past → rejected
+- **Same Day:** remind_at = deadline_date → allowed (last-minute reminder)
+- **Multiple Reminders:** One user can have only one reminder per deadline (upsert)
+- **Deadline Deleted:** Cascade soft-delete the reminder
+- **User Deletes Reminder:** Soft delete, stop future notification
+
+**File:** `app/models/deadline_reminder.py` (new) + `app/services/deadline_reminder_service.py` (new) + `app/api/v1/deadline_reminders.py` (new)
+
+**DeadlineReminder Fields:**
+- `id`: UUID (primary key)
+- `deadline_id`: UUID (FK to Deadline)
+- `user_id`: UUID (FK to User)
+- `studio_id`: UUID (FK to Studio)
+- `remind_at`: datetime (when to send notification)
+- `is_active`: bool (default: true)
+- `notification_sent`: bool (default: false)
+- `created_at`, `updated_at`
+
+**Endpoints:**
+- `POST /api/v1/deadlines/{id}/reminder` — Set reminder (body: `{ remind_at: datetime }`)
+- `DELETE /api/v1/deadlines/{id}/reminder` — Remove reminder
+- `GET /api/v1/deadlines/{id}/reminder` — Check if reminder is set
+
+**Testing Requirements:**
+- **TDD:** Write `tests/models/test_deadline_reminder.py` and `tests/api/v1/test_deadline_reminders.py` FIRST
+- **Unit Tests:**
+  - `test_create_reminder` - valid creation
+  - `test_create_reminder_past_rejected` - past date rejected
+  - `test_delete_reminder` - soft delete
+  - `test_duplicate_reminder_upsert` - upsert behavior
+  - `test_reminder_tenant_isolation` - studio_id filter
+  - `test_cascade_on_deadline_delete` - reminder removed when deadline deleted
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] DeadlineReminder model with user-configurable remind_at
+- [ ] API for set/remove/check reminder
+- [ ] Integrates with notification system (creates SCADENZA notification at remind_at)
+- [ ] Tenant isolation
+- [ ] Migration runs cleanly
+
+---
+
+### DEV-439: Interactive Question Templates Activation
+
+**Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma ChatPage shows 3 interactive question template categories (tax_situation, compliance_issue, planning_optimization) with multi-step follow-up flows. The codebase has archived YAML templates under `archived/phase5_templates/templates/interactive_questions/` (procedures.yaml, calculations.yaml) and the `proactivity_engine.py` service, but these aren't in production. ADR-021 is accepted but the templates are dormant.
+
+**Solution:**
+Un-archive the interactive question templates, update them to match the Figma's 3 categories, and wire them into the active LangGraph pipeline via the proactivity engine.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-340 (Procedure framework — for procedure-based questions), existing LangGraph pipeline
+- **Unlocks:** Proactive question generation in chat
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- `archived/phase5_templates/` → move to `app/templates/interactive_questions/`
+- `app/services/proactivity_engine_simplified.py` — wire template loading
+- LangGraph pipeline config — enable interactive question node
+
+**Error Handling:**
+- Template not found: Log warning, skip question generation (no user-facing error)
+- Invalid YAML: Log error at startup, skip malformed template
+- **Logging:** All errors MUST be logged with context (template_id, category) at ERROR level
+
+**Edge Cases:**
+- **No Matching Template:** Query doesn't match any template category → no question asked (normal chat)
+- **Template Validation:** Invalid YAML at startup → skip that template, log error, others still work
+- **User Skips Question:** User ignores interactive question → proceed with normal response
+
+**File:** `app/templates/interactive_questions/` (new directory) + `app/services/proactivity_engine_simplified.py` (extend)
+
+**Template Categories (from Figma):**
+1. `tax_situation` — Tax calculations (IRPEF, IVA, INPS, ravvedimento)
+2. `compliance_issue` — Compliance checks (scadenze, adempimenti, CCNL)
+3. `planning_optimization` — Planning (apertura, trasformazione, assunzione)
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_interactive_questions_activation.py` FIRST
+- **Unit Tests:**
+  - `test_templates_load_from_yaml` - YAML parsing works
+  - `test_tax_situation_template_triggers` - correct trigger conditions
+  - `test_compliance_issue_template_triggers` - correct trigger conditions
+  - `test_planning_optimization_template_triggers` - correct trigger conditions
+  - `test_no_template_match_skips_question` - graceful skip
+  - `test_invalid_yaml_skipped_gracefully` - malformed YAML handled
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Templates un-archived to active directory
+- [ ] 3 Figma categories implemented
+- [ ] Wired into proactivity engine
+- [ ] LangGraph pipeline activates question node
+- [ ] All existing tests still pass
+
+---
+
+### DEV-440: Full Notifications Page
+
+**Reference:** [NotificationsDropdown.tsx](../figma-make-references/NotificationsDropdown.tsx)
+
+**Priority:** LOW | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+The NotificationsDropdown's "Vedi tutte le notifiche" footer link navigates to a full-page notification view. No frontend task covers this page.
+
+**Solution:**
+Create a `/notifiche` page that shows all notifications with pagination, filtering by type, and bulk actions. Reuses the API from DEV-424.
+
+**Agent Assignment:** @Livia (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-424 (Notification API), DEV-426 (NotificationsDropdown — shares components)
+- **Unlocks:** None
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- API failure: Show "Errore nel caricamento delle notifiche" with retry
+- Empty state: Show "Nessuna notifica" with friendly illustration
+
+**File:** `web/src/app/notifiche/page.tsx` (new)
+
+**UI Elements:**
+- Page header: "Notifiche" with unread count
+- Filter tabs: Tutte, Scadenze, Match, Comunicazioni, Normative
+- Notification list with pagination (reuse card design from dropdown)
+- Bulk actions: "Segna tutte come lette", "Elimina lette"
+- Add "Notifiche" menu item to ChatHeader user menu (between Scadenze Fiscali and separator)
+
+**Testing Requirements:**
+- **TDD:** Write `web/src/app/notifiche/__tests__/page.test.tsx` FIRST
+- **Unit Tests:**
+  - `test_renders_notifications_page` - page loads
+  - `test_filter_by_type` - type filter tabs work
+  - `test_pagination` - pagination controls
+  - `test_mark_all_read` - bulk action
+  - `test_empty_state` - no notifications message
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Full-page notification list with pagination
+- [ ] Filter by notification type
+- [ ] Bulk mark-as-read
+- [ ] Menu item added to ChatHeader
+- [ ] Italian text throughout
+
+---
+
+### DEV-441: Settings Page (Studio Preferences)
+
+**Priority:** LOW | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+The Figma sidebar shows "Impostazioni" but no Figma file or task exists for a settings page. DEV-300 (Studio model) has a `settings` JSONB field but no UI to manage it. Users need a page to configure studio-level preferences (notification preferences, display settings, etc.).
+
+**Solution:**
+Create a `/impostazioni` settings page with sections for studio preferences, notification preferences, and account settings. Uses the existing Studio.settings JSONB field for persistence.
+
+**Agent Assignment:** @Livia (primary), @Ezio (API), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-300 (Studio model — settings JSONB), DEV-422 (Notification model — for notification prefs)
+- **Unlocks:** None
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Save failure: Show "Errore nel salvataggio delle impostazioni" with retry
+- Invalid settings: HTTP 422, `"Impostazioni non valide"`
+
+**File:** `web/src/app/impostazioni/page.tsx` (new) + `app/api/v1/settings.py` (new)
+
+**UI Sections:**
+1. **Profilo Studio** — Studio name, logo, contact info (read from DEV-300)
+2. **Preferenze Notifiche** — Toggle per notification type (scadenze, match, comunicazioni, normative)
+3. **Visualizzazione** — Display preferences (items per page, default period)
+
+**API Endpoints:**
+- `GET /api/v1/settings` — Get studio settings
+- `PUT /api/v1/settings` — Update studio settings
+- Add "Impostazioni" menu item to ChatHeader user menu (before "Esci")
+
+**Testing Requirements:**
+- **TDD:** Write `web/src/app/impostazioni/__tests__/page.test.tsx` and `tests/api/v1/test_settings.py` FIRST
+- **Unit Tests:**
+  - `test_renders_settings_page` - page loads
+  - `test_save_notification_preferences` - toggles persist
+  - `test_get_settings_200` - API returns current settings
+  - `test_update_settings_200` - API persists changes
+  - `test_update_settings_tenant_isolation` - studio_id enforced
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Settings page with 3 sections
+- [ ] API for get/update studio settings
+- [ ] Menu item added to ChatHeader
+- [ ] Italian text throughout
+- [ ] Tenant isolation enforced
+
+---
+
 ## Critical E2E Test Flows
 
 ### Flow 1: Client Management
@@ -10188,7 +11523,13 @@ tests/e2e/test_procedura_flow.py
 1. Start Procedura → 2. Complete Steps → 3. Resume → 4. Complete → 5. View History
 ```
 
-### Flow 5: Full User Journey (DEV-371)
+### Flow 5: Notification System (DEV-427)
+```
+tests/e2e/test_notification_flow.py
+1. Trigger Event → 2. Notification Created → 3. Appears in API → 4. Mark as Read → 5. Verify Cross-Tenant Isolation
+```
+
+### Flow 6: Full User Journey (DEV-371)
 ```
 tests/e2e/test_pratikoai_2_0_flow.py
 1. Register → 2. Create Studio → 3. Import Clients → 4. Chat → 5. View Matches
@@ -10209,6 +11550,7 @@ tests/e2e/test_pratikoai_2_0_flow.py
 - [ ] Response time ≤3 seconds maintained
 - [ ] GDPR compliance verified
 - [ ] DPA acceptance workflow functional
+- [ ] In-app notification system operational (4 trigger types)
 - [ ] **All E2E test flows passing**
 - [ ] **All regression tests passing**
 
@@ -10246,7 +11588,7 @@ The following aspects of our chat implementation are FINAL and must NOT be modif
 - **Sidebar:** Our sidebar (`ChatSidebar.tsx`) shows chat sessions only. Do not replace it with Figma's multi-section sidebar (Modelli, Scadenze, Normative, Aggiornamenti, FAQ links).
 - **Input modes:** We have a single chat input mode. Do not add Figma's input mode switcher (simple/complex/interactive/document).
 - **Notifications:** The notification dropdown (Screen 6) is a separate task (DEV-384/385). Do not add it when implementing other screens.
-- **Message rendering:** Do not change AIMessageV2, FeedbackButtons, or InteractiveQuestionInline unless the task specifically requires it.
+- **Message rendering:** Do not change AIMessageV2, FeedbackButtons, or InteractiveQuestionInline unless the task specifically requires it. **Note:** FeedbackButtons (`web/src/app/chat/components/FeedbackButtons.tsx`) is already implemented with its own design (thumbs up/down + copy button) and must NOT be restyled to match Figma's ChatPage.tsx feedback UI.
 - **State management:** Keep existing Context API patterns (ChatStateProvider, ChatSessionsProvider). Do not introduce new providers from Figma.
 
 ### User Menu in ChatHeader
@@ -10298,7 +11640,7 @@ All screens have been implemented in the [Figma Make project](https://www.figma.
 
 ### Screen 3: ROI Dashboard & Analytics (`DashboardPage.tsx`) ✅ IMPLEMENTED
 
-**Used by:** DEV-354, DEV-355, DEV-356
+**Used by:** DEV-354, DEV-355, DEV-356, DEV-434 (distributions), DEV-435 (matching stats), DEV-436 (period selector)
 
 **Source:** [`docs/figma-make-references/DashboardPage.tsx`](../figma-make-references/DashboardPage.tsx)
 
@@ -10324,7 +11666,7 @@ All screens have been implemented in the [Figma Make project](https://www.figma.
 
 ### Screen 6: Notification Panel (`NotificationsDropdown.tsx`) ✅ IMPLEMENTED
 
-**Used by:** DEV-384, DEV-385
+**Used by:** DEV-384, DEV-385, DEV-422 to DEV-427, DEV-440
 
 **Source:** [`docs/figma-make-references/NotificationsDropdown.tsx`](../figma-make-references/NotificationsDropdown.tsx)
 
@@ -10344,7 +11686,7 @@ All screens have been implemented in the [Figma Make project](https://www.figma.
 
 ### Screen 8: Client Mention Autocomplete (`ClientMentionAutocomplete.tsx` + `ClientActionPicker.tsx`) ✅ IMPLEMENTED
 
-**Used by:** DEV-403
+**Used by:** DEV-403, DEV-428 (INPS/INAIL fields), DEV-429 (procedure suggestions)
 
 **Source:** [`docs/figma-make-references/ClientMentionAutocomplete.tsx`](../figma-make-references/ClientMentionAutocomplete.tsx) (autocomplete dropdown + mention pill + context card), [`docs/figma-make-references/ClientActionPicker.tsx`](../figma-make-references/ClientActionPicker.tsx) (action picker + client profile card), [`docs/figma-make-references/ChatPage.tsx`](../figma-make-references/ChatPage.tsx) (entry point with mentions integration)
 

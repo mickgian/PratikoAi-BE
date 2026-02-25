@@ -113,7 +113,7 @@ class EmailService:
                 .status-pass {{ color: #28a745; font-weight: bold; }}
                 .status-fail {{ color: #dc3545; font-weight: bold; }}
                 .status-warning {{ color: #ffc107; font-weight: bold; }}
-                .status-unknown {{ color: #6c757d; font-weight: bold; }}
+                .status-unknown {{ color: #6c757d; font-weight: bold; font-style: italic; }}
                 .alerts {{ background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px; padding: 15px; margin: 20px; }}
                 .alerts h3 {{ margin-top: 0; color: #721c24; }}
                 .alert-item {{ margin: 5px 0; color: #721c24; }}
@@ -198,11 +198,12 @@ class EmailService:
         # Add technical metrics
         for metric in report.technical_metrics:
             status_class = f"status-{metric.status.value.lower()}"
+            display_value = "N/A" if metric.status == MetricStatus.UNKNOWN else f"{metric.value:.1f} {metric.unit}"
             html += f"""
                     <div class="metric">
                         <span class="metric-name">{metric.name}</span>
                         <div class="metric-value">
-                            <span>{metric.value:.1f} {metric.unit}</span>
+                            <span>{display_value}</span>
                             <span class="{status_class}">{metric.status.value}</span>
                         </div>
                     </div>
@@ -217,11 +218,12 @@ class EmailService:
         # Add business metrics
         for metric in report.business_metrics:
             status_class = f"status-{metric.status.value.lower()}"
+            display_value = "N/A" if metric.status == MetricStatus.UNKNOWN else f"{metric.value:.1f} {metric.unit}"
             html += f"""
                     <div class="metric">
                         <span class="metric-name">{metric.name}</span>
                         <div class="metric-value">
-                            <span>{metric.value:.1f} {metric.unit}</span>
+                            <span>{display_value}</span>
                             <span class="{status_class}">{metric.status.value}</span>
                         </div>
                     </div>

@@ -1,13 +1,12 @@
 """Success Metrics Monitoring Service
 
 This service monitors and validates all technical and business success metrics
-for the NormoAI system across all environments.
+for the PratikoAI system. Metrics are collected from the current running instance
+only — not from remote environments.
 """
 
-import asyncio
 import logging
 from dataclasses import (
-    asdict,
     dataclass,
 )
 from datetime import (
@@ -17,22 +16,14 @@ from datetime import (
 from enum import Enum
 from typing import (
     Any,
-    Dict,
-    List,
-    Optional,
     cast,
 )
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Environment, settings
 from app.core.database import get_session
-from app.core.performance.database_optimizer import database_optimizer
 from app.core.performance.performance_monitor import performance_monitor
-from app.core.security.security_monitor import security_monitor
-from app.services.cache import cache_service
-from app.services.usage_tracker import usage_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -150,71 +141,49 @@ class MetricsService:
                 )
             )
 
-        # Test Coverage (> 80%)
-        try:
-            test_coverage = await self._get_test_coverage()
-            metrics.append(
-                MetricResult(
-                    name="Test Coverage",
-                    value=test_coverage,
-                    target=80.0,
-                    status=(
+        # Test Coverage (> 80%) — CI/CD metric, not measurable at runtime
+        test_coverage = await self._get_test_coverage()
+        metrics.append(
+            MetricResult(
+                name="Test Coverage",
+                value=test_coverage if test_coverage is not None else 0.0,
+                target=80.0,
+                status=(
+                    (
                         MetricStatus.PASS
                         if test_coverage > 80
                         else MetricStatus.WARNING
                         if test_coverage > 70
                         else MetricStatus.FAIL
-                    ),
-                    unit="%",
-                    description="Code test coverage percentage",
-                    timestamp=current_time,
-                    environment=environment,
-                )
+                    )
+                    if test_coverage is not None
+                    else MetricStatus.UNKNOWN
+                ),
+                unit="%",
+                description="Code test coverage percentage (CI/CD metric)",
+                timestamp=current_time,
+                environment=environment,
             )
-        except Exception as e:
-            self.logger.error(f"Failed to collect test coverage: {e}")
-            metrics.append(
-                MetricResult(
-                    name="Test Coverage",
-                    value=0.0,
-                    target=80.0,
-                    status=MetricStatus.UNKNOWN,
-                    unit="%",
-                    description="Code test coverage percentage",
-                    timestamp=current_time,
-                    environment=environment,
-                )
-            )
+        )
 
-        # Security Vulnerabilities (0 critical)
-        try:
-            critical_vulnerabilities = await self._get_critical_vulnerabilities()
-            metrics.append(
-                MetricResult(
-                    name="Critical Security Vulnerabilities",
-                    value=critical_vulnerabilities,
-                    target=0.0,
-                    status=MetricStatus.PASS if critical_vulnerabilities == 0 else MetricStatus.FAIL,
-                    unit="count",
-                    description="Number of critical security vulnerabilities",
-                    timestamp=current_time,
-                    environment=environment,
-                )
+        # Security Vulnerabilities (0 critical) — CI/CD metric, not measurable at runtime
+        critical_vulnerabilities = await self._get_critical_vulnerabilities()
+        metrics.append(
+            MetricResult(
+                name="Critical Security Vulnerabilities",
+                value=critical_vulnerabilities if critical_vulnerabilities is not None else 0.0,
+                target=0.0,
+                status=(
+                    (MetricStatus.PASS if critical_vulnerabilities == 0 else MetricStatus.FAIL)
+                    if critical_vulnerabilities is not None
+                    else MetricStatus.UNKNOWN
+                ),
+                unit="count",
+                description="Number of critical security vulnerabilities (CI/CD metric)",
+                timestamp=current_time,
+                environment=environment,
             )
-        except Exception as e:
-            self.logger.error(f"Failed to collect security vulnerabilities: {e}")
-            metrics.append(
-                MetricResult(
-                    name="Critical Security Vulnerabilities",
-                    value=0.0,
-                    target=0.0,
-                    status=MetricStatus.UNKNOWN,
-                    unit="count",
-                    description="Number of critical security vulnerabilities",
-                    timestamp=current_time,
-                    environment=environment,
-                )
-            )
+        )
 
         return metrics
 
@@ -296,76 +265,54 @@ class MetricsService:
             )
 
         # User Satisfaction (> 4.5/5)
-        try:
-            user_satisfaction = await self._get_user_satisfaction()
-            metrics.append(
-                MetricResult(
-                    name="User Satisfaction",
-                    value=user_satisfaction,
-                    target=4.5,
-                    status=(
+        user_satisfaction = await self._get_user_satisfaction()
+        metrics.append(
+            MetricResult(
+                name="User Satisfaction",
+                value=user_satisfaction if user_satisfaction is not None else 0.0,
+                target=4.5,
+                status=(
+                    (
                         MetricStatus.PASS
                         if user_satisfaction > 4.5
                         else MetricStatus.WARNING
                         if user_satisfaction > 4.0
                         else MetricStatus.FAIL
-                    ),
-                    unit="score",
-                    description="Average user satisfaction score (1-5)",
-                    timestamp=current_time,
-                    environment=environment,
-                )
+                    )
+                    if user_satisfaction is not None
+                    else MetricStatus.UNKNOWN
+                ),
+                unit="score",
+                description="Average user satisfaction score (1-5)",
+                timestamp=current_time,
+                environment=environment,
             )
-        except Exception as e:
-            self.logger.error(f"Failed to collect user satisfaction: {e}")
-            metrics.append(
-                MetricResult(
-                    name="User Satisfaction",
-                    value=0.0,
-                    target=4.5,
-                    status=MetricStatus.UNKNOWN,
-                    unit="score",
-                    description="Average user satisfaction score (1-5)",
-                    timestamp=current_time,
-                    environment=environment,
-                )
-            )
+        )
 
-        # GDPR Compliance (Verified)
-        try:
-            gdpr_compliance_score = await self._get_gdpr_compliance_score()
-            metrics.append(
-                MetricResult(
-                    name="GDPR Compliance Score",
-                    value=gdpr_compliance_score,
-                    target=100.0,
-                    status=(
+        # GDPR Compliance — audit metric, not measurable at runtime
+        gdpr_compliance_score = await self._get_gdpr_compliance_score()
+        metrics.append(
+            MetricResult(
+                name="GDPR Compliance Score",
+                value=gdpr_compliance_score if gdpr_compliance_score is not None else 0.0,
+                target=100.0,
+                status=(
+                    (
                         MetricStatus.PASS
                         if gdpr_compliance_score >= 95
                         else MetricStatus.WARNING
                         if gdpr_compliance_score >= 85
                         else MetricStatus.FAIL
-                    ),
-                    unit="%",
-                    description="GDPR compliance verification score",
-                    timestamp=current_time,
-                    environment=environment,
-                )
+                    )
+                    if gdpr_compliance_score is not None
+                    else MetricStatus.UNKNOWN
+                ),
+                unit="%",
+                description="GDPR compliance verification score (audit metric)",
+                timestamp=current_time,
+                environment=environment,
             )
-        except Exception as e:
-            self.logger.error(f"Failed to collect GDPR compliance: {e}")
-            metrics.append(
-                MetricResult(
-                    name="GDPR Compliance Score",
-                    value=0.0,
-                    target=100.0,
-                    status=MetricStatus.UNKNOWN,
-                    unit="%",
-                    description="GDPR compliance verification score",
-                    timestamp=current_time,
-                    environment=environment,
-                )
-            )
+        )
 
         return metrics
 
@@ -374,11 +321,12 @@ class MetricsService:
         technical_metrics = await self.collect_technical_metrics(environment)
         business_metrics = await self.collect_business_metrics(environment)
 
-        # Calculate overall health score
+        # Calculate overall health score — exclude UNKNOWN metrics
         all_metrics = technical_metrics + business_metrics
-        passed_metrics = sum(1 for m in all_metrics if m.status == MetricStatus.PASS)
-        total_metrics = len(all_metrics)
-        health_score = (passed_metrics / total_metrics * 100) if total_metrics > 0 else 0
+        measurable_metrics = [m for m in all_metrics if m.status != MetricStatus.UNKNOWN]
+        passed_metrics = sum(1 for m in measurable_metrics if m.status == MetricStatus.PASS)
+        total_measurable = len(measurable_metrics)
+        health_score = (passed_metrics / total_measurable * 100) if total_measurable > 0 else 0
 
         # Generate alerts
         alerts = []
@@ -392,7 +340,7 @@ class MetricsService:
                     f"WARNING: {metric.name} is {metric.value:.2f} {metric.unit}, target: {metric.target:.2f} {metric.unit}"
                 )
             elif metric.status == MetricStatus.UNKNOWN:
-                alerts.append(f"UNKNOWN: Unable to collect {metric.name} metric")
+                alerts.append(f"INFO: {metric.name} — no data available (data source not configured)")
 
         # Generate recommendations
         recommendations = await self._generate_recommendations(all_metrics)
@@ -429,36 +377,29 @@ class MetricsService:
             return 0.0
 
     async def _get_cache_hit_rate(self) -> float:
-        """Get cache hit rate percentage."""
+        """Get cache hit rate percentage from in-memory performance monitor."""
         try:
-            stats = await cache_service.get_cache_statistics()  # type: ignore[attr-defined]
-            total_requests = cast(int, stats.get("cache_hits", 0)) + cast(int, stats.get("cache_misses", 0))
-            if total_requests == 0:
-                return 0.0
-            return (cast(int, stats.get("cache_hits", 0)) / total_requests) * 100
+            stats = performance_monitor.get_cache_statistics()
+            return cast(float, stats.get("cache_hit_rate", 0.0))
         except Exception as e:
             self.logger.error(f"Error calculating cache hit rate: {e}")
             return 0.0
 
-    async def _get_test_coverage(self) -> float:
-        """Get test coverage percentage."""
-        try:
-            # In a real implementation, this would integrate with coverage tools
-            # For now, return a simulated value based on our comprehensive tests
-            return 85.0  # Based on our extensive test coverage implementation
-        except Exception as e:
-            self.logger.error(f"Error getting test coverage: {e}")
-            return 0.0
+    async def _get_test_coverage(self) -> float | None:
+        """Get test coverage percentage.
 
-    async def _get_critical_vulnerabilities(self) -> float:
-        """Get number of critical security vulnerabilities."""
-        try:
-            # Get security summary from security monitor
-            summary = await security_monitor.get_security_summary()  # type: ignore[attr-defined]
-            return cast(float, summary.get("critical_threats", 0))
-        except Exception as e:
-            self.logger.error(f"Error getting security vulnerabilities: {e}")
-            return 0.0
+        Returns None when coverage data is not available at runtime.
+        Test coverage is a CI/CD metric — it cannot be measured from a running app.
+        """
+        return None
+
+    async def _get_critical_vulnerabilities(self) -> float | None:
+        """Get number of critical security vulnerabilities.
+
+        Returns None when security scanning is not available at runtime.
+        Vulnerability scanning is a CI/CD metric (e.g. pip-audit, safety).
+        """
+        return None
 
     async def _get_average_cost_per_user(self) -> float:
         """Get average API cost per user per month in EUR."""
@@ -497,8 +438,11 @@ class MetricsService:
             self.logger.error(f"Error getting system uptime: {e}")
             return 0.0
 
-    async def _get_user_satisfaction(self) -> float:
-        """Get average user satisfaction score."""
+    async def _get_user_satisfaction(self) -> float | None:
+        """Get average user satisfaction score.
+
+        Returns None if no feedback data is available.
+        """
         try:
             async with get_session() as session:
                 # Get user satisfaction ratings from the last 30 days
@@ -515,45 +459,20 @@ class MetricsService:
                 result = await session.execute(satisfaction_query, {"start_date": thirty_days_ago})
                 row = result.fetchone()
 
-                return float(row.avg_rating) if row and row.avg_rating else 4.2  # Default reasonable score
+                if row and row.avg_rating:
+                    return float(row.avg_rating)
+                return None
         except Exception as e:
             self.logger.error(f"Error getting user satisfaction: {e}")
-            return 0.0
+            return None
 
-    async def _get_gdpr_compliance_score(self) -> float:
-        """Get GDPR compliance verification score."""
-        try:
-            # Check various GDPR compliance indicators
-            compliance_checks = []
+    async def _get_gdpr_compliance_score(self) -> float | None:
+        """Get GDPR compliance verification score.
 
-            # Check PII anonymization is working
-            anonymization_active = True  # Based on our implementation
-            compliance_checks.append(anonymization_active)
-
-            # Check audit logging is active
-            audit_logging_active = True  # Based on our security implementation
-            compliance_checks.append(audit_logging_active)
-
-            # Check data retention policies
-            data_retention_configured = True  # Should be configured
-            compliance_checks.append(data_retention_configured)
-
-            # Check user consent tracking
-            consent_tracking_active = True  # Should be implemented
-            compliance_checks.append(consent_tracking_active)
-
-            # Check data encryption
-            encryption_active = True  # Database and API encryption
-            compliance_checks.append(encryption_active)
-
-            # Calculate compliance score
-            passed_checks = sum(compliance_checks)
-            total_checks = len(compliance_checks)
-
-            return (passed_checks / total_checks) * 100 if total_checks > 0 else 0.0
-        except Exception as e:
-            self.logger.error(f"Error calculating GDPR compliance: {e}")
-            return 0.0
+        Returns None — GDPR compliance is verified through audits, not runtime checks.
+        A real score requires external tooling (e.g. OneTrust, Vanta).
+        """
+        return None
 
     async def _generate_recommendations(self, metrics: list[MetricResult]) -> list[str]:
         """Generate recommendations based on metric results."""

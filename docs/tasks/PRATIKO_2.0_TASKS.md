@@ -1,5 +1,8 @@
 # PratikoAI 2.0 — Implementation Task List
 
+**Task ID Range:** DEV-300 to DEV-421 (120 tasks, DEV-362 and DEV-364 removed)
+**Last Updated:** 2026-02-25
+
 Reference documents (must be in repo):
 - `docs/tasks/PRATIKO_2.0.md` — Full task specifications, acceptance criteria, testing requirements
 - `docs/tasks/PRATIKO_2.0_REFERENCE.md` — Original product requirements (PRD)
@@ -51,7 +54,7 @@ These are the foundational SQLModel definitions. All subsequent work depends on 
 **Priority:** HIGH | **Effort:** 2h | **Classification:** ADDITIVE
 **Agent:** @Primo (primary), @Mario (rule definitions), @Clelia (tests)
 
-**What to build:** The `MatchingRule` model with flexible JSONB conditions supporting AND/OR operators and field comparisons. Pre-seed with 10 rules for common scenarios.
+**What to build:** The `MatchingRule` model with flexible JSONB conditions supporting AND/OR operators and field comparisons. Pre-seed with 10 rules for common scenarios (R001-R010 as defined in REFERENCE FR-003 §3.3.4).
 
 **File:** `app/models/matching_rule.py`
 
@@ -119,16 +122,16 @@ These are the foundational SQLModel definitions. All subsequent work depends on 
 
 ---
 
-### DEV-393: Regional Tax Configuration System
-**Depends on:** Nothing (independent configuration system)
-**Priority:** MEDIUM | **Effort:** 4h | **Classification:** ADDITIVE
+### DEV-393: Enhance Regional Tax Configuration System
+**Depends on:** Nothing (service already exists at `app/services/regional_tax_service.py` + `app/models/regional_taxes.py`)
+**Priority:** MEDIUM | **Effort:** 4h | **Classification:** MODIFYING
 **Agent:** @Ezio (primary), @Primo (DB), @Clelia (tests)
 
-**What to build:** Configuration system for regional tax rate variations (addizionali IRPEF by comune/regione).
+**What to build:** Enhance the existing RegionalTaxService to support PratikoAI 2.0 client-context-aware calculations. Add addizionali IRPEF by comune/regione and IMU aliquote lookup. Service and model files already exist — extend, do not recreate.
 
-**File:** `app/services/regional_tax_service.py`
+**File:** `app/services/regional_tax_service.py` (enhance), `app/models/regional_taxes.py` (enhance)
 
-**Unlocks:** Tax calculator enhancement for regional accuracy
+**Unlocks:** DEV-349, DEV-351, DEV-413 (Regional Data Population)
 
 ---
 
@@ -333,12 +336,12 @@ These services implement CRUD operations and business logic on top of the models
 
 ---
 
-### DEV-321: Pre-configured Matching Rules (15 rules)
+### DEV-321: Pre-configured Matching Rules (10 MVP + 5 extended)
 **Depends on:** DEV-304 (MatchingRule model), DEV-307 (Migration)
 **Priority:** HIGH | **Effort:** 4h | **Classification:** ADDITIVE
 **Agent:** @Mario (primary), @Primo (migration)
 
-**What to build:** Define 15 matching rules covering common regulatory scenarios (rottamazione, bonus sud, assunzioni, etc.) and seed via migration.
+**What to build:** Define matching rules and seed via migration. The REFERENCE PRD (FR-003 §3.3.4) specifies **10 MVP rules** (R001-R010: Rottamazione, Resto al Sud, Bonus Assunzioni Under 30, Bonus Donne, Bonus Sud, Obbligo Registratore Cassa, Obbligo POS, DVR Sicurezza, Cedolare Secca, IMU Seconda Casa). Add 5 extended rules for additional coverage (total: 15).
 
 **File:** `app/data/matching_rules.json` + seed migration
 
@@ -554,12 +557,14 @@ These depend on Wave 3 services. Can run in parallel within the wave.
 
 ---
 
-### DEV-341: 9 Pre-configured Procedure
+### DEV-341: 10 Pre-configured Procedure (P001-P010)
 **Depends on:** DEV-340 (ProceduraService)
-**Priority:** HIGH | **Effort:** 4h | **Classification:** ADDITIVE
+**Priority:** HIGH | **Effort:** 5h | **Classification:** ADDITIVE
 **Agent:** @Mario (primary), @Primo (seed migration)
 
-**What to build:** Define 9 pre-configured procedure (apertura attività, pensione, assunzione, etc.) with steps, documents, and checklists. Seed via migration.
+**What to build:** Define all 10 pre-configured procedure from REFERENCE FR-001 §3.1.4 with steps, documents, checklists, and costs. Seed via migration.
+
+**Procedures:** P001 (Apertura attività artigiano), P002 (Apertura attività commerciale), P003 (Apertura studio professionale), P004 (Domanda pensione vecchiaia), P005 (Domanda pensione anticipata), P006 (Assunzione dipendente), P007 (Trasformazione regime fiscale), P008 (Chiusura attività), P009 (Variazione dati azienda), P010 (Iscrizione gestione separata INPS).
 
 **Unlocks:** DEV-402 (/procedura command)
 
@@ -698,14 +703,14 @@ These depend on Wave 3 services. Can run in parallel within the wave.
 
 ---
 
-### DEV-401: ADR-025 GDPR Client Data Architecture
+### DEV-401: ADR GDPR Client Data Architecture
 **Depends on:** DEV-396 (DPIA informs architecture decisions)
 **Priority:** MEDIUM | **Classification:** ADDITIVE
 **Agent:** @Egidio (primary)
 
-**What to build:** Architectural Decision Record documenting GDPR client data architecture decisions.
+**What to build:** Architectural Decision Record documenting GDPR client data architecture decisions. **Note:** ADR-025 is already taken by "LLM Model Inventory & Tiering" (see `docs/architecture/decisions/ADR-025-llm-model-inventory-and-tiering.md`). Assign next available ADR number.
 
-**File:** `docs/architecture/decisions/ADR-025-gdpr-client-data-architecture.md`
+**File:** `docs/architecture/decisions/ADR-0XX-gdpr-client-data-architecture.md` (use next available number)
 
 ---
 
@@ -931,6 +936,81 @@ These depend on Wave 3-5 services. Can run in parallel.
 
 ---
 
+### DEV-406: IVA Calculator (Scorporo + Liquidazione)
+**Depends on:** DEV-348 (Client Context Injection)
+**Priority:** HIGH | **Effort:** 4h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** IVA calculator supporting: (1) scorporo IVA (from gross to net + VAT), (2) IVA liquidation (sales VAT - purchase VAT = balance), (3) forfettario regime coefficient calculation. Required by PRD FR-007 §3.7.3 and MVP scope §6.1 ("Calcoli fiscali base: IRPEF, IVA, contributi").
+
+**File:** `app/services/iva_calculator_service.py`
+
+**Tests:** `tests/services/test_iva_calculator.py` — scorporo 4%/10%/22%, liquidation positive/negative balance, forfettario coefficient, edge cases (zero amounts, negative values)
+
+**Unlocks:** DEV-353 (Calculation Accuracy Tests)
+
+---
+
+### DEV-407: Ritenuta d'Acconto Calculator
+**Depends on:** DEV-348 (Client Context Injection)
+**Priority:** HIGH | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Ritenuta d'acconto calculator supporting: (1) professionisti (20% on full amount), (2) agenti/rappresentanti (23% on 50% of commissions), (3) other withholding tax scenarios. Required by PRD FR-007 §3.7.3.
+
+**File:** `app/services/ritenuta_calculator_service.py`
+
+**Tests:** `tests/services/test_ritenuta_calculator.py` — professional 20%, agent 23% on 50%, edge cases
+
+**Unlocks:** DEV-353 (Calculation Accuracy Tests)
+
+---
+
+### DEV-408: Cedolare Secca Calculator
+**Depends on:** DEV-348 (Client Context Injection)
+**Priority:** MEDIUM | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Cedolare secca calculator: 21% ordinary rate, 10% reduced rate for agreed-rent contracts (concordati). Required by PRD FR-007 §3.7.3.
+
+**File:** `app/services/cedolare_secca_calculator_service.py`
+
+**Tests:** `tests/services/test_cedolare_secca_calculator.py` — 21% rate, 10% reduced, comparison with ordinary IRPEF
+
+**Unlocks:** DEV-353 (Calculation Accuracy Tests)
+
+---
+
+### DEV-409: TFR Calculator
+**Depends on:** DEV-348 (Client Context Injection)
+**Priority:** MEDIUM | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** TFR (Trattamento Fine Rapporto) calculator: annual accrual = annual retribution / 13.5, revaluation using ISTAT index + 1.5% fixed rate. Required by PRD FR-007 §3.7.3.
+
+**File:** `app/services/tfr_calculator_service.py`
+
+**Tests:** `tests/services/test_tfr_calculator.py` — single year, multi-year accrual, revaluation, partial year
+
+**Unlocks:** DEV-353 (Calculation Accuracy Tests)
+
+---
+
+### DEV-410: Netto in Busta / Costo Azienda Calculator
+**Depends on:** DEV-348 (Client Context Injection), DEV-349 (IRPEF), DEV-350 (INPS), DEV-393 (Regional Tax)
+**Priority:** HIGH | **Effort:** 4h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Payroll calculator supporting: (1) From RAL → calculate net salary (RAL - INPS employee - IRPEF - addizionali = netto), (2) From RAL → calculate total employer cost (RAL + INPS employer + INAIL + TFR accrual). Required by PRD FR-007 §3.7.3.
+
+**File:** `app/services/payroll_calculator_service.py`
+
+**Tests:** `tests/services/test_payroll_calculator.py` — RAL to net, RAL to employer cost, different CCNL rates, regional variations, family deductions
+
+**Unlocks:** DEV-353 (Calculation Accuracy Tests)
+
+---
+
 ### DEV-352: Calculation History Storage
 **Depends on:** DEV-348 (Client Context Injection)
 **Priority:** MEDIUM | **Effort:** 2h | **Classification:** ADDITIVE
@@ -943,11 +1023,11 @@ These depend on Wave 3-5 services. Can run in parallel.
 ---
 
 ### DEV-353: Unit Tests for Calculation Accuracy
-**Depends on:** DEV-349, DEV-350, DEV-351 (all calculator enhancements)
-**Priority:** HIGH | **Effort:** 3h | **Classification:** ADDITIVE
+**Depends on:** DEV-349, DEV-350, DEV-351, DEV-406, DEV-407, DEV-408, DEV-409, DEV-410 (all calculators)
+**Priority:** HIGH | **Effort:** 4h | **Classification:** ADDITIVE
 **Agent:** @Clelia (primary)
 
-**What to build:** Exhaustive parametrized test suite with known inputs/outputs for all calculation scenarios.
+**What to build:** Exhaustive parametrized test suite with known inputs/outputs for ALL calculation scenarios. Must validate against official sources: IRPEF vs AdE simulator (AC-007.1), INPS vs INPS tables (AC-007.4), IVA liquidation, ritenuta d'acconto, cedolare secca, TFR, netto in busta. Include regional variations for 20 cities (AC-007.5).
 
 **File:** `tests/services/test_tax_calculations.py`
 
@@ -1018,6 +1098,155 @@ These depend on Wave 3-5 services. Can run in parallel.
 **What to build:** Specialized parser for F24 tax payment documents.
 
 **File:** `app/services/document_parsers/f24_parser.py`
+
+---
+
+### DEV-411: Fattura Elettronica XML Parser
+**Depends on:** Existing document parsing infrastructure
+**Priority:** HIGH | **Effort:** 5h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Mario (fattura structure), @Clelia (tests)
+
+**What to build:** Parser for Fattura Elettronica XML (SDI format FatturaPA). Extract: fornitore/cliente anagrafica, line items, imponibili per aliquota, IVA split, totale documento, data emissione, numero fattura, ritenuta d'acconto if present. This is the #1 document user story (US-008.1) and is explicitly in MVP scope (§6.1). Must handle both FatturaPA 1.2 schema and FatturaOrdinaria.
+
+**File:** `app/services/document_parsers/fattura_xml_parser.py`
+
+**Tests:** `tests/services/test_fattura_xml_parser.py` — valid FatturaPA XML, multi-line items, split-payment, ritenuta d'acconto, malformed XML, missing fields
+
+**Unlocks:** DEV-363 (Document Context)
+
+---
+
+### DEV-412: Email Open Tracking Service
+**Depends on:** DEV-333 (Email Sending Integration)
+**Priority:** HIGH | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Severino (GDPR review — requires consent for tracking), @Clelia (tests)
+
+**What to build:** Email open tracking using link-based tracking (not pixel — GDPR safer). Track click-throughs on CTA links. Required by PRD AC-004.13 ("Tracking aperture email funzionante") and dashboard metrics (FR-005 §3.5.3 "Tasso apertura", "Click su CTA"). Must respect `consenso_marketing` and `consenso_profilazione` flags on Client model. Generate tracking URLs via redirect service.
+
+**File:** `app/services/email_tracking_service.py` + `app/api/v1/tracking.py` (redirect endpoint)
+
+**Tests:** `tests/services/test_email_tracking.py` — track open, track click, respect consent flags, no tracking without consent
+
+**Unlocks:** DEV-354 (ROI Metrics — provides open rate data)
+
+---
+
+### DEV-413: Regional Tax Data Population (20 MVP Cities)
+**Depends on:** DEV-393 (Regional Tax Configuration System)
+**Priority:** HIGH | **Effort:** 4h | **Classification:** ADDITIVE
+**Agent:** @Mario (primary — data sourcing from MEF/IFEL), @Primo (seed migration)
+
+**What to build:** Populate regional tax database with data for 20 principal Italian cities as required by PRD AC-007.5 and MVP scope §6.1. Data includes: addizionale regionale IRPEF (all 20 regioni), addizionale comunale IRPEF (20 cities), IMU aliquote per categoria catastale (20 cities).
+
+**Cities (suggested):** Roma, Milano, Napoli, Torino, Palermo, Genova, Bologna, Firenze, Bari, Catania, Venezia, Verona, Messina, Padova, Trieste, Brescia, Parma, Taranto, Modena, Reggio Calabria.
+
+**File:** `app/data/regional_tax_rates.json` + seed migration
+
+**Tests:** `tests/data/test_regional_tax_data.py` — data completeness (all 20 cities), rate ranges valid, no missing required fields
+
+---
+
+### DEV-414: Calendar Sync Integration (Google/Outlook)
+**Depends on:** DEV-385 (Upcoming Deadlines API)
+**Priority:** MEDIUM | **Effort:** 4h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Livia (frontend), @Clelia (tests)
+
+**What to build:** Export deadlines to external calendars via .ics file generation and/or CalDAV sync. Required by PRD AC-006.2 ("Integrazione con calendario esterno — Google, Outlook"). MVP: generate downloadable .ics files for individual deadlines and bulk export. Phase 2: bidirectional sync via Google Calendar API / Microsoft Graph API.
+
+**File:** `app/services/calendar_sync_service.py`
+
+**Tests:** `tests/services/test_calendar_sync.py` — single .ics generation, bulk .ics, valid iCalendar format, timezone handling
+
+---
+
+### DEV-415: Communication Unsubscribe Mechanism
+**Depends on:** DEV-330 (CommunicationService), DEV-333 (Email Sending)
+**Priority:** HIGH | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Severino (compliance review), @Clelia (tests)
+
+**What to build:** Unsubscribe mechanism for client communications. Each sent email must include an unsubscribe link. When clicked, marks the client as `consenso_marketing = false` and prevents future bulk communications. Required by PRD §8 Risk "Spam communications" mitigation. Uses List-Unsubscribe email header for standards compliance.
+
+**File:** `app/services/unsubscribe_service.py` + `app/api/v1/unsubscribe.py`
+
+**Tests:** `tests/services/test_unsubscribe.py` — unsubscribe via link, consent flag updated, no further emails sent, re-subscribe flow
+
+---
+
+### DEV-416: ADR-023 Tiered Ingestion Pipeline Verification
+**Depends on:** Nothing (verification of existing implementation)
+**Priority:** HIGH | **Effort:** 3h | **Classification:** MODIFYING
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Verify and wire the existing tiered ingestion service (`app/services/tiered_ingestion_service.py` + `config/document_tiers.yaml`) into the active RAG pipeline. ADR-023 was implemented but may not be fully integrated. Ensure legal documents are chunked with proper overlap to prevent hallucinations in matching engine. This is a prerequisite for matching quality.
+
+**File:** `app/services/tiered_ingestion_service.py` (verify), pipeline integration nodes (modify if needed)
+
+**Tests:** `tests/services/test_tiered_ingestion_integration.py` — verify tier assignment, chunk sizes for legal docs, overlap, pipeline connectivity
+
+---
+
+### DEV-417: Usage-Based Billing Studio Integration (ADR-027)
+**Depends on:** DEV-300 (Studio model), DEV-307 (Migration)
+**Priority:** HIGH | **Effort:** 4h | **Classification:** MODIFYING
+**Agent:** @Ezio (primary), @Primo (DB), @Clelia (tests)
+
+**What to build:** Integrate existing billing infrastructure (`app/models/billing.py`, `app/services/billing_plan_service.py`, ADR-027) with the new `studio_id` multi-tenant architecture. Add per-studio LLM usage tracking and cost ceilings. Without this, a single studio could exhaust the platform's LLM budget. Wire `exchange_rate_service.py` (ADR-026) for EUR cost calculation.
+
+**File:** `app/services/billing_plan_service.py` (enhance), `app/models/billing.py` (enhance)
+
+**Tests:** `tests/services/test_billing_studio_integration.py` — studio usage tracking, cost ceiling enforcement, exchange rate EUR calculation
+
+---
+
+### DEV-418: Monitoring and Alerting Infrastructure
+**Depends on:** Nothing (independent infrastructure)
+**Priority:** HIGH | **Effort:** 4h | **Classification:** ADDITIVE
+**Agent:** @Silvano (primary), @Valerio (performance), @Clelia (tests)
+
+**What to build:** Prometheus metrics endpoint + Grafana dashboard configuration for PratikoAI 2.0. Required by PRD §4.1 (99.9% uptime measured via Prometheus). Track: P95 response time (≤3s target), matching latency (≤2s target), import throughput, communication generation time, error rates, DB connection pool, Redis cache hit rate.
+
+**File:** `app/middleware/metrics.py` + `config/grafana/pratikoai_dashboard.json`
+
+**Tests:** `tests/middleware/test_metrics.py` — metrics endpoint accessible, key counters increment
+
+---
+
+### DEV-419: Communication History Retention Policy (24 months)
+**Depends on:** DEV-330 (CommunicationService)
+**Priority:** HIGH | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Severino (GDPR compliance), @Clelia (tests)
+
+**What to build:** Background job to enforce 24-month retention of sent communications (REFERENCE §4.3). Communications older than 24 months are anonymized (client PII removed, aggregate stats kept). Configurable per studio if retention policy is studio-defined.
+
+**File:** `app/jobs/communication_retention_job.py`
+
+**Tests:** `tests/jobs/test_communication_retention.py` — retention enforcement, anonymization, studio override
+
+---
+
+### DEV-420: GDPR Data Export in JSON Format
+**Depends on:** DEV-314 (Client Export to Excel)
+**Priority:** MEDIUM | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Severino (GDPR review), @Clelia (tests)
+
+**What to build:** Extend client export to support JSON format in addition to Excel. GDPR data portability (Art. 20) requires machine-readable format. JSON export includes all client data, profile, communications history, and calculation history.
+
+**File:** `app/services/client_export_service.py` (extend)
+
+**Tests:** `tests/services/test_client_export_json.py` — JSON structure, all fields present, encrypted fields decrypted, valid JSON schema
+
+---
+
+### DEV-421: Document Type Auto-Detection (>90% accuracy)
+**Depends on:** DEV-411 (Fattura XML Parser), DEV-360 (Bilancio Parser), DEV-361 (CU Parser), DEV-392 (F24 Parser)
+**Priority:** MEDIUM | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Automatic document type detection service. When user uploads a document, detect its type (fattura XML, fattura PDF, F24, CU, bilancio, busta paga, visura, contratto) and route to the appropriate parser. Target >90% accuracy (AC-008.3). Use file extension, MIME type, and content heuristics (XML namespace for fatture, keyword patterns for others).
+
+**File:** `app/services/document_type_detector.py`
+
+**Tests:** `tests/services/test_document_type_detector.py` — XML fattura detection, PDF F24, PDF bilancio, ambiguous documents, accuracy benchmark
 
 ---
 
@@ -1349,9 +1578,11 @@ Wave 0 (Foundation — no dependencies):
   DEV-388 (PDF Export)
   DEV-389 (Hallucination Guard)
   DEV-390 (OCR)
-  DEV-393 (Regional Tax Config)
+  DEV-393 (Regional Tax Config — ENHANCE existing service)
   DEV-395 (Rate Limiting)
   DEV-396 (DPIA)
+  DEV-416 (Tiered Ingestion Verification — existing service)
+  DEV-418 (Monitoring Infrastructure)
 
 Wave 1 (depends on Wave 0 models):
   DEV-301 → DEV-302 (Client → ClientProfile)
@@ -1369,13 +1600,14 @@ Wave 3 (core services, depend on migration):
   DEV-307 → DEV-308 (StudioService)
   DEV-307 → DEV-309 (ClientService)
   DEV-307+309 → DEV-310 (ClientProfileService)
-  DEV-307 → DEV-321 (Matching Rules Seed)
+  DEV-307 → DEV-321 (Matching Rules Seed — 10 MVP + 5 extended)
   DEV-307 → DEV-322 (Vector Generation)
   DEV-307 → DEV-330 (CommunicationService)
   DEV-307 → DEV-340 (ProceduraService)
   DEV-307 → DEV-380 (Deadline Model)
   DEV-307 → DEV-372 (DPA Model)
   DEV-307 → DEV-374 (Breach Model)
+  DEV-307+300 → DEV-417 (Billing Studio Integration)
 
 Wave 4 (API layer + advanced services):
   DEV-308 → DEV-311 (Studio API)
@@ -1383,13 +1615,18 @@ Wave 4 (API layer + advanced services):
   DEV-308 → DEV-315 (User-Studio)
   DEV-309+321+322+302 → DEV-320 (MatchingService)
   DEV-330 → DEV-331, DEV-332, DEV-333, DEV-334, DEV-335, DEV-336
-  DEV-340 → DEV-341, DEV-342, DEV-343, DEV-344, DEV-345
+  DEV-330 → DEV-415 (Unsubscribe Mechanism)
+  DEV-330 → DEV-419 (Communication Retention 24mo)
+  DEV-333 → DEV-412 (Email Open Tracking)
+  DEV-340 → DEV-341 (10 Procedures P001-P010), DEV-342, DEV-343, DEV-344, DEV-345
   DEV-380 → DEV-381 (DeadlineService)
   DEV-309 → DEV-314 (Export)
+  DEV-314 → DEV-420 (JSON Export)
   DEV-372 → DEV-373 (DPA Workflow)
   DEV-374 → DEV-375 (Breach Service)
   DEV-309 → DEV-376 (Processing Register)
   DEV-309 → DEV-377 (Data Rights)
+  DEV-393 → DEV-413 (Regional Data Population — 20 cities)
 
 Wave 5 (multi-tenancy + matching pipeline):
   DEV-315 → DEV-316 (Tenant Middleware)
@@ -1400,13 +1637,18 @@ Wave 5 (multi-tenancy + matching pipeline):
   DEV-325 → DEV-326 (Matching API)
   DEV-323+330 → DEV-337 (Response Formatter)
   DEV-381 → DEV-382, DEV-383, DEV-384, DEV-385
+  DEV-385 → DEV-414 (Calendar Sync — .ics export)
   DEV-397+398 → DEV-399, DEV-400
 
 Wave 6 (fiscal + documents + dashboard):
   DEV-309+302 → DEV-348 → DEV-349, DEV-350, DEV-351, DEV-352
-  DEV-349+350+351 → DEV-353
+  DEV-348 → DEV-406 (IVA), DEV-407 (Ritenuta), DEV-408 (Cedolare Secca), DEV-409 (TFR)
+  DEV-348+349+350+393 → DEV-410 (Netto in Busta / Costo Azienda)
+  DEV-349+350+351+406+407+408+409+410 → DEV-353 (Calculation Accuracy Tests)
   DEV-309+330+340 → DEV-354 → DEV-355 → DEV-356, DEV-357, DEV-358
-  DEV-360, DEV-361 → DEV-363 → DEV-391, DEV-392
+  DEV-412 → DEV-354 (ROI Metrics — open rate data)
+  DEV-360, DEV-361, DEV-411 (Fattura XML) → DEV-363 → DEV-391, DEV-392
+  DEV-411+360+361+392 → DEV-421 (Document Type Auto-Detection)
 
 Wave 7 (frontend + cross-cutting + /procedura + @client):
   DEV-366 → DEV-370
@@ -1424,7 +1666,7 @@ Wave 8 (comprehensive testing):
   DEV-332+333+337 → DEV-339 (Communication E2E)
   DEV-342+343+345 → DEV-347 (Procedura E2E)
   DEV-356+358 → DEV-359 (Dashboard E2E)
-  DEV-360+361 → DEV-365 (Document Parser Tests)
+  DEV-360+361+411 → DEV-365 (Document Parser Tests)
   All GDPR → DEV-379 (GDPR E2E)
   All Deadline → DEV-387 (Deadline E2E)
   DEV-402+403+404 → DEV-405 (/procedura + @client E2E)
@@ -1440,18 +1682,20 @@ Wave 9 (final validation):
 | Phase | Tasks | Wave(s) | Week |
 |-------|-------|---------|------|
 | **Phase 0: Foundation** | DEV-300 to DEV-307 (8 tasks) | 0, 1, 2 | 1-2 |
-| **Phase 1: Service Layer** | DEV-308 to DEV-319 (12 tasks) | 3, 4, 5, 8 | 3-4 |
+| **Phase 1: Service Layer** | DEV-308 to DEV-319, DEV-420 (13 tasks) | 3, 4, 5, 8 | 3-4 |
 | **Phase 2: Matching Engine** | DEV-320 to DEV-329 (10 tasks) | 3, 4, 5, 8 | 5-6 |
-| **Phase 3: Communications** | DEV-330 to DEV-339 (10 tasks) | 3, 4, 5, 8 | 7-8 |
+| **Phase 3: Communications** | DEV-330 to DEV-339, DEV-412, DEV-415, DEV-419 (13 tasks) | 3, 4, 5, 8 | 7-8 |
 | **Phase 4: Procedure** | DEV-340 to DEV-347, DEV-402 to DEV-405 (12 tasks) | 3, 4, 5, 7, 8 | 9-10 |
-| **Phase 5: Tax Calculations** | DEV-348 to DEV-353 (6 tasks) | 6 | 11 |
+| **Phase 5: Tax Calculations** | DEV-348 to DEV-353, DEV-406 to DEV-410, DEV-413 (12 tasks) | 4, 6 | 11 |
 | **Phase 6: Dashboard** | DEV-354 to DEV-359 (6 tasks) | 6, 7, 8 | 12 |
-| **Phase 7: Documents** | DEV-360, DEV-361, DEV-363, DEV-365 (4 tasks) | 6, 8 | 13 |
+| **Phase 7: Documents** | DEV-360, DEV-361, DEV-363, DEV-365, DEV-411, DEV-421 (6 tasks) | 6, 8 | 13 |
 | **Phase 8: Frontend Integration** | DEV-366 to DEV-371 (6 tasks) | 7, 8, 9 | 14 |
 | **Phase 9: GDPR Compliance** | DEV-372 to DEV-379 (8 tasks) | 3, 4, 5, 7, 8 | 15 |
-| **Phase 10: Deadline System** | DEV-380 to DEV-387 (8 tasks) | 3, 4, 5, 7, 8 | 16-17 |
-| **Phase 11: Infrastructure** | DEV-388 to DEV-395 (8 tasks) | 0, 6 | 18 |
+| **Phase 10: Deadline System** | DEV-380 to DEV-387, DEV-414 (9 tasks) | 3, 4, 5, 7, 8 | 16-17 |
+| **Phase 11: Infrastructure** | DEV-388 to DEV-395, DEV-416, DEV-417, DEV-418 (11 tasks) | 0, 3, 6 | 18 |
 | **Phase 12: Pre-Launch** | DEV-396 to DEV-401 (6 tasks) | 0, 1, 4, 5 | Pre-launch |
+
+**Total: 120 tasks** (was 104, added 16 tasks to close gaps identified in PRD review)
 
 ---
 
@@ -1470,20 +1714,32 @@ Wave 9 (final validation):
 | DEV-397 | CRITICAL | Infrastructure | Encryption at rest + DPA with Hetzner |
 | DEV-398 | CRITICAL | Legal/Compliance | LLM transfer safeguards required |
 | DEV-399 | HIGH | Legal/Compliance | 30-day Garante notification period |
+| DEV-416 | HIGH | Data Quality | Tiered ingestion affects matching accuracy |
+| DEV-417 | HIGH | Financial | Without billing limits a studio can exhaust LLM budget |
 
 ---
 
 ## Success Criteria
 
 - [ ] 100 clients per studio functional
-- [ ] 9 procedure available
-- [ ] Matching suggestions appear in chat
-- [ ] Communications workflow complete (draft → approve → send)
-- [ ] All fiscal calculations working with client context
+- [ ] 10 procedures available (P001-P010 per PRD FR-001 §3.1.4)
+- [ ] 10 MVP matching rules + 5 extended rules seeded and functional
+- [ ] Matching suggestions appear in chat within response time budget
+- [ ] Communications workflow complete (draft → approve → send) with unsubscribe mechanism
+- [ ] Email open tracking functional (link-based, GDPR-compliant)
+- [ ] All fiscal calculations working with client context: IRPEF, IVA, INPS, IMU, ritenuta, cedolare secca, TFR, netto in busta
+- [ ] IRPEF accuracy 100% vs AdE simulator (AC-007.1)
+- [ ] Regional tax data populated for 20 cities (AC-007.5)
+- [ ] Fattura Elettronica XML parsing functional (AC-008.4)
+- [ ] Document type auto-detection >90% accuracy (AC-008.3)
+- [ ] Calendar export (.ics) for deadlines functional (AC-006.2)
 - [ ] 69.5%+ test coverage maintained
 - [ ] Multi-tenant isolation 95%+ tested
-- [ ] Response time ≤3 seconds maintained
-- [ ] GDPR compliance verified
+- [ ] Response time ≤3 seconds maintained (monitored via Prometheus)
+- [ ] GDPR compliance verified (DPA, breach notification, data portability JSON+Excel)
 - [ ] DPA acceptance workflow functional
+- [ ] Tiered ingestion pipeline verified and integrated (ADR-023)
+- [ ] Billing per-studio usage tracking functional (ADR-027)
+- [ ] Communication history 24-month retention enforced
 - [ ] All E2E test flows passing
 - [ ] All regression tests passing

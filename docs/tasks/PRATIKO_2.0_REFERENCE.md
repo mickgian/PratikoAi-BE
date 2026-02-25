@@ -14,7 +14,7 @@
 1. [Executive Summary](#1-executive-summary)
 2. [Context and Constraints](#2-context-and-constraints)
 3. [Functional Requirements](#3-functional-requirements)
-   - [FR-001: Interactive Procedural Guides](#fr-001-guide-procedurali-interattive)
+   - [FR-001: Procedure Interattive](#fr-001-procedure-interattive)
    - [FR-002: Studio Client Database](#fr-002-database-clienti-dello-studio)
    - [FR-003: Automatic Normative Matching](#fr-003-matching-normativo-automatico)
    - [FR-004: Proactive Suggestions & Communications](#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
@@ -39,7 +39,7 @@
 Voglio fare dei cambiamenti per far evolvere PratikoAI da assistente per commercialisti, consulenti del lavoro e avvocati a piattaforma di engagement professionale che:
 
 * Fornisce informazioni normative sempre aggiornate con fonti autorevoli
-* Guida il professionista attraverso procedure complesse con checklist interattive
+* Guida il professionista attraverso procedure complesse con checklist interattive e tracciamento del progresso
 * Identifica automaticamente quali clienti sono impattati da nuove normative
 * Genera comunicazioni personalizzate per acquisire nuovo lavoro
 
@@ -109,26 +109,37 @@ Voglio fare dei cambiamenti per far evolvere PratikoAI da assistente per commerc
 
 ## 3. Functional Requirements
 
-### FR-001: Guide Procedurali Interattive
+### FR-001: Procedure Interattive
 
 #### 3.1.1 Descrizione
 
-Sistema di guide passo-passo che accompagna il professionista attraverso procedure amministrative complesse, fornendo checklist, modelli, timeline e riferimenti normativi.
+Sistema di procedure passo-passo che accompagna il professionista attraverso procedure amministrative complesse, fornendo checklist, modelli, timeline e riferimenti normativi. Le procedure possono essere consultate come riferimento generico (via comando `/procedura` in chat) oppure avviate per un cliente specifico con tracciamento del progresso (via menzione `@NomeCliente`).
 
 #### 3.1.2 User Stories
 
-**US-001.1:** Come commercialista, voglio cercare "apertura attività artigiano" e ricevere una guida completa con tutti i passaggi, così da preparare l'appuntamento con il cliente.
+**US-001.1:** Come commercialista, voglio cercare "apertura attività artigiano" e ricevere una procedura completa con tutti i passaggi, così da preparare l'appuntamento con il cliente.
 
 **US-001.2:** Come consulente del lavoro, voglio inserire i dati di un cliente che vuole andare in pensione e ricevere indicazioni su quale legge si applica, quali modelli compilare e quando presentare domanda.
 
-**US-001.3:** Come professionista, voglio poter stampare/esportare la guida in PDF per condividerla con il cliente o archiviarla.
+**US-001.3:** Come professionista, voglio poter stampare/esportare la procedura in PDF per condividerla con il cliente o archiviarla.
 
-#### 3.1.3 Struttura Output Guide Procedurali
+**US-001.4:** Come professionista, voglio digitare `/procedura` in chat per consultare rapidamente una procedura come riferimento generico, senza creare un tracciamento del progresso.
+
+**US-001.5:** Come professionista, voglio avviare una procedura per un cliente specifico (es: `@Mario Rossi`) con tracciamento completo del progresso, checklist e note.
+
+**US-001.6:** Come professionista, quando digito `@` in chat, voglio vedere un elenco autocomplete dei miei clienti per selezionarne uno rapidamente.
+
+**US-001.7:** Come professionista, dopo aver selezionato un cliente con `@NomeCliente`, voglio scegliere l'azione da compiere: fare una domanda generica con contesto cliente, fare una domanda specifica sul cliente, visualizzare la scheda completa del cliente, oppure avviare una procedura guidata per quel cliente.
+
+**US-001.8:** Come professionista, quando scelgo "Scheda cliente" dopo una menzione `@`, voglio vedere un riepilogo completo: anagrafica, regime fiscale, ATECO, posizione contributiva e procedure attive, così da avere il quadro completo prima di operare.
+
+#### 3.1.3 Struttura Output Procedure
 
 ```yaml
-Guida_Procedurale:
+Procedura:
   titolo: "Apertura Attività Artigiano - Settore Edilizia"
   ultimo_aggiornamento: "2025-12-01"
+  tipo: "GENERIC"  # oppure "CLIENT_SPECIFIC"
 
   sezione_1_checklist_documenti:
     titolo: "Documentazione da Richiedere al Cliente"
@@ -222,12 +233,17 @@ Guida_Procedurale:
 
 #### 3.1.5 Criteri di Accettazione
 
-* **AC-001.1:** Ricerca "apertura attività + settore" restituisce guida completa in <3s
-* **AC-001.2:** Ogni guida include almeno: checklist, modelli, timeline, costi, riferimenti
+* **AC-001.1:** Ricerca "apertura attività + settore" restituisce procedura completa in <3s
+* **AC-001.2:** Ogni procedura include almeno: checklist, modelli, timeline, costi, riferimenti
 * **AC-001.3:** Link ai modelli ufficiali sono verificati e funzionanti
 * **AC-001.4:** Export PDF mantiene formattazione professionale
-* **AC-001.5:** Guide aggiornate automaticamente quando RSS rileva modifiche normative
+* **AC-001.5:** Procedure aggiornate automaticamente quando RSS rileva modifiche normative
 * **AC-001.6:** Indicazione chiara della data ultimo aggiornamento
+* **AC-001.7:** Comando `/procedura` in chat apre selezione procedure in modalità consultazione (read-only)
+* **AC-001.8:** Consultazione generica NON crea record di progresso (ProceduraProgress)
+* **AC-001.9:** Avvio procedura per cliente specifico (`@NomeCliente`) crea ProceduraProgress con tracciamento completo
+* **AC-001.10:** Digitazione `@` in chat mostra autocomplete clienti con debounce 300ms
+* **AC-001.11:** Menzione `@NomeCliente` inietta contesto cliente e procedure attive/pertinenti in RAGState
 
 #### 3.1.6 Fonti Dati
 
@@ -847,7 +863,7 @@ Dashboard che mostra al professionista il valore generato da PratikoAI in termin
 | Metrica | Periodo | Calcolo |
 |---------|---------|---------|
 | Query effettuate | Giorno/Settimana/Mese | Count query |
-| Guide consultate | Settimana/Mese | Count guide views |
+| Procedure consultate | Settimana/Mese | Count procedure views |
 | Documenti analizzati | Settimana/Mese | Count uploads |
 
 **Sezione: Engagement Clienti**
@@ -1154,7 +1170,7 @@ Policy_Documenti:
 
 Interfaccia utente composta da 5 moduli principali:
 * Chat AI - Conversazione con assistente fiscale
-* Guide Procedurali - Guide passo-passo per adempimenti
+* Procedure - Procedure passo-passo per adempimenti
 * Clienti Database - Gestione anagrafica clienti dello studio
 * Comunicazioni - Generazione e invio messaggi ai clienti
 * Dashboard ROI - Analytics e metriche di utilizzo
@@ -1163,7 +1179,7 @@ Interfaccia utente composta da 5 moduli principali:
 
 Backend con 5 servizi principali:
 * Query Service - Gestione domande e risposte AI
-* Procedure - Logica guide procedurali
+* Procedure - Logica procedure interattive
 * Client Manager - CRUD e gestione clienti
 * Match Engine - Motore di matching clienti-normative
 * Comms Service - Generazione e invio comunicazioni
@@ -1209,7 +1225,7 @@ External Integrations (RSS, LLM, Email, Payments, ATECO)
 * ✅ Matching automatico su query con suggerimento proattivo
 * ✅ Calcoli fiscali base (IRPEF, IVA, contributi)
 * ✅ Upload e analisi documenti (fatture XML, F24, bilanci)
-* ✅ 10 guide procedurali principali
+* ✅ 9 procedure interattive principali
 * ✅ Generazione comunicazioni con scelta canale (Email/WhatsApp)
 * ✅ Opzioni Salva/Stampa/Invia per messaggi
 * ✅ Dashboard base
@@ -1231,7 +1247,7 @@ External Integrations (RSS, LLM, Email, Payments, ATECO)
 
 | # | Domanda | Impatto |
 |---|---------|---------|
-| Q1 | Quante procedure guidate sono necessarie per MVP? Suggerimento: 10-15 | Alto |
+| Q1 | Quante procedure sono necessarie per MVP? Suggerimento: 9 | Alto |
 | Q2 | Il professionista può creare regole di matching custom? | Medio |
 | Q3 | Serve approvazione prima dell'invio comunicazioni o invio diretto? | Alto |
 | Q4 | Template comunicazioni devono essere personalizzabili per studio? | Medio |
@@ -1288,7 +1304,7 @@ External Integrations (RSS, LLM, Email, Payments, ATECO)
 |---------|-------------|---------|-------------|
 | Complessità matching | Media | Alto | MVP con regole semplici, iterare |
 | GDPR dati clienti | Bassa | Alto | DPA obbligatorio, encryption |
-| Adozione procedure | Media | Medio | Focus su 10 più usate |
+| Adozione procedure | Media | Medio | Focus su 9 più usate |
 | Spam comunicazioni | Media | Alto | Rate limiting, unsubscribe facile |
 | Accuratezza regole | Media | Alto | Validazione con partner fiscale |
 
@@ -1300,7 +1316,7 @@ External Integrations (RSS, LLM, Email, Payments, ATECO)
 |---------|-------------|
 | Matching | Processo di identificazione clienti interessati da una normativa |
 | Regola | Set di condizioni che definiscono quali clienti sono impattati |
-| Procedura Guidata | Guida passo-passo per completare un adempimento |
+| Procedura | Workflow passo-passo per completare un adempimento. Consultabile come riferimento generico (`/procedura`) o avviabile per un cliente specifico (`@NomeCliente`) con tracciamento del progresso |
 | Studio | Account principale del professionista |
 | Comunicazione | Messaggio generato per informare i clienti |
 | ATECO | Codice classificazione attività economiche ISTAT |
@@ -1799,7 +1815,7 @@ Integrate seamlessly with existing PratikoAI chat UI.
 ```
 CONTEXT (from FR-005):
 The Dashboard ROI e Analytics shows professionals the value generated by PratikoAI:
-- Activity metrics: Query effettuate, Guide consultate, Documenti analizzati
+- Activity metrics: Query effettuate, Procedure consultate, Documenti analizzati
 - Client engagement: Comunicazioni inviate, Tasso apertura (%), Click su CTA, Clienti raggiunti
 - Opportunities: Matching effettuati, Clienti identificati, Valore potenziale pratiche
 - Time saved: Tempo ricerca risparmiato (Query × 5 min), Tempo comunicazioni risparmiato (× 15 min), Totale ore risparmiate
@@ -1829,7 +1845,7 @@ SECTION: OPPORTUNITÀ IDENTIFICATE
 SECTION: ATTIVITÀ RECENTE (Timeline)
 - Timeline items:
   - "Comunicazione inviata a 6 clienti" - 2h fa
-  - "Guida consultata: Apertura P.IVA Artigiano" - ieri
+  - "Procedura consultata: Apertura P.IVA Artigiano" - ieri
   - "Documento analizzato: Bilancio 2023.pdf" - 2 giorni fa
 
 SECTION: TEMPO RISPARMIATO
@@ -1845,11 +1861,11 @@ Consistent with existing PratikoAI dashboard styling.
 
 ---
 
-### A.7 Prompt 3B: Procedural Guides (MEDIUM Priority)
+### A.7 Prompt 3B: Procedure Interattive (MEDIUM Priority)
 
 ```
 CONTEXT (from FR-001):
-"Guide Procedurali Interattive" - Step-by-step guides for complex administrative procedures. Each guide includes:
+"Procedure Interattive" - Step-by-step procedure for complex administrative tasks. Each procedura includes:
 - Sezione 1: Checklist Documenti (required vs optional)
 - Sezione 2: Modelli da Compilare (form name, ente, link)
 - Sezione 3: Timeline Procedurale (day 0, day 0-30, etc.)
@@ -1858,12 +1874,12 @@ CONTEXT (from FR-001):
 Priority procedures: P001-Apertura artigiano, P002-Apertura commerciale, P004/P005-Pensioni, P006-Assunzione dipendente.
 
 DESIGN TASK:
-Add to the existing PratikoAI Figma design: procedural guide system. Use Blu Petrolio (#2A5D67) for section headers, Verde Salvia (#A9C1B7) for completed/checked items, Oro Antico (#D4A574) for complexity badges, Grigio Tortora (#C4BDB4) for timeline connectors.
+Add to the existing PratikoAI Figma design: procedure interattive system. Use Blu Petrolio (#2A5D67) for section headers, Verde Salvia (#A9C1B7) for completed/checked items, Oro Antico (#D4A574) for complexity badges, Grigio Tortora (#C4BDB4) for timeline connectors.
 
-SCREEN 1: GUIDE LIST
-- Header: "Guide Procedurali" with search
+SCREEN 1: PROCEDURE LIST
+- Header: "Procedure" with search
 - Category filter chips: "Tutte", "Apertura Attività", "Pensioni", "Assunzioni", "Adempimenti"
-- Guide cards grid (2 columns):
+- Procedure cards grid (2 columns):
   - Card contains:
     - Icon (document, briefcase, etc.)
     - Title: "Apertura Attività Artigiano"
@@ -1871,9 +1887,9 @@ SCREEN 1: GUIDE LIST
     - Complexity badge: "Alta" (red), "Media" (yellow), "Bassa" (green)
     - "Ultimo aggiornamento: 01/12/2025"
     - Enti coinvolti icons: AdE, CCIAA, INPS, INAIL
-- Popular guides section at top
+- Popular procedure section at top
 
-SCREEN 2: GUIDE DETAIL (scrollable single page)
+SCREEN 2: PROCEDURA DETAIL (scrollable single page)
 - Header: Title + "Esporta PDF" button
 - Progress indicator: "Fase 1 di 5 completata"
 - Collapsible sections:

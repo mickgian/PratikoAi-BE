@@ -358,6 +358,16 @@ class Settings:
         # Enable/disable the daily cost report
         self.DAILY_COST_REPORT_ENABLED = get_feature_flag("DAILY_COST_REPORT_ENABLED", default=True)
 
+        # Consolidated Report Configuration
+        # When enabled, sends ONE email per report type covering ALL environments
+        # instead of separate emails from each environment.
+        # Only enable on ONE environment (e.g., QA) to avoid duplicate emails.
+        self.CONSOLIDATED_REPORT_ENABLED = get_feature_flag("CONSOLIDATED_REPORT_ENABLED", default=False)
+        # Database URLs for each environment (used by the consolidated reporter)
+        self.CONSOLIDATED_REPORT_DEV_DB_URL = os.getenv("CONSOLIDATED_REPORT_DEV_DB_URL", "")
+        self.CONSOLIDATED_REPORT_QA_DB_URL = os.getenv("CONSOLIDATED_REPORT_QA_DB_URL", "")
+        self.CONSOLIDATED_REPORT_PROD_DB_URL = os.getenv("CONSOLIDATED_REPORT_PROD_DB_URL", "")
+
         # Evaluation Report Configuration (DEV-252)
         # Recipients (comma-separated) for nightly/weekly evaluation reports
         self.EVAL_REPORT_RECIPIENTS = os.getenv("EVAL_REPORT_RECIPIENTS", "")

@@ -972,6 +972,123 @@ async def backfill_missing_embeddings_task() -> None:
         logger.error(f"Error in embedding backfill task: {e}", exc_info=True)
 
 
+async def send_consolidated_ingestion_report_task() -> None:
+    """Scheduled task to send consolidated ingestion report across all environments.
+
+    Replaces per-environment ingestion report emails with a single email
+    containing collapsible sections for DEV, QA, and PRODUCTION.
+    """
+    from app.core.config import Environment
+    from app.services.consolidated_report_service import (
+        ConsolidatedReportService,
+        EnvironmentReportConfig,
+    )
+
+    if not getattr(settings, "CONSOLIDATED_REPORT_ENABLED", False):
+        logger.info("Consolidated report is disabled, skipping")
+        return
+
+    if not getattr(settings, "INGESTION_REPORT_ENABLED", True):
+        logger.info("Ingestion report is disabled, skipping consolidated ingestion report")
+        return
+
+    recipients_str = getattr(settings, "INGESTION_REPORT_RECIPIENTS", "")
+    if not recipients_str:
+        logger.warning("INGESTION_REPORT_RECIPIENTS not configured, skipping")
+        return
+
+    recipients = [email.strip() for email in recipients_str.split(",") if email.strip()]
+    if not recipients:
+        return
+
+    try:
+        # Build environment configs from settings
+        env_configs = []
+        dev_url = getattr(settings, "CONSOLIDATED_REPORT_DEV_DB_URL", "")
+        qa_url = getattr(settings, "CONSOLIDATED_REPORT_QA_DB_URL", "")
+        prod_url = getattr(settings, "CONSOLIDATED_REPORT_PROD_DB_URL", "")
+
+        if dev_url:
+            env_configs.append(EnvironmentReportConfig(environment=Environment.DEVELOPMENT, postgres_url=dev_url))
+        if qa_url:
+            env_configs.append(EnvironmentReportConfig(environment=Environment.QA, postgres_url=qa_url))
+        if prod_url:
+            env_configs.append(EnvironmentReportConfig(environment=Environment.PRODUCTION, postgres_url=prod_url))
+
+        if not env_configs:
+            logger.warning("No CONSOLIDATED_REPORT_*_DB_URL configured, skipping")
+            return
+
+        service = ConsolidatedReportService(env_configs=env_configs)
+        success = await service.send_consolidated_ingestion_report(recipients)
+
+        if success:
+            logger.info("Consolidated ingestion report sent successfully")
+        else:
+            logger.error("Failed to send consolidated ingestion report")
+
+    except Exception as e:
+        logger.error(f"Error in consolidated ingestion report task: {e}", exc_info=True)
+
+
+async def send_consolidated_cost_report_task() -> None:
+    """Scheduled task to send consolidated cost report across all environments.
+
+    Replaces per-environment cost report emails with a single email
+    containing collapsible sections for DEV, QA, and PRODUCTION.
+    """
+    from app.core.config import Environment
+    from app.services.consolidated_report_service import (
+        ConsolidatedReportService,
+        EnvironmentReportConfig,
+    )
+
+    if not getattr(settings, "CONSOLIDATED_REPORT_ENABLED", False):
+        logger.info("Consolidated report is disabled, skipping")
+        return
+
+    if not getattr(settings, "DAILY_COST_REPORT_ENABLED", True):
+        logger.info("Cost report is disabled, skipping consolidated cost report")
+        return
+
+    recipients_str = getattr(settings, "DAILY_COST_REPORT_RECIPIENTS", "")
+    if not recipients_str:
+        logger.warning("DAILY_COST_REPORT_RECIPIENTS not configured, skipping")
+        return
+
+    recipients = [email.strip() for email in recipients_str.split(",") if email.strip()]
+    if not recipients:
+        return
+
+    try:
+        env_configs = []
+        dev_url = getattr(settings, "CONSOLIDATED_REPORT_DEV_DB_URL", "")
+        qa_url = getattr(settings, "CONSOLIDATED_REPORT_QA_DB_URL", "")
+        prod_url = getattr(settings, "CONSOLIDATED_REPORT_PROD_DB_URL", "")
+
+        if dev_url:
+            env_configs.append(EnvironmentReportConfig(environment=Environment.DEVELOPMENT, postgres_url=dev_url))
+        if qa_url:
+            env_configs.append(EnvironmentReportConfig(environment=Environment.QA, postgres_url=qa_url))
+        if prod_url:
+            env_configs.append(EnvironmentReportConfig(environment=Environment.PRODUCTION, postgres_url=prod_url))
+
+        if not env_configs:
+            logger.warning("No CONSOLIDATED_REPORT_*_DB_URL configured, skipping")
+            return
+
+        service = ConsolidatedReportService(env_configs=env_configs)
+        success = await service.send_consolidated_cost_report(recipients)
+
+        if success:
+            logger.info("Consolidated cost report sent successfully")
+        else:
+            logger.error("Failed to send consolidated cost report")
+
+    except Exception as e:
+        logger.error(f"Error in consolidated cost report task: {e}", exc_info=True)
+
+
 def setup_default_tasks() -> None:
     """Setup default scheduled tasks."""
     # Daily metrics report task (previously EVERY_12_HOURS which caused duplicate emails)
@@ -1037,33 +1154,59 @@ def setup_default_tasks() -> None:
     )
     scheduler_service.add_task(ader_scraper_task)
 
-    # Add daily ingestion report task (DEV-BE-70)
-    # Sends daily email with RSS + scraper metrics, alerts, WoW comparison
-    # Default time: 06:00 Europe/Rome (configured via INGESTION_REPORT_TIME)
+    # Consolidated vs per-environment reports
+    # When CONSOLIDATED_REPORT_ENABLED=true, ONE email covers all environments
+    # (with collapsible sections). Per-environment reports are disabled.
+    consolidated_enabled = getattr(settings, "CONSOLIDATED_REPORT_ENABLED", False)
     ingestion_report_enabled = getattr(settings, "INGESTION_REPORT_ENABLED", True)
     ingestion_report_time = getattr(settings, "INGESTION_REPORT_TIME", "06:00")
-    ingestion_report_task = ScheduledTask(
-        name="daily_ingestion_report",
-        interval=ScheduleInterval.DAILY,
-        function=send_daily_ingestion_report_task,
-        enabled=ingestion_report_enabled,
-        target_time=ingestion_report_time,  # Run daily at configured time
-    )
-    scheduler_service.add_task(ingestion_report_task)
-
-    # DEV-246: Add daily cost report task
-    # Sends daily email with cost breakdown by environment, user, and third-party APIs
-    # Default time: 07:00 Europe/Rome (configured via DAILY_COST_REPORT_TIME)
     cost_report_enabled = getattr(settings, "DAILY_COST_REPORT_ENABLED", True)
     cost_report_time = getattr(settings, "DAILY_COST_REPORT_TIME", "07:00")
-    cost_report_task = ScheduledTask(
-        name="daily_cost_report",
-        interval=ScheduleInterval.DAILY,
-        function=send_daily_cost_report_task,
-        enabled=cost_report_enabled,
-        target_time=cost_report_time,  # Run daily at configured time
-    )
-    scheduler_service.add_task(cost_report_task)
+
+    if consolidated_enabled:
+        # Consolidated ingestion report (single email for all environments)
+        consolidated_ingestion_task = ScheduledTask(
+            name="consolidated_ingestion_report",
+            interval=ScheduleInterval.DAILY,
+            function=send_consolidated_ingestion_report_task,
+            enabled=ingestion_report_enabled,
+            target_time=ingestion_report_time,
+        )
+        scheduler_service.add_task(consolidated_ingestion_task)
+
+        # Consolidated cost report (single email for all environments)
+        consolidated_cost_task = ScheduledTask(
+            name="consolidated_cost_report",
+            interval=ScheduleInterval.DAILY,
+            function=send_consolidated_cost_report_task,
+            enabled=cost_report_enabled,
+            target_time=cost_report_time,
+        )
+        scheduler_service.add_task(consolidated_cost_task)
+
+        logger.info(
+            f"Consolidated report tasks registered (ingestion={ingestion_report_enabled}, cost={cost_report_enabled})"
+        )
+    else:
+        # Per-environment ingestion report (DEV-BE-70, legacy)
+        ingestion_report_task = ScheduledTask(
+            name="daily_ingestion_report",
+            interval=ScheduleInterval.DAILY,
+            function=send_daily_ingestion_report_task,
+            enabled=ingestion_report_enabled,
+            target_time=ingestion_report_time,
+        )
+        scheduler_service.add_task(ingestion_report_task)
+
+        # Per-environment cost report (DEV-246, legacy)
+        cost_report_task = ScheduledTask(
+            name="daily_cost_report",
+            interval=ScheduleInterval.DAILY,
+            function=send_daily_cost_report_task,
+            enabled=cost_report_enabled,
+            target_time=cost_report_time,
+        )
+        scheduler_service.add_task(cost_report_task)
 
     # DEV-252: Add daily evaluation report task
     # Runs nightly evaluation suite and sends results via email
@@ -1093,8 +1236,12 @@ def setup_default_tasks() -> None:
     )
     scheduler_service.add_task(embedding_backfill_task)
 
+    report_mode = "consolidated" if consolidated_enabled else "per-environment"
     logger.info(
-        f"Default scheduled tasks configured (metrics report [enabled={metrics_report_enabled}, time={metrics_report_time}] + RSS feeds + Gazzetta scraper + Cassazione scraper + AdER scraper + daily ingestion report [enabled={ingestion_report_enabled}] + daily cost report [enabled={cost_report_enabled}] + daily eval report [enabled={eval_report_enabled}] + embedding backfill [enabled={embedding_backfill_enabled}])"
+        f"Default scheduled tasks configured ({report_mode} reports, "
+        f"ingestion={ingestion_report_enabled}, cost={cost_report_enabled}, "
+        f"eval={eval_report_enabled}, backfill={embedding_backfill_enabled}, "
+        f"metrics={metrics_report_enabled})"
     )
 
 

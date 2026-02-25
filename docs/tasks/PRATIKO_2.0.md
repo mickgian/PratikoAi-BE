@@ -10258,7 +10258,7 @@ The following aspects of our chat implementation are FINAL and must NOT be modif
 - **Sidebar:** Our sidebar (`ChatSidebar.tsx`) shows chat sessions only. Do not replace it with Figma's multi-section sidebar (Modelli, Scadenze, Normative, Aggiornamenti, FAQ links).
 - **Input modes:** We have a single chat input mode. Do not add Figma's input mode switcher (simple/complex/interactive/document).
 - **Notifications:** The notification dropdown (Screen 6) is a separate task (DEV-384/385). Do not add it when implementing other screens.
-- **Message rendering:** Do not change AIMessageV2, FeedbackButtons, or InteractiveQuestionInline unless the task specifically requires it.
+- **Message rendering:** Do not change AIMessageV2, FeedbackButtons, or InteractiveQuestionInline unless the task specifically requires it. **Note:** FeedbackButtons (`web/src/app/chat/components/FeedbackButtons.tsx`) is already implemented with its own design (thumbs up/down + copy button) and must NOT be restyled to match Figma's ChatPage.tsx feedback UI.
 - **State management:** Keep existing Context API patterns (ChatStateProvider, ChatSessionsProvider). Do not introduce new providers from Figma.
 
 ### User Menu in ChatHeader

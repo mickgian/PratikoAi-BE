@@ -1,6 +1,6 @@
 # PratikoAI 2.0 — Implementation Task List
 
-**Task ID Range:** DEV-300 to DEV-421 (120 tasks, DEV-362 and DEV-364 removed)
+**Task ID Range:** DEV-300 to DEV-441 (140 tasks, DEV-362 and DEV-364 removed)
 **Last Updated:** 2026-02-25
 
 Reference documents (must be in repo):
@@ -1570,6 +1570,324 @@ Comprehensive test suites that validate entire feature chains.
 
 ---
 
+## Wave 10: Figma Gap Coverage (Phase 13 — closes 16 gaps from Figma review)
+
+> **Added:** 2026-02-25 — Gap analysis of 15 Figma reference files (11,478 lines) revealed 16 gaps. This wave closes them. Full task specs in `docs/tasks/PRATIKO_2.0.md` Phase 13.
+
+### DEV-422: Notification SQLModel & Migration
+**Depends on:** DEV-300 (Studio), DEV-307 (Migration)
+**Priority:** HIGH | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Primo (primary), @Clelia (tests)
+
+**What to build:** `Notification` SQLModel for in-app notifications with 4 types (SCADENZA, MATCH, COMUNICAZIONE, NORMATIVA), priority levels, polymorphic reference to source entity (deadline/match/communication/regulation), read status, and timestamps. Figma shows NotificationsDropdown with time-grouped display and unread badges.
+
+**File:** `app/models/notification.py`
+
+**Fields:** `id` (UUID PK), `user_id` (FK), `studio_id` (FK), `notification_type` (enum: SCADENZA/MATCH/COMUNICAZIONE/NORMATIVA), `priority` (enum: LOW/MEDIUM/HIGH/URGENT), `title` (str), `description` (text, nullable), `reference_id` (UUID, nullable), `reference_type` (str, nullable), `is_read` (bool), `read_at` (datetime, nullable), `dismissed` (bool), `created_at`, `updated_at`
+
+**Tests:** `tests/models/test_notification.py` — valid creation, type enum, priority enum, default unread, studio isolation, nullable description, polymorphic reference
+
+**Unlocks:** DEV-423, DEV-424, DEV-425, DEV-426, DEV-438, DEV-440
+
+---
+
+### DEV-423: NotificationService CRUD
+**Depends on:** DEV-422 (Notification model)
+**Priority:** HIGH | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Service with CRUD methods, time-grouped listing (Oggi/Ieri/Questa Settimana/Precedenti), unread count for badge, mark-as-read (single + bulk), and dismiss. Figma shows grouped display with "Segna tutte come lette" bulk action.
+
+**File:** `app/services/notification_service.py`
+
+**Methods:** `create_notification()`, `list_notifications()` (time-grouped), `get_unread_count()`, `mark_as_read()`, `mark_all_as_read()`, `dismiss_notification()`
+
+**Tests:** `tests/services/test_notification_service.py` — create, list grouped, unread count, mark as read, mark all, dismiss, idempotent mark-as-read, empty list, cross-tenant blocked
+
+**Unlocks:** DEV-424, DEV-425
+
+---
+
+### DEV-424: Notification API Endpoints
+**Depends on:** DEV-423 (NotificationService)
+**Priority:** HIGH | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** REST endpoints for notification management: list (paginated, time-grouped), unread count, mark-as-read (single + bulk), dismiss.
+
+**File:** `app/api/v1/notifications.py`
+
+**Endpoints:** `GET /api/v1/notifications`, `GET /api/v1/notifications/unread-count`, `PUT /api/v1/notifications/{id}/read`, `PUT /api/v1/notifications/mark-all-read`, `DELETE /api/v1/notifications/{id}`
+
+**Tests:** `tests/api/v1/test_notifications.py` — list 200, unread filter, unread count, mark single, mark all, dismiss, not found 404, cross-tenant 403
+
+**Unlocks:** DEV-426, DEV-440
+
+---
+
+### DEV-425: Notification Creation Triggers
+**Depends on:** DEV-423 (NotificationService), DEV-383 (Deadline Matching), DEV-320 (NormativeMatching), DEV-335 (Communication Approval)
+**Priority:** MEDIUM | **Effort:** 3h | **Classification:** MODIFYING
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Wire notification creation into 4 existing services using fire-and-forget pattern (parent operation never fails due to notification error). Deduplicate triggers within 1-hour window.
+
+**Trigger map:**
+- `DeadlineService` → SCADENZA notification when deadline within threshold
+- `MatchingService` → MATCH notification on new match
+- `CommunicationService` → COMUNICAZIONE notification on approval
+- RSS/KB ingestion → NORMATIVA notification on regulation update
+
+**Modifies:** `app/services/deadline_service.py`, `app/services/matching_service.py`, `app/services/communication_service.py`, RSS/KB ingestion service
+
+**Tests:** `tests/services/test_notification_triggers.py` — each trigger type, fire-and-forget on failure, deduplication
+
+**Unlocks:** DEV-427
+
+---
+
+### DEV-426: Notification Dropdown Frontend Component
+**Depends on:** DEV-424 (Notification API)
+**Priority:** MEDIUM | **Effort:** 3h | **Classification:** ADDITIVE + MODIFYING (ChatHeader)
+**Agent:** @Livia (primary), @Clelia (tests)
+
+**What to build:** Bell icon dropdown in ChatHeader showing notifications grouped by time period (Oggi/Ieri/Questa Settimana), unread badge, 4 color-coded types (Scadenza red, Match orange, Comunicazione green, Normativa blue), per-item and bulk mark-as-read, "Vedi tutte le notifiche" link.
+
+**File:** `web/src/app/chat/components/NotificationsDropdown.tsx` (new) + `web/src/app/chat/components/ChatHeader.tsx` (modify)
+
+**Figma Reference:** `docs/figma-make-references/NotificationsDropdown.tsx`
+
+**Tests:** `web/src/app/chat/components/__tests__/NotificationsDropdown.test.tsx` — bell icon, unread badge, dropdown toggle, time grouping, color coding, mark-as-read, bulk action, empty state
+
+**Unlocks:** DEV-440
+
+---
+
+### DEV-427: Notification System E2E Tests
+**Depends on:** DEV-422 to DEV-426 (all notification tasks)
+**Priority:** MEDIUM | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Clelia (primary)
+
+**What to build:** End-to-end tests covering the full notification pipeline: trigger → storage → API → mark-as-read + cross-tenant isolation.
+
+**File:** `tests/e2e/test_notification_flow.py`
+
+**Tests:** `test_deadline_notification_flow`, `test_match_notification_flow`, `test_mark_all_read_flow`, `test_cross_tenant_isolation`
+
+---
+
+### DEV-428: ClientProfile INPS/INAIL Extension
+**Depends on:** DEV-301 (Client), DEV-302 (ClientProfile), DEV-307 (Migration)
+**Priority:** HIGH | **Effort:** 2h | **Classification:** MODIFYING
+**Agent:** @Primo (primary), @Ezio (service update), @Clelia (tests)
+
+**What to build:** Extend Client/ClientProfile model with INPS and INAIL fields shown in Figma's ClientProfileCard: INPS (matricola, status, ultimo pagamento) and INAIL (PAT number, status). All nullable. Update ClientService CRUD and schemas.
+
+**Modifies:** `app/models/client.py` or `app/models/client_profile.py`, `app/services/client_service.py`, `app/schemas/client.py`
+
+**New fields:** `inps_matricola` (str, nullable), `inps_status` (enum: REGOLARE/IRREGOLARE/NON_ISCRITTO/SOSPESO, nullable), `inps_ultimo_pagamento` (date, nullable), `inail_pat` (str, nullable), `inail_status` (same enum, nullable)
+
+**Tests:** `tests/models/test_client_inps_inail.py` — nullable fields, enum values, PAT format, matricola format, service CRUD with new fields
+
+**Unlocks:** DEV-403 (profile card shows these fields)
+
+---
+
+### DEV-429: Procedure Suggestions per Client
+**Depends on:** DEV-301 (Client), DEV-341 (Pre-configured Procedures P001-P010)
+**Priority:** MEDIUM | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Rule-based `ProcedureSuggestionService` that returns relevant procedures for a client based on their profile (regime fiscale, ATECO code, status). E.g., "Apertura P.IVA" for prospects, "Trasformazione Regime" for forfettario near limits. Cached per client for 1 hour. No LLM needed.
+
+**File:** `app/services/procedure_suggestion_service.py`
+
+**Methods:** `suggest_procedures(client_id, studio_id)`, `_match_by_regime()`, `_match_by_ateco()`, `_match_by_status()`
+
+**Tests:** `tests/services/test_procedure_suggestion_service.py` — prospect → apertura, forfettario → trasformazione, no matches → empty, multiple sorted, incomplete profile, cache invalidation
+
+**Unlocks:** DEV-403 (profile card shows suggested procedures)
+
+---
+
+### DEV-430: Quick Action Counts API
+**Depends on:** DEV-381 (DeadlineService), DEV-300 (Studio)
+**Priority:** LOW | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Lightweight endpoint returning live counts for 6 Quick Action cards from Figma ChatPage: modelli_formulari, scadenze_fiscali, aggiornamenti_urgenti, normative_recenti, domande_pronte, faq. Cached 5 minutes per studio. Returns 0 for categories not yet populated. Graceful degradation on partial service failure.
+
+**File:** `app/api/v1/quick_actions.py` (new) + `app/services/quick_action_counts_service.py` (new)
+
+**Endpoint:** `GET /api/v1/quick-actions/counts`
+
+**Tests:** `tests/api/v1/test_quick_actions.py` — returns 6 counts, empty studio all zeros, partial failure → 0 for that category, caching
+
+---
+
+### DEV-431: Formulari SQLModel & Service
+**Depends on:** DEV-300 (Studio), DEV-307 (Migration)
+**Priority:** LOW | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Primo (model), @Ezio (service), @Clelia (tests)
+
+**What to build:** `Formulario` SQLModel for document templates/forms library (e.g., Modello AA9/12, F24, CU). Distinct from Communication Templates (DEV-336). Reference data (pre-seeded), not user-generated. `FormularioService` with list, search, count.
+
+**File:** `app/models/formulario.py` (new) + `app/services/formulario_service.py` (new)
+
+**Fields:** `id` (UUID PK), `code` (str, unique, e.g. "AA9-12"), `name` (str), `description` (text), `category` (enum: APERTURA/DICHIARAZIONI/VERSAMENTI/LAVORO/PREVIDENZA/ALTRO), `issuing_authority` (str), `external_url` (str, nullable), `is_active` (bool), `created_at`, `updated_at`
+
+**Methods:** `list_formulari()`, `get_formulario()`, `count_formulari()`, `seed_formulari()`
+
+**Tests:** `tests/models/test_formulario.py`, `tests/services/test_formulario_service.py`
+
+**Unlocks:** DEV-432, DEV-430 (quick action count source)
+
+---
+
+### DEV-432: Formulari API Endpoint
+**Depends on:** DEV-431 (FormularioService)
+**Priority:** LOW | **Effort:** 1h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Thin API endpoints for formulari library.
+
+**File:** `app/api/v1/formulari.py`
+
+**Endpoints:** `GET /api/v1/formulari` (list + category filter + search), `GET /api/v1/formulari/{id}`, `GET /api/v1/formulari/count`
+
+**Tests:** `tests/api/v1/test_formulari.py` — list 200, category filter, single detail, not found 404, count
+
+---
+
+### DEV-433: Chat Feedback Persistent Storage
+**Depends on:** DEV-300 (Studio), DEV-307 (Migration)
+**Priority:** MEDIUM | **Effort:** 3h | **Classification:** ADDITIVE + MODIFYING
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** `ChatFeedback` SQLModel that persists user feedback in the app database alongside existing Langfuse integration. Wire Italian categories from `expert_feedback_collector.py` into standard user feedback flow. Dual-write (DB + Langfuse) with graceful degradation. Frontend FeedbackButtons NOT modified (already has its own design).
+
+**File:** `app/models/chat_feedback.py` (new), `app/api/v1/feedback.py` (extend)
+
+**Fields:** `id` (UUID PK), `user_id` (UUID, nullable), `studio_id` (UUID, nullable), `trace_id` (str), `message_id` (str), `feedback_type` (enum: CORRECT/INCOMPLETE/INCORRECT), `category` (str, nullable — Italian categories), `comment` (text, nullable), `score` (int — backward compat), `created_at`
+
+**Tests:** `tests/models/test_chat_feedback.py`, `tests/api/v1/test_feedback_persistence.py` — creation, type enum, categories, DB persistence, Langfuse still sent, upsert on duplicate, Langfuse down → DB still works
+
+---
+
+### DEV-434: Dashboard Client Distribution Charts
+**Depends on:** DEV-355 (Dashboard Aggregation), DEV-301 (Client with regime/ATECO)
+**Priority:** MEDIUM | **Effort:** 2h | **Classification:** MODIFYING (extends DEV-355)
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Extend dashboard aggregation service with 3 client distribution queries matching Figma DashboardPage charts: clients per regime fiscale (pie), per settore ATECO (bar), per stato (donut). Cached 5 minutes per studio.
+
+**File:** `app/services/dashboard_service.py` (extend)
+
+**Methods:** `get_client_distribution_by_regime()`, `get_client_distribution_by_ateco()`, `get_client_distribution_by_status()`
+
+**Tests:** `tests/services/test_dashboard_distributions.py` — by regime, by ATECO, by status, empty studio, tenant isolation
+
+---
+
+### DEV-435: Dashboard Matching Statistics
+**Depends on:** DEV-355 (Dashboard Aggregation), DEV-320 (NormativeMatching)
+**Priority:** MEDIUM | **Effort:** 2h | **Classification:** MODIFYING (extends DEV-355)
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Extend dashboard aggregation with matching statistics card from Figma: total matches, conversion rate (actioned/total), pending reviews count. Cached 5 minutes.
+
+**File:** `app/services/dashboard_service.py` (extend)
+
+**Methods:** `get_matching_statistics(studio_id)` → `{ total_matches, conversion_rate, pending_reviews }`
+
+**Tests:** `tests/services/test_dashboard_matching_stats.py` — total count, conversion rate, pending reviews, empty, tenant isolation
+
+---
+
+### DEV-436: Dashboard Period Selector
+**Depends on:** DEV-356 (Dashboard API)
+**Priority:** LOW | **Effort:** 2h | **Classification:** MODIFYING (extends DEV-356)
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Add `period` query parameter (WEEK/MONTH/YEAR) to Dashboard API. Apply date range filtering to all aggregation queries. Default to MONTH.
+
+**File:** `app/api/v1/dashboard.py` (extend), `app/services/dashboard_service.py` (extend)
+
+**Tests:** `tests/api/v1/test_dashboard_period.py` — week, month, year, default MONTH, invalid → 422
+
+---
+
+### DEV-437: Deadline Amount & Penalties Fields
+**Depends on:** DEV-380 (Deadline model)
+**Priority:** MEDIUM | **Effort:** 1h | **Classification:** MODIFYING (extends DEV-380)
+**Agent:** @Primo (primary), @Clelia (tests)
+
+**What to build:** Add `importo` (Numeric(12,2), nullable) and `sanzioni` (JSONB, nullable — `{ percentuale, importo_fisso, descrizione }`) to Deadline model. Figma ScadenzeFiscaliPage shows "Importo: €X" and "Sanzioni: percentuale + importo" on each deadline card.
+
+**Modifies:** `app/models/deadline.py`, `app/services/deadline_service.py`, `app/schemas/deadline.py`
+
+**Tests:** `tests/models/test_deadline_amounts.py` — nullable importo, valid decimal, negative rejected, JSONB sanzioni, nullable sanzioni
+
+---
+
+### DEV-438: Per-Deadline User Reminders
+**Depends on:** DEV-380 (Deadline model), DEV-422 (Notification model), DEV-384 (Background job)
+**Priority:** LOW | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Primo (model), @Ezio (service + API), @Clelia (tests)
+
+**What to build:** `DeadlineReminder` SQLModel letting users set custom per-deadline reminders (bell icon in Figma ScadenzeFiscaliPage). One reminder per user per deadline (upsert). Creates SCADENZA notification at `remind_at` time. Complement to DEV-384's automatic 30/7/1 day notifications.
+
+**File:** `app/models/deadline_reminder.py` (new), `app/services/deadline_reminder_service.py` (new), `app/api/v1/deadline_reminders.py` (new)
+
+**Fields:** `id` (UUID PK), `deadline_id` (FK), `user_id` (FK), `studio_id` (FK), `remind_at` (datetime), `is_active` (bool), `notification_sent` (bool), `created_at`, `updated_at`
+
+**Endpoints:** `POST /api/v1/deadlines/{id}/reminder`, `DELETE /api/v1/deadlines/{id}/reminder`, `GET /api/v1/deadlines/{id}/reminder`
+
+**Tests:** `tests/models/test_deadline_reminder.py`, `tests/api/v1/test_deadline_reminders.py` — create, past rejected, delete, duplicate upsert, tenant isolation, cascade on deadline delete
+
+---
+
+### DEV-439: Interactive Question Templates Activation
+**Depends on:** DEV-340 (Procedure framework), existing LangGraph pipeline
+**Priority:** LOW | **Effort:** 3h | **Classification:** MODIFYING
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Un-archive interactive question YAML templates from `archived/phase5_templates/templates/interactive_questions/` to `app/templates/interactive_questions/`. Update to match Figma's 3 categories (tax_situation, compliance_issue, planning_optimization). Wire into proactivity engine and LangGraph pipeline.
+
+**Modifies:** `app/services/proactivity_engine_simplified.py`, LangGraph pipeline config
+
+**Tests:** `tests/services/test_interactive_questions_activation.py` — templates load from YAML, each category triggers correctly, no match → skip, invalid YAML → skip gracefully
+
+---
+
+### DEV-440: Full Notifications Page
+**Depends on:** DEV-424 (Notification API), DEV-426 (Dropdown — shares components)
+**Priority:** LOW | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Livia (primary), @Clelia (tests)
+
+**What to build:** `/notifiche` page linked from "Vedi tutte le notifiche" in NotificationsDropdown. Full notification list with pagination, filter tabs by type (Tutte/Scadenze/Match/Comunicazioni/Normative), bulk actions. Add "Notifiche" to ChatHeader user menu.
+
+**File:** `web/src/app/notifiche/page.tsx` (new)
+
+**Tests:** `web/src/app/notifiche/__tests__/page.test.tsx` — renders page, filter by type, pagination, mark all read, empty state
+
+---
+
+### DEV-441: Settings Page (Studio Preferences)
+**Depends on:** DEV-300 (Studio — settings JSONB), DEV-422 (Notification model — for notification prefs)
+**Priority:** LOW | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Livia (primary), @Ezio (API), @Clelia (tests)
+
+**What to build:** `/impostazioni` settings page with 3 sections: Profilo Studio, Preferenze Notifiche (toggle per notification type), Visualizzazione (display prefs). Uses existing Studio.settings JSONB. Add "Impostazioni" to ChatHeader user menu.
+
+**File:** `web/src/app/impostazioni/page.tsx` (new), `app/api/v1/settings.py` (new)
+
+**Endpoints:** `GET /api/v1/settings`, `PUT /api/v1/settings`
+
+**Tests:** `web/src/app/impostazioni/__tests__/page.test.tsx`, `tests/api/v1/test_settings.py` — page renders, save notification prefs, get settings 200, update settings 200, tenant isolation
+
+---
+
 ## Dependency Graph
 
 ```
@@ -1675,6 +1993,27 @@ Wave 8 (comprehensive testing):
 
 Wave 9 (final validation):
   All Phases 0-8 → DEV-371 (Full Journey E2E)
+
+Wave 10 (Figma gap coverage — Phase 13):
+  DEV-300+307 → DEV-422 (Notification Model)
+  DEV-422 → DEV-423 (NotificationService)
+  DEV-423 → DEV-424 (Notification API)
+  DEV-423+383+320+335 → DEV-425 (Notification Triggers)
+  DEV-424 → DEV-426 (Notification Dropdown)
+  DEV-422-426 → DEV-427 (Notification E2E)
+  DEV-301+302+307 → DEV-428 (INPS/INAIL fields)
+  DEV-301+341 → DEV-429 (Procedure Suggestions)
+  DEV-381+300 → DEV-430 (Quick Action Counts)
+  DEV-300+307 → DEV-431 (Formulario Model) → DEV-432 (Formulario API)
+  DEV-300+307 → DEV-433 (Chat Feedback Persistence)
+  DEV-355+301 → DEV-434 (Distribution Charts)
+  DEV-355+320 → DEV-435 (Matching Stats)
+  DEV-356 → DEV-436 (Period Selector)
+  DEV-380 → DEV-437 (Amount/Penalties)
+  DEV-380+422+384 → DEV-438 (User Reminders)
+  DEV-340+pipeline → DEV-439 (Interactive Questions)
+  DEV-424+426 → DEV-440 (Full Notifications Page)
+  DEV-300+422 → DEV-441 (Settings Page)
 ```
 
 ---
@@ -1696,8 +2035,9 @@ Wave 9 (final validation):
 | **Phase 10: Deadline System** | DEV-380 to DEV-387, DEV-414 (9 tasks) | 3, 4, 5, 7, 8 | 16-17 |
 | **Phase 11: Infrastructure** | DEV-388 to DEV-395, DEV-416, DEV-417, DEV-418 (11 tasks) | 0, 3, 6 | 18 |
 | **Phase 12: Pre-Launch** | DEV-396 to DEV-401 (6 tasks) | 0, 1, 4, 5 | Pre-launch |
+| **Phase 13: Figma Gap Coverage** | DEV-422 to DEV-441 (20 tasks) | 10 | Post-MVP |
 
-**Total: 120 tasks** (was 104, added 16 tasks to close gaps identified in PRD review)
+**Total: 140 tasks** (was 120, added 20 tasks to close 16 gaps from Figma design review)
 
 ---
 
@@ -1718,6 +2058,8 @@ Wave 9 (final validation):
 | DEV-399 | HIGH | Legal/Compliance | 30-day Garante notification period |
 | DEV-416 | HIGH | Data Quality | Tiered ingestion affects matching accuracy |
 | DEV-417 | HIGH | Financial | Without billing limits a studio can exhaust LLM budget |
+| DEV-425 | HIGH | Multi-Service Modification | Notification triggers modify 4 existing services (fire-and-forget pattern) |
+| DEV-428 | MEDIUM | DB Schema Extension | Adds columns to existing client model, migration required |
 
 ---
 
@@ -1743,5 +2085,6 @@ Wave 9 (final validation):
 - [ ] Tiered ingestion pipeline verified and integrated (ADR-023)
 - [ ] Billing per-studio usage tracking functional (ADR-027)
 - [ ] Communication history 24-month retention enforced
+- [ ] In-app notification system operational (4 trigger types)
 - [ ] All E2E test flows passing
 - [ ] All regression tests passing

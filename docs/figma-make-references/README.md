@@ -21,8 +21,14 @@ to fetch the latest source and save it here.
 | `ClientListPage.tsx` | Client List with filters, bulk actions | DEV-308, 312, 314, 316, 318 |
 | `ClientDetailPage.tsx` | Client Detail/Edit form (5 tabs) | DEV-308, 312, 317, 320, 322 |
 | `ClientImportPage.tsx` | Excel/CSV Import wizard (3 steps) | DEV-310, 312, 313 |
-| `ScadenzeFiscaliPage.tsx` | Fiscal Deadlines calendar/list | DEV-385, 386 |
+| `ScadenzeFiscaliPage.tsx` | Fiscal Deadlines calendar/list | DEV-385, 386, 437, 438 |
 | `GDPRCompliancePage.tsx` | GDPR Compliance dashboard | DEV-378, 380 |
+| `DashboardPage.tsx` | ROI Dashboard & Analytics (Screen 3) | DEV-354, 355, 356, 434, 435, 436 |
+| `NotificationsDropdown.tsx` | Notification Panel (Screen 6) | DEV-384, 385, 422-427, 440 |
+| `MatchingNormativoPage.tsx` | Matching Results page wrapper (Screen 4) | DEV-326 |
+| `RisultatiMatchingNormativoPanel.tsx` | Matching Results panel (Screen 4) | DEV-320, 326 |
+| `ProcedureSelector.tsx` | Slash Command Procedure Selector (Screen 7) | DEV-402 |
+| `ProceduraInterattivaPage.tsx` | Procedura Interattiva page (Screen 2) | DEV-340, 342, 343, 344 |
 | `ClientMentionAutocomplete.tsx` | Client Mention Autocomplete dropdown + pill + context card (Screen 8) | DEV-403 |
-| `ClientActionPicker.tsx` | Client Action Picker — 4-action grid + full profile card (Screen 8) | DEV-403 |
-| `ChatPage.tsx` | Chat Page entry point with mentions integration (Screen 8) | DEV-403 |
+| `ClientActionPicker.tsx` | Client Action Picker — 4-action grid + full profile card (Screen 8) | DEV-403, 428, 429 |
+| `ChatPage.tsx` | Chat Page entry point with mentions integration (Screen 8) | DEV-403, 430, 433, 439 |

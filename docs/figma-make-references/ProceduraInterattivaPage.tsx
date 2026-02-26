@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { DocumentVerificationSection } from "./DocumentVerificationSection";
 
 interface ProceduraInterattivaPageProps {
   onBackToChat: () => void;
@@ -50,8 +51,9 @@ interface Document {
   id: string;
   name: string;
   required: boolean;
-  uploaded: boolean;
-  uploadDate?: string;
+  verified: boolean;
+  verifiedDate?: string;
+  verificationNote?: string;
 }
 
 interface Note {
@@ -112,17 +114,18 @@ const mockProcedure: Procedura[] = [
         documents: [
           {
             id: "doc_001",
-            name: "Carta Identità.pdf",
+            name: "Carta d'identità",
             required: true,
-            uploaded: true,
-            uploadDate: "2024-02-20",
+            verified: true,
+            verifiedDate: "2024-02-20",
+            verificationNote: "Ricevuto via email dal cliente",
           },
           {
             id: "doc_002",
-            name: "Codice Fiscale.pdf",
+            name: "Codice fiscale",
             required: true,
-            uploaded: true,
-            uploadDate: "2024-02-20",
+            verified: true,
+            verifiedDate: "2024-02-20",
           },
         ],
         notes: [
@@ -186,16 +189,34 @@ const mockProcedure: Procedura[] = [
         documents: [
           {
             id: "doc_003",
-            name: "Modulo AA9_12 bozza.pdf",
+            name: "Modulo AA9/12 bozza",
             required: true,
-            uploaded: true,
-            uploadDate: "2024-02-23",
+            verified: true,
+            verifiedDate: "2024-02-23",
           },
           {
             id: "doc_004",
-            name: "Modulo AA9_12 firmato.pdf",
+            name: "Modulo AA9/12 firmato",
             required: true,
-            uploaded: false,
+            verified: false,
+          },
+          {
+            id: "doc_005",
+            name: "Visura camerale",
+            required: false,
+            verified: false,
+          },
+          {
+            id: "doc_006",
+            name: "Autocertificazione requisiti",
+            required: true,
+            verified: false,
+          },
+          {
+            id: "doc_007",
+            name: "Certificato CCIAA",
+            required: false,
+            verified: false,
           },
         ],
         notes: [],
@@ -222,10 +243,10 @@ const mockProcedure: Procedura[] = [
         ],
         documents: [
           {
-            id: "doc_005",
-            name: "Domanda iscrizione INPS.pdf",
+            id: "doc_008",
+            name: "Domanda iscrizione INPS",
             required: true,
-            uploaded: false,
+            verified: false,
           },
         ],
         notes: [],
@@ -376,6 +397,12 @@ export function ProceduraInterattivaPage({
   const [showClientSelector, setShowClientSelector] = useState(false);
   const [selectedClient, setSelectedClient] = useState(clientId || "");
   const [isClientMode, setIsClientMode] = useState(!!clientId);
+  const [documentNotes, setDocumentNotes] = useState<{ [key: string]: string }>(
+    {},
+  );
+  const [showNoteForDoc, setShowNoteForDoc] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   const selectedProcedura =
     mockProcedure.find((p) => p.id === selectedProceduraId) || mockProcedure[0];
@@ -408,6 +435,25 @@ export function ProceduraInterattivaPage({
       setIsClientMode(true);
       setShowClientSelector(false);
     }
+  };
+
+  const handleToggleDocumentVerification = (docId: string) => {
+    console.log("Toggle document verification:", docId);
+    // Toggle note visibility when checking
+    setShowNoteForDoc((prev) => ({
+      ...prev,
+      [docId]:
+        !prev[docId] &&
+        !currentStep?.documents.find((d) => d.id === docId)?.verified,
+    }));
+    // In real app, update backend
+  };
+
+  const handleDocumentNoteChange = (docId: string, note: string) => {
+    setDocumentNotes((prev) => ({
+      ...prev,
+      [docId]: note,
+    }));
   };
 
   const getProgressColor = (progress: number) => {
@@ -704,88 +750,12 @@ export function ProceduraInterattivaPage({
 
                   {/* Documents */}
                   {currentStep.documents.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-[#2A5D67] mb-3 flex items-center">
-                        <FileText className="w-5 h-5 mr-2" />
-                        Documenti richiesti
-                      </h3>
-                      <div className="space-y-2">
-                        {currentStep.documents.map((doc) => (
-                          <div
-                            key={doc.id}
-                            className={`flex items-center justify-between p-3 rounded-lg border ${
-                              doc.uploaded
-                                ? "bg-green-50 border-green-200"
-                                : "bg-white border-[#C4BDB4]/20"
-                            }`}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div
-                                className={`w-10 h-10 rounded flex items-center justify-center ${
-                                  doc.uploaded ? "bg-green-100" : "bg-gray-100"
-                                }`}
-                              >
-                                {doc.uploaded ? (
-                                  <CheckCircle className="w-5 h-5 text-green-600" />
-                                ) : (
-                                  <FileText className="w-5 h-5 text-gray-400" />
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-medium text-[#2A5D67]">
-                                  {doc.name}
-                                </p>
-                                {doc.uploaded && doc.uploadDate && (
-                                  <p className="text-xs text-green-600">
-                                    Caricato il{" "}
-                                    {new Date(
-                                      doc.uploadDate,
-                                    ).toLocaleDateString("it-IT")}
-                                  </p>
-                                )}
-                                {!doc.uploaded && doc.required && (
-                                  <p className="text-xs text-red-600">
-                                    Obbligatorio
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              {doc.uploaded ? (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-[#2A5D67]"
-                                  >
-                                    <Download className="w-4 h-4" />
-                                  </Button>
-                                  {isClientMode && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="text-red-600 hover:bg-red-50"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                </>
-                              ) : (
-                                isClientMode && (
-                                  <Button
-                                    size="sm"
-                                    className="bg-[#2A5D67] hover:bg-[#1E293B] text-white"
-                                  >
-                                    <Upload className="w-4 h-4 mr-1" />
-                                    Carica
-                                  </Button>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <DocumentVerificationSection
+                      documents={currentStep.documents}
+                      isClientMode={isClientMode}
+                      onToggleVerification={handleToggleDocumentVerification}
+                      onNoteChange={handleDocumentNoteChange}
+                    />
                   )}
 
                   {/* Notes */}
@@ -793,7 +763,7 @@ export function ProceduraInterattivaPage({
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-lg font-semibold text-[#2A5D67] flex items-center">
                         <Paperclip className="w-5 h-5 mr-2" />
-                        Note e allegati
+                        Note
                       </h3>
                       {isClientMode && (
                         <Button

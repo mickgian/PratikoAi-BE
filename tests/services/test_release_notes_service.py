@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy.exc import ProgrammingError
 
 from app.models.release_note import ReleaseNote, UserReleaseNoteSeen
 
@@ -335,3 +336,88 @@ class TestListReleaseNotesFull:
 
         assert total == 0
         assert items == []
+
+
+class TestMissingTableGracefulDegradation:
+    """Tests that service returns safe defaults when release_notes table is missing."""
+
+    @pytest.fixture
+    def _programming_error(self):
+        """Create a ProgrammingError simulating a missing table."""
+        return ProgrammingError(
+            statement="SELECT ...",
+            params={},
+            orig=Exception('relation "release_notes" does not exist'),
+        )
+
+    @pytest.mark.asyncio
+    async def test_list_release_notes_returns_empty_on_missing_table(self, service, _programming_error):
+        """list_release_notes should return ([], 0) when table is missing."""
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(side_effect=_programming_error)
+
+        with patch("app.services.release_notes_service.AsyncSessionLocal") as mock_session_cls:
+            mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            items, total = await service.list_release_notes()
+
+        assert items == []
+        assert total == 0
+
+    @pytest.mark.asyncio
+    async def test_get_latest_returns_none_on_missing_table(self, service, _programming_error):
+        """get_latest should return None when table is missing."""
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(side_effect=_programming_error)
+
+        with patch("app.services.release_notes_service.AsyncSessionLocal") as mock_session_cls:
+            mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            result = await service.get_latest()
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_unseen_returns_none_on_missing_table(self, service, _programming_error):
+        """get_unseen_for_user should return None when table is missing."""
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(side_effect=_programming_error)
+
+        with patch("app.services.release_notes_service.AsyncSessionLocal") as mock_session_cls:
+            mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            result = await service.get_unseen_for_user(user_id=1)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_list_full_returns_empty_on_missing_table(self, service, _programming_error):
+        """list_release_notes_full should return ([], 0) when table is missing."""
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(side_effect=_programming_error)
+
+        with patch("app.services.release_notes_service.AsyncSessionLocal") as mock_session_cls:
+            mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            items, total = await service.list_release_notes_full()
+
+        assert items == []
+        assert total == 0
+
+    @pytest.mark.asyncio
+    async def test_mark_seen_returns_false_on_missing_table(self, service, _programming_error):
+        """mark_seen should return False when table is missing."""
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(side_effect=_programming_error)
+
+        with patch("app.services.release_notes_service.AsyncSessionLocal") as mock_session_cls:
+            mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            result = await service.mark_seen(user_id=1, version="0.2.0")
+
+        assert result is False

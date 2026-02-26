@@ -14,7 +14,9 @@ import { getUsageStatus, type UsageStatus } from '@/lib/api/billing';
 import {
   getReleaseNotes,
   getReleaseNotesFull,
+  getUnseenReleaseNote,
   getVersion,
+  markReleaseNoteSeen,
   updateUserNotes,
 } from '@/lib/api/release-notes';
 import type { ReleaseNotePublic, ReleaseNote } from '@/lib/api/release-notes';
@@ -139,6 +141,37 @@ export function ChatInputArea() {
     error: string | null;
     environment?: string;
   } | null>(null);
+
+  // Track unseen version for auto-popup mark-as-seen on close
+  const unseenVersionRef = useRef<string | null>(null);
+
+  // Auto-popup: check for unseen release notes on mount (once per session)
+  useEffect(() => {
+    const alreadyChecked = sessionStorage.getItem('pratiko_unseen_rn_checked');
+    if (alreadyChecked) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const note = await getUnseenReleaseNote();
+        if (cancelled || !note) return;
+        unseenVersionRef.current = note.version;
+        setNovitaDialog({
+          notes: [note],
+          error: null,
+        });
+      } catch {
+        // Silently ignore — don't block the user with popup errors
+      } finally {
+        if (!cancelled) {
+          sessionStorage.setItem('pratiko_unseen_rn_checked', '1');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // one active streaming handler at a time
   const handlerRef = useRef<StreamingHandler | null>(null);
@@ -495,7 +528,15 @@ export function ChatInputArea() {
           notes={novitaDialog.notes}
           error={novitaDialog.error}
           environment={novitaDialog.environment}
-          onClose={() => setNovitaDialog(null)}
+          onClose={() => {
+            // Mark unseen note as seen when auto-popup is dismissed
+            const v = unseenVersionRef.current;
+            if (v) {
+              markReleaseNoteSeen(v).catch(() => {});
+              unseenVersionRef.current = null;
+            }
+            setNovitaDialog(null);
+          }}
           onSaveUserNotes={async (version, userNotes) => {
             try {
               await updateUserNotes(version, userNotes);

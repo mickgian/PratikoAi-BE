@@ -1,10 +1,18 @@
 """Regional Tax Service for Italian Tax Calculations.
 
+DEV-393: Enhanced for PratikoAI 2.0 client-context-aware calculations.
+
 This service handles calculations for Italian regional and municipal taxes
 including IMU, IRAP, and IRPEF addizionali with location-based variations.
+
+New in DEV-393:
+    - National IRPEF bracket calculator (``calculate_irpef_nazionale``).
+    - Province-to-Regione mapping from P.IVA prefix (``get_regione_from_piva_prefix``).
+    - All 20 Italian regions configured with addizionale regionale rates.
+    - Client-context-aware wrapper for combined tax calculations.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
@@ -23,6 +31,192 @@ from app.models.regional_taxes import (
     Regione,
 )
 from app.services.cache import CacheService
+
+# ------------------------------------------------------------------
+# DEV-393: IRPEF National Brackets (2026 — Legge di Bilancio 2026)
+# ------------------------------------------------------------------
+IRPEF_BRACKETS: list[tuple[Decimal, Decimal]] = [
+    # (upper_bound, rate) — income up to upper_bound is taxed at rate
+    (Decimal("28000"), Decimal("0.23")),
+    (Decimal("50000"), Decimal("0.35")),
+    (Decimal("999999999"), Decimal("0.43")),  # unlimited last bracket
+]
+
+
+def calculate_irpef_nazionale(imponibile: Decimal) -> Decimal:
+    """Calculate national IRPEF using progressive brackets.
+
+    Args:
+        imponibile: Taxable income in euros.
+
+    Returns:
+        Tax amount in euros (``Decimal("0")`` for zero or negative income).
+    """
+    if imponibile <= 0:
+        return Decimal("0")
+
+    tax = Decimal("0")
+    previous_bound = Decimal("0")
+
+    for upper_bound, rate in IRPEF_BRACKETS:
+        if imponibile <= previous_bound:
+            break
+        taxable_in_bracket = min(imponibile, upper_bound) - previous_bound
+        if taxable_in_bracket > 0:
+            tax += taxable_in_bracket * rate
+        previous_bound = upper_bound
+
+    return tax
+
+
+# ------------------------------------------------------------------
+# DEV-393: Province code → Regione mapping (P.IVA first 3 digits)
+# ------------------------------------------------------------------
+PROVINCE_TO_REGIONE: dict[str, str] = {
+    # Piemonte
+    "001": "Piemonte",
+    "002": "Piemonte",
+    "003": "Piemonte",
+    "004": "Piemonte",
+    "005": "Piemonte",
+    "006": "Piemonte",
+    "096": "Piemonte",
+    "103": "Piemonte",
+    # Valle d'Aosta
+    "007": "Valle d'Aosta",
+    # Lombardia
+    "012": "Lombardia",
+    "013": "Lombardia",
+    "014": "Lombardia",
+    "015": "Lombardia",
+    "016": "Lombardia",
+    "017": "Lombardia",
+    "018": "Lombardia",
+    "019": "Lombardia",
+    "020": "Lombardia",
+    "097": "Lombardia",
+    "098": "Lombardia",
+    "108": "Lombardia",
+    # Trentino-Alto Adige
+    "021": "Trentino-Alto Adige",
+    "022": "Trentino-Alto Adige",
+    # Veneto
+    "023": "Veneto",
+    "024": "Veneto",
+    "025": "Veneto",
+    "026": "Veneto",
+    "027": "Veneto",
+    "028": "Veneto",
+    "029": "Veneto",
+    # Friuli-Venezia Giulia
+    "030": "Friuli-Venezia Giulia",
+    "031": "Friuli-Venezia Giulia",
+    "032": "Friuli-Venezia Giulia",
+    "093": "Friuli-Venezia Giulia",
+    # Liguria
+    "008": "Liguria",
+    "009": "Liguria",
+    "010": "Liguria",
+    "011": "Liguria",
+    # Emilia-Romagna
+    "033": "Emilia-Romagna",
+    "034": "Emilia-Romagna",
+    "035": "Emilia-Romagna",
+    "036": "Emilia-Romagna",
+    "037": "Emilia-Romagna",
+    "038": "Emilia-Romagna",
+    "039": "Emilia-Romagna",
+    "040": "Emilia-Romagna",
+    "099": "Emilia-Romagna",
+    # Toscana
+    "045": "Toscana",
+    "046": "Toscana",
+    "047": "Toscana",
+    "048": "Toscana",
+    "049": "Toscana",
+    "050": "Toscana",
+    "051": "Toscana",
+    "052": "Toscana",
+    "053": "Toscana",
+    "100": "Toscana",
+    # Umbria
+    "054": "Umbria",
+    "055": "Umbria",
+    # Marche
+    "041": "Marche",
+    "042": "Marche",
+    "043": "Marche",
+    "044": "Marche",
+    "109": "Marche",
+    # Lazio
+    "056": "Lazio",
+    "057": "Lazio",
+    "058": "Lazio",
+    "059": "Lazio",
+    "060": "Lazio",
+    # Abruzzo
+    "066": "Abruzzo",
+    "067": "Abruzzo",
+    "068": "Abruzzo",
+    "069": "Abruzzo",
+    # Molise
+    "070": "Molise",
+    "094": "Molise",
+    # Campania
+    "061": "Campania",
+    "062": "Campania",
+    "063": "Campania",
+    "064": "Campania",
+    "065": "Campania",
+    # Puglia
+    "071": "Puglia",
+    "072": "Puglia",
+    "073": "Puglia",
+    "074": "Puglia",
+    "075": "Puglia",
+    "110": "Puglia",
+    # Basilicata
+    "076": "Basilicata",
+    "077": "Basilicata",
+    # Calabria
+    "078": "Calabria",
+    "079": "Calabria",
+    "080": "Calabria",
+    "101": "Calabria",
+    "102": "Calabria",
+    # Sicilia
+    "081": "Sicilia",
+    "082": "Sicilia",
+    "083": "Sicilia",
+    "084": "Sicilia",
+    "085": "Sicilia",
+    "086": "Sicilia",
+    "087": "Sicilia",
+    "088": "Sicilia",
+    "089": "Sicilia",
+    # Sardegna
+    "090": "Sardegna",
+    "091": "Sardegna",
+    "092": "Sardegna",
+    "095": "Sardegna",
+    "104": "Sardegna",
+    "105": "Sardegna",
+    "106": "Sardegna",
+    "107": "Sardegna",
+}
+
+
+def get_regione_from_piva_prefix(prefix: str) -> str | None:
+    """Map the first 3 digits of a P.IVA to the corresponding regione.
+
+    Args:
+        prefix: First 3 digits of a Partita IVA (e.g. ``"058"``).
+
+    Returns:
+        Region name or ``None`` if the prefix is unknown.
+    """
+    return PROVINCE_TO_REGIONE.get(prefix)
+
 
 # Custom Exceptions
 

@@ -1,8 +1,8 @@
 # PratikoAI 2.0 - Original Requirements Reference
 
 **Document Type:** Product Requirements Document (PRD)
-**Version:** 1.0
-**Last Updated:** 2025-12-15
+**Version:** 1.1
+**Last Updated:** 2026-02-26
 
 > This document contains the original requirements and specifications for PratikoAI 2.0.
 > For the implementation task breakdown, see [PRATIKO_2.0.md](./PRATIKO_2.0.md).
@@ -22,6 +22,7 @@
    - [FR-006: Proactive Deadline System](#fr-006-sistema-scadenze-proattivo)
    - [FR-007: Tax Calculations](#fr-007-calcoli-fiscali)
    - [FR-008: Document Upload & Analysis](#fr-008-upload-e-analisi-documenti)
+   - [FR-009: Hybrid Email Sending](#fr-009-configurazione-email-ibrida-hybrid-email-sending)
 4. [Non-Functional Requirements](#4-requisiti-non-funzionali)
 5. [Architecture Proposal](#5-architettura-proposta)
 6. [MVP Definition](#6-definizione-mvp)
@@ -1124,6 +1125,94 @@ Policy_Documenti:
 * **AC-008.9:** Nessun dato del documento persistito nel database
 * **AC-008.10:** Possibilità di fare domande contestuali sul documento caricato
 * **AC-008.11:** Export analisi in PDF
+
+---
+
+### FR-009: Configurazione Email Ibrida (Hybrid Email Sending)
+
+#### 3.9.1 Descrizione
+
+Sistema di invio email ibrido con gating basato sul piano di abbonamento. Gli studi con piano Base utilizzano l'infrastruttura email centralizzata di PratikoAI (`comunicazioni@pratikoai.com`). Gli studi con piano Pro o Premium possono configurare il proprio server SMTP per inviare email dal proprio dominio, aumentando la fiducia dei clienti e i tassi di apertura.
+
+#### 3.9.2 User Stories
+
+**US-009.1:** Come professionista con piano Base, voglio che le comunicazioni ai miei clienti vengano inviate automaticamente da PratikoAI senza dover configurare nulla.
+
+**US-009.2:** Come professionista con piano Pro, voglio poter configurare il mio server email (SMTP) nelle impostazioni per inviare comunicazioni dal mio dominio professionale (es. `info@studiorossi.it`).
+
+**US-009.3:** Come professionista, voglio poter testare la configurazione SMTP prima di salvare, per verificare che funzioni correttamente.
+
+**US-009.4:** Come professionista con piano Base, voglio vedere chiaramente che posso passare al piano Pro per avere email personalizzate dal mio dominio.
+
+**US-009.5:** Come professionista, se la mia configurazione SMTP personalizzata fallisce, voglio che l'email venga inviata comunque tramite il sistema PratikoAI come fallback.
+
+**US-009.6:** Come professionista, voglio che le credenziali del mio server email siano protette e crittografate, e che la mia password non sia mai visibile nell'interfaccia dopo averla salvata.
+
+#### 3.9.3 Dettaglio Funzionale
+
+**Livelli di servizio:**
+
+| Piano | Prezzo | Email Personalizzata | Mittente | Reply-To |
+|-------|--------|---------------------|----------|----------|
+| Base | €25/mese | No | `"Nome Studio" <comunicazioni@pratikoai.com>` | Email studio (da profilo) |
+| Pro | €75/mese | Sì (opzionale) | `"Nome Studio" <info@studiorossi.it>` | Configurabile |
+| Premium | €150/mese | Sì (opzionale) | `"Nome Studio" <info@studiorossi.it>` | Configurabile |
+
+**Catena di fallback per invio email:**
+1. Se l'utente ha configurazione SMTP personalizzata verificata → usa SMTP personalizzato
+2. Se configurazione personalizzata assente o fallisce → usa SMTP PratikoAI predefinito
+3. Se anche SMTP predefinito fallisce → registra errore nel log
+
+**Configurazione SMTP richiesta:**
+- Host SMTP (es. `smtp.gmail.com`, `mail.studiorossi.it`)
+- Porta (25, 465, 587)
+- Username
+- Password (crittografata con Fernet, AES-128-CBC + HMAC-SHA256)
+- TLS/STARTTLS (default: attivo)
+- Nome mittente
+- Email mittente
+- Email risposte (opzionale)
+
+#### 3.9.4 Sicurezza e GDPR
+
+```yaml
+Sicurezza_Email_Config:
+  crittografia_credenziali:
+    algoritmo: "Fernet (AES-128-CBC + HMAC-SHA256)"
+    chiave: "variabile d'ambiente SMTP_ENCRYPTION_KEY"
+    storage: "colonna smtp_password_encrypted nel DB"
+
+  protezione_api:
+    password_in_risposta: false  # Mai restituita in GET
+    password_in_log: false  # Mai registrata nei log
+    rate_limit_test: "5 tentativi/ora per utente"
+
+  protezione_ssrf:
+    porte_consentite: [25, 465, 587]
+    ip_bloccati: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"]
+    timeout_connessione: "10 secondi"
+
+  gdpr:
+    ruolo_pratikoai: "responsabile del trattamento (data processor)"
+    base_giuridica: "esecuzione contratto"
+    diritto_cancellazione: "credenziali SMTP eliminate su richiesta o cancellazione studio"
+    notifica_violazione: "credenziali SMTP compromesse = violazione notificabile (Art. 33, 72h)"
+    rotazione_chiavi: "supporto re-crittografia con nuova chiave Fernet"
+```
+
+#### 3.9.5 Criteri di Accettazione
+
+* **AC-009.1:** Piano Base invia email da `comunicazioni@pratikoai.com` senza configurazione
+* **AC-009.2:** Piani Pro e Premium possono configurare SMTP personalizzato nelle impostazioni
+* **AC-009.3:** Piano Base riceve errore 403 se tenta configurazione email personalizzata
+* **AC-009.4:** Credenziali SMTP crittografate con Fernet e mai visibili in API o log
+* **AC-009.5:** Validazione connessione SMTP (EHLO + STARTTLS + LOGIN) prima del salvataggio
+* **AC-009.6:** Fallback automatico a PratikoAI se SMTP personalizzato fallisce
+* **AC-009.7:** Header `From` e `Reply-To` corretti per entrambe le modalità
+* **AC-009.8:** Rate limit di 5 test SMTP per ora per utente
+* **AC-009.9:** Protezione SSRF attiva (porte consentite, IP privati bloccati)
+* **AC-009.10:** Rotazione chiave di crittografia supportata senza downtime
+* **AC-009.11:** UI impostazioni mostra upsell per Base e form SMTP per Pro/Premium
 
 ---
 

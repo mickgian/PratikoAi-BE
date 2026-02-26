@@ -277,6 +277,10 @@ Sistema di gestione anagrafica clienti che permette al professionista di caricar
 
 **US-002.4:** Come amministratore studio, voglio gestire chi può vedere/modificare i dati clienti, così da proteggere informazioni sensibili.
 
+**US-002.5:** Come professionista, voglio caricare un PDF con la lista clienti esportata dal mio gestionale, così da non dover ridigitare i dati in un foglio Excel.
+
+**US-002.6:** Come professionista, voglio vedere un'anteprima dei dati estratti dal PDF prima dell'importazione, così da verificare che l'estrazione sia corretta.
+
 #### 3.2.3 Schema Dati Cliente
 
 ```yaml
@@ -353,6 +357,28 @@ Cliente:
 **Formati Supportati (MVP):**
 * Excel (.xlsx) con template predefinito
 * CSV con header standardizzato
+* PDF (.pdf) con estrazione tabellare via OCR/pdfplumber
+
+**Import PDF - Specifiche:**
+
+Il supporto PDF permette ai professionisti di importare liste clienti da documenti PDF
+strutturati (es. esportazioni da gestionali, elenchi clienti da Cassetto Fiscale,
+visure camerali batch). Il flusso prevede:
+
+1. **Upload PDF** → validazione sicurezza (malware scan, firma digitale, max 25MB)
+2. **Estrazione tabellare** → pdfplumber per tabelle strutturate, OCR (Tesseract) per PDF scansionati
+3. **Mapping colonne** → riconoscimento automatico header + conferma utente via UI
+4. **Validazione dati** → stesse regole di Excel/CSV (CF, P.IVA, CAP, ATECO)
+5. **Preview & conferma** → anteprima righe estratte prima dell'import definitivo
+
+| Aspetto | Dettaglio |
+|---------|-----------|
+| Librerie | pdfplumber (tabelle), PyPDF2 (metadata), pytesseract (OCR scansioni) |
+| Formati PDF | Testo nativo, tabelle strutturate, PDF scansionati (via OCR) |
+| Sicurezza | JavaScript disabilitato, embedded files bloccati, launch actions bloccati |
+| Limiti | Max 25MB, max 200 pagine, max 10.000 righe per import |
+| Performance | Target: 1000 righe estratte in <60 secondi (incluso OCR) |
+| Fallback | Se estrazione automatica fallisce → upload manuale Excel/CSV |
 
 **Template Excel Minimo:**
 
@@ -393,6 +419,9 @@ Cliente:
 * **AC-002.4:** Campi sensibili (CF, P.IVA, importi) crittografati at rest
 * **AC-002.5:** Log audit per ogni modifica dati cliente
 * **AC-002.6:** Export completo database in formato Excel
+* **AC-002.7:** Import PDF con estrazione tabellare in <60 secondi (1000 righe)
+* **AC-002.8:** PDF scansionati supportati via OCR con accuracy >90% su layout tabulari
+* **AC-002.9:** Anteprima dati estratti da PDF prima della conferma import
 
 ---
 

@@ -3648,7 +3648,11 @@ Create Communication API router with all workflow endpoints.
 - `POST /api/v1/communications/{id}/submit` - Submit for review
 - `POST /api/v1/communications/{id}/approve` - Approve
 - `POST /api/v1/communications/{id}/reject` - Reject
-- `POST /api/v1/communications/{id}/send` - Send
+- `POST /api/v1/communications/{id}/send` - Send (for email: sends via SMTP; for WhatsApp: returns `whatsapp_link` in response body, marks as SENT)
+
+**Channel-specific send behavior:**
+- **Email:** Delegates to `EmailSendingService`, sends asynchronously, updates status on delivery/failure
+- **WhatsApp:** Generates wa.me link via `WhatsAppService`, returns `{ "whatsapp_link": "https://wa.me/..." }` in response. Frontend shows confirmation modal with the link. Status set to SENT immediately (no delivery tracking in MVP).
 
 **Testing Requirements:**
 - **TDD:** Write `tests/api/test_communications_api.py` FIRST
@@ -3778,15 +3782,19 @@ Create email sending service using existing patterns. Handle retries, failures, 
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
-**Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
+**Figma Reference:** `GestioneComunicazioniPage.tsx` (channel toggle, "Invia" action) — Source: [`docs/figma-make-references/GestioneComunicazioniPage.tsx`](../figma-make-references/GestioneComunicazioniPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
-Professionals want to send WhatsApp messages to clients. For MVP, we use simple wa.me links rather than the complex WhatsApp Business API.
+Professionals want to send WhatsApp messages to clients. For MVP, we use simple wa.me links rather than the complex WhatsApp Business API. The UX must let the professional review the message before leaving PratikoAI.
 
 **Solution:**
-Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens WhatsApp with pre-filled message - no API approval needed.
+Create WhatsApp service using `wa.me/{phone}?text={message}` links. When the professional clicks "Invia" on an approved WhatsApp communication, PratikoAI shows a **confirmation modal** with message preview and an "Apri WhatsApp" button that opens the wa.me link **in a new browser tab**. PratikoAI stays open in the original tab. No WhatsApp Business API needed.
 
-**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+**UX Decision (2026-02-26):** Modal confirmation before opening WhatsApp, chosen over: (a) direct navigation (disruptive, leaves PratikoAI), (b) copy-to-clipboard (requires manual paste), (c) open-in-new-tab without preview (no review step).
+
+**Agent Assignment:** @Ezio (primary, backend service), @Livia (frontend modal component), @Clelia (tests)
 
 **Dependencies:**
 - **Blocking:** DEV-330 (CommunicationService), DEV-309 (ClientService - for phone numbers)
@@ -3799,10 +3807,6 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
-- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
-- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
-
-**Error Handling:**
 - Invalid phone format: HTTP 400, `"Formato numero di telefono non valido"`
 - Missing phone number: HTTP 400, `"Numero di telefono cliente mancante"`
 - Message too long: Warn user, suggest shortening (WhatsApp limit ~65536 chars)
@@ -3813,9 +3817,10 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
 |------|--------|------------|
 | Phone format variations | LOW | Normalize to international format |
 | URL encoding issues | LOW | Comprehensive test coverage |
+| Pop-up blocker | MEDIUM | Fallback: show clickable link if `window.open` blocked |
 
 **Performance Requirements:**
-- Response time: <200ms (p95)
+- Link generation response: <200ms (p95)
 - Database queries: <50ms (p95)
 - Concurrent requests: Handle 100 concurrent requests
 
@@ -3828,14 +3833,23 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
 - **Special Characters:** Emojis, newlines → URL encode properly
 - **Null Phone:** Client without phone → return null link, not error
 - **Bulk Generation:** 100 clients → return array of links, nulls for missing phones
+- **Pop-up Blocked:** `window.open` returns null → show fallback clickable link in modal
 
-**File:** `app/services/whatsapp_service.py`
+**Backend File:** `app/services/whatsapp_service.py`
 
-**Methods:**
+**Backend Methods:**
 - `generate_whatsapp_link(phone, message)` - Generate wa.me link
 - `format_phone_number(phone)` - Format to international format (remove +, spaces)
 - `url_encode_message(message)` - URL-encode the message text
 - `generate_client_links(clients, template)` - Bulk generate for multiple clients
+
+**Frontend File:** `web/src/components/features/WhatsAppSendModal.tsx`
+
+**Frontend Behavior:**
+- **Single send:** Modal shows recipient name, phone number, message preview, "Apri WhatsApp" (primary) + "Annulla" buttons
+- **Bulk send:** Modal shows recipient checklist with individual "Apri" buttons. Each click opens wa.me in new tab and checks off the recipient. Progress counter shows "X/Y inviati". "Chiudi" button warns if not all links opened.
+- **Pop-up fallback:** If `window.open` is blocked, display the wa.me URL as a clickable `<a target="_blank">` link
+- **State update:** After all links opened (or modal closed), mark communication(s) as SENT via API call
 
 **Example:**
 ```python
@@ -3860,9 +3874,15 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
   - `test_special_chars_encoded` - emojis encoded
   - `test_null_phone_null_link` - missing phone handled
   - `test_bulk_with_missing_phones` - nulls in array
-- **Edge Case Tests:** See Edge Cases section above
+- **Frontend Tests:** `web/src/components/features/WhatsAppSendModal.test.tsx`
+  - `test_modal_shows_recipient_info` - name, phone, message displayed
+  - `test_apri_whatsapp_opens_new_tab` - window.open called with wa.me URL
+  - `test_bulk_modal_checklist` - all recipients listed with individual buttons
+  - `test_bulk_progress_counter` - counter updates on each click
+  - `test_popup_blocked_fallback` - clickable link shown when window.open fails
+  - `test_close_warns_if_incomplete` - warning when not all links opened
 - **Regression Tests:** Run `pytest tests/services/`
-- **Coverage Target:** 90%+ for WhatsApp code (simple utility)
+- **Coverage Target:** 90%+ for WhatsApp backend code, 80%+ for modal component
 
 **MVP Note:**
 WhatsApp Business API integration is deferred to post-MVP. The wa.me approach provides immediate value without API approval delays.
@@ -3871,6 +3891,7 @@ WhatsApp Business API integration is deferred to post-MVP. The wa.me approach pr
 - Max function: 50 lines, extract helpers if larger
 - Max class: 200 lines, split into focused services
 - Max file: 400 lines, create submodules
+- Frontend modal: <150 lines, extract sub-components if larger
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
@@ -3878,7 +3899,11 @@ WhatsApp Business API integration is deferred to post-MVP. The wa.me approach pr
 - [ ] Handle Italian phone number formats
 - [ ] URL-encode message properly
 - [ ] Bulk generation for multiple clients
-- [ ] 90%+ test coverage achieved
+- [ ] Confirmation modal shows message preview before opening WhatsApp
+- [ ] "Apri WhatsApp" opens wa.me in new tab (PratikoAI stays open)
+- [ ] Bulk modal shows recipient checklist with progress counter
+- [ ] Pop-up blocker fallback (clickable link)
+- [ ] 90%+ backend test coverage, 80%+ frontend test coverage
 
 ---
 
@@ -4322,17 +4347,21 @@ Create comprehensive E2E tests for communication flow.
 
 **Methods:**
 - `test_create_draft_to_send_email_flow()` - Full email workflow
-- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow (send endpoint returns whatsapp_link)
+- `test_whatsapp_send_returns_link()` - Verify POST /send for WhatsApp channel returns `{ whatsapp_link: "https://wa.me/..." }` and marks as SENT
+- `test_whatsapp_bulk_returns_links()` - Bulk send returns array of wa.me links (nulls for missing phones)
 - `test_rejection_flow()` - Draft -> review -> reject -> revise
-- `test_bulk_communication_flow()` - Multiple clients
+- `test_bulk_communication_flow()` - Multiple clients, mixed channels
 - `test_self_approval_blocked()` - Security check E2E
 
 - **This IS the testing task**
 - **E2E Tests:**
   - `test_create_draft_to_send_email_flow` - full email flow
-  - `test_create_draft_to_send_whatsapp_flow` - full WhatsApp flow
+  - `test_create_draft_to_send_whatsapp_flow` - full WhatsApp flow (verify link returned)
+  - `test_whatsapp_send_returns_link` - send endpoint returns wa.me link in response
+  - `test_whatsapp_bulk_returns_links` - bulk send returns array of links
   - `test_rejection_flow` - draft → review → reject → revise
-  - `test_bulk_communication_flow` - multiple clients
+  - `test_bulk_communication_flow` - multiple clients, mixed email + WhatsApp
   - `test_self_approval_blocked` - security check E2E
 - **Coverage Target:** Full workflow coverage
 
@@ -4351,7 +4380,8 @@ Create comprehensive E2E tests for communication flow.
 - [ ] Draft creation tested
 - [ ] Approval workflow tested
 - [ ] Email sending tested
-- [ ] WhatsApp sending tested
+- [ ] WhatsApp send returns wa.me link (not actual sending)
+- [ ] WhatsApp bulk returns array of links
 - [ ] Self-approval blocking verified
 
 ---

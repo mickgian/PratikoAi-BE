@@ -765,9 +765,52 @@ Template_Messaggio:
 **MVP: Link wa.me (Raccomandato)**
 
 Come funziona:
-1. PratikoAI genera un link con messaggio pre-compilato
-2. Si apre WhatsApp Web/App del professionista
-3. Il professionista clicca "Invia" manualmente per ogni cliente
+1. PratikoAI genera un link `wa.me` con messaggio pre-compilato
+2. Il professionista clicca "Invia" sulla comunicazione approvata
+3. Si apre un **modale di conferma** dentro PratikoAI con anteprima del messaggio
+4. Il professionista clicca "Apri WhatsApp" nel modale → si apre WhatsApp Web/App in un **nuovo tab**
+5. Il professionista clicca "Invia" in WhatsApp per ogni cliente
+
+**UX Flow — Modale di Conferma (Decisione architetturale, 2026-02-26):**
+
+Quando il professionista clicca "Invia" su una comunicazione WhatsApp approvata (dalla Dashboard Comunicazioni o dal wizard chat), PratikoAI mostra un modale:
+
+```
+┌───────────────────────────────────┐
+│  📨 Invia via WhatsApp            │
+│                                   │
+│  Destinatario:                    │
+│  Mario Rossi (+39 333 123 4567)   │
+│                                   │
+│  Messaggio:                       │
+│  "Gentile Mario, le ricordiamo    │
+│   che la scadenza per..."         │
+│                                   │
+│  [Apri WhatsApp]  [Annulla]       │
+└───────────────────────────────────┘
+```
+
+- "Apri WhatsApp" → `window.open(waLink, '_blank')` → WhatsApp Web/App si apre in un nuovo tab
+- PratikoAI resta aperto → il professionista torna facilmente alla dashboard
+- La comunicazione viene marcata come SENT nel sistema (il tracking effettivo non è disponibile in MVP)
+
+**Invio Bulk WhatsApp:** Per invii multipli, il modale mostra la lista di tutti i destinatari con link individuali:
+
+```
+┌───────────────────────────────────────┐
+│  📨 Invia via WhatsApp (3 clienti)    │
+│                                       │
+│  ☐ Mario Rossi (+39 333..)  [Apri]   │
+│  ☐ Bianchi Giuseppe (+39 340..) [Apri]│
+│  ☐ Verdi SNC (+39 335..)    [Apri]   │
+│                                       │
+│  Progresso: 0/3 inviati              │
+│                                       │
+│  [Chiudi]                             │
+└───────────────────────────────────────┘
+```
+
+Ogni "Apri" apre WhatsApp in un nuovo tab. Il checkbox si spunta dopo il click per tracciare il progresso. "Chiudi" è attivo solo dopo che tutti i link sono stati aperti (o con conferma "Sei sicuro? 2 messaggi non ancora aperti").
 
 Esempio link generato:
 ```
@@ -780,6 +823,8 @@ https://wa.me/393331234567?text=Gentile%20Mario%20Rossi%2C%20La%20contatto%20per
 * Il cliente riceve dal numero che già conosce (lo studio)
 * Nessuna approvazione Meta necessaria
 * Nessun setup richiesto al professionista
+* Il professionista rivede il messaggio prima dell'invio (modale di conferma)
+* PratikoAI resta aperto durante l'invio (nuovo tab)
 
 **Limitazione accettabile:** Se un professionista seleziona 7 clienti per WhatsApp, dovrà fare 7 click manuali. Tuttavia, la maggior parte delle comunicazioni avverrà via email (automatica), quindi WhatsApp sarà usato per casi specifici.
 
@@ -832,14 +877,16 @@ Messaggio_Salvato:
 * **AC-004.12:** Invio email funzionante via SMTP configurato
 * **AC-004.13:** Tracking aperture email funzionante
 
-**Invio WhatsApp (MVP - Manuale):**
+**Invio WhatsApp (MVP - Modale di Conferma):**
 * **AC-004.14:** Link wa.me generato correttamente con testo URL-encoded
-* **AC-004.15:** Link apre WhatsApp Web/App con messaggio pre-compilato
-* **AC-004.16:** Professionista può inviare manualmente da WhatsApp
-* **AC-004.17:** Nessun tracking WhatsApp in MVP (limitazione accettata)
+* **AC-004.15:** Modale di conferma mostra anteprima destinatario, numero e messaggio prima dell'invio
+* **AC-004.16:** "Apri WhatsApp" apre wa.me link in nuovo tab (WhatsApp Web/App con messaggio pre-compilato)
+* **AC-004.17:** PratikoAI resta aperto nel tab originale durante l'invio WhatsApp
+* **AC-004.18:** Invio bulk WhatsApp mostra lista destinatari con "Apri" individuale e contatore progresso
+* **AC-004.19:** Nessun tracking WhatsApp in MVP (limitazione accettata)
 
 **Logging:**
-* **AC-004.18:** Log completo di ogni invio (email) e tentativo (WhatsApp link generato)
+* **AC-004.20:** Log completo di ogni invio (email) e tentativo (WhatsApp link generato)
 
 ---
 
@@ -1821,8 +1868,8 @@ SCREEN 3: PREVIEW MODAL
 
 SCREEN 4: CONFIRMATION/STATUS
 - Success illustration with checkmark
-- Stats: "6 email inviate con successo", "1 link WhatsApp generato"
-- If WhatsApp: List of wa.me links to click
+- Stats: "6 email inviate con successo", "3 messaggi WhatsApp da inviare"
+- If WhatsApp: Confirmation modal with message preview and "Apri WhatsApp" button per recipient (opens wa.me link in new tab). Bulk view shows checklist of recipients with individual "Apri" buttons and progress counter (e.g., "2/3 inviati"). Modal stays open until all links opened or user confirms close.
 - "Visualizza in Dashboard", "Nuova comunicazione" buttons
 
 Maintain step indicator at top, consistent with existing PratikoAI form styling.

@@ -525,13 +525,15 @@ These depend on Wave 3 services. Can run in parallel within the wave.
 ---
 
 ### DEV-334: WhatsApp wa.me Link Integration
-**Depends on:** DEV-330 (CommunicationService)
-**Priority:** MEDIUM | **Effort:** 2h | **Classification:** ADDITIVE
-**Agent:** @Ezio (primary), @Clelia (tests)
+**Depends on:** DEV-330 (CommunicationService), DEV-309 (ClientService)
+**Priority:** MEDIUM | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary, backend), @Livia (frontend modal), @Clelia (tests)
 
-**What to build:** WhatsApp service using `wa.me/{phone}?text={message}` links (no API approval needed). Opens WhatsApp with pre-filled message.
+**What to build:** WhatsApp service using `wa.me/{phone}?text={message}` links (no API approval needed). **UX decision (2026-02-26):** When professional clicks "Invia" on an approved WhatsApp communication, a confirmation modal shows message preview + "Apri WhatsApp" button → opens wa.me in **new browser tab** (PratikoAI stays open). Bulk sends show recipient checklist with individual "Apri" buttons and progress counter. Pop-up blocker fallback shows clickable link.
 
-**File:** `app/services/whatsapp_service.py`
+**Files:** `app/services/whatsapp_service.py` (backend) + `web/src/components/features/WhatsAppSendModal.tsx` (frontend modal)
+
+**Tests:** `tests/services/test_whatsapp_service.py` — link generation, phone normalization, URL encoding, bulk generation | `web/src/components/features/WhatsAppSendModal.test.tsx` — modal display, new tab open, bulk checklist, popup fallback
 
 ---
 

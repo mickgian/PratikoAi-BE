@@ -14,7 +14,9 @@ from app.schemas.release_notes import (
     MarkSeenResponse,
     ReleaseNotePublicResponse,
     ReleaseNoteResponse,
+    ReleaseNotesFullListResponse,
     ReleaseNotesListResponse,
+    UpdateUserNotesRequest,
     VersionResponse,
 )
 from app.services.release_notes_service import release_notes_service
@@ -52,12 +54,41 @@ async def get_latest_release_note() -> ReleaseNotePublicResponse | None:
     return await release_notes_service.get_latest()
 
 
+@router.get("/full", response_model=ReleaseNotesFullListResponse)
+async def get_release_notes_full(
+    page: int = Query(default=1, ge=1, description="Numero pagina"),
+    page_size: int = Query(default=10, ge=1, le=50, description="Elementi per pagina"),
+    current_user: User = Depends(get_current_user),
+) -> ReleaseNotesFullListResponse:
+    """Get paginated list of release notes with technical notes (authenticated, for QA)."""
+    items, total = await release_notes_service.list_release_notes_full(page=page, page_size=page_size)
+    return ReleaseNotesFullListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
 @router.get("/unseen", response_model=ReleaseNoteResponse | None)
 async def get_unseen_release_note(
     current_user: User = Depends(get_current_user),
 ) -> ReleaseNoteResponse | None:
     """Get the latest release note the user hasn't seen yet."""
     return await release_notes_service.get_unseen_for_user(user_id=current_user.id)
+
+
+@router.patch("/{version}/user-notes", response_model=MarkSeenResponse)
+async def update_user_notes(
+    body: UpdateUserNotesRequest,
+    version: str = Path(pattern=r"^\d+\.\d+\.\d+$", max_length=20),
+    current_user: User = Depends(get_current_user),
+) -> MarkSeenResponse:
+    """Update user-facing notes for a release version (authenticated, for QA editing)."""
+    success = await release_notes_service.update_user_notes(version, body.user_notes)
+    if success:
+        return MarkSeenResponse(success=True, message_it="Note utente aggiornate con successo.")
+    return MarkSeenResponse(success=False, message_it="Versione non trovata.")
 
 
 @router.post("/{version}/seen", response_model=MarkSeenResponse)

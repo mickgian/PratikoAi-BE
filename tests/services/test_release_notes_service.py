@@ -225,3 +225,113 @@ class TestMarkSeen:
 
         assert result is True
         mock_db.add.assert_not_called()
+
+
+class TestUpdateUserNotes:
+    """Tests for update_user_notes()."""
+
+    @pytest.mark.asyncio
+    async def test_updates_existing_version(self, service, sample_db_release_note):
+        """Should update user_notes and return True."""
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = sample_db_release_note
+
+        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+
+        with patch("app.services.release_notes_service.AsyncSessionLocal") as mock_session_cls:
+            mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            result = await service.update_user_notes("0.2.0", "Note aggiornate!")
+
+        assert result is True
+        assert sample_db_release_note.user_notes == "Note aggiornate!"
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_returns_false_for_nonexistent_version(self, service):
+        """Should return False when version doesn't exist."""
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.services.release_notes_service.AsyncSessionLocal") as mock_session_cls:
+            mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            result = await service.update_user_notes("99.99.99", "Non esiste")
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_strips_whitespace_from_notes(self, service, sample_db_release_note):
+        """Should strip leading/trailing whitespace from user_notes."""
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = sample_db_release_note
+
+        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+
+        with patch("app.services.release_notes_service.AsyncSessionLocal") as mock_session_cls:
+            mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            result = await service.update_user_notes("0.2.0", "  Note con spazi  ")
+
+        assert result is True
+        assert sample_db_release_note.user_notes == "Note con spazi"
+
+
+class TestListReleaseNotesFull:
+    """Tests for list_release_notes_full()."""
+
+    @pytest.mark.asyncio
+    async def test_returns_full_notes_with_technical(self, service, sample_db_release_note):
+        """Should return release notes including technical_notes."""
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [sample_db_release_note]
+
+        mock_count_result = MagicMock()
+        mock_count_result.scalar_one.return_value = 1
+
+        mock_db.execute = AsyncMock(side_effect=[mock_count_result, mock_result])
+
+        with patch("app.services.release_notes_service.AsyncSessionLocal") as mock_session_cls:
+            mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            items, total = await service.list_release_notes_full(page=1, page_size=10)
+
+        assert total == 1
+        assert len(items) == 1
+        assert items[0].version == "0.2.0"
+        assert items[0].technical_notes == "Added versioning system with release notes API."
+
+    @pytest.mark.asyncio
+    async def test_empty_database(self, service):
+        """Should return empty list when no release notes exist."""
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+
+        mock_count_result = MagicMock()
+        mock_count_result.scalar_one.return_value = 0
+
+        mock_db.execute = AsyncMock(side_effect=[mock_count_result, mock_result])
+
+        with patch("app.services.release_notes_service.AsyncSessionLocal") as mock_session_cls:
+            mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            items, total = await service.list_release_notes_full(page=1, page_size=10)
+
+        assert total == 0
+        assert items == []

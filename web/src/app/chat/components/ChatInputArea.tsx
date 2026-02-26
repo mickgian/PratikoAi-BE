@@ -11,8 +11,13 @@ import { DragDropZone } from './DragDropZone';
 import { StreamingHandler } from '../handlers/StreamingHandler';
 import type { AttachmentInfo } from '../types/chat';
 import { getUsageStatus, type UsageStatus } from '@/lib/api/billing';
-import { getReleaseNotes } from '@/lib/api/release-notes';
-import type { ReleaseNotePublic } from '@/lib/api/release-notes';
+import {
+  getReleaseNotes,
+  getReleaseNotesFull,
+  getVersion,
+  updateUserNotes,
+} from '@/lib/api/release-notes';
+import type { ReleaseNotePublic, ReleaseNote } from '@/lib/api/release-notes';
 import { UsageDialog } from './UsageDialog';
 import { NovitaDialog } from './NovitaDialog';
 
@@ -130,8 +135,9 @@ export function ChatInputArea() {
 
   // Novità dialog state (release notes)
   const [novitaDialog, setNovitaDialog] = useState<{
-    notes: ReleaseNotePublic[];
+    notes: ReleaseNotePublic[] | ReleaseNote[];
     error: string | null;
+    environment?: string;
   } | null>(null);
 
   // one active streaming handler at a time
@@ -216,8 +222,22 @@ export function ChatInputArea() {
 
     if (cmd === '/novita') {
       try {
-        const data = await getReleaseNotes(1, 50);
-        setNovitaDialog({ notes: data.items, error: null });
+        const versionInfo = await getVersion();
+        if (versionInfo.environment === 'qa') {
+          const data = await getReleaseNotesFull(1, 50);
+          setNovitaDialog({
+            notes: data.items,
+            error: null,
+            environment: 'qa',
+          });
+        } else {
+          const data = await getReleaseNotes(1, 50);
+          setNovitaDialog({
+            notes: data.items,
+            error: null,
+            environment: versionInfo.environment,
+          });
+        }
       } catch {
         setNovitaDialog({
           notes: [],
@@ -474,7 +494,15 @@ export function ChatInputArea() {
         <NovitaDialog
           notes={novitaDialog.notes}
           error={novitaDialog.error}
+          environment={novitaDialog.environment}
           onClose={() => setNovitaDialog(null)}
+          onSaveUserNotes={async (version, userNotes) => {
+            try {
+              await updateUserNotes(version, userNotes);
+            } catch {
+              console.error('Errore nel salvataggio delle note utente');
+            }
+          }}
         />
       )}
       <DragDropZone

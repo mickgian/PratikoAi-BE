@@ -119,3 +119,55 @@ class TestMarkSeenResponse:
         """Should default message_it to empty string."""
         resp = MarkSeenResponse(success=True)
         assert resp.message_it == ""
+
+
+class TestUpdateUserNotesRequest:
+    """Tests for UpdateUserNotesRequest schema."""
+
+    def test_valid_update_request(self):
+        """Should create a valid update request with user_notes."""
+        from app.schemas.release_notes import UpdateUserNotesRequest
+
+        req = UpdateUserNotesRequest(user_notes="Nuove funzionalità disponibili!")
+        assert req.user_notes == "Nuove funzionalità disponibili!"
+
+    def test_empty_user_notes_rejected(self):
+        """Should reject empty user_notes."""
+        from pydantic import ValidationError
+
+        from app.schemas.release_notes import UpdateUserNotesRequest
+
+        with pytest.raises(ValidationError):
+            UpdateUserNotesRequest(user_notes="")
+
+    def test_whitespace_only_rejected(self):
+        """Should reject whitespace-only user_notes."""
+        from app.schemas.release_notes import UpdateUserNotesRequest
+
+        with pytest.raises(ValueError):
+            UpdateUserNotesRequest(user_notes="   ")
+
+
+class TestReleaseNotesFullListResponse:
+    """Tests for ReleaseNotesFullListResponse schema (with technical_notes)."""
+
+    def test_empty_list(self):
+        """Should handle empty items list."""
+        from app.schemas.release_notes import ReleaseNotesFullListResponse
+
+        resp = ReleaseNotesFullListResponse(items=[], total=0, page=1, page_size=10)
+        assert resp.items == []
+        assert resp.total == 0
+
+    def test_with_full_items(self):
+        """Should contain ReleaseNoteResponse items with technical_notes."""
+        from app.schemas.release_notes import ReleaseNotesFullListResponse
+
+        item = ReleaseNoteResponse(
+            version="0.2.0",
+            user_notes="Note utente",
+            technical_notes="Technical details here.",
+        )
+        resp = ReleaseNotesFullListResponse(items=[item], total=1, page=1, page_size=10)
+        assert len(resp.items) == 1
+        assert resp.items[0].technical_notes == "Technical details here."

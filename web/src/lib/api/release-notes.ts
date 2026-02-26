@@ -27,6 +27,13 @@ export interface ReleaseNotesListResponse {
   page_size: number;
 }
 
+export interface ReleaseNotesFullListResponse {
+  items: ReleaseNote[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
 export interface MarkSeenResponse {
   success: boolean;
   message_it: string;
@@ -77,6 +84,53 @@ export async function getUnseenReleaseNote(): Promise<ReleaseNote | null> {
   }
   const data = await response.json();
   return data || null;
+}
+
+export async function getReleaseNotesFull(
+  page: number = 1,
+  pageSize: number = 10
+): Promise<ReleaseNotesFullListResponse> {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    throw new Error('Non autenticato');
+  }
+
+  const response = await fetch(
+    `${apiClient['baseUrl']}${API_BASE}/full?page=${page}&page_size=${pageSize}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  if (!response.ok) {
+    throw new Error('Errore nel recupero delle note di rilascio complete');
+  }
+  return response.json();
+}
+
+export async function updateUserNotes(
+  version: string,
+  userNotes: string
+): Promise<MarkSeenResponse> {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    throw new Error('Non autenticato');
+  }
+
+  const response = await fetch(
+    `${apiClient['baseUrl']}${API_BASE}/${version}/user-notes`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ user_notes: userNotes }),
+    }
+  );
+  if (!response.ok) {
+    throw new Error("Errore nell'aggiornamento delle note utente");
+  }
+  return response.json();
 }
 
 export async function markReleaseNoteSeen(

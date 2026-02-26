@@ -99,6 +99,76 @@ class ReleaseNotesService:
                 technical_notes=note.technical_notes,
             )
 
+    async def list_release_notes_full(
+        self, page: int = 1, page_size: int = 10
+    ) -> tuple[list[ReleaseNoteResponse], int]:
+        """List release notes with pagination, newest first (full, with technical_notes).
+
+        For authenticated QA/admin use. Returns technical_notes alongside user_notes.
+
+        Args:
+            page: Page number (1-based)
+            page_size: Items per page
+
+        Returns:
+            Tuple of (items, total_count)
+        """
+        async with AsyncSessionLocal() as db:
+            count_query = select(func.count(ReleaseNote.id))
+            count_result = await db.execute(count_query)
+            total = count_result.scalar_one()
+
+            offset = (page - 1) * page_size
+            query = select(ReleaseNote).order_by(ReleaseNote.released_at.desc()).offset(offset).limit(page_size)  # type: ignore[union-attr]
+            result = await db.execute(query)
+            notes = result.scalars().all()
+
+            items = [
+                ReleaseNoteResponse(
+                    version=note.version,
+                    released_at=note.released_at,
+                    user_notes=note.user_notes,
+                    technical_notes=note.technical_notes,
+                )
+                for note in notes
+            ]
+
+            return items, total
+
+    async def update_user_notes(self, version: str, user_notes: str) -> bool:
+        """Update the user-facing notes for a specific version.
+
+        Used in QA to edit production-preview notes before deploying.
+
+        Args:
+            version: The version string (e.g. "0.2.0")
+            user_notes: The new user-facing notes text
+
+        Returns:
+            True if version found and updated, False if version not found.
+        """
+        async with AsyncSessionLocal() as db:
+            query = select(ReleaseNote).where(ReleaseNote.version == version)
+            result = await db.execute(query)
+            note = result.scalar_one_or_none()
+
+            if note is None:
+                logger.warning(
+                    "update_user_notes_version_not_found",
+                    version=version,
+                )
+                return False
+
+            note.user_notes = user_notes.strip()
+            await db.commit()
+            await db.refresh(note)
+
+            logger.info(
+                "user_notes_updated",
+                version=version,
+            )
+            return True
+
     async def mark_seen(self, user_id: int, version: str) -> bool:
         """Mark a release note as seen by a user.
 

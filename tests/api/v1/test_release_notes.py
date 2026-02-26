@@ -13,6 +13,7 @@ from app.schemas.release_notes import (
     ReleaseNotePublicResponse,
     ReleaseNoteResponse,
     ReleaseNotesListResponse,
+    UpdateUserNotesRequest,
     VersionResponse,
 )
 
@@ -55,9 +56,11 @@ class TestGetVersion:
         """Should return the current version and environment."""
         from app.api.v1.release_notes import get_version
 
-        with patch("app.api.v1.release_notes.app_get_version", return_value="0.2.0"):
-            with patch("app.api.v1.release_notes.get_environment", return_value="development"):
-                result = await get_version()
+        with (
+            patch("app.api.v1.release_notes.app_get_version", return_value="0.2.0"),
+            patch("app.api.v1.release_notes.get_environment", return_value="development"),
+        ):
+            result = await get_version()
 
         assert result.version == "0.2.0"
         assert result.environment == "development"
@@ -67,9 +70,11 @@ class TestGetVersion:
         """Should correctly report QA environment."""
         from app.api.v1.release_notes import get_version
 
-        with patch("app.api.v1.release_notes.app_get_version", return_value="0.2.0"):
-            with patch("app.api.v1.release_notes.get_environment", return_value="qa"):
-                result = await get_version()
+        with (
+            patch("app.api.v1.release_notes.app_get_version", return_value="0.2.0"),
+            patch("app.api.v1.release_notes.get_environment", return_value="qa"),
+        ):
+            result = await get_version()
 
         assert result.environment == "qa"
 
@@ -212,3 +217,71 @@ class TestMarkReleaseNoteSeen:
             result = await mark_release_note_seen(version="0.2.0", current_user=mock_user)
 
         assert result.success is True
+
+
+class TestUpdateUserNotes:
+    """Tests for PATCH /release-notes/{version}/user-notes."""
+
+    @pytest.mark.asyncio
+    async def test_updates_user_notes(self, mock_user):
+        """Should update user_notes for a given version."""
+        from app.api.v1.release_notes import update_user_notes
+
+        mock_svc = AsyncMock()
+        mock_svc.update_user_notes.return_value = True
+
+        body = UpdateUserNotesRequest(user_notes="Note aggiornate!")
+
+        with patch("app.api.v1.release_notes.release_notes_service", mock_svc):
+            result = await update_user_notes(body=body, version="0.2.0", current_user=mock_user)
+
+        assert result.success is True
+        mock_svc.update_user_notes.assert_called_once_with("0.2.0", "Note aggiornate!")
+
+    @pytest.mark.asyncio
+    async def test_returns_failure_for_nonexistent_version(self, mock_user):
+        """Should return failure when version doesn't exist."""
+        from app.api.v1.release_notes import update_user_notes
+
+        mock_svc = AsyncMock()
+        mock_svc.update_user_notes.return_value = False
+
+        body = UpdateUserNotesRequest(user_notes="Note")
+
+        with patch("app.api.v1.release_notes.release_notes_service", mock_svc):
+            result = await update_user_notes(body=body, version="99.99.99", current_user=mock_user)
+
+        assert result.success is False
+
+
+class TestGetReleaseNotesFull:
+    """Tests for GET /release-notes/full (authenticated, with technical_notes)."""
+
+    @pytest.mark.asyncio
+    async def test_returns_full_notes(self, mock_user, sample_release_note):
+        """Should return full release notes including technical_notes."""
+        from app.api.v1.release_notes import get_release_notes_full
+
+        mock_svc = AsyncMock()
+        mock_svc.list_release_notes_full.return_value = ([sample_release_note], 1)
+
+        with patch("app.api.v1.release_notes.release_notes_service", mock_svc):
+            result = await get_release_notes_full(page=1, page_size=10, current_user=mock_user)
+
+        assert result.total == 1
+        assert len(result.items) == 1
+        assert result.items[0].technical_notes == "Added versioning system with release notes API."
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_full_list(self, mock_user):
+        """Should return empty list when no release notes exist."""
+        from app.api.v1.release_notes import get_release_notes_full
+
+        mock_svc = AsyncMock()
+        mock_svc.list_release_notes_full.return_value = ([], 0)
+
+        with patch("app.api.v1.release_notes.release_notes_service", mock_svc):
+            result = await get_release_notes_full(page=1, page_size=10, current_user=mock_user)
+
+        assert result.total == 0
+        assert result.items == []

@@ -11,6 +11,21 @@ Reference documents (must be in repo):
 
 ---
 
+> ### CI Coverage Requirements (applies to ALL waves)
+>
+> **New code must achieve ≥70% line coverage** (`thresholdNew: 0.70` in `orgoro/coverage` CI action).
+> Overall project coverage must stay ≥30% (`--cov-fail-under=30`).
+>
+> **Testing best practices:**
+> - Exercise real code paths — avoid over-mocking that hides production logic from coverage
+> - Use integration tests where appropriate (e.g., Starlette `TestClient` for middleware, real ReportLab for PDF generation)
+> - Mock only at external boundaries (Redis, Tesseract, database) — not internal business logic
+> - Test all branches: happy path + error path + edge cases (boundary values, empty inputs, None)
+> - Every new file MUST have a corresponding test file with ≥70% coverage of the new code
+> - `__repr__` methods are excluded from coverage measurement (configured in `pyproject.toml`)
+
+---
+
 ## Wave 0: Foundation Models (start here — no dependencies)
 
 These are the foundational SQLModel definitions. All subsequent work depends on these models existing.
@@ -166,6 +181,7 @@ These are the foundational SQLModel definitions. All subsequent work depends on 
 ## Wave 1: Dependent Models + Foundation Services
 
 These tasks depend on Wave 0 models. Can all run in parallel once their specific model dependencies are met.
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
 
 ### DEV-302: Create ClientProfile SQLModel
 **Depends on:** DEV-301 (Client model for client_id FK)
@@ -268,6 +284,8 @@ These tasks depend on Wave 0 models. Can all run in parallel once their specific
 
 ## Wave 2: Alembic Migration (gates all service-layer work)
 
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
+
 ### DEV-307: Alembic Migration for Phase 0
 **Depends on:** DEV-300, DEV-301, DEV-302, DEV-303, DEV-304, DEV-305, DEV-306 (all models from Waves 0-1)
 **Priority:** CRITICAL | **Effort:** 3h | **Classification:** RESTRUCTURING
@@ -296,6 +314,7 @@ These tasks depend on Wave 0 models. Can all run in parallel once their specific
 ## Wave 3: Core Service Layer (all depend on DEV-307 migration)
 
 These services implement CRUD operations and business logic on top of the models. Can run in parallel.
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
 
 ### DEV-308: StudioService with CRUD
 **Depends on:** DEV-300 (Studio model), DEV-307 (Migration)
@@ -430,6 +449,7 @@ These services implement CRUD operations and business logic on top of the models
 ## Wave 4: API Layer + Advanced Services
 
 These depend on Wave 3 services. Can run in parallel within the wave.
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
 
 ### DEV-311: Studio API Endpoints
 **Depends on:** DEV-308 (StudioService)
@@ -719,6 +739,7 @@ These depend on Wave 3 services. Can run in parallel within the wave.
 ## Wave 5: Multi-Tenancy + Import/Export + Advanced Matching
 
 These depend on Wave 4 APIs and Wave 3 services.
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
 
 ### DEV-316: Tenant Context Middleware
 **Depends on:** DEV-315 (User-Studio Association)
@@ -886,6 +907,7 @@ These depend on Wave 4 APIs and Wave 3 services.
 ## Wave 6: Fiscal Calculations + Documents + Dashboard
 
 These depend on Wave 3-5 services. Can run in parallel.
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
 
 ### DEV-348: Client Context Injection for Calculations
 **Depends on:** DEV-309 (ClientService), DEV-302 (ClientProfile)
@@ -1249,6 +1271,8 @@ These depend on Wave 3-5 services. Can run in parallel.
 
 ## Wave 7: Dashboard + Frontend Integration + Cross-Cutting
 
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
+
 ### DEV-355: Dashboard Data Aggregation
 **Depends on:** DEV-354 (ROI Metrics Service)
 **Priority:** MEDIUM | **Effort:** 3h | **Classification:** ADDITIVE
@@ -1416,6 +1440,7 @@ These depend on Wave 3-5 services. Can run in parallel.
 ## Wave 8: Testing & Validation
 
 Comprehensive test suites that validate entire feature chains.
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
 
 ### DEV-318: Unit Tests for Phase 1 Services
 **Depends on:** DEV-308, DEV-309, DEV-310, DEV-313, DEV-314, DEV-317 (all Phase 1 services)
@@ -1553,6 +1578,8 @@ Comprehensive test suites that validate entire feature chains.
 
 ## Wave 9: Full Journey E2E Test (final validation)
 
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
+
 ### DEV-371: Full User Journey E2E Test
 **Depends on:** All Phase 0-8 tasks
 **Priority:** CRITICAL | **Effort:** 4h | **Classification:** ADDITIVE
@@ -1568,6 +1595,8 @@ Comprehensive test suites that validate entire feature chains.
 ## Wave 10: Figma Gap Coverage (Phase 13 — closes 16 gaps from Figma review)
 
 > **Added:** 2026-02-25 — Gap analysis of 15 Figma reference files (11,478 lines) revealed 16 gaps. This wave closes them. Full task specs in `docs/tasks/PRATIKO_2.0.md` Phase 13.
+
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
 
 ### DEV-422: Notification SQLModel & Migration
 **Depends on:** DEV-300 (Studio), DEV-307 (Migration)
@@ -1886,6 +1915,8 @@ Comprehensive test suites that validate entire feature chains.
 ## Wave 11: Hybrid Email Sending Configuration (Phase 14 — ADR-034)
 
 > **Added:** 2026-02-26 — Hybrid email sending with plan-based gating. Base plan studios use PratikoAI centralized email; Pro/Premium studios can optionally configure their own SMTP for branded sending. See `docs/architecture/decisions/ADR-034-hybrid-email-sending-configuration.md`.
+
+**Coverage:** ≥70% new code (see CI Coverage Requirements above).
 
 ### DEV-442: StudioEmailConfig SQLModel & Migration
 **Depends on:** DEV-300 (Studio model), DEV-307 (Migration infrastructure)

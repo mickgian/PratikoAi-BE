@@ -17,9 +17,23 @@ const mockGetUsageStatus = getUsageStatus as jest.MockedFunction<
 const mockUsageStatus = {
   plan_slug: 'free',
   plan_name: 'Free',
-  window_5h: { used_eur: 0, limit_eur: 1, remaining_eur: 1, pct_used: 0 },
-  window_7d: { used_eur: 0, limit_eur: 5, remaining_eur: 5, pct_used: 0 },
-  credits: { balance_eur: 10, low_threshold_eur: 2 },
+  window_5h: {
+    window_type: '5h',
+    current_cost_eur: 0,
+    limit_cost_eur: 1,
+    usage_percentage: 0,
+    reset_at: null,
+    reset_in_minutes: null,
+  },
+  window_7d: {
+    window_type: '7d',
+    current_cost_eur: 0,
+    limit_cost_eur: 5,
+    usage_percentage: 0,
+    reset_at: null,
+    reset_in_minutes: null,
+  },
+  credits: { balance_eur: 10, extra_usage_enabled: false },
   is_admin: false,
   message_it: 'Tutto ok',
 };

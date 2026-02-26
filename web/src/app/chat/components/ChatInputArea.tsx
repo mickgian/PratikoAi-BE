@@ -11,7 +11,10 @@ import { DragDropZone } from './DragDropZone';
 import { StreamingHandler } from '../handlers/StreamingHandler';
 import type { AttachmentInfo } from '../types/chat';
 import { getUsageStatus, type UsageStatus } from '@/lib/api/billing';
+import { getReleaseNotes } from '@/lib/api/release-notes';
+import type { ReleaseNotePublic } from '@/lib/api/release-notes';
 import { UsageDialog } from './UsageDialog';
+import { NovitaDialog } from './NovitaDialog';
 
 /**
  * DEV-257: Parse a usage limit error from StreamingHandler's lastError.
@@ -125,6 +128,12 @@ export function ChatInputArea() {
     canBypass?: boolean;
   } | null>(null);
 
+  // Novità dialog state (release notes)
+  const [novitaDialog, setNovitaDialog] = useState<{
+    notes: ReleaseNotePublic[];
+    error: string | null;
+  } | null>(null);
+
   // one active streaming handler at a time
   const handlerRef = useRef<StreamingHandler | null>(null);
 
@@ -200,6 +209,20 @@ export function ChatInputArea() {
           data: null,
           error:
             'Errore nel recupero dei dati di utilizzo. Riprova tra qualche istante.',
+        });
+      }
+      return;
+    }
+
+    if (cmd === '/novita') {
+      try {
+        const data = await getReleaseNotes(1, 50);
+        setNovitaDialog({ notes: data.items, error: null });
+      } catch {
+        setNovitaDialog({
+          notes: [],
+          error:
+            'Errore nel recupero delle novità. Riprova tra qualche istante.',
         });
       }
       return;
@@ -445,6 +468,13 @@ export function ChatInputArea() {
             setUsageDialog(null);
           }}
           onClose={() => setUsageDialog(null)}
+        />
+      )}
+      {novitaDialog && (
+        <NovitaDialog
+          notes={novitaDialog.notes}
+          error={novitaDialog.error}
+          onClose={() => setNovitaDialog(null)}
         />
       )}
       <DragDropZone

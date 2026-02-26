@@ -10,14 +10,8 @@ import { PricingSection } from '../components/PricingSection';
 import { ChatInterface } from '../components/ChatInterface';
 import { Footer } from '../components/Footer';
 import { FAQSection } from '../components/FAQSection';
-import { WhatsNewPopup } from '../components/WhatsNewPopup';
-import { useUnseenReleaseNote } from '@/lib/hooks/useReleaseNotes';
-import { useAuth } from '@/hooks/useAuth';
-
 export default function Home() {
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const { isAuthenticated } = useAuth();
-  const { unseenNote, dismiss } = useUnseenReleaseNote(isAuthenticated);
 
   const handleSignInClick = () => {
     window.location.href = '/signin';
@@ -93,9 +87,6 @@ export default function Home() {
         isOpen={isChatOpen}
         onToggle={() => setIsChatOpen(!isChatOpen)}
       />
-
-      {/* What's New Popup */}
-      <WhatsNewPopup releaseNote={unseenNote} onDismiss={dismiss} />
     </div>
   );
 }

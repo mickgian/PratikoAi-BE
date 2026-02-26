@@ -1,7 +1,7 @@
 # PratikoAI 2.0 — Implementation Task List
 
-**Task ID Range:** DEV-300 to DEV-441 (140 tasks, DEV-362 and DEV-364 removed)
-**Last Updated:** 2026-02-25
+**Task ID Range:** DEV-300 to DEV-449 (148 tasks, DEV-362 and DEV-364 removed)
+**Last Updated:** 2026-02-26
 
 Reference documents (must be in repo):
 - `docs/tasks/PRATIKO_2.0.md` — Full task specifications, acceptance criteria, testing requirements
@@ -525,13 +525,15 @@ These depend on Wave 3 services. Can run in parallel within the wave.
 ---
 
 ### DEV-334: WhatsApp wa.me Link Integration
-**Depends on:** DEV-330 (CommunicationService)
-**Priority:** MEDIUM | **Effort:** 2h | **Classification:** ADDITIVE
-**Agent:** @Ezio (primary), @Clelia (tests)
+**Depends on:** DEV-330 (CommunicationService), DEV-309 (ClientService)
+**Priority:** MEDIUM | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary, backend), @Livia (frontend modal), @Clelia (tests)
 
-**What to build:** WhatsApp service using `wa.me/{phone}?text={message}` links (no API approval needed). Opens WhatsApp with pre-filled message.
+**What to build:** WhatsApp service using `wa.me/{phone}?text={message}` links (no API approval needed). **UX decision (2026-02-26):** When professional clicks "Invia" on an approved WhatsApp communication, a confirmation modal shows message preview + "Apri WhatsApp" button → opens wa.me in **new browser tab** (PratikoAI stays open). Bulk sends show recipient checklist with individual "Apri" buttons and progress counter. Pop-up blocker fallback shows clickable link.
 
-**File:** `app/services/whatsapp_service.py`
+**Files:** `app/services/whatsapp_service.py` (backend) + `web/src/components/features/WhatsAppSendModal.tsx` (frontend modal)
+
+**Tests:** `tests/services/test_whatsapp_service.py` — link generation, phone normalization, URL encoding, bulk generation | `web/src/components/features/WhatsAppSendModal.test.tsx` — modal display, new tab open, bulk checklist, popup fallback
 
 ---
 
@@ -1888,6 +1890,132 @@ Comprehensive test suites that validate entire feature chains.
 
 ---
 
+## Wave 11: Hybrid Email Sending Configuration (Phase 14 — ADR-034)
+
+> **Added:** 2026-02-26 — Hybrid email sending with plan-based gating. Base plan studios use PratikoAI centralized email; Pro/Premium studios can optionally configure their own SMTP for branded sending. See `docs/architecture/decisions/ADR-034-hybrid-email-sending-configuration.md`.
+
+### DEV-442: StudioEmailConfig SQLModel & Migration
+**Depends on:** DEV-300 (Studio model), DEV-307 (Migration infrastructure)
+**Priority:** HIGH | **Effort:** 3h | **Classification:** ADDITIVE
+**Agent:** @Primo (primary), @Severino (security review — credential encryption), @Clelia (tests)
+
+**What to build:** `StudioEmailConfig` SQLModel for storing per-studio custom SMTP configuration. SMTP password encrypted at rest using Fernet (key in `SMTP_ENCRYPTION_KEY` env var). One config per user (unique constraint on `user_id`). Password field is write-only — never returned in API responses or logs.
+
+**File:** `app/models/studio_email_config.py`
+
+**Fields:** `id` (int PK), `user_id` (int FK to user.id, unique), `smtp_host` (str, max 255), `smtp_port` (int, default 587), `smtp_username` (str, max 255), `smtp_password_encrypted` (str, max 1024 — Fernet), `use_tls` (bool, default true), `from_email` (str, max 255), `from_name` (str, max 255), `reply_to_email` (str, nullable, max 255), `is_verified` (bool, default false), `is_active` (bool, default true), `created_at`, `updated_at`
+
+**Tests:** `tests/models/test_studio_email_config.py` — valid creation, user_id uniqueness, password encryption round-trip, TLS default true, is_verified default false, nullable reply_to
+
+**Unlocks:** DEV-443, DEV-444, DEV-445
+
+---
+
+### DEV-443: StudioEmailConfigService (CRUD + Validation)
+**Depends on:** DEV-442 (StudioEmailConfig model)
+**Priority:** HIGH | **Effort:** 4h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Severino (security review), @Clelia (tests)
+
+**What to build:** Service with CRUD operations, plan-based gating (Pro/Premium only via `user.billing_plan_slug`), SMTP credential encryption/decryption, and connection validation (EHLO + STARTTLS + LOGIN handshake without sending). SSRF protection: allowlist ports 25/465/587, reject private IP ranges (10.x, 172.16-31.x, 192.168.x), 10s connection timeout.
+
+**File:** `app/services/studio_email_config_service.py`
+
+**Methods:** `create_or_update_config()`, `get_config()` (password redacted), `delete_config()`, `validate_smtp_connection()`, `_encrypt_password()`, `_decrypt_password()`, `_check_plan_eligibility()`
+
+**Tests:** `tests/services/test_studio_email_config_service.py` — create config, update config, get config (password redacted), delete config, base plan rejected (403), pro plan allowed, premium plan allowed, SMTP validation success mock, SMTP validation failure, SSRF blocked (private IP), invalid port rejected, encrypt/decrypt round-trip
+
+**Unlocks:** DEV-444, DEV-445
+
+---
+
+### DEV-444: Studio Email Config API Endpoints
+**Depends on:** DEV-443 (StudioEmailConfigService)
+**Priority:** HIGH | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** REST endpoints for studio email configuration management. Plan gating enforced at endpoint level (403 for Base plan). Rate limit test endpoint: 5 attempts per hour per user.
+
+**File:** `app/api/v1/email_config.py`
+
+**Endpoints:**
+- `POST /api/v1/email-config` — Create/update SMTP config (Pro/Premium only)
+- `GET /api/v1/email-config` — Get config (password field returns `has_password: true` instead of actual value)
+- `DELETE /api/v1/email-config` — Remove custom config (reverts to PratikoAI default)
+- `POST /api/v1/email-config/test` — Send test email to verify config works
+
+**Tests:** `tests/api/v1/test_email_config.py` — create 201, get 200 (password redacted), delete 204, base plan 403, test email 200, test email failure 422, unauthenticated 401, rate limit on test endpoint
+
+**Unlocks:** DEV-446, DEV-448
+
+---
+
+### DEV-445: EmailService Hybrid Sending (Fallback Chain)
+**Depends on:** DEV-443 (StudioEmailConfigService), DEV-333 (Email Sending Integration)
+**Priority:** HIGH | **Effort:** 3h | **Classification:** MODIFYING
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Refactor `EmailService._send_email()` to support a fallback chain: (1) check for verified custom SMTP config for the user → use it, (2) if no custom config or sending fails → fall back to PratikoAI default SMTP, (3) if default also fails → log error. Custom SMTP sets `From` header using studio's `from_name` and `from_email`. Default SMTP sets `From: "Studio Name" <comunicazioni@pratikoai.com>` with `Reply-To` header.
+
+**Modifies:** `app/services/email_service.py`
+
+**Tests:** `tests/services/test_email_service_hybrid.py` — send with custom config, fallback to default on custom failure, default SMTP used when no custom config, Reply-To header set correctly, From header with studio name, custom config not verified → skip to default
+
+**Unlocks:** DEV-447
+
+---
+
+### DEV-446: Email Config Settings UI Section
+**Depends on:** DEV-444 (Email Config API), DEV-441 (Settings Page)
+**Priority:** MEDIUM | **Effort:** 3h | **Classification:** MODIFYING (extends DEV-441)
+**Agent:** @Livia (primary), @Clelia (tests)
+
+**What to build:** Add "Configurazione Email" section to the `/impostazioni` settings page. Shows plan-gated UI: Base plan users see an upsell banner ("Passa al piano Pro per inviare email dal tuo dominio"); Pro/Premium users see SMTP configuration form (host, port, username, password, TLS toggle, from name, from email, reply-to) with "Testa configurazione" button and status indicator (Verificata/Non verificata).
+
+**Modifies:** `web/src/app/impostazioni/page.tsx`
+
+**Tests:** `web/src/app/impostazioni/__tests__/email-config.test.tsx` — base plan shows upsell, pro plan shows form, form submit, test button, status indicator, password field masked
+
+---
+
+### DEV-447: Hybrid Email Sending E2E Tests
+**Depends on:** DEV-445 (Hybrid Sending), DEV-444 (API)
+**Priority:** MEDIUM | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Clelia (primary)
+
+**What to build:** End-to-end tests covering the full hybrid email flow: configure custom SMTP → verify → send communication → verify From/Reply-To headers. Test fallback chain. Test plan downgrade (Pro → Base) disables custom config.
+
+**File:** `tests/e2e/test_hybrid_email_flow.py`
+
+**Tests:** `test_custom_smtp_send_flow`, `test_fallback_to_default_flow`, `test_plan_downgrade_disables_custom`, `test_base_plan_uses_default_only`
+
+---
+
+### DEV-448: Add `custom_email_allowed` to Billing Plans
+**Depends on:** DEV-442 (StudioEmailConfig model)
+**Priority:** HIGH | **Effort:** 1h | **Classification:** MODIFYING
+**Agent:** @Ezio (primary), @Clelia (tests)
+
+**What to build:** Add `custom_email_allowed` boolean field to `BillingPlan` model and `billing_plans.yaml` config. Base: false, Pro: true, Premium: true. Update `BillingPlanService.sync_plans_from_config()` to sync the new field. Update `BillingPlanSchema` response to include the field.
+
+**Modifies:** `app/models/billing.py`, `config/billing_plans.yaml`, `app/services/billing_plan_service.py`, `app/schemas/billing.py`
+
+**Tests:** `tests/services/test_billing_plan_custom_email.py` — base plan false, pro plan true, premium plan true, YAML sync includes field, schema exposes field
+
+---
+
+### DEV-449: SMTP Encryption Key Rotation Support
+**Depends on:** DEV-443 (StudioEmailConfigService)
+**Priority:** LOW | **Effort:** 2h | **Classification:** ADDITIVE
+**Agent:** @Ezio (primary), @Severino (security review), @Clelia (tests)
+
+**What to build:** Management command/script to re-encrypt all stored SMTP passwords when the Fernet key is rotated. Accepts old key + new key, decrypts with old, re-encrypts with new, updates in-place within a transaction. Logs count of re-encrypted records (never logs passwords).
+
+**File:** `app/scripts/rotate_smtp_encryption_key.py`
+
+**Tests:** `tests/scripts/test_rotate_smtp_key.py` — re-encrypt all records, atomic transaction (rollback on failure), invalid old key raises, empty table no-op
+
+---
+
 ## Dependency Graph
 
 ```
@@ -2014,6 +2142,16 @@ Wave 10 (Figma gap coverage — Phase 13):
   DEV-340+pipeline → DEV-439 (Interactive Questions)
   DEV-424+426 → DEV-440 (Full Notifications Page)
   DEV-300+422 → DEV-441 (Settings Page)
+
+Wave 11 (hybrid email sending — Phase 14, ADR-034):
+  DEV-300+307 → DEV-442 (StudioEmailConfig Model)
+  DEV-442 → DEV-443 (StudioEmailConfigService)
+  DEV-443 → DEV-444 (Email Config API)
+  DEV-443+333 → DEV-445 (EmailService Hybrid Sending)
+  DEV-444+441 → DEV-446 (Email Config Settings UI)
+  DEV-445+444 → DEV-447 (Hybrid Email E2E)
+  DEV-442 → DEV-448 (BillingPlan custom_email_allowed field)
+  DEV-443 → DEV-449 (SMTP Key Rotation)
 ```
 
 ---
@@ -2036,8 +2174,9 @@ Wave 10 (Figma gap coverage — Phase 13):
 | **Phase 11: Infrastructure** | DEV-388 to DEV-395, DEV-416, DEV-417, DEV-418 (11 tasks) | 0, 3, 6 | 18 |
 | **Phase 12: Pre-Launch** | DEV-396 to DEV-401 (6 tasks) | 0, 1, 4, 5 | Pre-launch |
 | **Phase 13: Figma Gap Coverage** | DEV-422 to DEV-441 (20 tasks) | 10 | Post-MVP |
+| **Phase 14: Hybrid Email Config** | DEV-442 to DEV-449 (8 tasks) | 11 | Post-MVP |
 
-**Total: 140 tasks** (was 120, added 20 tasks to close 16 gaps from Figma design review)
+**Total: 148 tasks** (was 140, added 8 tasks for hybrid email sending — ADR-034)
 
 ---
 
@@ -2060,6 +2199,8 @@ Wave 10 (Figma gap coverage — Phase 13):
 | DEV-417 | HIGH | Financial | Without billing limits a studio can exhaust LLM budget |
 | DEV-425 | HIGH | Multi-Service Modification | Notification triggers modify 4 existing services (fire-and-forget pattern) |
 | DEV-428 | MEDIUM | DB Schema Extension | Adds columns to existing client model, migration required |
+| DEV-442 | HIGH | Security/GDPR | Stores encrypted SMTP credentials — Fernet key in env var, write-only API |
+| DEV-445 | HIGH | Email Infrastructure | Modifies existing EmailService with fallback chain |
 
 ---
 
@@ -2077,6 +2218,7 @@ Wave 10 (Figma gap coverage — Phase 13):
 - [ ] Fattura Elettronica XML parsing functional (AC-008.4)
 - [ ] Document type auto-detection >90% accuracy (AC-008.3)
 - [ ] Calendar export (.ics) for deadlines functional (AC-006.2)
+- [ ] Hybrid email sending: Base plan uses PratikoAI email, Pro/Premium can configure custom SMTP (ADR-034)
 - [ ] 69.5%+ test coverage maintained
 - [ ] Multi-tenant isolation 95%+ tested
 - [ ] Response time ≤3 seconds maintained (monitored via Prometheus)

@@ -1,9 +1,9 @@
 # PratikoAI 2.0 - Professional Engagement Platform
 
-**Last Updated:** 2026-02-25
+**Last Updated:** 2026-02-26
 **Status:** Active Development
-**Task ID Range:** DEV-300 to DEV-441
-**Timeline:** 10-12 weeks (~140 tasks, accelerated with Claude Code)
+**Task ID Range:** DEV-300 to DEV-449
+**Timeline:** 10-12 weeks (~148 tasks, accelerated with Claude Code)
 **Target:** MVP Launch
 
 ---
@@ -32,6 +32,7 @@ PratikoAI 2.0 is a major evolution from a Q&A assistant to a **professional enga
 | FR-006 | Proactive Deadline System | Alert professionals about upcoming deadlines | MEDIUM |
 | FR-007 | Fiscal Calculations | IRPEF, IVA, INPS, IMU with client context | HIGH |
 | FR-008 | Document Enhancement | Extended document parsing (Bilanci, CU) | MEDIUM |
+| FR-009 | Hybrid Email Sending | Plan-gated custom SMTP: Base uses PratikoAI, Pro/Premium can use own email | HIGH |
 
 ---
 
@@ -233,6 +234,11 @@ The following patterns were established during Response Quality improvements and
 | NEW | DEV-439 | Phase 13: Interactive Question Templates Activation |
 | NEW | DEV-440 | Phase 13: Full Notifications Page |
 | NEW | DEV-441 | Phase 13: Settings Page (Studio Preferences UI) |
+| NEW | DEV-442 to DEV-445 | Phase 14: Hybrid Email Config (backend — model, service, API, hybrid sending) |
+| NEW | DEV-446 | Phase 14: Hybrid Email Config (Settings UI section) |
+| NEW | DEV-447 | Phase 14: Hybrid Email Config (E2E tests) |
+| NEW | DEV-448 | Phase 14: Hybrid Email Config (BillingPlan custom_email_allowed field) |
+| NEW | DEV-449 | Phase 14: Hybrid Email Config (SMTP key rotation) |
 
 ---
 
@@ -3642,7 +3648,11 @@ Create Communication API router with all workflow endpoints.
 - `POST /api/v1/communications/{id}/submit` - Submit for review
 - `POST /api/v1/communications/{id}/approve` - Approve
 - `POST /api/v1/communications/{id}/reject` - Reject
-- `POST /api/v1/communications/{id}/send` - Send
+- `POST /api/v1/communications/{id}/send` - Send (for email: sends via SMTP; for WhatsApp: returns `whatsapp_link` in response body, marks as SENT)
+
+**Channel-specific send behavior:**
+- **Email:** Delegates to `EmailSendingService`, sends asynchronously, updates status on delivery/failure
+- **WhatsApp:** Generates wa.me link via `WhatsAppService`, returns `{ "whatsapp_link": "https://wa.me/..." }` in response. Frontend shows confirmation modal with the link. Status set to SENT immediately (no delivery tracking in MVP).
 
 **Testing Requirements:**
 - **TDD:** Write `tests/api/test_communications_api.py` FIRST
@@ -3772,15 +3782,19 @@ Create email sending service using existing patterns. Handle retries, failures, 
 
 **Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
 
-**Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
+**Figma Reference:** `GestioneComunicazioniPage.tsx` (channel toggle, "Invia" action) — Source: [`docs/figma-make-references/GestioneComunicazioniPage.tsx`](../figma-make-references/GestioneComunicazioniPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
 
 **Problem:**
-Professionals want to send WhatsApp messages to clients. For MVP, we use simple wa.me links rather than the complex WhatsApp Business API.
+Professionals want to send WhatsApp messages to clients. For MVP, we use simple wa.me links rather than the complex WhatsApp Business API. The UX must let the professional review the message before leaving PratikoAI.
 
 **Solution:**
-Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens WhatsApp with pre-filled message - no API approval needed.
+Create WhatsApp service using `wa.me/{phone}?text={message}` links. When the professional clicks "Invia" on an approved WhatsApp communication, PratikoAI shows a **confirmation modal** with message preview and an "Apri WhatsApp" button that opens the wa.me link **in a new browser tab**. PratikoAI stays open in the original tab. No WhatsApp Business API needed.
 
-**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+**UX Decision (2026-02-26):** Modal confirmation before opening WhatsApp, chosen over: (a) direct navigation (disruptive, leaves PratikoAI), (b) copy-to-clipboard (requires manual paste), (c) open-in-new-tab without preview (no review step).
+
+**Agent Assignment:** @Ezio (primary, backend service), @Livia (frontend modal component), @Clelia (tests)
 
 **Dependencies:**
 - **Blocking:** DEV-330 (CommunicationService), DEV-309 (ClientService - for phone numbers)
@@ -3793,10 +3807,6 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
 **Pre-Implementation Verification:** N/A (ADDITIVE)
 
 **Error Handling:**
-- Invalid state transition: HTTP 400, `"Transizione di stato non valida: {from} -> {to}"`
-- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
-
-**Error Handling:**
 - Invalid phone format: HTTP 400, `"Formato numero di telefono non valido"`
 - Missing phone number: HTTP 400, `"Numero di telefono cliente mancante"`
 - Message too long: Warn user, suggest shortening (WhatsApp limit ~65536 chars)
@@ -3807,9 +3817,10 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
 |------|--------|------------|
 | Phone format variations | LOW | Normalize to international format |
 | URL encoding issues | LOW | Comprehensive test coverage |
+| Pop-up blocker | MEDIUM | Fallback: show clickable link if `window.open` blocked |
 
 **Performance Requirements:**
-- Response time: <200ms (p95)
+- Link generation response: <200ms (p95)
 - Database queries: <50ms (p95)
 - Concurrent requests: Handle 100 concurrent requests
 
@@ -3822,14 +3833,23 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
 - **Special Characters:** Emojis, newlines → URL encode properly
 - **Null Phone:** Client without phone → return null link, not error
 - **Bulk Generation:** 100 clients → return array of links, nulls for missing phones
+- **Pop-up Blocked:** `window.open` returns null → show fallback clickable link in modal
 
-**File:** `app/services/whatsapp_service.py`
+**Backend File:** `app/services/whatsapp_service.py`
 
-**Methods:**
+**Backend Methods:**
 - `generate_whatsapp_link(phone, message)` - Generate wa.me link
 - `format_phone_number(phone)` - Format to international format (remove +, spaces)
 - `url_encode_message(message)` - URL-encode the message text
 - `generate_client_links(clients, template)` - Bulk generate for multiple clients
+
+**Frontend File:** `web/src/components/features/WhatsAppSendModal.tsx`
+
+**Frontend Behavior:**
+- **Single send:** Modal shows recipient name, phone number, message preview, "Apri WhatsApp" (primary) + "Annulla" buttons
+- **Bulk send:** Modal shows recipient checklist with individual "Apri" buttons. Each click opens wa.me in new tab and checks off the recipient. Progress counter shows "X/Y inviati". "Chiudi" button warns if not all links opened.
+- **Pop-up fallback:** If `window.open` is blocked, display the wa.me URL as a clickable `<a target="_blank">` link
+- **State update:** After all links opened (or modal closed), mark communication(s) as SENT via API call
 
 **Example:**
 ```python
@@ -3854,9 +3874,15 @@ Create WhatsApp service using `wa.me/{phone}?text={message}` links. This opens W
   - `test_special_chars_encoded` - emojis encoded
   - `test_null_phone_null_link` - missing phone handled
   - `test_bulk_with_missing_phones` - nulls in array
-- **Edge Case Tests:** See Edge Cases section above
+- **Frontend Tests:** `web/src/components/features/WhatsAppSendModal.test.tsx`
+  - `test_modal_shows_recipient_info` - name, phone, message displayed
+  - `test_apri_whatsapp_opens_new_tab` - window.open called with wa.me URL
+  - `test_bulk_modal_checklist` - all recipients listed with individual buttons
+  - `test_bulk_progress_counter` - counter updates on each click
+  - `test_popup_blocked_fallback` - clickable link shown when window.open fails
+  - `test_close_warns_if_incomplete` - warning when not all links opened
 - **Regression Tests:** Run `pytest tests/services/`
-- **Coverage Target:** 90%+ for WhatsApp code (simple utility)
+- **Coverage Target:** 90%+ for WhatsApp backend code, 80%+ for modal component
 
 **MVP Note:**
 WhatsApp Business API integration is deferred to post-MVP. The wa.me approach provides immediate value without API approval delays.
@@ -3865,6 +3891,7 @@ WhatsApp Business API integration is deferred to post-MVP. The wa.me approach pr
 - Max function: 50 lines, extract helpers if larger
 - Max class: 200 lines, split into focused services
 - Max file: 400 lines, create submodules
+- Frontend modal: <150 lines, extract sub-components if larger
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
@@ -3872,7 +3899,11 @@ WhatsApp Business API integration is deferred to post-MVP. The wa.me approach pr
 - [ ] Handle Italian phone number formats
 - [ ] URL-encode message properly
 - [ ] Bulk generation for multiple clients
-- [ ] 90%+ test coverage achieved
+- [ ] Confirmation modal shows message preview before opening WhatsApp
+- [ ] "Apri WhatsApp" opens wa.me in new tab (PratikoAI stays open)
+- [ ] Bulk modal shows recipient checklist with progress counter
+- [ ] Pop-up blocker fallback (clickable link)
+- [ ] 90%+ backend test coverage, 80%+ frontend test coverage
 
 ---
 
@@ -4316,17 +4347,21 @@ Create comprehensive E2E tests for communication flow.
 
 **Methods:**
 - `test_create_draft_to_send_email_flow()` - Full email workflow
-- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow
+- `test_create_draft_to_send_whatsapp_flow()` - Full WhatsApp workflow (send endpoint returns whatsapp_link)
+- `test_whatsapp_send_returns_link()` - Verify POST /send for WhatsApp channel returns `{ whatsapp_link: "https://wa.me/..." }` and marks as SENT
+- `test_whatsapp_bulk_returns_links()` - Bulk send returns array of wa.me links (nulls for missing phones)
 - `test_rejection_flow()` - Draft -> review -> reject -> revise
-- `test_bulk_communication_flow()` - Multiple clients
+- `test_bulk_communication_flow()` - Multiple clients, mixed channels
 - `test_self_approval_blocked()` - Security check E2E
 
 - **This IS the testing task**
 - **E2E Tests:**
   - `test_create_draft_to_send_email_flow` - full email flow
-  - `test_create_draft_to_send_whatsapp_flow` - full WhatsApp flow
+  - `test_create_draft_to_send_whatsapp_flow` - full WhatsApp flow (verify link returned)
+  - `test_whatsapp_send_returns_link` - send endpoint returns wa.me link in response
+  - `test_whatsapp_bulk_returns_links` - bulk send returns array of links
   - `test_rejection_flow` - draft → review → reject → revise
-  - `test_bulk_communication_flow` - multiple clients
+  - `test_bulk_communication_flow` - multiple clients, mixed email + WhatsApp
   - `test_self_approval_blocked` - security check E2E
 - **Coverage Target:** Full workflow coverage
 
@@ -4345,7 +4380,8 @@ Create comprehensive E2E tests for communication flow.
 - [ ] Draft creation tested
 - [ ] Approval workflow tested
 - [ ] Email sending tested
-- [ ] WhatsApp sending tested
+- [ ] WhatsApp send returns wa.me link (not actual sending)
+- [ ] WhatsApp bulk returns array of links
 - [ ] Self-approval blocking verified
 
 ---
@@ -11497,6 +11533,402 @@ Create a `/impostazioni` settings page with sections for studio preferences, not
 
 ---
 
+## Phase 14: Hybrid Email Sending Configuration (8 Tasks)
+
+> **Added:** 2026-02-26 — Hybrid email sending with plan-based gating per ADR-034. Base plan studios use PratikoAI centralized email (`comunicazioni@pratikoai.com` with `Reply-To` header). Pro/Premium studios can optionally configure their own SMTP server for branded email sending from their own domain. SMTP credentials encrypted at rest via Fernet.
+
+### Hybrid Email Configuration Summary
+
+| Plan | Monthly Price | Custom SMTP | Sender Identity | Reply-To |
+|------|--------------|-------------|-----------------|----------|
+| **Base** | €25 | No | `"Studio Name" <comunicazioni@pratikoai.com>` | Studio's email (from profile) |
+| **Pro** | €75 | Yes (optional) | `"Studio Name" <info@studiorossi.it>` | Configurable |
+| **Premium** | €150 | Yes (optional) | `"Studio Name" <info@studiorossi.it>` | Configurable |
+
+---
+
+### DEV-442: StudioEmailConfig SQLModel & Migration
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Studios on Pro/Premium plans need to send emails from their own domain for brand trust and higher open rates, but there is no model to store per-studio SMTP configuration. SMTP passwords are sensitive data requiring encryption at rest per GDPR Art. 32.
+
+**Solution:**
+Create a `StudioEmailConfig` SQLModel with Fernet-encrypted password storage. One config per user (unique constraint on `user_id`). Password is write-only — never returned in API responses or logged.
+
+**Agent Assignment:** @Primo (primary), @Severino (security review — credential encryption), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-300 (Studio model), DEV-307 (Migration infrastructure)
+- **Unlocks:** DEV-443 (Service), DEV-444 (API), DEV-445 (Hybrid Sending)
+
+**Change Classification:** ADDITIVE
+
+**ADR Reference:** `docs/architecture/decisions/ADR-034-hybrid-email-sending-configuration.md`
+
+**Error Handling:**
+- Duplicate user_id: HTTP 409, `"Configurazione email già esistente per questo utente"`
+- Invalid SMTP host: HTTP 422, `"Host SMTP non valido"`
+- **Logging:** All errors MUST be logged with context (user_id, operation). NEVER log SMTP passwords.
+
+**Security Requirements:**
+- SMTP password encrypted via `cryptography.fernet.Fernet`
+- Encryption key in `SMTP_ENCRYPTION_KEY` env var (not in DB)
+- Password excluded from `__repr__`, model serialization, and structured logs
+
+**File:** `app/models/studio_email_config.py`
+
+**Fields:**
+- `id`: int (primary key)
+- `user_id`: int (FK to user.id, unique, indexed)
+- `smtp_host`: str (max 255)
+- `smtp_port`: int (default 587)
+- `smtp_username`: str (max 255)
+- `smtp_password_encrypted`: str (max 1024 — Fernet ciphertext)
+- `use_tls`: bool (default true)
+- `from_email`: str (max 255)
+- `from_name`: str (max 255)
+- `reply_to_email`: str (nullable, max 255)
+- `is_verified`: bool (default false)
+- `is_active`: bool (default true)
+- `created_at`: datetime
+- `updated_at`: datetime
+
+**Testing Requirements:**
+- **TDD:** Write `tests/models/test_studio_email_config.py` FIRST
+- **Unit Tests:**
+  - `test_valid_creation` — all fields populated
+  - `test_user_id_uniqueness` — unique constraint
+  - `test_password_encryption_roundtrip` — encrypt then decrypt matches original
+  - `test_tls_default_true` — use_tls defaults to True
+  - `test_is_verified_default_false` — new configs start unverified
+  - `test_nullable_reply_to` — reply_to_email can be null
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Fernet encryption for SMTP password
+- [ ] Password never appears in logs or `__repr__`
+- [ ] Unique constraint on user_id
+- [ ] Alembic migration generated
+
+---
+
+### DEV-443: StudioEmailConfigService (CRUD + Validation)
+
+**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
+
+**Problem:**
+Need a service layer to manage studio email configurations with plan gating, credential encryption, and SMTP connection validation before saving.
+
+**Solution:**
+Service with CRUD operations, `billing_plan_slug` check (Pro/Premium only), Fernet encrypt/decrypt, SMTP handshake validation (EHLO + STARTTLS + LOGIN without sending), and SSRF protection (allowlist ports, reject private IPs).
+
+**Agent Assignment:** @Ezio (primary), @Severino (security review), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-442 (StudioEmailConfig model)
+- **Unlocks:** DEV-444 (API), DEV-445 (Hybrid Sending), DEV-449 (Key Rotation)
+
+**Change Classification:** ADDITIVE
+
+**Error Handling:**
+- Base plan user: HTTP 403, `"La configurazione email personalizzata richiede il piano Pro o Premium"`
+- SMTP connection failure: HTTP 422, `"Impossibile connettersi al server SMTP: {error}"`
+- Private IP SSRF attempt: HTTP 422, `"Host SMTP non consentito"`
+- Invalid port: HTTP 422, `"Porta SMTP non consentita (usa 25, 465 o 587)"`
+- **Logging:** Log connection validation attempts (success/failure) with user_id, smtp_host, smtp_port. NEVER log passwords.
+
+**Security Requirements:**
+- SSRF protection: allowlist ports (25, 465, 587), reject RFC 1918 private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), reject localhost/127.x
+- Connection timeout: 10 seconds max
+- Rate limit: 5 test attempts per hour per user
+
+**File:** `app/services/studio_email_config_service.py`
+
+**Methods:**
+- `create_or_update_config(user_id, config_data)` — encrypt password, validate SMTP, save
+- `get_config(user_id)` — return config with password redacted
+- `delete_config(user_id)` — remove config, revert to default
+- `validate_smtp_connection(host, port, username, password, use_tls)` — handshake only
+- `_encrypt_password(plaintext)` → ciphertext
+- `_decrypt_password(ciphertext)` → plaintext
+- `_check_plan_eligibility(user)` — raises if Base plan
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_studio_email_config_service.py` FIRST
+- **Unit Tests:**
+  - `test_create_config_pro_plan` — succeeds for Pro
+  - `test_create_config_premium_plan` — succeeds for Premium
+  - `test_create_config_base_plan_rejected` — 403
+  - `test_update_config` — updates existing
+  - `test_get_config_password_redacted` — password not in response
+  - `test_delete_config` — removes record
+  - `test_smtp_validation_success` — mock SMTP handshake
+  - `test_smtp_validation_failure` — connection error
+  - `test_ssrf_private_ip_blocked` — 10.x, 172.16.x, 192.168.x rejected
+  - `test_invalid_port_rejected` — port 8080 rejected
+  - `test_encrypt_decrypt_roundtrip` — Fernet encryption works
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Plan gating: Base → 403, Pro/Premium → allowed
+- [ ] SMTP password encrypted via Fernet
+- [ ] GET never returns plaintext password
+- [ ] SSRF protection active
+- [ ] Connection validation before save
+
+---
+
+### DEV-444: Studio Email Config API Endpoints
+
+**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+No API endpoints exist for studios to configure their custom email sending settings.
+
+**Solution:**
+Thin REST endpoints delegating to `StudioEmailConfigService`. Plan gating at endpoint level. Rate-limited test endpoint.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-443 (StudioEmailConfigService)
+- **Unlocks:** DEV-446 (Settings UI), DEV-447 (E2E Tests)
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/api/v1/email_config.py`
+
+**Endpoints:**
+- `POST /api/v1/email-config` — Create/update SMTP config (Pro/Premium only)
+- `GET /api/v1/email-config` — Get config (password → `has_password: true`)
+- `DELETE /api/v1/email-config` — Remove custom config
+- `POST /api/v1/email-config/test` — Send test email (rate limited: 5/hour)
+
+**Testing Requirements:**
+- **TDD:** Write `tests/api/v1/test_email_config.py` FIRST
+- **Unit Tests:**
+  - `test_create_config_201` — valid creation
+  - `test_get_config_200_password_redacted` — password not in response
+  - `test_delete_config_204` — successful deletion
+  - `test_base_plan_403` — rejected for Base plan
+  - `test_test_email_200` — test email sent
+  - `test_test_email_failure_422` — SMTP error returns details
+  - `test_unauthenticated_401` — no token
+  - `test_rate_limit_test_endpoint` — 429 after 5 attempts
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Plan gating enforced (403 for Base)
+- [ ] Password never in GET response
+- [ ] Rate limiting on test endpoint
+- [ ] All user-facing errors in Italian
+
+---
+
+### DEV-445: EmailService Hybrid Sending (Fallback Chain)
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+`EmailService._send_email()` currently uses only global SMTP settings. It needs to support per-user custom SMTP configurations with a fallback chain.
+
+**Solution:**
+Refactor email sending to: (1) check for verified custom SMTP config → use it, (2) fall back to PratikoAI default SMTP if no config or sending fails, (3) log error if both fail. Set appropriate `From` and `Reply-To` headers based on which sender is used.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-443 (StudioEmailConfigService), DEV-333 (Email Sending Integration)
+- **Unlocks:** DEV-447 (E2E Tests)
+
+**Change Classification:** MODIFYING
+
+**Impact Analysis:**
+- **Modified file:** `app/services/email_service.py`
+- **Existing callers:** `send_welcome_email()`, `send_metrics_report()`, communication sending, task digests
+- **Backward compatibility:** All existing callers continue to work (they don't pass user_id → always use default SMTP)
+- **New callers:** Communication sending passes `user_id` to enable custom SMTP lookup
+
+**Modifies:** `app/services/email_service.py`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_email_service_hybrid.py` FIRST
+- **Unit Tests:**
+  - `test_send_with_custom_config` — uses studio's SMTP
+  - `test_fallback_on_custom_failure` — custom fails → default succeeds
+  - `test_default_when_no_custom_config` — no config → default SMTP
+  - `test_reply_to_header_set` — Reply-To matches studio email
+  - `test_from_header_with_studio_name` — From includes studio name
+  - `test_unverified_config_skipped` — is_verified=false → skip to default
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Fallback chain: custom → default → log error
+- [ ] From/Reply-To headers correct per sender
+- [ ] Unverified configs skipped
+- [ ] Backward compatible with existing callers
+- [ ] No breaking changes to existing email flows
+
+---
+
+### DEV-446: Email Config Settings UI Section
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
+
+**Problem:**
+Pro/Premium users need a UI to configure their custom SMTP settings. Base users should see a clear upsell.
+
+**Solution:**
+Add "Configurazione Email" section to `/impostazioni` settings page. Plan-gated: Base shows upsell banner, Pro/Premium shows SMTP form with test button.
+
+**Agent Assignment:** @Livia (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-444 (Email Config API), DEV-441 (Settings Page)
+- **Unlocks:** None
+
+**Change Classification:** MODIFYING (extends DEV-441)
+
+**Modifies:** `web/src/app/impostazioni/page.tsx`
+
+**UI Elements:**
+- **Base plan:** Banner: "Passa al piano Pro per inviare email dal tuo dominio" with upgrade CTA
+- **Pro/Premium:** Form fields: Host SMTP, Porta, Username, Password (masked), TLS toggle, Nome mittente, Email mittente, Email risposte (opzionale)
+- **Status indicator:** Badge "Verificata" (green) / "Non verificata" (yellow)
+- **Test button:** "Testa configurazione" — sends test email, shows success/error
+
+**Testing Requirements:**
+- **TDD:** Write `web/src/app/impostazioni/__tests__/email-config.test.tsx` FIRST
+- **Unit Tests:**
+  - `test_base_plan_shows_upsell` — upsell banner visible
+  - `test_pro_plan_shows_form` — SMTP form visible
+  - `test_form_submit` — save triggers API call
+  - `test_test_button` — test triggers POST /email-config/test
+  - `test_status_indicator` — shows verified/unverified badge
+  - `test_password_field_masked` — password input type=password
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Plan-gated UI (upsell vs form)
+- [ ] SMTP form with all fields
+- [ ] Test button with success/error feedback
+- [ ] Italian text throughout
+
+---
+
+### DEV-447: Hybrid Email Sending E2E Tests
+
+**Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+Need end-to-end validation that the full hybrid email pipeline works correctly including plan gating, config persistence, and sending fallback.
+
+**Solution:**
+E2E tests covering: configure → verify → send → check headers. Also test plan downgrade behavior and Base plan default-only flow.
+
+**Agent Assignment:** @Clelia (primary)
+
+**Dependencies:**
+- **Blocking:** DEV-445 (Hybrid Sending), DEV-444 (Email Config API)
+- **Unlocks:** None
+
+**Change Classification:** ADDITIVE
+
+**File:** `tests/e2e/test_hybrid_email_flow.py`
+
+**Testing Requirements:**
+- `test_custom_smtp_send_flow` — Pro user: configure → verify → send → correct headers
+- `test_fallback_to_default_flow` — custom SMTP fails → fallback works
+- `test_plan_downgrade_disables_custom` — Pro→Base: custom config becomes inactive
+- `test_base_plan_uses_default_only` — Base user: always PratikoAI sender
+
+**Acceptance Criteria:**
+- [ ] All 4 E2E flows passing
+- [ ] Cross-plan behavior verified
+
+---
+
+### DEV-448: Add `custom_email_allowed` to Billing Plans
+
+**Priority:** HIGH | **Effort:** 1h | **Status:** NOT STARTED
+
+**Problem:**
+The billing plan model has no field to gate custom email configuration at the data level. Plan checking is currently by slug comparison, which is fragile.
+
+**Solution:**
+Add `custom_email_allowed` boolean to `BillingPlan` model and YAML config. Base: false, Pro: true, Premium: true. Update sync and schema.
+
+**Agent Assignment:** @Ezio (primary), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-442 (StudioEmailConfig model — needs the gating field)
+- **Unlocks:** None (DEV-443 can use slug-based check initially, then migrate to this field)
+
+**Change Classification:** MODIFYING
+
+**Modifies:** `app/models/billing.py`, `config/billing_plans.yaml`, `app/services/billing_plan_service.py`, `app/schemas/billing.py`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/services/test_billing_plan_custom_email.py` FIRST
+- **Unit Tests:**
+  - `test_base_plan_custom_email_false` — Base = false
+  - `test_pro_plan_custom_email_true` — Pro = true
+  - `test_premium_plan_custom_email_true` — Premium = true
+  - `test_yaml_sync_includes_field` — field synced from YAML
+  - `test_schema_exposes_field` — API response includes field
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] YAML, model, service, and schema updated
+- [ ] Sync preserves field on app startup
+
+---
+
+### DEV-449: SMTP Encryption Key Rotation Support
+
+**Priority:** LOW | **Effort:** 2h | **Status:** NOT STARTED
+
+**Problem:**
+If the Fernet encryption key (`SMTP_ENCRYPTION_KEY`) is compromised or needs periodic rotation, all stored SMTP passwords must be re-encrypted with the new key.
+
+**Solution:**
+Management script that accepts old key + new key, decrypts all passwords with old, re-encrypts with new, and updates records atomically within a database transaction.
+
+**Agent Assignment:** @Ezio (primary), @Severino (security review), @Clelia (tests)
+
+**Dependencies:**
+- **Blocking:** DEV-443 (StudioEmailConfigService)
+- **Unlocks:** None
+
+**Change Classification:** ADDITIVE
+
+**File:** `app/scripts/rotate_smtp_encryption_key.py`
+
+**Testing Requirements:**
+- **TDD:** Write `tests/scripts/test_rotate_smtp_key.py` FIRST
+- **Unit Tests:**
+  - `test_reencrypt_all_records` — all passwords re-encrypted correctly
+  - `test_atomic_transaction` — rollback on failure
+  - `test_invalid_old_key_raises` — wrong old key detected
+  - `test_empty_table_noop` — no records = success with count 0
+- **Coverage Target:** 80%+
+
+**Acceptance Criteria:**
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Atomic re-encryption (all or nothing)
+- [ ] Logs count of re-encrypted records (never logs passwords)
+- [ ] Works with 0, 1, or N records
+
+---
+
 ## Critical E2E Test Flows
 
 ### Flow 1: Client Management
@@ -11536,6 +11968,14 @@ tests/e2e/test_pratikoai_2_0_flow.py
    → 6. Create Communication → 7. Approve → 8. Send → 9. View Dashboard
 ```
 
+### Flow 7: Hybrid Email Sending (DEV-447)
+```
+tests/e2e/test_hybrid_email_flow.py
+1. Pro user configures custom SMTP → 2. Validates connection → 3. Sends communication
+   → 4. Verify From/Reply-To headers → 5. Simulate failure → 6. Verify fallback to default
+   → 7. Base user sends → 8. Verify PratikoAI sender used
+```
+
 ---
 
 ## Success Criteria
@@ -11551,6 +11991,7 @@ tests/e2e/test_pratikoai_2_0_flow.py
 - [ ] GDPR compliance verified
 - [ ] DPA acceptance workflow functional
 - [ ] In-app notification system operational (4 trigger types)
+- [ ] Hybrid email sending: Base uses PratikoAI email, Pro/Premium can configure custom SMTP (ADR-034)
 - [ ] **All E2E test flows passing**
 - [ ] **All regression tests passing**
 

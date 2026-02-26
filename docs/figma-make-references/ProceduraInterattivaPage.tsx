@@ -13,8 +13,6 @@ import {
   AlertCircle,
   Clock,
   Calendar,
-  Download,
-  Upload,
   Trash2,
   Edit,
   Eye,
@@ -47,6 +45,7 @@ interface ChecklistItem {
   completed: boolean;
 }
 
+// ADR-036: No document storage in procedures — checkbox-based verification only
 interface Document {
   id: string;
   name: string;
@@ -748,7 +747,7 @@ export function ProceduraInterattivaPage({
                     </div>
                   </div>
 
-                  {/* Documents */}
+                  {/* Documents — ADR-036: Checkbox-based verification, no file upload */}
                   {currentStep.documents.length > 0 && (
                     <DocumentVerificationSection
                       documents={currentStep.documents}

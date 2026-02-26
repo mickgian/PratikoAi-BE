@@ -250,7 +250,7 @@ The following patterns were established during Response Quality improvements and
 | DEV-315 | HIGH | User Table Modification | Existing users affected, nullable FK |
 | DEV-322 | HIGH | LangGraph Pipeline | Modifies 134-step pipeline |
 | DEV-327 | CRITICAL | Security | Multi-tenant isolation must be 95%+ |
-| DEV-337 | HIGH | LangGraph Modification | Response formatter changes |
+| ~~DEV-337~~ | ~~HIGH~~ | ~~LangGraph Modification~~ | ~~Response formatter changes~~ — **REMOVED (ADR-035)** |
 | DEV-372 | CRITICAL | Legal/Compliance | DPA required before client data |
 | DEV-374 | CRITICAL | Legal/Compliance | 72h breach notification requirement |
 | DEV-396 | CRITICAL | Legal/Compliance | DPIA mandatory before client data storage |
@@ -289,14 +289,18 @@ DEV-307 (Alembic Migration) ← BLOCKS ALL Phase 1
 
 ### Phase 2 (Matching Engine) Dependencies
 
+> **Updated per ADR-035:** DEV-323 (LangGraph Node) removed. Background job (DEV-325) is
+> now the primary delivery path. DEV-325 also depends on DEV-423 (NotificationService).
+
 ```
 DEV-320 (NormativeMatchingService)
     ← DEV-302 (ClientProfile)
     ← DEV-303 (MatchingRule)
     ← DEV-304 (ClientMatch)
-    └── DEV-323 (LangGraph Node) ← DEV-322 (Vector Generation)
+    └── ~~DEV-323 (LangGraph Node)~~ REMOVED (ADR-035)
     └── DEV-324 (ProactiveSuggestion)
-    └── DEV-325-229 (Background Jobs, API, Tests)
+    └── DEV-325 (Background Job — PRIMARY delivery, expanded) ← DEV-423 (NotificationService)
+    └── DEV-326-329 (API, Tests)
 ```
 
 ### Phase 3 (Communications) Dependencies
@@ -346,10 +350,13 @@ DEV-380 (Deadline Model)
 
 ### Cross-Phase Critical Dependencies
 
+> **Updated per ADR-035:** DEV-323 and DEV-337 removed. DEV-325 now cross-depends on DEV-423.
+
 | Downstream Task | Blocking Tasks |
 |-----------------|----------------|
-| DEV-323 (LangGraph Node) | DEV-320, DEV-322 |
-| DEV-337 (Response Formatter) | DEV-323, DEV-330 |
+| ~~DEV-323 (LangGraph Node)~~ | ~~DEV-320, DEV-322~~ — **REMOVED (ADR-035)** |
+| ~~DEV-337 (Response Formatter)~~ | ~~DEV-323, DEV-330~~ — **REMOVED (ADR-035)** |
+| DEV-325 (Background Matching Job) | DEV-320, DEV-324, DEV-423 (NotificationService) — **EXPANDED (ADR-035)** |
 | DEV-363 (Document Context) | DEV-360 (Document Parser), Existing context_builder_node |
 | DEV-371 (E2E Tests) | All Phase 0-8 tasks |
 | DEV-387 (Deadline E2E) | All Phase 10 tasks |
@@ -2411,7 +2418,7 @@ Create `NormativeMatchingService` with hybrid matching: first structured (fast, 
 
 **Dependencies:**
 - **Blocking:** DEV-302 (ClientProfile), DEV-309 (ClientService), DEV-321 (Matching Rules), DEV-322 (Vector Generation)
-- **Unlocks:** DEV-323 (LangGraph Node), DEV-325 (Background Job), DEV-328 (Tests)
+- **Unlocks:** ~~DEV-323 (LangGraph Node — REMOVED, ADR-035)~~, DEV-325 (Background Job — PRIMARY delivery), DEV-328 (Tests)
 
 **Change Classification:** ADDITIVE
 
@@ -2704,120 +2711,19 @@ Create embedding service using existing LLM infrastructure. Generate vector when
 
 ---
 
-### DEV-323: LangGraph Matching Node
+### ~~DEV-323: LangGraph Matching Node~~ — REMOVED (ADR-035)
 
-**Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
-
-**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
-
-**Problem:**
-During chat, when user asks about a regulation, we should automatically identify which of their clients might be affected. This enriches the response with proactive suggestions.
-
-**Solution:**
-Create LangGraph node inserted after domain classification (step 35). Query client database for matches and add to RAGState.
-
-**Agent Assignment:** @Ezio (primary), @Severino (review), @Clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-320 (NormativeMatchingService), DEV-316 (Tenant Middleware - for studio_id)
-- **Unlocks:** DEV-327 (Response Enrichment), DEV-328 (Tests)
-
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary File:** `app/core/langgraph/graph.py`
-- **Affected Files:**
-  - `app/core/langgraph/nodes/` (existing node patterns)
-  - `app/schemas/rag_state.py` (adds matched_clients to state)
-- **Related Tests:**
-  - `tests/langgraph/test_graph.py` (direct)
-  - `tests/integration/test_rag_pipeline.py` (consumer)
-- **Baseline Command:** `pytest tests/langgraph/ -v`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass
-- [ ] Existing graph.py reviewed
-- [ ] Node insertion point identified (after step 35)
-
-**Error Handling:**
-- Matching service timeout: Skip node, continue pipeline (graceful degradation)
-- No studio_id in context: Skip node (user without studio)
-- Database unavailable: Log error, continue pipeline without matches
-- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
-
-**Performance Requirements:**
-- Node execution: <100ms added latency to pipeline
-- Query extraction: <10ms
-- Database query: <50ms
-
-**Edge Cases:**
-- **No Studio:** User without studio_id → skip node entirely, no error
-- **Zero Clients:** Studio with 0 clients → skip matching, return empty
-- **Service Timeout:** Matching service >100ms → skip, continue pipeline
-- **Database Down:** DB unavailable → skip, continue without matches
-- **Ambiguous Query:** Query without clear criteria → no matches, don't force
-- **Large Match Set:** >20 clients match → limit to top 10 by relevance
-- **Feature Flag Off:** Matching disabled for studio → skip node
-- **State Corruption:** Missing fields in RAGState → log, continue without crash
-
-**File:** `app/core/langgraph/nodes/client_matching_node.py`
-
-**Methods:**
-- `match_clients_node(state)` - Main node entry point
-- `should_match(state)` - Check if matching should run
-- `extract_matching_criteria(state)` - Extract criteria from classification
-- `limit_matches(matches, max_count)` - Limit to top N matches
-
-**Testing Requirements:**
-- **TDD:** Write `tests/langgraph/test_client_matching_node.py` FIRST
-- **Unit Tests:**
-  - `test_node_should_match_true` - matches when studio has clients
-  - `test_node_should_match_false` - skips when no clients
-  - `test_node_extracts_criteria` - criteria from classification
-  - `test_node_finds_matches` - matches added to state
-  - `test_node_no_matches` - empty array when no matches
-  - `test_node_latency` - <100ms execution
-- **Edge Case Tests:**
-  - `test_no_studio_skipped` - no studio_id continues cleanly
-  - `test_zero_clients_empty` - empty studio returns []
-  - `test_timeout_graceful_skip` - >100ms skipped
-  - `test_db_down_continues` - DB failure doesn't crash pipeline
-  - `test_ambiguous_query_no_force` - unclear query = no matches
-  - `test_large_match_limit_10` - >20 matches trimmed
-  - `test_feature_flag_off_skipped` - disabled flag skips
-  - `test_state_corruption_logged` - missing fields handled
-- **Integration Tests:** `tests/langgraph/test_matching_node_integration.py`
-  - Test with real RAGState
-  - Test pipeline integration
-- **E2E Tests:** `tests/e2e/test_chat_with_matching.py`
-  - Chat query → Matching → Response with suggestion
-- **Edge Case Tests:** See Edge Cases section above
-- **Regression Tests:**
-  - Run `pytest tests/langgraph/` - all pipeline tests pass
-  - Run full RAG pipeline test suite
-- **Coverage Target:** 80%+ for node, 95%+ for pipeline integration
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Pipeline regression | HIGH | Extensive testing |
-| Latency increase | MEDIUM | Target <100ms added latency |
-| Breaking changes | HIGH | Feature flag for rollout |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Insert after step 35 (domain classification)
-- [ ] Query client database for matches
-- [ ] Add matched_clients to RAGState
-- [ ] <100ms added latency
-- [ ] Feature flag for gradual rollout
-- [ ] 80%+ test coverage achieved
-- [ ] All existing pipeline tests pass (regression)
+> **REMOVED per ADR-035 (2026-02-26):** This task inserted a synchronous matching node into
+> the RAG pipeline (after step 35). This has been eliminated to avoid: (1) RAG context
+> pollution with CRM data, (2) synchronous latency added to every chat query, (3) mixed
+> responsibilities in the LLM response. Client matching now runs **asynchronously** via
+> the background matching job (DEV-325) and results are delivered via **notifications**
+> (DEV-425). The RAG pipeline remains unmodified.
+>
+> **Former dependencies redirected:**
+> - DEV-327 (Multi-Tenant Isolation Tests): No longer depends on DEV-323
+> - DEV-337 (Response Formatter with Suggestions): **ALSO REMOVED** (see below)
+> - DEV-328 (Performance Tests): Tests background job performance instead
 
 ---
 
@@ -2910,18 +2816,23 @@ Create `ProactiveSuggestion` model to store matches found by background job.
 
 **Reference:** [FR-003: Matching Normativo Automatico](./PRATIKO_2.0_REFERENCE.md#fr-003-matching-normativo-automatico)
 
-**Priority:** MEDIUM | **Effort:** 3h | **Status:** NOT STARTED
+> **Expanded scope (ADR-035, 2026-02-26):** This task is now the **primary delivery path** for
+> all proactive matching. It runs asynchronously after TWO triggers: (1) RSS/KB ingestion
+> (original scope), and (2) chat normative responses (new scope, replaces removed DEV-323).
+> Creates MATCH notifications via NotificationService (DEV-423/DEV-425).
+
+**Priority:** HIGH | **Effort:** 4h | **Status:** NOT STARTED
 
 **Problem:**
-When new regulations are ingested via RSS, need to automatically scan all clients for matches. This should run asynchronously to not block ingestion.
+When new regulations are ingested via RSS, or when a user asks about a regulation in chat, need to automatically scan studio clients for matches. This should run asynchronously to not block ingestion or chat responses.
 
 **Solution:**
-Create background job using FastAPI BackgroundTasks. Run after RSS ingestion completes.
+Create background job using FastAPI BackgroundTasks. Triggered by: (1) RSS ingestion completion, (2) normative chat response delivery (fire-and-forget). Creates ClientMatch + ProactiveSuggestion records and MATCH notifications.
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
 **Dependencies:**
-- **Blocking:** DEV-320 (NormativeMatchingService), DEV-324 (ProactiveSuggestion model)
+- **Blocking:** DEV-320 (NormativeMatchingService), DEV-324 (ProactiveSuggestion model), DEV-423 (NotificationService)
 - **Unlocks:** DEV-326 (Matching API - trigger endpoint), DEV-328 (Performance Tests)
 
 **Change Classification:** ADDITIVE
@@ -2953,21 +2864,27 @@ Create background job using FastAPI BackgroundTasks. Run after RSS ingestion com
 **File:** `app/jobs/matching_job.py`
 
 **Methods:**
-- `run_matching_job(knowledge_item_id)` - Match single regulation
+- `run_matching_job(knowledge_item_id)` - Match single regulation (RSS trigger)
+- `run_chat_matching_job(topic, studio_id)` - Match after chat query (ADR-035: new trigger)
 - `daily_scan()` - Scan regulations from last 24h
 - `full_scan(studio_id)` - Rescan all for a studio
+- `_create_match_notification(studio_id, suggestion)` - Create MATCH notification via NotificationService
 
 **Testing Requirements:**
 - **TDD:** Write `tests/jobs/test_matching_job.py` FIRST
 - **Unit Tests:**
   - `test_matching_job_single_regulation` - matches one regulation
   - `test_matching_job_creates_suggestions` - ProactiveSuggestion created
+  - `test_matching_job_creates_notification` - MATCH notification created (ADR-035)
+  - `test_chat_matching_trigger` - chat response triggers matching (ADR-035)
   - `test_daily_scan_24h` - scans last 24h only
   - `test_full_scan_studio` - rescans all for studio
   - `test_matching_job_idempotent` - no duplicate suggestions
+  - `test_notification_deduplication` - max 1 per normativa+studio per hour (ADR-035)
 - **Integration Tests:** `tests/jobs/test_matching_job_integration.py`
   - Test with real database
   - Test with RSS ingestion trigger
+  - Test with chat response trigger (ADR-035)
 - **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:** Run `pytest tests/jobs/` and `pytest tests/services/`
 - **Coverage Target:** 80%+ for job code
@@ -2977,6 +2894,7 @@ Create background job using FastAPI BackgroundTasks. Run after RSS ingestion com
 |------|--------|------------|
 | Job failure | MEDIUM | Retry logic, monitoring |
 | Duplicate matches | LOW | Upsert logic |
+| Notification spam | LOW | 1-hour deduplication window (ADR-035) |
 
 **Code Structure:**
 - Max function: 50 lines, extract helpers if larger
@@ -2985,8 +2903,11 @@ Create background job using FastAPI BackgroundTasks. Run after RSS ingestion com
 
 **Acceptance Criteria:**
 - [ ] Tests written BEFORE implementation (TDD)
-- [ ] Scan new regulations against all clients
+- [ ] Scan new regulations against all clients (RSS trigger)
+- [ ] Scan studio clients after chat normative response (chat trigger — ADR-035)
 - [ ] Generate ProactiveSuggestion records
+- [ ] Create MATCH notifications via NotificationService (ADR-035)
+- [ ] Deduplication: max 1 notification per normativa+studio per hour
 - [ ] Use FastAPI BackgroundTasks
 - [ ] Logging and monitoring
 - [ ] 80%+ test coverage achieved
@@ -3204,7 +3125,7 @@ Create performance tests with realistic data volumes.
 **Agent Assignment:** @Clelia (primary), @Ezio (optimization)
 
 **Dependencies:**
-- **Blocking:** DEV-320 (NormativeMatchingService), DEV-323 (LangGraph Node), DEV-325 (Background Job)
+- **Blocking:** DEV-320 (NormativeMatchingService), DEV-325 (Background Job — replaces DEV-323 per ADR-035)
 - **Unlocks:** Production deployment (performance gate)
 
 **Change Classification:** ADDITIVE
@@ -3302,7 +3223,7 @@ Create unit tests for NormativeMatchingService, ProfileEmbeddingService, and rel
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-320 (NormativeMatchingService), DEV-321 (Matching Rules), DEV-322 (Vector Generation), DEV-323 (LangGraph Node)
+- **Blocking:** DEV-320 (NormativeMatchingService), DEV-321 (Matching Rules), DEV-322 (Vector Generation), DEV-325 (Background Job — replaces DEV-323 per ADR-035)
 - **Unlocks:** Phase 3 start (all Phase 2 complete)
 
 **Change Classification:** ADDITIVE
@@ -4111,99 +4032,17 @@ Create template model and service for managing communication templates.
 
 ---
 
-### DEV-337: Response Formatter with Suggestions
+### ~~DEV-337: Response Formatter with Suggestions~~ — REMOVED (ADR-035)
 
-**Reference:** [FR-004: Suggerimenti Proattivi e Generazione Comunicazioni](./PRATIKO_2.0_REFERENCE.md#fr-004-suggerimenti-proattivi-e-generazione-comunicazioni)
-
-**Figma Reference:** `ChatPage.tsx` (suggestion cards) in [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
-
-**Priority:** HIGH | **Effort:** 2h | **Status:** NOT STARTED
-
-**Problem:**
-When matching finds affected clients, the response should include a proactive suggestion. Need to modify response formatter.
-
-**Solution:**
-Modify `response_formatter_node.py` to append suggestions when matched_clients exist.
-
-**Agent Assignment:** @Ezio (primary), @Clelia (tests)
-
-**Dependencies:**
-- **Blocking:** DEV-323 (LangGraph Matching Node - provides matched_clients)
-- **Unlocks:** DEV-339 (E2E Tests)
-
-**Change Classification:** MODIFYING
-
-**Impact Analysis:**
-- **Primary File:** `app/core/langgraph/nodes/response_formatter_node.py`
-- **Affected Files:**
-  - `app/core/langgraph/graph.py` (node consumer)
-  - `app/schemas/rag_state.py` (uses matched_clients field)
-- **Related Tests:**
-  - `tests/langgraph/test_response_formatter_node.py` (direct)
-  - `tests/integration/test_rag_pipeline.py` (consumer)
-- **Baseline Command:** `pytest tests/langgraph/ -v`
-
-**Pre-Implementation Verification:**
-- [ ] Baseline tests pass
-- [ ] Existing response_formatter_node.py reviewed
-- [ ] RAGState matched_clients field available
-
-**Error Handling:**
-- Invalid input: HTTP 400, `"Dati non validi"`
-- Not found: HTTP 404, `"Risorsa non trovata"`
-- Unauthorized: HTTP 403, `"Accesso non autorizzato"`
-- Server error: HTTP 500, `"Errore interno del server"`
-- **Logging:** All errors MUST be logged with context (user_id, studio_id, operation, resource_id) at ERROR level
-
-**Performance Requirements:**
-- Response time: <200ms (p95)
-- Database queries: <50ms (p95)
-- Concurrent requests: Handle 100 concurrent requests
-
-**Edge Cases:**
-- **Nulls/Empty:** Handle null or empty input values gracefully
-- **Validation:** Validate input formats before processing
-- **Error Recovery:** Handle partial failures with clear error messages
-- **Boundaries:** Test boundary conditions (limits, max values)
-- **Concurrency:** Consider concurrent access scenarios
-
-**File:** `app/core/langgraph/nodes/response_formatter_node.py` (MODIFY)
-
-**Methods:**
-- `format_response_with_suggestions(state)` - Main node entry point
-- `append_client_match_suggestion(response, matched_clients)` - Add suggestion text
-- `format_suggestion_text(count)` - Generate Italian suggestion text
-- `should_include_suggestion(state)` - Check if suggestions apply
-
-**Testing Requirements:**
-- **TDD:** Write tests FIRST
-- **Unit Tests:**
-  - `test_formatter_no_matches` - normal response
-  - `test_formatter_with_matches` - includes suggestion
-  - `test_formatter_match_count` - correct count
-  - `test_formatter_italian_text` - Italian suggestion text
-- **Integration Tests:** Test with full RAGState
-- **Edge Case Tests:** See Edge Cases section above
-- **Regression Tests:** Run `pytest tests/langgraph/` - all pipeline tests pass
-- **Coverage Target:** 80%+ for formatter, 95%+ for pipeline integration
-
-**Risks & Mitigations:**
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Implementation complexity | MEDIUM | Follow existing service patterns |
-| Test coverage gaps | LOW | TDD approach with edge case tests |
-
-**Code Structure:**
-- Max function: 50 lines, extract helpers if larger
-- Max class: 200 lines, split into focused services
-- Max file: 400 lines, create submodules
-
-**Acceptance Criteria:**
-- [ ] Tests written BEFORE implementation (TDD)
-- [ ] Append suggestion to response
-- [ ] "X dei tuoi clienti potrebbero essere interessati"
-- [ ] No change when no matches
-- [ ] All pipeline tests pass
+> **REMOVED per ADR-035 (2026-02-26):** This task modified `response_formatter_node.py` to
+> append proactive suggestions inline in the chat response when `matched_clients` existed
+> in RAGState. This has been eliminated because:
+> - The RAG response formatter should only format normative content
+> - Proactive suggestions are now delivered via the notification system (DEV-425)
+> - The response formatter remains unmodified — no `matched_clients` field in RAGState
+>
+> **Former dependencies redirected:**
+> - DEV-339 (E2E Tests): Now tests the notification-based flow instead of inline suggestions
 
 ---
 
@@ -4315,7 +4154,7 @@ Create comprehensive E2E tests for communication flow.
 **Agent Assignment:** @Clelia (primary)
 
 **Dependencies:**
-- **Blocking:** DEV-330 (CommunicationService), DEV-332 (API), DEV-333 (Email), DEV-334 (WhatsApp), DEV-337 (Response Formatter), DEV-338 (Audit)
+- **Blocking:** DEV-330 (CommunicationService), DEV-332 (API), DEV-333 (Email), DEV-334 (WhatsApp), ~~DEV-337 (Response Formatter — REMOVED, ADR-035)~~, DEV-338 (Audit)
 - **Unlocks:** Phase 4 start (all Phase 3 complete)
 
 **Change Classification:** ADDITIVE

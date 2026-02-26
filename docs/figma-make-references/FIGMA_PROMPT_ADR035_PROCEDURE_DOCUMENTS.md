@@ -92,6 +92,6 @@ KEEP UNCHANGED:
 
 ## Related
 
-- **ADR-035:** `docs/architecture/decisions/ADR-035-no-document-storage-in-procedures.md`
+- **ADR-036:** `docs/architecture/decisions/ADR-036-no-document-storage-in-procedures.md`
 - **Updated Figma reference:** `docs/figma-make-references/ProceduraInterattivaPage.tsx`
 - **Task:** DEV-344 (renamed to "Procedura Notes and Document Checklist")

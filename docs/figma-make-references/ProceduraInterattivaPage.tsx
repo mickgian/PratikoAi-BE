@@ -44,7 +44,7 @@ interface ChecklistItem {
   completed: boolean;
 }
 
-// ADR-035: No document storage in procedures — checkbox-based verification only
+// ADR-036: No document storage in procedures — checkbox-based verification only
 interface Document {
   id: string;
   name: string;
@@ -704,7 +704,7 @@ export function ProceduraInterattivaPage({
                     </div>
                   </div>
 
-                  {/* Documents — ADR-035: Checkbox-based verification, no file upload */}
+                  {/* Documents — ADR-036: Checkbox-based verification, no file upload */}
                   {currentStep.documents.length > 0 && (
                     <div>
                       <h3 className="text-lg font-semibold text-[#2A5D67] mb-3 flex items-center">

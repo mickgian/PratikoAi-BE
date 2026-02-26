@@ -4634,7 +4634,7 @@ Extend progress tracking to include checklist item completion.
 
 **Figma Reference:** `ProceduraInterattivaPage.tsx` (notes/document checklist section) — Source: [`docs/figma-make-references/ProceduraInterattivaPage.tsx`](../figma-make-references/ProceduraInterattivaPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
 
-**Architecture Decision:** [ADR-035: No Document Storage in Procedures](../architecture/decisions/ADR-035-no-document-storage-in-procedures.md)
+**Architecture Decision:** [ADR-036: No Document Storage in Procedures](../architecture/decisions/ADR-036-no-document-storage-in-procedures.md)
 
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
@@ -4642,7 +4642,7 @@ Extend progress tracking to include checklist item completion.
 Users need to add notes to procedura progress and track which required documents have been collected/verified per step.
 
 **Solution:**
-Add notes field to ProceduraProgress and document verification checklist (checkbox-based tracking of document collection status). **No file upload** — documents are tracked as verified/not-verified with optional notes (e.g., "Ricevuto via email il 20/02"). See ADR-035 for rationale: server-side document storage is a security risk, GDPR liability, and contradicts FR-008's "no persistence" policy. Actual document storage deferred to future desktop app with local DB.
+Add notes field to ProceduraProgress and document verification checklist (checkbox-based tracking of document collection status). **No file upload** — documents are tracked as verified/not-verified with optional notes (e.g., "Ricevuto via email il 20/02"). See ADR-036 for rationale: server-side document storage is a security risk, GDPR liability, and contradicts FR-008's "no persistence" policy. Actual document storage deferred to future desktop app with local DB.
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
@@ -4720,7 +4720,7 @@ Add notes field to ProceduraProgress and document verification checklist (checkb
 - [ ] Tests written BEFORE implementation (TDD)
 - [ ] Add notes to progress
 - [ ] Notes per step
-- [ ] Document verification checklist (checkbox-based, no file upload — ADR-035)
+- [ ] Document verification checklist (checkbox-based, no file upload — ADR-036)
 - [ ] Optional note per document verification (e.g., "Ricevuto via email")
 - [ ] 80%+ test coverage achieved
 
@@ -11918,7 +11918,7 @@ All screens have been implemented in the [Figma Make project](https://www.figma.
 
 **Source:** [`docs/figma-make-references/ProceduraInterattivaPage.tsx`](../figma-make-references/ProceduraInterattivaPage.tsx)
 
-**Key UI Elements:** Left sidebar with procedure list (progress bars, category badges), stepper with step numbers/checkmarks, current step content (checklist, document verification checkboxes, notes), two modes (Modalità consultazione vs client-specific tracking with "Avvia per un cliente" button), client selector modal. **Note:** ADR-035 — no document upload/storage; documents section uses checkbox-based verification only.
+**Key UI Elements:** Left sidebar with procedure list (progress bars, category badges), stepper with step numbers/checkmarks, current step content (checklist, document verification checkboxes, notes), two modes (Modalità consultazione vs client-specific tracking with "Avvia per un cliente" button), client selector modal. **Note:** ADR-036 — no document upload/storage; documents section uses checkbox-based verification only.
 
 ---
 

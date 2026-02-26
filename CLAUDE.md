@@ -337,6 +337,19 @@ npm run lint                            # ESLint
 | **026** | Exchange rate service | EUR cost calculations for LLM usage |
 | **027** | Usage-based billing | YAML config, rolling windows, 60% margin |
 
+### Infrastructure & Delivery (ADR-028 to ADR-035)
+
+| ADR | Decision | Key Rule |
+|-----|----------|----------|
+| **028** | Deployment pipeline | CI/CD automation |
+| **029** | Frontend dockerization | Container-based frontend |
+| **030** | ML model versioning | Model version management |
+| **031** | External runtime config | Runtime configuration |
+| **032** | Automated benchmarking | Performance benchmarks |
+| **033** | Redis security hardening | Redis security |
+| **034** | Hybrid email sending | Plan-gated custom SMTP |
+| **035** | Notification-only proactive delivery | **No in-chat suggestions; async matching → notifications only** |
+
 **Full ADRs:** `docs/architecture/decisions/`
 
 ---

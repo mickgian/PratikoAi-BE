@@ -1,7 +1,7 @@
 """DEV-306: Tests for ProceduraProgress SQLModel."""
 
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from types import ModuleType
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -129,7 +129,7 @@ class TestProceduraProgressCompletion:
 
     def test_completed_at_set(self) -> None:
         """completed_at can be set when procedure is finished."""
-        now = datetime.utcnow()
+        now = datetime.now(tz=UTC)
         progress = ProceduraProgress(
             user_id=1,
             studio_id=uuid4(),
@@ -150,7 +150,7 @@ class TestProceduraProgressCompletion:
         )
         assert progress.is_completed is False
 
-        progress.completed_at = datetime.utcnow()
+        progress.completed_at = datetime.now(tz=UTC)
         assert progress.is_completed is True
 
 

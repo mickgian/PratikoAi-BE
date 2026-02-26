@@ -1,7 +1,7 @@
 """DEV-304: Tests for Communication SQLModel."""
 
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from types import ModuleType
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -160,7 +160,7 @@ class TestCommunicationAuditFields:
 
     def test_approval_fields_set(self) -> None:
         """Approval fields can be set."""
-        now = datetime.utcnow()
+        now = datetime.now(tz=UTC)
         comm = Communication(
             studio_id=uuid4(),
             subject="Test",

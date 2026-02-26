@@ -13,8 +13,6 @@ import {
   AlertCircle,
   Clock,
   Calendar,
-  Download,
-  Upload,
   Trash2,
   Edit,
   Eye,
@@ -46,12 +44,14 @@ interface ChecklistItem {
   completed: boolean;
 }
 
+// ADR-035: No document storage in procedures — checkbox-based verification only
 interface Document {
   id: string;
   name: string;
   required: boolean;
-  uploaded: boolean;
-  uploadDate?: string;
+  verified: boolean;
+  verifiedAt?: string;
+  note?: string; // e.g., "Ricevuto via email il 20/02"
 }
 
 interface Note {
@@ -112,17 +112,18 @@ const mockProcedure: Procedura[] = [
         documents: [
           {
             id: "doc_001",
-            name: "Carta Identità.pdf",
+            name: "Carta d'identità valida",
             required: true,
-            uploaded: true,
-            uploadDate: "2024-02-20",
+            verified: true,
+            verifiedAt: "2024-02-20",
+            note: "Ricevuto via email dal cliente",
           },
           {
             id: "doc_002",
-            name: "Codice Fiscale.pdf",
+            name: "Codice fiscale",
             required: true,
-            uploaded: true,
-            uploadDate: "2024-02-20",
+            verified: true,
+            verifiedAt: "2024-02-20",
           },
         ],
         notes: [
@@ -186,16 +187,17 @@ const mockProcedure: Procedura[] = [
         documents: [
           {
             id: "doc_003",
-            name: "Modulo AA9_12 bozza.pdf",
+            name: "Modulo AA9/12 compilato",
             required: true,
-            uploaded: true,
-            uploadDate: "2024-02-23",
+            verified: true,
+            verifiedAt: "2024-02-23",
+            note: "Bozza pronta, in attesa di firma",
           },
           {
             id: "doc_004",
-            name: "Modulo AA9_12 firmato.pdf",
+            name: "Modulo AA9/12 firmato",
             required: true,
-            uploaded: false,
+            verified: false,
           },
         ],
         notes: [],
@@ -223,9 +225,9 @@ const mockProcedure: Procedura[] = [
         documents: [
           {
             id: "doc_005",
-            name: "Domanda iscrizione INPS.pdf",
+            name: "Domanda iscrizione INPS",
             required: true,
-            uploaded: false,
+            verified: false,
           },
         ],
         notes: [],
@@ -702,86 +704,59 @@ export function ProceduraInterattivaPage({
                     </div>
                   </div>
 
-                  {/* Documents */}
+                  {/* Documents — ADR-035: Checkbox-based verification, no file upload */}
                   {currentStep.documents.length > 0 && (
                     <div>
                       <h3 className="text-lg font-semibold text-[#2A5D67] mb-3 flex items-center">
                         <FileText className="w-5 h-5 mr-2" />
-                        Documenti richiesti
+                        Documenti da verificare
                       </h3>
                       <div className="space-y-2">
                         {currentStep.documents.map((doc) => (
                           <div
                             key={doc.id}
                             className={`flex items-center justify-between p-3 rounded-lg border ${
-                              doc.uploaded
+                              doc.verified
                                 ? "bg-green-50 border-green-200"
                                 : "bg-white border-[#C4BDB4]/20"
                             }`}
                           >
                             <div className="flex items-center space-x-3">
-                              <div
-                                className={`w-10 h-10 rounded flex items-center justify-center ${
-                                  doc.uploaded ? "bg-green-100" : "bg-gray-100"
-                                }`}
-                              >
-                                {doc.uploaded ? (
-                                  <CheckCircle className="w-5 h-5 text-green-600" />
-                                ) : (
-                                  <FileText className="w-5 h-5 text-gray-400" />
-                                )}
-                              </div>
+                              <input
+                                type="checkbox"
+                                checked={doc.verified}
+                                disabled={!isClientMode}
+                                className="w-5 h-5 text-[#2A5D67] border-[#C4BDB4] rounded focus:ring-[#2A5D67] disabled:opacity-50"
+                              />
                               <div>
-                                <p className="font-medium text-[#2A5D67]">
+                                <p
+                                  className={`font-medium ${doc.verified ? "text-green-700" : "text-[#2A5D67]"}`}
+                                >
                                   {doc.name}
                                 </p>
-                                {doc.uploaded && doc.uploadDate && (
+                                {doc.verified && doc.verifiedAt && (
                                   <p className="text-xs text-green-600">
-                                    Caricato il{" "}
+                                    Verificato il{" "}
                                     {new Date(
-                                      doc.uploadDate,
+                                      doc.verifiedAt,
                                     ).toLocaleDateString("it-IT")}
                                   </p>
                                 )}
-                                {!doc.uploaded && doc.required && (
+                                {doc.note && (
+                                  <p className="text-xs text-[#1E293B]/60 italic">
+                                    {doc.note}
+                                  </p>
+                                )}
+                                {!doc.verified && doc.required && (
                                   <p className="text-xs text-red-600">
                                     Obbligatorio
                                   </p>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              {doc.uploaded ? (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-[#2A5D67]"
-                                  >
-                                    <Download className="w-4 h-4" />
-                                  </Button>
-                                  {isClientMode && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="text-red-600 hover:bg-red-50"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                </>
-                              ) : (
-                                isClientMode && (
-                                  <Button
-                                    size="sm"
-                                    className="bg-[#2A5D67] hover:bg-[#1E293B] text-white"
-                                  >
-                                    <Upload className="w-4 h-4 mr-1" />
-                                    Carica
-                                  </Button>
-                                )
-                              )}
-                            </div>
+                            {doc.verified && (
+                              <Check className="w-5 h-5 text-green-600" />
+                            )}
                           </div>
                         ))}
                       </div>
@@ -793,7 +768,7 @@ export function ProceduraInterattivaPage({
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-lg font-semibold text-[#2A5D67] flex items-center">
                         <Paperclip className="w-5 h-5 mr-2" />
-                        Note e allegati
+                        Note
                       </h3>
                       {isClientMode && (
                         <Button

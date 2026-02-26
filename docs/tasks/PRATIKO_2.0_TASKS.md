@@ -594,12 +594,12 @@ These depend on Wave 3 services. Can run in parallel within the wave.
 
 ---
 
-### DEV-344: Procedura Notes and Attachments
+### DEV-344: Procedura Notes and Document Checklist
 **Depends on:** DEV-340 (ProceduraService)
 **Priority:** MEDIUM | **Effort:** 2h | **Classification:** ADDITIVE
 **Agent:** @Ezio (primary), @Clelia (tests)
 
-**What to build:** Add notes field to ProceduraProgress and document attachment support.
+**What to build:** Add notes field to ProceduraProgress and document verification checklist (checkbox-based, no file upload). See ADR-035: no document storage in procedures — only track verified/not-verified status per document.
 
 **File:** `app/services/procedura_service.py` (extend)
 

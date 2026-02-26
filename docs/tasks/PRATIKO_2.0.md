@@ -4789,19 +4789,21 @@ Extend progress tracking to include checklist item completion.
 
 ---
 
-### DEV-344: Procedura Notes and Attachments
+### DEV-344: Procedura Notes and Document Checklist
 
 **Reference:** [FR-001: Procedure Interattive](./PRATIKO_2.0_REFERENCE.md#fr-001-procedure-interattive)
 
-**Figma Reference:** `ProceduraInterattivaPage.tsx` (notes/attachments section) — Source: [`docs/figma-make-references/ProceduraInterattivaPage.tsx`](../figma-make-references/ProceduraInterattivaPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+**Figma Reference:** `ProceduraInterattivaPage.tsx` (notes/document checklist section) — Source: [`docs/figma-make-references/ProceduraInterattivaPage.tsx`](../figma-make-references/ProceduraInterattivaPage.tsx) | [Figma Make](https://www.figma.com/make/zeerNWSwapo0VxhMEc6DWx/PratikoAI-Landing-Page)
+
+**Architecture Decision:** [ADR-035: No Document Storage in Procedures](../architecture/decisions/ADR-035-no-document-storage-in-procedures.md)
 
 **Priority:** MEDIUM | **Effort:** 2h | **Status:** NOT STARTED
 
 **Problem:**
-Users need to add notes and attachments to procedura progress for their reference.
+Users need to add notes to procedura progress and track which required documents have been collected/verified per step.
 
 **Solution:**
-Add notes field to ProceduraProgress and document attachment support.
+Add notes field to ProceduraProgress and document verification checklist (checkbox-based tracking of document collection status). **No file upload** — documents are tracked as verified/not-verified with optional notes (e.g., "Ricevuto via email il 20/02"). See ADR-035 for rationale: server-side document storage is a security risk, GDPR liability, and contradicts FR-008's "no persistence" policy. Actual document storage deferred to future desktop app with local DB.
 
 **Agent Assignment:** @Ezio (primary), @Clelia (tests)
 
@@ -4830,20 +4832,19 @@ Add notes field to ProceduraProgress and document attachment support.
 
 **Error Handling:**
 - Note too long: HTTP 422, `"Nota troppo lunga (max 5000 caratteri)"`
-- Attachment too large: HTTP 413, `"File troppo grande (max 10MB)"`
-- Invalid file type: HTTP 422, `"Tipo file non supportato"`
 - Progress not found: HTTP 404, `"Progresso non trovato"`
+- Document not in step: HTTP 404, `"Documento non presente in questo passo"`
 - **Logging:** All errors MUST be logged with context at ERROR level
 
 **Performance Requirements:**
 - Add note: <100ms
 - Update note: <50ms
-- Attachment upload: <5s (for 10MB file)
+- Toggle document verification: <50ms
 
 **Methods:**
 - `add_note(progress_id, step_num, content)` - Add note to step
 - `update_note(progress_id, step_num, content)` - Update existing note
-- `add_attachment(progress_id, step_num, file)` - Upload attachment
+- `verify_document(progress_id, step_num, doc_id, verified, note)` - Mark document as received/verified with optional note
 - **Nulls/Empty:** Handle null or empty input values gracefully
 - **Validation:** Validate input formats before processing
 - **Error Recovery:** Handle partial failures with clear error messages
@@ -4858,7 +4859,9 @@ Add notes field to ProceduraProgress and document attachment support.
   - `test_add_note` - note saved
   - `test_update_note` - note updated
   - `test_note_per_step` - notes per step
-  - `test_attachment_upload` - file upload
+  - `test_verify_document` - document marked as verified
+  - `test_unverify_document` - document unmarked
+  - `test_document_verification_with_note` - verification with optional note
 - **Edge Case Tests:** See Edge Cases section above
 - **Regression Tests:** Run `pytest tests/models/` and `pytest tests/services/`
 - **Coverage Target:** 80%+ for notes code
@@ -4878,7 +4881,8 @@ Add notes field to ProceduraProgress and document attachment support.
 - [ ] Tests written BEFORE implementation (TDD)
 - [ ] Add notes to progress
 - [ ] Notes per step
-- [ ] Document attachment (future)
+- [ ] Document verification checklist (checkbox-based, no file upload — ADR-035)
+- [ ] Optional note per document verification (e.g., "Ricevuto via email")
 - [ ] 80%+ test coverage achieved
 
 ---
@@ -12075,7 +12079,7 @@ All screens have been implemented in the [Figma Make project](https://www.figma.
 
 **Source:** [`docs/figma-make-references/ProceduraInterattivaPage.tsx`](../figma-make-references/ProceduraInterattivaPage.tsx)
 
-**Key UI Elements:** Left sidebar with procedure list (progress bars, category badges), stepper with step numbers/checkmarks, current step content (checklist, required documents, notes/attachments), two modes (Modalità consultazione vs client-specific tracking with "Avvia per un cliente" button), client selector modal.
+**Key UI Elements:** Left sidebar with procedure list (progress bars, category badges), stepper with step numbers/checkmarks, current step content (checklist, document verification checkboxes, notes), two modes (Modalità consultazione vs client-specific tracking with "Avvia per un cliente" button), client selector modal. **Note:** ADR-035 — no document upload/storage; documents section uses checkbox-based verification only.
 
 ---
 

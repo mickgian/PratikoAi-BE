@@ -36,6 +36,11 @@ from app.models.ccnl_update_models import (
     CCNLVersion,
 )
 
+# PratikoAI 2.0 — Wave 0 & Wave 1 models (DEV-300 through DEV-324)
+from app.models.client import Client
+from app.models.client_profile import ClientProfile
+from app.models.communication import Communication
+
 # DEV-256: Multi-Model LLM Comparison Feature
 from app.models.comparison import (
     ModelComparisonResponse,
@@ -99,6 +104,7 @@ from app.models.knowledge import (
     KnowledgeItem,
 )
 from app.models.knowledge_chunk import KnowledgeChunk
+from app.models.matching_rule import MatchingRule
 from app.models.payment import (
     Customer,
     Invoice,
@@ -106,12 +112,15 @@ from app.models.payment import (
     Subscription,
     WebhookEvent,
 )
+from app.models.proactive_suggestion import ProactiveSuggestion
 
 # Proactivity Analytics Models - DEV-156
 from app.models.proactivity_analytics import (
     InteractiveQuestionAnswer,
     SuggestedActionClick,
 )
+from app.models.procedura import Procedura
+from app.models.procedura_progress import ProceduraProgress
 
 # Phase 3: Expert Feedback & Quality Analysis Models
 from app.models.quality_analysis import (
@@ -158,6 +167,7 @@ from app.models.regulatory_documents import (
 # Release Notes Models - Versioning system
 from app.models.release_note import ReleaseNote, UserReleaseNoteSeen
 from app.models.session import Session
+from app.models.studio import Studio
 from app.models.thread import Thread
 from app.models.usage import (
     CostAlert,

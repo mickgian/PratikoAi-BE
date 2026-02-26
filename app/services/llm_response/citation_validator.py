@@ -1,8 +1,21 @@
 """Citation validation for LLM responses.
 
-Validates law citations in responses against KB context using HallucinationGuard.
+DEV-249: Validates law citations in responses against KB context using HallucinationGuard.
+DEV-389: Adds soft/strict mode and timeout support for production integration.
+
+Modes (controlled by ``HALLUCINATION_GUARD_MODE`` env var):
+    - **soft** (default): Log warning, continue with flagged response.
+    - **strict**: Flag response for regeneration when hallucinations are found.
+
+Timeout (``HALLUCINATION_GUARD_TIMEOUT_S``, default 2.0 s):
+    If validation exceeds the timeout the response is returned unvalidated.
 """
 
+import os
+import signal
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import TYPE_CHECKING, Any
 
 from app.core.logging import logger
@@ -12,6 +25,10 @@ if TYPE_CHECKING:
 
 # Type alias for RAG state dict
 RAGStateDict = dict[str, Any]
+
+# DEV-389: Configuration from environment
+HALLUCINATION_GUARD_MODE: str = os.getenv("HALLUCINATION_GUARD_MODE", "soft")  # "soft" | "strict"
+HALLUCINATION_GUARD_TIMEOUT_S: float = float(os.getenv("HALLUCINATION_GUARD_TIMEOUT_S", "2.0"))
 
 # DEV-249: Cached HallucinationGuard instance
 _hallucination_guard_instance = None
@@ -32,19 +49,23 @@ def validate_citations_in_response(
     kb_context: str,
     state: RAGStateDict,
 ) -> "CitationValidationResult | None":
-    """DEV-249: Validate law citations in LLM response against KB context.
+    """Validate law citations in LLM response against KB context.
 
-    This function integrates HallucinationGuard into the LangGraph pipeline.
-    It validates that law citations (e.g., "Legge 199/2025") in the LLM response
-    actually exist in the KB context that was provided to the LLM.
+    DEV-249: Core validation logic.
+    DEV-389: Soft/strict mode + timeout guard.
+
+    In **soft** mode (default) hallucinations are logged as warnings but
+    the response is returned as-is.  In **strict** mode the state is
+    flagged with ``hallucination_requires_regeneration = True`` so the
+    caller can request re-generation without the hallucinated citations.
 
     Args:
-        response_text: The LLM-generated response text
-        kb_context: The KB context that was provided to the LLM
-        state: RAG state for logging context
+        response_text: The LLM-generated response text.
+        kb_context: The KB context that was provided to the LLM.
+        state: RAG state for logging context.
 
     Returns:
-        CitationValidationResult if validation was performed, None if skipped
+        CitationValidationResult if validation was performed, None if skipped.
     """
     # Skip if no response or context
     if not response_text or not kb_context:
@@ -59,18 +80,41 @@ def validate_citations_in_response(
 
     try:
         guard = _get_hallucination_guard()
-        result = guard.validate_citations(response_text, kb_context)
+
+        # DEV-389: Timeout-guarded validation
+        result = _run_with_timeout(guard.validate_citations, response_text, kb_context)
+        if result is None:
+            # Timeout — return unvalidated
+            logger.warning(
+                "DEV389_hallucination_guard_timeout",
+                timeout_s=HALLUCINATION_GUARD_TIMEOUT_S,
+                request_id=state.get("request_id"),
+            )
+            return None
 
         # Log hallucination detection with structured context
         if result.has_hallucinations:
+            mode = HALLUCINATION_GUARD_MODE
+
             logger.warning(
                 "DEV249_hallucination_detected",
                 hallucinated_citations=result.hallucinated_citations,
                 valid_citations=result.valid_citations,
                 hallucination_rate=result.hallucination_rate,
+                guard_mode=mode,
                 request_id=state.get("request_id"),
                 session_id=state.get("session_id"),
             )
+
+            # DEV-389: Strict mode — flag for regeneration
+            if mode == "strict":
+                state["hallucination_requires_regeneration"] = True
+                state["hallucinated_citations"] = result.hallucinated_citations
+                logger.info(
+                    "DEV389_strict_mode_regeneration_flagged",
+                    hallucinated_count=len(result.hallucinated_citations),
+                    request_id=state.get("request_id"),
+                )
         elif result.extracted_citations:
             logger.info(
                 "DEV249_citations_validated",
@@ -89,4 +133,18 @@ def validate_citations_in_response(
             error_message=str(e),
             request_id=state.get("request_id"),
         )
+        return None
+
+
+def _run_with_timeout(fn, *args, timeout_s: float | None = None):
+    """Run *fn* in a thread pool with a timeout.
+
+    Returns the function result or ``None`` on timeout.
+    """
+    timeout = timeout_s if timeout_s is not None else HALLUCINATION_GUARD_TIMEOUT_S
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(fn, *args)
+            return future.result(timeout=timeout)
+    except FuturesTimeoutError:
         return None

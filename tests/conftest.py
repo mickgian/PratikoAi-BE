@@ -5,8 +5,14 @@ This module provides common fixtures and configuration for all tests,
 including database mocking and async support.
 """
 
-import asyncio
 import os
+
+# DEV-300: Ensure POSTGRES_URL is set before any app imports so that
+# modules like app.models.database don't fail during test collection.
+if not os.environ.get("POSTGRES_URL"):
+    os.environ["POSTGRES_URL"] = "postgresql://test:test@localhost:5432/pratikoai_test"
+
+import asyncio
 import uuid
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime

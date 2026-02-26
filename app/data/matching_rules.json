@@ -1,0 +1,239 @@
+[
+  {
+    "name": "R001 — Rottamazione Quater",
+    "description": "Definizione agevolata dei carichi affidati all'Agente della riscossione. Permette di estinguere debiti con il Fisco pagando solo capitale e interessi, senza sanzioni e interessi di mora.",
+    "rule_type": "opportunita",
+    "conditions": {
+      "OR": [
+        {"field": "posizione_agenzia_entrate", "op": "eq", "value": "irregolare"},
+        {"field": "posizione_agenzia_entrate", "op": "eq", "value": "in_verifica"}
+      ]
+    },
+    "priority": 90,
+    "valid_from": "2024-01-01",
+    "valid_to": "2026-12-31",
+    "categoria": "fiscale",
+    "fonte_normativa": "DL 34/2023 art. 1 commi 231-252"
+  },
+  {
+    "name": "R002 — Resto al Sud",
+    "description": "Incentivo per avvio di attività imprenditoriali nelle regioni del Mezzogiorno. Finanziamento agevolato fino a 200.000 EUR per under 56.",
+    "rule_type": "opportunita",
+    "conditions": {
+      "AND": [
+        {"field": "provincia", "op": "in", "value": ["NA", "SA", "AV", "BN", "CE", "BA", "BT", "BR", "FG", "LE", "TA", "CZ", "CS", "KR", "RC", "VV", "PA", "CT", "ME", "AG", "CL", "EN", "RG", "SR", "TP", "CA", "SS", "NU", "OR", "SU", "CB", "IS", "PZ", "MT"]},
+        {"field": "data_inizio_attivita", "op": "gte", "value": "2020-01-01"}
+      ]
+    },
+    "priority": 85,
+    "valid_from": "2024-01-01",
+    "valid_to": null,
+    "categoria": "agevolazioni",
+    "fonte_normativa": "DL 91/2017 art. 1 comma 1"
+  },
+  {
+    "name": "R003 — Bonus Assunzioni Under 30",
+    "description": "Esonero contributivo per assunzione a tempo indeterminato di giovani under 30 che non hanno mai avuto un contratto a tempo indeterminato.",
+    "rule_type": "opportunita",
+    "conditions": {
+      "AND": [
+        {"field": "n_dipendenti", "op": "gte", "value": 1},
+        {"field": "tipo_cliente", "op": "in", "value": ["ditta_individuale", "societa"]}
+      ]
+    },
+    "priority": 80,
+    "valid_from": "2024-01-01",
+    "valid_to": null,
+    "categoria": "lavoro",
+    "fonte_normativa": "L. 205/2017 art. 1 commi 100-108"
+  },
+  {
+    "name": "R004 — Bonus Donne",
+    "description": "Esonero contributivo per assunzione di donne svantaggiate: disoccupate da oltre 24 mesi o residenti in aree svantaggiate.",
+    "rule_type": "opportunita",
+    "conditions": {
+      "AND": [
+        {"field": "n_dipendenti", "op": "gte", "value": 1},
+        {"field": "tipo_cliente", "op": "in", "value": ["ditta_individuale", "societa"]}
+      ]
+    },
+    "priority": 75,
+    "valid_from": "2024-01-01",
+    "valid_to": null,
+    "categoria": "lavoro",
+    "fonte_normativa": "L. 92/2012 art. 4 commi 8-11"
+  },
+  {
+    "name": "R005 — Bonus Sud / Decontribuzione Sud",
+    "description": "Esonero contributivo del 30% per aziende con sede nel Mezzogiorno. Contributo progressivamente ridotto fino al 2029.",
+    "rule_type": "opportunita",
+    "conditions": {
+      "AND": [
+        {"field": "provincia", "op": "in", "value": ["NA", "SA", "AV", "BN", "CE", "BA", "BT", "BR", "FG", "LE", "TA", "CZ", "CS", "KR", "RC", "VV", "PA", "CT", "ME", "AG", "CL", "EN", "RG", "SR", "TP", "CA", "SS", "NU", "OR", "SU", "CB", "IS", "PZ", "MT"]},
+        {"field": "n_dipendenti", "op": "gte", "value": 1}
+      ]
+    },
+    "priority": 85,
+    "valid_from": "2024-01-01",
+    "valid_to": "2029-12-31",
+    "categoria": "lavoro",
+    "fonte_normativa": "DL 104/2020 art. 27"
+  },
+  {
+    "name": "R006 — Obbligo Registratore di Cassa Telematico",
+    "description": "Obbligo di dotarsi di registratore di cassa telematico per la trasmissione dei corrispettivi giornalieri all'Agenzia delle Entrate.",
+    "rule_type": "normativa",
+    "conditions": {
+      "AND": [
+        {"field": "regime_fiscale", "op": "in", "value": ["ordinario", "semplificato"]},
+        {"field": "codice_ateco_principale", "op": "starts_with", "value": "47"}
+      ]
+    },
+    "priority": 95,
+    "valid_from": "2020-01-01",
+    "valid_to": null,
+    "categoria": "adempimenti",
+    "fonte_normativa": "DLgs 127/2015 art. 2"
+  },
+  {
+    "name": "R007 — Obbligo POS",
+    "description": "Obbligo di accettare pagamenti elettronici tramite POS per commercianti e professionisti. Sanzione di 30 EUR + 4% dell'importo rifiutato.",
+    "rule_type": "normativa",
+    "conditions": {
+      "OR": [
+        {"field": "tipo_cliente", "op": "eq", "value": "ditta_individuale"},
+        {"field": "tipo_cliente", "op": "eq", "value": "societa"}
+      ]
+    },
+    "priority": 90,
+    "valid_from": "2022-06-30",
+    "valid_to": null,
+    "categoria": "adempimenti",
+    "fonte_normativa": "DL 36/2022 art. 18"
+  },
+  {
+    "name": "R008 — DVR Sicurezza Lavoro",
+    "description": "Obbligo di redazione del Documento di Valutazione dei Rischi per tutte le imprese con almeno un dipendente.",
+    "rule_type": "normativa",
+    "conditions": {
+      "AND": [
+        {"field": "n_dipendenti", "op": "gte", "value": 1}
+      ]
+    },
+    "priority": 95,
+    "valid_from": "2008-04-15",
+    "valid_to": null,
+    "categoria": "sicurezza",
+    "fonte_normativa": "DLgs 81/2008 art. 28"
+  },
+  {
+    "name": "R009 — Cedolare Secca",
+    "description": "Regime opzionale di tassazione sostitutiva per i redditi da locazione immobiliare. Aliquota 21% (o 10% per contratti concordati).",
+    "rule_type": "opportunita",
+    "conditions": {
+      "AND": [
+        {"field": "tipo_cliente", "op": "eq", "value": "persona_fisica"},
+        {"field": "immobili", "op": "not_empty"}
+      ]
+    },
+    "priority": 70,
+    "valid_from": "2011-01-01",
+    "valid_to": null,
+    "categoria": "fiscale",
+    "fonte_normativa": "DLgs 23/2011 art. 3"
+  },
+  {
+    "name": "R010 — IMU Seconda Casa",
+    "description": "Imposta Municipale Unica su immobili diversi dalla prima casa. Obbligo di versamento con scadenze 16 giugno e 16 dicembre.",
+    "rule_type": "scadenza",
+    "conditions": {
+      "AND": [
+        {"field": "immobili", "op": "not_empty"}
+      ]
+    },
+    "priority": 85,
+    "valid_from": "2012-01-01",
+    "valid_to": null,
+    "categoria": "fiscale",
+    "fonte_normativa": "L. 160/2019 art. 1 commi 738-783"
+  },
+  {
+    "name": "R011 — Credito d'Imposta Formazione 4.0",
+    "description": "Credito d'imposta per attività di formazione del personale dipendente nelle tecnologie abilitanti del Piano Industria 4.0.",
+    "rule_type": "opportunita",
+    "conditions": {
+      "AND": [
+        {"field": "n_dipendenti", "op": "gte", "value": 1},
+        {"field": "tipo_cliente", "op": "in", "value": ["societa", "ditta_individuale"]}
+      ]
+    },
+    "priority": 65,
+    "valid_from": "2024-01-01",
+    "valid_to": "2025-12-31",
+    "categoria": "agevolazioni",
+    "fonte_normativa": "L. 160/2019 art. 1 commi 210-217"
+  },
+  {
+    "name": "R012 — Regime Forfettario sotto soglia",
+    "description": "Verifica mantenimento requisiti regime forfettario: ricavi/compensi non superiori a 85.000 EUR e spese personale non superiori a 20.000 EUR.",
+    "rule_type": "normativa",
+    "conditions": {
+      "AND": [
+        {"field": "regime_fiscale", "op": "eq", "value": "forfettario"}
+      ]
+    },
+    "priority": 80,
+    "valid_from": "2023-01-01",
+    "valid_to": null,
+    "categoria": "fiscale",
+    "fonte_normativa": "L. 190/2014 art. 1 commi 54-89"
+  },
+  {
+    "name": "R013 — Obbligo Fatturazione Elettronica",
+    "description": "Obbligo di emissione di fatture in formato elettronico tramite SDI per tutti i soggetti IVA, inclusi forfettari dal 2024.",
+    "rule_type": "normativa",
+    "conditions": {
+      "OR": [
+        {"field": "regime_fiscale", "op": "eq", "value": "ordinario"},
+        {"field": "regime_fiscale", "op": "eq", "value": "semplificato"},
+        {"field": "regime_fiscale", "op": "eq", "value": "forfettario"}
+      ]
+    },
+    "priority": 95,
+    "valid_from": "2024-01-01",
+    "valid_to": null,
+    "categoria": "adempimenti",
+    "fonte_normativa": "DLgs 127/2015 art. 1"
+  },
+  {
+    "name": "R014 — INAIL Autoliquidazione",
+    "description": "Scadenza annuale per il pagamento del premio INAIL. Autoliquidazione con versamento entro il 16 febbraio di ogni anno.",
+    "rule_type": "scadenza",
+    "conditions": {
+      "AND": [
+        {"field": "n_dipendenti", "op": "gte", "value": 1}
+      ]
+    },
+    "priority": 85,
+    "valid_from": "2024-01-01",
+    "valid_to": null,
+    "categoria": "contributivo",
+    "fonte_normativa": "DPR 1124/1965 art. 28"
+  },
+  {
+    "name": "R015 — Nuova Sabatini",
+    "description": "Agevolazione per l'acquisto di beni strumentali (macchinari, impianti, software). Contributo in conto interessi su finanziamenti bancari.",
+    "rule_type": "opportunita",
+    "conditions": {
+      "AND": [
+        {"field": "tipo_cliente", "op": "in", "value": ["ditta_individuale", "societa"]},
+        {"field": "regime_fiscale", "op": "in", "value": ["ordinario", "semplificato"]}
+      ]
+    },
+    "priority": 70,
+    "valid_from": "2024-01-01",
+    "valid_to": null,
+    "categoria": "agevolazioni",
+    "fonte_normativa": "DL 69/2013 art. 2"
+  }
+]

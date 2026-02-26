@@ -59,7 +59,8 @@ describe('SlashCommandMenu', () => {
     );
     const handled = ref.current!.handleKey('Enter');
     expect(handled).toBe(true);
-    expect(onSelect).toHaveBeenCalledWith('/utilizzo');
+    // /novita is alphabetically first, so it's the default selection
+    expect(onSelect).toHaveBeenCalledWith('/novita');
   });
 
   it('Escape calls onDismiss', () => {
@@ -86,16 +87,17 @@ describe('SlashCommandMenu', () => {
         onDismiss={onDismiss}
       />
     );
-    // With only 1 command, ArrowDown should wrap around; Enter selects it
-    ref.current!.handleKey('ArrowDown');
+    // With 2 commands (/novita, /utilizzo), ArrowDown from 0 -> 1 -> wrap to 0
+    ref.current!.handleKey('ArrowDown'); // index 1 = /utilizzo
+    ref.current!.handleKey('ArrowDown'); // wrap to index 0 = /novita
     const handled = ref.current!.handleKey('Enter');
     expect(handled).toBe(true);
-    expect(onSelect).toHaveBeenCalledWith('/utilizzo');
+    expect(onSelect).toHaveBeenCalledWith('/novita');
   });
 
-  it('ArrowUp wraps activeIndex to last item', () => {
+  it('ArrowUp wraps activeIndex to last item', async () => {
     const ref = React.createRef<SlashCommandMenuHandle>();
-    render(
+    const { rerender } = render(
       <SlashCommandMenu
         ref={ref}
         filter="/"
@@ -103,7 +105,17 @@ describe('SlashCommandMenu', () => {
         onDismiss={onDismiss}
       />
     );
+    // ArrowUp from index 0 wraps to last item = /utilizzo
     ref.current!.handleKey('ArrowUp');
+    // Re-render to flush the state update
+    rerender(
+      <SlashCommandMenu
+        ref={ref}
+        filter="/"
+        onSelect={onSelect}
+        onDismiss={onDismiss}
+      />
+    );
     const handled = ref.current!.handleKey('Enter');
     expect(handled).toBe(true);
     expect(onSelect).toHaveBeenCalledWith('/utilizzo');
@@ -134,7 +146,8 @@ describe('SlashCommandMenu', () => {
         onDismiss={onDismiss}
       />
     );
-    expect(ref.current!.getSelected()).toBe('/utilizzo');
+    // /novita is alphabetically first, so it's the default selection
+    expect(ref.current!.getSelected()).toBe('/novita');
   });
 
   it('getSelected returns null when no matches', () => {
